@@ -28,6 +28,8 @@ import {
   parseWorkItemDetailSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
+  parseWorkItemTemplateSearch,
+  parseWorkItemWorkSearch,
   routes,
   type SavedViewUrlSearch,
   toggleWorkItemSortDirection,
@@ -835,6 +837,7 @@ describe("P1 agent core, project overview, and settings routes", () => {
       routes.workspaceStates.path,
       routes.workspaceLabels.path,
       routes.workspaceCannedResponses.path,
+      routes.workspaceWorkItemTemplates.path,
       routes.workspaceDangerZone.path,
       routes.projectSettings.path,
       routes.projectMembers.path,
@@ -917,6 +920,24 @@ describe("P1 agent core, project overview, and settings routes", () => {
     expect(
       parseCannedResponseSearch({ action: "delete", q: "  reset  " }),
     ).toEqual({ q: "reset" });
+  });
+
+  it("round-trips work-item template search, editor and library", () => {
+    for (const search of [
+      { q: "bug" },
+      { id: "new" },
+      { id: "tpl/1", library: "checklists" as const },
+    ]) {
+      const url = new URL(
+        routes.workspaceWorkItemTemplates.build(search),
+        "https://example.test",
+      );
+      expect(
+        parseWorkItemTemplateSearch(Object.fromEntries(url.searchParams)),
+      ).toEqual(search);
+    }
+    expect(parseWorkItemTemplateSearch({ id: "bad\u0000id" })).toEqual({});
+    expect(parseWorkItemTemplateSearch({ library: "other" })).toEqual({});
   });
 
   it("builds project overview and project settings URLs with encoded projectKey", () => {
@@ -1021,5 +1042,61 @@ describe("item-scoped Kaneo disclosure URLs", () => {
         sections: JSON.stringify({ itemKey: "HELP-4", open: ["secrets"] }),
       }),
     ).toEqual({});
+  });
+});
+
+describe("work route grouping URL state (VW-13, VW-1)", () => {
+  it("parses a valid group, ignores an invalid one, and never invents one", () => {
+    expect(
+      parseWorkItemWorkSearch({ layout: "board", group: "assignee" }),
+    ).toMatchObject({
+      layout: "board",
+      group: "assignee",
+    });
+    expect(parseWorkItemWorkSearch({ group: "priority" }).group).toBe(
+      "priority",
+    );
+    expect(parseWorkItemWorkSearch({ group: "cycle" })).not.toHaveProperty(
+      "group",
+    );
+    expect(parseWorkItemWorkSearch({})).not.toHaveProperty("group");
+    expect(parseWorkItemWorkSearch(null)).toMatchObject({ layout: "list" });
+  });
+
+  it("writes the group into the builder, but never the default state grouping", () => {
+    const url = routes.workItemList.build(
+      { projectKey: "PROJ" },
+      { layout: "board", group: "assignee" },
+    );
+    expect(new URLSearchParams(url.split("?")[1]).get("group")).toBe(
+      "assignee",
+    );
+    expect(
+      routes.workItemList.build({ projectKey: "PROJ" }, { group: "state" }),
+    ).not.toContain("group=");
+    expect(routes.workItemList.build({ projectKey: "PROJ" })).not.toContain(
+      "group=",
+    );
+  });
+
+  it("round-trips the group through build then parse, with the list state beside it", () => {
+    const url = routes.workItemList.build(
+      { projectKey: "PROJ" },
+      {
+        layout: "board",
+        sort: "priority",
+        dir: "desc",
+        group: "priority",
+        filter: "x = 1",
+      },
+    );
+    const params = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    expect(parseWorkItemWorkSearch(params)).toMatchObject({
+      layout: "board",
+      sort: "priority",
+      dir: "desc",
+      group: "priority",
+      filter: "x = 1",
+    });
   });
 });

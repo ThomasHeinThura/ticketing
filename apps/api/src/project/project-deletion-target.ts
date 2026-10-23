@@ -8,6 +8,8 @@ import {
 } from "../pending-action/click-deletion-executor";
 import type { PendingActionTransaction } from "../pending-action/service";
 import { invalidateNativeAuthorization } from "../ws";
+import { lockProjectHierarchy } from "./hierarchy.repository";
+import { assertNoLiveChildProjects } from "./project-children";
 import { revokeProjectCreatorGrantsForProject } from "./project-creator-grant";
 
 // #187: 30 days, the same window `controllers/delete-project.ts` stamps.
@@ -52,6 +54,11 @@ export const projectDeletionTarget: RegisteredDeletionTarget = {
   confirmation: "typed_name_step_up",
   sessionOnly: true,
   notFound: "Project not found",
+  // P1-5: refused (409) at the delete request and again at approval while live child projects
+  // exist; `execute` re-checks under the hierarchy lock.
+  assertDeletable: async (tx, loaded) => {
+    await assertNoLiveChildProjects(tx, loaded.workspaceId, loaded.id);
+  },
   load: async (tx, id) => {
     const project = await lockLiveProject(tx, id, "update");
     if (!project) return undefined;
@@ -74,6 +81,10 @@ export const projectDeletionTarget: RegisteredDeletionTarget = {
     } satisfies RegisteredDeletionLoaded;
   },
   execute: async (tx, { loaded }) => {
+    // Serialises with re-parenting, so a child cannot be attached between this check and the
+    // soft delete.
+    await lockProjectHierarchy(tx, loaded.workspaceId);
+    await assertNoLiveChildProjects(tx, loaded.workspaceId, loaded.id);
     const [row] = await tx
       .update(schema.projectTable)
       .set({

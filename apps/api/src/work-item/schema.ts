@@ -223,6 +223,13 @@ export const createWorkItemBody = z.object({
     .min(1)
     .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
     .optional(),
+  // `WI-5`: create from a work-item template. Explicit fields in this body win; the template
+  // fills `description`, `labelIds` and a linked checklist, and never assignee or dates.
+  templateId: z
+    .string()
+    .min(1)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+    .optional(),
 });
 
 export const updateWorkItemBody = z
@@ -409,6 +416,17 @@ export const setWorkItemParentBody = z.object({
     .string()
     .min(1)
     .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+});
+
+// `POST /api/v2/work-items/{key}/move` (`RH-12`). `moveChildren` is REQUIRED, never defaulted: the
+// caller must have chosen between moving the whole subtree and detaching the direct children,
+// which the UI states plainly before confirming.
+export const moveWorkItemBody = z.object({
+  targetProjectId: z
+    .string()
+    .min(1)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+  moveChildren: z.boolean(),
 });
 
 // `POST /api/work-items/{key}/transition` (issue #442, `workflows.md`). `toStateTemplateId`

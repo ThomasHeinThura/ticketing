@@ -96,6 +96,7 @@ async function getProjects(
   workspaceId: string,
   includeArchived: boolean,
   reachableProjectIds: readonly string[] | null,
+  includeDeleted = false,
 ) {
   if (reachableProjectIds !== null && reachableProjectIds.length === 0) {
     return [];
@@ -105,20 +106,16 @@ async function getProjects(
       ? undefined
       : inArray(projectTable.id, [...reachableProjectIds]);
   const projects = await db.query.projectTable.findMany({
-    // #187: same reasoning as `getProjectStatistics` above -- `deletedAt` is always
-    // excluded, `includeArchived` only ever controls `archivedAt`.
-    where: includeArchived
-      ? and(
-          eq(projectTable.workspaceId, workspaceId),
-          isNull(projectTable.deletedAt),
-          reachFilter,
-        )
-      : and(
-          eq(projectTable.workspaceId, workspaceId),
-          isNull(projectTable.archivedAt),
-          isNull(projectTable.deletedAt),
-          reachFilter,
-        ),
+    // #187 / PR-16: `archivedAt` and `deletedAt` are independent. The default list excludes
+    // both; `includeArchived` reveals archived rows and `includeDeleted` reveals rows still
+    // inside their 30-day soft-delete window, each on its own. Statistics (below) never
+    // cover a deleted project, so a revealed deleted project shows empty statistics.
+    where: and(
+      eq(projectTable.workspaceId, workspaceId),
+      includeArchived ? undefined : isNull(projectTable.archivedAt),
+      includeDeleted ? undefined : isNull(projectTable.deletedAt),
+      reachFilter,
+    ),
     // `id` is the deterministic tie-breaker: without it, rows sharing both a
     // position and a createdAt come back in an unspecified order.
     orderBy: (project, { asc }) => [

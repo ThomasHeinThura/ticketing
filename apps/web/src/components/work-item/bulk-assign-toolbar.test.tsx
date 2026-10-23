@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   operation: vi.fn(),
   deletion: vi.fn(),
   detail: vi.fn(),
+  children: vi.fn(),
   openPending: vi.fn(),
   permissions: vi.fn(),
   canAssign: true,
@@ -52,6 +53,9 @@ vi.mock("@/fetchers/work-item/bulk-assign-work-items", () => ({
   default: (...args: unknown[]) => mocks.assign(...args),
   bulkWorkItemsOperation: (...args: unknown[]) => mocks.operation(...args),
   requestBulkWorkItemDeletion: (...args: unknown[]) => mocks.deletion(...args),
+}));
+vi.mock("@/fetchers/work-item/get-hierarchy-children", () => ({
+  getHierarchyChildren: (...args: unknown[]) => mocks.children(...args),
 }));
 vi.mock("@/fetchers/work-item/get-work-item", () => ({
   default: (...args: unknown[]) => mocks.detail(...args),
@@ -115,6 +119,10 @@ beforeEach(() => {
     assigneeId: null,
     assigneeName: null,
   }));
+  mocks.children.mockResolvedValue({
+    data: [],
+    progress: { total: 0, completed: 0 },
+  });
   mocks.assign.mockResolvedValue({ succeeded: ["WLP-1"], failed: [] });
   mocks.operation.mockResolvedValue({ succeeded: ["WLP-1"], failed: [] });
 });
@@ -190,6 +198,45 @@ describe("canonical bulk actions use original Kaneo composition", () => {
         operation: "transition",
         toStateTemplateId: "template-done",
       }),
+    );
+  });
+  it("RH-10: a bulk close names open children of the selection and waits for confirmation", async () => {
+    mocks.children.mockImplementation(async (key: string) =>
+      key === "WLP-2"
+        ? {
+            data: [
+              {
+                key: "WLP-9",
+                title: "Child",
+                stateName: "Open",
+                stateCategory: "unstarted",
+              },
+            ],
+            progress: { total: 1, completed: 0 },
+          }
+        : { data: [], progress: { total: 0, completed: 0 } },
+    );
+    mount();
+    await choose("Done");
+    expect(
+      await screen.findByTestId("open-children-warning"),
+    ).toHaveTextContent("WLP-9");
+    expect(mocks.operation).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(screen.queryByTestId("open-children-warning")).toBeNull(),
+    );
+    expect(mocks.operation).not.toHaveBeenCalled();
+    await choose("Done");
+    await screen.findByTestId("open-children-warning");
+    fireEvent.click(screen.getByRole("button", { name: "Close anyway" }));
+    await waitFor(() =>
+      expect(mocks.operation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: "transition",
+          toStateTemplateId: "template-done",
+        }),
+      ),
     );
   });
   it("maps the original backlog shortcut to a concrete project state, never planned", async () => {

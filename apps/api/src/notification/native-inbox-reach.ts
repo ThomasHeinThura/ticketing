@@ -23,6 +23,13 @@ export function canReadNativeInboxCandidate(
   identity: ResolvedIdentity | null,
   candidate: NativeInboxCandidate,
   resource: CurrentNotificationResource | undefined,
+  /**
+   * The resource project's ancestors, nearest first (PR-2/PR-3), from
+   * `projectAncestryFor`. Omitted means no inheritance is applied: every caller that has a
+   * database handle must supply it, or an ancestor-only member falls back to their workspace
+   * role.
+   */
+  ancestorProjectIds?: readonly string[],
 ): boolean {
   if (
     !identity ||
@@ -61,6 +68,7 @@ export function canReadNativeInboxCandidate(
     workspaceId: resource.workspaceId,
     organisationId: resource.organisationId,
     visibleToPersonIds,
+    ancestorProjectIds,
   });
   if (!inCurrentReach) return false;
 
@@ -78,5 +86,6 @@ export function canReadNativeInboxCandidate(
     workItemProjectId: resource.projectId,
     projectId: resource.projectId,
     workspaceId: resource.workspaceId,
+    ancestorProjectIds,
   });
 }

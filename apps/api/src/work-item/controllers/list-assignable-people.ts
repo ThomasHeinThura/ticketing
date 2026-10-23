@@ -18,6 +18,7 @@ import {
   userTable,
   workItemTable,
 } from "../../database/schema";
+import { loadProjectAncestorIds } from "../../project/hierarchy.repository";
 
 /**
  * `GET /api/projects/{projectId}/assignable` (`docs/03-features/assignment.md` § API) --
@@ -65,7 +66,46 @@ export type AssignablePerson = {
   name: string | null;
   roleName: string;
   openWorkCount: number;
+  /** PR-2: on the roster of an ancestor project only (read-only inclusion), not this one. */
+  inherited: boolean;
 };
+
+type RosterCandidate = {
+  personId: string;
+  roleName: string;
+  roleRank: number;
+  name: string | null;
+  scopeId: string;
+};
+
+/**
+ * One entry per person: a direct row on this project wins over an inherited ancestor row,
+ * then the strongest role. Pure, so the PR-2 inclusion rule is unit-testable without a DB.
+ */
+export function dedupeRoster(
+  rows: readonly RosterCandidate[],
+  projectId: string,
+): Map<string, { name: string | null; roleName: string; inherited: boolean }> {
+  const byPerson = new Map<
+    string,
+    { name: string | null; roleName: string; inherited: boolean }
+  >();
+  const ordered = [...rows].sort((a, b) => {
+    const direct =
+      Number(b.scopeId === projectId) - Number(a.scopeId === projectId);
+    return direct !== 0 ? direct : b.roleRank - a.roleRank;
+  });
+  for (const row of ordered) {
+    if (!byPerson.has(row.personId)) {
+      byPerson.set(row.personId, {
+        name: row.name ?? null,
+        roleName: row.roleName,
+        inherited: row.scopeId !== projectId,
+      });
+    }
+  }
+  return byPerson;
+}
 
 export async function listAssignablePeople({
   projectId,
@@ -86,8 +126,13 @@ export async function listAssignablePeople({
   callerCanAssignAnyone: boolean;
   callerCanSelfAssign: boolean;
 }): Promise<AssignablePerson[]> {
+  // PR-2: members of a parent project are members of its children, so the roster is this
+  // project plus its ancestors (same workspace, bounded depth) -- the set
+  // `resolveAssigneeEligibility` accepts on the write.
+  const ancestorIds = await loadProjectAncestorIds(db, workspaceId, projectId);
   const rosterRows = await db
     .select({
+      scopeId: membershipTable.scopeId,
       personId: membershipTable.personId,
       roleName: roleTable.name,
       roleRank: roleTable.rank,
@@ -100,7 +145,7 @@ export async function listAssignablePeople({
     .where(
       and(
         eq(membershipTable.scope, "project"),
-        eq(membershipTable.scopeId, projectId),
+        inArray(membershipTable.scopeId, [projectId, ...ancestorIds]),
         eq(personTable.active, true),
         // Review L3: the two rules `data-model.md` states but no constraint enforces --
         // a placeholder can never be assigned, and customer-side people hold only
@@ -111,20 +156,9 @@ export async function listAssignablePeople({
       ),
     );
 
-  // One row per person, carrying their most privileged role on this project. `rank` is
-  // "higher wins" (roles.ts/rbac.md: "You cannot edit or mint a role whose rank is >=
-  // your own") -- the ordinary review of PR #362 (F1) caught this sorted the wrong way.
-  // Inherited memberships (PR-3/PR-4) can put more than one row behind one person, and
-  // the picker shows a single role: the strongest one.
-  const byPerson = new Map<string, { name: string | null; roleName: string }>();
-  for (const row of [...rosterRows].sort((a, b) => b.roleRank - a.roleRank)) {
-    if (!byPerson.has(row.personId)) {
-      byPerson.set(row.personId, {
-        name: row.name ?? null,
-        roleName: row.roleName,
-      });
-    }
-  }
+  // One row per person: the direct row first, then the strongest role (`rank` is "higher
+  // wins"; roles.ts/rbac.md).
+  const byPerson = dedupeRoster(rosterRows, projectId);
 
   const selfEntry =
     callerPersonId !== null ? byPerson.get(callerPersonId) : undefined;
@@ -132,7 +166,10 @@ export async function listAssignablePeople({
     ? byPerson
     : callerCanSelfAssign && selfEntry !== undefined && callerPersonId !== null
       ? new Map([[callerPersonId, selfEntry]])
-      : new Map<string, { name: string | null; roleName: string }>();
+      : new Map<
+          string,
+          { name: string | null; roleName: string; inherited: boolean }
+        >();
 
   if (allowed.size === 0) {
     return [];
@@ -176,6 +213,7 @@ export async function listAssignablePeople({
       personId,
       name: entry.name,
       roleName: entry.roleName,
+      inherited: entry.inherited,
       openWorkCount: loadByPerson.get(personId) ?? 0,
     }))
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));

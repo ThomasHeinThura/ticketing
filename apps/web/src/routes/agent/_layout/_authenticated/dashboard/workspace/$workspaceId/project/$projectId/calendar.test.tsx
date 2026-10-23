@@ -16,6 +16,11 @@ const routerState = vi.hoisted(() => ({
   search: {} as Record<string, unknown>,
   navigate: vi.fn(),
 }));
+const reschedule = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  canUpdate: true,
+  checking: false,
+}));
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => ({
@@ -41,6 +46,16 @@ vi.mock("@/hooks/queries/work-item/use-schedule-project", () => ({
     isError: false,
   }),
 }));
+vi.mock("@/components/work-item/work-item-calendar-reschedule", () => ({
+  useRescheduleWorkItem: () => ({ mutate: reschedule.mutate }),
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    isCheckingPermissions: reschedule.checking,
+    canUpdateTasks: () => reschedule.canUpdate,
+  }),
+}));
+vi.mock("@/lib/toast", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/lib/auth-client", () => ({
   authClient: { useSession: () => ({ data: { user: { id: "user-1" } } }) },
 }));
@@ -72,12 +87,36 @@ vi.mock("@/components/common/project-layout", () => ({
   ),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
-vi.mock("@/components/calendar/month-grid", () => ({
-  default: ({ onOpenTask }: { onOpenTask: (taskId: string) => void }) => (
+function OpenTaskControl({ onOpen }: { onOpen: () => void }) {
+  return (
     // ui-exempt: this test double stands in for the calendar's open-task callback.
-    <button type="button" onClick={() => onOpenTask("task-9")}>
+    <button type="button" onClick={onOpen}>
       open-task
     </button>
+  );
+}
+function DropBarControl({ onDrop }: { onDrop: () => void }) {
+  return (
+    // ui-exempt: this test double stands in for a bar dropped on another day.
+    <button type="button" onClick={onDrop}>
+      drop-bar
+    </button>
+  );
+}
+vi.mock("@/components/calendar/month-grid", () => ({
+  default: ({
+    onOpenTask,
+    onReschedule,
+  }: {
+    onOpenTask: (taskId: string) => void;
+    onReschedule?: (task: { id: string }, dayShift: number) => void;
+  }) => (
+    <>
+      <OpenTaskControl onOpen={() => onOpenTask("task-9")} />
+      {onReschedule ? (
+        <DropBarControl onDrop={() => onReschedule({ id: "RM-1" }, 3)} />
+      ) : null}
+    </>
   ),
 }));
 vi.mock("@/components/work-item/work-item-side-pane", () => ({
@@ -130,6 +169,9 @@ beforeEach(() => {
     taskId: "task-1",
   };
   routerState.navigate.mockReset();
+  reschedule.mutate.mockReset();
+  reschedule.canUpdate = true;
+  reschedule.checking = false;
 });
 afterEach(cleanup);
 
@@ -199,5 +241,84 @@ describe("project calendar route URL state", () => {
     expect(options.replace).toBe(true);
     expect(resolved).not.toHaveProperty("taskId");
     expect(resolved).toMatchObject({ month: "2026-10", q: "urgent" });
+  });
+});
+
+describe("project calendar drag to another day (VW-26)", () => {
+  it("writes a dropped bar's day shift through the reschedule mutation", () => {
+    render(<CalendarRoute />);
+    fireEvent.click(screen.getByText("drop-bar"));
+    expect(reschedule.mutate).toHaveBeenCalledWith(
+      { task: { id: "RM-1" }, dayShift: 3 },
+      expect.objectContaining({ onError: expect.any(Function) }),
+    );
+  });
+
+  it("does not make bars draggable without the update capability", () => {
+    reschedule.canUpdate = false;
+    render(<CalendarRoute />);
+    expect(screen.queryByText("drop-bar")).not.toBeInTheDocument();
+  });
+
+  it("stays read-only while permissions are still being checked", () => {
+    reschedule.checking = true;
+    render(<CalendarRoute />);
+    expect(screen.queryByText("drop-bar")).not.toBeInTheDocument();
+  });
+});
+
+describe("project calendar week and day ranges (VW-25)", () => {
+  it("switches to the week range through the URL and keeps search, filters and selection", () => {
+    render(<CalendarRoute />);
+    fireEvent.click(screen.getByRole("button", { name: "Week" }));
+    const { options, resolved } = lastNavigation();
+    expect(options.replace).toBeUndefined();
+    expect(resolved).toMatchObject({
+      calendarView: "week",
+      q: "urgent",
+      status: ["todo"],
+      taskId: "task-1",
+    });
+    expect(resolved).not.toHaveProperty("month");
+    expect(typeof resolved?.date).toBe("string");
+  });
+
+  it("steps the week range by seven days and names the controls for it", () => {
+    routerState.search = { calendarView: "week", date: "2026-10-23" };
+    render(<CalendarRoute />);
+    expect(screen.getByRole("button", { name: "Week" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Next week" }));
+    expect(lastNavigation().resolved).toEqual({
+      calendarView: "week",
+      date: "2026-10-30",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
+    expect(lastNavigation().resolved).toEqual({
+      calendarView: "week",
+      date: "2026-10-16",
+    });
+  });
+
+  it("steps the day range by one day, returns to today, and goes back to the month", () => {
+    routerState.search = { calendarView: "day", date: "2026-10-23" };
+    render(<CalendarRoute />);
+    fireEvent.click(screen.getByRole("button", { name: "Next day" }));
+    expect(lastNavigation().resolved).toEqual({
+      calendarView: "day",
+      date: "2026-10-24",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Today" }));
+    expect(lastNavigation().resolved).toEqual({ calendarView: "day" });
+    fireEvent.click(screen.getByRole("button", { name: "Month" }));
+    expect(lastNavigation().resolved).toEqual({ month: "2026-10" });
+  });
+
+  it("does not offer a bar drop in the day range", () => {
+    routerState.search = { calendarView: "day", date: "2026-10-23" };
+    render(<CalendarRoute />);
+    expect(screen.queryByText("drop-bar")).not.toBeInTheDocument();
   });
 });

@@ -11,6 +11,8 @@ export type CreateWorkItemInput = {
   labelIds?: string[];
   assigneeId?: string;
   priority?: "low" | "medium" | "high" | "urgent";
+  /** `WI-5`: a live work-item template of the same type; explicit fields above win. */
+  templateId?: string;
 };
 
 /**

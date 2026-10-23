@@ -14,6 +14,8 @@ import {
 } from "date-fns";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -22,10 +24,23 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import ScheduleFilterChips, {
+  buildScheduleFilterChips,
+} from "@/components/calendar/schedule-filter-chips";
+import ScheduleViewState, {
+  scheduleViewStatus,
+} from "@/components/calendar/schedule-view-state";
+import GroupControl from "@/components/common/group-control";
 import ProjectLayout from "@/components/common/project-layout";
 import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
 import { CanonicalGanttTaskBar } from "@/components/gantt/canonical-gantt-task-bar";
+import { buildGanttRows } from "@/components/gantt/gantt-groups";
 import PageTitle from "@/components/page-title";
+import {
+  ScheduleSelectionBar,
+  ScheduleSelectionToggle,
+  useScheduleSelection,
+} from "@/components/work-item/work-item-calendar-selection";
 import WorkItemSidePane from "@/components/work-item/work-item-side-pane";
 import { useScheduleProject } from "@/hooks/queries/work-item/use-schedule-project";
 import { cn } from "@/lib/cn";
@@ -39,6 +54,10 @@ import {
 } from "@/lib/project-board-search-state";
 import { PROJECT_GANTT_PATH } from "@/lib/routes";
 import { useUserPreferencesStore } from "@/store/user-preferences";
+
+const SelectionCheckbox = lazy(
+  () => import("@/components/work-item/selection-checkbox"),
+);
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt",
@@ -59,11 +78,12 @@ function RouteComponent() {
   const search = Route.useSearch();
   const { taskId } = search;
   const navigate = useNavigate();
-  const { data: project } = useScheduleProject(
-    projectId,
-    workspaceId,
-    search.filter,
-  );
+  const {
+    data: project,
+    isLoading,
+    isError,
+    refetch,
+  } = useScheduleProject(projectId, workspaceId, search.filter);
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const searchQuery = search.q ?? "";
   const filters = projectViewFiltersFromSearch(search);
@@ -149,6 +169,20 @@ function RouteComponent() {
     [filters, parsedTasks, project?.slug, searchQuery, weekStartsOn],
   );
 
+  // `VW-27`: group the bars by assignee (module and epic need P5 data). It lives in the URL.
+  const group = search.group === "assignee" ? "assignee" : "none";
+  const ganttRows = useMemo(
+    () => buildGanttRows(scheduledTasks, group),
+    [scheduledTasks, group],
+  );
+
+  const hasFilterChips = buildScheduleFilterChips(search).length > 0;
+  const loadStatus = scheduleViewStatus({
+    isLoading,
+    isError,
+    isEmpty: false,
+  });
+
   const updateViewState = useCallback(
     (patch: Parameters<typeof withProjectViewState>[1]) => {
       navigate({
@@ -173,6 +207,22 @@ function RouteComponent() {
       });
     },
     [navigate, projectId, workspaceId],
+  );
+
+  const selection = useScheduleSelection({
+    projectId,
+    allKeys: useMemo(
+      () => scheduledTasks.map((task) => task.id),
+      [scheduledTasks],
+    ),
+    paneOpen: Boolean(taskId),
+  });
+  const handleActivateTask = useCallback(
+    (key: string) => {
+      if (selection.active) selection.toggleKey(key);
+      else handleOpenTask(key);
+    },
+    [handleOpenTask, selection],
   );
 
   const timeline = useMemo(() => {
@@ -304,6 +354,23 @@ function RouteComponent() {
               clearLabel={t("common:actions.clearAll")}
             />
 
+            <GroupControl
+              group={group === "assignee" ? "assignee" : "state"}
+              groups={["state", "assignee"]}
+              defaultLabel={t("tasks:group.none")}
+              onGroupChange={(next) =>
+                updateViewState({
+                  group: next === "assignee" ? next : undefined,
+                })
+              }
+            />
+
+            <ScheduleSelectionToggle
+              workspaceId={workspaceId}
+              projectId={projectId}
+              selection={selection}
+            />
+
             <Button
               variant="outline"
               size="xs"
@@ -333,17 +400,31 @@ function RouteComponent() {
           </div>
         </div>
 
-        {!timeline || parsedTasks.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center px-6">
-            <div className="max-w-sm text-center">
-              <h2 className="text-sm font-semibold text-foreground">
-                {t("tasks:gantt.noTasks")}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("tasks:gantt.noTasksSubtitle")}
-              </p>
-            </div>
-          </div>
+        <ScheduleSelectionBar
+          workspaceId={workspaceId}
+          projectId={projectId}
+          selection={selection}
+        />
+
+        <ScheduleFilterChips
+          search={search}
+          onChange={(patch) => updateViewState(patch)}
+        />
+
+        {loadStatus === "loading" || loadStatus === "error" ? (
+          <ScheduleViewState
+            layout="gantt"
+            status={loadStatus}
+            isFiltered={false}
+            onRetry={() => void refetch()}
+          />
+        ) : !timeline || parsedTasks.length === 0 ? (
+          <ScheduleViewState
+            layout="gantt"
+            status="empty"
+            isFiltered={hasFilterChips}
+            onRetry={() => void refetch()}
+          />
         ) : scheduledTasks.length === 0 ? (
           <div className="flex flex-1 items-center justify-center px-6">
             <div className="max-w-sm text-center">
@@ -442,7 +523,41 @@ function RouteComponent() {
                 </div>
 
                 <div className="relative z-10 flex flex-col">
-                  {scheduledTasks.map((task) => {
+                  {ganttRows.map((row) => {
+                    if (row.kind === "group") {
+                      return (
+                        <div
+                          key={row.id}
+                          data-testid="gantt-group-row"
+                          className="grid items-stretch border-b border-border/70 bg-muted/40"
+                          style={{
+                            gridTemplateColumns: showTaskRail
+                              ? isMobile
+                                ? `${taskColumnWidthRem}rem max-content`
+                                : "20rem max-content"
+                              : "max-content",
+                          }}
+                        >
+                          {showTaskRail ? (
+                            <div className="sticky left-0 z-[11] flex items-center gap-2 border-r border-border bg-muted px-2 py-1.5 sm:px-3">
+                              <h2 className="truncate text-[11px] font-medium uppercase tracking-wide text-foreground">
+                                {row.name ?? t("tasks:gantt.unassigned")}
+                              </h2>
+                              <span className="rounded-md bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                {row.count}
+                              </span>
+                            </div>
+                          ) : null}
+                          <div
+                            className="shrink-0"
+                            style={{
+                              minWidth: `${timeline.timelineMinWidthRem}rem`,
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+                    const task = row.task;
                     return (
                       <div
                         key={task.id}
@@ -456,12 +571,34 @@ function RouteComponent() {
                         }}
                       >
                         {showTaskRail ? (
-                          <div className="sticky left-0 z-[11] h-full border-r border-border bg-background">
+                          <div
+                            className={cn(
+                              "sticky left-0 z-[11] flex h-full items-center border-r border-border bg-background",
+                              selection.selectedKeys.includes(task.id) &&
+                                "bg-accent/35",
+                            )}
+                          >
+                            {selection.active ? (
+                              <Suspense fallback={null}>
+                                <SelectionCheckbox
+                                  className="ml-2 shrink-0"
+                                  aria-label={t("workItems:bulk.selectItem", {
+                                    key: `${project?.slug}-${task.number}`,
+                                  })}
+                                  checked={selection.selectedKeys.includes(
+                                    task.id,
+                                  )}
+                                  onCheckedChange={() =>
+                                    selection.toggleKey(task.id)
+                                  }
+                                />
+                              </Suspense>
+                            ) : null}
                             <Button
                               variant="ghost"
                               type="button"
                               className="flex min-h-[44px] w-full min-w-0 flex-col items-start justify-center gap-0.5 px-2 py-2 text-left transition-colors hover:bg-muted sm:min-h-0 sm:px-3 sm:py-1.5"
-                              onClick={() => handleOpenTask(task.id)}
+                              onClick={() => handleActivateTask(task.id)}
                             >
                               <div className="flex w-full items-center gap-1.5">
                                 <span className="max-w-[7rem] truncate rounded-full bg-secondary px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-secondary-foreground sm:max-w-none">
@@ -497,7 +634,7 @@ function RouteComponent() {
                             timeline={timeline}
                             pixelsPerDay={pixelsPerDay}
                             isMobile={isMobile}
-                            onOpenTask={() => handleOpenTask(task.id)}
+                            onOpenTask={() => handleActivateTask(task.id)}
                           />
                         </div>
                       </div>

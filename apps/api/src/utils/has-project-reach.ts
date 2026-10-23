@@ -38,8 +38,12 @@ export type ProjectReadDecision = {
 /** The authority this identity's OWNER holds, with any key credential's scope removed. */
 export function ownerAuthorityView(
   identity: ResolvedIdentity,
-): Pick<ResolvedIdentity, "authority" | "keyCapabilities" | "credential"> {
+): Pick<
+  ResolvedIdentity,
+  "authority" | "keyCapabilities" | "credential" | "side"
+> {
   return {
+    side: identity.side,
     authority: identity.authority,
     credential: "session",
     keyCapabilities: undefined,
@@ -68,19 +72,27 @@ export function projectCapabilityRefused(
 export function hasProjectReadCapability(
   identity: Pick<ResolvedIdentity, "authority" | "keyCapabilities"> & {
     readonly credential?: ResolvedIdentity["credential"];
+    readonly side?: ResolvedIdentity["side"];
   },
   capability: Capability,
   scope: Extract<Scope, "project" | "work_item">,
   facts: ProjectReachFacts & { readonly workItemId?: string },
 ): boolean {
+  // PR-2/PR-3: with no direct project grant here, the nearest ancestor's project grant is the
+  // override, so authority is inherited together with reach (never widened by a workspace role).
   const target: ScopeTarget =
     scope === "project"
-      ? { projectId: facts.projectId, workspaceId: facts.workspaceId }
+      ? {
+          projectId: facts.projectId,
+          workspaceId: facts.workspaceId,
+          ancestorProjectIds: facts.ancestorProjectIds,
+        }
       : {
           projectId: facts.projectId,
           workItemProjectId: facts.projectId,
           workItemId: facts.workItemId,
           workspaceId: facts.workspaceId,
+          ancestorProjectIds: facts.ancestorProjectIds,
         };
   return can(identity, capability, scope, target);
 }

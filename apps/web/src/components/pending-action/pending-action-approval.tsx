@@ -432,6 +432,19 @@ export function PendingActionApproval({
             typeof action.data.summary.childrenAffected === "number"
               ? action.data.summary.childrenAffected
               : 0,
+          projectName:
+            typeof action.data.summary.projectName === "string"
+              ? action.data.summary.projectName
+              : "",
+          requesterName:
+            typeof action.data.summary.requesterName === "string"
+              ? action.data.summary.requesterName
+              : "",
+          // `WI-21`: the item is retained for 30 days, then purged (restore ships in P2).
+          recoveryDays:
+            typeof action.data.summary.recoveryDays === "number"
+              ? action.data.summary.recoveryDays
+              : 30,
         }
       : null;
   const workItemRedacted =
@@ -784,6 +797,13 @@ export function PendingActionApproval({
           ) : workItemSummary ? (
             <span>
               {workItemSummary.key} · {workItemSummary.title}
+              {workItemSummary.projectName ? (
+                <span className="block text-muted-foreground">
+                  {t("workItems:deletion.project", {
+                    project: workItemSummary.projectName,
+                  })}
+                </span>
+              ) : null}
             </span>
           ) : workItemRedacted ? (
             t("workItems:deletion.hidden")
@@ -969,6 +989,26 @@ export function PendingActionApproval({
             count: workItemSummary.childrenAffected,
           })}
         </p>
+      )}
+      {workItemSummary && (
+        // `WI-23`: who asked for the deletion and how long the item is retained.
+        <section
+          className="space-y-1 text-muted-foreground text-sm"
+          aria-label={t("workItems:deletion.impact")}
+        >
+          {workItemSummary.requesterName ? (
+            <p>
+              {t("workItems:deletion.requestedBy", {
+                name: workItemSummary.requesterName,
+              })}
+            </p>
+          ) : null}
+          <p>
+            {t("workItems:deletion.retention", {
+              days: workItemSummary.recoveryDays,
+            })}
+          </p>
+        </section>
       )}
       {action.data.action === "delete" && action.data.targetType === "user" && (
         <p className="text-sm text-muted-foreground">

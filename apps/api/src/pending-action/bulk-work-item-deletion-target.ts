@@ -13,6 +13,7 @@ import { consumePendingActionProof } from "../auth/step-up-service";
 import db, { schema } from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
+import { projectAncestryFor } from "../utils/project-ancestry";
 import {
   deleteWorkItemInTransaction,
   publishWorkItemDeletion,
@@ -200,7 +201,7 @@ export async function resolveBulkWorkItemDeletionRequestScope(
       ? await loadWorkItemDeletionTarget(tx, key)
       : undefined;
     const permission = target
-      ? workItemDeletionAccess(identity, target)
+      ? await workItemDeletionAccess(tx, identity, target)
       : undefined;
     if (!target || !permission?.allowed)
       failed.push({
@@ -343,7 +344,7 @@ export async function evaluateBulkWorkItemDeletionAccess(
       stored.organisationId !== target.project.organisationId
     )
       return { allowed: false, failure: "target_scope", status: 409 };
-    const permission = workItemDeletionAccess(identity, target);
+    const permission = await workItemDeletionAccess(tx, identity, target);
     if (!permission.allowed) return permission;
     const expected = {
       ...workItemDeletionSnapshot(target),
@@ -400,20 +401,26 @@ export async function bulkWorkItemDeletionReadSummary(
         isNull(schema.projectTable.archivedAt),
       ),
     );
-  if (
-    targets.length !== row.targetIds.length ||
-    targets.some(
-      (t) =>
-        t.workspaceId !== row.workspaceId ||
-        !reaches(identity, t) ||
-        !can(identity, "work_item:read", "work_item", {
-          workItemId: t.id,
-          workItemProjectId: t.projectId,
-          workspaceId: t.workspaceId,
-        }),
+  if (targets.length !== row.targetIds.length) return undefined;
+  for (const t of targets) {
+    if (t.workspaceId !== row.workspaceId) return undefined;
+    const ancestorProjectIds = await projectAncestryFor(
+      executor,
+      identity,
+      t.workspaceId,
+      t.projectId,
+    );
+    if (
+      !reaches(identity, { ...t, ancestorProjectIds }) ||
+      !can(identity, "work_item:read", "work_item", {
+        workItemId: t.id,
+        workItemProjectId: t.projectId,
+        workspaceId: t.workspaceId,
+        ancestorProjectIds,
+      })
     )
-  )
-    return undefined;
+      return undefined;
+  }
   return ordinaryObject(row.payloadSummary);
 }
 export async function approveBulkWorkItemDeletion(

@@ -10,6 +10,7 @@ import {
   workItemTable,
   workspaceUserTable,
 } from "../../database/schema";
+import { loadWorkItemRowFacts } from "../row-facts";
 
 /**
  * `GET /api/work-items/{key}` (`work_item:read`, plus reach on the project --
@@ -92,8 +93,12 @@ export async function getWorkItemByKey(key: string, workspaceId: string) {
     throw new HTTPException(404, { message: "Work item not found" });
   }
 
+  const facts = (await loadWorkItemRowFacts(db, [row.workItem])).get(
+    row.workItem.id,
+  );
   return {
     ...row.workItem,
+    ...facts,
     stateName: row.stateName,
     stateCategory: row.stateCategory,
     defaultCommentVisibility: row.defaultCommentVisibility,

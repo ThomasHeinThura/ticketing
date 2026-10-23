@@ -101,7 +101,7 @@ describe("API integration: workspace/project default seeding (#309)", () => {
       workspaceId: workspace.id,
       name: "Support",
       icon: "Folder",
-      slug: "support",
+      slug: "SUPPORT",
     });
     expect(projectResponse.status).toBe(200);
     const project = (await projectResponse.json()) as {
@@ -174,7 +174,7 @@ describe("API integration: workspace/project default seeding (#309)", () => {
       workspaceId: workspace.id,
       name: "Support",
       icon: "Folder",
-      slug: "support",
+      slug: "SUPPORT",
     });
     const project = (await projectResponse.json()) as { id: string };
 
@@ -245,7 +245,7 @@ describe("API integration: workspace/project default seeding (#309)", () => {
       workspaceId: workspace.id,
       name: "Support",
       icon: "Folder",
-      slug: "support",
+      slug: "SUPPORT",
     });
     const project = (await projectResponse.json()) as { id: string };
 

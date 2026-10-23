@@ -1,4 +1,12 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { isCustomerPrincipal } from "../../utils/is-customer-principal";
+import {
+  type CanonicalWorkItemRow,
+  searchCanonicalWorkItems,
+  searchCanonicalWorkItemsFuzzy,
+  searchSavedViews,
+  searchWorkspacePeople,
+} from "../canonical-repository";
 import {
   findTasksByShortId,
   listUserWorkspaceIds,
@@ -16,6 +24,9 @@ type SearchParams = {
   type?:
     | "all"
     | "tasks"
+    | "work_items"
+    | "people"
+    | "views"
     | "projects"
     | "workspaces"
     | "comments"
@@ -29,12 +40,30 @@ type SearchParams = {
    * the ranking and `totalCount` can never be built from a hidden project's rows.
    */
   reachableProjectIds: (workspaceIds: string[]) => Promise<string[]>;
+  /**
+   * The caller's `work_item:read` reach in one workspace, as `resolveWorkItemSearchAccess`
+   * decides it for structured work item search. `null` when the caller has no person row or
+   * no work item read access, in which case no work item or saved view is returned.
+   */
+  workItemAccess?: (
+    workspaceId: string,
+  ) => Promise<{ personId: string; projectIds: string[] } | null>;
 };
 
 type SearchResult = {
   id: string;
-  type: "task" | "project" | "workspace" | "comment" | "activity";
+  type:
+    | "task"
+    | "work_item"
+    | "person"
+    | "saved_view"
+    | "project"
+    | "workspace"
+    | "comment"
+    | "activity";
   title: string;
+  key?: string;
+  layout?: string;
   description?: string;
   content?: string;
   projectId?: string;
@@ -114,6 +143,7 @@ async function globalSearch(params: SearchParams): Promise<{
     projectId,
     limit = 20,
     reachableProjectIds,
+    workItemAccess,
   } = params;
 
   const resolvedUserId = identity.userId;
@@ -155,7 +185,9 @@ async function globalSearch(params: SearchParams): Promise<{
   // or a decomposed "ПА-23" would never reach the stored composed form.
   const shortIdMatch = query.normalize("NFKC").match(TASK_SHORT_ID_PATTERN);
 
-  if (type === "all" || type === "tasks") {
+  // P1-21 (SV-1/SV-3): the legacy task search runs only under an explicit type=tasks, so
+  // type=all returns canonical kinds and legacy hits cannot push work items off the page.
+  if (type === "tasks") {
     const seenTaskIds = new Set<string>();
 
     // If query matches short-id pattern, look up by project slug + task number first
@@ -227,6 +259,116 @@ async function globalSearch(params: SearchParams): Promise<{
     }
   }
 
+  // Canonical branches (SV-1). Work items, people and saved views are agent-side surfaces: a
+  // customer-side caller (portal identity) gets none of them from this route.
+  const wantsCanonical =
+    type === "all" ||
+    type === "work_items" ||
+    type === "people" ||
+    type === "views";
+  const searchWorkspaceId =
+    workspaceId ??
+    (accessibleWorkspaceIds.length === 1
+      ? accessibleWorkspaceIds[0]
+      : undefined);
+  if (
+    wantsCanonical &&
+    searchWorkspaceId &&
+    !(await isCustomerPrincipal(resolvedUserId, searchWorkspaceId))
+  ) {
+    const term = query.normalize("NFKC").trim();
+    const access =
+      type === "all" || type === "work_items" || type === "views"
+        ? ((await workItemAccess?.(searchWorkspaceId)) ?? null)
+        : null;
+    // Intersect with the legacy reach set so a project outside either decision never appears.
+    const reachableSet = new Set(reachable);
+    const itemProjectIds = (access?.projectIds ?? []).filter((id) =>
+      reachableSet.has(id),
+    );
+
+    if ((type === "all" || type === "work_items") && access && term) {
+      const base = {
+        workspaceId: searchWorkspaceId,
+        reachableProjectIds: itemProjectIds,
+        projectId,
+        term,
+      };
+      let rows: CanonicalWorkItemRow[] = await searchCanonicalWorkItems({
+        ...base,
+        limit,
+      });
+      if (rows.length < limit) {
+        rows = rows.concat(
+          await searchCanonicalWorkItemsFuzzy({
+            ...base,
+            excludeIds: rows.map((row) => row.id),
+            limit: limit - rows.length,
+          }),
+        );
+      }
+      for (const item of rows) {
+        results.push({
+          id: item.id,
+          type: "work_item",
+          key: item.key,
+          title: item.title,
+          description: item.stateName,
+          projectId: item.projectId,
+          projectName: item.projectName,
+          projectSlug: item.projectSlug,
+          workspaceId: item.workspaceId,
+          workspaceName: item.workspaceName || undefined,
+          createdAt: item.createdAt,
+          relevanceScore: item.relevanceScore,
+          taskNumber: item.number,
+          priority: item.priority || undefined,
+          status: item.stateName,
+        });
+      }
+    }
+
+    if ((type === "all" || type === "people") && term) {
+      for (const person of await searchWorkspacePeople({
+        workspaceId: searchWorkspaceId,
+        term,
+        limit,
+      })) {
+        results.push({
+          id: person.id,
+          type: "person",
+          title: person.name,
+          description: person.jobTitle || undefined,
+          userId: person.userId || undefined,
+          workspaceId: searchWorkspaceId,
+          createdAt: person.createdAt,
+          relevanceScore: person.relevanceScore,
+        });
+      }
+    }
+
+    if ((type === "all" || type === "views") && access && term) {
+      for (const view of await searchSavedViews({
+        workspaceId: searchWorkspaceId,
+        personId: access.personId,
+        userId: resolvedUserId,
+        reachableProjectIds: itemProjectIds,
+        term,
+        limit,
+      })) {
+        results.push({
+          id: view.id,
+          type: "saved_view",
+          title: view.name,
+          layout: view.layout,
+          workspaceId: view.workspaceId,
+          createdAt: view.createdAt,
+          relevanceScore: view.relevanceScore,
+        });
+      }
+    }
+  }
+
   if (type === "all" || type === "projects") {
     const projects = await searchProjects({ scope, searchPattern, limit });
 
@@ -268,7 +410,7 @@ async function globalSearch(params: SearchParams): Promise<{
     }
   }
 
-  if (type === "all" || type === "comments" || type === "activities") {
+  if (type === "comments" || type === "activities") {
     const activities = await searchActivities({
       scope,
       projectId,

@@ -30,6 +30,10 @@ import {
   workItemTransitionReasonKey,
 } from "@/lib/work-item-transition-reasons";
 import type { WorkItemRow } from "@/types/work-item";
+import {
+  isClosingCategory,
+  useOpenChildrenGuard,
+} from "./open-children-warning";
 export type WorkItemDragState = { id: string; name: string; group?: string };
 type Notice = { kind: "status" | "error"; text: string };
 
@@ -55,6 +59,7 @@ export default function useWorkItemDragDrop({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const childrenGuard = useOpenChildrenGuard();
   const [dragged, setDragged] = useState<WorkItemRow>();
   const draggedRef = useRef<WorkItemRow | undefined>(undefined);
   const sensors = useSensors(
@@ -276,6 +281,20 @@ export default function useWorkItemDragDrop({
               : t("workItems:board.transitionUnavailable", { key: item.key }),
           };
         }
+        // `RH-10` / `WI-18`: dropping a parent into a closed column asks about its open
+        // children first; cancelling leaves the card where it was.
+        const confirmed = await new Promise<boolean>((resolve) => {
+          void childrenGuard.guard({
+            key: item.key,
+            closing:
+              isClosingCategory(offer.toStateCategory) &&
+              !isClosingCategory(item.stateCategory),
+            proceed: () => resolve(true),
+            cancel: () => resolve(false),
+          });
+        });
+        if (!confirmed || generation.current !== operationGeneration)
+          return { kind: "status", text: "" };
         await transitionWorkItem({
           key: item.key,
           toStateTemplateId: offer.toStateTemplateId,
@@ -422,5 +441,7 @@ export default function useWorkItemDragDrop({
     cancelDrag,
     overDrag,
     overStateId,
+    /** Render once beside the board/list: the open-children warning for closing drops. */
+    childrenDialog: childrenGuard.dialog,
   };
 }

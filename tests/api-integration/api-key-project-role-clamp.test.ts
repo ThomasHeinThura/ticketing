@@ -37,6 +37,8 @@ const FULL_SCOPE = {
   project: ["read", "update", "delete", "manage_settings"],
   work_item: [
     "read",
+    // Move needs work_item:create on the target project as well as update on the source.
+    "create",
     "update",
     "delete",
     "assign",

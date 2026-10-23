@@ -42,6 +42,8 @@ const ALLOWED_IMMEDIATE: Record<string, string> = {
     "unlink: versioned twin of the parent clear; both work items survive",
   "DELETE /api/workspace/{workspaceId}/members/{userId}":
     "unlink: removes a membership (the person and their work survive); owner and last-owner guards apply",
+  "DELETE /api/projects/{projectId}/members/{personId}":
+    "unlink: revokes one DIRECT roster membership of a project (PR-4); the person, their work and the project survive, the removal is audited as membership.changed, and an inherited or identity-provider-managed row is refused with 409",
   // Own-settings housekeeping with no shared business data.
   "DELETE /api/user/avatar":
     "own avatar only: clears the caller's profile picture (session user, no shared data)",

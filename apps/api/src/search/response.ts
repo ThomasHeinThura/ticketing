@@ -3,7 +3,23 @@ import { responseTimestamp, z } from "../openapi";
 export const searchResultSchema = z
   .object({
     id: z.string(),
-    type: z.enum(["task", "project", "workspace", "comment", "activity"]),
+    type: z.enum([
+      "task",
+      "work_item",
+      "person",
+      "saved_view",
+      "project",
+      "workspace",
+      "comment",
+      "activity",
+    ]),
+    key: z.string().optional().openapi({
+      description:
+        "The work item key, for work_item results (`/agent/work-items/{key}`).",
+    }),
+    layout: z.string().optional().openapi({
+      description: "The saved view layout, for saved_view results.",
+    }),
     title: z.string(),
     description: z.string().optional(),
     content: z.string().optional().openapi({

@@ -48,12 +48,20 @@ import { getPriorityIcon } from "@/lib/priority";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import {
+  assigneeDisplayText,
+  resolveAssigneeDisplay,
+} from "@/lib/work-item-assignee-display";
+import {
   isWorkItemAccessLost,
   WorkItemVersionConflictError,
 } from "@/lib/work-item-errors";
 import { workItemTransitionReasonKey } from "@/lib/work-item-transition-reasons";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { WorkItemDetailField, WorkItemDetailRow } from "@/types/work-item";
+import {
+  isClosingCategory,
+  useOpenChildrenGuard,
+} from "./open-children-warning";
 import {
   useHasWorkItemFeedback,
   useWorkItemFeedback,
@@ -247,6 +255,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
     item.projectId,
   );
   const dispatching = useRef(false);
+  const childrenGuard = useOpenChildrenGuard();
   const canMove =
     canTransitionTasks() && !item.unavailableFields.includes("stateName");
   const chooseOffer = (offer: (typeof offers)[number]) => {
@@ -261,22 +270,36 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
     )
       return;
     setError("");
-    if (offer.notePolicy && offer.notePolicy !== "none") {
-      setNoteFor(offer.transitionId);
-      return;
-    }
-    dispatching.current = true;
-    transition.mutate(
-      {
-        toStateTemplateId: offer.toStateTemplateId,
-        toStateName: offer.toStateName,
-      },
-      {
-        onSettled: () => {
-          dispatching.current = false;
+    // `RH-10`/`WI-18`: closing a parent that still has open children asks first (and never
+    // closes the children). Not asked again for the note step: the move is already chosen.
+    const proceed = () => {
+      if (offer.notePolicy && offer.notePolicy !== "none") {
+        // The warning dialog may have taken focus and closed the popover; reopen it so
+        // the note form is always reachable after "Close anyway".
+        setOpen(true);
+        setNoteFor(offer.transitionId);
+        return;
+      }
+      dispatching.current = true;
+      transition.mutate(
+        {
+          toStateTemplateId: offer.toStateTemplateId,
+          toStateName: offer.toStateName,
         },
-      },
-    );
+        {
+          onSettled: () => {
+            dispatching.current = false;
+          },
+        },
+      );
+    };
+    void childrenGuard.guard({
+      key: item.key,
+      closing:
+        isClosingCategory(offer.toStateCategory) &&
+        !isClosingCategory(item.stateCategory),
+      proceed,
+    });
   };
   useNumberedShortcuts(
     open &&
@@ -315,103 +338,106 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
   if (!canTransitionTasks()) return trigger;
   const noteOffer = offers.find((offer) => offer.transitionId === noteFor);
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) {
-          setNoteFor(null);
-          setNote("");
-          setError("");
-        }
-      }}
-    >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start">
-        {error ? <InlineMessage>{error}</InlineMessage> : null}
-        {noteOffer ? (
-          <form
-            className="flex flex-col gap-2 p-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              transition.mutate({
-                toStateTemplateId: noteOffer.toStateTemplateId,
-                toStateName: noteOffer.toStateName,
-                note: note.trim() || undefined,
-              });
-            }}
-          >
-            <p className="font-medium text-sm">{noteOffer.toStateName}</p>
-            <Textarea
-              aria-label={t("workItems:properties.transitionNote")}
-              placeholder={t("workItems:properties.transitionNote")}
-              value={note}
-              maxLength={4000}
-              onChange={(event) => setNote(event.target.value)}
-            />
-            <Button
-              type="submit"
-              size="sm"
-              disabled={
-                transition.isPending ||
-                (noteOffer.notePolicy === "required" && !note.trim())
-              }
+    <>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) {
+            setNoteFor(null);
+            setNote("");
+            setError("");
+          }
+        }}
+      >
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        <PopoverContent className="w-64 p-0" align="start">
+          {error ? <InlineMessage>{error}</InlineMessage> : null}
+          {noteOffer ? (
+            <form
+              className="flex flex-col gap-2 p-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                transition.mutate({
+                  toStateTemplateId: noteOffer.toStateTemplateId,
+                  toStateName: noteOffer.toStateName,
+                  note: note.trim() || undefined,
+                });
+              }}
             >
-              {t("workItems:properties.move")}
-            </Button>
-          </form>
-        ) : transitions.isLoading ? (
-          <p className="p-3 text-muted-foreground text-sm" role="status">
-            {t("common:empty.loading")}
-          </p>
-        ) : transitions.isError ? (
-          <p className="p-3 text-muted-foreground text-sm" role="alert">
-            {t("workItems:journey.transitionsError")}
-          </p>
-        ) : offers.length === 0 ? (
-          <p className="p-3 text-muted-foreground text-sm">
-            {t("workItems:properties.noTransitions")}
-          </p>
-        ) : (
-          <div>
-            {offers.map((offer, index) => {
-              // Blocked only for want of a note: runnable once the note is written.
-              const onlyNote =
-                offer.blockedBy.length > 0 &&
-                offer.blockedBy.every(
-                  (reason) => reason.reasonCode === "note.required",
-                );
-              const blocked = !offer.available && !onlyNote;
-              const reasons = offer.blockedBy.length
-                ? offer.blockedBy.map((reason) =>
-                    t(workItemTransitionReasonKey(reason.reasonCode)),
-                  )
-                : [t("workItems:journey.reasonUnknown")];
-              return (
-                <Button
-                  key={offer.transitionId}
-                  variant="ghost"
-                  size="sm"
-                  disabled={blocked || transition.isPending}
-                  className="h-auto min-h-8 w-full flex-col items-start gap-0 rounded-none px-2 py-1.5 first:rounded-t-md last:rounded-b-md"
-                  onClick={() => chooseOffer(offer)}
-                >
-                  <span className="flex w-full items-center gap-2">
-                    <span className="text-sm">{offer.toStateName}</span>
-                    <ShortcutNumber number={index + 1} />
-                  </span>
-                  {blocked ? (
-                    <span className="text-muted-foreground text-xs">
-                      {reasons.join(", ")}
+              <p className="font-medium text-sm">{noteOffer.toStateName}</p>
+              <Textarea
+                aria-label={t("workItems:properties.transitionNote")}
+                placeholder={t("workItems:properties.transitionNote")}
+                value={note}
+                maxLength={4000}
+                onChange={(event) => setNote(event.target.value)}
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={
+                  transition.isPending ||
+                  (noteOffer.notePolicy === "required" && !note.trim())
+                }
+              >
+                {t("workItems:properties.move")}
+              </Button>
+            </form>
+          ) : transitions.isLoading ? (
+            <p className="p-3 text-muted-foreground text-sm" role="status">
+              {t("common:empty.loading")}
+            </p>
+          ) : transitions.isError ? (
+            <p className="p-3 text-muted-foreground text-sm" role="alert">
+              {t("workItems:journey.transitionsError")}
+            </p>
+          ) : offers.length === 0 ? (
+            <p className="p-3 text-muted-foreground text-sm">
+              {t("workItems:properties.noTransitions")}
+            </p>
+          ) : (
+            <div>
+              {offers.map((offer, index) => {
+                // Blocked only for want of a note: runnable once the note is written.
+                const onlyNote =
+                  offer.blockedBy.length > 0 &&
+                  offer.blockedBy.every(
+                    (reason) => reason.reasonCode === "note.required",
+                  );
+                const blocked = !offer.available && !onlyNote;
+                const reasons = offer.blockedBy.length
+                  ? offer.blockedBy.map((reason) =>
+                      t(workItemTransitionReasonKey(reason.reasonCode)),
+                    )
+                  : [t("workItems:journey.reasonUnknown")];
+                return (
+                  <Button
+                    key={offer.transitionId}
+                    variant="ghost"
+                    size="sm"
+                    disabled={blocked || transition.isPending}
+                    className="h-auto min-h-8 w-full flex-col items-start gap-0 rounded-none px-2 py-1.5 first:rounded-t-md last:rounded-b-md"
+                    onClick={() => chooseOffer(offer)}
+                  >
+                    <span className="flex w-full items-center gap-2">
+                      <span className="text-sm">{offer.toStateName}</span>
+                      <ShortcutNumber number={index + 1} />
                     </span>
-                  ) : null}
-                </Button>
-              );
-            })}
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+                    {blocked ? (
+                      <span className="text-muted-foreground text-xs">
+                        {reasons.join(", ")}
+                      </span>
+                    ) : null}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+      {childrenGuard.dialog}
+    </>
   );
 }
 
@@ -551,6 +577,9 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       writeWorkItemResponse(queryClient, item.key, result, {
         assigneeId: person?.personId ?? null,
         assigneeName: person?.name ?? null,
+        // The picker only offers active people on the project roster (AS-5).
+        assigneeActive: person ? true : null,
+        assigneeOnProject: person ? true : null,
       });
       return result;
     },
@@ -589,10 +618,15 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     item.workspaceId,
     item.projectId,
   );
+  // `AS-8`: "Jane Smith (inactive)" / "(no longer on this project)".
   const name =
     item.assigneeId === null
       ? null
-      : (item.assigneeName ?? t("workItems:detail.inactiveAssignee"));
+      : assigneeDisplayText(resolveAssigneeDisplay(item), {
+          unassigned: t("workItems:detail.unassigned"),
+          inactive: t("workItems:detail.inactiveAssignee"),
+          notOnProject: t("workItems:list.assigneeNotOnProject"),
+        });
   const trigger = (
     <Button
       variant="ghost"
@@ -603,7 +637,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       {name ? (
         <Avatar className="h-[16px] w-[16px]">
           <AvatarFallback className="text-[8px]">
-            {getInitials(name)}
+            {getInitials(item.assigneeName ?? name)}
           </AvatarFallback>
         </Avatar>
       ) : null}

@@ -1,0 +1,1359 @@
+{
+	"verdict": "pass_with_conditions",
+	"summary": "PASS WITH CONDITIONS (round 2). All three round-1 highs are resolved: inherited authority now follows the nearest ancestor's project grant (evaluator.ts:223-274) and every project/work_item can()/reaches() call site found passes the chain; the roster API + Members tab exist with 409 inherited_membership, rank ceiling, audit and staff-only adds; the vacuous tests now can fail.\nNo unresolved critical/high. Conditions (must land before the P1 commit, each verified by a targeted test; no third review round needed): Q1 ancestry memo keyed on the global db object caches chains for the process lifetime (stale authority after re-parent/ancestor delete in WS, approvals, pending-action summaries); Q2 assignee picker omits inherited members; Q3 intake default-assignee check ignores inherited members; Q6 deletion-approval copy promises a restore that does not exist and names the wrong requester.\nRound-1 high/medium (P1-1..P1-23): 17 fixed, 6 partial (P1-2, P1-8, P1-15, P1-17, P1-20, P1-23), 0 not_fixed. Lows: P1-25 fixed; P1-24/26/27/28/29 not fixed (carry).\nPurge/detach/children integrity is sound (leaf-first project purge, 409 project_has_live_children, journaled child detach); only a lock-order inversion (Q10, low).\nUI: no hand-built screens or native controls in the new screens (raw-elements gate 0); medium UX gaps on Members (no rank-aware role list, raw server error text) and the General page's mixed save model/native labels.\nRequirements: 140 met, 28 partial, 8 not_met, 5 blocked. Remaining partial/not-met set is carryable (P2-P5) once Q1-Q3/Q6 land; customers cannot read rosters (customer role lacks project:read, roles.ts:196-204); no browser evidence yet for Members, re-parent dialog, templates, states editor.",
+	"round1_status": [
+		{
+			"id": "P1-1",
+			"status": "fixed",
+			"evidence": "packages/permissions/src/evaluator.ts:223-274 (inheritedProjectGrants; customers excluded :231; direct grant wins :261); apps/api/src/permissions/strict-policy-enforcement.ts:344-350,620-630; apps/api/src/utils/has-project-reach.ts:76-98; caller-reach.ts:40-44,133-141; approval/repository.ts:1284-1290; pending-action/*-deletion-target.ts (ancestorProjectIds at every can/reaches); ws/project-read-authorization.ts:63-75; tests project-inherited-authority.test.ts:79-176, inherited-authority-followups.test.ts:114-183. Residual staleness in Q1."
+		},
+		{
+			"id": "P1-2",
+			"status": "partial",
+			"evidence": "Roster routes apps/api/src/project/index.ts:1474-1640 + policy.ts:107-158; members/service.ts:177-374 (409 inherited_membership :334-337, managed_membership :339-342, rank ceiling :160-167,251-256,344-349, audit :122-158); web components/project/members/*; re-parent preview members/service.ts:381-421 + reparent-preview-dialog.tsx; eligibility ancestor-aware assignee-eligibility.ts:27-45. Still open: picker exact-project (list-assignable-people.ts:103) and intake (intake/repository.ts:1101) - Q2/Q3."
+		},
+		{
+			"id": "P1-3",
+			"status": "fixed",
+			"evidence": "global-search-canonical.test.ts:214-253 (real hidden item asserted absent by title and key); project-inherited-membership.test.ts:197-225 (real customer principal, identity.side asserted, authority assertion can fail); work-item-templates.test.ts:147-205 (real template in another workspace); new HTTP tests project-inherited-authority.test.ts:103-147."
+		},
+		{
+			"id": "P1-4",
+			"status": "fixed",
+			"evidence": "packages/ui/src/styles/pairs.json; check-contrast 714 messages vs 718 at HEAD, 0 new by pair identity, gantt pairs now 119-122/417-420 passing (subagent-run). Gate still exits 1 (pre-existing) and stops before the G3 ratio pass, so the 8 new pairs' ratios were not measured."
+		},
+		{
+			"id": "P1-5",
+			"status": "fixed",
+			"evidence": "apps/api/src/scheduler/soft-delete-purge.repository.ts:44-60 (NOT EXISTS child project); project/project-children.ts:37-51; controllers/delete-project.ts:34-35; project-deletion-target.ts:57-61,84-87 (re-check under hierarchy lock); tests hierarchy-purge.test.ts:115,151."
+		},
+		{
+			"id": "P1-6",
+			"status": "fixed",
+			"evidence": "work-item-context-menu-content.tsx:282-299,484; use-work-item-drag-drop.ts:285-297; bulk-assign-toolbar.tsx:199-207,377-380; work-item-properties.tsx:296-300; open-children-warning.tsx (subagent-verified, no unguarded transition call found)."
+		},
+		{
+			"id": "P1-7",
+			"status": "fixed",
+			"evidence": "apps/api/src/work-item/decorate-rows.ts:20-41 used by list-work-items.ts:275-280 and search/repository.ts:391-395 after the reach filter (:255). Test work-item-project-reach-credentials.test.ts:178-206 asserts only blockedByOpenCount, not sla (Q9)."
+		},
+		{
+			"id": "P1-8",
+			"status": "partial",
+			"evidence": "Bounded recursive CTE apps/api/src/project/hierarchy.repository.ts:76-106; request memo :108-135; skip when nothing inheritable :143-182. But the memo is keyed on whatever object is passed, and several callers pass the global db (ws/native-work-item-realtime.ts:121-123, ws/project-read-authorization.ts:67-69, approval/repository.ts:788-789) - Q1."
+		},
+		{
+			"id": "P1-9",
+			"status": "fixed",
+			"evidence": "apps/web/src/components/activity/work-item-issue-link.tsx:56-64 falls back to TaskDeskIssueLinkView; work-item-issue-link.test.tsx:111,147."
+		},
+		{
+			"id": "P1-10",
+			"status": "fixed",
+			"evidence": "work-item-attachments-intake.tsx:38-91 listeners on the detail container; scope attribute work-item-detail.tsx:273,300,308; intake.test.tsx:50,71."
+		},
+		{
+			"id": "P1-11",
+			"status": "fixed",
+			"evidence": "apps/api/src/intake/repository.ts:1083-1084,1172-1183 via create-initial-fields.ts:84-125 (activity, audit, work_item.assigned with notify, implicit watcher); intake-rt6-snapshot.test.ts:134,144. Eligibility check itself still exact-project (Q3)."
+		},
+		{
+			"id": "P1-12",
+			"status": "fixed",
+			"evidence": "tests/api-integration/orkspace-owner-admin-reach.test.ts no longer exists; no 0-byte test files."
+		},
+		{
+			"id": "P1-13",
+			"status": "fixed",
+			"evidence": "apps/api/src/work-item/search/query.ts:22-24,86 (requester/cycle/module/epic/organisation -> 422); tests/api/work-item-search-query.test.ts:34-54. organisation is 422 rather than implemented (VW-31 carry)."
+		},
+		{
+			"id": "P1-14",
+			"status": "fixed",
+			"evidence": "work.tsx:351-389; hooks/use-project-view-preference.ts:36-39,86 (server wins, local fallback; local value never migrated - VW-2 carry)."
+		},
+		{
+			"id": "P1-15",
+			"status": "partial",
+			"evidence": "pending-action-approval.tsx:800-806 project name, :993-1013 impact section; but requesterName is the deletion requester (pending-action/work-item-deletion-target.ts:274), portal line is fixed copy, and 30-day restore is promised with no restore route (work-item/require-work-item-reach.ts:151) - Q6."
+		},
+		{
+			"id": "P1-16",
+			"status": "fixed",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/work-item-templates.tsx:552-570 Tabs/TabsList/TabsTrigger."
+		},
+		{
+			"id": "P1-17",
+			"status": "partial",
+			"evidence": "project-planning-settings.tsx:284-313 now autosaves every control with library Label; General page still mixes explicit Save/Discard (project-engagement-settings.tsx:486-510) and native <label> (project-engagement-settings.tsx:293,319,354,403; default-comment-visibility-setting.tsx:82) - Q8."
+		},
+		{
+			"id": "P1-18",
+			"status": "fixed",
+			"evidence": "apps/web/src/hooks/use-dnd-accessibility.ts wired in calendar/month-grid.tsx:153, work-item-grouped-board.tsx:185, board, list, states editor. Strings untranslated in non-English locales (P1-27)."
+		},
+		{
+			"id": "P1-19",
+			"status": "fixed",
+			"evidence": "project-states-editor.tsx:153-166,292-338 dnd-kit sortable with pointer/touch/keyboard sensors and a grip Button handle. Kaneo ColumnEditor (native drag, column-editor.tsx:215) still on the same workflow page (Q14, low)."
+		},
+		{
+			"id": "P1-20",
+			"status": "partial",
+			"evidence": "docs/technical/feature-contracts-p1.md:1201-1204 CA-5 amended to 'neutral in both modes ... Owner decision, 22 Oct 2026' in the uncommitted tree, citing roadmap/audit items that do not state it; docs/requirements-index.json:2118-2128 still carries the old 'distinct background' text. Code matches the new text (comment-composer-presentation.tsx:27-30)."
+		},
+		{
+			"id": "P1-21",
+			"status": "fixed",
+			"evidence": "apps/api/src/search/controllers/global-search.ts:188-190,413 (legacy kinds only for type=tasks/comments/activities)."
+		},
+		{
+			"id": "P1-22",
+			"status": "fixed",
+			"evidence": "apps/api/src/attachment/controllers/presign-attachment.ts:187,211-212 default false. Stale docs: presign-attachment.ts:29-31, attachment/schema.ts:36-38, tests/api-contract/openapi.json:33742 (Q12)."
+		},
+		{
+			"id": "P1-23",
+			"status": "partial",
+			"evidence": "Child detach + journal at purge apps/api/src/scheduler/soft-delete-purge-detach.ts:18-67, soft-delete-purge.ts:73-81, eligibility no longer requires zero children (soft-delete-purge.repository.ts:33-38); hierarchy-purge.test.ts:68,101. No restore route or reveal filter for deleted items (WI-21, carry P2)."
+		},
+		{
+			"id": "P1-24",
+			"status": "not_fixed",
+			"evidence": "apps/api/src/search/canonical-repository.ts:222-266 people search still workspace-scoped (low, carry)."
+		},
+		{
+			"id": "P1-25",
+			"status": "fixed",
+			"evidence": "apps/api/src/notification/native-inbox-reach.ts:32,71; callers pass projectAncestryFor (work-item-unblocked.ts:99, work-item-recipients.ts:183, inbox.repository.ts:266)."
+		},
+		{
+			"id": "P1-26",
+			"status": "not_fixed",
+			"evidence": "'WRITTEN, NOT RUN' headers remain (project-roster.test.ts:2, project-inherited-authority.test.ts:3, hierarchy-purge.test.ts:2, ...); work-item-templates.test.ts:121-145 'type mismatch is refused' asserts none; project-hierarchy-settings.test.ts:367-394 creates no request type."
+		},
+		{
+			"id": "P1-27",
+			"status": "not_fixed",
+			"evidence": "All ~240 new keys verbatim English in non-English locales (e.g. i18n/de-DE.json settings.projectMembers.*); work-item-sla-badge.tsx:27-31 hard-coded m/h/d."
+		},
+		{
+			"id": "P1-28",
+			"status": "not_fixed",
+			"evidence": "apps/api/src/work-item/index.ts:1392-1393 OpenAPI still says 'default' resolves to no assignee; manage-project-states.ts:231-247 set-default has no outbound-transition check; project/default-assignee.ts:57-61 request-type lookup not workspace-scoped."
+		},
+		{
+			"id": "P1-29",
+			"status": "not_fixed",
+			"evidence": "work-item-attachments-tile.tsx:27-29,99 thumbnails via download route -> attachment.downloaded audit row per render (download-attachment.ts:63-72)."
+		}
+	],
+	"findings": [
+		{
+			"id": "Q1",
+			"severity": "medium",
+			"category": "security",
+			"requirement": "PR-2, PR-3, PR-1 (re-parent access change)",
+			"file": "apps/api/src/project/hierarchy.repository.ts:108-135; apps/api/src/ws/native-work-item-realtime.ts:121-123; apps/api/src/ws/project-read-authorization.ts:67-69; apps/api/src/approval/repository.ts:634-635,788-789; apps/api/src/pending-action/service.ts:1327",
+			"problem": "loadProjectAncestorIdsForRequest memoises the ancestor chain in a module-level WeakMap keyed on the object passed as 'request'. Request-scoped callers pass the Hono context or a transaction, but the websocket topic authorisation (both native topics, also run by the 60-second re-authorisation floor), loadApprovalTargetByApprovalId, loadApprovalTargetByKey when no executor is given, and pending-action read summaries (default executor db) pass the global db singleton. Entries keyed on db are never evicted (only a rejected promise is removed), so the first chain loaded for a project is reused for the life of the process: after a re-parent or an ancestor soft-delete those paths keep evaluating inherited AUTHORITY from the old ancestors (and reach in the in-memory reaches() call).",
+			"impact": "Stale authorisation until restart: a person who held a project grant on the OLD parent keeps that inherited role for approval decide/withdraw (hasApprovalCapability) and socket authority on the moved subtree, and newly inherited access is not seen (fail-closed). Reach on these paths is still re-checked by fresh SQL predicates (requestWorkItemScope, currentProjectReachPredicate in ws/repository.ts), which limits the leak to callers still in reach. Also an unbounded per-process cache.",
+			"recommended_fix": "Never memoise on db: in loadProjectAncestorIdsFor/projectAncestryFor skip the cache when request === db (or require a request/tx object), and pass a per-call object from the ws and approval paths. Add a test: load via the ws path, re-parent, load again, assert the new chain."
+		},
+		{
+			"id": "Q2",
+			"severity": "medium",
+			"category": "gap",
+			"requirement": "PR-2, AS-1, AS-5",
+			"file": "apps/api/src/work-item/controllers/list-assignable-people.ts:100-103; apps/api/src/work-item/index.ts:1916-1924",
+			"problem": "Server-side eligibility now accepts ancestor roster members (assignee-eligibility.ts:27-45), but GET /api/projects/{id}/assignable (the only picker source for properties, context menu, bulk toolbar, grouped board, create dialog) still selects membership rows with scope_id = projectId only, and the self-assign lookup at work-item/index.ts:1916-1924 is exact-project too.",
+			"impact": "Inherited members (PR-2: members of a parent are members of its children) are never offered in any assignee picker and cannot self-assign in a child project unless someone adds an explicit child row; the API and UI disagree.",
+			"recommended_fix": "Use loadProjectAncestorIds and inArray(scopeId, [projectId, ...ancestors]) in listAssignablePeople and the self-entry lookup (keep the strongest-role dedupe); add an integration test that a parent member appears in the child's /assignable."
+		},
+		{
+			"id": "Q3",
+			"severity": "medium",
+			"category": "correctness",
+			"requirement": "AS-11, AS-12, PR-2",
+			"file": "apps/api/src/intake/repository.ts:1085-1110",
+			"problem": "Intake conversion validates the effective default assignee with a membership join on scope_id = project.id only, while project settings (resolveAssigneeEligibility) and canonical create accept ancestor roster members.",
+			"impact": "A parent-project member configured as the project (or request-type) default assignee is silently skipped at intake as not_a_project_member, so AS-11 behaves differently on the intake path than on create.",
+			"recommended_fix": "Call resolveAssigneeEligibility(tx, project.id, id) (ancestor-aware) instead of the bespoke join; add an intake test with an inherited default assignee and one that sets both defaults to prove request-type precedence (AS-12)."
+		},
+		{
+			"id": "Q4",
+			"severity": "low",
+			"category": "security",
+			"requirement": "PR-2, PR-3",
+			"file": "apps/api/src/project/members/roster.ts:181-202; apps/api/src/project/members/actor.ts:25-30",
+			"problem": "callerRankInProject (the roster rank ceiling) ignores inherited grants: with no direct grant on the child it uses the WORKSPACE role rank, while authorityFor uses the nearest ancestor's project grant. A workspace admin narrowed to project-lead on a parent can therefore grant/override child roles up to the workspace rank, including a self-override on their own inherited row (no self-edit guard), and a workspace member with an inherited lead gets a lower ceiling than their authority.",
+			"impact": "Inconsistent ceiling; today limited because resolveRosterRole only grants system project roles (roster.repository.ts:186), but it widens the moment another system project role above lead exists.",
+			"recommended_fix": "Compute the rank from the same selected grants as authorityFor (direct project grants, else nearest-ancestor grants, else workspace), and refuse edits to the caller's own row."
+		},
+		{
+			"id": "Q5",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "PR-2..PR-4",
+			"file": "apps/web/src/components/project/members/project-members-settings.tsx:133-137,147-151,238,499-503; project-members-model.ts:26; apps/api/src/project/members/schema.ts:89-92",
+			"problem": "The Members tab offers every role regardless of the caller's rank (the response carries no caller rank), so the only guard is a 403; error toasts show raw server strings with code prefixes and a project UUID (e.g. 'inherited_membership: inherited from project <uuid>...', 'pending_action_target_changed'); the role Select on inherited rows silently creates an override with no explanation; the server's removable flag is ignored; empty state renders twice (:181-188 and :335-348). Composition itself matches Kaneo members-table (Table/Avatar/Select/Menu/AlertDialog, no native controls).",
+			"impact": "Confusing, untranslated errors and avoidable 403s on a core P1 screen; not browser-verified.",
+			"recommended_fix": "Return callerRank (or per-role assignable flags) and filter the Select; map error codes to i18n messages naming the parent project; label the override action on inherited rows; use removable; verify in a browser against Kaneo's workspace members screen."
+		},
+		{
+			"id": "Q6",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "WI-23, WI-21",
+			"file": "apps/web/src/components/pending-action/pending-action-approval.tsx:797-806,993-1013; apps/api/src/pending-action/work-item-deletion-target.ts:274; apps/api/src/work-item/require-work-item-reach.ts:151",
+			"problem": "The single-item deletion approval now shows the project and an impact section, but 'Requested by' shows the person who asked for the deletion (not the item's requester WI-23 asks about), the portal-visibility line is fixed copy shown whether or not the item is customer-visible, and the dialog says the item 'can be restored for 30 days' although no restore route or reveal filter exists (recoveryDays is a client default).",
+			"impact": "The approver is told the action is recoverable when it is not, and sees misleading requester/portal impact.",
+			"recommended_fix": "Send the item's requester and customer visibility in the summary and render them; drop or qualify the restore promise until WI-21 restore ships (P2)."
+		},
+		{
+			"id": "Q7",
+			"severity": "medium",
+			"category": "gap",
+			"requirement": "PR-20",
+			"file": "apps/api/src/project/project-deletion-target.ts:54,74-79",
+			"problem": "Round 1 listed PR-20 for round-2 fixing; only the live-children refusal was added. Project deletion still confirms with the typed project NAME rather than the key and the summary carries no affected work-item/child counts.",
+			"impact": "PR-20 remains partial and is not on the agreed carry list.",
+			"recommended_fix": "Either implement key confirmation + affected counts, or record the deviation and carry it to P2 explicitly."
+		},
+		{
+			"id": "Q8",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "AGENTS.md library-UI rule; PR-6/PR-10",
+			"file": "apps/web/src/components/project/project-engagement-settings.tsx:293,319,354,403,486-510; apps/web/src/components/project/default-comment-visibility-setting.tsx:82; scripts/ci/check-ui.mjs:97-103",
+			"problem": "The planning block now autosaves, but the same General page still has an explicit Save/Discard section and native <label> elements; the raw-element gate does not list label, so it cannot catch them. The planning autosave also PUTs slug/name from the query cache (project-planning-settings.tsx:293-299) without the stale-key guard general.tsx:179-207 uses.",
+			"impact": "Mixed save models on one settings page; possible revert of a just-confirmed key rename (unverified, needs a network check).",
+			"recommended_fix": "Move the engagement block to the same autosave model (or document why it needs explicit save), use the library Label, add label to the gate's tag list, and send only changed fields from the planning block."
+		},
+		{
+			"id": "Q9",
+			"severity": "low",
+			"category": "test",
+			"requirement": "AS-12, VW-16, PR-14, PR-1",
+			"file": "tests/api-integration/project-roster.test.ts:2; tests/api-integration/work-item-project-reach-credentials.test.ts:178-206; tests/api-integration/intake-rt6-snapshot.test.ts:134,144; apps/web/src/components/project/project-planning-settings.test.tsx:112",
+			"problem": "New suites still carry 'WRITTEN, NOT RUN' headers though the coordinator reports them green; the search-decoration test has no sla assertion; no test sets both request-type and project defaults; no test of the key-rename confirm; the re-parent preview dialog has no test despite a comment saying it does; misnamed tests from P1-26 remain.",
+			"impact": "Weaker regression protection on fixed paths; misleading provenance.",
+			"recommended_fix": "Update headers after the run, add the missing assertions/tests listed."
+		},
+		{
+			"id": "Q10",
+			"severity": "low",
+			"category": "data-loss",
+			"requirement": "WI-22, RH-11",
+			"file": "apps/api/src/scheduler/soft-delete-purge.ts:73-81; apps/api/src/scheduler/soft-delete-purge.repository.ts:177-187; apps/api/src/scheduler/soft-delete-purge-detach.ts:14-24",
+			"problem": "The purge locks the parent row FOR UPDATE and then takes the project hierarchy advisory lock, while set-work-item-parent, delete and move take the advisory lock first; the comment claims serialisation with detach-parent, which takes no hierarchy lock.",
+			"impact": "A concurrent set-parent on the purged parent can deadlock; Postgres aborts one side (purge reports the row failed and retries next run). No data loss, but noisy failures.",
+			"recommended_fix": "Read project_id unlocked, take the advisory lock, then lockEligibleWorkItem and re-check the project; fix the comment."
+		},
+		{
+			"id": "Q11",
+			"severity": "low",
+			"category": "security",
+			"requirement": "PR-1, PR-2, PR-4",
+			"file": "apps/api/src/project/controllers/update-project-ownership.ts:92; apps/api/src/project/members/service.ts:227,289,372",
+			"problem": "Re-parenting and roster changes invalidate realtime authorisation only for the project itself; descendants whose inherited reach changed are re-checked only by the 60-second refresh floor (which, via Q1, may itself use a stale chain).",
+			"impact": "Up to 60 s (longer with Q1) of continued realtime events on descendant projects after a parent membership is removed or a subtree is moved.",
+			"recommended_fix": "Invalidate the whole descendant set (descendantProjectIds) or the workspace on these writes."
+		},
+		{
+			"id": "Q12",
+			"severity": "low",
+			"category": "test",
+			"requirement": "AT-3, AS-13, CA-5, RH-11/WI-22, VW-15/VW-19",
+			"file": "apps/api/src/attachment/controllers/presign-attachment.ts:29-31; apps/api/src/attachment/schema.ts:36-38; tests/api-contract/openapi.json:33742; apps/api/src/work-item/index.ts:1392-1393; docs/requirements-index.json:2118-2128; docs/technical/feature-contracts-p1.md (uncommitted edits: CA-5 ~1201-1204, RH-11 'decided 2026-10-23', VW-15/VW-19 'approved by the owner', RH-12 'rules as built')",
+			"problem": "Docs drift: AT-3 docstring/OpenAPI still describe the old public-comment default; transition OpenAPI says set_assignee 'default' yields no assignee; CA-5 was rewritten in the contract (uncommitted, no decision record) but the requirements index still holds the old text. Requirement-integrity: the uncommitted contract diff rewrites requirement text to match built behaviour - CA-5 (neutral composer, 'owner decision 22 Oct', citing audit/roadmap items that do not state it), RH-11 children-keep-parent_id ('decided 2026-10-23'), VW-15/VW-19 settings keys ('approved by the owner', undated) and RH-12 'rules as built' - with no dated owner-decision record, and docs/requirements-index.json was not regenerated. Judged against the HEAD text, RH-11/WI-22 are still met (children are orphaned, not deleted, user told) and CA-5 would be partial.",
+			"impact": "Misleading API docs and requirement text. Requirement states can drift toward the implementation without Thomas's sign-off.",
+			"recommended_fix": "Regenerate OpenAPI after fixing descriptions; regenerate requirements-index; record the CA-5 owner decision with a dated source. Record each contract change as an owner decision (who/when) before commit, or revert the text; regenerate requirements-index.json."
+		},
+		{
+			"id": "Q13",
+			"severity": "low",
+			"category": "performance",
+			"requirement": "WI-18, RH-10",
+			"file": "apps/web/src/components/work-item/open-children-warning.tsx:60-63; bulk-assign-toolbar.tsx:203",
+			"problem": "A bulk close of up to 500 items fires one hierarchy-children GET per item in parallel and includes already-closed items.",
+			"impact": "Request burst on large bulk transitions.",
+			"recommended_fix": "Bound concurrency (as elsewhere, 8) and skip closed items, or add a batch endpoint."
+		},
+		{
+			"id": "Q14",
+			"severity": "low",
+			"category": "ui-ux",
+			"requirement": "WI-4, PR-17",
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx; apps/web/src/components/project-settings/column-editor.tsx:215",
+			"problem": "The Workflow page still shows the new States editor (dnd-kit) and Kaneo's ColumnEditor (native drag) as two separately reorderable lists, distinguished only by a note.",
+			"impact": "Two drag behaviours for related concepts on one page; needs browser judgement.",
+			"recommended_fix": "Decide whether columns are derived from states; if so hide the column reorder, otherwise label the relationship clearly."
+		},
+		{
+			"id": "Q15",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "AT-3, AT-8",
+			"file": "apps/api/src/attachment/controllers/presign-attachment.ts:211-212",
+			"problem": "With the new false default, the web client never sends customerVisible and no route changes visibility later, so staff files on public comments can never be shown to customers.",
+			"impact": "Customers cannot receive files on public replies.",
+			"recommended_fix": "Add a composer visibility toggle or an attachment visibility update route (P2), or record the decision."
+		},
+		{
+			"id": "Q16",
+			"severity": "low",
+			"category": "performance",
+			"requirement": "VW-23",
+			"file": "apps/api/src/work-item/search/repository.ts:391",
+			"problem": "Export pages now also run the row-facts and SLA decoration queries, which the CSV does not use.",
+			"impact": "Extra queries per 200-row export page.",
+			"recommended_fix": "Add an opt-out flag for the export path."
+		}
+	],
+	"carry_to_later_phases": [
+		{
+			"item": "Q1 ancestry memo keyed on global db (fix before P1 sign-off)",
+			"phase": "P1 pre-commit condition"
+		},
+		{
+			"item": "Q2 assignee picker includes inherited members",
+			"phase": "P1 pre-commit condition"
+		},
+		{
+			"item": "Q3 intake default-assignee eligibility ancestor-aware",
+			"phase": "P1 pre-commit condition"
+		},
+		{
+			"item": "Q6 deletion-approval copy: requester, portal visibility, restore promise",
+			"phase": "P1 pre-commit condition"
+		},
+		{
+			"item": "Q4 roster rank ceiling from inherited grants + self-edit guard",
+			"phase": "P2"
+		},
+		{
+			"item": "Q5 Members tab rank-aware roles, i18n error mapping, browser check",
+			"phase": "P2"
+		},
+		{
+			"item": "Q7 / PR-20 project delete key confirmation and affected counts",
+			"phase": "P2"
+		},
+		{
+			"item": "Q8 General page single save model and library labels; add label to raw-element gate",
+			"phase": "P2"
+		},
+		{
+			"item": "Q9 test provenance headers and missing assertions (AS-12 precedence, sla on search, PR-14, re-parent dialog)",
+			"phase": "P2"
+		},
+		{
+			"item": "Q10 purge lock order; Q11 descendant realtime invalidation",
+			"phase": "P2"
+		},
+		{
+			"item": "Q12 OpenAPI/requirements-index drift; CA-5 decision record",
+			"phase": "P2"
+		},
+		{
+			"item": "Q13-Q16 bulk-close request burst, Workflow page duplicate reorder, AT-3 visibility toggle, export decoration",
+			"phase": "P2"
+		},
+		{
+			"item": "WI-21/PR-16 restore route and reveal filter for deleted/archived work items and projects",
+			"phase": "P2"
+		},
+		{
+			"item": "VW-11/18/24 virtualisation (dependency decision needed), VW-12 WIP limits, VW-17/22 inline edit, VW-20 multi-sort, VW-21 resizable columns",
+			"phase": "P2"
+		},
+		{
+			"item": "WI-4 default-state workflow-exit check, WI-28/29 watch/mute UI, VW-2 local layout migration",
+			"phase": "P2"
+		},
+		{
+			"item": "AT-7 recovery, AT-9 sandboxed PDF preview (CSP), CA-9 automation naming, CA-15, PR-12 stakeholder UI, SV-1 palette/KB, SV-5 10k benchmark, SV-10",
+			"phase": "P2"
+		},
+		{
+			"item": "Translations for ~240 new P1 i18n keys and Intl SLA suffixes (P1-27)",
+			"phase": "P2"
+		},
+		{
+			"item": "P1-24 people search reach scoping, P1-28 low items, P1-29 thumbnail route",
+			"phase": "P2"
+		},
+		{
+			"item": "Re-parenting and roster writes as elevated (step-up) actions: owner decision",
+			"phase": "P1 decision (Thomas)"
+		},
+		{
+			"item": "WI-13 customer backlog re-rank, VW-31 organisation filter, VW-32 requester @me",
+			"phase": "P3"
+		},
+		{
+			"item": "VW-13 label/custom-field grouping, VW-19 custom-field columns, PR-18 feature flags UI",
+			"phase": "P4"
+		},
+		{
+			"item": "PR-5 descendant aggregation, VW-27 module/epic gantt grouping, VW-28 dependency arrows, RH-15 epic roll-up, AS-10 report",
+			"phase": "P5"
+		}
+	],
+	"unverified": [
+		"Reviewer ran no DB integration tests; relies on the coordinator's report (3948 pass + 44 rerun). Several new suites still say 'WRITTEN, NOT RUN' in their headers.",
+		"No browser evidence for the Members tab, re-parent preview dialog, templates page, states editor, planning autosave or the updated approval dialog.",
+		"Q1 was established by reading code (WeakMap keyed on the db singleton); no runtime reproduction. Reach on the affected ws/approval paths is re-checked by fresh SQL, so the practical impact is authority staleness.",
+		"P1-4: new contrast pairs' ratios were not measured because check-contrast stops on its pre-existing failure list before the build-based ratio pass.",
+		"Planning-autosave stale slug/name overwrite after a key rename (Q8) needs a network-tab check.",
+		"Requirement states for WI/VW/RH/AT and PR/AS/CA/SV were produced by two read-only subagents from the round-1 baseline plus re-checks of changed code; the reviewer overrode PR-2, AS-11, AS-12, CA-5 and WI-23 after reading the cited code."
+	],
+	"requirements": [
+		{
+			"id": "WI-1",
+			"state": "met",
+			"note": "Unchanged; NOT NULL project_id/type_id (apps/api/src/database/schema.ts); move keeps type (apps/api/src/work-item/controllers/move-work-item.ts)."
+		},
+		{
+			"id": "WI-2",
+			"state": "met",
+			"note": "claim-work-item-number.ts unchanged; move re-keys from target counter + alias (move-work-item.ts:414-476). Key prefix is still project.slug -> tracked under PR-13."
+		},
+		{
+			"id": "WI-3",
+			"state": "met",
+			"note": "Title 1-500 (apps/api/src/work-item/schema.ts). Custom-field 'required per type' clause depends on custom fields (P4)."
+		},
+		{
+			"id": "WI-4",
+			"state": "partial",
+			"note": "Sortable states editor + default at create OK, but set-default still flips is_default with no 'workflow can leave this state' check (project/controllers/manage-project-states.ts:231-248). [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "WI-5",
+			"state": "met",
+			"note": "Templates: migration 0135, apps/api/src/work-item/templates/*, routes gated workspace:manage_settings (work-item/index.ts:924-1001), create applies description/labels/checklist, never..."
+		},
+		{
+			"id": "WI-6",
+			"state": "met",
+			"note": "Activity unchanged; new writes (template apply, move, detach) record activity (templates/apply.ts:84-151, move-work-item.ts:508-558)."
+		},
+		{
+			"id": "WI-7",
+			"state": "met",
+			"note": "Unchanged; new move/archive routes require If-Match and return 409 with versions (work-item/index.ts:2251-2288, move-work-item.ts:217-221)."
+		},
+		{
+			"id": "WI-7a",
+			"state": "met",
+			"note": "No P1 change to apps/api/src/task/index.ts v2 PUT; baseline tests task-update-concurrency.test.ts."
+		},
+		{
+			"id": "WI-8",
+			"state": "met",
+			"note": "Unchanged (work-item/policy.ts set_priority). Custom-field editing clause depends on custom fields (P4)."
+		},
+		{
+			"id": "WI-9",
+			"state": "met",
+			"note": "Unchanged; update body has no state (schema.ts updateWorkItemBody); transition route."
+		},
+		{
+			"id": "WI-10",
+			"state": "met",
+			"note": "assign/unassign now also fan out notifications + implicit watcher (assign-work-item.ts:270-276)."
+		},
+		{
+			"id": "WI-11",
+			"state": "met",
+			"note": "rank-work-item.ts unchanged; work-item-rank.test.ts."
+		},
+		{
+			"id": "WI-12",
+			"state": "met",
+			"note": "Scheduled 'position-rebalance' job registered */5 (apps/api/src/scheduler/index.ts diff, scheduler/position-rebalance-job.ts); unit test tests/api/scheduler/position-rebalance-job.test.ts. Closes..."
+		},
+		{
+			"id": "WI-13",
+			"state": "blocked",
+			"note": "Customer org-scoped backlog re-rank needs the P3 portal; not enforced (work-item/policy.ts). Known not done. [carry: P3]",
+			"carry": "P3"
+		},
+		{
+			"id": "WI-14",
+			"state": "met",
+			"note": "Unchanged set-parent/detach/children routes; work-item-hierarchy.test.ts."
+		},
+		{
+			"id": "WI-15",
+			"state": "met",
+			"note": "Cross-project move now exists: POST /api/v2/work-items/{key}/move clears own parent, moves subtree or detaches direct children (move-work-item.ts:235-389); tests..."
+		},
+		{
+			"id": "WI-16",
+			"state": "met",
+			"note": "DB trigger + CHECK unchanged (schema.ts work_item_reject_parent_cycle; tests/api-integration/work-item-parent-cycle-guard.test.ts)."
+		},
+		{
+			"id": "WI-17",
+			"state": "met",
+			"note": "hierarchy.ts depth cap unchanged."
+		},
+		{
+			"id": "WI-18",
+			"state": "met",
+			"note": "Open-children guard on all close paths: properties.tsx:296, context-menu-content.tsx:293, use-work-item-drag-drop.ts:287, bulk-assign-toolbar.tsx:203; tests in each *.test.tsx."
+		},
+		{
+			"id": "WI-19",
+			"state": "met",
+			"note": "hierarchy-page.repository.ts subtree roll-up unchanged."
+		},
+		{
+			"id": "WI-20",
+			"state": "met",
+			"note": "Single-item archive route POST /v2/work-items/{key}/archive with If-Match (work-item/index.ts:1150,2290) + context-menu Archive (work-item-context-menu-content.tsx:241); hidden from list..."
+		},
+		{
+			"id": "WI-21",
+			"state": "partial",
+			"note": "Purge no longer blocked by children (soft-delete-purge.ts:78), but no restore route/reveal filter (list-work-items.ts:78-79); dialog copy promises restore. [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "WI-21a",
+			"state": "met",
+			"note": "No regression: native-event.ts only adds optional notify path; deletion hint still after commit (pending-action/work-item-deletion-target.ts)."
+		},
+		{
+			"id": "WI-22",
+			"state": "met",
+			"note": "Children kept in window, detached+journaled at purge (scheduler/soft-delete-purge-detach.ts:18, soft-delete-purge.ts:78); tests hierarchy-purge.test.ts:68,101 (UNRUN), soft-delete-purge.test.ts:93."
+		},
+		{
+			"id": "WI-23",
+			"state": "partial",
+			"note": "Dialog now shows project, impact section (pending-action-approval.tsx:800-806,993-1013) but 'Requested by' is the deletion requester not the item requester (work-item-deletion-target.ts:274), portal line is fixed copy, and '30-day restore' is promised with no restore route (require-work-item-reach.ts:151). See Q6.",
+			"carry": "P1 pre-commit condition (copy) / P2 (restore)"
+		},
+		{
+			"id": "WI-24",
+			"state": "met",
+			"note": "bulk-work-items.ts ops unchanged; archive now shared with single route."
+		},
+		{
+			"id": "WI-25",
+			"state": "met",
+			"note": "Unchanged; work-item-bulk.test.ts WI-25."
+		},
+		{
+			"id": "WI-26",
+			"state": "met",
+			"note": "Bulk transition still per item; now behind open-children guard (bulk-assign-toolbar.tsx:198-207). Round-1 evidence work-item-p1-assignment-notifications.test.ts:612 (UNRUN)."
+		},
+		{
+			"id": "WI-27",
+			"state": "met",
+			"note": "Unchanged; work-item-bulk.test.ts summary row."
+		},
+		{
+			"id": "WI-28",
+			"state": "partial",
+			"note": "Watch API + watcher notify on assign/transition exist, but no watch/unwatch UI in apps/web and comments notify mentions only (work-item/controllers/create-comment.ts:166-205). [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "WI-29",
+			"state": "partial",
+			"note": "Implicit watcher with mute preserved (work-item/implicit-watcher.ts; notification/repository.ts:475-483) but no opt-out/mute control in apps/web. [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "VW-1",
+			"state": "met",
+			"note": "Filter/sort/q/columns/group (board) and calendarView/date in URL; group survives layout switch (work.tsx handleGroupChange ~457-469). Tests: work-structured-filter.test.tsx,..."
+		},
+		{
+			"id": "VW-2",
+			"state": "partial",
+			"note": "Server layout.<id> now read, URL wins, local fallback (work.tsx:351-388; work-board.test.tsx:250-280); local value never migrated to server once (work.tsx:369-372). [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "VW-3",
+			"state": "met",
+			"note": "Same BulkAssignToolbar (assign/transition/priority/archive/delete) on list/table/board/grouped board; calendar+gantt via useScheduleSelection..."
+		},
+		{
+			"id": "VW-4",
+			"state": "met",
+			"note": "WorkItemSidePane on work.tsx (?item=), calendar.tsx and gantt.tsx (taskId search param). Baseline tests unchanged."
+		},
+		{
+			"id": "VW-5",
+			"state": "met",
+			"note": "use-native-work-item-realtime on list/board; calendar/gantt realtimeMode=\"canonical\". No regression seen."
+		},
+		{
+			"id": "VW-6",
+			"state": "met",
+			"note": "Global density preference (use-density-preference.ts, html.compact-mode). The rendering of each layout in compact mode is still unverified, as in the baseline."
+		},
+		{
+			"id": "VW-7",
+			"state": "met",
+			"note": "Calendar/Gantt now use ScheduleViewState (grid skeleton, retry, filtered-vs-empty copy). Grouped board has skeleton/error. Tests: schedule-view-state.test.tsx, gantt.test.tsx:492-535,..."
+		},
+		{
+			"id": "VW-8",
+			"state": "met",
+			"note": "work-item-board.tsx columns from project states; diff only adds the blocked badge and exports BoardCard. No regression."
+		},
+		{
+			"id": "VW-9",
+			"state": "met",
+			"note": "Transition drag unchanged; open-children confirm inserted before transition, cancel leaves card (use-work-item-drag-drop.ts:284-300; test :297). Round-1 met holds."
+		},
+		{
+			"id": "VW-10",
+			"state": "met",
+			"note": "Rank drag unchanged since baseline."
+		},
+		{
+			"id": "VW-11",
+			"state": "not_met",
+			"note": "No board virtualisation; cursor 'Load more' only (work-item-board.tsx). Known not done. [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "VW-12",
+			"state": "partial",
+			"note": "Column count shown; no WIP limit or amber state (work-item-board.tsx). Known not done. [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "VW-13",
+			"state": "partial",
+			"note": "Assignee/priority grouping + drag-to-set with localized dnd announcements (work-item-grouped-board.tsx:133); label and custom-field grouping absent. [carry: P4]",
+			"carry": "P4"
+		},
+		{
+			"id": "VW-14",
+			"state": "met",
+			"note": "KeyboardSensor + now-localized announcements via useDndAccessibility (hooks/use-dnd-accessibility.ts:15; work-item-board.tsx:128). Round-1 met holds."
+		},
+		{
+			"id": "VW-15",
+			"state": "met",
+			"note": "Collapsed groups persist as listGroups.<projectId> via useProjectViewPreference (work-item-kaneo-list.tsx:54-70); whitelist LIST_GROUPS_SCHEMA. Tests:..."
+		},
+		{
+			"id": "VW-16",
+			"state": "met",
+			"note": "Row facts+SLA via shared decorateWorkItemRows on GET list and POST search (decorate-rows.ts:20; search/repository.ts:391; list-work-items.ts:275); tests work-item-decorate-rows.test.ts."
+		},
+		{
+			"id": "VW-17",
+			"state": "partial",
+			"note": "No inline state/assignee/priority editors on list rows; edits via context menu or side pane (work-item-kaneo-list.tsx). [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "VW-18",
+			"state": "not_met",
+			"note": "List not virtualised; cursor pages of 50 (work-item-kaneo-list.tsx, work-item-list.tsx). Known not done. [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "VW-19",
+			"state": "partial",
+			"note": "columns.<projectId> persisted, URL wins (work.tsx:227; user-preference.test.ts:200); custom-field columns wait for P4. [carry: P4]",
+			"carry": "P4"
+		},
+		{
+			"id": "VW-20",
+			"state": "partial",
+			"note": "Only key/title/priority/dueDate sortable (work-item-list.tsx:110-117); no multi-column modifier sort; search accepts one sort (search/query.ts:11). [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "VW-21",
+			"state": "not_met",
+			"note": "Fixed COLUMN_WIDTH_CLASSES (work-item-list.tsx:119); no drag-resize; no approved whitelist key (feature-contracts-p1.md:409). [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "VW-22",
+			"state": "partial",
+			"note": "Table has no inline cell editing; context menu only (work-item-list.tsx). Known not done. [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "VW-23",
+			"state": "met",
+			"note": "Export route, policy, CSV and tests unchanged since baseline (apps/api/src/work-item/search/csv.ts, tests/api-integration/work-item-export.test.ts)."
+		},
+		{
+			"id": "VW-24",
+			"state": "not_met",
+			"note": "Table has no row or column virtualisation (work-item-list.tsx). Known not done. [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "VW-25",
+			"state": "met",
+			"note": "Month/week/day unchanged (calendar.tsx:83,142-154); month-grid now uses localized dnd announcements (month-grid.tsx:83). Round-1 met holds."
+		},
+		{
+			"id": "VW-26",
+			"state": "met",
+			"note": "Drag reschedules through canonical PATCH with version and rolls back on refusal (components/work-item/work-item-calendar-reschedule.ts:46-101). Gated by canUpdateTasks; the server enforces. Tests:..."
+		},
+		{
+			"id": "VW-27",
+			"state": "partial",
+			"note": "Bars + assignee grouping (gantt.tsx:172-176, gantt-groups.ts; gantt.test.tsx:609-629); module/epic grouping needs P5 data. [carry: P5]",
+			"carry": "P5"
+		},
+		{
+			"id": "VW-28",
+			"state": "not_met",
+			"note": "No dependency arrows or toggle in gantt.tsx/components/gantt. Known not done. [carry: P5]",
+			"carry": "P5"
+		},
+		{
+			"id": "VW-29",
+			"state": "met",
+			"note": "Bar move and edge resize persist via canonical PATCH; now tested (components/gantt/gantt-task-bar.test.tsx:118-222, including refusal rollback and the permission gate)."
+		},
+		{
+			"id": "VW-30",
+			"state": "met",
+			"note": "Form date editor in work-item-properties.tsx, reachable from the calendar/gantt side pane. Tests: work-item-properties.test.tsx."
+		},
+		{
+			"id": "VW-31",
+			"state": "partial",
+			"note": "requester/cycle/module/epic now 422 (search/query.ts:22-23,86; work-item-search-query.test.ts:42), but organisation is 422 instead of resolving via project join. [carry: P3]",
+			"carry": "P3"
+		},
+		{
+			"id": "VW-32",
+			"state": "partial",
+			"note": "@me for assignee/watcher only (search/query.ts); requester @me unavailable (422). Known not done. [carry: P3]",
+			"carry": "P3"
+		},
+		{
+			"id": "VW-33",
+			"state": "met",
+			"note": "and/or nesting in AST (query.ts) and editor matchAny; unchanged since baseline."
+		},
+		{
+			"id": "VW-34",
+			"state": "met",
+			"note": "Removable chips on work.tsx and now calendar/gantt (components/calendar/schedule-filter-chips.tsx). Filtered-empty copy is used. Tests: schedule-filter-chips.test.tsx, gantt.test.tsx:535."
+		},
+		{
+			"id": "PR-1",
+			"state": "met",
+			"note": "R1 met; + delete refused 409 project_has_live_children (project/project-children.ts:37-51, project-deletion-target.ts:59); tests hierarchy-purge.test.ts:115,151"
+		},
+		{
+			"id": "PR-2",
+			"state": "partial",
+			"note": "Reach/authority/roster/eligibility inherit (evaluator.ts:223-274; assignee-eligibility.ts:27-45; members/service.ts:53-75). Gaps: assignee picker exact-project only (work-item/controllers/list-assignable-people.ts:100-103); intake default-assignee check exact-project (intake/repository.ts:1097-1101); inherited_from computed at read time, not stored (data-model.md:32). P1 pre-commit condition (Q2/Q3).",
+			"carry": "P1 pre-commit condition"
+		},
+		{
+			"id": "PR-3",
+			"state": "met",
+			"note": "PATCH members writes child override (members/service.ts:236-291); direct grant wins (evaluator.ts:257-264); tests project-roster.test.ts:192, project-inherited-authority.test.ts:149"
+		},
+		{
+			"id": "PR-4",
+			"state": "met",
+			"note": "DELETE child = 409 inherited_membership naming parent (members/service.ts:328-337); project-roster.test.ts:154; UI members-settings.test.tsx:137. Contract names no code; no browser run"
+		},
+		{
+			"id": "PR-5",
+			"state": "not_met",
+			"note": "Unchanged: no descendant aggregation/combined board (descendantProjectIds only used for preview count, members/service.ts:405). Known carry.",
+			"carry": "P5"
+		},
+		{
+			"id": "PR-6",
+			"state": "met",
+			"note": "R1 met; manager eligibility now ancestor-aware via resolveAssigneeEligibility (project/index.ts:204). No regression."
+		},
+		{
+			"id": "PR-7",
+			"state": "met",
+			"note": "R1 met; roster now writable via POST /members (members/service.ts:177), composition banner tested (members-settings.test.tsx:184)."
+		},
+		{
+			"id": "PR-8",
+			"state": "met",
+			"note": "R1 kept: Structural; unchanged since baseline (packages/permissions/src/roles.ts customer organisation-scoped; roles.test.ts)."
+		},
+		{
+			"id": "PR-9",
+			"state": "met",
+			"note": "R1 kept: Baseline met; P1 update path keeps assertManagedServiceConfiguration (project/index.ts:1131+); project-managed-service.test.ts in change set."
+		},
+		{
+			"id": "PR-10",
+			"state": "met",
+			"note": "R1 kept: start_date/end_date + project_dates_ordered CHECK (0134); calendar-date schema (project/schema.ts projectCalendarDate); end<start 422; PR-10 warning; date pickers in project-planning-setti..."
+		},
+		{
+			"id": "PR-11",
+			"state": "met",
+			"note": "R1 kept: Baseline met (no portal route; project:update gate; project-prerequisites.test.ts). Spot-check: no regression in diff."
+		},
+		{
+			"id": "PR-12",
+			"state": "partial",
+			"note": "R1 kept: API stand-down exists (controllers/stand-down-stakeholder.ts; project-stakeholders.test.ts) but no stakeholder UI/pickers to prove count/picker exclusion. Known not done.",
+			"carry": "P2"
+		},
+		{
+			"id": "PR-13",
+			"state": "met",
+			"note": "R1 kept: createProjectBody slug=projectKey ^[A-Z]{2,8}$ (project/schema.ts PROJECT_KEY_PATTERN); update enforces only when key changes (controllers/update-project.ts:57-65) so legacy keys stay edit..."
+		},
+		{
+			"id": "PR-14",
+			"state": "partial",
+			"note": "Confirm dialog exists (settings/projects/$projectId/general.tsx:271-308,759-780) but still no test of confirm flow or old-prefix retention; R2 claim unsupported",
+			"carry": "P2"
+		},
+		{
+			"id": "PR-15",
+			"state": "met",
+			"note": "R1 kept: Baseline archive/read-only met; P1 adds refuse-archive-with-active-children and refuse-unarchive-under-archived-parent under hierarchy lock (controllers/archive-project.ts, unarchive-proje..."
+		},
+		{
+			"id": "PR-16",
+			"state": "partial",
+			"note": "Regression fixed: purge waits for child projects (soft-delete-purge.repository.ts:45-59), delete refused (project-children.ts:37); hierarchy-purge.test.ts:115,151. No UI reveal filter.",
+			"carry": "P2"
+		},
+		{
+			"id": "PR-17",
+			"state": "met",
+			"note": "R1 kept: GET state-templates, POST states (WF-2 outbound-transition guard, 409 dup), PATCH reorder/default (controllers/manage-project-states.ts; state-guard.ts; policy manage_settings); editor UI..."
+		},
+		{
+			"id": "PR-18",
+			"state": "partial",
+			"note": "R1 kept: project_feature_flag table + approval consumer only; no flag management API/UI and no interface simplification. Known not done; settings hierarchy flags are P4.",
+			"carry": "P4"
+		},
+		{
+			"id": "PR-20",
+			"state": "partial",
+			"note": "Unchanged except child refusal: typed NAME not key (project-deletion-target.ts:54), summary lacks affected counts (:74-79). Not in agreed carry list",
+			"carry": "P2"
+		},
+		{
+			"id": "AS-1",
+			"state": "met",
+			"note": "R1 met. Note: picker GET /assignable omits inherited members (list-assignable-people.ts:102-103) -- tracked under PR-2."
+		},
+		{
+			"id": "AS-2",
+			"state": "met",
+			"note": "R1 kept: Baseline met; unchanged predicates in assign/unassign controllers."
+		},
+		{
+			"id": "AS-3",
+			"state": "met",
+			"note": "R1 kept: UI confirm (work-item-properties.tsx:545) + 409 holder precondition (baseline) + previous holder now notified (notification/work-item-recipients.ts planWorkItemRecipients previous_assignee..."
+		},
+		{
+			"id": "AS-4",
+			"state": "met",
+			"note": "R1 kept: Baseline met (customer lacks assign/update; no portal control)."
+		},
+		{
+			"id": "AS-5",
+			"state": "met",
+			"note": "R1 met; eligibility now includes ancestor roster (assignee-eligibility.ts:28-45). Picker and intake still exact-project only (see PR-2/AS-11)."
+		},
+		{
+			"id": "AS-6",
+			"state": "met",
+			"note": "R1 kept: Baseline met (assignee_id FK person, id comparisons)."
+		},
+		{
+			"id": "AS-7",
+			"state": "met",
+			"note": "R1 kept: Baseline met (assigneeName joined at read)."
+		},
+		{
+			"id": "AS-8",
+			"state": "met",
+			"note": "R1 kept: Responses carry assigneeActive/assigneeOnProject; lib/work-item-assignee-display.ts renders 'Name (inactive)' / '(no longer on this project)' in work-item-list.tsx and work-item-properties..."
+		},
+		{
+			"id": "AS-9",
+			"state": "met",
+			"note": "R1 kept: Baseline met; transition set_assignee 'default' with no/ineligible default now leaves assignee unchanged (transition-work-item.ts:207-216,422-429)."
+		},
+		{
+			"id": "AS-10",
+			"state": "blocked",
+			"note": "R1 kept: Spec itself marks the report P5; pure filter exists in packages/domain (baseline). AS-8 in-picker rendering covers P1.",
+			"carry": "P5"
+		},
+		{
+			"id": "AS-11",
+			"state": "partial",
+			"note": "Project default applied at intake + create (intake/repository.ts:1083; create-initial-fields.ts), but intake eligibility is exact-project (intake/repository.ts:1097-1101) while settings accept inherited members, so an inherited default is skipped; no HTTP create test of the fallback. P1 pre-commit condition (Q3).",
+			"carry": "P1 pre-commit condition"
+		},
+		{
+			"id": "AS-12",
+			"state": "partial",
+			"note": "Request-type ?? project precedence coded (intake/repository.ts:1083-1084) but no test sets both defaults and asserts the request type wins (intake-rt6-snapshot.test.ts:134,144 set one each). Test gap; carry P2.",
+			"carry": "P2"
+		},
+		{
+			"id": "AS-13",
+			"state": "met",
+			"note": "R1 met; OpenAPI description still stale: 'default' 'always resolves to no assignee' (work-item/index.ts:1393)."
+		},
+		{
+			"id": "AS-14",
+			"state": "blocked",
+			"note": "R1 kept: No automation engine that assigns (apps/api/src/workflow-rule is legacy column automation). Depends on P2 automations (AU-*).",
+			"carry": "P2"
+		},
+		{
+			"id": "AS-15",
+			"state": "met",
+			"note": "R1 kept: Out of scope by design; absence confirmed."
+		},
+		{
+			"id": "AS-16",
+			"state": "met",
+			"note": "Intake now emits work_item.assigned+notify+implicit watcher via recordInitialWorkItemFields (intake/repository.ts:1177); intake-rt6-snapshot.test.ts:134,144 (unrun)"
+		},
+		{
+			"id": "AS-17",
+			"state": "met",
+			"note": "R1 kept: Unassign emits with notify hook (unassign-work-item.ts:194-205); previous assignee notified; tested work-item-p1-assignment-notifications.test.ts:338, work-item-recipients.test.ts:62."
+		},
+		{
+			"id": "AS-18",
+			"state": "met",
+			"note": "R1 kept: Actor excluded by person id in plan and by linked user id in resolver (work-item-recipients.ts:76, resolveWorkItemEventRecipients actor check); event still emitted; tested :313, work-item-..."
+		},
+		{
+			"id": "AS-19",
+			"state": "met",
+			"note": "R1 kept: Baseline met; unchanged."
+		},
+		{
+			"id": "CA-1",
+			"state": "met",
+			"note": "R1 kept: Composer footer toggle/label always shows audience + notice (work-item/work-item-comment-composer.tsx:420-470,563-571); test work-item-activity.ui.test.tsx:357,407."
+		},
+		{
+			"id": "CA-2",
+			"state": "met",
+			"note": "R1 kept: Baseline met (project.default_comment_visibility; tests)."
+		},
+		{
+			"id": "CA-3",
+			"state": "met",
+			"note": "R1 kept: Baseline met; portal query still filters visibility='public' server-side (intake/repository.ts:1569)."
+		},
+		{
+			"id": "CA-4",
+			"state": "met",
+			"note": "R1 kept: No visibility in PATCH schema; now tested (tests/api/work-item-p1-guards.test.ts:8-25; work-item-p1-assignment-notifications.test.ts:683)."
+		},
+		{
+			"id": "CA-5",
+			"state": "partial",
+			"note": "Code is neutral in both modes (comment-composer-presentation.tsx:27-30) matching the uncommitted contract rewrite (feature-contracts-p1.md:1201-1204), but no dated owner-decision record and requirements-index.json still holds the 'distinct background' text. Met once the decision is recorded (Q12).",
+			"carry": "P1 decision (Thomas)"
+		},
+		{
+			"id": "CA-6",
+			"state": "met",
+			"note": "R1 kept: Baseline met (activity.ts; wiring tests)."
+		},
+		{
+			"id": "CA-7",
+			"state": "met",
+			"note": "R1 kept: Baseline met (allowlist, unmapped->internal)."
+		},
+		{
+			"id": "CA-8",
+			"state": "met",
+			"note": "R1 kept: Baseline met (grouping in work-item-activity.tsx)."
+		},
+		{
+			"id": "CA-9",
+			"state": "partial",
+			"note": "R1 kept: UI renders actor kind or a self-declared payload automationName/jobName (work-item-activity.tsx:175-191; ui.test:1088) but no server writer records any job/automation name (grep automation...",
+			"carry": "P2"
+		},
+		{
+			"id": "CA-10",
+			"state": "met",
+			"note": "R1 kept: No update/delete path; now guarded by static source test + GET-only API test (tests/api/work-item-p1-guards.test.ts:31-55). No DB-level trigger."
+		},
+		{
+			"id": "CA-11",
+			"state": "met",
+			"note": "R1 kept: Baseline met (256 KiB / 10k nodes; Tiptap)."
+		},
+		{
+			"id": "CA-12",
+			"state": "met",
+			"note": "R1 kept: Baseline met; composer refactor keeps mention preflight lock (work-item-activity.ui.test.tsx:769); comment-access.ts now includes ancestors in caller reach."
+		},
+		{
+			"id": "CA-13",
+			"state": "met",
+			"note": "R1 kept: Baseline met (work-item-comment.test.ts:2443)."
+		},
+		{
+			"id": "CA-14",
+			"state": "met",
+			"note": "R1 met; fallback for unreadable item shows key only, legacy nodes kept (work-item-issue-link.tsx); tests work-item-issue-link.test.tsx:103,111,147"
+		},
+		{
+			"id": "CA-15",
+			"state": "partial",
+			"note": "R1 kept: Pasted/dropped files are staged and uploaded as comment-linked attachments after the comment exists, never base64 (comment-editor.tsx:714-725,802-821 -> onFilesSelected; work-item-comment-...",
+			"carry": "P2"
+		},
+		{
+			"id": "CA-16",
+			"state": "met",
+			"note": "R1 kept: localStorage draft per user/work item incl. visibility (work-item-comment-composer.tsx:234-285); ui.test:534."
+		},
+		{
+			"id": "CA-17",
+			"state": "met",
+			"note": "R1 kept: Baseline met."
+		},
+		{
+			"id": "CA-18",
+			"state": "met",
+			"note": "R1 kept: Baseline met (pending-action comment deletion)."
+		},
+		{
+			"id": "CA-11a",
+			"state": "met",
+			"note": "R1 kept: Baseline met."
+		},
+		{
+			"id": "CA-19",
+			"state": "met",
+			"note": "R1 kept: Baseline met."
+		},
+		{
+			"id": "CA-19a",
+			"state": "met",
+			"note": "R1 kept: Baseline met."
+		},
+		{
+			"id": "CA-20",
+			"state": "met",
+			"note": "R1 kept: Insert into draft, never auto-send; ui.test:574-720."
+		},
+		{
+			"id": "AT-1",
+			"state": "met",
+			"note": "Comment attachments: presign with commentId (author only, live comment of the item) (attachment/controllers/presign-attachment.ts:187-211), parent resolution via coalesce..."
+		},
+		{
+			"id": "AT-2",
+			"state": "met",
+			"note": "Presigned direct PUT unchanged; queue uses resumeWorkItemAttachment."
+		},
+		{
+			"id": "AT-3",
+			"state": "met",
+			"note": "Staff file on public comment defaults false, true only on explicit opt-in (presign-attachment.ts:187,211); test attachment.test.ts:1547 (UNRUN). openapi.json:33742 description is stale."
+		},
+		{
+			"id": "AT-4",
+			"state": "met",
+			"note": "Internal comment still forces false: visibility==='public' && explicit true (presign-attachment.ts:211); list repository.ts:1029. Round-1 test attachment.test.ts AT-1/AT-4."
+		},
+		{
+			"id": "AT-5",
+			"state": "met",
+			"note": "No regression; 300s presign + policy-checked redirect (attachment/index.ts:419 c.redirect)."
+		},
+		{
+			"id": "AT-6",
+			"state": "met",
+			"note": "download-attachment.ts audit row unchanged."
+		},
+		{
+			"id": "AT-7",
+			"state": "partial",
+			"note": "Soft delete + pending action + attachment-gc exist; no within-day recovery API/UI; comment-parented files canDelete=false (list-work-item-attachments.ts:30). [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "AT-8",
+			"state": "met",
+			"note": "Image thumbnails + lightbox, other files as card with icon/name/size/uploader (work-item-attachments-tile.tsx:43-140, work-item-attachments-lightbox.tsx); test work-item-attachments.test.tsx:200."
+		},
+		{
+			"id": "AT-9",
+			"state": "not_met",
+			"note": "No sandboxed PDF viewer; PDFs are download cards (work-item-attachments-tile.tsx:37). Known not done. [carry: P2]",
+			"carry": "P2"
+		},
+		{
+			"id": "AT-10",
+			"state": "met",
+			"note": "Drop listeners scoped to detail zone, not document (work-item-attachments-intake.tsx:78-82); tests intake.test.tsx:50,71 (outside-detail ignored)."
+		},
+		{
+			"id": "AT-11",
+			"state": "met",
+			"note": "Paste listener on detail zone, files only (work-item-attachments-intake.tsx:71,82); test intake.test.tsx:115."
+		},
+		{
+			"id": "AT-12",
+			"state": "met",
+			"note": "Multi-file module queue, per-file progress/failure/retry (fetchers/attachment/work-item-upload-queue.ts, work-item-attachments-uploads.tsx); tests upload-queue.test.ts:79,88, attachments.test.tsx:235."
+		},
+		{
+			"id": "AT-13",
+			"state": "met",
+			"note": "Module-level queue survives navigation; beforeunload armed while active (work-item-upload-queue.ts:36-49); tests upload-queue.test.ts:135,146."
+		},
+		{
+			"id": "AT-14",
+			"state": "met",
+			"note": "Server reasons (presign-attachment.ts:118-151) shown per file (work-item-attachments-uploads.tsx); test attachments-uploads.test.tsx:49."
+		},
+		{
+			"id": "RH-1",
+			"state": "met",
+			"note": "No regression; relations UI only adds detail invalidation."
+		},
+		{
+			"id": "RH-2",
+			"state": "met",
+			"note": "Unchanged. Baseline evidence: tests/api-integration/work-item-relations.test.ts:131"
+		},
+		{
+			"id": "RH-3",
+			"state": "met",
+			"note": "Unchanged. Baseline evidence: tests/api-integration/work-item-relations.test.ts:156,235"
+		},
+		{
+			"id": "RH-4",
+			"state": "met",
+			"note": "Unchanged hiddenCount (work-item-relations.tsx)."
+		},
+		{
+			"id": "RH-5",
+			"state": "met",
+			"note": "Unchanged. Baseline evidence: apps/api/src/work-item/controllers/set-work-item-parent.ts; tests/api-integration/work-item-hierarchy.test.ts:356;..."
+		},
+		{
+			"id": "RH-6",
+			"state": "met",
+			"note": "Composite FK unchanged; move clears parent/detaches children so it holds (move-work-item.ts:379-389)."
+		},
+		{
+			"id": "RH-7",
+			"state": "met",
+			"note": "Unchanged. Baseline evidence: tests/api-integration/work-item-hierarchy.test.ts:508,977; packages/domain/src/hierarchy/hierarchy.test.ts"
+		},
+		{
+			"id": "RH-8",
+			"state": "met",
+			"note": "Unchanged. Baseline evidence: tests/api-integration/work-item-hierarchy.test.ts:446,469; tests/api-integration/work-item-parent-cycle-guard.test.ts"
+		},
+		{
+			"id": "RH-9",
+			"state": "met",
+			"note": "Subtree progress unchanged; estimate/time roll-ups depend on P5 features."
+		},
+		{
+			"id": "RH-10",
+			"state": "met",
+			"note": "Same guard as WI-18 on properties/context menu/board drag/bulk (open-children-warning.tsx:145); tests use-work-item-drag-drop.test.tsx:285-300, bulk-assign-toolbar.test.tsx:222."
+		},
+		{
+			"id": "RH-11",
+			"state": "met",
+			"note": "Per amended RH-11 (2026-10-23) children keep parent_id in window, orphaned at purge (soft-delete-purge-detach.ts:18); user told (en-US deletion.childrenAffected); hierarchy-purge.test.ts:68."
+		},
+		{
+			"id": "RH-12",
+			"state": "met",
+			"note": "Move route + dialog stating what happens to sub-items (move-work-item.ts; apps/web/src/components/work-item/move-work-item-dialog.tsx wired from work-item-context-menu-content.tsx:456); tests..."
+		},
+		{
+			"id": "RH-13",
+			"state": "met",
+			"note": "set-parent refuses an epic child with 422 (set-work-item-parent.ts:174-188); create has no parentId and no type-change/is_epic edit route exists; test work-item-hierarchy.test.ts:1247 (present,..."
+		},
+		{
+			"id": "RH-14",
+			"state": "met",
+			"note": "Same subtree roll-up as RH-9."
+		},
+		{
+			"id": "RH-15",
+			"state": "blocked",
+			"note": "Epic roll-up reporting is P5 scope; nothing implemented. Known not done. [carry: P5]",
+			"carry": "P5"
+		},
+		{
+			"id": "RH-16",
+			"state": "met",
+			"note": "blockers.ts unchanged."
+		},
+		{
+			"id": "RH-17",
+			"state": "met",
+			"note": "blockedByOpenCount now also on POST search (decorate-rows.ts:20, search/repository.ts:391); badge detail.tsx:221/board.tsx:473/list.tsx:559; tests p1-assignment-notifications.test.ts:568."
+		},
+		{
+			"id": "RH-18",
+			"state": "met",
+			"note": "work-item-unblocked.ts unchanged."
+		},
+		{
+			"id": "RH-19",
+			"state": "met",
+			"note": "Unchanged blockingCycle warning. Baseline evidence: apps/web/src/components/work-item/work-item-relations.tsx:243 (blockingCycle); tests/api-integration/work-item-relations.test.ts:131"
+		},
+		{
+			"id": "SV-1",
+			"state": "partial",
+			"note": "type=all now canonical kinds only (search/controllers/global-search.ts:73-75,265) but Cmd+K palette still delegates to search dialog (command-palette/index.tsx:206-210); no KB",
+			"carry": "P2"
+		},
+		{
+			"id": "SV-2",
+			"state": "met",
+			"note": "R1 met; grouping by kind in API order unchanged after R2 edit (search-command-menu/index.tsx:129-181). UI tests mount-only."
+		},
+		{
+			"id": "SV-3",
+			"state": "met",
+			"note": "Real hidden-item, cross-workspace and customer cases now (global-search-canonical.test.ts:214,256,304); SQL reach (global-search.ts:281-290). Tests written without DB, unrun"
+		},
+		{
+			"id": "SV-4",
+			"state": "met",
+			"note": "R1 met; key result still first group (search-command-menu/index.tsx:140); global-search-canonical.test.ts:160."
+		},
+		{
+			"id": "SV-5",
+			"state": "not_met",
+			"note": "No 10k benchmark/E2E; 3-char gate (search-command-menu/index.tsx:69); no lower() index. Contract calls 100 ms a hard requirement. Known carry",
+			"carry": "P2"
+		},
+		{
+			"id": "SV-6",
+			"state": "met",
+			"note": "R1 met (browser-local recents, search-command-menu/index.tsx:130-140). No server recents, no stop-word explanation -- known carry."
+		},
+		{
+			"id": "SV-7",
+			"state": "met",
+			"note": "R1 kept: Title exact/prefix/contains (10/8/6) ranks above description (2) (canonical-repository.ts:114-124). Test: global-search-canonical.test.ts:104-130. Implemented with CASE/LIKE, not the contr..."
+		},
+		{
+			"id": "SV-8",
+			"state": "met",
+			"note": "R1 kept: Key and title prefix LIKE plus contains (canonical-repository.ts:107-121), but only once 3+ characters are typed (search-command-menu/index.tsx:69)."
+		},
+		{
+			"id": "SV-9",
+			"state": "met",
+			"note": "R1 kept: pg_trgm % with similarity() fallback for terms of 3+ characters when the page is not full (canonical-repository.ts:162-207; global-search.ts:299-307). Test: global-search-canonical.test.ts..."
+		},
+		{
+			"id": "SV-10",
+			"state": "blocked",
+			"note": "R1 kept: No search.meilisearch plugin. By contract it is conditional on SV-5's 100 ms budget being measured as missed on the 10k benchmark, which does not exist yet.",
+			"carry": "P2"
+		},
+		{
+			"id": "SV-11",
+			"state": "met",
+			"note": "R1 kept: AST/text/builder lossless rendering unchanged since baseline (query.ts, work-item-filter-editor, work-item-list-search tests)."
+		},
+		{
+			"id": "SV-12",
+			"state": "met",
+			"note": "R1 kept: Whitelisted fields and parameterised compile unchanged since baseline. The VW-31 422-vs-400 gap is recorded separately."
+		},
+		{
+			"id": "SV-13",
+			"state": "met",
+			"note": "R1 kept: @me resolved at query time; unchanged."
+		},
+		{
+			"id": "SV-14",
+			"state": "met",
+			"note": "R1 kept: saved_view envelope; apps/api/src/view unchanged in P1."
+		},
+		{
+			"id": "SV-15",
+			"state": "met",
+			"note": "R1 kept: Visibility levels; view module unchanged."
+		},
+		{
+			"id": "SV-16",
+			"state": "met",
+			"note": "R1 kept: Private default; unchanged."
+		},
+		{
+			"id": "SV-17",
+			"state": "met",
+			"note": "R1 kept: Team visibility; team-lead editing deferred by spec; unchanged."
+		},
+		{
+			"id": "SV-18",
+			"state": "met",
+			"note": "R1 kept: workspace:manage_settings for workspace views; unchanged."
+		},
+		{
+			"id": "SV-19",
+			"state": "met",
+			"note": "R1 kept: URL-encoded view; unchanged."
+		},
+		{
+			"id": "SV-20",
+			"state": "met",
+			"note": "R1 kept: Per-user pins; unchanged."
+		},
+		{
+			"id": "SV-22",
+			"state": "met",
+			"note": "R1 kept: projectScopeInReach unchanged. callerReach now adds ancestor reach (apps/api/src/utils/caller-reach.ts diff), which widens reach rather than narrowing it. The search route reuses the same..."
+		},
+		{
+			"id": "SV-21",
+			"state": "met",
+			"note": "R1 kept: One-click duplicate; unchanged (views.test.tsx:349-374)."
+		},
+		{
+			"id": "SV-23",
+			"state": "met",
+			"note": "R1 kept: count-cache.ts 30s TTL in Valkey when configured; unchanged."
+		}
+	]
+}

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   resolveIdentity: vi.fn(),
   evaluateProjectRead: vi.fn(),
   findReachableLiveProject: vi.fn(),
+  loadProjectAncestorIds: vi.fn(),
 }));
 
 vi.mock("../../../apps/api/src/permissions/resolve-identity", () => ({
@@ -13,6 +14,13 @@ vi.mock("../../../apps/api/src/permissions/resolve-identity", () => ({
 }));
 vi.mock("../../../apps/api/src/utils/has-project-reach", () => ({
   evaluateProjectRead: mocks.evaluateProjectRead,
+}));
+vi.mock("../../../apps/api/src/database", () => ({ default: {} }));
+vi.mock("../../../apps/api/src/project/hierarchy.repository", () => ({
+  loadProjectAncestorIds: mocks.loadProjectAncestorIds,
+  // Same shape the real helper has: always loads (the mock ignores the short-circuit).
+  loadProjectAncestorIdsFor: (...args: unknown[]) =>
+    mocks.loadProjectAncestorIds(args[1], args[3], args[4]),
 }));
 vi.mock("../../../apps/api/src/ws/repository", () => ({
   findReachableLiveProject: mocks.findReachableLiveProject,
@@ -48,6 +56,7 @@ describe("authorizeProjectSocketRead decision inputs (#748)", () => {
     mocks.findReachableLiveProject
       .mockReset()
       .mockImplementation(async () => mocks.rows[0]);
+    mocks.loadProjectAncestorIds.mockReset().mockResolvedValue(["parent-1"]);
     mocks.evaluateProjectRead
       .mockReset()
       .mockReturnValue({ reachable: true, capable: true });
@@ -66,7 +75,8 @@ describe("authorizeProjectSocketRead decision inputs (#748)", () => {
         projectId: "p1",
         workspaceId: "ws-1",
         organisationId: "org-customer",
-        ancestorProjectIds: [],
+        // PR-2: inherited membership is read at call time from the project hierarchy.
+        ancestorProjectIds: ["parent-1"],
         ownerTeamId: null,
       },
     );

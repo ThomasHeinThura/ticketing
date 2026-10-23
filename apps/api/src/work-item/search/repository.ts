@@ -22,7 +22,9 @@ import {
   type AuthenticatedApiKey,
   resolveRequestIdentity,
 } from "../../permissions/resolve-request-identity";
+import { loadAncestorIdsByProject } from "../../project/hierarchy.repository";
 import { evaluateProjectRead } from "../../utils/has-project-reach";
+import { decorateWorkItemRows } from "../decorate-rows";
 import { workItemPolicies } from "../policy";
 import type { SearchFilter, WorkItemSearchQuery } from "./query";
 
@@ -385,6 +387,12 @@ export async function searchWorkItems(input: {
     labels.push(label);
     labelsByItem.set(workItemId, labels);
   }
+  // P1-7: the same row facts + SLA badge the unfiltered list attaches (shared helper).
+  const decorate = await decorateWorkItemRows(
+    db,
+    pageRows,
+    (row) => row.workItem,
+  );
   type MaterializedSearchPageRow = Omit<
     (typeof pageRows)[number]["workItem"],
     "description"
@@ -430,6 +438,7 @@ export async function searchWorkItems(input: {
     data: pageRows.map(
       (row): MaterializedSearchPageRow => ({
         ...row.workItem,
+        ...decorate(row),
         labels: labelsByItem.get(row.workItem.id) ?? [],
         description: row.workItem.description as JsonValue | null,
         stateName: row.stateName,
@@ -482,6 +491,8 @@ export async function resolveWorkItemSearchAccess(input: {
       ),
     );
   const searchPolicy = workItemPolicies["POST /api/work-items/search"];
+  // PR-2: inherited project membership, read at call time (one query).
+  const ancestorsByProject = await loadAncestorIdsByProject(db, [workspaceId]);
   const projectIds = projectRows
     .filter((p) => {
       const decision = evaluateProjectRead(
@@ -492,7 +503,7 @@ export async function resolveWorkItemSearchAccess(input: {
           projectId: p.id,
           workspaceId: p.workspaceId,
           organisationId: p.organisationId,
-          ancestorProjectIds: [],
+          ancestorProjectIds: ancestorsByProject.get(p.id) ?? [],
           ownerTeamId: null,
         },
       );
@@ -518,6 +529,7 @@ export async function resolveWorkItemSearchAccess(input: {
           can(identity, "project:read", "project", {
             projectId: p.id,
             workspaceId,
+            ancestorProjectIds: ancestorsByProject.get(p.id) ?? [],
           }),
         ))
   )

@@ -1,5 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { type DbTransaction, enqueueOutboxEvent } from "../events/outbox";
+import {
+  type DbTransaction,
+  type DomainEventEnvelope,
+  enqueueOutboxEvent,
+} from "../events/outbox";
+import {
+  enqueueNotificationEvent,
+  type NotificationFanoutHooks,
+} from "../notification/fanout";
 import { broadcastNativeWorkItemHint } from "../ws";
 import type { ActivityActorType } from "./activity";
 
@@ -15,6 +23,12 @@ export type WorkItemEventInput = {
   payload: Record<string, unknown>;
   customerVisible: boolean;
   occurredAt?: Date;
+  /**
+   * When present the event is written through `enqueueNotificationEvent` (one outbox row
+   * plus the inbox/delivery fan-out in this same transaction) instead of the bare outbox
+   * write. Never both: that would persist the event twice.
+   */
+  notify?: NotificationFanoutHooks;
 };
 
 export async function recordWorkItemEvent(
@@ -23,7 +37,7 @@ export async function recordWorkItemEvent(
 ) {
   const occurredAt = input.occurredAt ?? new Date();
   const id = `evt_${randomUUID()}`;
-  await enqueueOutboxEvent(tx, {
+  const envelope: DomainEventEnvelope<Record<string, unknown>> = {
     id,
     kind: input.kind,
     occurredAt: occurredAt.toISOString(),
@@ -42,7 +56,9 @@ export async function recordWorkItemEvent(
     causationId: null,
     depth: 0,
     originAutomationId: null,
-  });
+  };
+  if (input.notify) await enqueueNotificationEvent(tx, envelope, input.notify);
+  else await enqueueOutboxEvent(tx, envelope);
   return { id, occurredAt };
 }
 

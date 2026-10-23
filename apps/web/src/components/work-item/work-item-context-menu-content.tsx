@@ -13,8 +13,8 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import TaskContextMenuPresentation from "@/components/kanban-board/task-card-context-menu/task-context-menu-presentation";
+import archiveWorkItem from "@/fetchers/work-item/archive-work-item";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
-import { bulkWorkItemsOperation } from "@/fetchers/work-item/bulk-assign-work-items";
 import getAssignablePeople from "@/fetchers/work-item/get-assignable-people";
 import getWorkItem from "@/fetchers/work-item/get-work-item";
 import getWorkItemTransitions from "@/fetchers/work-item/get-work-item-transitions";
@@ -37,6 +37,11 @@ import {
 } from "@/lib/work-item-transition-reasons";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { WorkItemDetailRow } from "@/types/work-item";
+import MoveWorkItemDialog from "./move-work-item-dialog";
+import {
+  isClosingCategory,
+  useOpenChildrenGuard,
+} from "./open-children-warning";
 import { useWorkItemDeletion } from "./use-work-item-deletion";
 import {
   cachedWorkItem,
@@ -153,6 +158,8 @@ function CanonicalMenuActions({
     personId: string;
     holder: string;
   }>();
+  const [moveOpen, setMoveOpen] = useState(false);
+  const childrenGuard = useOpenChildrenGuard();
   const busy = useRef(false);
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const canAct = ready && !permission.isCheckingPermissions;
@@ -236,18 +243,10 @@ function CanonicalMenuActions({
           assigneeName: person?.name ?? null,
         });
       } else {
-        const result = await bulkWorkItemsOperation({
-          workspaceId: item.workspaceId,
-          workItemKeys: [item.key],
-          operation: "archive",
+        await archiveWorkItem({
+          key: item.key,
+          version: currentWorkItemVersion(client, item),
         });
-        if (!result.succeeded.includes(item.key))
-          throw new HttpError(
-            result.failed.some((entry) => entry.reason === "not found")
-              ? 404
-              : 422,
-            "Archive refused",
-          );
       }
     },
   });
@@ -280,6 +279,29 @@ function CanonicalMenuActions({
       (command.kind === "assign" && current.assigneeId === command.personId)
     )
       return;
+    if (command.kind === "state") {
+      // `RH-10` / `WI-18`: closing a parent that still has open children asks first.
+      const offer = offers.data?.find(
+        (candidate) => candidate.transitionId === command.transitionId,
+      );
+      if (
+        offer &&
+        isClosingCategory(offer.toStateCategory) &&
+        !isClosingCategory(item.stateCategory)
+      ) {
+        onClose();
+        void childrenGuard.guard({
+          key: item.key,
+          closing: true,
+          proceed: () => void run(command),
+        });
+        return;
+      }
+    }
+    void run(command);
+  }
+  async function run(command: Command) {
+    if (busy.current) return;
     busy.current = true;
     const intent = lifecycle.capture();
     onClose();
@@ -424,6 +446,18 @@ function CanonicalMenuActions({
         onArchive={
           canEdit ? () => void execute({ kind: "archive" }) : undefined
         }
+        extraArchiveAction={
+          canEdit && permission.canCreateTasks() ? (
+            <ContextMenuItem
+              onClick={() => {
+                onClose();
+                setMoveOpen(true);
+              }}
+            >
+              <span>{t("workItems:move.action")}</span>
+            </ContextMenuItem>
+          ) : undefined
+        }
         onDelete={
           canAct && deletion.canRequest
             ? () => {
@@ -446,6 +480,12 @@ function CanonicalMenuActions({
             </ContextMenuItem>
           ) : undefined
         }
+      />
+      {childrenGuard.dialog}
+      <MoveWorkItemDialog
+        item={item}
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
       />
       <AlertDialog
         open={Boolean(confirmationStillCurrent)}

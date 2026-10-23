@@ -1243,4 +1243,61 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
       .where(eq(schema.workItemTable.key, archivedItem.key));
     expect(archivedRow?.parentId).toBe(rowBeforeArchive?.parentId);
   });
+
+  // UNRUN (written without a database; the coordinator runs the integration suite).
+  it("RH-13: an epic type is a hierarchy root -- it may have children but setting its parent is 422, and a non-epic can still be reparented", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    const [epicType] = await db
+      .insert(schema.workItemTypeTable)
+      .values({
+        workspaceId: creator.workspace.id,
+        key: `epic-${randomUUID()}`,
+        name: "Epic",
+        category: "delivery",
+        isEpic: true,
+      })
+      .returning();
+    if (!epicType) throw new Error("epic type insert returned no row");
+    await ensureCreationWorkflow({
+      workspaceId: creator.workspace.id,
+      projectId: project.id,
+      typeId: epicType.id,
+    });
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const epic = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: epicType.id,
+        title: "Epic",
+      })
+    ).json()) as CreatedWorkItem;
+    const other = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Other parent",
+      })
+    ).json()) as CreatedWorkItem;
+    const child = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Child",
+      })
+    ).json()) as CreatedWorkItem;
+
+    // An epic may have children...
+    expect((await setParentRequest(app, child.key, epic.key)).status).toBe(200);
+    // ...but never a parent.
+    const refused = await setParentRequest(app, epic.key, other.key);
+    expect(refused.status).toBe(422);
+    expect(await refused.text()).toContain("RH-13");
+    const [epicRow] = await db
+      .select({ parentId: schema.workItemTable.parentId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, epic.key));
+    expect(epicRow?.parentId).toBeNull();
+    // A non-epic still moves freely.
+    expect((await setParentRequest(app, child.key, other.key)).status).toBe(
+      200,
+    );
+  });
 });

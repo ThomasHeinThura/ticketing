@@ -25,6 +25,7 @@ import {
   replaceWorkItemLabels,
 } from "../labels-repository";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import { archiveWorkItem } from "./archive-work-item";
 import {
   type AssignWorkItemInput,
   assignWorkItem,
@@ -293,84 +294,6 @@ async function updateBulkFields(
   }
 }
 
-async function archiveWorkItem(
-  key: string,
-  workspaceId: string,
-  actorId: string,
-  actorType: ActivityActorType,
-): Promise<void> {
-  const now = new Date();
-  await db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select({
-        id: workItemTable.id,
-        projectId: workItemTable.projectId,
-        deletedAt: workItemTable.deletedAt,
-        archivedAt: workItemTable.archivedAt,
-      })
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.key, key),
-          eq(workItemTable.workspaceId, workspaceId),
-          isNull(workItemTable.deletedAt),
-          isNull(workItemTable.archivedAt),
-        ),
-      )
-      .limit(1)
-      .for("update");
-
-    assertWorkItemStillLive(locked);
-    await assertProjectStillLive(tx, locked.projectId);
-
-    const [archived] = await tx
-      .update(workItemTable)
-      .set({
-        archivedAt: now,
-        version: sql`${workItemTable.version} + 1`,
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(workItemTable.id, locked.id),
-          isNull(workItemTable.deletedAt),
-          isNull(workItemTable.archivedAt),
-          projectNotDeletedClause,
-        ),
-      )
-      .returning();
-
-    if (!archived) {
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
-
-    await recordWorkItemActivity(tx, [
-      {
-        workspaceId,
-        workItemId: archived.id,
-        actorId,
-        actorType,
-        verb: "archived",
-        field: null,
-        oldValue: null,
-        newValue: now.toISOString(),
-      },
-    ]);
-
-    await appendAuditLog(tx, {
-      actorId,
-      actorType,
-      workspaceId,
-      projectId: archived.projectId,
-      action: "work_item.updated",
-      entityType: "work_item",
-      entityId: archived.id,
-      before: { archivedAt: null },
-      after: { archivedAt: now.toISOString() },
-    });
-  });
-}
-
 async function transitionWorkItemByKey(
   key: string,
   workspaceId: string,
@@ -441,7 +364,9 @@ async function runOne(
     return;
   }
   if (op.operation === "archive") {
-    await archiveWorkItem(id, workspaceId, actorId, actorType);
+    await archiveWorkItem(id, workspaceId, actorId, actorType, {
+      publishEffects: false,
+    });
     return;
   }
   await transitionWorkItemByKey(

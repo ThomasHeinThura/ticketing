@@ -2,13 +2,18 @@ import { closestCorners, DndContext, DragOverlay } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { useNavigate } from "@tanstack/react-router";
 import { Alert, AlertDescription, Button } from "@taskdesk/ui";
-import { useState } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { ListColumnSection } from "@/components/list-view/list-column-section";
 import TaskDragPreview from "@/components/list-view/task-drag-preview";
 import TaskRow from "@/components/list-view/task-row";
 import useGetProjectStates from "@/hooks/queries/project/use-get-project-states";
+import { useDndAccessibility } from "@/hooks/use-dnd-accessibility";
+import {
+  parseCollapsedGroups,
+  useProjectViewPreference,
+} from "@/hooks/use-project-view-preference";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { routes } from "@/lib/routes";
 import {
@@ -20,6 +25,7 @@ import type { ProjectWithTasks } from "@/types/project";
 import useWorkItemDragDrop from "./use-work-item-drag-drop";
 import WorkItemContextMenu from "./work-item-context-menu";
 import WorkItemList, { type WorkItemListProps } from "./work-item-list";
+import { WorkItemSlaBadge } from "./work-item-sla-badge";
 
 /** Kaneo presentation over canonical rows; all writes stay with canonical actions. */
 export default function WorkItemKaneoList({
@@ -46,7 +52,31 @@ export default function WorkItemKaneoList({
     dir: props.isFiltered && props.sort === "position" ? "asc" : props.dir,
     surface: "list",
   });
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const describeDnd = useCallback(
+    (id: string | number) =>
+      props.workItems?.find((item) => item.id === id)?.title ??
+      states.data?.find((state) => state.id === id)?.name,
+    [props.workItems, states.data],
+  );
+  const dndAccessibility = useDndAccessibility(describeDnd);
+  // `VW-15`: collapsed groups are a per-user, per-project preference, so they persist.
+  const collapsedPreference = useProjectViewPreference({
+    projectId,
+    name: "listGroups",
+    parse: parseCollapsedGroups,
+  });
+  const collapsedIds = collapsedPreference.value;
+  const setCollapsedPreference = collapsedPreference.set;
+  const toggleGroup = useCallback(
+    (groupId: string) => {
+      const current = collapsedIds ?? [];
+      const next = current.includes(groupId)
+        ? current.filter((id) => id !== groupId)
+        : [...current, groupId];
+      setCollapsedPreference(next.length > 0 ? next.slice(-50) : null);
+    },
+    [collapsedIds, setCollapsedPreference],
+  );
   const displayPreferences = useUserPreferencesStore(
     useShallow((state) => ({
       showAssignees: state.showAssignees,
@@ -95,6 +125,7 @@ export default function WorkItemKaneoList({
       className="w-full bg-muted/20"
     >
       <DndContext
+        accessibility={dndAccessibility}
         sensors={drag.sensors}
         collisionDetection={closestCorners}
         onDragStart={drag.startDrag}
@@ -121,14 +152,9 @@ export default function WorkItemKaneoList({
               <ListColumnSection
                 key={column.id}
                 column={column}
-                expanded={!collapsed[column.id]}
+                expanded={!collapsedIds?.includes(column.id)}
                 showDropIndicator={drag.overStateId === column.id}
-                onToggle={() =>
-                  setCollapsed((previous) => ({
-                    ...previous,
-                    [column.id]: !previous[column.id],
-                  }))
-                }
+                onToggle={() => toggleGroup(column.id)}
                 t={t}
               >
                 {column.tasks.map((task) => {
@@ -141,6 +167,7 @@ export default function WorkItemKaneoList({
                       projectSlug={workItemProjectSlug(item)}
                       taskIsCompleted={column.isFinal}
                       displayPreferences={displayPreferences}
+                      badges={<WorkItemSlaBadge sla={item.sla} />}
                       taskHref={routes.workItemDetail.build({ key: item.key })}
                       openTaskOnLinkClick={Boolean(props.onOpenItem)}
                       onOpenTask={() =>
@@ -188,6 +215,7 @@ export default function WorkItemKaneoList({
             />
           ) : null}
         </DragOverlay>
+        {drag.childrenDialog}
       </DndContext>
       {props.isLoadMoreError ? (
         <Alert

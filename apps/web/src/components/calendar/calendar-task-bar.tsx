@@ -1,4 +1,7 @@
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@taskdesk/ui";
+import { Check } from "lucide-react";
 import type { JSX } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
@@ -9,6 +12,10 @@ export type CalendarTask = PackableTask & {
   title: string;
   number: number | null;
   status: string;
+  /** Stored dates and version, so a drag can write them back (`VW-26`). */
+  startDate?: string | null;
+  dueDate?: string | null;
+  version?: number;
 };
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -32,12 +39,23 @@ type CalendarTaskBarProps = {
   segment: WeekSegment<CalendarTask>;
   projectSlug?: string;
   onOpenTask: (taskId: string) => void;
+  /** Index of the week row this segment is drawn in. */
+  weekIndex?: number;
+  /** The person may change dates: the bar can be dragged to another day. */
+  canReschedule?: boolean;
+  /** Selection mode is on: the bar toggles instead of opening (`VW-3`). */
+  selectionMode?: boolean;
+  isSelected?: boolean;
 };
 
 export default function CalendarTaskBar({
   segment,
   projectSlug,
   onOpenTask,
+  weekIndex = 0,
+  canReschedule = false,
+  selectionMode = false,
+  isSelected = false,
 }: CalendarTaskBarProps): JSX.Element {
   const { t } = useTranslation();
   const {
@@ -48,6 +66,13 @@ export default function CalendarTaskBar({
     continuesBefore,
     continuesAfter,
   } = segment;
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: `${task.id}@${weekIndex}`,
+      data: { task, startColumn: columnStart - 1, weekIndex },
+      disabled: !canReschedule,
+    });
 
   const taskKey =
     projectSlug && task.number != null
@@ -62,31 +87,45 @@ export default function CalendarTaskBar({
     <Button
       variant="ghost"
       type="button"
+      ref={setNodeRef}
+      {...(canReschedule ? attributes : {})}
+      {...(canReschedule ? listeners : {})}
       style={{
         gridColumn: `${columnStart} / ${columnEnd}`,
         // Row 1 holds the date numbers, so lanes start at row 2.
         gridRow: lane + 2,
+        transform: CSS.Translate.toString(transform),
       }}
       title={
         taskKey
           ? `${taskKey} · ${task.title} · ${range}`
           : `${task.title} · ${range}`
       }
-      aria-label={t("tasks:calendar.taskAriaLabel", {
-        title: task.title,
-        range,
-      })}
+      aria-label={
+        selectionMode
+          ? t("workItems:bulk.selectItem", { key: taskKey ?? task.title })
+          : t("tasks:calendar.taskAriaLabel", {
+              title: task.title,
+              range,
+            })
+      }
+      aria-pressed={selectionMode ? isSelected : undefined}
       data-task-status={task.status}
       onClick={() => onOpenTask(task.id)}
       className={cn(
-        "z-10 mb-0.5 flex h-6 min-w-0 items-center overflow-hidden border px-1.5 text-left text-[11px] font-medium leading-none text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-5",
+        isDragging ? "z-30 cursor-grabbing shadow-md" : "z-10",
+        "mb-0.5 flex h-6 min-w-0 items-center overflow-hidden border px-1.5 text-left text-[11px] font-medium leading-none text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-5",
         getCalendarTaskStatusClass(task.status),
+        isSelected && "ring-2 ring-ring",
         // Bars that run past a week edge lose their cap there so the two halves
         // read as one continuous span across rows.
         continuesBefore ? "rounded-l-none border-l-0" : "ml-1 rounded-l-md",
         continuesAfter ? "rounded-r-none border-r-0" : "mr-1 rounded-r-md",
       )}
     >
+      {isSelected ? (
+        <Check className="mr-1 size-3 shrink-0" aria-hidden="true" />
+      ) : null}
       <span className="truncate">{task.title}</span>
     </Button>
   );

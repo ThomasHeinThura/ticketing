@@ -74,15 +74,18 @@ export function packWeekLanes<TTask extends PackableTask>(
   tasks: TTask[],
   maxLanes: number,
 ): WeekLayout<TTask> {
-  const hiddenCountByDay = new Array<number>(DAYS_PER_WEEK).fill(0);
-  const tasksByDay: TTask[][] = Array.from({ length: DAYS_PER_WEEK }, () => []);
+  // Month and week rows have seven day columns; the day view has one. The row's own length
+  // is the column count so every view shares this packing.
+  const dayCount = week.length || DAYS_PER_WEEK;
+  const hiddenCountByDay = new Array<number>(dayCount).fill(0);
+  const tasksByDay: TTask[][] = Array.from({ length: dayCount }, () => []);
   const weekStart = week[0];
 
   if (!weekStart) {
     return { segments: [], hiddenCountByDay, tasksByDay };
   }
 
-  const lastDayIndex = DAYS_PER_WEEK - 1;
+  const lastDayIndex = dayCount - 1;
 
   const candidates = tasks
     .map((task) => {
@@ -165,4 +168,19 @@ export function packWeekLanes<TTask extends PackableTask>(
   }
 
   return { segments, hiddenCountByDay, tasksByDay };
+}
+
+/** The tasks that overlap at least one day of the grid, i.e. the ones a person can see. */
+export function tasksInWeeks<TTask extends PackableTask>(
+  weeks: Date[][],
+  tasks: TTask[],
+): TTask[] {
+  const first = weeks[0]?.[0];
+  const last = weeks.at(-1)?.at(-1);
+  if (!first || !last) return [];
+  return tasks.filter(
+    (task) =>
+      differenceInCalendarDays(task.scheduleEnd, first) >= 0 &&
+      differenceInCalendarDays(task.scheduleStart, last) <= 0,
+  );
 }

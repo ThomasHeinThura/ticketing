@@ -209,6 +209,79 @@ export const workItemPolicies = {
   // hierarchy.md` § API/Screens). Read-only, same reach shape as `GET
   // /api/work-items/{key}` above -- see `get-work-item-tree.ts`'s own doc comment for why
   // the whole returned tree is covered by this one row's reach check.
+  // Work item and checklist templates (`WI-5`): workspace-scoped; managing is a settings action,
+  // using one (the create route's `templateId`) needs only `work_item:create` on the project.
+  "GET /api/workspace/{workspaceId}/work-item-templates": {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "GET /api/workspace/{workspaceId}/work-item-templates/manage": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "POST /api/workspace/{workspaceId}/work-item-templates": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "PATCH /api/workspace/{workspaceId}/work-item-templates/{id}": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "POST /api/workspace/{workspaceId}/work-item-templates/{id}/archive": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "GET /api/workspace/{workspaceId}/checklist-templates": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "POST /api/workspace/{workspaceId}/checklist-templates": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "PATCH /api/workspace/{workspaceId}/checklist-templates/{id}": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "POST /api/workspace/{workspaceId}/checklist-templates/{id}/archive": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+
+  // Cross-project move (`RH-12`). The declared scope is the SOURCE work item (row reach through
+  // `requireWorkItemReach`); the handler additionally requires reach plus `work_item:create` and
+  // `work_item:update` on the TARGET project (`authoriseMoveTarget`).
+  "POST /api/v2/work-items/{key}/move": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/v2/work-items/{key}/archive": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
   "GET /api/work-items/{key}/children": {
     capability: "work_item:read",
     scope: "work_item",

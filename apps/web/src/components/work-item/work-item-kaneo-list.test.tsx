@@ -11,6 +11,11 @@ import useBulkSelectionStore from "@/store/bulk-selection";
 import type { WorkItemRow } from "@/types/work-item";
 import WorkItemKaneoList from "./work-item-kaneo-list";
 
+const preference = vi.hoisted(() => ({
+  set: vi.fn(),
+  initial: undefined as string[] | undefined,
+}));
+
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   rank: vi.fn(),
@@ -32,6 +37,27 @@ const mocks = vi.hoisted(() => ({
     isLoading: false,
   },
 }));
+vi.mock("@/hooks/use-project-view-preference", async (importOriginal) => {
+  const React = await import("react");
+  return {
+    ...(await importOriginal<
+      typeof import("@/hooks/use-project-view-preference")
+    >()),
+    // Stands in for the settings round trip: keeps what the list stores and reports each write.
+    useProjectViewPreference: () => {
+      const [value, setValue] = React.useState<string[] | undefined>(
+        preference.initial,
+      );
+      return {
+        value,
+        set: (next: string[] | null) => {
+          preference.set(next);
+          setValue(next ?? undefined);
+        },
+      };
+    },
+  };
+});
 vi.mock("@dnd-kit/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@dnd-kit/core")>();
   return {
@@ -135,6 +161,8 @@ beforeEach(() => {
   mocks.invalidate.mockReset();
   mocks.invalidate.mockResolvedValue(undefined);
   mocks.permission.mockClear();
+  preference.set.mockReset();
+  preference.initial = undefined;
   mocks.canRank = false;
   mocks.canTransition = false;
   mocks.checking = false;
@@ -163,6 +191,53 @@ describe("canonical Kaneo grouped list", () => {
     expect(
       screen.queryByRole("link", { name: "WLP-1 Title WLP-1" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the SLA badge only on rows that have one (VW-16)", () => {
+    const withSla = {
+      ...item("WLP-1", "open"),
+      sla: {
+        metric: "resolution" as const,
+        state: "at_risk" as const,
+        dueAt: "2026-10-23T12:00:00Z",
+        remainingMinutes: 90,
+        consumedPct: 80,
+      },
+    };
+    render(
+      <WorkItemKaneoList
+        {...baseProps()}
+        workItems={[withSla, item("WLP-2", "done")]}
+      />,
+    );
+    const badges = screen.getAllByTestId("work-item-sla-badge");
+    expect(badges).toHaveLength(1);
+    expect(badges[0]).toHaveAttribute("data-sla-state", "at_risk");
+    expect(badges[0].closest("[data-task-id]")).toHaveAttribute(
+      "data-task-id",
+      "id-WLP-1",
+    );
+  });
+
+  it("stores a collapsed group as a per-user preference and restores it (VW-15)", () => {
+    const { unmount } = render(<WorkItemKaneoList {...baseProps()} />);
+    fireEvent.click(screen.getByRole("button", { name: /^Open\s*1$/ }));
+    expect(preference.set).toHaveBeenLastCalledWith(["open"]);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Open\s*1$/ }));
+    expect(preference.set).toHaveBeenLastCalledWith(null);
+    unmount();
+
+    preference.initial = ["done"];
+    render(<WorkItemKaneoList {...baseProps()} />);
+    expect(screen.getByRole("button", { name: /^Done\s*1$/ })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: /^Open\s*1$/ })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 
   it("opens a normal title or row in the route-owned sheet while keeping real modified links", () => {

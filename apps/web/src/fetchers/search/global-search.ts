@@ -5,6 +5,9 @@ type SearchParams = {
   type?:
     | "all"
     | "tasks"
+    | "work_items"
+    | "people"
+    | "views"
     | "projects"
     | "workspaces"
     | "comments"

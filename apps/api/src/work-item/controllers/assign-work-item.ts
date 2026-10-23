@@ -5,6 +5,7 @@ import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { projectTable, workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { resolveWorkItemEventRecipients } from "../../notification/work-item-recipients";
 import {
   type ActivityActorType,
   type NewActivityInput,
@@ -15,6 +16,7 @@ import {
   projectNotDeletedClause,
 } from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
+import { ensureImplicitAssigneeWatcher } from "../implicit-watcher";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 
 /**
@@ -43,9 +45,9 @@ import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
  * WHAT THIS DOES NOT DO (each a later slice, named on the route): clearing an assignment
  * (`DELETE`, AS-2's self-unassign branch needs its own row-based predicate), the
  * `GET /api/projects/{id}/assignable` picker feed, bulk assign, default assignees
- * (AS-11/12), workflow effects (AS-13) and the `work_item.assigned`/`unassigned`
- * notification fan-out (AS-16/17 -- the EVENTS below are emitted; the fan-out is a
- * separate subscriber slice). Workflow-version stamping (`workflow_version_id`) is not
+ * (AS-11/12) and workflow effects (AS-13). The `work_item.assigned` notification fan-out
+ * (AS-16/18, previous holder per AS-3, watchers per WI-28) is written in the assignment
+ * transaction by `recordWorkItemEvent`'s `notify` hook. Workflow-version stamping (`workflow_version_id`) is not
  * touched by assignment in this slice.
  */
 
@@ -264,8 +266,14 @@ export async function assignWorkItem(
       after: { assigneeId: input.assigneeId },
     });
 
+    // `WI-29`: the new assignee is an implicit watcher (never un-mutes an opt-out).
+    await ensureImplicitAssigneeWatcher(tx, item.id, input.assigneeId);
+
+    // `AS-16`/`AS-18`/`AS-3`/`WI-28`: the event and its notification fan-out commit with
+    // the assignment (`notify` replaces the bare outbox write, never adds to it).
     realtimeEvent = await recordWorkItemEvent(tx, {
       kind: "work_item.assigned",
+      notify: { resolveRecipients: resolveWorkItemEventRecipients },
       workItemId: item.id,
       key: updated.key,
       workspaceId,
@@ -274,6 +282,7 @@ export async function assignWorkItem(
       actorType,
       customerVisible: true,
       payload: {
+        workItemId: item.id,
         key: updated.key,
         url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
         assigneeId: input.assigneeId,
@@ -291,8 +300,7 @@ export async function assignWorkItem(
 
   // `AS-16`/`AS-17`'s declared event (`events.md`: `assigneeId`, `previousAssigneeId`),
   // emitted AFTER commit -- the same after-commit placement every other `publishEvent`
-  // in this codebase uses. The notification fan-out that subscribes to it is a separate
-  // slice; this route's job is to make the fact true and publish it.
+  // in this codebase uses. The durable notification fan-out already committed above.
   await publishEvent("work_item.assigned", {
     workItemId: item.id,
     key: item.key,

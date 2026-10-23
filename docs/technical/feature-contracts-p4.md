@@ -1403,6 +1403,8 @@ here for `VW-2` (layout) and `VW-6` (density).
   | --- | --- | --- | --- | --- |
   | `density` | `global` | null | `density` | `"comfortable"` or `"compact"` |
   | `layout.<projectId>` | `project` | the project id | `layout` | `"board"`, `"list"` or `"table"` |
+  | `listGroups.<projectId>` | `project` | the project id | `listGroups` | the collapsed list group ids (state ids), a duplicate-free array of at most 50 (`VW-15`) |
+  | `columns.<projectId>` | `project` | the project id | `columns` | the table's chosen columns in display order, a non-empty duplicate-free subset of `key`, `title`, `state`, `assignee`, `priority`, `dueDate` (`VW-19`) |
 
   `theme` and `sidebar` are named in the Profile table above but have no specified value
   domain yet, so they are **not** whitelisted and a write of either is `422`. They are added by

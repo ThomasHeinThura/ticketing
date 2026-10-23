@@ -5,6 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import type db from "../database";
 import { schema } from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
+import { projectAncestryFor } from "../utils/project-ancestry";
 import {
   commentAccess,
   loadCommentCaller,
@@ -116,20 +117,29 @@ function snapshot(target: Target) {
     deletedAt: target.precise?.deletedAt ?? null,
   };
 }
-function readable(
+async function readable(
+  executor: object,
   identity: ResolvedIdentity,
   target: Pick<Target, "item" | "project">,
 ) {
+  const ancestorProjectIds = await projectAncestryFor(
+    executor,
+    identity,
+    target.item.workspaceId,
+    target.item.projectId,
+  );
   return (
     reaches(identity, {
       workspaceId: target.item.workspaceId,
       projectId: target.item.projectId,
       organisationId: target.project.organisationId,
+      ancestorProjectIds,
     }) &&
     can(identity, "work_item:read", "work_item", {
       workspaceId: target.item.workspaceId,
       workItemProjectId: target.item.projectId,
       workItemId: target.item.id,
+      ancestorProjectIds,
     })
   );
 }
@@ -154,7 +164,7 @@ export async function evaluateCommentDeletionAccess(
     target.project.organisationId !== input.organisationId
   )
     return { allowed: false, failure: "target_scope", status: 404 };
-  if (!readable(identity, target))
+  if (!(await readable(tx, identity, target)))
     return { allowed: false, failure: "reach", status: 404 };
   const [person] = await tx
     .select({ userId: schema.personTable.userId })
@@ -341,7 +351,8 @@ export async function commentDeletionReadSummary(
       ),
     )
     .limit(1);
-  if (!target || !readable(identity, target)) return undefined;
+  if (!target || !(await readable(executor, identity, target)))
+    return undefined;
   const summary = row.payloadSummary;
   if (!summary || typeof summary !== "object" || Array.isArray(summary))
     return undefined;

@@ -157,3 +157,122 @@ it("retains the signed checkpoint across a failed PUT for a same-ID retry", asyn
     body: file,
   });
 });
+
+describe("AT-1 comment target and AT-12 byte progress", () => {
+  it("presigns against a comment only when one is named", async () => {
+    mocks.fetch.mockImplementation(
+      async () => new Response(null, { status: 200 }),
+    );
+    mocks.complete.mockImplementation(async () =>
+      Response.json({ id: "file-1", state: "ready" }),
+    );
+    const file = new File(["a"], "a.txt");
+    await resumeWorkItemAttachment("HELP-1", file, undefined, vi.fn(), {
+      commentId: "comment-1",
+    });
+    expect(mocks.presign.mock.calls[0]?.[0]).toMatchObject({
+      param: { key: "HELP-1" },
+      json: { filename: "a.txt", commentId: "comment-1" },
+    });
+    mocks.presign.mockClear();
+    mocks.presign.mockImplementation(async () =>
+      Response.json({
+        attachmentId: "file-2",
+        uploadUrl: "https://storage.invalid/put",
+        uploadHeaders: {},
+      }),
+    );
+    await resumeWorkItemAttachment("HELP-1", file, undefined, vi.fn());
+    expect(mocks.presign.mock.calls[0]?.[0].json).not.toHaveProperty(
+      "commentId",
+    );
+  });
+
+  class FakeRequest {
+    static last: FakeRequest;
+    status = 200;
+    headers: Record<string, string> = {};
+    upload: { onprogress?: (event: unknown) => void } = {};
+    onload?: () => void;
+    onerror?: () => void;
+    onabort?: () => void;
+    method = "";
+    url = "";
+    body: unknown;
+    constructor() {
+      FakeRequest.last = this;
+    }
+    static reset() {
+      FakeRequest.last = undefined as unknown as FakeRequest;
+    }
+    open(method: string, url: string) {
+      this.method = method;
+      this.url = url;
+    }
+    setRequestHeader(name: string, value: string) {
+      this.headers[name] = value;
+    }
+    send(body: unknown) {
+      this.body = body;
+    }
+  }
+
+  it("reports upload bytes through XHR when progress is requested, using the signed headers", async () => {
+    FakeRequest.reset();
+    vi.stubGlobal("XMLHttpRequest", FakeRequest);
+    mocks.complete.mockResolvedValue(
+      Response.json({ id: "file-1", state: "ready" }),
+    );
+    mocks.presign.mockResolvedValue(
+      Response.json({
+        attachmentId: "file-1",
+        uploadUrl: "https://storage.invalid/put?token=secret",
+        uploadHeaders: { "content-type": "text/plain" },
+      }),
+    );
+    const onProgress = vi.fn();
+    const file = new File(["abcd"], "a.txt");
+    const done = resumeWorkItemAttachment("HELP-1", file, undefined, vi.fn(), {
+      onProgress,
+    });
+    await vi.waitFor(() => expect(FakeRequest.last?.body).toBe(file));
+    expect(FakeRequest.last.method).toBe("PUT");
+    expect(FakeRequest.last.headers).toEqual({ "content-type": "text/plain" });
+    FakeRequest.last.upload.onprogress?.({
+      lengthComputable: true,
+      loaded: 2,
+      total: 4,
+    });
+    FakeRequest.last.onload?.();
+    await done;
+    expect(onProgress).toHaveBeenNthCalledWith(1, 2, 4);
+    expect(onProgress).toHaveBeenLastCalledWith(4, 4);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("a refused XHR PUT is an HttpError that never contains the signed URL", async () => {
+    FakeRequest.reset();
+    vi.stubGlobal("XMLHttpRequest", FakeRequest);
+    mocks.presign.mockResolvedValue(
+      Response.json({
+        attachmentId: "file-1",
+        uploadUrl: "https://storage.invalid/put?token=secret",
+        uploadHeaders: {},
+      }),
+    );
+    const done = resumeWorkItemAttachment(
+      "HELP-1",
+      new File(["a"], "a.txt"),
+      undefined,
+      vi.fn(),
+      { onProgress: vi.fn() },
+    );
+    await vi.waitFor(() => expect(FakeRequest.last?.url).toBeTruthy());
+    FakeRequest.last.status = 403;
+    FakeRequest.last.onload?.();
+    const error = await done.catch((reason: unknown) => reason);
+    expect(error).toMatchObject({ status: 403 });
+    expect(String((error as Error).message)).not.toContain("secret");
+    expect(mocks.complete).not.toHaveBeenCalled();
+  });
+});

@@ -22178,6 +22178,8 @@
       "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
       "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#0",
       "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#1",
+      "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#0",
+      "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
     ],
@@ -22344,6 +22346,28 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
           "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/project/project-planning-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/project/project-planning-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
         ],
         "backdropLayers": []
       },
@@ -22534,6 +22558,8 @@
       "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
       "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#0",
       "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#1",
+      "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#0",
+      "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
     ],
@@ -22700,6 +22726,28 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
           "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/project/project-planning-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/project/project-planning-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
         ],
         "backdropLayers": []
       },
@@ -38285,182 +38333,6 @@
   },
   {
     "fg": "--color-muted-foreground",
-    "bg": "--color-muted",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "light"
-    ],
-    "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "text-muted-foreground",
-    "backgroundClass": {
-      "light": "hover:bg-muted"
-    },
-    "backdropLayers": [
-      "bg-background"
-    ],
-    "surfaceContext": "nearest-opaque-ancestor",
-    "occurrenceIds": [
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[1]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[1]::text-muted-foreground#0"
-    ],
-    "occurrences": [
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[1]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-        "surfaceContext": "nearest-opaque-ancestor",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[1]>hover:bg-muted"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[1]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-        "surfaceContext": "nearest-opaque-ancestor",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[1]>hover:bg-muted"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-muted-foreground",
-    "bg": "--color-muted",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "dark"
-    ],
-    "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "text-muted-foreground",
-    "backgroundClass": {
-      "dark": "hover:bg-muted"
-    },
-    "backdropLayers": [
-      "bg-background"
-    ],
-    "surfaceContext": "nearest-opaque-ancestor",
-    "occurrenceIds": [
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[1]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[1]::text-muted-foreground#0"
-    ],
-    "occurrences": [
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[1]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-        "surfaceContext": "nearest-opaque-ancestor",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[1]>hover:bg-muted"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[1]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-        "surfaceContext": "nearest-opaque-ancestor",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[1]>hover:bg-muted"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-foreground",
-    "bg": "--color-muted",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "light"
-    ],
-    "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "text-foreground",
-    "backgroundClass": {
-      "light": "hover:bg-muted"
-    },
-    "backdropLayers": [
-      "bg-background"
-    ],
-    "surfaceContext": "nearest-opaque-ancestor",
-    "occurrenceIds": [
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[0]::text-foreground#0"
-    ],
-    "occurrences": [
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[0]::text-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-        "surfaceContext": "nearest-opaque-ancestor",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[0]>hover:bg-muted"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-foreground",
-    "bg": "--color-muted",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "dark"
-    ],
-    "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "text-foreground",
-    "backgroundClass": {
-      "dark": "hover:bg-muted"
-    },
-    "backdropLayers": [
-      "bg-background"
-    ],
-    "surfaceContext": "nearest-opaque-ancestor",
-    "occurrenceIds": [
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[0]::text-foreground#0"
-    ],
-    "occurrences": [
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[0]::text-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-        "surfaceContext": "nearest-opaque-ancestor",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[0]>hover:bg-muted"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-muted-foreground",
     "bg": "--color-accent",
     "category": "body",
     "minRatio": 4.5,
@@ -43514,94 +43386,6 @@
         ],
         "backdropLayers": [
           "supports-[backdrop-filter]:bg-card/70",
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-secondary-foreground",
-    "bg": "--color-secondary",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "light"
-    ],
-    "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "text-secondary-foreground",
-    "backgroundClass": {
-      "light": "bg-secondary"
-    },
-    "backdropLayers": [
-      "hover:bg-muted",
-      "bg-background"
-    ],
-    "surfaceContext": "caller-chain",
-    "occurrenceIds": [
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]::text-secondary-foreground#0"
-    ],
-    "occurrences": [
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]::text-secondary-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]>bg-secondary",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "hover:bg-muted",
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-secondary-foreground",
-    "bg": "--color-secondary",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "dark"
-    ],
-    "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "text-secondary-foreground",
-    "backgroundClass": {
-      "dark": "bg-secondary"
-    },
-    "backdropLayers": [
-      "hover:bg-muted",
-      "bg-background"
-    ],
-    "surfaceContext": "caller-chain",
-    "occurrenceIds": [
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]::text-secondary-foreground#0"
-    ],
-    "occurrences": [
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]::text-secondary-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]>bg-secondary",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "hover:bg-muted",
           "bg-background"
         ]
       }
@@ -60375,6 +60159,690 @@
     ],
     "backdropLayers": [
       "bg-card"
+    ]
+  },
+  {
+    "fg": "--color-destructive-foreground",
+    "bg": "--color-card",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-destructive-foreground",
+    "backgroundClass": {
+      "dark": "bg-card/60"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+          "jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+          "component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+          "component-slot:apps/web/src/components/common/layout.tsx:default.children",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-destructive-foreground",
+    "bg": "--color-card",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx",
+    "backdrop": "--color-popover",
+    "foregroundClass": "text-destructive-foreground",
+    "backgroundClass": {
+      "dark": "bg-card/60"
+    },
+    "backdropLayers": [
+      "bg-popover"
+    ],
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
+          "apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+          "jsx:TaskDetailsSheetFrame[0]/WorkItemSidePaneBody[0]",
+          "component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+          "component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
+          "opaque-backdrop:bg-popover"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-destructive-foreground",
+    "bg": "--color-card",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-destructive-foreground",
+    "backgroundClass": {
+      "light": "bg-card/60"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+          "jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+          "component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+          "component-slot:apps/web/src/components/common/layout.tsx:default.children",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-destructive-foreground",
+    "bg": "--color-card",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx",
+    "backdrop": "--color-popover",
+    "foregroundClass": "text-destructive-foreground",
+    "backgroundClass": {
+      "light": "bg-card/60"
+    },
+    "backdropLayers": [
+      "bg-popover"
+    ],
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments-uploads.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
+          "apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+          "jsx:TaskDetailsSheetFrame[0]/WorkItemSidePaneBody[0]",
+          "component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+          "component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
+          "opaque-backdrop:bg-popover"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-destructive-foreground",
+    "bg": "--color-card",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-destructive-foreground",
+    "backgroundClass": {
+      "dark": "bg-card/70"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
+          "jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+          "jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+          "component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+          "component-slot:apps/web/src/components/common/layout.tsx:default.children",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
+          "jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-destructive-foreground",
+    "bg": "--color-card",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx",
+    "backdrop": "--color-popover",
+    "foregroundClass": "text-destructive-foreground",
+    "backgroundClass": {
+      "dark": "bg-card/70"
+    },
+    "backdropLayers": [
+      "bg-popover"
+    ],
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
+          "jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
+          "apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+          "jsx:TaskDetailsSheetFrame[0]/WorkItemSidePaneBody[0]",
+          "component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+          "component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
+          "opaque-backdrop:bg-popover"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-destructive-foreground",
+    "bg": "--color-card",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-destructive-foreground",
+    "backgroundClass": {
+      "light": "bg-card/70"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
+          "jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+          "jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+          "component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+          "component-slot:apps/web/src/components/common/layout.tsx:default.children",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
+          "jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-destructive-foreground",
+    "bg": "--color-card",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx",
+    "backdrop": "--color-popover",
+    "foregroundClass": "text-destructive-foreground",
+    "backgroundClass": {
+      "light": "bg-card/70"
+    },
+    "backdropLayers": [
+      "bg-popover"
+    ],
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
+          "jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
+          "component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
+          "apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+          "jsx:TaskDetailsSheetFrame[0]/WorkItemSidePaneBody[0]",
+          "component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+          "component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
+          "opaque-backdrop:bg-popover"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-accent",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/calendar/calendar-toolbar.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "dark": "bg-accent"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::hover:text-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::text-foreground#0",
+        "usage": "apps/web/src/components/calendar/calendar-toolbar.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
+          "jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::hover:text-foreground#0",
+        "usage": "apps/web/src/components/calendar/calendar-toolbar.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
+          "jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-accent",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/calendar/calendar-toolbar.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "light": "bg-accent"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::hover:text-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::text-foreground#0",
+        "usage": "apps/web/src/components/calendar/calendar-toolbar.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
+          "jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::hover:text-foreground#0",
+        "usage": "apps/web/src/components/calendar/calendar-toolbar.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
+          "jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-muted",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "dark": "bg-muted"
+    },
+    "backdropLayers": [
+      "bg-muted/40",
+      "bg-background"
+    ],
+    "surfaceContext": "nearest-opaque-ancestor",
+    "occurrenceIds": [
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/h2[0]::text-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/h2[0]::text-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/h2[0]>bg-muted"
+        ],
+        "backdropLayers": [
+          "bg-muted/40",
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-muted",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "light": "bg-muted"
+    },
+    "backdropLayers": [
+      "bg-muted/40",
+      "bg-background"
+    ],
+    "surfaceContext": "nearest-opaque-ancestor",
+    "occurrenceIds": [
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/h2[0]::text-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/h2[0]::text-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/h2[0]>bg-muted"
+        ],
+        "backdropLayers": [
+          "bg-muted/40",
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-secondary-foreground",
+    "bg": "--color-background",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-secondary-foreground",
+    "backgroundClass": {
+      "dark": "bg-background"
+    },
+    "surfaceContext": "route-layout-body",
+    "occurrenceIds": [
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]::text-secondary-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]::text-secondary-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId.tsx:/_layout/_authenticated/dashboard/workspace/$workspaceId",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      }
+    ]
+  },
+  {
+    "fg": "--color-secondary-foreground",
+    "bg": "--color-background",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-secondary-foreground",
+    "backgroundClass": {
+      "light": "bg-background"
+    },
+    "surfaceContext": "route-layout-body",
+    "occurrenceIds": [
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]::text-secondary-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/div[0]/span[0]::text-secondary-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId.tsx:/_layout/_authenticated/dashboard/workspace/$workspaceId",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      }
     ]
   }
 ]

@@ -25,6 +25,7 @@ import {
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
+import { projectKey } from "./helpers/project-key";
 import {
   createWorkspaceNative,
   deleteWorkspaceThroughApproval,
@@ -133,7 +134,7 @@ async function newWorld(): Promise<World> {
     workspaceId,
     name: "P",
     icon: "Folder",
-    slug: `p-${randomUUID().slice(0, 8)}`,
+    slug: projectKey(),
   });
   expect(project.status).toBe(200);
   return { app, owner, workspaceId, projectId: project.json.id as string };
@@ -211,7 +212,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
         await call(app, owner.cookie, "PUT", `/api/project/${projectId}`, {
           name: "Renamed",
           icon: "Folder",
-          slug: "p",
+          slug: "OWNREN",
           description: "d",
         })
       ).status,

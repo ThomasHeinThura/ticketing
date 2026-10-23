@@ -4,8 +4,16 @@ import { translate } from "@/test/en-translation";
 import WorkItemBoardView from "./work-item-board-view";
 
 const state = vi.hoisted(() => ({
-  perms: { transition: false, rank: false, update: true, checking: false },
+  perms: {
+    transition: false,
+    rank: false,
+    update: true,
+    assign: false,
+    setPriority: false,
+    checking: false,
+  },
   boardProps: undefined as Record<string, unknown> | undefined,
+  groupedProps: undefined as Record<string, unknown> | undefined,
   pages: [] as unknown[],
   itemsLoading: false,
   queryProps: undefined as Record<string, unknown> | undefined,
@@ -24,6 +32,12 @@ vi.mock("./work-item-board", () => ({
   default: (props: Record<string, unknown>) => {
     state.boardProps = props;
     return <div data-testid="board" />;
+  },
+}));
+vi.mock("./work-item-grouped-board", () => ({
+  default: (props: Record<string, unknown>) => {
+    state.groupedProps = props;
+    return <div data-testid="grouped-board" />;
   },
 }));
 vi.mock("@/hooks/queries/work-item/use-get-board-work-items", () => ({
@@ -53,6 +67,8 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     canTransitionTasks: () => state.perms.transition,
     canRankTasks: () => state.perms.rank,
     canUpdateTasks: () => state.perms.update,
+    canAssignTasks: () => state.perms.assign,
+    canSetPriorityTasks: () => state.perms.setPriority,
     isCheckingPermissions: state.perms.checking,
   }),
 }));
@@ -80,9 +96,12 @@ beforeEach(() => {
     transition: false,
     rank: false,
     update: true,
+    assign: false,
+    setPriority: false,
     checking: false,
   };
   state.boardProps = undefined;
+  state.groupedProps = undefined;
   state.pages = [{ items: [row("WLP-1"), row("WLP-2")] }];
   state.itemsLoading = false;
 });
@@ -124,6 +143,8 @@ describe("WorkItemBoardView strict capability wiring", () => {
       transition: true,
       rank: true,
       update: true,
+      assign: true,
+      setPriority: true,
       checking: true,
     };
     mount();
@@ -169,4 +190,67 @@ it("does not present filtered key pages as manually ranked cards", () => {
   mount({ filter: "priority = high", sort: "position", dir: "desc" });
   expect(state.queryProps).toMatchObject({ sort: "key", dir: "asc" });
   expect(state.boardProps).toMatchObject({ sort: "key", dir: "asc" });
+});
+
+describe("WorkItemBoardView grouping (VW-13)", () => {
+  it("renders the state board by default and for the state grouping", () => {
+    mount();
+    expect(screen.getByTestId("board")).toBeInTheDocument();
+    expect(screen.queryByTestId("grouped-board")).toBeNull();
+    cleanup();
+    mount({ group: "state" });
+    expect(screen.getByTestId("board")).toBeInTheDocument();
+  });
+
+  it("renders the grouped board for assignee and priority, from the same rows", () => {
+    mount({ group: "assignee" });
+    expect(screen.queryByTestId("board")).toBeNull();
+    expect(state.groupedProps).toMatchObject({
+      projectId: "proj_1",
+      field: "assignee",
+    });
+    expect(state.groupedProps?.workItems).toHaveLength(2);
+    cleanup();
+    mount({ group: "priority" });
+    expect(state.groupedProps).toMatchObject({ field: "priority" });
+  });
+
+  it("derives each grouped capability from its own flag and grants nothing while loading", () => {
+    state.perms = {
+      ...state.perms,
+      update: true,
+      assign: false,
+      setPriority: true,
+    };
+    mount({ group: "priority" });
+    expect(state.groupedProps).toMatchObject({
+      canAssign: true,
+      canUnassignAny: false,
+      canUpdate: true,
+      canSetPriority: true,
+      peopleEnabled: true,
+    });
+    cleanup();
+    state.perms = {
+      ...state.perms,
+      update: false,
+      assign: false,
+      setPriority: true,
+    };
+    mount({ group: "priority" });
+    expect(state.groupedProps).toMatchObject({
+      canAssign: false,
+      canUpdate: false,
+    });
+    cleanup();
+    state.perms = { ...state.perms, assign: true, checking: true };
+    mount({ group: "assignee" });
+    expect(state.groupedProps).toMatchObject({
+      canAssign: false,
+      canUnassignAny: false,
+      canUpdate: false,
+      canSetPriority: false,
+      peopleEnabled: false,
+    });
+  });
 });

@@ -6,8 +6,10 @@ import useGetProjectStates from "@/hooks/queries/project/use-get-project-states"
 import useGetBoardWorkItems from "@/hooks/queries/work-item/use-get-board-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import type { WorkItemGroup } from "@/lib/project-board-search";
 import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
 import WorkItemBoard from "./work-item-board";
+import WorkItemGroupedBoard from "./work-item-grouped-board";
 
 const WorkItemListRealtime = lazy(
   () => import("@/components/work-item/work-item-list-realtime"),
@@ -27,6 +29,7 @@ export default function WorkItemBoardView({
   filter,
   sort = "position",
   dir = "asc",
+  group = "state",
   onErrorChange,
   realtimeProjectId,
   realtimeStatus,
@@ -42,6 +45,8 @@ export default function WorkItemBoardView({
   filter?: string;
   sort?: WorkItemSortField;
   dir?: WorkItemSortDirection;
+  /** `VW-13`: how the columns are split; state is the original board. */
+  group?: WorkItemGroup;
   onErrorChange?: (error: unknown) => void;
   realtimeProjectId: string | undefined;
   realtimeStatus:
@@ -58,8 +63,14 @@ export default function WorkItemBoardView({
   onOpenItem?: (key: string) => void;
 }) {
   const { t } = useTranslation();
-  const { canTransitionTasks, canRankTasks, isCheckingPermissions } =
-    useWorkspacePermission(workspaceId, project.id);
+  const {
+    canTransitionTasks,
+    canRankTasks,
+    canAssignTasks,
+    canUpdateTasks,
+    canSetPriorityTasks,
+    isCheckingPermissions,
+  } = useWorkspacePermission(workspaceId, project.id);
   const status =
     realtimeStatus && realtimeStatus.projectId === project.id
       ? realtimeStatus.status
@@ -76,6 +87,7 @@ export default function WorkItemBoardView({
     realtimeStatus: status,
   });
   const states = useGetProjectStates(project.id);
+  const grouped = group === "assignee" || group === "priority";
   const workItems = useMemo(
     () => items.data?.pages.flatMap((page) => page.items),
     [items.data],
@@ -114,31 +126,60 @@ export default function WorkItemBoardView({
           </AlertDescription>
         </Alert>
       ) : null}
-      <WorkItemBoard
-        projectId={project.id}
-        sort={effectiveSort}
-        dir={effectiveDir}
-        states={states.data}
-        statesError={states.isError}
-        workItems={workItems}
-        isLoading={isLoading}
-        isError={isError}
-        onRetry={() => {
-          void refetchItems();
-          void refetchStates();
-        }}
-        hasMore={items.hasNextPage}
-        isLoadingMore={items.isFetchingNextPage}
-        onLoadMore={() => {
-          void items.fetchNextPage();
-        }}
-        canSelect={canSelect}
-        canTransition={!isCheckingPermissions && canTransitionTasks()}
-        canRank={!isCheckingPermissions && canRankTasks()}
-        selectedKeys={selectedKeys}
-        onSelectionChange={onSelectionChange}
-        onOpenItem={onOpenItem}
-      />
+      {grouped ? (
+        <WorkItemGroupedBoard
+          projectId={project.id}
+          field={group === "priority" ? "priority" : "assignee"}
+          workItems={workItems}
+          peopleEnabled={!isCheckingPermissions}
+          isLoading={items.isLoading}
+          isError={items.isError}
+          onRetry={() => {
+            void refetchItems();
+          }}
+          hasMore={items.hasNextPage}
+          isLoadingMore={items.isFetchingNextPage}
+          onLoadMore={() => {
+            void items.fetchNextPage();
+          }}
+          canSelect={canSelect}
+          canAssign={
+            !isCheckingPermissions && (canAssignTasks() || canUpdateTasks())
+          }
+          canUnassignAny={!isCheckingPermissions && canAssignTasks()}
+          canUpdate={!isCheckingPermissions && canUpdateTasks()}
+          canSetPriority={!isCheckingPermissions && canSetPriorityTasks()}
+          selectedKeys={selectedKeys}
+          onSelectionChange={onSelectionChange}
+          onOpenItem={onOpenItem}
+        />
+      ) : (
+        <WorkItemBoard
+          projectId={project.id}
+          sort={effectiveSort}
+          dir={effectiveDir}
+          states={states.data}
+          statesError={states.isError}
+          workItems={workItems}
+          isLoading={isLoading}
+          isError={isError}
+          onRetry={() => {
+            void refetchItems();
+            void refetchStates();
+          }}
+          hasMore={items.hasNextPage}
+          isLoadingMore={items.isFetchingNextPage}
+          onLoadMore={() => {
+            void items.fetchNextPage();
+          }}
+          canSelect={canSelect}
+          canTransition={!isCheckingPermissions && canTransitionTasks()}
+          canRank={!isCheckingPermissions && canRankTasks()}
+          selectedKeys={selectedKeys}
+          onSelectionChange={onSelectionChange}
+          onOpenItem={onOpenItem}
+        />
+      )}
       {!isLoading && realtimeProjectId === project.id ? (
         <Suspense fallback={<WorkItemListLoading />}>
           <WorkItemListRealtime

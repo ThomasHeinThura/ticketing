@@ -3452,6 +3452,21 @@ Accepted/proposed below describes the original architectural decision, not imple
 | [0014](#0014-limited-home-realm-disclosure) | Customer home-realm routing accepts limited domain-specific disclosure | Accepted |
 | [0015](#0015-membership-grant-provenance) | Membership grant provenance and effective-role projection | Proposed — Thomas approval required, not granted |
 
+<a id="owner-decisions-2026-10"></a>
+### Dated owner decisions, 22–23 October 2026
+
+Recorded in chat by Thomas, or taken by the coordinator under his standing instruction of 22 October to approve the recommended option (marked *standing*). Each row names the requirement it governs.
+
+| Date | Decision | Governs | Basis |
+| --- | --- | --- | --- |
+| 22 Oct | The work-item composer is neutral (no warning-tinted card); Internal/Public is a toggle plus an explanatory sentence | `CA-5`, UI-04 | Thomas rejected the tinted composer |
+| 22 Oct | "Git update" means commit and push the feature branch (never main, never force); the Technexus image is built by pushing, opening the PR and letting CI scan and build, after local SIT passes | process | Thomas |
+| 23 Oct | Staged attachment cards instead of inline pasted images in the create dialog until P1 completes inline embedding | `AT-11`, `AT-13` | Thomas |
+| 23 Oct | `PA-1a` exemptions (unlinks, own settings, session-only configuration rows, revocation under another authenticator) | `PA-1`, `PA-4` | Thomas |
+| 23 Oct | Children keep `parent_id` through the 30-day restore window and are detached at purge; a project with live child projects cannot be deleted | `RH-11`, `PR-16`, `PR-20` | standing |
+| 23 Oct | User-preference keys `listGroups.<projectId>` and `columns.<projectId>` | `VW-15`, `VW-19` | standing |
+| 23 Oct | Inherited project membership is evaluated at read time, with authority from the nearest ancestor grant when the child has none | `PR-2`, `PR-3`, `PR-4` | standing |
+
 <a id="decision-provenance"></a>
 ## Precedence and source conflicts
 

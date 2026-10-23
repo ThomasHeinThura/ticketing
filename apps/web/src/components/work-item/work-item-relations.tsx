@@ -125,11 +125,13 @@ export default function WorkItemRelations({
       }),
     onSuccess: async (_result, targetKey) => {
       await Promise.all(
-        [itemKey, targetKey].map((key) =>
+        [itemKey, targetKey].flatMap((key) => [
           cache.invalidateQueries({
             queryKey: ["work-items", "relations", workspaceId, key],
           }),
-        ),
+          // `RH-17`: the detail's blocked badge reads `blockedByOpenCount`.
+          cache.invalidateQueries({ queryKey: ["work-items", "detail", key] }),
+        ]),
       );
       if (activeScope.current === scope)
         update({ ...state, picker: undefined, query: undefined });

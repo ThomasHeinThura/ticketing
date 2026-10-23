@@ -1389,4 +1389,232 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       .where(eq(schema.attachmentTable.id, presigned.attachmentId));
     expect(row?.state).toBe("pending");
   });
+
+  /** Presign, PUT, complete one PNG; returns the presign + complete responses' decoded bodies. */
+  async function uploadPng(
+    app: ReturnType<typeof createApp>["app"],
+    key: string,
+    extra: Record<string, unknown>,
+  ) {
+    const presign = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "shot.png",
+          contentType: "image/png",
+          size: PNG_BYTES.length,
+          ...extra,
+        }),
+      },
+    );
+    if (presign.status !== 200) return { presign };
+    const presigned = (await presign.json()) as {
+      attachmentId: string;
+      uploadUrl: string;
+      uploadHeaders: Record<string, string>;
+    };
+    await app.request(presigned.uploadUrl, {
+      method: "PUT",
+      headers: presigned.uploadHeaders,
+      body: PNG_BYTES,
+    });
+    const complete = await app.request(
+      `/api/attachments/${presigned.attachmentId}/complete`,
+      { method: "POST" },
+    );
+    return { presign, presigned, complete };
+  }
+
+  async function insertComment(input: {
+    workspaceId: string;
+    key: string;
+    authorId: string;
+    visibility: "public" | "internal";
+  }) {
+    const [item] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, input.key));
+    return requireRow(
+      await db
+        .insert(schema.commentTable)
+        .values({
+          workspaceId: input.workspaceId,
+          workItemId: requireRow([item], "comment parent").id,
+          authorId: input.authorId,
+          actorType: "person",
+          body: { type: "doc", content: [{ type: "paragraph" }] },
+          visibility: input.visibility,
+        })
+        .returning(),
+      "insertComment",
+    );
+  }
+
+  it("AT-1/AT-4: a comment file presigns, completes, lists under its comment and is internal on an internal comment whatever its flag says", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const person = await addPersonForUser(creator.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const internal = await insertComment({
+      workspaceId: workspace.id,
+      key,
+      authorId: person.id,
+      visibility: "internal",
+    });
+    const publicComment = await insertComment({
+      workspaceId: workspace.id,
+      key,
+      authorId: person.id,
+      visibility: "public",
+    });
+
+    const onInternal = await uploadPng(app, key, {
+      commentId: internal.id,
+      customerVisible: true,
+    });
+    expect(onInternal.presign.status).toBe(200);
+    expect(onInternal.complete?.status).toBe(200);
+    // AT-3: a public comment's file is customer-visible only on explicit opt-in.
+    const onPublic = await uploadPng(app, key, {
+      commentId: publicComment.id,
+      customerVisible: true,
+    });
+    expect(onPublic.complete?.status).toBe(200);
+
+    const rows = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.commentId, internal.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.workItemId).toBeNull();
+    // AT-4: stored internal although the request asked for a customer-visible file.
+    expect(rows[0]?.customerVisible).toBe(false);
+    const publicRows = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.commentId, publicComment.id));
+    expect(publicRows[0]?.customerVisible).toBe(true);
+
+    const list = (await (
+      await app.request(`/api/work-items/${key}/attachments`)
+    ).json()) as Array<{
+      id: string;
+      commentId: string | null;
+      workItemId: string;
+      customerVisible: boolean;
+      canDelete: boolean;
+    }>;
+    const listed = list.find(
+      (a) => a.id === onInternal.presigned?.attachmentId,
+    );
+    expect(listed?.commentId).toBe(internal.id);
+    expect(listed?.workItemId).toBeTruthy();
+    expect(listed?.customerVisible).toBe(false);
+    // Deletion approval resolves work-item parents only.
+    expect(listed?.canDelete).toBe(false);
+
+    // Reach resolves through the comment: download works, and the activity row follows AT-4.
+    const download = await app.request(
+      `/api/attachments/${onInternal.presigned?.attachmentId}`,
+      { redirect: "manual" },
+    );
+    expect(download.status).toBe(302);
+    const activity = await db
+      .select()
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.verb, "attachment.added"));
+    expect(activity).toHaveLength(2);
+    expect(
+      activity.find(
+        (row) =>
+          (row.payload as { commentId?: string } | null)?.commentId ===
+          internal.id,
+      )?.visibility,
+    ).toBe("internal");
+    expect(
+      activity.find(
+        (row) =>
+          (row.payload as { commentId?: string } | null)?.commentId ===
+          publicComment.id,
+      )?.visibility,
+    ).toBe("public");
+  });
+
+  it("P1-22 / AT-3 (UNRUN: DB integration): a staff file on a public comment defaults to NOT customer-visible", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const person = await addPersonForUser(creator.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const publicComment = await insertComment({
+      workspaceId: workspace.id,
+      key,
+      authorId: person.id,
+      visibility: "public",
+    });
+    const upload = await uploadPng(app, key, { commentId: publicComment.id });
+    expect(upload.complete?.status).toBe(200);
+    const [row] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.commentId, publicComment.id));
+    expect(row?.customerVisible).toBe(false);
+  });
+
+  it("AT-1: only the comment's author can attach, the comment must belong to the item and be live, and a tombstone hides its files", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const person = await addPersonForUser(creator.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const { key: otherKey } = await createWorkItem(app, project.id, type.id);
+
+    // A different person (own workspace is irrelevant: comment.author_id has no FK).
+    const other = await createWorkspaceMember({ role: "admin" });
+    const otherPerson = await addPersonForUser(other.user.id);
+    const theirs = await insertComment({
+      workspaceId: workspace.id,
+      key,
+      authorId: otherPerson.id,
+      visibility: "internal",
+    });
+    const mine = await insertComment({
+      workspaceId: workspace.id,
+      key,
+      authorId: person.id,
+      visibility: "internal",
+    });
+
+    const foreign = await uploadPng(app, key, { commentId: theirs.id });
+    expect(foreign.presign.status).toBe(403);
+    const wrongItem = await uploadPng(app, otherKey, { commentId: mine.id });
+    expect(wrongItem.presign.status).toBe(404);
+    const unknown = await uploadPng(app, key, { commentId: randomUUID() });
+    expect(unknown.presign.status).toBe(404);
+
+    const ok = await uploadPng(app, key, { commentId: mine.id });
+    expect(ok.complete?.status).toBe(200);
+    await db
+      .update(schema.commentTable)
+      .set({ deletedAt: new Date(), body: null })
+      .where(eq(schema.commentTable.id, mine.id));
+
+    const list = (await (
+      await app.request(`/api/work-items/${key}/attachments`)
+    ).json()) as Array<{ id: string }>;
+    expect(list.map((a) => a.id)).not.toContain(ok.presigned?.attachmentId);
+    expect(
+      (
+        await app.request(`/api/attachments/${ok.presigned?.attachmentId}`, {
+          redirect: "manual",
+        })
+      ).status,
+    ).toBe(404);
+    const afterTombstone = await uploadPng(app, key, { commentId: mine.id });
+    expect(afterTombstone.presign.status).toBe(404);
+  });
 });

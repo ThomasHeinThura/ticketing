@@ -10,7 +10,11 @@ const m = vi.hoisted(() => ({
   deleteItem: vi.fn(),
   deleteTree: vi.fn(),
   retained: vi.fn(),
+  detach: vi.fn(),
+  readProject: vi.fn(),
+  lockHierarchy: vi.fn(),
 }));
+const LOCKED = { id: "wi", projectId: "p-0" };
 
 /** Behaves like the repository: pages past ids the run already attempted. */
 function paged(ids: string[]) {
@@ -32,10 +36,16 @@ vi.mock("../../../apps/api/src/scheduler/soft-delete-purge.repository", () => ({
   listWorkItemPurgeCandidates: m.listItems,
   lockEligibleWorkItem: m.lockItem,
   lockEligibleProject: m.lockProject,
+  readWorkItemProjectId: m.readProject,
   releaseAttachmentsForPurge: m.release,
   deleteWorkItemRow: m.deleteItem,
   deleteProjectTree: m.deleteTree,
   countRowsRetainedBySharedObject: m.retained,
+}));
+
+vi.mock("../../../apps/api/src/scheduler/soft-delete-purge-detach", () => ({
+  detachChildrenForPurge: m.detach,
+  lockWorkItemHierarchyForProject: m.lockHierarchy,
 }));
 
 import {
@@ -55,14 +65,25 @@ beforeEach(() => {
     m.deleteItem,
     m.deleteTree,
     m.retained,
+    m.detach,
+    m.readProject,
+    m.lockHierarchy,
   ])
     fn.mockReset();
+  m.readProject.mockResolvedValue(LOCKED.projectId);
+  m.lockHierarchy.mockImplementation(async () => {
+    m.calls.push("hierarchy-lock");
+  });
+  m.detach.mockImplementation(async () => {
+    m.calls.push("detach");
+    return 0;
+  });
   m.retained.mockResolvedValue({ workItems: 0, projects: 0 });
   m.listProjects.mockImplementation(paged([]));
   m.listItems.mockImplementation(paged([]));
   m.lockItem.mockImplementation(async () => {
     m.calls.push("lock");
-    return true;
+    return LOCKED;
   });
   m.lockProject.mockResolvedValue(true);
   m.release.mockResolvedValue(0);
@@ -76,11 +97,50 @@ beforeEach(() => {
 describe("work item purge eligibility under lock", () => {
   it("fences legal holds before re-checking eligibility and only then deletes", async () => {
     await expect(purgeSoftDeletedWorkItem("wi-1")).resolves.toBe("purged");
-    expect(m.calls).toEqual(["fence", "lock", "delete"]);
+    expect(m.calls).toEqual([
+      "fence",
+      "hierarchy-lock",
+      "lock",
+      "detach",
+      "delete",
+    ]);
   });
 
-  it("leaves a row that became held, restored or gained children since the scan", async () => {
-    m.lockItem.mockResolvedValue(false);
+  it("detaches children (P1-23) after the row lock and before deleting the parent, in the same transaction", async () => {
+    m.detach.mockImplementation(async () => {
+      m.calls.push("detach");
+      return 2;
+    });
+    await expect(purgeSoftDeletedWorkItem("wi-1")).resolves.toBe("purged");
+    expect(m.detach).toHaveBeenCalledWith({ tx: true }, LOCKED);
+    expect(m.calls.indexOf("detach")).toBeGreaterThan(m.calls.indexOf("lock"));
+    expect(m.calls.indexOf("detach")).toBeLessThan(m.calls.indexOf("delete"));
+  });
+
+  it("takes the hierarchy advisory lock before the row lock (Q10 lock order)", async () => {
+    await purgeSoftDeletedWorkItem("wi-1");
+    expect(m.calls.indexOf("hierarchy-lock")).toBeLessThan(
+      m.calls.indexOf("lock"),
+    );
+    expect(m.lockHierarchy).toHaveBeenCalledWith({ tx: true }, "p-0");
+  });
+
+  it("leaves a row that moved project between the unlocked read and the row lock", async () => {
+    m.readProject.mockResolvedValue("p-other");
+    await expect(purgeSoftDeletedWorkItem("wi-1")).resolves.toBe(
+      "no_longer_eligible",
+    );
+    expect(m.deleteItem).not.toHaveBeenCalled();
+  });
+
+  it("does not detach children of a row that is still waiting for attachments", async () => {
+    m.release.mockResolvedValue(1);
+    await purgeSoftDeletedWorkItem("wi-1");
+    expect(m.detach).not.toHaveBeenCalled();
+  });
+
+  it("leaves a row that became held, restored since the scan", async () => {
+    m.lockItem.mockResolvedValue(null);
     await expect(purgeSoftDeletedWorkItem("wi-1")).resolves.toBe(
       "no_longer_eligible",
     );
@@ -136,9 +196,9 @@ describe("batch run", () => {
     m.listProjects.mockImplementation(paged(["p-1"]));
     m.listItems.mockImplementation(paged(["wi-1", "wi-2", "wi-3"]));
     m.lockItem
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true);
+      .mockResolvedValueOnce(LOCKED)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(LOCKED);
     m.release
       .mockResolvedValueOnce(0) // project
       .mockResolvedValueOnce(0) // wi-1

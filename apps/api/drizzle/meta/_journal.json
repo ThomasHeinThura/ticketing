@@ -939,6 +939,20 @@
 			"when": 1792659423294,
 			"tag": "0133_attachment_object_gc",
 			"breakpoints": true
+		},
+		{
+			"idx": 134,
+			"version": "7",
+			"when": 1792659424294,
+			"tag": "0134_project_hierarchy_and_defaults",
+			"breakpoints": true
+		},
+		{
+			"idx": 135,
+			"version": "7",
+			"when": 1792659425294,
+			"tag": "0135_work_item_templates",
+			"breakpoints": true
 		}
 	]
 }

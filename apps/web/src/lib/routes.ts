@@ -35,6 +35,24 @@ import {
 
 export * from "./work-item-list-search";
 
+import { parseWorkItemGroup, type WorkItemGroup } from "./project-board-search";
+
+/**
+ * The `/work` route's search: the shared work-item list state plus the board's grouping
+ * (`VW-13`, `VW-1`). `group` lives here, not in the shared list codec, because saved views
+ * share that codec and a grouping is not part of a saved query. `state` is the default and a
+ * link that names it still parses; the builder never writes it.
+ */
+export type WorkItemWorkSearch = WorkItemListSearch & { group?: WorkItemGroup };
+
+export function parseWorkItemWorkSearch(raw: unknown): WorkItemWorkSearch {
+  const group = parseWorkItemGroup((raw as { group?: unknown } | null)?.group);
+  return {
+    ...parseWorkItemListSearch(raw),
+    ...(group ? { group } : {}),
+  };
+}
+
 export type LabelCatalogueSearch = {
   action?: "create" | "edit" | "delete";
   label?: string;
@@ -488,6 +506,31 @@ export function parseCannedResponseSearch(raw: unknown): CannedResponseSearch {
   };
 }
 
+export type WorkItemTemplateSearch = SettingsTextFilterSearch & {
+  /** The template being edited; `new` opens the create form. */
+  id?: string;
+  /** Which library the page shows; templates are the default. */
+  library?: "checklists";
+};
+export function parseWorkItemTemplateSearch(
+  raw: unknown,
+): WorkItemTemplateSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const id =
+    typeof value.id === "string" &&
+    value.id.length <= 200 &&
+    !value.id.includes("\u0000")
+      ? value.id.trim()
+      : undefined;
+  return {
+    ...parseSettingsTextFilterSearch(raw),
+    ...(value.library === "checklists"
+      ? { library: "checklists" as const }
+      : {}),
+    ...(id ? { id } : {}),
+  };
+}
+
 export function parseSettingsTextFilterSearch(
   raw: unknown,
 ): SettingsTextFilterSearch {
@@ -751,14 +794,16 @@ export const routes = {
     path: "/agent/projects/$projectKey/work" as const,
     build: (
       params: { projectKey: string },
-      search: Partial<WorkItemListSearch> = {},
+      search: Partial<WorkItemWorkSearch> = {},
     ) => {
-      const resolved = parseWorkItemListSearch(search);
+      const resolved = parseWorkItemWorkSearch(search);
       const query = new URLSearchParams({
         layout: resolved.layout,
         sort: resolved.sort,
         dir: resolved.dir,
       });
+      if (resolved.group && resolved.group !== "state")
+        query.set("group", resolved.group);
       appendWorkItemQueryState(query, {
         filter: resolved.filter,
         filterMode: resolved.filterMode,
@@ -1020,6 +1065,14 @@ export const routes = {
       const resolved = parseCannedResponseSearch(search);
       const query = new URLSearchParams(resolved).toString();
       return `/agent/settings/canned-responses${query ? `?${query}` : ""}`;
+    },
+  },
+  workspaceWorkItemTemplates: {
+    path: "/agent/settings/work-item-templates" as const,
+    build: (search: WorkItemTemplateSearch = {}) => {
+      const resolved = parseWorkItemTemplateSearch(search);
+      const query = new URLSearchParams(resolved).toString();
+      return `/agent/settings/work-item-templates${query ? `?${query}` : ""}`;
     },
   },
   workspaceDangerZone: {

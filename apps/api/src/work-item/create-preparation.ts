@@ -8,6 +8,7 @@ import {
   type ResolveIdentityInput,
   resolveIdentity,
 } from "../permissions/resolve-identity";
+import { loadProjectAncestorIdsFor } from "../project/hierarchy.repository";
 import { dbNowUtc } from "../utils/db-time";
 import {
   apiKeyCapabilitySubset,
@@ -107,14 +108,30 @@ export async function prepareWorkItemCreation(
       };
     }
     const identity = await resolveIdentity(identityInput, tx);
+    // PR-2/PR-3: inherited project membership and authority, read at call time.
+    const ancestorProjectIds = identity
+      ? await loadProjectAncestorIdsFor(
+          tx,
+          tx,
+          identity,
+          project.workspaceId,
+          project.id,
+        )
+      : [];
     const target = {
       projectId: project.id,
       workItemProjectId: project.id,
       workspaceId: project.workspaceId,
+      ancestorProjectIds,
     };
     if (
       identity?.side !== "staff" ||
-      !reaches(identity, { ...target, organisationId: project.organisationId })
+      !reaches(identity, {
+        projectId: target.projectId,
+        workspaceId: target.workspaceId,
+        organisationId: project.organisationId,
+        ancestorProjectIds,
+      })
     )
       throw new HTTPException(404, { message: "Project not found" });
     if (!can(identity, "work_item:create", "project", target))

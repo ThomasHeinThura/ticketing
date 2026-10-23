@@ -354,6 +354,7 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
       name: "Ada Lovelace",
       roleName: "Project Member",
       openWorkCount: 2,
+      inherited: false,
     });
     expect(people[1]?.openWorkCount).toBe(0);
     expect(people[1]?.roleName).toBe("Project Lead");
@@ -719,5 +720,30 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     // The write-side cross-check (the assign route refusing the same person) lands with
     // #353's branch, which adds POST /assign; on main this test pins the feed's side of
     // the shared predicate, and #359 carries the extraction into one helper.
+  });
+  // UNRUN (DB integration): PR-2 -- a parent-project member is offered in the child's picker.
+  it("lists a member of an ancestor project, marked inherited (PR-2, review Q2)", async () => {
+    const { workspace, project: child } = await setup();
+    const lead = await addWorkspaceMember(workspace.id, "lead");
+    const { project: parent } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ parentId: parent.id })
+      .where(eq(schema.projectTable.id, child.id));
+    const ada = await addNamedPersonOnRoster({
+      name: "Ada Lovelace",
+      projectId: parent.id,
+    });
+
+    mockAuthenticatedSession(lead);
+    const { app } = createApp();
+    const people = (await (
+      await assignableRequest(app, child.id)
+    ).json()) as Array<Record<string, unknown>>;
+    expect(
+      people.find((entry) => entry.personId === ada.person.id),
+    ).toMatchObject({ inherited: true });
   });
 });

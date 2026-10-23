@@ -18,6 +18,7 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { loadProjectAncestorIdsForRequest } from "../project/hierarchy.repository";
 import { callerReach } from "./caller-reach";
 import {
   projectCapabilityRefused,
@@ -231,16 +232,23 @@ async function assertSavedViewProjectReach(
   }
 }
 
-function currentProjectReachFacts(
+async function currentProjectReachFacts(
+  request: object,
   projectId: string,
   workspaceId: string,
   organisationId: string | null,
-): ProjectReachFacts {
+): Promise<ProjectReachFacts> {
   return {
     projectId,
     workspaceId,
     organisationId,
-    ancestorProjectIds: [],
+    // PR-2: inherited project membership, evaluated at read time.
+    ancestorProjectIds: await loadProjectAncestorIdsForRequest(
+      request,
+      db,
+      workspaceId,
+      projectId,
+    ),
     ownerTeamId: null,
   };
 }
@@ -344,6 +352,7 @@ export function workspaceAccessMiddleware(
           if (source.resource === "project") c.set("projectIdFromRequest", id);
           reachResource = source.resource;
           const resolved = await lookupWorkspaceId(
+            c,
             source.resource,
             id,
             userId,
@@ -365,6 +374,7 @@ export function workspaceAccessMiddleware(
               id,
             };
             const observerRow = await lookupWorkspaceId(
+              c,
               anchor.resource,
               anchor.id,
               userId,
@@ -679,6 +689,7 @@ export function reachableWorkspacePredicate(
 }
 
 async function lookupWorkspaceId(
+  request: object,
   resource:
     | "project"
     | "task"
@@ -735,7 +746,8 @@ async function lookupWorkspaceId(
           ? {
               workspaceId: project.workspaceId,
               projectId: project.projectId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 project.projectId,
                 project.workspaceId,
                 project.organisationId,
@@ -774,7 +786,8 @@ async function lookupWorkspaceId(
               workspaceId: task.workspaceId,
               projectId: task.projectId,
               workItemId: task.workItemId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 task.projectId,
                 task.workspaceId,
                 task.organisationId,
@@ -834,7 +847,8 @@ async function lookupWorkspaceId(
               workspaceId: timeEntry.workspaceId,
               projectId: timeEntry.projectId,
               workItemId: timeEntry.workItemId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 timeEntry.projectId,
                 timeEntry.workspaceId,
                 timeEntry.organisationId,
@@ -877,7 +891,8 @@ async function lookupWorkspaceId(
               workspaceId: activity.workspaceId,
               projectId: activity.projectId,
               workItemId: activity.workItemId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 activity.projectId,
                 activity.workspaceId,
                 activity.organisationId,
@@ -921,7 +936,8 @@ async function lookupWorkspaceId(
               workspaceId: comment.workspaceId,
               projectId: comment.projectId,
               workItemId: comment.workItemId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 comment.projectId,
                 comment.workspaceId,
                 comment.organisationId,
@@ -958,7 +974,8 @@ async function lookupWorkspaceId(
           ? {
               workspaceId: column.workspaceId,
               projectId: column.projectId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 column.projectId,
                 column.workspaceId,
                 column.organisationId,
@@ -995,7 +1012,8 @@ async function lookupWorkspaceId(
           ? {
               workspaceId: workflowRule.workspaceId,
               projectId: workflowRule.projectId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 workflowRule.projectId,
                 workflowRule.workspaceId,
                 workflowRule.organisationId,

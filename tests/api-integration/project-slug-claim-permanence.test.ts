@@ -188,7 +188,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const rename = await updateProjectRequest(attackerApp, attackerProject.id, {
       name: "Attacker's project",
       icon: "Folder",
-      slug: "ACME-RETIRED",
+      slug: "ACMEOLD",
       description: "",
     });
     expect(rename.status).toBe(200);
@@ -376,7 +376,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const rename = await updateProjectRequest(attackerApp, attackerProject.id, {
       name: "Attacker's project",
       icon: "Folder",
-      slug: "OPS-OLD",
+      slug: "OPSOLD",
       description: "",
     });
     expect(rename.status).toBe(200);
@@ -478,7 +478,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
       workspaceId: owner.workspace.id,
       name: "Round trip",
       icon: "Folder",
-      slug: "ROUNDTRIP",
+      slug: "ROUNDTRP",
     });
     expect(created.status).toBe(200);
     const project = (await created.json()) as { id: string };
@@ -487,7 +487,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const renamedAway = await updateProjectRequest(app, project.id, {
       name: "Round trip",
       icon: "Folder",
-      slug: "ROUNDTRIP-2",
+      slug: "ROUNDTWO",
       description: "",
     });
     expect(renamedAway.status).toBe(200);
@@ -495,7 +495,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const renamedBack = await updateProjectRequest(app, project.id, {
       name: "Round trip",
       icon: "Folder",
-      slug: "ROUNDTRIP",
+      slug: "ROUNDTRP",
       description: "",
     });
     expect(renamedBack.status).toBe(200);
@@ -503,17 +503,14 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const row = await db.query.projectTable.findFirst({
       where: eq(schema.projectTable.id, project.id),
     });
-    expect(row?.slug).toBe("ROUNDTRIP");
+    expect(row?.slug).toBe("ROUNDTRP");
 
     // Both slugs this project has ever held remain claimed by it, and only it.
     const claims = await db
       .select()
       .from(schema.projectSlugClaimTable)
       .where(eq(schema.projectSlugClaimTable.projectId, project.id));
-    expect(claims.map((c) => c.slug).sort()).toEqual([
-      "ROUNDTRIP",
-      "ROUNDTRIP-2",
-    ]);
+    expect(claims.map((c) => c.slug).sort()).toEqual(["ROUNDTRP", "ROUNDTWO"]);
   });
 
   it("rejects a rename when another project permanently claims the slug during preflight", async () => {
@@ -525,7 +522,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
       workspaceId: owner.workspace.id,
       name: "First project",
       icon: "Folder",
-      slug: "RACE-FIRST",
+      slug: "RACEONE",
     });
     expect(firstCreate.status).toBe(200);
     const firstProject = (await firstCreate.json()) as { id: string };
@@ -556,7 +553,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const pendingRename = updateProjectRequest(app, firstProject.id, {
       name: "First project",
       icon: "Folder",
-      slug: "RACE-SLUG",
+      slug: "RACESLUG",
       description: "",
     });
 
@@ -570,19 +567,19 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
         workspaceId: owner.workspace.id,
         name: "Second project",
         icon: "Folder",
-        slug: "RACE-SLUG",
+        slug: "RACESLUG",
       });
       expect(secondCreate.status).toBe(200);
       secondProject = (await secondCreate.json()) as { id: string };
       await grantProjectManageAccess(owner.user.id, secondProject.id);
 
       // Move the live row away while preserving its permanent claim. The blocked
-      // transaction can then update the first project to RACE-SLUG unless it validates
+      // transaction can then update the first project to RACESLUG unless it validates
       // the claim-table conflict after its insert.
       const moveSecond = await updateProjectRequest(app, secondProject.id, {
         name: "Second project",
         icon: "Folder",
-        slug: "RACE-OTHER",
+        slug: "RACEOTHR",
         description: "",
       });
       expect(moveSecond.status).toBe(200);
@@ -597,10 +594,10 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const firstAfterRace = await db.query.projectTable.findFirst({
       where: eq(schema.projectTable.id, firstProject.id),
     });
-    expect(firstAfterRace?.slug).toBe("RACE-FIRST");
+    expect(firstAfterRace?.slug).toBe("RACEONE");
 
     const claim = await db.query.projectSlugClaimTable.findFirst({
-      where: eq(schema.projectSlugClaimTable.slug, "RACE-SLUG"),
+      where: eq(schema.projectSlugClaimTable.slug, "RACESLUG"),
     });
     expect(claim?.projectId).toBe(secondProject?.id);
   });

@@ -7,6 +7,7 @@ import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../../work-item/assert-work-item-live";
+import { resolveCommentAuthors } from "../../work-item/comment-access";
 import { isMimeTypeAllowedForExtension } from "../magic-bytes";
 import {
   countWorkItemAttachments,
@@ -15,6 +16,7 @@ import {
   getAttachmentSettings,
   insertWorkItemAttachment,
   lockAttachmentWorkItem,
+  lockCommentForAttachment,
 } from "../repository";
 
 export type PresignAttachmentInput = {
@@ -23,7 +25,14 @@ export type PresignAttachmentInput = {
   filename: string;
   contentType: string;
   size: number;
-  customerVisible: boolean;
+  /**
+   * AT-3: staff uploads default to not visible. A file on a comment follows that comment
+   * instead: public comment -> visible unless the caller says otherwise; internal comment ->
+   * never visible (AT-4), whatever this says.
+   */
+  customerVisible?: boolean;
+  /** AT-1: attach to this comment of the work item instead of the item itself. */
+  commentId?: string;
   userId: string;
   apiBaseUrl: string;
 };
@@ -64,7 +73,7 @@ const FALLBACK_ALLOWED_EXTENSIONS = [
 ];
 
 /**
- * `POST /api/work-items/{key}/attachments/presign` (`attachments.md` AT-2, AT-14).
+ * `POST /api/work-items/{key}/attachments/presign` (`attachments.md` AT-1, AT-2, AT-4, AT-14).
  * Validates against the God Mode-configurable limits, inserts a `pending` row, and
  * mints a presigned direct-PUT -- the bytes themselves never pass through this
  * process.
@@ -76,7 +85,8 @@ export async function presignAttachment(input: PresignAttachmentInput) {
     filename,
     contentType,
     size,
-    customerVisible,
+    customerVisible: requestedVisibility,
+    commentId,
     userId,
     apiBaseUrl,
   } = input;
@@ -174,11 +184,39 @@ export async function presignAttachment(input: PresignAttachmentInput) {
     assertWorkItemStillLive(locked);
     await assertProjectStillLive(tx, locked.projectId);
 
+    let customerVisible = requestedVisibility ?? false;
+    if (commentId) {
+      // AT-1/AT-4: a comment file hangs off a live comment of THIS item, and only its
+      // author may change what that comment shows. The lock makes a concurrent comment
+      // deletion wait, so a file never lands on a tombstone.
+      const [comment] = await lockCommentForAttachment(tx, {
+        commentId,
+        workItemId,
+        workspaceId,
+      });
+      if (!comment || comment.deletedAt) {
+        throw new HTTPException(404, { message: "Comment not found" });
+      }
+      const authors = await resolveCommentAuthors(tx, [comment.authorId]);
+      const authorPersonId = comment.authorId
+        ? (authors.get(comment.authorId) ?? null)
+        : null;
+      if (!person?.id || authorPersonId !== person.id) {
+        throw new HTTPException(403, {
+          message: "Only the author of a comment can attach files to it.",
+        });
+      }
+      // AT-3: staff uploads default to NOT customer-visible; a public comment's file is
+      // visible only when the client explicitly asks. Internal comments force false (AT-4).
+      customerVisible =
+        comment.visibility === "public" && requestedVisibility === true;
+    }
+
     const [row] = await insertWorkItemAttachment(tx, {
       id: attachmentId,
       workspaceId,
       organisationId,
-      workItemId,
+      ...(commentId ? { commentId } : { workItemId }),
       objectKey,
       filename,
       contentType,

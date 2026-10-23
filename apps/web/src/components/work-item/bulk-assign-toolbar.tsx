@@ -39,6 +39,7 @@ import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
 import { classifyWorkItemWriteError } from "@/lib/work-item-board";
 import { dayToIso } from "@/lib/work-item-date";
+import { useOpenChildrenGuard } from "./open-children-warning";
 import { creationLabelCatalogue } from "./use-create-work-item-options";
 
 type LocalOperation<T> = T extends unknown
@@ -105,6 +106,7 @@ export default function BulkAssignToolbar({
   const [error, setError] = useState<string>();
   const [preparing, setPreparing] = useState(false);
   const [confirmation, setConfirmation] = useState<AssignmentIntent>();
+  const childrenGuard = useOpenChildrenGuard();
   const busyRef = useRef(false);
   const selectedRef = useRef(selectedKeys);
   selectedRef.current = selectedKeys;
@@ -192,6 +194,17 @@ export default function BulkAssignToolbar({
       workspaceId,
       workItemKeys: [...selectedKeys],
     } as BulkWorkItemsOperationInput);
+  }
+  /** `RH-10`: a bulk close asks once about the open children of every selected parent. */
+  function transitionTo(toStateTemplateId: string, closing: boolean) {
+    if (busyRef.current || !selectedKeys.length || selectedKeys.length > 500)
+      return;
+    setIsActionsOpen(false);
+    void childrenGuard.guard({
+      key: [...selectedKeys],
+      closing,
+      proceed: () => act({ operation: "transition", toStateTemplateId }),
+    });
   }
   async function prepareAssignment(assigneeId: string, name: string) {
     if (
@@ -361,10 +374,10 @@ export default function BulkAssignToolbar({
           state.group === "completed" || state.group === "cancelled",
         ),
         onRun: () =>
-          act({
-            operation: "transition",
-            toStateTemplateId: state.stateTemplateId,
-          }),
+          transitionTo(
+            state.stateTemplateId,
+            state.group === "completed" || state.group === "cancelled",
+          ),
       })),
     });
   if (canAssign)
@@ -506,6 +519,7 @@ export default function BulkAssignToolbar({
           </Alert>
         ) : null}
       </BulkToolbarPresentation>
+      {childrenGuard.dialog}
       <AlertDialog
         open={Boolean(confirmationCurrent)}
         onOpenChange={(open) => {

@@ -5,6 +5,7 @@ import type db from "../database";
 import { schema } from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
+import { projectAncestryFor } from "../utils/project-ancestry";
 import {
   deleteWorkItemInTransaction,
   publishWorkItemDeletion,
@@ -118,15 +119,24 @@ export function workItemDeletionSnapshot(target: Target) {
     childIds: target.children.map((child) => child.id).join(","),
   };
 }
-export function workItemDeletionAccess(
+export async function workItemDeletionAccess(
+  executor: object,
   identity: ResolvedIdentity,
   target: Target,
-): RequiredAccessDecision {
+): Promise<RequiredAccessDecision> {
+  // PR-2/PR-3: reach and authority both follow the ancestor chain.
+  const ancestorProjectIds = await projectAncestryFor(
+    executor,
+    identity,
+    target.item.workspaceId,
+    target.item.projectId,
+  );
   if (
     !reaches(identity, {
       projectId: target.item.projectId,
       workspaceId: target.item.workspaceId,
       organisationId: target.project.organisationId,
+      ancestorProjectIds,
     })
   )
     return { allowed: false, failure: "reach", status: 404 };
@@ -134,6 +144,7 @@ export function workItemDeletionAccess(
     workItemId: target.item.id,
     workItemProjectId: target.item.projectId,
     workspaceId: target.item.workspaceId,
+    ancestorProjectIds,
   })
     ? { allowed: true }
     : { allowed: false, failure: "capability", status: 403 };
@@ -165,7 +176,7 @@ export async function evaluateWorkItemDeletionAccess(
     target.scopeOrganisationId !== input.organisationId
   )
     return { allowed: false, failure: "target_scope", status: 404 };
-  const access = workItemDeletionAccess(identity, target);
+  const access = await workItemDeletionAccess(tx, identity, target);
   if (!access.allowed) return access;
   if (
     input.payload !== undefined ||
@@ -310,14 +321,20 @@ export async function workItemDeletionReadSummary(
       ),
     )
     .limit(1);
+  if (!target || target.workspaceId !== row.workspaceId) return undefined;
+  const ancestorProjectIds = await projectAncestryFor(
+    executor,
+    identity,
+    target.workspaceId,
+    target.projectId,
+  );
   if (
-    !target ||
-    target.workspaceId !== row.workspaceId ||
-    !reaches(identity, target) ||
+    !reaches(identity, { ...target, ancestorProjectIds }) ||
     !can(identity, "work_item:read", "work_item", {
       workItemId: target.id,
       workItemProjectId: target.projectId,
       workspaceId: target.workspaceId,
+      ancestorProjectIds,
     })
   )
     return undefined;

@@ -112,4 +112,32 @@ describe("CalendarTaskBar", () => {
     expect(taskBar).toHaveAttribute("data-task-status", status);
     expect(taskBar).toHaveClass(expectedClass);
   });
+
+  it("is a toggle named for the work item while selection mode is on (VW-3)", () => {
+    render(
+      <CalendarTaskBar
+        segment={segment}
+        projectSlug="KAN"
+        onOpenTask={vi.fn()}
+        selectionMode
+        isSelected
+      />,
+    );
+
+    const taskBar = screen.getByRole("button", { name: "Select KAN-12" });
+    expect(taskBar).toHaveAttribute("aria-pressed", "true");
+    expect(taskBar).toHaveClass("ring-2");
+  });
+
+  it("is not a toggle outside selection mode", () => {
+    render(
+      <CalendarTaskBar
+        segment={segment}
+        projectSlug="KAN"
+        onOpenTask={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button")).not.toHaveAttribute("aria-pressed");
+  });
 });

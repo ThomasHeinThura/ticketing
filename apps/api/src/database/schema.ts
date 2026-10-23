@@ -6,6 +6,7 @@ import {
   boolean,
   check,
   customType,
+  date,
   foreignKey,
   index,
   integer,
@@ -449,6 +450,33 @@ export const projectTable = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     slaPolicyId: text("sla_policy_id"),
+    // P1 PR-1 (projects-and-engagements.md): a project may have one parent, depth capped at
+    // 4 (enforced by the ownership write path, `project/hierarchy.ts`, under a workspace
+    // advisory lock -- no CHECK can see ancestors). The parent must live in the SAME
+    // workspace: composite FK `project_workspace_parent_fk` below, `ON UPDATE NO ACTION`
+    // (data-model.md O1: never CASCADE through a mutable composite key) and `ON DELETE
+    // RESTRICT` (a parent is archived/soft-deleted, never row-deleted from under children).
+    // Written ONLY by `PATCH /api/projects/{id}/ownership`, never by the general update.
+    parentId: text("parent_id"),
+    // P1 PR-6: "exactly one project manager" -> person. Nullable (a project without one is
+    // a composition WARNING, not a refusal). Active-roster membership is validated by the
+    // write path; people are deactivated, never deleted, so RESTRICT mirrors
+    // `work_item.assignee_id`.
+    managerId: text("manager_id").references(() => personTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
+    // P1 PR-10: calendar dates (no time-of-day); `end_date` optional. A project without a
+    // start date is a composition WARNING.
+    startDate: date("start_date", { mode: "string" }),
+    endDate: date("end_date", { mode: "string" }),
+    // P1 AS-11: applied to work items created with no assignee; must be an active person on
+    // the roster when applied (an inactive default leaves the item unassigned, edge-case
+    // table). Same FK shape as `request_type.default_assignee_id`.
+    defaultAssigneeId: text("default_assignee_id").references(
+      () => personTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
     defaultCommentVisibility: text("default_comment_visibility")
       .$type<"public" | "internal">()
       .notNull()
@@ -490,6 +518,24 @@ export const projectTable = pgTable(
       columns: [table.workspaceId, table.slaPolicyId],
       foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
     }).onDelete("restrict"),
+    foreignKey({
+      name: "project_workspace_parent_fk",
+      columns: [table.workspaceId, table.parentId],
+      foreignColumns: [table.workspaceId, table.id],
+    })
+      .onDelete("restrict")
+      .onUpdate("no action"),
+    index("project_workspace_parent_idx").on(table.workspaceId, table.parentId),
+    check(
+      "project_parent_not_self",
+      sql.raw("(parent_id IS NULL) OR (parent_id <> id)"),
+    ),
+    check(
+      "project_dates_ordered",
+      sql.raw(
+        "(start_date IS NULL) OR (end_date IS NULL) OR (end_date >= start_date)",
+      ),
+    ),
     index("project_organisation_id_idx").on(table.organisationId),
     index("project_workspace_service_calendar_idx").on(
       table.workspaceId,
@@ -1943,6 +1989,148 @@ export const idempotencyKeyTable = pgTable(
       t.key,
     ),
     index("idempotency_key_expires_idx").on(t.expiresAt),
+  ],
+);
+
+export const checklistTemplateTable = pgTable(
+  "checklist_template",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    archivedAt: timestamp("archived_at", { mode: "date" }),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    unique("checklist_template_workspace_id_id_unique").on(t.workspaceId, t.id),
+    uniqueIndex("checklist_template_workspace_name_unique")
+      .on(t.workspaceId, sql`lower(${t.name})`)
+      .where(sql`archived_at IS NULL`),
+  ],
+);
+
+export const workItemTemplateTable = pgTable(
+  "work_item_template",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    typeId: text("type_id").notNull(),
+    name: text("name").notNull(),
+    title: text("title").notNull(),
+    description: jsonb("description"),
+    labels: jsonb("labels").notNull().default(sql`'[]'::jsonb`),
+    customFieldValues: jsonb("custom_field_values")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    checklistTemplateId: text("checklist_template_id"),
+    recurrence: jsonb("recurrence"),
+    archivedAt: timestamp("archived_at", { mode: "date" }),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    foreignKey({
+      name: "work_item_template_workspace_type_fk",
+      columns: [t.workspaceId, t.typeId],
+      foreignColumns: [workItemTypeTable.workspaceId, workItemTypeTable.id],
+    })
+      .onDelete("restrict")
+      .onUpdate("no action"),
+    foreignKey({
+      name: "work_item_template_workspace_checklist_fk",
+      columns: [t.workspaceId, t.checklistTemplateId],
+      foreignColumns: [
+        checklistTemplateTable.workspaceId,
+        checklistTemplateTable.id,
+      ],
+    })
+      .onDelete("restrict")
+      .onUpdate("no action"),
+    uniqueIndex("work_item_template_workspace_name_unique")
+      .on(t.workspaceId, sql`lower(${t.name})`)
+      .where(sql`archived_at IS NULL`),
+    index("work_item_template_workspaceId_idx").on(t.workspaceId),
+    check(
+      "work_item_template_labels_array",
+      sql`jsonb_typeof(labels) = 'array'`,
+    ),
+    check(
+      "work_item_template_custom_fields_object",
+      sql`jsonb_typeof(custom_field_values) = 'object'`,
+    ),
+  ],
+);
+
+export const checklistItemTable = pgTable(
+  "checklist_item",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    workItemId: text("work_item_id"),
+    templateId: text("template_id"),
+    releaseId: text("release_id"),
+    position: integer("position").notNull(),
+    text: text("text").notNull(),
+    doneAt: timestamp("done_at", { mode: "date" }),
+    doneBy: text("done_by").references(() => personTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (t) => [
+    foreignKey({
+      name: "checklist_item_workspace_work_item_fk",
+      columns: [t.workspaceId, t.workItemId],
+      foreignColumns: [workItemTable.workspaceId, workItemTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("no action"),
+    foreignKey({
+      name: "checklist_item_workspace_template_fk",
+      columns: [t.workspaceId, t.templateId],
+      foreignColumns: [
+        checklistTemplateTable.workspaceId,
+        checklistTemplateTable.id,
+      ],
+    })
+      .onDelete("cascade")
+      .onUpdate("no action"),
+    check(
+      "checklist_item_one_owner",
+      sql`num_nonnulls(work_item_id, template_id, release_id) = 1`,
+    ),
+    index("checklist_item_workItem_position_idx")
+      .on(t.workItemId, t.position)
+      .where(sql`work_item_id IS NOT NULL`),
+    index("checklist_item_template_position_idx")
+      .on(t.templateId, t.position)
+      .where(sql`template_id IS NOT NULL`),
   ],
 );
 

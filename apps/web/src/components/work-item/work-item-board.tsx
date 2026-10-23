@@ -20,11 +20,12 @@ import {
   EmptyTitle,
   Skeleton,
 } from "@taskdesk/ui";
-import type { ReactNode } from "react";
+import { type ReactNode, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { ColumnShell } from "@/components/kanban-board/column/column-shell";
 import TaskCard from "@/components/kanban-board/task-card";
+import { useDndAccessibility } from "@/hooks/use-dnd-accessibility";
 import { getColumnIcon } from "@/lib/column";
 import {
   routes,
@@ -38,6 +39,7 @@ import {
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { WorkItemRow } from "@/types/work-item";
 import useWorkItemDragDrop from "./use-work-item-drag-drop";
+import { WorkItemBlockedBadge } from "./work-item-blocked-badge";
 import WorkItemContextMenu from "./work-item-context-menu";
 
 type ProjectState = { id: string; name: string; group?: string };
@@ -107,6 +109,7 @@ export default function WorkItemBoard({
     startDrag,
     endDrag,
     cancelDrag,
+    childrenDialog,
   } = useWorkItemDragDrop({
     projectId,
     states,
@@ -116,6 +119,13 @@ export default function WorkItemBoard({
     sort,
     dir,
   });
+  const describeDnd = useCallback(
+    (id: string | number) =>
+      workItems?.find((item) => item.id === id)?.title ??
+      states?.find((state) => state.id === id)?.name,
+    [workItems, states],
+  );
+  const dndAccessibility = useDndAccessibility(describeDnd);
 
   if (isError || statesError) {
     return (
@@ -160,6 +170,7 @@ export default function WorkItemBoard({
 
   return (
     <DndContext
+      accessibility={dndAccessibility}
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={startDrag}
@@ -315,6 +326,7 @@ export default function WorkItemBoard({
           </div>
         ) : null}
       </DragOverlay>
+      {childrenDialog}
     </DndContext>
   );
 }
@@ -352,7 +364,8 @@ function BoardColumn({
   );
 }
 
-function BoardCard({
+/** One Kaneo task card for a canonical row; shared with the grouped board (`VW-13`). */
+export function BoardCard({
   item,
   state,
   busy,
@@ -456,6 +469,10 @@ function BoardCard({
             );
         }}
         t={t}
+      />
+      <WorkItemBlockedBadge
+        blockedByOpenCount={item.blockedByOpenCount}
+        className="self-start"
       />
       {!actionable || item.unavailableFields.includes("priority") ? (
         <span className="sr-only">{t("workItems:list.unavailable")}</span>

@@ -25,7 +25,11 @@ export async function listWorkItemAttachments(
         : null;
       return rows.map((row) => ({
         ...row,
-        canDelete: attachmentDeletionAccess(caller, row).canDelete,
+        // Deletion approval resolves work-item parents only (the pending-action target
+        // loader rejects comment-parented files), so no delete control is offered for them.
+        canDelete:
+          row.commentId === null &&
+          attachmentDeletionAccess(caller, row).canDelete,
       }));
     },
     { isolationLevel: "repeatable read", accessMode: "read only" },

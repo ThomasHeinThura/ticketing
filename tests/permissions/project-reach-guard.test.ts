@@ -149,6 +149,12 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
     "workspace role definitions; no project rows",
   "GET /api/workspace/{workspaceId}/work-item-types":
     "work-item type definitions; configuration rows, not project rows",
+  "GET /api/workspace/{workspaceId}/work-item-templates":
+    "live work item template picker (id, name, type, title, checklist flag); workspace configuration rows, not project rows",
+  "GET /api/workspace/{workspaceId}/work-item-templates/manage":
+    "work item template definitions for settings (workspace:manage_settings); configuration rows, not project rows",
+  "GET /api/workspace/{workspaceId}/checklist-templates":
+    "checklist template definitions for settings (workspace:manage_settings); configuration rows, not project rows",
   "GET /api/workspaces/{workspaceId}/audit":
     "audit rows are filtered by project reach inside the audit reader (#319/#334)",
 };

@@ -16,6 +16,9 @@ vi.mock("@taskdesk/permissions", () => ({
   can: mocks.can,
   reaches: mocks.reaches,
 }));
+vi.mock("../../apps/api/src/utils/project-ancestry", () => ({
+  projectAncestryFor: async () => ["parent-project"],
+}));
 vi.mock("../../apps/api/src/permissions/resolve-identity", () => ({
   resolveIdentity: mocks.resolveIdentity,
 }));

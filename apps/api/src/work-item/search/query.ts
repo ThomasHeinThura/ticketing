@@ -16,7 +16,11 @@ export type WorkItemSearchQuery = {
 };
 
 const priorities = ["low", "medium", "high", "urgent"] as const;
-const unavailable = /^(?:sla\.(?:state|due_at)|cf\.[a-zA-Z0-9_.-]+|label)$/u;
+// VW-31: recognised-but-unbacked fields return 422 naming the field. `organisation` resolves
+// through project.organisation_id but has no whitelisted operator/value contract in the P1
+// table, so it stays unavailable (never an empty or unfiltered result).
+const unavailable =
+  /^(?:sla\.(?:state|due_at)|cf\.[a-zA-Z0-9_.-]+|label|requester|cycle|module|epic|organisation)$/u;
 const knownUnavailable = (field: string) => unavailable.test(field);
 
 function bad(message: string): never {

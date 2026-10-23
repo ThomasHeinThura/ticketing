@@ -1,5 +1,7 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
+import db from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
+import { loadProjectAncestorIdsFor } from "../project/hierarchy.repository";
 import { evaluateProjectRead } from "../utils/has-project-reach";
 import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
 import { findReachableLiveProject } from "./repository";
@@ -62,7 +64,13 @@ export async function authorizeProjectSocketRead(
     projectId,
     workspaceId: project.workspaceId,
     organisationId: project.organisationId,
-    ancestorProjectIds: [],
+    ancestorProjectIds: await loadProjectAncestorIdsFor(
+      db,
+      db,
+      identity,
+      project.workspaceId,
+      projectId,
+    ),
     ownerTeamId: null,
   });
   if (!decision?.reachable || !decision.capable) return null;

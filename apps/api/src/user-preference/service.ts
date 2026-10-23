@@ -1,6 +1,7 @@
 import { type ResolvedIdentity, reaches } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
+import { loadAncestorIdsByProject } from "../project/hierarchy.repository";
 import {
   deleteOwnSettingRow,
   listLiveProjectReachFacts,
@@ -10,8 +11,8 @@ import {
   upsertOwnSettingRow,
 } from "./repository";
 import {
-  layoutSettingKey,
   parseSettingKey,
+  projectSettingKey,
   SETTINGS_MAX_KEYS_PER_REQUEST,
   SETTINGS_MAX_ROWS_PER_PERSON,
   type SettingTarget,
@@ -26,6 +27,10 @@ async function reachableProjectIds(
 ): Promise<Set<string>> {
   if (projectIds.length === 0) return new Set();
   const projects = await listLiveProjectReachFacts(identity, projectIds);
+  // PR-2: inherited project membership, read at call time (one query for all workspaces).
+  const ancestorsByProject = await loadAncestorIdsByProject(db, [
+    ...new Set(projects.map((project) => project.workspaceId)),
+  ]);
   return new Set(
     projects
       .filter((project) =>
@@ -33,7 +38,7 @@ async function reachableProjectIds(
           projectId: project.id,
           workspaceId: project.workspaceId,
           organisationId: project.organisationId,
-          ancestorProjectIds: [],
+          ancestorProjectIds: ancestorsByProject.get(project.id) ?? [],
           ownerTeamId: null,
         }),
       )
@@ -57,13 +62,13 @@ async function readSettings(identity: Identity) {
       row.scope === "global"
         ? "density"
         : row.scopeId
-          ? layoutSettingKey(row.scopeId)
+          ? projectSettingKey(row.key, row.scopeId)
           : undefined;
     if (!key) continue;
     const target = parseSettingKey(key);
     if (!target) continue;
-    // A layout for a project the caller no longer reaches stays inert and is not served.
-    if (target.kind === "layout" && !reachable.has(target.scopeId)) continue;
+    // A project setting for a project the caller no longer reaches stays inert and is not served.
+    if (target.scope === "project" && !reachable.has(target.scopeId)) continue;
     // A stored value that no longer satisfies the key's schema is dropped, not served.
     const parsed = target.schema.safeParse(row.value);
     if (parsed.success) settings[key] = parsed.data;
@@ -94,7 +99,8 @@ export async function patchOwnSettings(
     const target = parseSettingKey(key);
     if (!target) {
       throw new HTTPException(422, {
-        message: "settings: key must be density or layout.<projectId>",
+        message:
+          "settings: key must be density, layout.<projectId>, listGroups.<projectId> or columns.<projectId>",
       });
     }
     if (value === null) {
@@ -114,7 +120,7 @@ export async function patchOwnSettings(
   // row for a project the caller lost cannot get stuck; the result is the same whether or not
   // the row or the project existed, so it reveals nothing (ST-15).
   const projectIds = sets.flatMap(({ target }) =>
-    target.kind === "layout" ? [target.scopeId] : [],
+    target.scope === "project" ? [target.scopeId] : [],
   );
   const reachable = await reachableProjectIds(identity, projectIds);
   if (projectIds.some((id) => !reachable.has(id))) {
@@ -134,9 +140,21 @@ export async function patchOwnSettings(
 
     // Row cap (ST-16). Replacing an existing row is always allowed.
     const existing = await listOwnSettingAddresses(tx, identity.personId);
-    const have = new Set(existing.map((r) => `${r.scope}:${r.scopeId ?? ""}`));
+    const address = (r: {
+      scope: string;
+      scopeId: string | null;
+      key: string;
+    }) => `${r.scope}:${r.scopeId ?? ""}:${r.key}`;
+    const have = new Set(existing.map(address));
     const newRows = sets.filter(
-      (s) => !have.has(`${s.target.scope}:${s.target.scopeId ?? ""}`),
+      (s) =>
+        !have.has(
+          address({
+            scope: s.target.scope,
+            scopeId: s.target.scopeId,
+            key: s.target.rowKey,
+          }),
+        ),
     ).length;
     if (existing.length + newRows > SETTINGS_MAX_ROWS_PER_PERSON) {
       throw new HTTPException(422, {

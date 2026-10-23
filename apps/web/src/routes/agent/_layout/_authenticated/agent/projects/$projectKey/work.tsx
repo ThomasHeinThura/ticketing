@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import GroupControl from "@/components/common/group-control";
 import SortControl from "@/components/common/sort-control";
 import PageTitle from "@/components/page-title";
 import {
@@ -24,6 +25,11 @@ import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useBulkSelectionKeyboardShortcuts } from "@/hooks/use-bulk-selection-keyboard-shortcuts";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
+import {
+  parseProjectLayout,
+  parseTableColumns,
+  useProjectViewPreference,
+} from "@/hooks/use-project-view-preference";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { normalizeCanonicalWorkItemSelection } from "@/lib/project-layout-navigation";
 
@@ -76,13 +82,13 @@ const WorkItemSidePane = lazy(
   () => import("@/components/work-item/work-item-side-pane"),
 );
 
+import type { WorkItemGroup } from "@/lib/project-board-search";
 import {
-  projectLayoutSettingKey,
   readProjectLayoutPreference,
   writeProjectLayoutPreference,
 } from "@/lib/project-layout-preference";
 import {
-  parseWorkItemListSearch,
+  parseWorkItemWorkSearch,
   type WorkItemFilterMode,
   type WorkItemListSearch,
   type WorkItemSearchColumn,
@@ -104,7 +110,7 @@ export const Route = createFileRoute(
   "/_layout/_authenticated/agent/projects/$projectKey/work",
 )({
   validateSearch: (raw) =>
-    parseWorkItemListSearch(normalizeCanonicalWorkItemSelection(raw)),
+    parseWorkItemWorkSearch(normalizeCanonicalWorkItemSelection(raw)),
   beforeLoad: preloadWorkItemsPanel,
   component: WorkItemsRouteComponent,
 });
@@ -116,8 +122,17 @@ function WorkItemsRouteComponent() {
 
 function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { t } = useTranslation();
-  const { layout, sort, dir, filter, filterMode, columns, item } =
-    Route.useSearch();
+  const {
+    layout,
+    sort,
+    dir,
+    filter,
+    filterMode,
+    columns: urlColumns,
+    item,
+    group: urlGroup,
+  } = Route.useSearch();
+  const group: WorkItemGroup = urlGroup ?? "state";
   const isFiltered = !!filter?.trim();
   const boardSort = isFiltered && sort === "position" ? "key" : sort;
   const boardDir = isFiltered && sort === "position" ? "asc" : dir;
@@ -208,6 +223,14 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   } = useGetProjects({ workspaceId: workspace?.id ?? "" });
 
   const project = projects?.find((candidate) => candidate.slug === projectKey);
+  // `VW-19`: the chosen columns persist per person and project; a `columns` URL always wins.
+  const columnsPreference = useProjectViewPreference({
+    projectId: project?.id,
+    name: "columns",
+    parse: parseTableColumns,
+  });
+  const columns = urlColumns ?? columnsPreference.value;
+  const setColumnsPreference = columnsPreference.set;
   const projectNotFound =
     !isWorkspaceLoading && !isProjectsLoading && !!projects && !project;
   const projectContext =
@@ -322,17 +345,31 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   }, [project?.id]);
 
   // Restore the user's last-used layout for this project (`VW-2`) when navigating to the
-  // work route without an explicit `?layout=` search parameter.
+  // work route without an explicit `?layout=` search parameter. The server preference
+  // (`layout.<projectId>`) wins so it follows the person across browsers and devices; this
+  // browser's own memory is the fallback while signed out, offline or never synced.
+  const layoutPreference = useProjectViewPreference({
+    projectId: project?.id,
+    name: "layout",
+    parse: parseProjectLayout,
+  });
   const restoredLayoutProjectIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!project?.id || restoredLayoutProjectIdRef.current === project.id)
+    if (
+      !project?.id ||
+      !layoutPreference.settled ||
+      restoredLayoutProjectIdRef.current === project.id
+    )
       return;
     restoredLayoutProjectIdRef.current = project.id;
     if (
       typeof window !== "undefined" &&
       !new URLSearchParams(window.location.search).has("layout")
     ) {
-      const remembered = readProjectLayoutPreference(project.id);
+      const remembered =
+        layoutPreference.value ?? readProjectLayoutPreference(project.id);
+      if (layoutPreference.value)
+        writeProjectLayoutPreference(project.id, layoutPreference.value);
       if (remembered && remembered !== layout) {
         navigate({
           search: (prev: WorkItemListSearch) => ({
@@ -343,7 +380,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         });
       }
     }
-  }, [project?.id, layout, navigate]);
+  }, [
+    project?.id,
+    layout,
+    navigate,
+    layoutPreference.settled,
+    layoutPreference.value,
+  ]);
 
   const handleRealtimeAvailabilityChange = useCallback(
     (projectId: string, status: WorkItemRealtimeStatus) => {
@@ -395,6 +438,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
 
   const handleColumnsChange = useCallback(
     (nextColumns: WorkItemSearchColumn[] | undefined) => {
+      setColumnsPreference(nextColumns?.length ? nextColumns : null);
       navigate({
         search: (prev: WorkItemListSearch) => ({
           ...prev,
@@ -403,21 +447,14 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         replace: true,
       });
     },
-    [navigate],
+    [navigate, setColumnsPreference],
   );
 
   const handleLayoutChange = useCallback(
     (nextLayout: WorkItemListSearch["layout"]) => {
       if (project?.id) {
         writeProjectLayoutPreference(project.id, nextLayout);
-        const projectId = project.id;
-        void import("@/fetchers/user-settings/user-settings")
-          .then((m) =>
-            m.patchUserSettings({
-              [projectLayoutSettingKey(projectId)]: nextLayout,
-            }),
-          )
-          .catch(() => undefined);
+        layoutPreference.set(nextLayout);
       }
       navigate({
         search: (prev: WorkItemListSearch) => ({
@@ -427,7 +464,22 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         replace: true,
       });
     },
-    [navigate, project?.id],
+    [navigate, project?.id, layoutPreference.set],
+  );
+
+  // `VW-13`: the grouping lives in the URL (`VW-1`) and survives a layout switch; the default
+  // (state) is never written.
+  const handleGroupChange = useCallback(
+    (nextGroup: WorkItemGroup) => {
+      navigate({
+        search: (prev: WorkItemListSearch) => ({
+          ...prev,
+          group: nextGroup === "state" ? undefined : nextGroup,
+        }),
+        replace: true,
+      });
+    },
+    [navigate],
   );
 
   const handleCloseSidePane = useCallback(() => {
@@ -586,6 +638,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                     );
                   }}
                 />
+                {layout === "board" ? (
+                  <GroupControl
+                    group={group}
+                    onGroupChange={handleGroupChange}
+                    groups={["state", "assignee", "priority"]}
+                  />
+                ) : null}
               </div>
               <div className="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 sm:w-auto">
                 {project ? (
@@ -727,6 +786,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         ) : project ? (
           <Suspense fallback={<WorkItemListLoading />}>
             <WorkItemBoardView
+              group={group}
               sort={boardSort}
               dir={boardDir}
               project={project}

@@ -50,6 +50,9 @@ import {
 function toAttachmentResponse(row: {
   id: string;
   workItemId: string | null;
+  /** The owning work item when the file hangs off a comment (`work_item_id` is NULL then). */
+  parentWorkItemId?: string;
+  commentId?: string | null;
   filename: string;
   mimeType: string;
   size: number;
@@ -62,7 +65,8 @@ function toAttachmentResponse(row: {
 }) {
   return {
     id: row.id,
-    workItemId: row.workItemId ?? "",
+    workItemId: row.workItemId ?? row.parentWorkItemId ?? "",
+    commentId: row.commentId ?? null,
     filename: row.filename,
     mimeType: row.mimeType,
     size: row.size,
@@ -89,8 +93,9 @@ const presignAttachmentRoute = createRoute({
   tags: ["Attachments"],
   summary: "Presign an attachment upload",
   description:
-    "AT-2: mints a presigned direct-PUT for a new attachment on this work item. The " +
-    "API never proxies the bytes themselves.",
+    "AT-2: mints a presigned direct-PUT for a new attachment on this work item, or, with " +
+    "`commentId`, on one of its comments (AT-1; the comment's author only). The API never " +
+    "proxies the bytes themselves.",
   middleware: [
     requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspacePermission({ work_item: ["update"] }),
@@ -194,6 +199,7 @@ const deleteAttachmentRoute = createRoute({
 });
 
 const portalSubmissionPresignBody = presignAttachmentBody
+  .omit({ commentId: true })
   .extend({ fieldKey: z.string().min(1).max(100).optional() })
   .strict();
 const portalSubmissionPresignRoute = createRoute({
@@ -229,7 +235,7 @@ const portalSubmissionCompleteRoute = createRoute({
   responses: {
     200: jsonResponse(
       "Completed submission attachment",
-      attachmentSchema.omit({ canDelete: true }).extend({
+      attachmentSchema.omit({ canDelete: true, commentId: true }).extend({
         workItemId: attachmentSchema.shape.workItemId.nullable(),
         submissionId: z.string().nullable(),
       }),
@@ -356,7 +362,8 @@ const attachment = apiRouter<
       filename: body.filename,
       contentType: body.contentType,
       size: body.size,
-      customerVisible: body.customerVisible ?? false,
+      customerVisible: body.customerVisible,
+      commentId: body.commentId,
       userId: c.get("userId"),
       apiBaseUrl: requirePublicAppOrigin(c.get("appPublicOrigin")),
     });
@@ -386,7 +393,10 @@ const attachment = apiRouter<
       actorType,
       identity: await resolveCallerIdentity(c, c.get("userId")),
     });
-    return c.json(toAttachmentResponse(result), 200);
+    return c.json(
+      toAttachmentResponse({ ...result, parentWorkItemId: workItemId }),
+      200,
+    );
   })
   .openapi(downloadAttachmentRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -460,8 +470,11 @@ const attachment = apiRouter<
     });
     // Customer-facing: the declared shape only, so no storage key reaches the wire and the
     // staff-only deletion hint (`canDelete`) never does either.
-    const { canDelete: _staffDeletionHint, ...customerShape } =
-      toAttachmentResponse(completed);
+    const {
+      canDelete: _staffDeletionHint,
+      commentId: _staffCommentParent,
+      ...customerShape
+    } = toAttachmentResponse(completed);
     return c.json(
       {
         ...customerShape,

@@ -19,6 +19,8 @@ export type WorkItemTransitionOffer = {
   toStateTemplateId: string;
   toStateName: string;
   toStateId: string;
+  /** `state_template.group` of the target state, so a client can warn before a close (RH-10). */
+  toStateCategory: string | undefined;
   notePolicy: "none" | "optional" | "required";
   noteVisibility: "public" | "internal";
   requiresApproval: boolean;
@@ -159,6 +161,7 @@ export async function listWorkItemTransitions(
         ctx.templateNames.get(transition.toStateTemplateId) ??
         transition.toStateTemplateId,
       toStateId: resolution.stateId,
+      toStateCategory: ctx.templateGroups.get(transition.toStateTemplateId),
       notePolicy: transition.notePolicy,
       noteVisibility: transition.noteVisibility,
       requiresApproval: transition.requiresApproval,

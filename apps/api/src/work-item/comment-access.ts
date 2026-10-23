@@ -5,6 +5,7 @@ import type { Executor } from "../database/executor";
 import { personTable, userTable, workspaceTable } from "../database/schema";
 import type { ApiKey } from "../openapi";
 import { resolveIdentity } from "../permissions/resolve-identity";
+import { loadProjectAncestorIdsFor } from "../project/hierarchy.repository";
 import {
   evaluateProjectRead,
   hasProjectReadCapability,
@@ -126,7 +127,14 @@ export async function loadCommentCaller(
   const facts = {
     ...scope,
     organisationId: workspace.organisationId,
-    ancestorProjectIds: [],
+    // PR-2/PR-3: inherited reach AND authority are both decided from this chain.
+    ancestorProjectIds: await loadProjectAncestorIdsFor(
+      executor,
+      executor,
+      identity,
+      scope.workspaceId,
+      scope.projectId,
+    ),
     ownerTeamId: null,
   };
   const reach = evaluateProjectRead(

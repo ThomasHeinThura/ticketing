@@ -16,7 +16,15 @@
 			"tryAgain": "Try Again"
 		},
 		"a11y": {
-			"toggleSidebar": "Kenar çubuğunu aç/kapat"
+			"toggleSidebar": "Kenar çubuğunu aç/kapat",
+			"dnd": {
+				"cancelled": "Moving {{item}} was cancelled.",
+				"dropped": "{{item}} was dropped.",
+				"droppedOver": "{{item}} was dropped on {{target}}.",
+				"instructions": "To pick up an item, press space or enter. Use the arrow keys to move it, press space or enter again to drop it, or escape to cancel.",
+				"over": "{{item}} is over {{target}}.",
+				"pickedUp": "Picked up {{item}}."
+			}
 		},
 		"sidebar": {
 			"title": "Kenar çubuğu",
@@ -108,7 +116,8 @@
 				"organisationRetry": "Yeniden dene",
 				"organisationEmpty": "Henüz etkin müşteri kuruluşu yok. Bu proje dahili olacak.",
 				"organisationNone": "Yok (dahili proje)",
-				"organisationHint": "İsteğe bağlı. Şimdi seçilir ve proje oluşturulduktan sonra değiştirilemez."
+				"organisationHint": "İsteğe bağlı. Şimdi seçilir ve proje oluşturulduktan sonra değiştirilemez.",
+				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -725,7 +734,8 @@
 				"nameRequired": "Proje adı gereklidir",
 				"keyRequired": "Anahtar gereklidir",
 				"keyMax": "Anahtar en fazla 8 karakter olmalıdır",
-				"iconRequired": "Simge gereklidir"
+				"iconRequired": "Simge gereklidir",
+				"keyFormat": "Key must be 2-8 uppercase letters (A-Z)"
 			},
 			"importExportTasks": "İçe/Dışa Aktar",
 			"importExportTasksDescription": "Talepleri içe ve dışa aktarın.",
@@ -763,6 +773,59 @@
 				"title": "Engagement and service",
 				"unset": "Not set",
 				"manageSettingsRequired": "Changing the kind, support level or service calendar needs permission to manage project settings. You can still set the health."
+			},
+			"keyRenameAction": "Rename key",
+			"keyRenameCancel": "Undo",
+			"keyRenameConfirm": "Rename key",
+			"keyRenamed": "Project key renamed",
+			"keyRenameDescription": "Existing work items keep their old prefix ({{oldKey}}-...). Only new work items use {{newKey}}. Renaming a key is allowed but discouraged.",
+			"keyRenamePending": "The key was changed. Confirm to rename it.",
+			"keyRenameTitle": "Rename the project key?",
+			"keyTaken": "That key is already taken",
+			"planning": {
+				"clearDate": "Clear date",
+				"defaultAssignee": "Default assignee",
+				"defaultAssigneeHint": "Assigned to new work items created without an assignee, when they are active on the project.",
+				"description": "Set the parent project, manager, dates and default assignee.",
+				"endDate": "End date",
+				"failure": {
+					"datesOrdered": "The end date cannot be before the start date.",
+					"forbidden": "You do not have permission to change these settings.",
+					"generic": "Could not save the planning settings.",
+					"keyFormat": "Key must be 2-8 uppercase letters (A-Z)",
+					"keyTaken": "That key is already taken.",
+					"notFound": "This project could not be found.",
+					"personNotEligible": "The manager and the default assignee must be active members of the project."
+				},
+				"loadError": "Could not load the planning settings.",
+				"manager": "Project manager",
+				"noDate": "Not set",
+				"none": "None",
+				"noParent": "No parent (top level)",
+				"ownershipFailure": {
+					"cycle": "A project cannot be placed under itself or one of its own children.",
+					"depth": "Projects can be nested at most four levels deep, counting this project's children.",
+					"forbidden": "You need permission to manage members on both projects to change the parent.",
+					"generic": "Could not change the parent project.",
+					"notFound": "This project could not be found.",
+					"parentArchived": "An archived project cannot take child projects.",
+					"parentNotFound": "That parent project could not be found."
+				},
+				"parent": "Parent project",
+				"parentHint": "A project can sit up to four levels deep.",
+				"parentSaved": "Parent project updated",
+				"parentUnlisted": "Saved parent (not in the loaded list)",
+				"personUnlisted": "Saved person (not on the roster list)",
+				"readOnly": "You can view these settings but not change them.",
+				"saved": "Planning settings saved",
+				"startDate": "Start date",
+				"title": "Planning and ownership",
+				"warnings": {
+					"PR-10": "No start date is set.",
+					"PR-6": "No project manager is set.",
+					"PR-7": "The project has no team members."
+				},
+				"warningsTitle": "This project is not fully set up yet"
 			}
 		},
 		"projectIntegrations": {
@@ -804,7 +867,10 @@
 			"columnsTitle": "Sütunlar",
 			"columnsDescription": "Panonuzda görünecek sütunları yönetin. Yeniden sıralamak için sürükleyin. Tamamlanmış işleri temsil eden aşamalar için \"Tamamlandı sütunu\"nu açın.",
 			"automationTitle": "Otomasyon Kuralları",
-			"automationDescription": "Entegrasyon olaylarını sütunlarla eşleştirin. Bir olay gerçekleştiğinde, bağlı talep belirtilen sütuna taşınır."
+			"automationDescription": "Entegrasyon olaylarını sütunlarla eşleştirin. Bir olay gerçekleştiğinde, bağlı talep belirtilen sütuna taşınır.",
+			"statesDescription": "The states work items move through in this project. Drag to reorder, choose the default for new work items, or add one from a workspace template.",
+			"statesTitle": "States",
+			"columnsNote": "These columns belong to the original task board. The states work items move through are managed in States above."
 		},
 		"projectSwitcher": {
 			"selectProject": "Proje seç",
@@ -1392,6 +1458,137 @@
 			"loading": "Loading labels…",
 			"projectScope": "Project",
 			"workspaceScope": "Workspace"
+		},
+		"projectStates": {
+			"add": "Add",
+			"created": "State added",
+			"default": "Default",
+			"defaultSaved": "Default state updated",
+			"failure": {
+				"exists": "This project already has a state for that template.",
+				"forbidden": "You do not have permission to change project states.",
+				"generic": "Could not change the project states.",
+				"noTransition": "No workflow has a transition out of that state template, so a state cannot be created for it."
+			},
+			"groups": {
+				"backlog": "Backlog",
+				"cancelled": "Cancelled",
+				"completed": "Completed",
+				"started": "Started",
+				"unstarted": "Unstarted"
+			},
+			"loadError": "Could not load the project states.",
+			"makeDefault": "Make default",
+			"pickTemplate": "Add a state from a template",
+			"templateNoTransition": "{{name}} (no workflow transition out of it)",
+			"reorder": "Reorder {{name}}"
+		},
+		"workItemTemplates": {
+			"archived": "Archived. Work items already created from it are unchanged.",
+			"archiveNamed": "Archive {{name}}",
+			"checklist": "Checklist",
+			"checklistHelp": "One item per line. Changing a checklist does not change work items that already copied it.",
+			"checklistItems": "Items",
+			"checklistsTab": "Checklists",
+			"copiedHelp": "The checklist items are copied onto each new work item and can be changed there.",
+			"create": "New template",
+			"createChecklist": "New checklist",
+			"description": "Reusable starting points for new work items. Creating from a template copies its description, labels and checklist, never the assignee or dates.",
+			"descriptionField": "Description",
+			"edit": "Edit template",
+			"editChecklist": "Edit checklist",
+			"editNamed": "Edit {{name}}",
+			"editorHelp": "A template fills in what you leave blank when creating a work item of its type.",
+			"empty": "Nothing here yet",
+			"emptyDescription": "Create one, or change the search.",
+			"failed": "Unable to save this template.",
+			"forbidden": "You need workspace settings permission to manage templates.",
+			"itemCount_one": "{{count}} item",
+			"itemCount_other": "{{count}} items",
+			"itemTitle": "Starting title",
+			"labels": "Labels",
+			"loadFailed": "Unable to load templates.",
+			"name": "Name",
+			"noChecklist": "No checklist",
+			"notFound": "This item is no longer available in this workspace.",
+			"save": "Save",
+			"search": "Search",
+			"templatesTab": "Templates",
+			"title": "Work item templates",
+			"type": "Work item type",
+			"typePlaceholder": "Choose a type",
+			"descriptionPlaceholder": "Describe the work item..."
+		},
+		"projectMembers": {
+			"actionsFor": "Actions for {{name}}",
+			"addDialogTitle": "Add member",
+			"added": "Member added",
+			"addError": "Could not add the member",
+			"addMember": "Add member",
+			"authorityNote": "This person is a workspace {{role}}. A project role replaces their workspace role on this project only.",
+			"candidatesError": "Could not load the people you can add.",
+			"changeRoleFor": "Change role for {{name}}",
+			"columns": {
+				"member": "Member",
+				"role": "Role",
+				"source": "Source"
+			},
+			"direct": "Direct",
+			"emptyDescription": "Add people from this workspace to build the project roster.",
+			"emptyTitle": "No members yet",
+			"emptyWarning": "This project has no members. Add at least one person so work can be assigned.",
+			"inactive": "inactive",
+			"inheritedDialogDescription": "{{name}} is a member through {{project}}. An inherited membership cannot be removed on this project; remove it at the parent project.",
+			"inheritedDialogTitle": "Inherited membership",
+			"inheritedFrom": "Inherited from {{project}}",
+			"loadError": "Could not load the project roster.",
+			"managedExternally": "Managed by identity provider",
+			"noCandidates": "Everyone in this workspace is already on the roster.",
+			"openParentRoster": "Open {{project}} roster",
+			"overrides": "Overrides {{role}} from {{project}}",
+			"pageTitle": "Project Members",
+			"person": "Person",
+			"personPlaceholder": "Select a person",
+			"removed": "Member removed",
+			"removeDialogDescription": "Remove {{name}} from this project's roster? They can no longer be assigned work here.",
+			"removeDialogTitle": "Remove member",
+			"removeError": "Could not remove the member",
+			"removeMember": "Remove from project",
+			"removeOverrideNote": "Their {{role}} role inherited from {{project}} applies again.",
+			"reparent": {
+				"confirm": "Move project",
+				"descendants_one": "{{count}} sub-project moves with it and is affected the same way.",
+				"descendants_other": "{{count}} sub-projects move with it and are affected the same way.",
+				"descriptionParent": "Move this project under {{parent}}? Members of the new parent project are inherited here.",
+				"descriptionRoot": "Make this project a top-level project? It stops inheriting members from its parent.",
+				"gains": "Gain access",
+				"loadError": "Could not preview the move.",
+				"losses": "Lose access",
+				"noChange": "Nobody gains or loses access.",
+				"refused": "This move is not allowed (it would create a cycle or exceed the four-level depth cap).",
+				"roleChange": "{{from}} to {{to}}",
+				"roleChanges": "Role changes",
+				"title": "Move project",
+				"via": "{{role}} via {{project}}"
+			},
+			"role": "Role",
+			"roleUpdated": "Role updated",
+			"roleUpdateError": "Could not change the role",
+			"sectionSubtitle": "Only people on the roster can be assigned work, set as manager or set as default assignee. People on a parent project are inherited here.",
+			"sectionTitle": "Project roster",
+			"subtitle": "Manage who is on this project's roster and what role they hold.",
+			"title": "Members",
+			"errors": {
+				"alreadyMember": "This person is already on the project roster.",
+				"conflict": "This change conflicts with the current roster. Reload and try again.",
+				"forbidden": "You do not have permission to make this change.",
+				"inheritedMembership": "This person is a member through a parent project. Remove them at the parent project.",
+				"managedMembership": "This membership comes from an identity-provider mapping. Change the mapping instead.",
+				"personNotEligible": "Only active staff members of this workspace can join a project roster.",
+				"roleExceedsAuthority": "You cannot grant, change or remove a role above your own.",
+				"roleNotFound": "That role is no longer available. Reload and try again.",
+				"targetChanged": "The roster changed while you were working. Reload and try again."
+			}
 		}
 	},
 	"navigation": {
@@ -1460,7 +1657,11 @@
 				"workspace": "Çalışma Alanları",
 				"comment": "Yorumlar",
 				"activity": "Aktiviteler",
-				"fallback": "Sonuçlar"
+				"fallback": "Sonuçlar",
+				"person": "People",
+				"recent": "Recent",
+				"savedView": "Saved views",
+				"workItem": "Work items"
 			}
 		},
 		"settingsLayout": {
@@ -1756,7 +1957,12 @@
 			"descriptionUpdated": "updated the description",
 			"labelsUpdated": "updated labels",
 			"attachmentAdded": "added an attachment",
-			"attachmentDeleted": "removed an attachment"
+			"attachmentDeleted": "removed an attachment",
+			"actors": {
+				"apiKey": "API key",
+				"automation": "Automation",
+				"system": "System"
+			}
 		}
 	},
 	"tasks": {
@@ -2069,7 +2275,8 @@
 			"resizeStart": "Başlangıç tarihini yeniden boyutlandır",
 			"resizeDue": "Bitiş tarihini yeniden boyutlandır",
 			"taskAriaLabel": "{{title}}: açmak veya taşımak için sürükleyin",
-			"jumpToToday": "Jump to today"
+			"jumpToToday": "Jump to today",
+			"unassigned": "Unassigned"
 		},
 		"delete": {
 			"title": "Talep Silinsin mi?",
@@ -2182,7 +2389,27 @@
 			"taskAriaLabel": "{{title}}, {{range}}: open task",
 			"title": "Calendar",
 			"today": "Today",
-			"loadError": "Failed to load tasks."
+			"loadError": "Failed to load tasks.",
+			"nextDay": "Next day",
+			"nextWeek": "Next week",
+			"previousDay": "Previous day",
+			"previousWeek": "Previous week",
+			"view": {
+				"day": "Day",
+				"month": "Month",
+				"week": "Week"
+			},
+			"viewGroup": "Calendar range"
+		},
+		"group": {
+			"by": "Group by",
+			"fields": {
+				"assignee": "Assignee",
+				"priority": "Priority",
+				"state": "Status"
+			},
+			"label": "Group",
+			"none": "None"
 		}
 	},
 	"invitations": {
@@ -2234,7 +2461,8 @@
 			},
 			"noDueDate": "Bitiş tarihi yok",
 			"reorderHandle": "Projeyi yeniden sırala",
-			"reorderError": "Projeler yeniden sıralanamadı"
+			"reorderError": "Projeler yeniden sıralanamadı",
+			"inParent": "in {{name}}"
 		},
 		"search": {
 			"pageTitle": "Ara",
@@ -2494,7 +2722,17 @@
 				"heading": "Attachments",
 				"loadFailed": "Attachments could not be loaded.",
 				"uploadFailed": "The file could not be uploaded.",
-				"uploading": "Uploading…"
+				"uploading": "Uploading…",
+				"closePreview": "Close preview",
+				"dismissUpload": "Dismiss {{name}}",
+				"download": "Download {{name}}",
+				"dropToAttach": "Drop files to attach them to this work item",
+				"next": "Next image",
+				"preview": "Preview {{name}}",
+				"previous": "Previous image",
+				"retryUpload": "Retry {{name}}",
+				"uploadedBy": "by {{name}}",
+				"uploadsLabel": "Uploads in progress"
 			},
 			"sla": {
 				"due": "due {{date}}",
@@ -2561,7 +2799,8 @@
 			"moveColumnLeft": "Move {{column}} left",
 			"moveColumnRight": "Move {{column}} right",
 			"resetColumns": "Reset columns",
-			"tableLayout": "Table"
+			"tableLayout": "Table",
+			"assigneeNotOnProject": "(no longer on this project)"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -2606,7 +2845,10 @@
 				"empty": "Only non-empty files can be attached.",
 				"afterCreate": "The work item already exists. Closing keeps it and all completed attachments.",
 				"retryPermission": "Upload permission is no longer available."
-			}
+			},
+			"fieldTemplate": "Template",
+			"templateNone": "No template",
+			"templatePlaceholder": "Template"
 		},
 		"journey": {
 			"editHeading": "Edit",
@@ -2702,7 +2944,14 @@
 			"transitionForbidden": "You don't have permission to change the state of work items.",
 			"transitionLoadError": "Couldn't load the available state changes.",
 			"transitionSaved": "{{key}} moved to {{state}}.",
-			"transitionUnavailable": "{{key}} can't move to that state right now."
+			"transitionUnavailable": "{{key}} can't move to that state right now.",
+			"groupCount": "{{total}} work items in {{group}}",
+			"groupEmpty": "No work items in this group.",
+			"groupForbidden": "You don't have permission to make that change to {{key}}.",
+			"groupNoPriority": "No priority",
+			"groupNotDroppable": "{{key}} can't be moved to {{group}}.",
+			"groupSaved": "{{key}} moved to {{group}}.",
+			"groupUnassigned": "Unassigned"
 		},
 		"bulk": {
 			"assign": "Assign selected",
@@ -2852,7 +3101,11 @@
 			"childrenAffected_one": "This item has {{count}} child item. Deleting the parent keeps its children.",
 			"childrenAffected_other": "This item has {{count}} child items. Deleting the parent keeps its children.",
 			"hidden": "Work item details are no longer available.",
-			"requestFailed": "The deletion request could not be created. Check access and try again."
+			"requestFailed": "The deletion request could not be created. Check access and try again.",
+			"impact": "Effect of deleting this work item",
+			"project": "Project: {{project}}",
+			"requestedBy": "Requested by {{name}}.",
+			"retention": "It is kept for {{days}} days and then permanently removed."
 		},
 		"legacyView": {
 			"continue": "Open without unsupported controls",
@@ -2875,6 +3128,48 @@
 			"ariaLabel": "Work item {{key}}",
 			"close": "Close task",
 			"openFullPage": "Open full page"
+		},
+		"blocked": {
+			"badge": "Blocked",
+			"badgeTitle": "Blocked by open work items"
+		},
+		"openChildren": {
+			"title": "Close with open child items?",
+			"description": "This work item still has open child items. Closing it does not close them; they stay open.",
+			"item": "{{key}} {{title}} ({{state}})",
+			"more": "And {{remaining}} more open below this item",
+			"confirm": "Close anyway"
+		},
+		"sla": {
+			"metric": {
+				"first_response": "first response",
+				"resolution": "resolution"
+			},
+			"remaining": "{{time}} left",
+			"state": {
+				"at_risk": "At risk",
+				"breached": "Breached",
+				"met": "Met",
+				"missed": "Missed",
+				"ok": "On track"
+			},
+			"title": "SLA {{metric}}: {{state}}"
+		},
+		"move": {
+			"action": "Move to project...",
+			"children": "Also move its sub-items",
+			"childrenDetachHelp": "Its direct sub-items stay in {{project}} with no parent, and the parent link is removed.",
+			"childrenMoveHelp": "The whole sub-item tree moves with it and keeps its structure.",
+			"confirm": "Move",
+			"consequences": "The work item gets a new key in the target project, its own parent link is removed, its state is matched by state type, project labels are matched by name, and pending workflow timers are discarded.",
+			"description": "Choose the project this work item should live in. It keeps its history, and the old key keeps redirecting to the new one.",
+			"failed": "Unable to move this work item.",
+			"notFound": "That project is not available to you.",
+			"projectsFailed": "Unable to load projects.",
+			"success": "Moved as {{key}}.",
+			"target": "Target project",
+			"targetPlaceholder": "Choose a project",
+			"title": "Move {{key}} to another project"
 		}
 	},
 	"portal": {

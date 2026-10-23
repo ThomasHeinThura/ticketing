@@ -500,7 +500,7 @@ describe("strict policy runtime enforcement against the production API graph", (
     const validScope = await createProjectWithKey(
       member.workspace.id,
       validScopeKey,
-      "scoped-create",
+      "SCOPEDCR",
     );
     expect(validScope.status, await validScope.clone().text()).toBe(200);
 

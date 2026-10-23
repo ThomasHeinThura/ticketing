@@ -58,7 +58,6 @@ import {
   ShikiCodeBlock,
 } from "@/components/task/extensions/shiki-code-block";
 import { TaskItemWithCheckbox } from "@/components/task/extensions/task-item-with-checkbox";
-import { TaskDeskIssueLink } from "@/components/task/extensions/taskdesk-issue-link";
 import { TaskDeskMention } from "@/components/task/extensions/taskdesk-mention";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
@@ -74,6 +73,10 @@ import {
 import { isInCodeBlockLanguagePicker } from "@/lib/is-in-codeblock-language-picker";
 import { toast } from "@/lib/toast";
 import { uploadTaskImage } from "@/lib/upload-task-image";
+import {
+  extractWorkItemKeyFromUrl,
+  WorkItemIssueLink,
+} from "./work-item-issue-link";
 
 type CommentEditorProps = {
   value: string;
@@ -672,7 +675,7 @@ export default function CommentEditor({
         }),
         EmbedBlock,
         AttachmentCard,
-        TaskDeskIssueLink,
+        WorkItemIssueLink,
         TaskDeskMention,
         ...(enableMentions
           ? [
@@ -744,7 +747,8 @@ export default function CommentEditor({
           const url = normalizeUrl(pastedText);
           if (!url) return false;
 
-          const issueKey = extractIssueKeyFromUrl(url);
+          const issueKey =
+            extractIssueKeyFromUrl(url) ?? extractWorkItemKeyFromUrl(url);
           const taskIdFromUrl = extractTaskIdFromUrl(url);
           if (issueKey || taskIdFromUrl) {
             event.preventDefault();

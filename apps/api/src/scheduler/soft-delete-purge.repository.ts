@@ -25,14 +25,14 @@ const WI_ITEMS = sql`SELECT wi."id"`;
 const PROJECT_ITEMS = PROJECT_WORK_ITEMS;
 
 /**
- * Work-item eligibility, `wi` alias: soft-deleted ≥ 30 days ago, no child work items (the
- * `parent_id` FK is RESTRICT, so leaves purge first and parents follow on a later run), no
- * portal submission (RESTRICT FK — reported, never force-deleted), and not held.
+ * Work-item eligibility, `wi` alias: soft-deleted ≥ 30 days ago, no portal submission
+ * (RESTRICT FK — reported, never force-deleted), and not held. Child work items do NOT block
+ * the purge (`WI-22`, P1-23): deleting a parent orphans its children, so `purgeSoftDeletedWorkItem`
+ * detaches them (`parent_id` -> null, journaled) in the same transaction before the row goes.
  */
 const WORK_ITEM_ELIGIBLE = sql`
   wi."deleted_at" IS NOT NULL
   AND wi."deleted_at" <= ${dbNowUtc()} - ${WORK_ITEM_WINDOW}
-  AND NOT EXISTS (SELECT 1 FROM "work_item" c WHERE c."parent_id" = wi."id")
   AND NOT EXISTS (SELECT 1 FROM "submission" s WHERE s."work_item_id" = wi."id")
   AND NOT ${WORK_ITEM_UNDER_OPEN_HOLD}
 `;
@@ -41,7 +41,9 @@ const WORK_ITEM_ELIGIBLE = sql`
  * Project eligibility, `pr` alias: `purge_after` passed (set to delete time + 30 days), and no
  * RESTRICT dependant outside the project's own tree (portal submissions on its work items, a
  * request type or request-type version naming it as `default_project_id`) — those stay
- * soft-deleted and are reported rather than retried and failed every night.
+ * soft-deleted and are reported rather than retried and failed every night. A project that still
+ * has a child project (any state) is not eligible either (P1-5): `project_workspace_parent_fk` is
+ * RESTRICT, so children purge first and the parent follows on a later page or run (leaf-first).
  */
 const PROJECT_ELIGIBLE = sql`
   pr."deleted_at" IS NOT NULL
@@ -51,6 +53,10 @@ const PROJECT_ELIGIBLE = sql`
     SELECT 1 FROM "submission" s
     JOIN "work_item" wi ON wi."id" = s."work_item_id"
     WHERE wi."project_id" = pr."id"
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM "project" ch
+    WHERE ch."workspace_id" = pr."workspace_id" AND ch."parent_id" = pr."id"
   )
   AND NOT EXISTS (SELECT 1 FROM "request_type" rt WHERE rt."default_project_id" = pr."id")
   AND NOT EXISTS (
@@ -163,17 +169,32 @@ export async function fenceLegalHolds(executor: Executor): Promise<void> {
   await executor.execute(sql`LOCK TABLE legal_hold IN SHARE MODE`);
 }
 
-/** Re-checks eligibility under a row lock; false when it changed (restored, held, ...). */
+/**
+ * Re-checks eligibility under a row lock; null when it changed (restored, held, ...), else the
+ * locked row's id and project.
+ */
 export async function lockEligibleWorkItem(
   executor: Executor,
   id: string,
-): Promise<boolean> {
-  const result = await executor.execute<{ id: string }>(sql`
-    SELECT wi."id" FROM "work_item" wi
+): Promise<{ id: string; projectId: string } | null> {
+  const result = await executor.execute<{ id: string; project_id: string }>(sql`
+    SELECT wi."id", wi."project_id" FROM "work_item" wi
     WHERE wi."id" = ${id} AND ${WORK_ITEM_ELIGIBLE}
     FOR UPDATE OF wi
   `);
-  return result.rows.length === 1;
+  const row = result.rows[0];
+  return row ? { id: row.id, projectId: row.project_id } : null;
+}
+
+/** The work item's project without taking a row lock (so a lock order can be chosen). */
+export async function readWorkItemProjectId(
+  executor: Executor,
+  id: string,
+): Promise<string | null> {
+  const result = await executor.execute<{ project_id: string }>(sql`
+    SELECT wi."project_id" FROM "work_item" wi WHERE wi."id" = ${id}
+  `);
+  return result.rows[0]?.project_id ?? null;
 }
 
 export async function lockEligibleProject(

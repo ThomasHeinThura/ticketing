@@ -41,7 +41,9 @@ import {
   eventScope,
 } from "../events/outbox";
 import { recordWorkItemActivity } from "../work-item/activity";
+import { resolveAssigneeEligibility } from "../work-item/assignee-eligibility";
 import { claimWorkItemNumber } from "../work-item/controllers/claim-work-item-number";
+import { recordInitialWorkItemFields } from "../work-item/create-initial-fields";
 import { recordWorkItemEvent } from "../work-item/native-event";
 import {
   findEffectiveSlaPolicyVersionQuery,
@@ -1077,36 +1079,35 @@ async function convertSubmissionInTransaction(
   // #761 / RT-6: an ineligible snapshotted default assignee never fails acceptance; the item
   // is left unassigned and the reason is recorded in the acceptance audit row.
   let assigneeSkipped: { id: string; reason: string } | null = null;
-  if (defaultAssigneeId) {
-    const [person] = await tx
-      .select({
-        id: schema.personTable.id,
-        active: schema.personTable.active,
-        side: schema.personTable.side,
-      })
-      .from(schema.personTable)
-      .innerJoin(
-        schema.membershipTable,
-        eq(schema.membershipTable.personId, schema.personTable.id),
-      )
-      .where(
-        and(
-          eq(schema.personTable.id, defaultAssigneeId),
-          eq(schema.membershipTable.scope, "project"),
-          eq(schema.membershipTable.scopeId, project.id),
-        ),
-      )
-      .limit(1);
-    if (person?.active && person.side === "staff")
-      eligibleAssigneeId = person.id;
+  // AS-12: the request type's default overrides the project's; AS-11: with no request-type
+  // default the project's default applies. The same eligibility rule below judges either.
+  const effectiveDefaultAssigneeId =
+    defaultAssigneeId ?? project.defaultAssigneeId ?? null;
+  if (effectiveDefaultAssigneeId) {
+    // PR-2: the roster is the project plus its ancestors, judged by the same rule as the
+    // canonical create and the project-settings write (`resolveAssigneeEligibility`).
+    const eligibility = await resolveAssigneeEligibility(
+      tx,
+      project.id,
+      effectiveDefaultAssigneeId,
+    );
+    const [person] = eligibility.eligible
+      ? await tx
+          .select({ side: schema.personTable.side })
+          .from(schema.personTable)
+          .where(eq(schema.personTable.id, effectiveDefaultAssigneeId))
+          .limit(1)
+      : [];
+    if (eligibility.eligible && person?.side === "staff")
+      eligibleAssigneeId = effectiveDefaultAssigneeId;
     else
       assigneeSkipped = {
-        id: defaultAssigneeId,
-        reason: !person
-          ? "not_a_project_member"
-          : !person.active
+        id: effectiveDefaultAssigneeId,
+        reason: eligibility.eligible
+          ? "not_staff"
+          : eligibility.reason === "not_active"
             ? "inactive"
-            : "not_staff",
+            : "not_a_project_member",
       };
   }
   const number = await claimWorkItemNumber(project.id, tx);
@@ -1164,6 +1165,18 @@ async function convertSubmissionInTransaction(
       source: "portal",
     },
   });
+  // P1-11 / AS-16, WI-29: a default-assigned conversion records the same assignment
+  // activity, audit row, `work_item.assigned` event + assignee notification fan-out and
+  // implicit watcher as the create path (actor excluded, AS-18), in this transaction. Covers
+  // both the request-type default and the project-default fallback (AS-11/AS-12).
+  if (eligibleAssigneeId)
+    await recordInitialWorkItemFields(
+      tx,
+      item,
+      { assigneeId: eligibleAssigneeId },
+      actorId,
+      actor.type,
+    );
   for (const message of messages)
     await tx.insert(schema.commentTable).values({
       workspaceId,

@@ -44,6 +44,7 @@ import {
 } from "../project/project-deletion-target";
 import { assertCalendarUnused } from "../service-calendar/repository";
 import { dbNowUtc } from "../utils/db-time";
+import { projectAncestryFor } from "../utils/project-ancestry";
 import {
   workspaceDeletionTarget,
   workspaceRoleDeletionTarget,
@@ -1220,8 +1221,19 @@ export async function evaluateRegisteredDeletionAccess(
   const projectScoped = policy.scope === "project";
   if (projectScoped && !loaded.projectId)
     return { allowed: false, failure: "unsupported", status: 403 };
+  // PR-2/PR-3: reach and authority on a child project follow its ancestor chain.
+  const ancestorProjectIds =
+    projectScoped && loaded.projectId
+      ? await projectAncestryFor(
+          tx,
+          identity,
+          loaded.workspaceId,
+          loaded.projectId,
+        )
+      : undefined;
   const decision = evaluatePolicy(policy, {
     identity,
+    ...(ancestorProjectIds ? { ancestorProjectIds } : {}),
     target: {
       workspaceId: loaded.workspaceId,
       ...(loaded.projectId ? { projectId: loaded.projectId } : {}),
@@ -1239,6 +1251,7 @@ export async function evaluateRegisteredDeletionAccess(
           workspaceId: loaded.workspaceId,
           projectId: loaded.projectId ?? "",
           organisationId: loaded.organisationId,
+          ancestorProjectIds,
         })
       : workspaceInReach(identity, loaded.workspaceId),
   });

@@ -14,13 +14,14 @@ import {
   CommandSeparator,
 } from "@taskdesk/ui";
 import {
+  Bookmark,
   FileText,
   FolderKanban,
   Hash,
-  MessageSquare,
+  History,
   Search,
+  User,
   Users,
-  Zap,
 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -28,25 +29,30 @@ import { shortcuts } from "@/constants/shortcuts";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import {
+  pushRecentItem,
+  type RecentItem,
+  readRecentItems,
+} from "./recent-items";
+import {
+  isPaletteResult,
+  type PaletteResultType,
+  type SearchResultItem,
+  searchResultHref,
+} from "./search-targets";
 
-type SearchResultItem = {
+type PaletteEntry = {
   id: string;
+  type: PaletteResultType;
   title: string;
   description?: string;
-  content?: string;
-  type: "task" | "project" | "workspace" | "comment" | "activity";
-  projectId?: string;
-  workspaceId?: string;
-  taskNumber?: number;
-  projectSlug?: string;
-  priority?: string;
-  status?: string;
+  href: string;
 };
 
 type SearchGroup = {
   value: string;
   label: string;
-  items: SearchResultItem[];
+  items: PaletteEntry[];
 };
 
 type SearchCommandMenuProps = {
@@ -63,7 +69,7 @@ function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
   const searchEnabled = query.trim().length >= 3;
 
   const { data: searchResults } = useGlobalSearch({
-    q: query,
+    q: searchEnabled ? query.trim() : "",
     type: "all",
     workspaceId: workspace?.id,
     limit: 20,
@@ -83,117 +89,101 @@ function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
     }
   }, [open]);
 
-  const handleSelect = (item: SearchResultItem) => {
+  const recentItems = useMemo<RecentItem[]>(
+    () => (open && workspace?.id ? readRecentItems(workspace.id) : []),
+    [open, workspace?.id],
+  );
+
+  const handleSelect = (entry: PaletteEntry) => {
+    if (workspace?.id) {
+      pushRecentItem(workspace.id, {
+        type: entry.type,
+        id: entry.id,
+        title: entry.title,
+        description: entry.description,
+        href: entry.href,
+      });
+    }
     setOpen(false);
     setQuery("");
-
-    switch (item.type) {
-      case "task":
-        if (item.projectId && item.id && workspace?.id) {
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
-            params: {
-              workspaceId: workspace.id,
-              projectId: item.projectId,
-              taskId: item.id,
-            },
-          });
-        }
-        break;
-      case "project":
-        if (item.id && workspace?.id) {
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
-            params: {
-              workspaceId: workspace.id,
-              projectId: item.id,
-            },
-          });
-        }
-        break;
-      case "workspace":
-        if (item.id) {
-          navigate({
-            to: "/dashboard/workspace/$workspaceId",
-            params: {
-              workspaceId: item.id,
-            },
-          });
-        }
-        break;
-      case "comment":
-      case "activity":
-        if (item.projectId && item.id && workspace?.id) {
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
-            params: {
-              workspaceId: workspace.id,
-              projectId: item.projectId,
-              taskId: item.id,
-            },
-          });
-        }
-        break;
-    }
+    navigate({ to: entry.href as never });
   };
 
   const getItemIcon = (type: string) => {
     switch (type) {
-      case "task":
+      case "work_item":
         return Hash;
       case "project":
         return FolderKanban;
       case "workspace":
         return Users;
-      case "comment":
-        return MessageSquare;
-      case "activity":
-        return Zap;
+      case "saved_view":
+        return Bookmark;
+      case "person":
+        return User;
       default:
         return FileText;
     }
   };
 
   const groupedItems = useMemo<SearchGroup[]>(() => {
-    if (!searchEnabled) return [];
-    const results = (searchResults?.results ?? []) as SearchResultItem[];
-    const grouped = results.reduce(
-      (acc: Record<string, SearchResultItem[]>, item: SearchResultItem) => {
-        if (!acc[item.type]) acc[item.type] = [];
-        acc[item.type].push(item);
-        return acc;
-      },
-      {} as Record<string, SearchResultItem[]>,
-    );
+    if (!searchEnabled) {
+      return recentItems.length > 0
+        ? [
+            {
+              value: "recent",
+              label: t("navigation:search.groups.recent"),
+              items: recentItems,
+            },
+          ]
+        : [];
+    }
+    // The API returns results best match first; groups keep that order, so the group holding
+    // the best match (an exact work item key, for instance) comes first (SV-2, SV-4).
+    const grouped = new Map<PaletteResultType, PaletteEntry[]>();
+    for (const item of (searchResults?.results ?? []) as SearchResultItem[]) {
+      if (!isPaletteResult(item)) continue;
+      const href = searchResultHref(item);
+      if (!href) continue;
+      const label = item.type === "work_item" && item.key ? item.key : null;
+      const entry: PaletteEntry = {
+        id: item.id,
+        type: item.type,
+        title: label ? `${label} ${item.title}` : item.title,
+        description: item.description,
+        href,
+      };
+      const bucket = grouped.get(item.type) ?? [];
+      bucket.push(entry);
+      grouped.set(item.type, bucket);
+    }
 
-    const groupLabel = (type: string) => {
-      switch (type as SearchResultItem["type"]) {
-        case "task":
-          return t("navigation:search.groups.task");
+    const groupLabel = (type: PaletteResultType) => {
+      switch (type) {
+        case "work_item":
+          return t("navigation:search.groups.workItem");
+        case "saved_view":
+          return t("navigation:search.groups.savedView");
         case "project":
           return t("navigation:search.groups.project");
+        case "person":
+          return t("navigation:search.groups.person");
         case "workspace":
           return t("navigation:search.groups.workspace");
-        case "comment":
-          return t("navigation:search.groups.comment");
-        case "activity":
-          return t("navigation:search.groups.activity");
-        default:
-          return t("navigation:search.groups.fallback");
       }
     };
 
-    return Object.entries(grouped).map(([type, items]) => ({
+    return [...grouped.entries()].map(([type, items]) => ({
       value: type,
       label: groupLabel(type),
       items,
     }));
-  }, [searchEnabled, searchResults?.results, t]);
+  }, [searchEnabled, searchResults?.results, recentItems, t]);
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandDialogPopup instant>
-        <Command items={groupedItems}>
+        <Command items={groupedItems} filter={null}>
           <CommandInput
             placeholder={t("navigation:search.inputPlaceholder")}
             value={query}
@@ -216,12 +206,15 @@ function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
                   <CommandGroup items={group.items}>
                     <CommandGroupLabel>{group.label}</CommandGroupLabel>
                     <CommandCollection>
-                      {(item: SearchResultItem) => {
-                        const Icon = getItemIcon(item.type);
+                      {(item: PaletteEntry) => {
+                        const Icon =
+                          group.value === "recent"
+                            ? History
+                            : getItemIcon(item.type);
                         return (
                           <CommandItem
                             key={`${item.type}-${item.id}`}
-                            value={`${item.title} ${item.description || ""} ${item.type} ${item.id}`}
+                            value={`${item.type}:${item.id}`}
                             onClick={() => handleSelect(item)}
                             className="flex items-start gap-3 py-3"
                             aria-label={`${item.type}: ${item.title}`}

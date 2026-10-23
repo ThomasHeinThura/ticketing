@@ -316,3 +316,25 @@ describe("project board URL state", () => {
     ).toBe("board");
   });
 });
+
+describe("view grouping URL state (VW-13, VW-27, VW-1)", () => {
+  it("round-trips a valid group through the router codec and drops an unknown one", () => {
+    expect(parseProjectBoardSearch({ group: "assignee" }).group).toBe(
+      "assignee",
+    );
+    expect(parseProjectBoardSearch({ group: "module" })).not.toHaveProperty(
+      "group",
+    );
+    const routed = parseProjectRouterSearch("group=priority&layout=board");
+    expect(parseProjectBoardSearch(routed)).toMatchObject({
+      group: "priority",
+      layout: "board",
+    });
+    const params = new URLSearchParams();
+    appendProjectViewSearchParams(params, {
+      group: "assignee",
+      layout: "board",
+    });
+    expect(params.get("group")).toBe("assignee");
+  });
+});

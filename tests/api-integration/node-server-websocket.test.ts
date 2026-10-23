@@ -1986,7 +1986,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         workspaceId: member.workspace.id,
         name: "Real listener JSON body",
         icon: "FolderKanban",
-        slug: "real-listener-json-body",
+        slug: "REALLIST",
       }),
       { "x-taskdesk-csrf": csrfToken },
     );
@@ -1996,7 +1996,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     expect(JSON.parse(created.body)).toMatchObject({
       workspaceId: member.workspace.id,
       name: "Real listener JSON body",
-      slug: "real-listener-json-body",
+      slug: "REALLIST",
     });
 
     const socket = await openSocket(

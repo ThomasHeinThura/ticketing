@@ -197,6 +197,57 @@ describe("API integration: GET/PATCH /api/me/settings (settings-hierarchy.md ST-
     });
   });
 
+  it("stores listGroups and columns beside layout as separate project rows and rejects bad values (VW-15, VW-19)", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await grantProjectRole(owner.user.id, project.id, ["work_item:read"]);
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+
+    const saved = await patch(app, {
+      [`layout.${project.id}`]: "table",
+      [`listGroups.${project.id}`]: ["state-a", "state-b"],
+      [`columns.${project.id}`]: ["key", "title", "dueDate"],
+    });
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toEqual({
+      settings: {
+        [`layout.${project.id}`]: "table",
+        [`listGroups.${project.id}`]: ["state-a", "state-b"],
+        [`columns.${project.id}`]: ["key", "title", "dueDate"],
+      },
+    });
+    const rows = (await rowsFor(owner.user.id)).filter(
+      (row) => row.scopeId === project.id,
+    );
+    expect(rows.map((row) => row.key).sort()).toEqual([
+      "columns",
+      "layout",
+      "listGroups",
+    ]);
+
+    for (const bad of [
+      { [`columns.${project.id}`]: [] },
+      { [`columns.${project.id}`]: ["title", "title"] },
+      { [`columns.${project.id}`]: ["cf.severity"] },
+      { [`listGroups.${project.id}`]: ["a", "a"] },
+      { [`listGroups.${project.id}`]: "a" },
+    ]) {
+      expect((await patch(app, bad)).status).toBe(422);
+    }
+
+    // Clearing one key leaves the others.
+    await patch(app, { [`listGroups.${project.id}`]: null });
+    expect(await get(app)).toEqual({
+      settings: {
+        [`layout.${project.id}`]: "table",
+        [`columns.${project.id}`]: ["key", "title", "dueDate"],
+      },
+    });
+  });
+
   it.each([
     ["unknown key", { accent: "red" }],
     ["theme (no specified value domain)", { theme: "dark" }],

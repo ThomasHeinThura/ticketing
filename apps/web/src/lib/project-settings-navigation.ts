@@ -1,18 +1,23 @@
 import type { LucideIcon } from "lucide-react";
-import { GitBranch, Settings, Tag } from "lucide-react";
+import { GitBranch, Settings, Tag, Users } from "lucide-react";
 
 type Translator = (key: string) => string;
 
 export function getProjectSettingsMenuItems(t: Translator): Array<{
   title: string;
   icon: LucideIcon;
-  segment: "general" | "workflow" | "labels";
+  segment: "general" | "workflow" | "labels" | "members";
 }> {
   return [
     {
       title: t("settings:projectGeneral.title"),
       icon: Settings,
       segment: "general",
+    },
+    {
+      title: t("settings:projectMembers.title"),
+      icon: Users,
+      segment: "members",
     },
     {
       title: t("settings:workspaceLabels.title"),

@@ -327,7 +327,18 @@ export function buildShadowPolicySide(args: {
 
   return {
     entry,
-    context: { identity, target: {}, scope, inReach },
+    context: {
+      identity,
+      target: {},
+      scope,
+      inReach,
+      // PR-2/PR-3: same inherited-authority input the strict path uses.
+      ...(projectReachFacts !== undefined &&
+      (policy.scope === "project" || policy.scope === "work_item") &&
+      projectReachFacts.projectId === projectId
+        ? { ancestorProjectIds: projectReachFacts.ancestorProjectIds ?? [] }
+        : {}),
+    },
   };
 }
 

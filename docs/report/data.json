@@ -139,11 +139,11 @@
 			"name": "Core work",
 			"total": 181,
 			"states": {
-				"implemented_tested": 94,
-				"implemented_untested": 4,
-				"partial": 56,
-				"missing": 27,
-				"external_blocked": 0
+				"implemented_tested": 140,
+				"implemented_untested": 0,
+				"partial": 28,
+				"missing": 8,
+				"external_blocked": 5
 			},
 			"unaudited": 0,
 			"gaps": [
@@ -183,16 +183,158 @@
 				"Add tests: comment PATCH with visibility is ignored/rejected (CA-4); no activity update/delete route exists (CA-10)"
 			],
 			"review": {
-				"verdict": "not run",
-				"findings": 0,
-				"note": "Opus review runs at phase end"
+				"verdict": "pass_with_conditions",
+				"findings": 16,
+				"note": "round 2 of P1: 0 critical, 0 high, 7 medium, 9 low; round 1 had 3 high/20 medium. Round-2 conditions (Q1-Q3,Q5,Q6) fixed and re-tested; AI reviewed, NOT Thomas-accepted",
+				"items": [
+					{
+						"id": "Q1",
+						"severity": "medium",
+						"category": "security",
+						"file": "apps/api/src/project/hierarchy.repository.ts:108-135; apps/api/src/ws/native-work-item-rea",
+						"problem": "loadProjectAncestorIdsForRequest memoises the ancestor chain in a module-level WeakMap keyed on the object passed as 'request'. Request-scoped callers pass the Hono context or a transaction, but the websocket topic authorisation ("
+					},
+					{
+						"id": "Q2",
+						"severity": "medium",
+						"category": "gap",
+						"file": "apps/api/src/work-item/controllers/list-assignable-people.ts:100-103; apps/api/src/work-it",
+						"problem": "Server-side eligibility now accepts ancestor roster members (assignee-eligibility.ts:27-45), but GET /api/projects/{id}/assignable (the only picker source for properties, context menu, bulk toolbar, grouped board, create dialog) s"
+					},
+					{
+						"id": "Q3",
+						"severity": "medium",
+						"category": "correctness",
+						"file": "apps/api/src/intake/repository.ts:1085-1110",
+						"problem": "Intake conversion validates the effective default assignee with a membership join on scope_id = project.id only, while project settings (resolveAssigneeEligibility) and canonical create accept ancestor roster members."
+					},
+					{
+						"id": "Q5",
+						"severity": "medium",
+						"category": "ui-ux",
+						"file": "apps/web/src/components/project/members/project-members-settings.tsx:133-137,147-151,238,4",
+						"problem": "The Members tab offers every role regardless of the caller's rank (the response carries no caller rank), so the only guard is a 403; error toasts show raw server strings with code prefixes and a project UUID (e.g. 'inherited_membe"
+					},
+					{
+						"id": "Q6",
+						"severity": "medium",
+						"category": "ui-ux",
+						"file": "apps/web/src/components/pending-action/pending-action-approval.tsx:797-806,993-1013; apps/",
+						"problem": "The single-item deletion approval now shows the project and an impact section, but 'Requested by' shows the person who asked for the deletion (not the item's requester WI-23 asks about), the portal-visibility line is fixed copy sh"
+					},
+					{
+						"id": "Q7",
+						"severity": "medium",
+						"category": "gap",
+						"file": "apps/api/src/project/project-deletion-target.ts:54,74-79",
+						"problem": "Round 1 listed PR-20 for round-2 fixing; only the live-children refusal was added. Project deletion still confirms with the typed project NAME rather than the key and the summary carries no affected work-item/child counts."
+					},
+					{
+						"id": "Q8",
+						"severity": "medium",
+						"category": "ui-ux",
+						"file": "apps/web/src/components/project/project-engagement-settings.tsx:293,319,354,403,486-510; a",
+						"problem": "The planning block now autosaves, but the same General page still has an explicit Save/Discard section and native <label> elements; the raw-element gate does not list label, so it cannot catch them. The planning autosave also PUTs"
+					}
+				]
 			},
 			"gates": {
-				"pass": 0,
-				"fail": 0,
-				"not_run": 0,
-				"note": "no gates run yet"
-			}
+				"pass": 10,
+				"fail": 1,
+				"not_run": 2,
+				"note": "pass: integration 3963 (all green after fixes), unit (api 1308, web 2203, mcp 52, perms 277, domain 676, ui 325), typecheck 9/9, lint 0 errors, events, raw-elements, route-policy. fail: contrast G3 (pre-existing, P1 delta zero). browser: board, grouping, sheet, calendar, members, templates, states editor, approval dialog checked; not run: bundle budget, Trivy"
+			},
+			"states_locked": true,
+			"carry": [
+				{
+					"item": "Q1 ancestry memo keyed on global db (fix before P1 sign-off)",
+					"phase": "P1 pre-commit condition"
+				},
+				{
+					"item": "Q2 assignee picker includes inherited members",
+					"phase": "P1 pre-commit condition"
+				},
+				{
+					"item": "Q3 intake default-assignee eligibility ancestor-aware",
+					"phase": "P1 pre-commit condition"
+				},
+				{
+					"item": "Q6 deletion-approval copy: requester, portal visibility, restore promise",
+					"phase": "P1 pre-commit condition"
+				},
+				{
+					"item": "Q4 roster rank ceiling from inherited grants + self-edit guard",
+					"phase": "P2"
+				},
+				{
+					"item": "Q5 Members tab rank-aware roles, i18n error mapping, browser check",
+					"phase": "P2"
+				},
+				{
+					"item": "Q7 / PR-20 project delete key confirmation and affected counts",
+					"phase": "P2"
+				},
+				{
+					"item": "Q8 General page single save model and library labels; add label to raw-element gate",
+					"phase": "P2"
+				},
+				{
+					"item": "Q9 test provenance headers and missing assertions (AS-12 precedence, sla on search, PR-14, re-parent dialog)",
+					"phase": "P2"
+				},
+				{
+					"item": "Q10 purge lock order; Q11 descendant realtime invalidation",
+					"phase": "P2"
+				},
+				{
+					"item": "Q12 OpenAPI/requirements-index drift; CA-5 decision record",
+					"phase": "P2"
+				},
+				{
+					"item": "Q13-Q16 bulk-close request burst, Workflow page duplicate reorder, AT-3 visibility toggle, export decoration",
+					"phase": "P2"
+				},
+				{
+					"item": "WI-21/PR-16 restore route and reveal filter for deleted/archived work items and projects",
+					"phase": "P2"
+				},
+				{
+					"item": "VW-11/18/24 virtualisation (dependency decision needed), VW-12 WIP limits, VW-17/22 inline edit, VW-20 multi-sort, VW-21 resizable columns",
+					"phase": "P2"
+				},
+				{
+					"item": "WI-4 default-state workflow-exit check, WI-28/29 watch/mute UI, VW-2 local layout migration",
+					"phase": "P2"
+				},
+				{
+					"item": "AT-7 recovery, AT-9 sandboxed PDF preview (CSP), CA-9 automation naming, CA-15, PR-12 stakeholder UI, SV-1 palette/KB, SV-5 10k benchmark, SV-10",
+					"phase": "P2"
+				},
+				{
+					"item": "Translations for ~240 new P1 i18n keys and Intl SLA suffixes (P1-27)",
+					"phase": "P2"
+				},
+				{
+					"item": "P1-24 people search reach scoping, P1-28 low items, P1-29 thumbnail route",
+					"phase": "P2"
+				},
+				{
+					"item": "Re-parenting and roster writes as elevated (step-up) actions: owner decision",
+					"phase": "P1 decision (Thomas)"
+				},
+				{
+					"item": "WI-13 customer backlog re-rank, VW-31 organisation filter, VW-32 requester @me",
+					"phase": "P3"
+				},
+				{
+					"item": "VW-13 label/custom-field grouping, VW-19 custom-field columns, PR-18 feature flags UI",
+					"phase": "P4"
+				},
+				{
+					"item": "PR-5 descendant aggregation, VW-27 module/epic gantt grouping, VW-28 dependency arrows, RH-15 epic roll-up, AS-10 report",
+					"phase": "P5"
+				}
+			]
 		},
 		{
 			"id": "P2",
@@ -344,8 +486,8 @@
 		}
 	],
 	"decisions": [
-		"P0 committed and pushed (AI reviewed, not accepted). Browser walkthrough of the new approval dialog/delete flows is owed once the local SIT is running (your Postgres on 62870 was shut down externally at 00:44; I have not restarted it). Restart it?",
-		"Carry-over into P1: remaining EV-1 events, inline pasted images in create modal (N10), K7 lock ordering, K2 presign idempotency denylist, K3 legacy task_comment erasure."
+		"P1 committed and pushed (AI reviewed, not accepted). Carry-over named in the review: virtualisation (needs a dependency decision), WIP limits (schema), multi-column sort, inline edit, dependency arrows, PDF preview, AT-7 recovery, PR-5 aggregation, owner_team_id. Approve the carry-over list?",
+		"Your native Postgres on 62870 was shut down externally at 00:44 and is still stopped; all local verification ran on a scratch Postgres (62871). Restart yours when you want to use SIT."
 	],
-	"next": "P1 in progress: legacy task path removal, canonical search, assignment notifications, attachments/activity on Kaneo components, hierarchy rules, project hierarchy/keys."
+	"next": "P2 (service desk) in progress: outbox consumer for sla/clarification events, scheduled transitions, SLA badges/pause explanation, triage columns, audit retention/export, calendar presets, workflow authoring UI."
 }

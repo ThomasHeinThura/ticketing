@@ -7,6 +7,7 @@ import {
   workspaceTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { resolveProjectDefaultAssignee } from "../../project/default-assignee";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import {
@@ -58,6 +59,11 @@ type CreateWorkItemInput = InitialWorkItemFields & {
   /** The person making the request -- `c.get("userId")` at the route (WI-6, CA-9). */
   actorId: string;
   actorType: ActivityActorType;
+  /** Runs inside the create transaction right after the row and its initial fields (`WI-5` templates). */
+  afterInsert?: (
+    tx: Parameters<Parameters<typeof withCreationTransaction>[0]>[0],
+    inserted: typeof workItemTable.$inferSelect,
+  ) => Promise<void>;
 };
 
 /**
@@ -93,6 +99,16 @@ export async function createWorkItem(input: CreateWorkItemInput) {
         tx,
         input,
       );
+      // AS-11: a work item created with no assignee takes the project's default assignee,
+      // when that person is still eligible (AS-5). The item is left unassigned otherwise.
+      const defaultAssigneeId =
+        input.assigneeId === undefined
+          ? await resolveProjectDefaultAssignee(tx, { projectId: project.id })
+          : null;
+      const effectiveFields =
+        defaultAssigneeId === null
+          ? input
+          : { ...input, assigneeId: defaultAssigneeId };
       const slaStartedAt = new Date();
       const [workspace] = await tx
         .select({ slaPolicyId: workspaceTable.defaultSlaPolicyId })
@@ -154,7 +170,7 @@ export async function createWorkItem(input: CreateWorkItemInput) {
           priority: priority ?? null,
           startDate: input.startDate ?? null,
           dueDate: input.dueDate ?? null,
-          assigneeId: input.assigneeId ?? null,
+          assigneeId: effectiveFields.assigneeId ?? null,
           createdAt: slaStartedAt,
           // Persist the same UTC instant through Drizzle's timestamp mapper. A SQL
           // now() default on timestamp-without-time-zone adopts the session timezone.
@@ -210,10 +226,11 @@ export async function createWorkItem(input: CreateWorkItemInput) {
       initialEvents = await recordInitialWorkItemFields(
         tx,
         inserted,
-        input,
+        effectiveFields,
         actorId,
         actorType,
       );
+      await input.afterInsert?.(tx, inserted);
       return inserted;
     });
   } catch (error) {

@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectSlugClaimTable, projectTable } from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import { PROJECT_KEY_MESSAGE, PROJECT_KEY_PATTERN } from "../schema";
 import { ProjectSlugTakenError } from "./create-project";
 
 async function updateProject(
@@ -17,6 +18,10 @@ async function updateProject(
     supportLevel?: "L1" | "L2" | "L3" | null;
     serviceCalendarId?: string | null;
     defaultCommentVisibility?: "public" | "internal";
+    managerId?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    defaultAssigneeId?: string | null;
   },
 ) {
   // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
@@ -47,6 +52,16 @@ async function updateProject(
         message:
           "Project doesn't exist or doesn't belong to the specified workspace",
       });
+    }
+
+    // PR-13: only a CHANGED key must match 2-8 uppercase letters (see `PROJECT_KEY_PATTERN`):
+    // a project created before the rule keeps its legacy key and stays editable.
+    if (
+      existingProject &&
+      slug !== existingProject.slug &&
+      !PROJECT_KEY_PATTERN.test(slug)
+    ) {
+      throw new HTTPException(400, { message: PROJECT_KEY_MESSAGE });
     }
 
     // #23's mandatory Opus security review of PR #261, finding F1: answer a slug collision
@@ -99,6 +114,18 @@ async function updateProject(
                 defaultCommentVisibility:
                   configuration.defaultCommentVisibility,
               }
+            : {}),
+          ...(configuration.managerId !== undefined
+            ? { managerId: configuration.managerId }
+            : {}),
+          ...(configuration.startDate !== undefined
+            ? { startDate: configuration.startDate }
+            : {}),
+          ...(configuration.endDate !== undefined
+            ? { endDate: configuration.endDate }
+            : {}),
+          ...(configuration.defaultAssigneeId !== undefined
+            ? { defaultAssigneeId: configuration.defaultAssigneeId }
             : {}),
         })
         .where(eq(projectTable.id, id))

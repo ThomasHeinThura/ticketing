@@ -470,8 +470,31 @@ export async function listApprovalWatcherPersonIds(
   tx: DbTransaction,
   workItemId: string,
 ) {
+  return (
+    tx
+      .select({ personId: schema.watcherTable.personId })
+      .from(schema.watcherTable)
+      // `WI-29`: `muted` is the suppression flag an implicit watcher sets to opt out; a muted
+      // watcher is never an approval-notification recipient.
+      .where(
+        and(
+          eq(schema.watcherTable.workItemId, workItemId),
+          eq(schema.watcherTable.muted, false),
+        ),
+      )
+  );
+}
+
+/** Every watcher row of a work item with its mute flag; the caller decides who is told. */
+export async function listWorkItemWatchers(
+  tx: DbTransaction,
+  workItemId: string,
+) {
   return tx
-    .select({ personId: schema.watcherTable.personId })
+    .select({
+      personId: schema.watcherTable.personId,
+      muted: schema.watcherTable.muted,
+    })
     .from(schema.watcherTable)
     .where(eq(schema.watcherTable.workItemId, workItemId));
 }

@@ -92,14 +92,18 @@ describe("API integration: global search scope and ranking", () => {
     );
     mockAuthenticatedSession(mine.user);
 
+    // P1-21 (SV-1/SV-3): type=all returns canonical kinds (projects here); the legacy task
+    // rows this fixture seeds are searched under an explicit type=tasks.
     const scoped = await search(mine.workspace.id, "Zebra");
-    expect(scoped.results.map((r) => r.id).sort()).toEqual(
-      [myTask.id, myProject.project.id].sort(),
-    );
-    expect(scoped.results.map((r) => r.id)).not.toContain(theirTask.id);
-    expect(scoped.results.map((r) => r.id)).not.toContain(
-      theirProject.project.id,
-    );
+    expect(scoped.results.map((r) => r.id)).toEqual([myProject.project.id]);
+    const scopedTasks = await search(mine.workspace.id, "Zebra", "&type=tasks");
+    expect(scopedTasks.results.map((r) => r.id)).toEqual([myTask.id]);
+    for (const ids of [scoped, scopedTasks].map((r) =>
+      r.results.map((x) => x.id),
+    )) {
+      expect(ids).not.toContain(theirTask.id);
+      expect(ids).not.toContain(theirProject.project.id);
+    }
 
     const foreign = await searchRaw(theirs.workspace.id, "Zebra");
     expect(foreign.status).toBe(403);
@@ -205,6 +209,14 @@ describe("API integration: global search scope and ranking", () => {
       "&type=projects",
     );
     expect(projectsOnly.results.map((r) => r.type)).toEqual(["project"]);
+
+    // P1-21 (UNRUN: DB integration): type=all never returns the legacy task kinds.
+    const all = await search(member.workspace.id, "quokka");
+    expect(
+      all.results.filter((r) =>
+        ["task", "comment", "activity"].includes(r.type),
+      ),
+    ).toEqual([]);
   });
 
   it("applies the relevance order before the limit even when the weaker hit is newer", async () => {

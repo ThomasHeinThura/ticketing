@@ -29,6 +29,7 @@ import {
 } from "../database/schema";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import type { AuthenticatedApiKey } from "../permissions/resolve-request-identity";
+import { projectAncestryFor } from "../utils/project-ancestry";
 import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
 import { approvalNotificationReadable } from "./approval-reach.repository";
 import {
@@ -253,6 +254,23 @@ async function readableNativeRows(
     identity,
     nativeRequests(rows),
   );
+  // PR-2/PR-3: reach and read authority follow each resource project's ancestor chain.
+  const ancestorsByProject = new Map<string, string[]>();
+  for (const resource of resources.values()) {
+    if (
+      resource.projectId !== null &&
+      !ancestorsByProject.has(resource.projectId)
+    )
+      ancestorsByProject.set(
+        resource.projectId,
+        await projectAncestryFor(
+          tx,
+          identity,
+          resource.workspaceId,
+          resource.projectId,
+        ),
+      );
+  }
   const workspaceRows = rows.filter(
     (row) =>
       row.resourceType === "workspace" &&
@@ -384,7 +402,14 @@ async function readableNativeRows(
             nativeInboxResourceKey(row.resourceType, row.resourceId),
           )
         : undefined;
-    return canReadNativeInboxCandidate(identity, candidate, resource);
+    return canReadNativeInboxCandidate(
+      identity,
+      candidate,
+      resource,
+      resource?.projectId
+        ? ancestorsByProject.get(resource.projectId)
+        : undefined,
+    );
   });
 }
 

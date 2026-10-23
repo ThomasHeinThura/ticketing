@@ -62,6 +62,7 @@ const mocks = vi.hoisted(() => ({
     labelsLoading: false,
     labelsError: false,
   },
+  templates: [] as Array<Record<string, unknown>>,
   typesState: {
     data: undefined as Array<Record<string, unknown>> | undefined,
     isLoading: false,
@@ -133,6 +134,12 @@ vi.mock("@/components/activity/comment-editor", () => ({
     </>
   ),
 }));
+vi.mock(
+  "@/hooks/queries/work-item-template/use-work-item-template-options",
+  () => ({
+    default: () => ({ data: mocks.templates }),
+  }),
+);
 vi.mock("@/hooks/queries/work-item/use-get-work-item-types", () => ({
   default: () => mocks.typesState,
 }));
@@ -216,6 +223,7 @@ beforeEach(() => {
   mocks.options.peopleError = false;
   mocks.options.labelsError = false;
   mocks.editorDocument = undefined;
+  mocks.templates = [];
   mocks.typesState = {
     data: TYPES,
     isLoading: false,
@@ -231,6 +239,46 @@ afterEach(() => {
 });
 
 describe("CreateWorkItemDialog", () => {
+  it("offers no template control until the workspace has a live template", () => {
+    renderDialog();
+    expect(
+      screen.queryByTestId("create-work-item-template-trigger"),
+    ).toBeNull();
+  });
+
+  it("creating from a template sends its id, adopts its type and fills only an empty title", async () => {
+    mocks.templates = [
+      {
+        id: "tpl-1",
+        name: "Bug report",
+        typeId: "type-1",
+        title: "Bug: ",
+        hasChecklist: true,
+      },
+    ];
+    mocks.mutateAsync.mockResolvedValue({ id: "wi-1", key: "OPS-1" });
+    renderDialog();
+    fireEvent.click(screen.getByTestId("create-work-item-template-trigger"));
+    pickOption(await screen.findByRole("button", { name: "Bug report" }));
+    expect(screen.getByTestId("create-work-item-title")).toHaveValue("Bug: ");
+    expect(
+      screen.getByTestId("create-work-item-type-trigger"),
+    ).toHaveTextContent("Task");
+
+    fireEvent.change(screen.getByTestId("create-work-item-title"), {
+      target: { value: "Bug: crash on save" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:create.submit" }),
+    );
+    await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+    expect(mocks.lastCreateInput).toMatchObject({
+      templateId: "tpl-1",
+      typeId: "type-1",
+      title: "Bug: crash on save",
+    });
+  });
+
   it("keeps submit disabled until both a title and a type are chosen", async () => {
     renderDialog();
     const submit = screen.getByRole("button", {

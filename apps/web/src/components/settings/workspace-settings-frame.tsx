@@ -10,6 +10,7 @@ import {
 import {
   CalendarDays,
   Inbox,
+  LayoutTemplate,
   MessageSquareText,
   Settings,
   Shield,
@@ -51,6 +52,11 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
             title: t("settings:cannedResponses.title"),
             url: "/agent/settings/canned-responses",
             icon: MessageSquareText,
+          },
+          {
+            title: t("settings:workItemTemplates.title"),
+            url: "/agent/settings/work-item-templates",
+            icon: LayoutTemplate,
           },
         ]
       : []),

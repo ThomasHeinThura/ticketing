@@ -1,6 +1,13 @@
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
@@ -11,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   offers: vi.fn(),
   transition: vi.fn(),
   rank: vi.fn(),
+  children: vi.fn(),
 }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: translate }) }));
 vi.mock("@/fetchers/work-item/get-work-item-transitions", () => ({
@@ -18,6 +26,9 @@ vi.mock("@/fetchers/work-item/get-work-item-transitions", () => ({
 }));
 vi.mock("@/fetchers/work-item/transition-work-item", () => ({
   default: (...args: unknown[]) => mocks.transition(...args),
+}));
+vi.mock("@/fetchers/work-item/get-hierarchy-children", () => ({
+  getHierarchyChildren: (...args: unknown[]) => mocks.children(...args),
 }));
 vi.mock("@/fetchers/work-item/rank-work-item", () => ({
   default: (...args: unknown[]) => mocks.rank(...args),
@@ -118,6 +129,11 @@ function end(hook: ReturnType<typeof mount>, target = "done") {
   } as DragEndEvent);
 }
 beforeEach(() => {
+  mocks.children.mockReset();
+  mocks.children.mockResolvedValue({
+    data: [],
+    progress: { total: 0, completed: 0 },
+  });
   mocks.offers.mockReset();
   mocks.offers.mockResolvedValue(offer);
   mocks.rank.mockReset();
@@ -216,4 +232,71 @@ it("refuses rows outside the addressed project and loss of both capabilities mid
   });
   expect(mocks.offers).not.toHaveBeenCalled();
   expect(mocks.rank).not.toHaveBeenCalled();
+});
+
+function Harness({
+  onReady,
+}: {
+  onReady: (hook: ReturnType<typeof useWorkItemDragDrop>) => void;
+}) {
+  const hook = useWorkItemDragDrop(options());
+  onReady(hook);
+  return <>{hook.childrenDialog}</>;
+}
+async function dropOnClosedColumn() {
+  mocks.offers.mockResolvedValue([
+    { ...offer[0], toStateCategory: "completed" },
+  ]);
+  mocks.children.mockResolvedValue({
+    data: [
+      {
+        key: "HELP-9",
+        title: "Child",
+        stateName: "Open",
+        stateCategory: "unstarted",
+      },
+    ],
+    progress: { total: 1, completed: 0 },
+  });
+  let current!: ReturnType<typeof useWorkItemDragDrop>;
+  const client = new QueryClient();
+  render(
+    <QueryClientProvider client={client}>
+      <Harness onReady={(hook) => (current = hook)} />
+    </QueryClientProvider>,
+  );
+  act(() =>
+    current.startDrag({
+      active: {
+        id: "one",
+        data: { current: undefined },
+        rect: { current: { initial: null, translated: null } },
+      },
+      activatorEvent: new MouseEvent("mousedown"),
+    } satisfies DragStartEvent),
+  );
+  const drop = current.endDrag({
+    active: { id: "one" },
+    over: { id: "done" },
+  } as DragEndEvent);
+  await screen.findByTestId("open-children-warning");
+  return { drop };
+}
+it("RH-10: dropping a parent into a closed column waits for the open-children confirmation", async () => {
+  const { drop } = await dropOnClosedColumn();
+  expect(mocks.transition).not.toHaveBeenCalled();
+  act(() => screen.getByRole("button", { name: "Close anyway" }).click());
+  await drop;
+  await waitFor(() =>
+    expect(mocks.transition).toHaveBeenCalledWith({
+      key: "HELP-1",
+      toStateTemplateId: "template",
+    }),
+  );
+});
+it("RH-10: cancelling the open-children warning leaves the card in place", async () => {
+  const { drop } = await dropOnClosedColumn();
+  act(() => screen.getByRole("button", { name: "Cancel" }).click());
+  await drop;
+  expect(mocks.transition).not.toHaveBeenCalled();
 });

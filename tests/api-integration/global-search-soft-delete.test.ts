@@ -19,10 +19,14 @@ type SearchResult = {
   version?: number;
 };
 
-async function search(workspaceId: string, query: string) {
+// P1-21 (SV-1/SV-3): `type=all` returns canonical kinds; legacy task rows (what this file
+// seeds) are searched under an explicit `type=tasks`.
+async function search(workspaceId: string, query: string, type?: string) {
   const { app } = createApp();
   const response = await app.request(
-    `/api/search?workspaceId=${workspaceId}&q=${encodeURIComponent(query)}`,
+    `/api/search?workspaceId=${workspaceId}&q=${encodeURIComponent(query)}${
+      type ? `&type=${type}` : ""
+    }`,
   );
   expect(response.status).toBe(200);
   const payload = (await response.json()) as { results: SearchResult[] };
@@ -84,6 +88,7 @@ describe("API integration: global search excludes a soft-deleted project", () =>
     const beforeDelete = await search(
       member.workspace.id,
       "Unique Searchable Task Title",
+      "tasks",
     );
     expect(beforeDelete.some((r) => r.id === task.id)).toBe(true);
 
@@ -95,6 +100,7 @@ describe("API integration: global search excludes a soft-deleted project", () =>
     const afterDelete = await search(
       member.workspace.id,
       "Unique Searchable Task Title",
+      "tasks",
     );
     expect(afterDelete.some((r) => r.id === task.id)).toBe(false);
   });
@@ -124,12 +130,21 @@ describe("API integration: global search excludes a soft-deleted project", () =>
 
     mockAuthenticatedSession(member.user);
 
-    const textResults = await search(member.workspace.id, "RevisionNeedle");
+    const textResults = await search(
+      member.workspace.id,
+      "RevisionNeedle",
+      "tasks",
+    );
     const textTask = textResults.find(
       (result) => result.id === task.id && result.type === "task",
     );
     expect(textTask?.version).toBe(task.version);
-    const projectResult = textResults.find(
+    const projectResults = await search(
+      member.workspace.id,
+      "RevisionNeedle",
+      "projects",
+    );
+    const projectResult = projectResults.find(
       (result) => result.id === project.id && result.type === "project",
     );
     expect(projectResult).toBeDefined();
@@ -138,6 +153,7 @@ describe("API integration: global search excludes a soft-deleted project", () =>
     const shortIdResults = await search(
       member.workspace.id,
       `${project.slug}-23`,
+      "tasks",
     );
     const shortIdTask = shortIdResults.find(
       (result) => result.id === task.id && result.type === "task",

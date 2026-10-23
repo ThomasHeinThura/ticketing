@@ -213,8 +213,36 @@ function grantAppliesTo(
  * how the caller names the scope (finding 6). This runs here, unconditionally, so it protects
  * a row no grant-time check ever saw.
  */
+/**
+ * The project-scope grants that stand in for a missing direct grant (`PR-2`, `PR-3`): the
+ * nearest ancestor project, in `target.ancestorProjectIds` order, on which the caller holds
+ * any project-scope grant. Only for `project` / `work_item` policies, never for a customer
+ * (a customer inherits nothing), and only when the caller has no direct grant on the target
+ * (an explicit child grant takes precedence).
+ */
+function inheritedProjectGrants(
+  identity: Pick<ResolvedIdentity, "authority"> & {
+    readonly side?: ResolvedIdentity["side"];
+  },
+  scope: Scope,
+  target: ScopeTarget,
+): RoleGrant[] {
+  if (scope !== "project" && scope !== "work_item") return [];
+  if (identity.side === "customer") return [];
+  for (const ancestorId of target.ancestorProjectIds ?? []) {
+    if (typeof ancestorId !== "string" || ancestorId === "") continue;
+    const grants = identity.authority.filter(
+      (grant) => grant.scope === "project" && grant.scopeId === ancestorId,
+    );
+    if (grants.length > 0) return grants;
+  }
+  return [];
+}
+
 export function authorityFor(
-  identity: Pick<ResolvedIdentity, "authority">,
+  identity: Pick<ResolvedIdentity, "authority"> & {
+    readonly side?: ResolvedIdentity["side"];
+  },
   scope: Scope,
   target: ScopeTarget,
   options: {
@@ -229,12 +257,21 @@ export function authorityFor(
   const projectOverrides = applicable.filter(
     (grant) => grant.scope === "project",
   );
-  const selected =
-    projectOverrides.length > 0
-      ? applicable.filter(
-          (grant) => grant.scope === "instance" || grant.scope === "project",
-        )
-      : applicable;
+  let selected: readonly RoleGrant[];
+  if (projectOverrides.length > 0) {
+    selected = applicable.filter(
+      (grant) => grant.scope === "instance" || grant.scope === "project",
+    );
+  } else {
+    const inherited = inheritedProjectGrants(identity, scope, target);
+    selected =
+      inherited.length > 0
+        ? [
+            ...applicable.filter((grant) => grant.scope === "instance"),
+            ...inherited,
+          ]
+        : applicable;
+  }
 
   const held = new Set<Capability>();
   for (const grant of selected) {
@@ -265,6 +302,7 @@ export function authorityFor(
 export function can(
   identity: Pick<ResolvedIdentity, "authority" | "keyCapabilities"> & {
     readonly credential?: ResolvedIdentity["credential"];
+    readonly side?: ResolvedIdentity["side"];
   },
   capability: Capability,
   scope: Scope,
@@ -799,6 +837,13 @@ export type PolicyContext = {
    */
   readonly scope?: ResolvedScope;
   /**
+   * For a `project` / `work_item` capability policy: the target project's ancestors, nearest
+   * first, loaded for the resolved scope's own workspace (`PR-2`/`PR-3`). Authority input only
+   * (see `ScopeTarget.ancestorProjectIds`). Omitted means no inheritance is applied, so the API
+   * always supplies it for project-scoped evaluation.
+   */
+  readonly ancestorProjectIds?: readonly string[];
+  /**
    * The answer from `reaches` for the resource this route addresses, or the explicit
    * `NO_SINGLE_RESOURCE` marker when the policy's `reach` says none applies. There is no
    * third, implicit answer: an omitted or malformed value is refused, never allowed, whenever
@@ -1231,7 +1276,16 @@ function resolveScopeForPolicy(
       },
     };
   }
-  return { ok: true, target: flattenResolvedScope(context.scope) };
+  const flat = flattenResolvedScope(context.scope);
+  const inherits =
+    context.scope.kind === "project" || context.scope.kind === "work_item";
+  return {
+    ok: true,
+    target:
+      inherits && context.ancestorProjectIds !== undefined
+        ? { ...flat, ancestorProjectIds: context.ancestorProjectIds }
+        : flat,
+  };
 }
 
 function ownerPredicateHolds(

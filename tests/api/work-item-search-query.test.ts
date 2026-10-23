@@ -31,6 +31,41 @@ describe("bounded work-item search query", () => {
     ).toThrowError(/unavailable: label/);
   });
 
+  it.each([
+    "requester",
+    "cycle",
+    "module",
+    "epic",
+    "organisation",
+    "sla.state",
+    "cf.severity",
+  ])("returns 422 naming recognised-but-unavailable field %s", (field) => {
+    let caught: { status?: number; message?: string } | undefined;
+    try {
+      validateWorkItemSearchQuery({
+        entity: "work_item",
+        filter: { field, op: "eq", value: "x" },
+      });
+    } catch (error) {
+      caught = error as { status?: number; message?: string };
+    }
+    expect(caught?.status).toBe(422);
+    expect(caught?.message).toContain(`unavailable: ${field}`);
+  });
+
+  it("keeps genuinely unknown fields at 400", () => {
+    let caught: { status?: number } | undefined;
+    try {
+      validateWorkItemSearchQuery({
+        entity: "work_item",
+        filter: { field: "nonsense", op: "eq", value: "x" },
+      });
+    } catch (error) {
+      caught = error as { status?: number };
+    }
+    expect(caught?.status).toBe(400);
+  });
+
   it("rejects unsupported operators, excessive depth, and report clauses", () => {
     expect(() =>
       validateWorkItemSearchQuery({ entity: "work_item", groupBy: ["state"] }),

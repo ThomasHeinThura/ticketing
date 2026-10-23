@@ -29,6 +29,8 @@ import {
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { enqueueOutboxEvent } from "../../events/outbox";
+import { resolveWorkItemEventRecipients } from "../../notification/work-item-recipients";
+import { resolveProjectDefaultAssignee } from "../../project/default-assignee";
 import { evaluateStoredWorkItemSla } from "../../sla-policy/evaluation";
 import { dbClockUtc } from "../../utils/db-time";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
@@ -44,6 +46,7 @@ import {
 } from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
 import { requireCommentPerson } from "../comment-access";
+import { ensureImplicitAssigneeWatcher } from "../implicit-watcher";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import {
   loadWorkflowTransitionContext,
@@ -201,17 +204,16 @@ async function runTransactionCatchingSlaPauseConflict<T>(
 }
 
 /**
- * `set_assignee`'s `'default'` (`WF-19`), resolved against what this schema can
- * ACTUALLY answer today: neither `project.default_assignee_id` nor a request-type
- * default column exists yet (`AS-11`/`AS-12` -- `packages/domain`'s own
- * `resolveDefaultAssignee` takes both as arguments, and this codebase has no column to
- * pass for either), so `'default'` always resolves to `null` -- never faked as some
- * other candidate. Disclosed in the PR body's "Not done" section, not a silent gap.
+ * `set_assignee`'s `'default'` (`WF-19`, `AS-11`): the project's default assignee, resolved
+ * inside the transition's transaction by `resolveProjectDefaultAssignee` (which applies the
+ * `AS-5` eligibility rule). When the project has no default, or the default is no longer
+ * eligible, the effect changes nothing -- the current assignee is retained, never silently
+ * cleared (`AS-8`); `clear_assignee` is the explicit way to unassign.
  */
 function resolveSetAssigneePersonId(
   personId: string | "default",
-): string | null {
-  return personId === "default" ? null : personId;
+): string | undefined {
+  return personId === "default" ? undefined : personId;
 }
 
 /**
@@ -344,13 +346,16 @@ export async function transitionWorkItem(
   const automaticEffects = resolveAutomaticEffects(ctx.currentGroup, toGroup);
 
   let assigneeIdPatch: string | null | undefined;
+  let assigneeUsesProjectDefault = false;
   const waitingCustomerEffects: ("pause" | "resume")[] = [];
   const scheduleEffects: { afterMinutes: number; toStateTemplateId: string }[] =
     [];
   for (const effect of authoredEffects) {
     if (effect.kind === "set_assignee") {
+      assigneeUsesProjectDefault = effect.personId === "default";
       assigneeIdPatch = resolveSetAssigneePersonId(effect.personId);
     } else if (effect.kind === "clear_assignee") {
+      assigneeUsesProjectDefault = false;
       assigneeIdPatch = null;
     } else if (effect.kind === "schedule_transition") {
       scheduleEffects.push({
@@ -413,6 +418,15 @@ export async function transitionWorkItem(
       }
 
       await assertProjectStillLive(tx, locked.projectId);
+
+      // AS-11 / WF-19: `set_assignee: "default"` resolves against the project's default
+      // assignee inside this transaction; none or ineligible leaves the assignee untouched.
+      if (assigneeUsesProjectDefault) {
+        assigneeIdPatch =
+          (await resolveProjectDefaultAssignee(tx, {
+            projectId: locked.projectId,
+          })) ?? undefined;
+      }
 
       // `children_closed` (Opus security review of PR #457, D1 -- the remaining half of
       // B1 the first fix round missed): lock children with a SINGLE-TABLE query first --
@@ -885,6 +899,8 @@ export async function transitionWorkItem(
 
       const transitionRealtimeEvent = await recordWorkItemEvent(tx, {
         kind: "work_item.transitioned",
+        // `WI-28`: unmuted watchers are told about a state change.
+        notify: { resolveRecipients: resolveWorkItemEventRecipients },
         workItemId: ctx.workItem.id,
         key: updated.key,
         workspaceId: ctx.workItem.workspaceId,
@@ -893,6 +909,7 @@ export async function transitionWorkItem(
         actorType,
         customerVisible: true,
         payload: {
+          workItemId: ctx.workItem.id,
           key: updated.key,
           url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
           fromStateId,
@@ -912,8 +929,16 @@ export async function transitionWorkItem(
       ) {
         const assigned = assigneeEventKind === "assigned";
         const kind = assigned ? "work_item.assigned" : "work_item.unassigned";
+        if (assigned && updated.assigneeId) {
+          await ensureImplicitAssigneeWatcher(
+            tx,
+            ctx.workItem.id,
+            updated.assigneeId,
+          );
+        }
         const event = await recordWorkItemEvent(tx, {
           kind,
+          notify: { resolveRecipients: resolveWorkItemEventRecipients },
           workItemId: ctx.workItem.id,
           key: updated.key,
           workspaceId: ctx.workItem.workspaceId,
@@ -922,6 +947,7 @@ export async function transitionWorkItem(
           actorType,
           customerVisible: true,
           payload: {
+            workItemId: ctx.workItem.id,
             key: updated.key,
             url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
             ...(assigned ? { assigneeId: updated.assigneeId } : {}),

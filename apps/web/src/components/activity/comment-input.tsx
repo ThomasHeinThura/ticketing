@@ -10,6 +10,10 @@ import {
 import { ArrowUp, Paperclip } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  COMMENT_COMPOSER_EDITOR_CLASS,
+  CommentComposerPresentation,
+} from "@/components/activity/comment-composer-presentation";
 import CommentEditor from "@/components/activity/comment-editor";
 import useCreateComment from "@/hooks/mutations/comment/use-create-comment";
 import { getModifierKeyText } from "@/hooks/use-keyboard-shortcuts";
@@ -58,60 +62,64 @@ function CommentInput({ taskId }: CommentInputProps) {
 
   return (
     <div className="w-full">
-      <div className="rounded-xl border border-border/80 bg-card/70 transition-colors focus-within:border-ring/60 focus-within:shadow-[0_0_0_2px_color-mix(in_srgb,var(--ring)_20%,transparent)]">
-        <CommentEditor
-          value={content}
-          onChange={setContent}
-          placeholder={t("activity:comment.leavePlaceholder")}
-          taskId={taskId}
-          uploadSurface="comment"
-          showQuickAttachButton={false}
-          onAttachActionChange={handleAttachActionChange}
-          className="[&_.taskdesk-comment-editor-content_.ProseMirror]:min-h-[3rem] [&_.taskdesk-comment-editor-content_.ProseMirror]:max-h-none [&_.taskdesk-comment-editor-content_.ProseMirror]:overflow-visible [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-2"
-          onSubmitShortcut={handleSubmit}
-        />
-        <div className="flex items-center justify-end gap-2 border-border/70 border-t px-2 py-2">
-          <Button
-            size="xs"
-            variant="ghost"
-            onClick={() => attachAction?.()}
-            disabled={!attachAction}
-            className="text-muted-foreground"
-            aria-label={t("activity:comment.attachFile")}
-          >
-            <Paperclip className="size-3.5" />
-          </Button>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="xs"
-                  variant="default"
-                  onClick={handleSubmit}
-                  disabled={isPending || !content.trim()}
-                  aria-busy={isPending}
-                  data-testid="comment-submit"
-                  className={cn(
-                    isPending ||
-                      (!content.trim() && "opacity-50 cursor-not-allowed"),
-                    content.trim().length > 0 &&
-                      "bg-primary text-primary-foreground",
-                  )}
-                  aria-label={t("activity:comment.submitShortcut")}
-                >
-                  <ArrowUp className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <KbdSequence
-                  keys={[getModifierKeyText(), "Enter"]}
-                  description={t("activity:comment.submitShortcut")}
-                />
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </div>
+      <CommentComposerPresentation
+        editor={
+          <CommentEditor
+            value={content}
+            onChange={setContent}
+            placeholder={t("activity:comment.leavePlaceholder")}
+            taskId={taskId}
+            uploadSurface="comment"
+            showQuickAttachButton={false}
+            onAttachActionChange={handleAttachActionChange}
+            className={COMMENT_COMPOSER_EDITOR_CLASS}
+            onSubmitShortcut={handleSubmit}
+          />
+        }
+        footerEnd={
+          <>
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => attachAction?.()}
+              disabled={!attachAction}
+              className="text-muted-foreground"
+              aria-label={t("activity:comment.attachFile")}
+            >
+              <Paperclip className="size-3.5" />
+            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="xs"
+                    variant="default"
+                    onClick={handleSubmit}
+                    disabled={isPending || !content.trim()}
+                    aria-busy={isPending}
+                    data-testid="comment-submit"
+                    className={cn(
+                      isPending ||
+                        (!content.trim() && "opacity-50 cursor-not-allowed"),
+                      content.trim().length > 0 &&
+                        "bg-primary text-primary-foreground",
+                    )}
+                    aria-label={t("activity:comment.submitShortcut")}
+                  >
+                    <ArrowUp className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <KbdSequence
+                    keys={[getModifierKeyText(), "Enter"]}
+                    description={t("activity:comment.submitShortcut")}
+                  />
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </>
+        }
+      />
     </div>
   );
 }

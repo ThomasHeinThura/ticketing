@@ -2,6 +2,7 @@ import { can, type ProjectReachFacts, reaches } from "@taskdesk/permissions";
 import type { ClaimedNotificationDelivery } from "../database/repositories/notification-delivery.repository";
 import type { DbTransaction } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
+import { projectAncestryFor } from "../utils/project-ancestry";
 import { isCustomerEligibleNotificationEvent } from "./customer-event-audience";
 import type { NotificationProjection } from "./outbox-drain";
 import { resolveNotificationPreference } from "./preferences";
@@ -208,10 +209,18 @@ export async function evaluateCurrentNotificationReachAndPreference(
   } else {
     if (resource.projectId === null)
       return { kind: "suppress", reason: "resource_unavailable" };
+    // PR-2/PR-3: reach and read authority both follow the ancestor chain.
+    const ancestorProjectIds = await projectAncestryFor(
+      tx,
+      identity,
+      resource.workspaceId,
+      resource.projectId,
+    );
     const reachFacts: ProjectReachFacts = {
       projectId: resource.projectId,
       workspaceId: resource.workspaceId,
       organisationId: resource.organisationId,
+      ancestorProjectIds,
       visibleToPersonIds:
         identity.side === "customer" ? resource.visibleToPersonIds : null,
     };
@@ -232,6 +241,7 @@ export async function evaluateCurrentNotificationReachAndPreference(
             organisationId: resource.organisationId ?? undefined,
             workItemProjectId: resource.projectId,
             projectId: resource.projectId,
+            ancestorProjectIds,
           });
     if (!canRead) return { kind: "suppress", reason: "read_authority_lost" };
   }

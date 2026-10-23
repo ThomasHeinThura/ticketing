@@ -31,6 +31,9 @@ vi.mock("../../../apps/api/src/utils/has-project-reach", () => ({
   resolveCallerIdentity: mocks.identity,
   hasProjectReadCapability: mocks.projectCapability,
 }));
+vi.mock("../../../apps/api/src/project/hierarchy.repository", () => ({
+  loadProjectAncestorIdsFor: async () => ["parent-project"],
+}));
 vi.mock("../../../apps/api/src/capabilities/repository", () => ({
   findCapabilityProject: mocks.project,
 }));
@@ -205,5 +208,19 @@ describe("attachment capabilities in an exact project", () => {
       scopeWorkCapabilitiesToProject(context(), flags, "foreign-project"),
     ).rejects.toMatchObject({ status: 404 });
     expect(mocks.projectCapability).not.toHaveBeenCalled();
+  });
+});
+
+describe("project capability flags follow the ancestor chain (PR-2/PR-3)", () => {
+  it("evaluates every project flag with the project's ancestors, so UI flags equal the server decision", async () => {
+    await scopeWorkCapabilitiesToProject(
+      context(),
+      { updateTasks: true } as never,
+      "requested-project",
+    );
+    expect(mocks.projectCapability).toHaveBeenCalled();
+    for (const call of mocks.projectCapability.mock.calls) {
+      expect(call[3]).toMatchObject({ ancestorProjectIds: ["parent-project"] });
+    }
   });
 });

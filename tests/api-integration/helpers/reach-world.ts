@@ -263,6 +263,7 @@ export type Fixture = {
   key: string;
   neighbourId: string;
   parentKey: string;
+  targetProjectId?: string;
   commentId?: string;
   attachmentId?: string;
 };
@@ -390,6 +391,52 @@ export const ROUTES: RouteCase[] = [
       json(app, "DELETE", `/api/work-items/${i.key}/parent`, undefined, {
         "if-match": '"1"',
       }),
+  },
+  {
+    matrixKey: "POST /api/v2/work-items/{key}/archive",
+    call: (app, _w, i) =>
+      json(app, "POST", `/api/v2/work-items/${i.key}/archive`, undefined, {
+        "if-match": '"1"',
+      }),
+  },
+  {
+    matrixKey: "POST /api/v2/work-items/{key}/move",
+    // A second live project in the same workspace that the project member reaches with the
+    // create and update capabilities, whose states share the source's state templates.
+    prepare: async (w, i) => {
+      const { project: target } = await createProjectFixture({
+        workspaceId: w.workspaceId,
+      });
+      const now = new Date();
+      await db.insert(schema.stateTable).values([
+        {
+          projectId: target.id,
+          stateTemplateId: w.transition.fromStateTemplateId as string,
+          isDefault: true,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          projectId: target.id,
+          stateTemplateId: w.started.stateTemplate.id,
+          isDefault: false,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]);
+      await grantProjectRole(w.projectMember.user.id, target.id, [
+        ...WORK_ITEM_PROJECT_CAPABILITIES,
+      ]);
+      i.targetProjectId = target.id;
+    },
+    call: (app, _w, i) =>
+      json(
+        app,
+        "POST",
+        `/api/v2/work-items/${i.key}/move`,
+        { targetProjectId: i.targetProjectId, moveChildren: false },
+        { "if-match": '"1"' },
+      ),
   },
   {
     matrixKey: "POST /api/v2/work-items/{key}/parent",

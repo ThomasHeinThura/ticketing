@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
@@ -30,6 +30,10 @@ import {
 } from "../pending-action/service";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import {
+  loadProjectAncestorIds,
+  loadProjectAncestorIdsFor,
+} from "../project/hierarchy.repository";
+import {
   hasProjectReadCapability,
   resolveCallerIdentity,
 } from "../utils/has-project-reach";
@@ -51,6 +55,7 @@ import {
   createCommentBody,
   updateCommentBody,
 } from "./comment-schema";
+import archiveWorkItem from "./controllers/archive-work-item";
 import assignWorkItem, {
   WorkItemAssigneeConflictError,
 } from "./controllers/assign-work-item";
@@ -67,6 +72,9 @@ import listWorkItemActivity from "./controllers/list-work-item-activity";
 import listWorkItemTransitions from "./controllers/list-work-item-transitions";
 import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
+import moveWorkItem, {
+  authoriseMoveTarget,
+} from "./controllers/move-work-item";
 import rankWorkItem from "./controllers/rank-work-item";
 import setWorkItemParent from "./controllers/set-work-item-parent";
 import transitionWorkItem, {
@@ -95,6 +103,7 @@ import {
   commentMentionCandidatesSchema,
   commentMentionPreflightResponseSchema,
   hierarchyChildrenResponseSchema,
+  moveWorkItemResponseSchema,
   rankWorkItemResponseSchema,
   transitionedWorkItemSchema,
   unassignWorkItemResponseSchema,
@@ -120,6 +129,7 @@ import {
   ifMatchHeader,
   listWorkItemActivityQuery,
   listWorkItemsQuery,
+  moveWorkItemBody,
   projectIdParam,
   rankWorkItemBody,
   setWorkItemParentBody,
@@ -143,6 +153,29 @@ import {
 } from "./search/query";
 import { searchWorkItems } from "./search/repository";
 import { workItemSlaSchema } from "./sla-response";
+import {
+  applyTemplateInTransaction,
+  loadTemplateForCreate,
+} from "./templates/apply";
+import {
+  checklistTemplateListSchema,
+  checklistTemplateSchema,
+  workItemTemplateListSchema,
+  workItemTemplateOptionListSchema,
+  workItemTemplateSchema,
+} from "./templates/response";
+import {
+  createChecklistTemplateBody,
+  createWorkItemTemplateBody,
+  templateListQuery,
+  templateParams,
+  updateChecklistTemplateBody,
+  updateWorkItemTemplateBody,
+} from "./templates/schema";
+import {
+  checklistTemplateService,
+  workItemTemplateService,
+} from "./templates/service";
 
 /**
  * #23's first slice: minimal create + read + list for `work_item`
@@ -863,6 +896,287 @@ const detachWorkItemParentV2Route = createRoute({
   request: { ...detachWorkItemParentRoute.request, headers: ifMatchHeader },
 });
 
+const templateManagementErrors = {
+  400: errorResponse("Invalid body, or workspace ID could not be determined"),
+  403: errorResponse(
+    "No workspace access, or missing workspace:manage_settings permission",
+  ),
+} as const;
+
+const listWorkItemTemplatesRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemTemplates",
+  path: "/workspace/{workspaceId}/work-item-templates",
+  tags: ["Work items"],
+  summary: "List live work item templates",
+  description:
+    "Live (not archived) templates a create dialog offers (`WI-5`). Using a template needs only `work_item:create` on the target project.",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:read"),
+  ] as const,
+  request: { params: workspaceIdParam },
+  responses: {
+    200: jsonResponse("Live templates", workItemTemplateOptionListSchema),
+    400: errorResponse("Workspace ID could not be determined"),
+    403: errorResponse("No access to the workspace"),
+  },
+});
+const manageWorkItemTemplatesRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemTemplatesForManagement",
+  path: "/workspace/{workspaceId}/work-item-templates/manage",
+  tags: ["Work items"],
+  summary: "List work item templates for settings",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: { params: workspaceIdParam, query: templateListQuery },
+  responses: {
+    200: jsonResponse("Templates", workItemTemplateListSchema),
+    ...templateManagementErrors,
+  },
+});
+const createWorkItemTemplateRoute = createRoute({
+  method: "post",
+  operationId: "createWorkItemTemplate",
+  path: "/workspace/{workspaceId}/work-item-templates",
+  tags: ["Work items"],
+  summary: "Create work item template",
+  description: "Requires `workspace:manage_settings` (`WI-5`).",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: {
+    params: workspaceIdParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: createWorkItemTemplateBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The created template", workItemTemplateSchema),
+    ...templateManagementErrors,
+    409: errorResponse("A template with this name already exists"),
+    422: errorResponse("Unknown type, label or checklist template"),
+  },
+});
+const updateWorkItemTemplateRoute = createRoute({
+  method: "patch",
+  operationId: "updateWorkItemTemplate",
+  path: "/workspace/{workspaceId}/work-item-templates/{id}",
+  tags: ["Work items"],
+  summary: "Update work item template",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: {
+    params: templateParams,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateWorkItemTemplateBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The updated template", workItemTemplateSchema),
+    ...templateManagementErrors,
+    404: errorResponse("Template not found or archived"),
+    409: errorResponse("A template with this name already exists"),
+    422: errorResponse("Unknown type, label or checklist template"),
+  },
+});
+const archiveWorkItemTemplateRoute = createRoute({
+  method: "post",
+  operationId: "archiveWorkItemTemplate",
+  path: "/workspace/{workspaceId}/work-item-templates/{id}/archive",
+  tags: ["Work items"],
+  summary: "Archive work item template",
+  description:
+    "Archives the template; work items already created from it are unaffected.",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: { params: templateParams },
+  responses: {
+    200: jsonResponse("The archived template", workItemTemplateSchema),
+    ...templateManagementErrors,
+    404: errorResponse("Template not found or already archived"),
+  },
+});
+const listChecklistTemplatesRoute = createRoute({
+  method: "get",
+  operationId: "listChecklistTemplates",
+  path: "/workspace/{workspaceId}/checklist-templates",
+  tags: ["Work items"],
+  summary: "List checklist templates for settings",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: { params: workspaceIdParam, query: templateListQuery },
+  responses: {
+    200: jsonResponse("Checklist templates", checklistTemplateListSchema),
+    ...templateManagementErrors,
+  },
+});
+const createChecklistTemplateRoute = createRoute({
+  method: "post",
+  operationId: "createChecklistTemplate",
+  path: "/workspace/{workspaceId}/checklist-templates",
+  tags: ["Work items"],
+  summary: "Create checklist template",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: {
+    params: workspaceIdParam,
+    body: {
+      required: true,
+      content: {
+        "application/json": { schema: createChecklistTemplateBody },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "The created checklist template",
+      checklistTemplateSchema,
+    ),
+    ...templateManagementErrors,
+    409: errorResponse("A checklist template with this name already exists"),
+  },
+});
+const updateChecklistTemplateRoute = createRoute({
+  method: "patch",
+  operationId: "updateChecklistTemplate",
+  path: "/workspace/{workspaceId}/checklist-templates/{id}",
+  tags: ["Work items"],
+  summary: "Update checklist template",
+  description:
+    "Renames and/or replaces the items. Items already copied onto work items are independent and unchanged.",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: {
+    params: templateParams,
+    body: {
+      required: true,
+      content: {
+        "application/json": { schema: updateChecklistTemplateBody },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "The updated checklist template",
+      checklistTemplateSchema,
+    ),
+    ...templateManagementErrors,
+    404: errorResponse("Checklist template not found or archived"),
+    409: errorResponse("A checklist template with this name already exists"),
+  },
+});
+const archiveChecklistTemplateRoute = createRoute({
+  method: "post",
+  operationId: "archiveChecklistTemplate",
+  path: "/workspace/{workspaceId}/checklist-templates/{id}/archive",
+  tags: ["Work items"],
+  summary: "Archive checklist template",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: { params: templateParams },
+  responses: {
+    200: jsonResponse(
+      "The archived checklist template",
+      checklistTemplateSchema,
+    ),
+    ...templateManagementErrors,
+    404: errorResponse("Checklist template not found or already archived"),
+    409: errorResponse("A live work item template still uses it"),
+  },
+});
+
+const moveWorkItemRoute = createRoute({
+  method: "post",
+  operationId: "moveWorkItem",
+  path: "/v2/work-items/{key}/move",
+  tags: ["Work items"],
+  summary: "Move work item to another project",
+  description:
+    "Moves a work item to another project of the same workspace (`RH-12`). `moveChildren: true` moves the whole subtree; " +
+    "`false` detaches the direct children, which stay in the source project with no parent. The moved item's own parent link is always removed. " +
+    "The item gets a new key in the target project and the old key is recorded as an alias. States are remapped by state template; " +
+    "project-scoped labels follow by name or are dropped; pending workflow timers are discarded. Requires reach plus `work_item:update` on the " +
+    "source and reach plus `work_item:create` and `work_item:update` on the target, and `If-Match` with the current version (`WI-7`).",
+  middleware: [
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    headers: ifMatchHeader,
+    body: {
+      required: true,
+      content: { "application/json": { schema: moveWorkItemBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The moved work item", moveWorkItemResponseSchema),
+    400: errorResponse("Invalid body or malformed If-Match header"),
+    403: errorResponse(
+      "Missing work_item:update on the source or work_item:create / work_item:update on the target",
+    ),
+    404: errorResponse(
+      "Work item or target project not found (including another workspace or an unreachable project)",
+    ),
+    409: {
+      description:
+        "Version mismatch, or a concurrent change to the item, target or hierarchy",
+      content: {
+        "application/json": { schema: workItemVersionConflictSchema },
+        "text/plain": { schema: z.string() },
+      },
+    },
+    422: errorResponse(
+      "Same project, subtree over 200 items, target lacks a matching state, assignee not on the target roster, or an organisation-visible item crossing customer organisations",
+    ),
+  },
+});
+
+const archiveWorkItemRoute = createRoute({
+  method: "post",
+  operationId: "archiveWorkItem",
+  path: "/v2/work-items/{key}/archive",
+  tags: ["Work items"],
+  summary: "Archive work item",
+  description:
+    "Hides the work item from default list, board and search views while preserving it and its history (`WI-20`). " +
+    "Archiving is independent of soft deletion and does not start the 30-day purge timer (`WI-21`). " +
+    "Requires `work_item:update` on the project and `If-Match` with the current version (`WI-7`).",
+  middleware: [
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: { params: workItemKeyParam, headers: ifMatchHeader },
+  responses: {
+    200: jsonResponse("The archived work item", workItemSchema),
+    400: errorResponse("Missing or malformed If-Match header"),
+    403: errorResponse(
+      "No workspace access, or missing work_item:update permission",
+    ),
+    404: errorResponse("Work item not found, or already archived or deleted"),
+    409: jsonResponse("Version mismatch", workItemVersionConflictSchema),
+  },
+});
+
 const hierarchyChildrenRoute = createRoute({
   method: "get",
   operationId: "listWorkItemHierarchyChildren",
@@ -1278,7 +1592,11 @@ const deleteCommentRoute = createRoute({
 });
 
 const workItem = apiRouter<
-  BaseVariables & { workspaceId: string; workItemId: string }
+  BaseVariables & {
+    workspaceId: string;
+    workItemId: string;
+    projectId: string;
+  }
 >()
   .openapi(createWorkItemRoute, async (c) => {
     const { projectId } = c.req.valid("param");
@@ -1292,22 +1610,38 @@ const workItem = apiRouter<
       dueDate,
       labelIds,
       assigneeId,
+      templateId,
     } = c.req.valid("json");
     const { actorId, actorType } = resolveActor(
       c.get("userId"),
       c.get("apiKey"),
     );
+    // `WI-5`: explicit fields win; the template only fills what the request left out.
+    const template = templateId
+      ? await loadTemplateForCreate(workspaceId, templateId, typeId)
+      : undefined;
     const created = await createWorkItem({
       projectId,
       workspaceId,
       typeId,
       title,
-      description,
+      description:
+        description === undefined && template
+          ? (template.description ?? undefined)
+          : description,
       priority,
       startDate,
       dueDate,
       labelIds,
       assigneeId,
+      afterInsert: template
+        ? (tx, inserted) =>
+            applyTemplateInTransaction(tx, template, inserted, {
+              applyLabels: labelIds === undefined,
+              actorId,
+              actorType,
+            })
+        : undefined,
       authorization: {
         userId: c.get("userId"),
         apiKey: c.get("apiKey"),
@@ -1580,6 +1914,11 @@ const workItem = apiRouter<
     // reachable today. The resolution above is kept anyway, because it makes the id the
     // self branch uses the SAME fact the roster is built from (staff, on this roster),
     // instead of relying on a constraint defined in another file to stay deterministic.
+    // PR-2: a member of an ancestor project is on this project's roster too.
+    const rosterProjectIds = [
+      projectId,
+      ...(await loadProjectAncestorIds(db, workspaceId, projectId)),
+    ];
     const [callerPerson] = await db
       .select({ id: personTable.id })
       .from(personTable)
@@ -1589,7 +1928,7 @@ const workItem = apiRouter<
           eq(personTable.userId, userId),
           eq(personTable.side, "staff"),
           eq(membershipTable.scope, "project"),
-          eq(membershipTable.scopeId, projectId),
+          inArray(membershipTable.scopeId, rosterProjectIds),
         ),
       )
       .orderBy(personTable.createdAt)
@@ -1597,6 +1936,9 @@ const workItem = apiRouter<
 
     // Match write authority: workspace capability, project override and key ceiling.
     const identity = await resolveCallerIdentity(c, userId);
+    const ancestorProjectIds = identity
+      ? await loadProjectAncestorIdsFor(c, db, identity, workspaceId, projectId)
+      : [];
     const canAssign = async (
       capability: "work_item:assign" | "work_item:update",
     ) => {
@@ -1605,7 +1947,8 @@ const workItem = apiRouter<
         !hasProjectReadCapability(identity, capability, "work_item", {
           projectId,
           workspaceId,
-          ancestorProjectIds: [],
+          // PR-2/PR-3: assignment authority follows the same ancestor chain as the route.
+          ancestorProjectIds,
           ownerTeamId: null,
           organisationId: null,
         })
@@ -1818,6 +2161,162 @@ const workItem = apiRouter<
         assertedVersion,
       );
       return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(listWorkItemTemplatesRoute, async (c) => {
+    const rows = await workItemTemplateService.listLive(c.get("workspaceId"));
+    return c.json(
+      rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        typeId: row.typeId,
+        title: row.title,
+        hasChecklist: row.checklistTemplateId !== null,
+      })),
+      200,
+    );
+  })
+  .openapi(manageWorkItemTemplatesRoute, async (c) => {
+    const { includeArchived } = c.req.valid("query");
+    return c.json(
+      await workItemTemplateService.listForManagement(
+        c.get("workspaceId"),
+        includeArchived === "true",
+      ),
+      200,
+    );
+  })
+  .openapi(createWorkItemTemplateRoute, async (c) =>
+    c.json(
+      await workItemTemplateService.create(
+        c.get("workspaceId"),
+        c.req.valid("json"),
+      ),
+      200,
+    ),
+  )
+  .openapi(updateWorkItemTemplateRoute, async (c) =>
+    c.json(
+      await workItemTemplateService.update(
+        c.get("workspaceId"),
+        c.req.valid("param").id,
+        c.req.valid("json"),
+      ),
+      200,
+    ),
+  )
+  .openapi(archiveWorkItemTemplateRoute, async (c) =>
+    c.json(
+      await workItemTemplateService.archive(
+        c.get("workspaceId"),
+        c.req.valid("param").id,
+      ),
+      200,
+    ),
+  )
+  .openapi(listChecklistTemplatesRoute, async (c) =>
+    c.json(
+      await checklistTemplateService.list(
+        c.get("workspaceId"),
+        c.req.valid("query").includeArchived === "true",
+      ),
+      200,
+    ),
+  )
+  .openapi(createChecklistTemplateRoute, async (c) => {
+    const { name, items } = c.req.valid("json");
+    return c.json(
+      await checklistTemplateService.create(c.get("workspaceId"), name, items),
+      200,
+    );
+  })
+  .openapi(updateChecklistTemplateRoute, async (c) =>
+    c.json(
+      await checklistTemplateService.update(
+        c.get("workspaceId"),
+        c.req.valid("param").id,
+        c.req.valid("json"),
+      ),
+      200,
+    ),
+  )
+  .openapi(archiveChecklistTemplateRoute, async (c) =>
+    c.json(
+      await checklistTemplateService.archive(
+        c.get("workspaceId"),
+        c.req.valid("param").id,
+      ),
+      200,
+    ),
+  )
+  .openapi(moveWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const { targetProjectId, moveChildren } = c.req.valid("json");
+    const userId = c.get("userId");
+    const { actorId, actorType } = resolveActor(userId, c.get("apiKey"));
+    const target = await authoriseMoveTarget(
+      c,
+      userId,
+      workspaceId,
+      targetProjectId,
+    );
+    try {
+      const moved = await moveWorkItem({
+        key,
+        workspaceId,
+        authorisedSourceProjectId: c.get("projectId"),
+        target,
+        moveChildren,
+        assertedVersion: Number(ifMatch.replaceAll('"', "")),
+        actorId,
+        actorType,
+      });
+      return c.json(moved, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(archiveWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+    try {
+      const archived = await archiveWorkItem(
+        key,
+        workspaceId,
+        actorId,
+        actorType,
+        { assertedVersion: Number(ifMatch.replaceAll('"', "")) },
+      );
+      return c.json(archived, 200);
     } catch (error) {
       if (error instanceof WorkItemVersionConflictError) {
         return c.json(

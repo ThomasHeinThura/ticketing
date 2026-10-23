@@ -28,6 +28,7 @@ import { findAssetWorkspaceScope } from "../asset/repository";
 import db, { schema } from "../database";
 import type { RegisteredHttpRoute } from "../observability/metrics.js";
 import { policyRegistry } from "../policy-registry";
+import { loadProjectAncestorIdsFor } from "../project/hierarchy.repository";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { enforcedPolicySources } from "./enforcement-config";
 import {
@@ -239,6 +240,7 @@ function workspaceReach(
 }
 
 async function projectReach(
+  c: RuntimeContext,
   identity: ResolvedIdentity,
   evidence: ScopeEvidence,
   policyScope: "project" | "work_item",
@@ -339,7 +341,13 @@ async function projectReach(
     projectId: project.id,
     workspaceId: project.workspaceId,
     organisationId: project.organisationId,
-    ancestorProjectIds: [],
+    ancestorProjectIds: await loadProjectAncestorIdsFor(
+      c,
+      db,
+      identity,
+      project.workspaceId,
+      project.id,
+    ),
     ownerTeamId: null,
     ...(visibleToPersonIds === null ? {} : { visibleToPersonIds }),
   };
@@ -574,7 +582,7 @@ async function buildContext(
         ? workspaceReach(identity, reachWorkspaceId)
         : undefined;
     } else if (policy.scope === "project" || policy.scope === "work_item") {
-      inReach = await projectReach(identity, evidence, policy.scope);
+      inReach = await projectReach(c, identity, evidence, policy.scope);
     }
   }
 
@@ -609,10 +617,24 @@ async function buildContext(
     body = { assigneeId: parsed.assigneeId };
   }
 
+  // PR-2/PR-3: the authority check inherits the nearest ancestor's project grant when the
+  // caller has none on this project; the same memoised chain feeds the reach check above.
+  let ancestorProjectIds: string[] | undefined;
+  if (scope.kind === "project" || scope.kind === "work_item") {
+    ancestorProjectIds = await loadProjectAncestorIdsFor(
+      c,
+      db,
+      identity,
+      scope.workspaceId,
+      scope.projectId,
+    );
+  }
+
   return {
     identity,
     target: {},
     scope,
+    ...(ancestorProjectIds === undefined ? {} : { ancestorProjectIds }),
     inReach,
     row: evidence.row,
     body,

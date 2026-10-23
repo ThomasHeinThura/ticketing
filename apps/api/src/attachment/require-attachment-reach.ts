@@ -6,6 +6,7 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { loadProjectAncestorIdsForRequest } from "../project/hierarchy.repository";
 import {
   projectCapabilityRefused,
   projectReadDecision,
@@ -74,12 +75,18 @@ export function requireAttachmentReach(
     c.set("workItemId", row.workItemId);
     c.set("policyScopeResource", "work_item");
     c.set("policyRowFacts", { personId: row.uploadedBy });
+    const ancestorProjectIds = await loadProjectAncestorIdsForRequest(
+      c,
+      db,
+      row.workspaceId,
+      row.projectId,
+    );
     if (policyShadowEnabled) {
       c.set("projectReachFacts", {
         projectId: row.projectId,
         workspaceId: row.workspaceId,
         organisationId: row.organisationId,
-        ancestorProjectIds: [],
+        ancestorProjectIds,
         ownerTeamId: null,
       });
     }
@@ -101,7 +108,7 @@ export function requireAttachmentReach(
         workspaceId: row.workspaceId,
         organisationId: row.organisationId,
         workItemId: row.workItemId,
-        ancestorProjectIds: [],
+        ancestorProjectIds,
         ownerTeamId: null,
       });
       if (!decision) {

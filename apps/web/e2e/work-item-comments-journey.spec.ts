@@ -10,6 +10,7 @@ import {
   test,
 } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -234,7 +235,7 @@ async function setupWorkItem(
       data: {
         name: "Comments E2E project",
         icon: "Folder",
-        slug: `comments-e2e-${randomUUID().slice(0, 12)}`,
+        slug: uniqueProjectKey(8),
         workspaceId: workspace?.id,
       },
     },

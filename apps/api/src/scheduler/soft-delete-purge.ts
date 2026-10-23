@@ -8,8 +8,13 @@ import {
   listWorkItemPurgeCandidates,
   lockEligibleProject,
   lockEligibleWorkItem,
+  readWorkItemProjectId,
   releaseAttachmentsForPurge,
 } from "./soft-delete-purge.repository";
+import {
+  detachChildrenForPurge,
+  lockWorkItemHierarchyForProject,
+} from "./soft-delete-purge-detach";
 
 /**
  * The soft-delete purge half of `session-cleanup` (`background-jobs.md`; `WI-21`, `PR-16`,
@@ -69,9 +74,18 @@ export async function purgeSoftDeletedWorkItem(
 ): Promise<SoftDeleteRowResult> {
   return db.transaction(async (tx) => {
     await fenceLegalHolds(tx);
-    if (!(await lockEligibleWorkItem(tx, id))) return "no_longer_eligible";
+    // Lock order (Q10): hierarchy advisory lock first, then the row lock -- the order
+    // `set-work-item-parent`, delete and move use. The project is read unlocked, then
+    // re-verified under the row lock.
+    const projectId = await readWorkItemProjectId(tx, id);
+    if (!projectId) return "no_longer_eligible";
+    await lockWorkItemHierarchyForProject(tx, projectId);
+    const locked = await lockEligibleWorkItem(tx, id);
+    if (!locked || locked.projectId !== projectId) return "no_longer_eligible";
     const remaining = await releaseAttachmentsForPurge(tx, { workItemId: id });
     if (remaining > 0) return "awaiting_attachments";
+    // WI-22: children never block the purge; they are detached (journaled) first.
+    await detachChildrenForPurge(tx, locked);
     return (await deleteWorkItemRow(tx, id)) === 1
       ? "purged"
       : "no_longer_eligible";

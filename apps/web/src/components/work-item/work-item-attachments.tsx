@@ -1,65 +1,107 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@taskdesk/ui";
-import { Paperclip, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { Button, Input } from "@taskdesk/ui";
+import { Paperclip } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   listWorkItemAttachments,
   requestAttachmentDeletion,
-  uploadWorkItemAttachment,
+  type WorkItemAttachment,
 } from "@/fetchers/attachment/work-item-attachments";
-import { getApiUrl } from "@/fetchers/get-api-url";
+import { enqueueWorkItemUploads } from "@/fetchers/attachment/work-item-upload-queue";
+import getCommentMentionCandidates from "@/fetchers/work-item/get-comment-mention-candidates";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
-import { formatDateMedium } from "@/lib/format";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
+import WorkItemAttachmentLightbox from "./work-item-attachments-lightbox";
+import WorkItemAttachmentTile, {
+  isInlineImage,
+} from "./work-item-attachments-tile";
+import {
+  registerAttachmentsPanel,
+  useWorkItemUploads,
+  WorkItemUploadList,
+} from "./work-item-attachments-uploads";
 
-function formatBytes(size: number) {
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+/** Query key shared with the activity section, which lists each comment's files from it. */
+export function workItemAttachmentsKey(workItemKey: string) {
+  return ["work-items", "attachments", workItemKey] as const;
 }
 
 /**
- * Work-item attachments (`attachments.md`): list, upload through presign → PUT → complete,
- * download through the API's short-lived redirect, and request confirmed deletion when authorized.
+ * Work-item attachments (`attachments.md`): thumbnails with a lightbox for images, Kaneo
+ * attachment cards for everything else, multi-file upload with per-file progress through the
+ * shared upload queue, download through the API's short-lived redirect, and confirmed deletion
+ * when authorized. Files attached to a comment are shown on that comment, not here.
  */
 export default function WorkItemAttachments({
   workItemKey,
+  workspaceId,
 }: {
   workItemKey: string;
+  /** When given, the Add control follows the caller's `attachment:create` capability. */
+  workspaceId?: string;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const openPendingAction = useOpenPendingAction();
+  const permissions = useWorkspacePermission(workspaceId);
+  const canAdd =
+    !workspaceId ||
+    (!permissions.isCheckingPermissions && permissions.canCreateAttachments());
   const removalBusy = useRef(false);
   const lifecycle = useIntentLifecycle(workItemKey, () => setError(null));
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const queryKey = ["work-items", "attachments", workItemKey];
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const queryKey = workItemAttachmentsKey(workItemKey);
   const list = useQuery({
     queryKey,
     queryFn: () => listWorkItemAttachments(workItemKey),
   });
-  const upload = useMutation({
-    mutationFn: (file: File) => uploadWorkItemAttachment(workItemKey, file),
-    onMutate: () => setError(null),
-    onError: (cause) =>
-      setError(
-        cause instanceof HttpError && cause.status < 500 && cause.message
-          ? cause.message
-          : t("workItems:detail.attachments.uploadFailed"),
-      ),
-    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+  // Person IDs to names: the same reach-filtered source the comment composer mentions from.
+  const people = useQuery({
+    queryKey: [
+      "work-items",
+      "comment-mention-candidates",
+      workItemKey,
+      "internal",
+    ],
+    queryFn: () =>
+      getCommentMentionCandidates({ key: workItemKey, visibility: "internal" }),
+    retry: false,
+    staleTime: 60_000,
   });
+  const uploads = useWorkItemUploads(workItemKey);
   const remove = useMutation({ mutationFn: requestAttachmentDeletion });
   const currentDeletable = useRef(new Set<string>());
+  const rows = Array.isArray(list.data) ? list.data : [];
   currentDeletable.current = new Set(
-    (Array.isArray(list.data) ? list.data : [])
+    rows
       .filter((row) => row.canDelete === true && row.state === "ready")
       .map((row) => row.id),
   );
-  async function requestRemoval(id: string) {
+
+  useEffect(() => registerAttachmentsPanel(), []);
+
+  function addFiles(files: File[]) {
+    if (files.length === 0) return;
+    setError(null);
+    enqueueWorkItemUploads({
+      itemKey: workItemKey,
+      files,
+      onDone: () => {
+        void queryClient.invalidateQueries({ queryKey });
+        void queryClient.invalidateQueries({
+          queryKey: ["work-items", "activity", workItemKey],
+        });
+      },
+    });
+  }
+
+  async function requestRemoval(attachment: WorkItemAttachment) {
+    const id = attachment.id;
     if (removalBusy.current || !currentDeletable.current.has(id)) return;
     removalBusy.current = true;
     const intent = lifecycle.capture();
@@ -81,24 +123,19 @@ export default function WorkItemAttachments({
     }
   }
 
-  const ready = (Array.isArray(list.data) ? list.data : []).filter(
-    (attachment) => attachment.state === "ready",
+  // Comment files belong to their comment's card; the panel lists the item's own files.
+  const ready = rows.filter(
+    (attachment) =>
+      attachment.state === "ready" && (attachment.commentId ?? null) === null,
   );
-
-  const filePicker = (
-    // ui-exempt: the native file picker, hidden behind the Add button.
-    <input
-      ref={inputRef}
-      type="file"
-      className="sr-only"
-      aria-label={t("workItems:detail.attachments.add")}
-      onChange={(event) => {
-        const file = event.target.files?.[0];
-        if (file) upload.mutate(file);
-        event.target.value = "";
-      }}
-    />
+  const images = useMemo(
+    () => ready.filter((attachment) => isInlineImage(attachment.mimeType)),
+    [ready],
   );
+  const uploaderName = (personId: string | null) =>
+    personId
+      ? people.data?.find((person) => person.personId === personId)?.name
+      : undefined;
 
   return (
     <section
@@ -110,24 +147,39 @@ export default function WorkItemAttachments({
         <h2 id="work-item-attachments-heading" className="font-medium text-sm">
           {t("workItems:detail.attachments.heading")}
         </h2>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={upload.isPending}
-          onClick={() => inputRef.current?.click()}
-        >
-          <Paperclip className="size-4" />
-          {upload.isPending
-            ? t("workItems:detail.attachments.uploading")
-            : t("workItems:detail.attachments.add")}
-        </Button>
-        {filePicker}
+        {canAdd ? (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => inputRef.current?.click()}
+            >
+              <Paperclip className="size-4" />
+              {uploads.length > 0
+                ? t("workItems:detail.attachments.uploading")
+                : t("workItems:detail.attachments.add")}
+            </Button>
+            <Input
+              ref={inputRef}
+              type="file"
+              multiple
+              className="sr-only"
+              tabIndex={-1}
+              aria-label={t("workItems:detail.attachments.add")}
+              onChange={(event) => {
+                addFiles(Array.from(event.target.files ?? []));
+                event.target.value = "";
+              }}
+            />
+          </>
+        ) : null}
       </div>
       {error ? (
         <p className="text-destructive-foreground text-sm" role="alert">
           {error}
         </p>
       ) : null}
+      <WorkItemUploadList uploads={uploads} />
       {list.isLoading ? (
         <p className="text-muted-foreground text-sm" role="status">
           {t("common:empty.loading")}
@@ -136,45 +188,32 @@ export default function WorkItemAttachments({
         <p className="text-muted-foreground text-sm">
           {t("workItems:detail.attachments.loadFailed")}
         </p>
-      ) : ready.length === 0 ? (
+      ) : ready.length === 0 && uploads.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           {t("workItems:detail.attachments.empty")}
         </p>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <ul className="grid grid-cols-2 gap-2">
           {ready.map((attachment) => (
-            <li
+            <WorkItemAttachmentTile
               key={attachment.id}
-              className="flex items-center gap-3 px-3 py-2 text-sm"
-            >
-              <Paperclip className="size-4 shrink-0 text-muted-foreground" />
-              <a
-                href={getApiUrl(`/attachments/${attachment.id}`)}
-                className="min-w-0 flex-1 truncate hover:underline"
-              >
-                {attachment.filename}
-              </a>
-              <span className="shrink-0 text-muted-foreground text-xs">
-                {formatBytes(attachment.size)} ·{" "}
-                {formatDateMedium(attachment.createdAt)}
-              </span>
-              {attachment.canDelete === true && (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={t("workItems:detail.attachments.delete", {
-                    name: attachment.filename,
-                  })}
-                  disabled={remove.isPending}
-                  onClick={() => void requestRemoval(attachment.id)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              )}
-            </li>
+              attachment={attachment}
+              uploaderName={uploaderName(attachment.uploadedBy)}
+              onPreview={(row) => setPreviewId(row.id)}
+              onDelete={(row) => void requestRemoval(row)}
+              deleteDisabled={remove.isPending}
+            />
           ))}
         </ul>
       )}
+      <WorkItemAttachmentLightbox
+        images={images}
+        openId={previewId}
+        onOpenChange={(open) => {
+          if (!open) setPreviewId(null);
+        }}
+        onNavigate={setPreviewId}
+      />
     </section>
   );
 }

@@ -207,3 +207,29 @@ describe("executed work-item deletion", () => {
     expect(useProjectStore.getState().project).toBe(project);
   });
 });
+
+describe("WI-23 single work-item deletion dialog content", () => {
+  afterEach(cleanup);
+  it("names the project, who asked for the deletion and the retention period, with no restore or portal claim", () => {
+    mocks.action.current = workItemAction({
+      summary: {
+        key: "WLP-1",
+        title: "One",
+        projectName: "Help desk",
+        requesterName: "Riley",
+        childrenAffected: 0,
+      },
+    });
+    render(<PendingActionApproval id="pa-1" layout="page" />);
+    expect(screen.getByText(/WLP-1 · One/)).toBeInTheDocument();
+    expect(screen.getByText("workItems:deletion.project")).toBeInTheDocument();
+    expect(
+      screen.getByText("workItems:deletion.requestedBy"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("workItems:deletion.portalImpact")).toBeNull();
+    expect(screen.queryByText("workItems:deletion.recovery")).toBeNull();
+    expect(
+      screen.getByText("workItems:deletion.retention"),
+    ).toBeInTheDocument();
+  });
+});

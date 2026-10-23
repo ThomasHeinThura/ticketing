@@ -148,7 +148,7 @@ describe.each(["off", "on"] as const)(
           body: JSON.stringify({
             name: "Banned owner write",
             workspaceId: owner.workspace.id,
-            slug: "owner-state-write",
+            slug: "OWNERSTATE",
             icon: "Folder",
           }),
         });

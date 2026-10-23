@@ -46,7 +46,12 @@ import {
   type WorkItemSortDirection,
   type WorkItemSortField,
 } from "@/lib/routes";
+import {
+  assigneeDisplayText,
+  resolveAssigneeDisplay,
+} from "@/lib/work-item-assignee-display";
 import type { WorkItemField, WorkItemRow } from "@/types/work-item";
+import { WorkItemBlockedBadge } from "./work-item-blocked-badge";
 import WorkItemListLoading from "./work-item-list-loading";
 
 const SelectionCheckbox = lazy(() => import("./selection-checkbox"));
@@ -130,12 +135,15 @@ const COLUMN_WIDTH_CLASSES: Record<WorkItemSearchColumn, string> = {
  * - both present -> the resolved name.
  */
 function assigneeLabel(
-  item: Pick<WorkItemRow, "assigneeId" | "assigneeName">,
-  labels: { unassigned: string; inactive: string },
+  item: Pick<
+    WorkItemRow,
+    "assigneeId" | "assigneeName" | "assigneeActive" | "assigneeOnProject"
+  >,
+  labels: { unassigned: string; inactive: string; notOnProject: string },
 ): string {
-  if (!item.assigneeId) return labels.unassigned;
-  if (!item.assigneeName) return labels.inactive;
-  return item.assigneeName;
+  // `AS-8`: "Jane Smith (inactive)" / "(no longer on this project)" from the response's
+  // person facts, through the domain's `resolveAssigneeDisplayStatus`.
+  return assigneeDisplayText(resolveAssigneeDisplay(item), labels);
 }
 
 const FIELD_LABEL_KEYS: Record<WorkItemField, string> = {
@@ -230,6 +238,7 @@ function WorkItemList({
     () => ({
       unassigned: t("workItems:list.unassigned"),
       inactive: t("workItems:list.assigneeInactive"),
+      notOnProject: t("workItems:list.assigneeNotOnProject"),
     }),
     [t],
   );
@@ -545,7 +554,12 @@ function WorkItemList({
                   return item.unavailableFields.includes("stateName") ? (
                     <UnavailableField field="stateName" t={t} />
                   ) : (
-                    <Badge variant="outline">{item.stateName}</Badge>
+                    <span className="flex flex-wrap items-center gap-1">
+                      <Badge variant="outline">{item.stateName}</Badge>
+                      <WorkItemBlockedBadge
+                        blockedByOpenCount={item.blockedByOpenCount}
+                      />
+                    </span>
                   );
                 case "assignee":
                   return item.unavailableFields.includes("assigneeName") ? (

@@ -84,6 +84,13 @@ vi.mock("../../../apps/api/src/database", async () => {
   return { default: chain, schema };
 });
 
+// The database mock above answers lookups only; ancestry (PR-2) is covered on its own.
+vi.mock("../../../apps/api/src/project/hierarchy.repository", () => ({
+  loadProjectAncestorIds: async () => [],
+  loadProjectAncestorIdsForRequest: async () => [],
+  loadProjectAncestorIdsFor: async () => [],
+}));
+
 vi.mock("../../../apps/api/src/utils/validate-workspace-access", async () => {
   const { HTTPException } = await import("hono/http-exception");
   return {

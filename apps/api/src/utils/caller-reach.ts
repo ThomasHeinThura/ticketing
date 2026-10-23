@@ -3,6 +3,10 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Context } from "hono";
 import db, { schema } from "../database";
 import {
+  loadAncestorIdsByProject,
+  loadProjectAncestorIdsFor,
+} from "../project/hierarchy.repository";
+import {
   hasProjectReadCapability,
   ownerAuthorityView,
   resolveCallerIdentity,
@@ -31,6 +35,13 @@ export async function callerReach(c: Context, userId: string) {
   const identity = await resolveCallerIdentity(c, userId);
   const credentialIsKey = Boolean(c.get("apiKey"));
   const organisations = new Map<string, string | null>();
+  // PR-2: inherited project membership is read at call time; memoised per request.
+  // Memoised on the request context, shared with the other layers of the request, and skipped
+  // entirely when the caller holds no project-scope row on any other project (nothing to inherit).
+  function ancestorsOf(workspaceId: string, projectId: string) {
+    if (!identity) return Promise.resolve<string[]>([]);
+    return loadProjectAncestorIdsFor(c, db, identity, workspaceId, projectId);
+  }
 
   async function facts(row: ReachRow) {
     if (row.organisationId !== undefined) {
@@ -39,7 +50,7 @@ export async function callerReach(c: Context, userId: string) {
         workspaceId: row.workspaceId,
         organisationId: row.organisationId,
         workItemId: row.id,
-        ancestorProjectIds: [] as string[],
+        ancestorProjectIds: await ancestorsOf(row.workspaceId, row.projectId),
         ownerTeamId: null,
       };
     }
@@ -58,7 +69,7 @@ export async function callerReach(c: Context, userId: string) {
       workspaceId: row.workspaceId,
       organisationId,
       workItemId: row.id,
-      ancestorProjectIds: [] as string[],
+      ancestorProjectIds: await ancestorsOf(row.workspaceId, row.projectId),
       ownerTeamId: null,
     };
   }
@@ -72,6 +83,7 @@ export async function callerReach(c: Context, userId: string) {
      */
     async reachableProjectIds(
       workspaceIds: readonly string[],
+      options: { includeDeleted?: boolean } = {},
     ): Promise<string[]> {
       if (!identity || workspaceIds.length === 0) return [];
       const rows = await db
@@ -84,16 +96,23 @@ export async function callerReach(c: Context, userId: string) {
         .where(
           and(
             inArray(schema.projectTable.workspaceId, [...workspaceIds]),
-            isNull(schema.projectTable.deletedAt),
+            // PR-16: only the project list's explicit `includeDeleted` reveal widens this
+            // beyond live projects; every other caller keeps the live-only set.
+            options.includeDeleted
+              ? undefined
+              : isNull(schema.projectTable.deletedAt),
           ),
         );
+      const ancestorsByProject = await loadAncestorIdsByProject(db, [
+        ...workspaceIds,
+      ]);
       return rows
         .filter((row) =>
           reaches(identity, {
             projectId: row.id,
             workspaceId: row.workspaceId,
             organisationId: row.organisationId,
-            ancestorProjectIds: [],
+            ancestorProjectIds: ancestorsByProject.get(row.id) ?? [],
             ownerTeamId: null,
           }),
         )

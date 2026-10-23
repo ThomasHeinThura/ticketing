@@ -15,7 +15,7 @@ import {
   GitMerge,
   GitPullRequest,
 } from "lucide-react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { memo, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
@@ -49,6 +49,8 @@ type TaskRowProps = {
   selectionEnabled?: boolean;
   isSelected?: boolean;
   onToggleSelection?: () => void;
+  /** Extra row badges (`VW-16`'s SLA badge), shown beside the labels. */
+  badges?: ReactNode;
 };
 
 function TaskRow({
@@ -64,6 +66,7 @@ function TaskRow({
   selectionEnabled = true,
   isSelected,
   onToggleSelection,
+  badges,
   t,
 }: TaskRowProps) {
   const {
@@ -225,6 +228,7 @@ function TaskRow({
             </span>
             <div className="flex items-center gap-1">
               {showLabels && <TaskLabels labels={task.labels ?? []} />}
+              {badges}
 
               {pullRequests.length === 1 && (
                 <HoverCard openDelay={200} closeDelay={100}>

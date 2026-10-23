@@ -225,10 +225,46 @@ export function projectReachPredicate(userId: string, executor: Executor = db) {
         ),
       ),
   );
+  // PR-2/PR-3: a project row on an ANCESTOR is the override for this project when there is
+  // none here, so the workspace role must not stand in for it. This SQL does not evaluate the
+  // inherited role itself (conservative: such a caller is simply not matched here, never
+  // widened to their workspace role); the native work-item paths do evaluate it.
+  const ancestorMembership = exists(
+    executor
+      .select({ id: schema.membershipTable.id })
+      .from(schema.membershipTable)
+      .innerJoin(
+        schema.personTable,
+        eq(schema.personTable.id, schema.membershipTable.personId),
+      )
+      .where(
+        and(
+          eq(schema.personTable.userId, userId),
+          eq(schema.membershipTable.scope, "project"),
+          sql`${schema.membershipTable.scopeId} IN (
+            WITH RECURSIVE reach_chain(id, parent_id, depth) AS (
+              SELECT chain_start.id, chain_start.parent_id, 1
+              FROM ${projectTable} AS chain_start
+              WHERE chain_start.id = ${projectTable.id}
+                AND chain_start.workspace_id = ${projectTable.workspaceId}
+              UNION ALL
+              SELECT chain_next.id, chain_next.parent_id, reach_chain.depth + 1
+              FROM ${projectTable} AS chain_next
+              INNER JOIN reach_chain ON chain_next.id = reach_chain.parent_id
+              WHERE chain_next.workspace_id = ${projectTable.workspaceId}
+                AND chain_next.deleted_at IS NULL
+                AND reach_chain.depth < 4
+            )
+            SELECT reach_chain.id FROM reach_chain WHERE reach_chain.depth > 1
+          )`,
+        ),
+      ),
+  );
   const effectiveRead = or(
     projectRoleCanRead,
     and(
       sql`not ${projectMembership}`,
+      sql`not ${ancestorMembership}`,
       or(workspaceRoleCanRead, legacyWorkspaceRoleCanRead),
     ),
   );

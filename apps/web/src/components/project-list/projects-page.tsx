@@ -121,6 +121,12 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
     workspaceId,
   });
   const reorderProjects = useReorderProjects();
+  // PR-1: a child project names its parent next to its own name. The list keeps its flat,
+  // draggable sidebar order; hierarchy is shown, not imposed on the ordering.
+  const projectNameById = useMemo(
+    () => new Map((projects ?? []).map((item) => [item.id, item.name])),
+    [projects],
+  );
 
   // React state, not the query cache: dnd-kit clears its transforms with a
   // setState in the same handler, while a cache write notifies a task later,
@@ -414,6 +420,17 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
                         <div className="flex items-center gap-3">
                           <IconComponent className="w-5 h-5 text-muted-foreground" />
                           <span className="font-medium">{project.name}</span>
+                          {project.parentId &&
+                            projectNameById.has(project.parentId) && (
+                              <Badge
+                                variant="outline"
+                                data-testid="project-parent-badge"
+                              >
+                                {t("workspace:projects.inParent", {
+                                  name: projectNameById.get(project.parentId),
+                                })}
+                              </Badge>
+                            )}
                         </div>
                       </TableCell>
                       <TableCell className="py-3">

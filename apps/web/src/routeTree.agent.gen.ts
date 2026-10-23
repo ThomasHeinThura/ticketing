@@ -50,6 +50,7 @@ import { Route as LayoutAuthenticatedAgentSettingsProfileRouteImport } from './r
 import { Route as LayoutAuthenticatedAgentSettingsRequestTypesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/request-types'
 import { Route as LayoutAuthenticatedAgentSettingsSlaPoliciesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/sla-policies'
 import { Route as LayoutAuthenticatedAgentSettingsStatesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/states'
+import { Route as LayoutAuthenticatedAgentSettingsWorkItemTemplatesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/work-item-templates'
 import { Route as LayoutAuthenticatedAgentViewsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/views/$id'
 import { Route as LayoutAuthenticatedAgentWorkItemsKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/work-items/$key'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account'
@@ -84,6 +85,7 @@ import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsStatesRouteI
 import { Route as LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id'
 import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general'
 import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/labels'
+import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/members'
 import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow'
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdIndexRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/index'
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog'
@@ -326,6 +328,12 @@ const LayoutAuthenticatedAgentSettingsStatesRoute =
     path: '/states',
     getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
   } as any)
+const LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute =
+  LayoutAuthenticatedAgentSettingsWorkItemTemplatesRouteImport.update({
+    id: '/work-item-templates',
+    path: '/work-item-templates',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
+  } as any)
 const LayoutAuthenticatedAgentViewsIdRoute =
   LayoutAuthenticatedAgentViewsIdRouteImport.update({
     id: '/$id',
@@ -539,6 +547,14 @@ const LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute =
       getParentRoute: () => LayoutAuthenticatedDashboardSettingsProjectsRoute,
     } as any,
   )
+const LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute =
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRouteImport.update(
+    {
+      id: '/$projectId/members',
+      path: '/$projectId/members',
+      getParentRoute: () => LayoutAuthenticatedDashboardSettingsProjectsRoute,
+    } as any,
+  )
 const LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute =
   LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRouteImport.update(
     {
@@ -642,6 +658,7 @@ export interface FileRoutesByFullPath {
   '/agent/settings/request-types': typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
   '/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/agent/settings/states': typeof LayoutAuthenticatedAgentSettingsStatesRoute
+  '/agent/settings/work-item-templates': typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
   '/agent/views/$id': typeof LayoutAuthenticatedAgentViewsIdRoute
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
@@ -676,6 +693,7 @@ export interface FileRoutesByFullPath {
   '/agent/settings/profile/pending-actions/$id': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute
   '/dashboard/settings/projects/$projectId/general': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
   '/dashboard/settings/projects/$projectId/labels': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
+  '/dashboard/settings/projects/$projectId/members': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute
   '/dashboard/settings/projects/$projectId/workflow': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/backlog': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/board': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBoardRoute
@@ -723,6 +741,7 @@ export interface FileRoutesByTo {
   '/agent/settings/request-types': typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
   '/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/agent/settings/states': typeof LayoutAuthenticatedAgentSettingsStatesRoute
+  '/agent/settings/work-item-templates': typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
   '/agent/views/$id': typeof LayoutAuthenticatedAgentViewsIdRoute
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
@@ -756,6 +775,7 @@ export interface FileRoutesByTo {
   '/agent/settings/profile/pending-actions/$id': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute
   '/dashboard/settings/projects/$projectId/general': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
   '/dashboard/settings/projects/$projectId/labels': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
+  '/dashboard/settings/projects/$projectId/members': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute
   '/dashboard/settings/projects/$projectId/workflow': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/backlog': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/board': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBoardRoute
@@ -807,6 +827,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/agent/settings/request-types': typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
   '/_layout/_authenticated/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/_layout/_authenticated/agent/settings/states': typeof LayoutAuthenticatedAgentSettingsStatesRoute
+  '/_layout/_authenticated/agent/settings/work-item-templates': typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
   '/_layout/_authenticated/agent/views/$id': typeof LayoutAuthenticatedAgentViewsIdRoute
   '/_layout/_authenticated/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/_layout/_authenticated/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
@@ -841,6 +862,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/agent/settings/profile/pending-actions/$id': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute
   '/_layout/_authenticated/dashboard/settings/projects/$projectId/general': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
   '/_layout/_authenticated/dashboard/settings/projects/$projectId/labels': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
+  '/_layout/_authenticated/dashboard/settings/projects/$projectId/members': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute
   '/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRoute
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBoardRoute
@@ -891,6 +913,7 @@ export interface FileRouteTypes {
     | '/agent/settings/request-types'
     | '/agent/settings/sla-policies'
     | '/agent/settings/states'
+    | '/agent/settings/work-item-templates'
     | '/agent/views/$id'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
@@ -925,6 +948,7 @@ export interface FileRouteTypes {
     | '/agent/settings/profile/pending-actions/$id'
     | '/dashboard/settings/projects/$projectId/general'
     | '/dashboard/settings/projects/$projectId/labels'
+    | '/dashboard/settings/projects/$projectId/members'
     | '/dashboard/settings/projects/$projectId/workflow'
     | '/dashboard/workspace/$workspaceId/project/$projectId/backlog'
     | '/dashboard/workspace/$workspaceId/project/$projectId/board'
@@ -972,6 +996,7 @@ export interface FileRouteTypes {
     | '/agent/settings/request-types'
     | '/agent/settings/sla-policies'
     | '/agent/settings/states'
+    | '/agent/settings/work-item-templates'
     | '/agent/views/$id'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
@@ -1005,6 +1030,7 @@ export interface FileRouteTypes {
     | '/agent/settings/profile/pending-actions/$id'
     | '/dashboard/settings/projects/$projectId/general'
     | '/dashboard/settings/projects/$projectId/labels'
+    | '/dashboard/settings/projects/$projectId/members'
     | '/dashboard/settings/projects/$projectId/workflow'
     | '/dashboard/workspace/$workspaceId/project/$projectId/backlog'
     | '/dashboard/workspace/$workspaceId/project/$projectId/board'
@@ -1055,6 +1081,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/agent/settings/request-types'
     | '/_layout/_authenticated/agent/settings/sla-policies'
     | '/_layout/_authenticated/agent/settings/states'
+    | '/_layout/_authenticated/agent/settings/work-item-templates'
     | '/_layout/_authenticated/agent/views/$id'
     | '/_layout/_authenticated/agent/work-items/$key'
     | '/_layout/_authenticated/dashboard/settings/account'
@@ -1089,6 +1116,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/agent/settings/profile/pending-actions/$id'
     | '/_layout/_authenticated/dashboard/settings/projects/$projectId/general'
     | '/_layout/_authenticated/dashboard/settings/projects/$projectId/labels'
+    | '/_layout/_authenticated/dashboard/settings/projects/$projectId/members'
     | '/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board'
@@ -1395,6 +1423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsStatesRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
     }
+    '/_layout/_authenticated/agent/settings/work-item-templates': {
+      id: '/_layout/_authenticated/agent/settings/work-item-templates'
+      path: '/work-item-templates'
+      fullPath: '/agent/settings/work-item-templates'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
+    }
     '/_layout/_authenticated/agent/views/$id': {
       id: '/_layout/_authenticated/agent/views/$id'
       path: '/$id'
@@ -1633,6 +1668,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRouteImport
       parentRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsRoute
     }
+    '/_layout/_authenticated/dashboard/settings/projects/$projectId/members': {
+      id: '/_layout/_authenticated/dashboard/settings/projects/$projectId/members'
+      path: '/$projectId/members'
+      fullPath: '/dashboard/settings/projects/$projectId/members'
+      preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRouteImport
+      parentRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsRoute
+    }
     '/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow': {
       id: '/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow'
       path: '/$projectId/workflow'
@@ -1800,6 +1842,7 @@ interface LayoutAuthenticatedAgentSettingsRouteChildren {
   LayoutAuthenticatedAgentSettingsRequestTypesRoute: typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
   LayoutAuthenticatedAgentSettingsSlaPoliciesRoute: typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   LayoutAuthenticatedAgentSettingsStatesRoute: typeof LayoutAuthenticatedAgentSettingsStatesRoute
+  LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute: typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
 }
 
 const LayoutAuthenticatedAgentSettingsRouteChildren: LayoutAuthenticatedAgentSettingsRouteChildren =
@@ -1822,6 +1865,8 @@ const LayoutAuthenticatedAgentSettingsRouteChildren: LayoutAuthenticatedAgentSet
       LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren,
     LayoutAuthenticatedAgentSettingsStatesRoute:
       LayoutAuthenticatedAgentSettingsStatesRoute,
+    LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute:
+      LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute,
   }
 
 const LayoutAuthenticatedAgentSettingsRouteWithChildren =
@@ -1953,6 +1998,7 @@ const LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren =
 interface LayoutAuthenticatedDashboardSettingsProjectsRouteChildren {
   LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
   LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute
   LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
 }
 
@@ -1962,6 +2008,8 @@ const LayoutAuthenticatedDashboardSettingsProjectsRouteChildren: LayoutAuthentic
       LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute,
     LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute:
       LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute,
+    LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute:
+      LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute,
     LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute:
       LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute,
   }

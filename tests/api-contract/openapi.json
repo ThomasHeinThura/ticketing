@@ -618,6 +618,41 @@
               "null"
             ]
           },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PR-1: the parent project in the same workspace; null for a root project."
+          },
+          "managerId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PR-6: the project manager (a person); null when none is set."
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PR-10: calendar date, YYYY-MM-DD."
+          },
+          "endDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional calendar date, YYYY-MM-DD."
+          },
+          "defaultAssigneeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "AS-11: person assigned to work items created with none, when active and on the roster."
+          },
           "organisationId": {
             "type": [
               "string",
@@ -681,6 +716,11 @@
           "health",
           "supportLevel",
           "serviceCalendarId",
+          "parentId",
+          "managerId",
+          "startDate",
+          "endDate",
+          "defaultAssigneeId",
           "organisationId",
           "createdBy",
           "createdAt",
@@ -689,6 +729,33 @@
           "purgeAfter",
           "position",
           "lastTaskNumber"
+        ]
+      },
+      "ProjectDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Project"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "compositionWarnings": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "PR-6",
+                    "PR-7",
+                    "PR-10"
+                  ]
+                },
+                "description": "Warning-only composition rules the project currently violates (PR-6 no manager, PR-7 no team member, PR-10 no start date). The save never fails on these; the overview shows them as a banner."
+              }
+            },
+            "required": [
+              "compositionWarnings"
+            ]
+          }
         ]
       },
       "Milestone": {
@@ -900,6 +967,42 @@
           "group",
           "position",
           "isDefault"
+        ]
+      },
+      "ProjectStateTemplate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "backlog",
+              "unstarted",
+              "started",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "inUse": {
+            "type": "boolean",
+            "description": "The project already has an active concrete state for this template."
+          },
+          "hasOutboundTransition": {
+            "type": "boolean",
+            "description": "PR-17/WF-2: a workflow used by the workspace's work item types has a transition out of this template. A state cannot be created for a template without one."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "group",
+          "inUse",
+          "hasOutboundTransition"
         ]
       },
       "BoardResponse": {
@@ -2465,11 +2568,22 @@
             "type": "string",
             "enum": [
               "task",
+              "work_item",
+              "person",
+              "saved_view",
               "project",
               "workspace",
               "comment",
               "activity"
             ]
+          },
+          "key": {
+            "type": "string",
+            "description": "The work item key, for work_item results (`/agent/work-items/{key}`)."
+          },
+          "layout": {
+            "type": "string",
+            "description": "The saved view layout, for saved_view results."
           },
           "title": {
             "type": "string"
@@ -3959,6 +4073,72 @@
                   "string",
                   "null"
                 ]
+              },
+              "assigneeActive": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "person.active of the assignee (AS-8); null when unassigned. false renders \"(inactive)\"."
+              },
+              "assigneeOnProject": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether the assignee still holds a membership on this project (AS-8); null when unassigned."
+              },
+              "blockedByOpenCount": {
+                "type": "integer",
+                "description": "Number of open blocked_by relations (RH-17); greater than zero shows the blocked badge."
+              },
+              "sla": {
+                "type": "object",
+                "properties": {
+                  "metric": {
+                    "type": "string",
+                    "enum": [
+                      "first_response",
+                      "resolution"
+                    ]
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "ok",
+                      "at_risk",
+                      "breached",
+                      "met",
+                      "missed"
+                    ]
+                  },
+                  "dueAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time"
+                  },
+                  "remainingMinutes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "consumedPct": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "metric",
+                  "state",
+                  "dueAt",
+                  "remainingMinutes",
+                  "consumedPct"
+                ],
+                "description": "The most severe SLA metric for the row (resolution on a tie); absent when no policy goal applies."
               }
             },
             "required": [
@@ -4109,6 +4289,24 @@
               "string",
               "null"
             ]
+          },
+          "assigneeActive": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "person.active of the assignee (AS-8); null when unassigned. false renders \"(inactive)\"."
+          },
+          "assigneeOnProject": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Whether the assignee still holds a membership on this project (AS-8); null when unassigned."
+          },
+          "blockedByOpenCount": {
+            "type": "integer",
+            "description": "Number of open blocked_by relations (RH-17); greater than zero shows the blocked badge."
           }
         },
         "required": [
@@ -4216,6 +4414,9 @@
           },
           "openWorkCount": {
             "type": "number"
+          },
+          "inherited": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -4272,6 +4473,231 @@
           "message",
           "key",
           "currentAssigneeId"
+        ]
+      },
+      "WorkItemTemplateOptionList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/WorkItemTemplateOption"
+        }
+      },
+      "WorkItemTemplateOption": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "typeId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "hasChecklist": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "typeId",
+          "title",
+          "hasChecklist"
+        ]
+      },
+      "WorkItemTemplateList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/WorkItemTemplate"
+        }
+      },
+      "WorkItemTemplate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "typeId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {},
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "customFieldValues": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "checklistTemplateId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspaceId",
+          "typeId",
+          "name",
+          "title",
+          "labelIds",
+          "customFieldValues",
+          "checklistTemplateId",
+          "archivedAt",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ChecklistTemplateList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ChecklistTemplate"
+        }
+      },
+      "ChecklistTemplate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "position": {
+                  "type": "number"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "position",
+                "text"
+              ]
+            }
+          },
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspaceId",
+          "name",
+          "items",
+          "archivedAt",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "MoveWorkItemResult": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/WorkItem"
+          },
+          "moved": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "fromKey": {
+                  "type": "string"
+                },
+                "toKey": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "fromKey",
+                "toKey"
+              ]
+            }
+          },
+          "detachedChildKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Direct children left behind in the source project with no parent (`moveChildren: false`)."
+          },
+          "droppedLabelCount": {
+            "type": "integer",
+            "description": "Project-scoped labels with no same-named label in the target project, removed from the moved items."
+          }
+        },
+        "required": [
+          "item",
+          "moved",
+          "detachedChildKeys",
+          "droppedLabelCount"
         ]
       },
       "WorkItemHierarchyChildren": {
@@ -4870,6 +5296,10 @@
           "toStateId": {
             "type": "string"
           },
+          "toStateCategory": {
+            "type": "string",
+            "description": "state_template.group of the target state; completed/cancelled means the move closes the item (RH-10 open-children warning)."
+          },
           "notePolicy": {
             "type": "string",
             "enum": [
@@ -5212,6 +5642,13 @@
           "workItemId": {
             "type": "string"
           },
+          "commentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "AT-1: the comment this file is attached to, or null for a work-item attachment."
+          },
           "filename": {
             "type": "string"
           },
@@ -5252,6 +5689,7 @@
         "required": [
           "id",
           "workItemId",
+          "commentId",
           "filename",
           "mimeType",
           "size",
@@ -6120,6 +6558,16 @@
             "description": "Pass \"true\" to include archived projects in the list.",
             "name": "includeArchived",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "PR-16: pass \"true\" to also reveal soft-deleted projects (within their 30-day recovery window). Independent of includeArchived."
+            },
+            "required": false,
+            "description": "PR-16: pass \"true\" to also reveal soft-deleted projects (within their 30-day recovery window). Independent of includeArchived.",
+            "name": "includeDeleted",
+            "in": "query"
           }
         ],
         "responses": {
@@ -6185,7 +6633,8 @@
                     "type": "string"
                   },
                   "slug": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[A-Z]{2,8}$"
                   },
                   "kind": {
                     "type": "string",
@@ -6297,7 +6746,7 @@
           "Projects"
         ],
         "summary": "Get project",
-        "description": "Get a single project by ID.",
+        "description": "Get a single project by ID, with the warning-only composition rules it currently violates (PR-6, PR-7, PR-10).",
         "parameters": [
           {
             "schema": {
@@ -6314,7 +6763,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Project"
+                  "$ref": "#/components/schemas/ProjectDetail"
                 }
               }
             }
@@ -6350,7 +6799,7 @@
           "Projects"
         ],
         "summary": "Update project",
-        "description": "Replace a project's name, icon, slug, description, and visibility. defaultCommentVisibility (CA-2) and the engagement fields kind, supportLevel and serviceCalendarId (#766) are optional and each needs project:manage_settings.",
+        "description": "Replace a project's name, icon, slug, description, and visibility. defaultCommentVisibility (CA-2), the engagement fields kind, supportLevel and serviceCalendarId (#766), and managerId, startDate, endDate and defaultAssigneeId (PR-6, PR-10, AS-11) are optional and each needs project:manage_settings. parentId is never accepted here: re-parenting is PATCH /api/projects/{id}/ownership.",
         "parameters": [
           {
             "schema": {
@@ -6375,10 +6824,43 @@
                     "type": "string"
                   },
                   "slug": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "PR-13: when it differs from the stored key it must be 2-8 uppercase letters. Existing work items keep the old prefix (PR-14)."
                   },
                   "description": {
                     "type": "string"
+                  },
+                  "managerId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "description": "PR-6: the project manager. Must be an active person on the project roster. Omit to leave unchanged, null to clear. Needs project:manage_settings."
+                  },
+                  "startDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "PR-10: YYYY-MM-DD. Omit to leave unchanged, null to clear. Needs project:manage_settings."
+                  },
+                  "endDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Optional end date, YYYY-MM-DD; not before the start date. Needs project:manage_settings."
+                  },
+                  "defaultAssigneeId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "description": "AS-11: assigned to work items created with no assignee. Must be an active person on the project roster. Omit to leave unchanged, null to clear. Needs project:manage_settings."
                   },
                   "kind": {
                     "type": "string",
@@ -6480,7 +6962,7 @@
             }
           },
           "422": {
-            "description": "PR-9 or same-workspace service calendar validation failed",
+            "description": "PR-9, same-workspace service calendar, manager or default assignee not an active roster member, or end date before start date",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8413,6 +8895,1573 @@
           },
           "404": {
             "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProjectState",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Create a project state from a workspace template",
+        "description": "PR-17: add a concrete state mapped to a workspace state template, appended last. Refused (422) when no workflow used by the workspace's work item types has a transition out of the template (WF-2); 409 when the project already has one. Returns the project's active states. Needs project:manage_settings.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "stateTemplateId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The workspace state template this concrete project state maps to (PR-17)."
+                  }
+                },
+                "required": [
+                  "stateTemplateId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The project's active states",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectState"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:manage_settings capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The project already has a state for that template",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Template unknown, or no workflow transition out of it",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/state-templates": {
+      "get": {
+        "operationId": "listProjectStateTemplates",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List the workspace state templates a project can adopt",
+        "description": "PR-17: the workspace's active state templates, each flagged with whether this project already has a state for it and whether a workflow gives it an outbound transition.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "State templates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectStateTemplate"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project ID (including a NUL byte)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:read capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/states/{stateId}": {
+      "patch": {
+        "operationId": "updateProjectState",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Reorder or re-default a project state",
+        "description": "PR-17: move a state to a new position and/or make it the project's default state. Returns the project's active states. Needs project:manage_settings.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "stateId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000,
+                    "description": "New zero-based position among the project's active states."
+                  },
+                  "isDefault": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ],
+                    "description": "Make this the project's default state for new work items (WI-4). The previous default is cleared; a default cannot be unset, only replaced."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The project's active states",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectState"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:manage_settings capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or state not found, or project out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/members": {
+      "get": {
+        "operationId": "listProjectMembers",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List the project roster",
+        "description": "PR-2: the project's direct roster rows plus the rows inherited from ancestor projects (read-only here, naming the ancestor they come from), and the roles a row can be given. Needs project:read.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The roster",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "members": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "personId": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "jobTitle": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "roleId": {
+                            "type": "string"
+                          },
+                          "roleKey": {
+                            "type": "string"
+                          },
+                          "roleName": {
+                            "type": "string"
+                          },
+                          "roleRank": {
+                            "type": "integer"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "direct",
+                              "inherited"
+                            ]
+                          },
+                          "inheritedFrom": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "projectId": {
+                                "type": "string"
+                              },
+                              "projectName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "projectId",
+                              "projectName"
+                            ],
+                            "description": "PR-2: the nearest ancestor project holding this person (inherited rows, and direct rows that override it)."
+                          },
+                          "overridesInherited": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "roleKey": {
+                                "type": "string"
+                              },
+                              "roleName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "roleKey",
+                              "roleName"
+                            ],
+                            "description": "PR-3: the inherited role this explicit row replaces."
+                          },
+                          "managedExternally": {
+                            "type": "boolean",
+                            "description": "Held by an identity-provider mapping, so not removable here."
+                          },
+                          "removable": {
+                            "type": "boolean",
+                            "description": "PR-4: false for an inherited row, which is removed at the parent."
+                          }
+                        },
+                        "required": [
+                          "personId",
+                          "displayName",
+                          "active",
+                          "jobTitle",
+                          "roleId",
+                          "roleKey",
+                          "roleName",
+                          "roleRank",
+                          "source",
+                          "inheritedFrom",
+                          "overridesInherited",
+                          "managedExternally",
+                          "removable"
+                        ]
+                      }
+                    },
+                    "roles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "roleKey": {
+                            "type": "string"
+                          },
+                          "roleName": {
+                            "type": "string"
+                          },
+                          "roleRank": {
+                            "type": "integer"
+                          },
+                          "roleId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Null for a canonical role not yet created in this workspace (created on first use)."
+                          }
+                        },
+                        "required": [
+                          "roleKey",
+                          "roleName",
+                          "roleRank",
+                          "roleId"
+                        ]
+                      }
+                    },
+                    "callerRank": {
+                      "type": "integer",
+                      "description": "The caller's rank in this project (the ceiling the roster writes enforce: only roles at or below it can be granted, changed or removed)."
+                    }
+                  },
+                  "required": [
+                    "members",
+                    "roles",
+                    "callerRank"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project ID (including a NUL byte)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:read capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "addProjectMember",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Add a person to the project roster",
+        "description": "Writes a direct project-scope grant (the same grant model as the project creator lead) and projects it onto the roster. Only active staff members of the workspace; the role may not exceed the caller's own rank. Audited as membership.changed. Needs project:manage_members.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "personId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "description": "An active staff person who is a member of the workspace."
+                  },
+                  "roleKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "description": "A project-scope role key: project-lead, project-member, project-viewer, or another project-scope role of the workspace."
+                  }
+                },
+                "required": [
+                  "personId",
+                  "roleKey"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated roster",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "personId": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "active": {
+                        "type": "boolean"
+                      },
+                      "jobTitle": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "roleId": {
+                        "type": "string"
+                      },
+                      "roleKey": {
+                        "type": "string"
+                      },
+                      "roleName": {
+                        "type": "string"
+                      },
+                      "roleRank": {
+                        "type": "integer"
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "direct",
+                          "inherited"
+                        ]
+                      },
+                      "inheritedFrom": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "projectId": {
+                            "type": "string"
+                          },
+                          "projectName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "projectId",
+                          "projectName"
+                        ],
+                        "description": "PR-2: the nearest ancestor project holding this person (inherited rows, and direct rows that override it)."
+                      },
+                      "overridesInherited": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "roleKey": {
+                            "type": "string"
+                          },
+                          "roleName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "roleKey",
+                          "roleName"
+                        ],
+                        "description": "PR-3: the inherited role this explicit row replaces."
+                      },
+                      "managedExternally": {
+                        "type": "boolean",
+                        "description": "Held by an identity-provider mapping, so not removable here."
+                      },
+                      "removable": {
+                        "type": "boolean",
+                        "description": "PR-4: false for an inherited row, which is removed at the parent."
+                      }
+                    },
+                    "required": [
+                      "personId",
+                      "displayName",
+                      "active",
+                      "jobTitle",
+                      "roleId",
+                      "roleKey",
+                      "roleName",
+                      "roleRank",
+                      "source",
+                      "inheritedFrom",
+                      "overridesInherited",
+                      "managedExternally",
+                      "removable"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:manage_members, or the role exceeds the caller's rank",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or person not found, or project out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The person already holds a direct roster row",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Person not eligible, or role not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/members/candidates": {
+      "get": {
+        "operationId": "listProjectMemberCandidates",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List people who can be added to the project roster",
+        "description": "Active staff members of the workspace with no direct roster row on this project. Needs project:manage_members.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Candidates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "personId": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "email": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "workspaceRole": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "personId",
+                      "displayName",
+                      "email",
+                      "workspaceRole"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:manage_members capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/members/{personId}": {
+      "patch": {
+        "operationId": "updateProjectMemberRole",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Change a roster member's role",
+        "description": "PR-3: changes the direct row's role. On an inherited member this writes the explicit child row that overrides the inherited role. Needs project:manage_members.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "personId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "roleKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "description": "PR-3: the new role. On an inherited member this writes the explicit child row that overrides it."
+                  }
+                },
+                "required": [
+                  "roleKey"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated roster",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "personId": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "active": {
+                        "type": "boolean"
+                      },
+                      "jobTitle": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "roleId": {
+                        "type": "string"
+                      },
+                      "roleKey": {
+                        "type": "string"
+                      },
+                      "roleName": {
+                        "type": "string"
+                      },
+                      "roleRank": {
+                        "type": "integer"
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "direct",
+                          "inherited"
+                        ]
+                      },
+                      "inheritedFrom": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "projectId": {
+                            "type": "string"
+                          },
+                          "projectName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "projectId",
+                          "projectName"
+                        ],
+                        "description": "PR-2: the nearest ancestor project holding this person (inherited rows, and direct rows that override it)."
+                      },
+                      "overridesInherited": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "roleKey": {
+                            "type": "string"
+                          },
+                          "roleName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "roleKey",
+                          "roleName"
+                        ],
+                        "description": "PR-3: the inherited role this explicit row replaces."
+                      },
+                      "managedExternally": {
+                        "type": "boolean",
+                        "description": "Held by an identity-provider mapping, so not removable here."
+                      },
+                      "removable": {
+                        "type": "boolean",
+                        "description": "PR-4: false for an inherited row, which is removed at the parent."
+                      }
+                    },
+                    "required": [
+                      "personId",
+                      "displayName",
+                      "active",
+                      "jobTitle",
+                      "roleId",
+                      "roleKey",
+                      "roleName",
+                      "roleRank",
+                      "source",
+                      "inheritedFrom",
+                      "overridesInherited",
+                      "managedExternally",
+                      "removable"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:manage_members, or a role above the caller's rank",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or member not found, or project out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Role not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removeProjectMember",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Remove a person's direct roster row",
+        "description": "PR-4: removes a direct row only. An inherited membership answers 409 inherited_membership naming the ancestor project it is removed at; a row held by an identity-provider mapping answers 409 managed_membership. Removing an explicit override brings the inherited role back. Needs project:manage_members.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "personId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The updated roster",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "personId": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "active": {
+                        "type": "boolean"
+                      },
+                      "jobTitle": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "roleId": {
+                        "type": "string"
+                      },
+                      "roleKey": {
+                        "type": "string"
+                      },
+                      "roleName": {
+                        "type": "string"
+                      },
+                      "roleRank": {
+                        "type": "integer"
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "direct",
+                          "inherited"
+                        ]
+                      },
+                      "inheritedFrom": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "projectId": {
+                            "type": "string"
+                          },
+                          "projectName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "projectId",
+                          "projectName"
+                        ],
+                        "description": "PR-2: the nearest ancestor project holding this person (inherited rows, and direct rows that override it)."
+                      },
+                      "overridesInherited": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "roleKey": {
+                            "type": "string"
+                          },
+                          "roleName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "roleKey",
+                          "roleName"
+                        ],
+                        "description": "PR-3: the inherited role this explicit row replaces."
+                      },
+                      "managedExternally": {
+                        "type": "boolean",
+                        "description": "Held by an identity-provider mapping, so not removable here."
+                      },
+                      "removable": {
+                        "type": "boolean",
+                        "description": "PR-4: false for an inherited row, which is removed at the parent."
+                      }
+                    },
+                    "required": [
+                      "personId",
+                      "displayName",
+                      "active",
+                      "jobTitle",
+                      "roleId",
+                      "roleKey",
+                      "roleName",
+                      "roleRank",
+                      "source",
+                      "inheritedFrom",
+                      "overridesInherited",
+                      "managedExternally",
+                      "removable"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:manage_members, or a role above the caller's rank",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or member not found, or project out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "inherited_membership (remove at the parent) or managed_membership",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/ownership/preview": {
+      "get": {
+        "operationId": "previewProjectOwnership",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Preview who gains and loses access if the project is re-parented",
+        "description": "Edge-case table: 'a preview shows who gains and loses access'. Computed from the ancestor reach rules without writing anything; a move PR-1 would refuse is reported in refusal. Needs project:manage_members on the project and on the prospective parent.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 128,
+              "description": "The prospective parent project; omitted (or empty) previews making the project a root."
+            },
+            "required": false,
+            "description": "The prospective parent project; omitted (or empty) previews making the project a root.",
+            "name": "parentId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The access preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "projectId": {
+                      "type": "string"
+                    },
+                    "currentParentId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "newParentId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "descendantProjectCount": {
+                      "type": "integer",
+                      "description": "Descendant projects that move with it and are affected the same way."
+                    },
+                    "refusal": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Set when the move would be refused (PR-1); gains and losses then describe no change."
+                    },
+                    "gains": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "personId": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "jobTitle": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "via": {
+                            "type": "object",
+                            "properties": {
+                              "projectId": {
+                                "type": "string"
+                              },
+                              "projectName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "projectId",
+                              "projectName"
+                            ]
+                          },
+                          "roleKey": {
+                            "type": "string"
+                          },
+                          "roleName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "personId",
+                          "displayName",
+                          "active",
+                          "jobTitle",
+                          "via",
+                          "roleKey",
+                          "roleName"
+                        ]
+                      }
+                    },
+                    "losses": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "personId": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "jobTitle": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "via": {
+                            "type": "object",
+                            "properties": {
+                              "projectId": {
+                                "type": "string"
+                              },
+                              "projectName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "projectId",
+                              "projectName"
+                            ]
+                          },
+                          "roleKey": {
+                            "type": "string"
+                          },
+                          "roleName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "personId",
+                          "displayName",
+                          "active",
+                          "jobTitle",
+                          "via",
+                          "roleKey",
+                          "roleName"
+                        ]
+                      }
+                    },
+                    "roleChanges": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "personId": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "jobTitle": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "from": {
+                            "type": "object",
+                            "properties": {
+                              "roleKey": {
+                                "type": "string"
+                              },
+                              "roleName": {
+                                "type": "string"
+                              },
+                              "projectName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "roleKey",
+                              "roleName",
+                              "projectName"
+                            ]
+                          },
+                          "to": {
+                            "type": "object",
+                            "properties": {
+                              "roleKey": {
+                                "type": "string"
+                              },
+                              "roleName": {
+                                "type": "string"
+                              },
+                              "projectName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "roleKey",
+                              "roleName",
+                              "projectName"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "personId",
+                          "displayName",
+                          "active",
+                          "jobTitle",
+                          "from",
+                          "to"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "projectId",
+                    "currentParentId",
+                    "newParentId",
+                    "descendantProjectCount",
+                    "refusal",
+                    "gains",
+                    "losses",
+                    "roleChanges"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:manage_members on the project or the prospective parent",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Prospective parent not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/ownership": {
+      "patch": {
+        "operationId": "updateProjectOwnership",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Set or clear a project's parent",
+        "description": "PR-1: re-parent a project (or make it a root with parentId null). Depth is capped at 4 counting the moved subtree, cycles are refused, an archived project cannot take children. Needs project:manage_members on the project AND on the prospective parent. A reach change: audited as project.reach_changed.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parentId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "description": "PR-1: the parent project (same workspace, depth at most 4), or null for a root project."
+                  }
+                },
+                "required": [
+                  "parentId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The project with its new parent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:manage_members on the project or on the prospective parent",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "PR-1: parent not found, archived, itself, a descendant, or the move would exceed depth 4",
             "content": {
               "text/plain": {
                 "schema": {
@@ -14697,7 +16746,7 @@
           "Search"
         ],
         "summary": "Global search",
-        "description": "Search across tasks, projects, workspaces, comments, and activities in one workspace. Results are ranked by relevance and returned as a single flat list, each entry tagged with its `type`.",
+        "description": "Search across work items, people, saved views, projects, workspaces, comments, and activities in one workspace (legacy tasks stay available under `type=tasks`). Results are ranked by relevance and returned as a single flat list, each entry tagged with its `type`.",
         "parameters": [
           {
             "schema": {
@@ -14714,6 +16763,9 @@
               "enum": [
                 "all",
                 "tasks",
+                "work_items",
+                "people",
+                "views",
                 "projects",
                 "workspaces",
                 "comments",
@@ -22020,6 +24072,10 @@
                   "assigneeId": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "templateId": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [
@@ -23699,6 +25755,1039 @@
           },
           "404": {
             "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemVersionConflict"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/work-item-templates": {
+      "get": {
+        "operationId": "listWorkItemTemplates",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "List live work item templates",
+        "description": "Live (not archived) templates a create dialog offers (`WI-5`). Using a template needs only `work_item:create` on the target project.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live templates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemTemplateOptionList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No access to the workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWorkItemTemplate",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Create work item template",
+        "description": "Requires `workspace:manage_settings` (`WI-5`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "typeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "description": {},
+                  "labelIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "maxItems": 100
+                  },
+                  "customFieldValues": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "checklistTemplateId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "name",
+                  "typeId",
+                  "title"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A template with this name already exists",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unknown type, label or checklist template",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/work-item-templates/manage": {
+      "get": {
+        "operationId": "listWorkItemTemplatesForManagement",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "List work item templates for settings",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "includeArchived",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Templates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemTemplateList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/work-item-templates/{id}": {
+      "patch": {
+        "operationId": "updateWorkItemTemplate",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Update work item template",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "typeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "description": {},
+                  "labelIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "maxItems": 100
+                  },
+                  "customFieldValues": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "checklistTemplateId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found or archived",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A template with this name already exists",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unknown type, label or checklist template",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/work-item-templates/{id}/archive": {
+      "post": {
+        "operationId": "archiveWorkItemTemplate",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Archive work item template",
+        "description": "Archives the template; work items already created from it are unaffected.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The archived template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found or already archived",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/checklist-templates": {
+      "get": {
+        "operationId": "listChecklistTemplates",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "List checklist templates for settings",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "includeArchived",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Checklist templates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistTemplateList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createChecklistTemplate",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Create checklist template",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "maxItems": 100
+                  }
+                },
+                "required": [
+                  "name",
+                  "items"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created checklist template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A checklist template with this name already exists",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/checklist-templates/{id}": {
+      "patch": {
+        "operationId": "updateChecklistTemplate",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Update checklist template",
+        "description": "Renames and/or replaces the items. Items already copied onto work items are independent and unchanged.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "maxItems": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated checklist template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Checklist template not found or archived",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A checklist template with this name already exists",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/checklist-templates/{id}/archive": {
+      "post": {
+        "operationId": "archiveChecklistTemplate",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Archive checklist template",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The archived checklist template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Checklist template not found or already archived",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A live work item template still uses it",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/work-items/{key}/move": {
+      "post": {
+        "operationId": "moveWorkItem",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Move work item to another project",
+        "description": "Moves a work item to another project of the same workspace (`RH-12`). `moveChildren: true` moves the whole subtree; `false` detaches the direct children, which stay in the source project with no parent. The moved item's own parent link is always removed. The item gets a new key in the target project and the old key is recorded as an alias. States are remapped by state template; project-scoped labels follow by name or are dropped; pending workflow timers are discarded. Requires reach plus `work_item:update` on the source and reach plus `work_item:create` and `work_item:update` on the target, and `If-Match` with the current version (`WI-7`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"?\\d+\"?$"
+            },
+            "required": true,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "targetProjectId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "moveChildren": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "targetProjectId",
+                  "moveChildren"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The moved work item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoveWorkItemResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body or malformed If-Match header",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:update on the source or work_item:create / work_item:update on the target",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item or target project not found (including another workspace or an unreachable project)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version mismatch, or a concurrent change to the item, target or hierarchy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemVersionConflict"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Same project, subtree over 200 items, target lacks a matching state, assignee not on the target roster, or an organisation-visible item crossing customer organisations",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/work-items/{key}/archive": {
+      "post": {
+        "operationId": "archiveWorkItem",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Archive work item",
+        "description": "Hides the work item from default list, board and search views while preserving it and its history (`WI-20`). Archiving is independent of soft deletion and does not start the 30-day purge timer (`WI-21`). Requires `work_item:update` on the project and `If-Match` with the current version (`WI-7`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"?\\d+\"?$"
+            },
+            "required": true,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The archived work item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or malformed If-Match header",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found, or already archived or deleted",
             "content": {
               "text/plain": {
                 "schema": {
@@ -30624,7 +33713,7 @@
           "Attachments"
         ],
         "summary": "Presign an attachment upload",
-        "description": "AT-2: mints a presigned direct-PUT for a new attachment on this work item. The API never proxies the bytes themselves.",
+        "description": "AT-2: mints a presigned direct-PUT for a new attachment on this work item, or, with `commentId`, on one of its comments (AT-1; the comment's author only). The API never proxies the bytes themselves.",
         "parameters": [
           {
             "schema": {
@@ -30658,7 +33747,13 @@
                   },
                   "customerVisible": {
                     "type": "boolean",
-                    "description": "AT-3: staff uploads default to false (not customer-visible); explicit true is honoured."
+                    "description": "AT-3: staff uploads default to false (not customer-visible); explicit true is honoured. On a comment attachment the default is the comment's own audience, and an internal comment's attachment is always internal (AT-4)."
+                  },
+                  "commentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "AT-1: attach the file to this comment of the work item (the comment's author only) instead of to the work item itself."
                   }
                 },
                 "required": [
@@ -31037,7 +34132,7 @@
                   },
                   "customerVisible": {
                     "type": "boolean",
-                    "description": "AT-3: staff uploads default to false (not customer-visible); explicit true is honoured."
+                    "description": "AT-3: staff uploads default to false (not customer-visible); explicit true is honoured. On a comment attachment the default is the comment's own audience, and an internal comment's attachment is always internal (AT-4)."
                   },
                   "fieldKey": {
                     "type": "string",

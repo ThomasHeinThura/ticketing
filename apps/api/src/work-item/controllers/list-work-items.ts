@@ -11,6 +11,7 @@ import {
   workspaceUserTable,
 } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { decorateWorkItemRows } from "../decorate-rows";
 import {
   DEFAULT_WORK_ITEM_LIST_LIMIT,
   decodeWorkItemCursor,
@@ -271,10 +272,12 @@ export async function listWorkItems(
     assigned.push(label);
     labelsByItem.set(workItemId, assigned);
   }
+  const decorate = await decorateWorkItemRows(db, page, (row) => row.workItem);
   return {
     data: page.map((row) => ({
       labels: labelsByItem.get(row.workItem.id) ?? [],
       ...row.workItem,
+      ...decorate(row),
       stateName: row.stateName,
       stateCategory: row.stateCategory,
       // Only ever the resolved name when the assignee is a member of THIS

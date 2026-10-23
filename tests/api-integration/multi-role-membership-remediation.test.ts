@@ -40,6 +40,7 @@ import {
   signUpInstanceAdmin,
   signUpUser,
 } from "./helpers/organization-http";
+import { projectKey } from "./helpers/project-key";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
@@ -159,7 +160,7 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
         body: JSON.stringify({
           workspaceId: workspace.id,
           name: `Project ${randomUUID()}`,
-          slug: `p-${randomUUID().slice(0, 8)}`,
+          slug: projectKey(),
           icon: "Layout",
         }),
       },
@@ -201,7 +202,7 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
         body: JSON.stringify({
           workspaceId: workspace.id,
           name: `Project ${randomUUID()}`,
-          slug: `p-${randomUUID().slice(0, 8)}`,
+          slug: projectKey(),
           icon: "Layout",
         }),
       },
@@ -219,7 +220,7 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
         body: JSON.stringify({
           workspaceId: workspace.id,
           name: `Project ${randomUUID()}`,
-          slug: `p-${randomUUID().slice(0, 8)}`,
+          slug: projectKey(),
           icon: "Layout",
         }),
       },

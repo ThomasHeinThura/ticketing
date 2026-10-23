@@ -30,6 +30,7 @@ import { extractDescription, type WorkItemDetailRow } from "@/types/work-item";
 import WorkItemActivity, { type ActivityFilter } from "./work-item-activity";
 import WorkItemApprovals from "./work-item-approvals";
 import WorkItemAttachments from "./work-item-attachments";
+import { WorkItemBlockedBadge } from "./work-item-blocked-badge";
 import WorkItemDescription from "./work-item-description";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 import { WorkItemFeedbackProvider } from "./work-item-feedback";
@@ -217,6 +218,10 @@ function WorkItemDetail({
               item.key
             )}
           </p>
+          <WorkItemBlockedBadge
+            blockedByOpenCount={item.blockedByOpenCount}
+            className="self-start"
+          />
           <h1 className="sr-only">{item.title}</h1>
           {item.unavailableFields.includes("title") ? (
             <UnavailableField field="title" />
@@ -265,6 +270,7 @@ function WorkItemDetail({
         <div
           className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
           data-testid="work-item-detail"
+          data-work-item-intake-scope=""
         >
           <div
             className="flex w-full shrink-0 flex-col gap-0 overflow-y-auto border-border border-b bg-sidebar"
@@ -291,12 +297,15 @@ function WorkItemDetail({
           notice={pageNotice}
           rightSidebar={properties}
         >
-          <div data-testid="work-item-detail">{main}</div>
+          <div data-testid="work-item-detail" data-work-item-intake-scope="">
+            {main}
+          </div>
         </TaskPageFrame>
       ) : (
         <div
           className="flex h-full min-h-0 flex-col bg-background lg:flex-row"
           data-testid="work-item-detail"
+          data-work-item-intake-scope=""
         >
           <div className="order-2 min-h-0 flex-1 overflow-y-auto overscroll-contain lg:order-1">
             {main}

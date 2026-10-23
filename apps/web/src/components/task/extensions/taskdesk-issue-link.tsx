@@ -25,7 +25,7 @@ function parseTaskRouteFromUrl(url: string) {
   }
 }
 
-function TaskDeskIssueLinkView({ node }: NodeViewProps) {
+export function TaskDeskIssueLinkView({ node }: NodeViewProps) {
   const { t } = useTranslation();
   const issueKey = String(node.attrs.issueKey || "");
   const taskIdAttr = String(node.attrs.taskId || "");

@@ -41,6 +41,41 @@ export const DUE_DATE_FILTER_VALUES = {
   noDueDate: "noDueDate",
 } as const;
 
+/** `VW-13`: how the board splits its columns. `state` is the default and is never written. */
+export const WORK_ITEM_GROUPS = ["state", "assignee", "priority"] as const;
+export type WorkItemGroup = (typeof WORK_ITEM_GROUPS)[number];
+
+export function parseWorkItemGroup(value: unknown): WorkItemGroup | undefined {
+  return typeof value === "string" &&
+    (WORK_ITEM_GROUPS as readonly string[]).includes(value)
+    ? (value as WorkItemGroup)
+    : undefined;
+}
+
+/** `VW-25`: the calendar's range. `month` is the default and is never written. */
+export const CALENDAR_VIEWS = ["month", "week", "day"] as const;
+export type CalendarView = (typeof CALENDAR_VIEWS)[number];
+
+export function parseCalendarView(value: unknown): CalendarView | undefined {
+  return typeof value === "string" &&
+    (CALENDAR_VIEWS as readonly string[]).includes(value)
+    ? (value as CalendarView)
+    : undefined;
+}
+
+/** A real calendar day, `YYYY-MM-DD`; the anchor of the week and day views. */
+export function parseCalendarDay(value: unknown): value is string {
+  if (typeof value !== "string" || !/^[1-9]\d{3}-\d{2}-\d{2}$/u.test(value))
+    return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
 export type ProjectViewSearch = ProjectViewFilters &
   WorkItemHierarchySearch &
   WorkItemRelationsSearch &
@@ -52,6 +87,9 @@ export type ProjectViewSearch = ProjectViewFilters &
     q?: string;
     sort?: SortField;
     dir?: SortDirection;
+    group?: WorkItemGroup;
+    calendarView?: CalendarView;
+    date?: string;
   };
 
 export type ProjectBoardSearch = ProjectViewSearch;
@@ -74,7 +112,17 @@ const FILTER_KEYS = [
   "dueDate",
   "labels",
 ] as const;
-const SCALAR_KEYS = ["filter", "taskId", "month", "q", "sort", "dir"] as const;
+const SCALAR_KEYS = [
+  "filter",
+  "taskId",
+  "month",
+  "q",
+  "sort",
+  "dir",
+  "group",
+  "calendarView",
+  "date",
+] as const;
 
 // A value the router's default codec typed as a number or boolean is read back as its
 // string form, so a project view never drops `q=123` when the search was parsed for
@@ -118,6 +166,9 @@ export function parseProjectViewSearch(
       value &&
       (key !== "sort" || SORT_FIELDS.includes(value as SortField)) &&
       (key !== "dir" || SORT_DIRECTIONS.includes(value as SortDirection)) &&
+      (key !== "group" || parseWorkItemGroup(value)) &&
+      (key !== "calendarView" || parseCalendarView(value)) &&
+      (key !== "date" || parseCalendarDay(value)) &&
       (!calendar || key !== "month" || parseMonth(value))
     )
       search[key] = value as never;

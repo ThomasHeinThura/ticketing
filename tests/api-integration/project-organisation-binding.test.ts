@@ -19,6 +19,7 @@ import {
   grantProjectManageAccess,
   requireRow,
 } from "./helpers/fixtures";
+import { projectKey } from "./helpers/project-key";
 
 type ProjectRow = typeof schema.projectTable.$inferSelect;
 
@@ -50,7 +51,7 @@ async function createProjectRequest(
       workspaceId,
       name: "Customer support",
       icon: "Folder",
-      slug: `cs-${randomUUID().slice(0, 6)}`,
+      slug: projectKey(),
       ...body,
     }),
   });

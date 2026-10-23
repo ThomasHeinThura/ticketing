@@ -24,6 +24,7 @@ import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { ensureAgentSession } from "./helpers/pending-deletion";
+import { projectKey } from "./helpers/project-key";
 import {
   PROJECT_READ_ROUTE_KEYS,
   PROJECT_WRITE_ROUTE_KEYS,
@@ -72,7 +73,7 @@ const WRITES: Case[] = [
       json(app, "PUT", `/api/project/${i.projectId}`, {
         name: "Renamed",
         icon: "Folder",
-        slug: `renamed-${Date.now()}`,
+        slug: projectKey(),
         description: "changed",
       }),
   },
@@ -216,6 +217,77 @@ const WRITES: Case[] = [
       }),
   },
   {
+    // PR-1: clearing a root project's parent is a no-op write, so the success path needs no
+    // extra fixture; the prospective-parent capability check is covered in
+    // project-ownership.test.ts.
+    matrixKey: "PATCH /api/projects/{projectId}/ownership",
+    call: (app, _w, i) =>
+      json(app, "PATCH", `/api/projects/${i.projectId}/ownership`, {
+        parentId: null,
+      }),
+  },
+  {
+    // PR-2..PR-4 roster writes. Each success call passes reach and capability and is then
+    // refused by the handler with a status distinct from the matrix's 404/403 (unknown role
+    // 422, a row held only by a role grant 409 managed_membership), proving the gates ran
+    // before any write.
+    matrixKey: "POST /api/projects/{projectId}/members",
+    successStatus: 422,
+    call: (app, w, i) =>
+      json(app, "POST", `/api/projects/${i.projectId}/members`, {
+        personId: w.readerAdmin.personId,
+        roleKey: "no-such-role",
+      }),
+  },
+  {
+    matrixKey: "PATCH /api/projects/{projectId}/members/{personId}",
+    successStatus: 422,
+    call: (app, w, i) =>
+      json(
+        app,
+        "PATCH",
+        `/api/projects/${i.projectId}/members/${w.projectAdmin.personId}`,
+        { roleKey: "no-such-role" },
+      ),
+  },
+  {
+    matrixKey: "DELETE /api/projects/{projectId}/members/{personId}",
+    successStatus: 409,
+    call: (app, w, i) =>
+      json(
+        app,
+        "DELETE",
+        `/api/projects/${i.projectId}/members/${w.readerAdmin.personId}`,
+      ),
+  },
+  {
+    // PR-17: an unknown template id passes reach and capability and is then refused by the
+    // handler with 422 (a distinct status from the matrix's 404/403), which is what proves
+    // the gates ran before the write.
+    matrixKey: "POST /api/projects/{projectId}/states",
+    successStatus: 422,
+    call: (app, _w, i) =>
+      json(app, "POST", `/api/projects/${i.projectId}/states`, {
+        stateTemplateId: "no-such-template",
+      }),
+  },
+  {
+    matrixKey: "PATCH /api/projects/{projectId}/states/{stateId}",
+    call: async (app, _w, i) => {
+      const [state] = await db
+        .select({ id: schema.stateTable.id })
+        .from(schema.stateTable)
+        .where(eq(schema.stateTable.projectId, i.projectId))
+        .limit(1);
+      return json(
+        app,
+        "PATCH",
+        `/api/projects/${i.projectId}/states/${state?.id ?? "missing"}`,
+        { position: 0 },
+      );
+    },
+  },
+  {
     matrixKey: "POST /api/task/{projectId}",
     call: (app, _w, i) =>
       json(app, "POST", `/api/task/${i.projectId}`, {
@@ -319,6 +391,25 @@ const READS: Case[] = [
   {
     matrixKey: "GET /api/projects/{projectId}/states",
     call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/states`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/state-templates",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/state-templates`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/members",
+    call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/members`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/members/candidates",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/members/candidates`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/ownership/preview",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/ownership/preview`),
   },
   {
     matrixKey: "GET /api/projects/{projectId}/work-items",

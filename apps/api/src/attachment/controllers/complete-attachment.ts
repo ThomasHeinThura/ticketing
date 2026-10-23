@@ -84,7 +84,7 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   if (
     !attachment ||
     attachment.workspaceId !== workspaceId ||
-    attachment.workItemId !== workItemId
+    attachment.parentWorkItemId !== workItemId
   ) {
     throw new HTTPException(404, { message: "Attachment not found" });
   }
@@ -217,9 +217,20 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
             actorId,
             actorType,
             verb: "attachment.added",
-            payload: { attachmentId, filename: attachment.filename },
+            payload: {
+              attachmentId,
+              filename: attachment.filename,
+              ...(attachment.commentId
+                ? { commentId: attachment.commentId }
+                : {}),
+            },
             // CA-7: `attachment.added` is public only for a customer-visible attachment.
-            visibility: attachment.customerVisible ? "public" : "internal",
+            // AT-4: an attachment on an internal comment is internal whatever its own flag says.
+            visibility:
+              attachment.customerVisible &&
+              attachment.commentVisibility !== "internal"
+                ? "public"
+                : "internal",
           },
         ]);
       }

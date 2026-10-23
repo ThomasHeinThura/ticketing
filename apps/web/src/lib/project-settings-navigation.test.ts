@@ -7,6 +7,7 @@ describe("project settings navigation", () => {
     const items = getProjectSettingsMenuItems((key) => key);
     expect(items.map(({ segment }) => segment)).toEqual([
       "general",
+      "members",
       "labels",
       "workflow",
     ]);

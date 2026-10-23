@@ -20,6 +20,8 @@ export const PROJECT_ADMIN_CAPABILITIES = [
   "project:update",
   "project:delete",
   "project:manage_settings",
+  // PATCH /api/projects/{id}/ownership (PR-1) is gated on project:manage_members.
+  "project:manage_members",
   "work_item:read",
   "work_item:create",
   "work_item:update",
@@ -34,7 +36,14 @@ export const PROJECT_ADMIN_CAPABILITIES = [
 
 /** An API-key permission scope wide enough for every project-scoped route. */
 export const PROJECT_KEY_SCOPE = {
-  project: ["read", "create", "update", "delete", "manage_settings"],
+  project: [
+    "read",
+    "create",
+    "update",
+    "delete",
+    "manage_settings",
+    "manage_members",
+  ],
   work_item: ["read", "create", "update", "delete", "assign"],
   label: ["create", "update", "delete", "manage"],
   time_entry: ["create", "read_any", "update_any"],

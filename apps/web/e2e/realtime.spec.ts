@@ -1,6 +1,6 @@
-import { randomUUID } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -98,7 +98,7 @@ test("native work-item events invalidate a second authenticated browser session"
         /\/dashboard\/workspace\/([^/]+)/,
       )?.[1];
       expect(workspaceId).toBeTruthy();
-      const projectSlug = `realtime-${randomUUID().slice(0, 8)}`;
+      const projectSlug = uniqueProjectKey();
       const projectResult = await csrfMutation(first, "/api/project", "POST", {
         name: "Native realtime project",
         workspaceId: workspaceId as string,

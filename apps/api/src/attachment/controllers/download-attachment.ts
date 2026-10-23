@@ -48,7 +48,7 @@ export async function downloadAttachment(input: DownloadAttachmentInput) {
   if (
     !attachment ||
     attachment.workspaceId !== workspaceId ||
-    attachment.workItemId !== workItemId ||
+    attachment.parentWorkItemId !== workItemId ||
     attachment.state !== "ready"
   ) {
     throw new HTTPException(404, { message: "Attachment not found" });

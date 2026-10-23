@@ -29,13 +29,21 @@ export type AttachmentUploadCheckpoint = {
   uploaded: boolean;
 };
 
-export async function presignWorkItemAttachment(key: string, file: File) {
+/** AT-1: where a file attaches. Omitted, it attaches to the work item itself. */
+export type AttachmentTarget = { commentId?: string };
+
+export async function presignWorkItemAttachment(
+  key: string,
+  file: File,
+  target: AttachmentTarget = {},
+) {
   const response = await workItemAttachments.presign.$post({
     param: { key },
     json: {
       filename: file.name,
       contentType: file.type || "application/octet-stream",
       size: file.size,
+      ...(target.commentId ? { commentId: target.commentId } : {}),
     },
   });
   if (!response.ok)
@@ -52,12 +60,53 @@ export async function completeWorkItemAttachment(id: string) {
   return response.json();
 }
 
+export type AttachmentUploadOptions = AttachmentTarget & {
+  /** Byte progress of the direct upload. Supplying it switches the PUT to XHR (fetch cannot report it). */
+  onProgress?: (loaded: number, total: number) => void;
+};
+
+/** Direct-to-storage PUT. The signed URL stays inside this function: it never reaches an error or a log. */
+async function putAttachmentBytes(
+  checkpoint: AttachmentUploadCheckpoint,
+  file: File,
+  onProgress: AttachmentUploadOptions["onProgress"],
+) {
+  if (!onProgress || typeof XMLHttpRequest === "undefined") {
+    const response = await fetch(checkpoint.uploadUrl, {
+      method: "PUT",
+      headers: checkpoint.uploadHeaders,
+      body: file,
+    });
+    if (!response.ok) throw new HttpError(response.status, "");
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("PUT", checkpoint.uploadUrl);
+    for (const [name, value] of Object.entries(checkpoint.uploadHeaders))
+      request.setRequestHeader(name, value);
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded, event.total);
+    };
+    request.onload = () => {
+      if (request.status >= 200 && request.status < 300) {
+        onProgress(file.size, file.size);
+        resolve();
+      } else reject(new HttpError(request.status, ""));
+    };
+    request.onerror = () => reject(new Error("Upload interrupted"));
+    request.onabort = () => reject(new Error("Upload interrupted"));
+    request.send(file);
+  });
+}
+
 /** Retry the same attachment ID, reconciling a lost completion response before any write. */
 export async function resumeWorkItemAttachment(
   key: string,
   file: File,
   checkpoint: AttachmentUploadCheckpoint | undefined,
   onCheckpoint: (value: AttachmentUploadCheckpoint) => void,
+  options: AttachmentUploadOptions = {},
 ) {
   let current = checkpoint;
   if (current?.uploaded) {
@@ -70,16 +119,11 @@ export async function resumeWorkItemAttachment(
       throw new HttpError(409, "Attachment is no longer pending");
   }
   if (!current) {
-    current = await presignWorkItemAttachment(key, file);
+    current = await presignWorkItemAttachment(key, file, options);
     onCheckpoint(current);
   }
   if (!current.uploaded) {
-    const response = await fetch(current.uploadUrl, {
-      method: "PUT",
-      headers: current.uploadHeaders,
-      body: file,
-    });
-    if (!response.ok) throw new HttpError(response.status, "");
+    await putAttachmentBytes(current, file, options.onProgress);
     current = { ...current, uploaded: true };
     onCheckpoint(current);
   }

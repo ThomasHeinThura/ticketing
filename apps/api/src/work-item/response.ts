@@ -41,6 +41,42 @@ const workItemShape = z.object({
   updatedAt: responseTimestamp,
 });
 
+// `AS-8` / `RH-17` display facts, resolved per page by `row-facts.ts`. Optional on the LIST
+// item because other producers of this envelope (search, saved views) do not resolve them
+// yet; the project list route and the detail route always do.
+const assigneeFactsShape = {
+  assigneeActive: z.boolean().nullable().optional().openapi({
+    description:
+      'person.active of the assignee (AS-8); null when unassigned. false renders "(inactive)".',
+  }),
+  assigneeOnProject: z.boolean().nullable().optional().openapi({
+    description:
+      "Whether the assignee still holds a membership on this project (AS-8); null when unassigned.",
+  }),
+  blockedByOpenCount: z.number().int().optional().openapi({
+    description:
+      "Number of open blocked_by relations (RH-17); greater than zero shows the blocked badge.",
+  }),
+};
+
+// `VW-16` / `SLA-18`: the compact SLA badge of a list row, computed on read from the item's
+// pinned policy (never from `work_item_sla_cache`). Absent when no goal applies.
+const slaBadgeShape = {
+  sla: z
+    .object({
+      metric: z.enum(["first_response", "resolution"]),
+      state: z.enum(["ok", "at_risk", "breached", "met", "missed"]),
+      dueAt: nullableResponseTimestamp,
+      remainingMinutes: z.number().nonnegative().nullable(),
+      consumedPct: z.number().nonnegative(),
+    })
+    .optional()
+    .openapi({
+      description:
+        "The most severe SLA metric for the row (resolution on a tie); absent when no policy goal applies.",
+    }),
+};
+
 export const workItemSchema = workItemShape.openapi("WorkItem");
 
 // The detail route (`GET /api/work-items/{key}`) resolves display fields for its single
@@ -71,6 +107,7 @@ export const workItemDetailSchema = workItemShape
         "The project's CA-2 default for the comment composer; comments still require an explicit visibility on create.",
     }),
     assigneeName: z.string().nullable(),
+    ...assigneeFactsShape,
   })
   .openapi("WorkItemDetail");
 
@@ -109,6 +146,8 @@ export const workItemListItemSchema = workItemSchema
         "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
     }),
     assigneeName: z.string().nullable(),
+    ...assigneeFactsShape,
+    ...slaBadgeShape,
   })
   .openapi("WorkItemListItem");
 
@@ -180,6 +219,9 @@ export const assignablePersonSchema = z
     name: z.string().nullable(),
     roleName: z.string(),
     openWorkCount: z.number(),
+    // PR-2: true when the person is on an ANCESTOR project's roster only (read-only
+    // inclusion), not on this project's own.
+    inherited: z.boolean().optional(),
   })
   .openapi("AssignablePerson");
 
@@ -471,6 +513,10 @@ export const workItemTransitionOfferSchema = z
     toStateTemplateId: z.string(),
     toStateName: z.string(),
     toStateId: z.string(),
+    toStateCategory: z.string().optional().openapi({
+      description:
+        "state_template.group of the target state; completed/cancelled means the move closes the item (RH-10 open-children warning).",
+    }),
     notePolicy: z.enum(["none", "optional", "required"]),
     noteVisibility: z.enum(["public", "internal"]),
     requiresApproval: z.boolean(),
@@ -554,3 +600,20 @@ export const hierarchyChildrenResponseSchema = z
     }),
   })
   .openapi("WorkItemHierarchyChildren");
+
+export const moveWorkItemResponseSchema = z
+  .object({
+    item: workItemSchema,
+    moved: z.array(
+      z.object({ id: z.string(), fromKey: z.string(), toKey: z.string() }),
+    ),
+    detachedChildKeys: z.array(z.string()).openapi({
+      description:
+        "Direct children left behind in the source project with no parent (`moveChildren: false`).",
+    }),
+    droppedLabelCount: z.number().int().openapi({
+      description:
+        "Project-scoped labels with no same-named label in the target project, removed from the moved items.",
+    }),
+  })
+  .openapi("MoveWorkItemResult");

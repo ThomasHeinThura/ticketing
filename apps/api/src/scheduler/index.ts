@@ -8,6 +8,7 @@ import { runAuditPurgeJob } from "./audit-purge";
 import { checkDueDateReminders } from "./due-date-reminders";
 import { drainOutbox } from "./outbox-drain";
 import { expirePendingActions } from "./pending-action-expire";
+import { runPositionRebalanceJob } from "./position-rebalance-job";
 import { runSessionCleanup } from "./session-cleanup";
 import { scanSla } from "./sla-scan";
 
@@ -99,6 +100,11 @@ export function initializeScheduler(): void {
       pattern: "*/15 * * * *",
       handler: scanApprovalReminders,
     },
+    {
+      name: "position-rebalance",
+      pattern: "*/5 * * * *",
+      handler: () => runPositionRebalanceJob(),
+    },
   ];
 
   for (const definition of definitions) {
@@ -111,7 +117,7 @@ export function initializeScheduler(): void {
   }
 
   console.log(
-    "⏰ Scheduler started (outbox drain every 30 seconds, SLA scan every 5 minutes, due-date reminders every 5 minutes, audit purge daily 03:00, session cleanup with soft-delete purge daily 03:15, pending-action expiry every minute, reminder scan every 15 minutes)",
+    "⏰ Scheduler started (outbox drain every 30 seconds, SLA scan every 5 minutes, due-date reminders every 5 minutes, audit purge daily 03:00, session cleanup with soft-delete purge daily 03:15, pending-action expiry every minute, reminder scan every 15 minutes, position rebalance every 5 minutes)",
   );
 }
 

@@ -28,12 +28,14 @@ const mocks = vi.hoisted(() => ({
   archive: vi.fn(),
   deletion: vi.fn(),
   openPending: vi.fn(),
+  children: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
   permission: vi.fn(),
   row: undefined as WorkItemDetailRow | undefined,
   capabilities: {
     update: true,
+    create: true,
     priority: true,
     transition: true,
     assign: true,
@@ -57,6 +59,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     return {
       isCheckingPermissions: mocks.capabilities.checking,
       canUpdateTasks: () => mocks.capabilities.update,
+      canCreateTasks: () => mocks.capabilities.create,
       canSetPriorityTasks: () => mocks.capabilities.priority,
       canTransitionTasks: () => mocks.capabilities.transition,
       canAssignTasks: () => mocks.capabilities.assign,
@@ -69,6 +72,9 @@ vi.mock("@/fetchers/work-item/get-work-item", () => ({
 }));
 vi.mock("@/fetchers/work-item/update-work-item", () => ({
   default: (...args: unknown[]) => mocks.update(...args),
+}));
+vi.mock("@/fetchers/work-item/get-hierarchy-children", () => ({
+  getHierarchyChildren: (...args: unknown[]) => mocks.children(...args),
 }));
 vi.mock("@/fetchers/work-item/get-work-item-transitions", () => ({
   default: (...args: unknown[]) => mocks.offers(...args),
@@ -85,8 +91,8 @@ vi.mock("@/fetchers/work-item/assign-work-item", () => ({
 vi.mock("@/fetchers/work-item/unassign-work-item", () => ({
   default: (...args: unknown[]) => mocks.unassign(...args),
 }));
-vi.mock("@/fetchers/work-item/bulk-assign-work-items", () => ({
-  bulkWorkItemsOperation: (...args: unknown[]) => mocks.archive(...args),
+vi.mock("@/fetchers/work-item/archive-work-item", () => ({
+  default: (...args: unknown[]) => mocks.archive(...args),
 }));
 vi.mock("@/fetchers/work-item/request-work-item-deletion", () => ({
   default: (...args: unknown[]) => mocks.deletion(...args),
@@ -234,6 +240,7 @@ beforeEach(() => {
   mocks.row = row();
   mocks.capabilities = {
     update: true,
+    create: true,
     priority: true,
     transition: true,
     assign: true,
@@ -267,10 +274,14 @@ beforeEach(() => {
       openWorkCount: 0,
     },
   ]);
+  mocks.children.mockResolvedValue({
+    data: [],
+    progress: { total: 0, completed: 0 },
+  });
   mocks.assign.mockResolvedValue({ key: "HELP-7", version: 5 });
   mocks.unassign.mockResolvedValue({ key: "HELP-7", version: 5 });
   mocks.transition.mockResolvedValue({ key: "HELP-7", version: 5 });
-  mocks.archive.mockResolvedValue({ succeeded: ["HELP-7"], failed: [] });
+  mocks.archive.mockResolvedValue({ key: "HELP-7", version: 5 });
   mocks.deletion.mockResolvedValue({ pendingActionId: "pending-7" });
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
@@ -321,6 +332,61 @@ it("uses only the actor-offered transition template and never a fake state alias
     }),
   );
   expect(mocks.update).not.toHaveBeenCalled();
+});
+const closingOffer = [
+  {
+    transitionId: "edge",
+    toStateId: "done",
+    toStateTemplateId: "template-done",
+    toStateName: "Done",
+    toStateCategory: "completed",
+    available: true,
+    blockedBy: [],
+  },
+];
+it("asks about open children before the menu closes a parent, then moves only after confirming", async () => {
+  mocks.offers.mockResolvedValue(closingOffer);
+  mocks.children.mockResolvedValue({
+    data: [
+      {
+        key: "HELP-8",
+        title: "Child",
+        stateName: "Open",
+        stateCategory: "unstarted",
+      },
+    ],
+    progress: { total: 1, completed: 0 },
+  });
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: "State Done" }));
+  expect(
+    await screen.findByTestId("open-children-warning"),
+  ).toBeInTheDocument();
+  expect(mocks.transition).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getByRole("button", { name: /Close anyway|openChildren\.confirm/ }),
+  );
+  await waitFor(() =>
+    expect(mocks.transition).toHaveBeenCalledWith({
+      key: "HELP-7",
+      toStateTemplateId: "template-done",
+    }),
+  );
+});
+it("leaves the parent open when the open-children warning is cancelled", async () => {
+  mocks.offers.mockResolvedValue(closingOffer);
+  mocks.children.mockResolvedValue({
+    data: [],
+    progress: { total: 2, completed: 0 },
+  });
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: "State Done" }));
+  await screen.findByTestId("open-children-warning");
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await waitFor(() =>
+    expect(screen.queryByTestId("open-children-warning")).toBeNull(),
+  );
+  expect(mocks.transition).not.toHaveBeenCalled();
 });
 it("preserves the UTC time of day while changing the selected calendar day", async () => {
   mount();
@@ -377,14 +443,13 @@ it("asks before reassigning and confirms the exact holder it showed", async () =
     }),
   );
 });
-it("archives exactly one canonical key through bulk archive", async () => {
+it("archives exactly one canonical key through the versioned archive route", async () => {
   mount();
   fireEvent.click(await screen.findByRole("button", { name: "Archive" }));
   await waitFor(() =>
     expect(mocks.archive).toHaveBeenCalledWith({
-      workspaceId: "workspace",
-      workItemKeys: ["HELP-7"],
-      operation: "archive",
+      key: "HELP-7",
+      version: 4,
     }),
   );
   expect(mocks.transition).not.toHaveBeenCalled();
@@ -406,6 +471,7 @@ it("requests pending deletion, retains cached item and opens real confirmation",
 it("does not offer mutation controls without strict capabilities", async () => {
   mocks.capabilities = {
     update: false,
+    create: false,
     priority: false,
     transition: false,
     assign: false,
@@ -462,11 +528,8 @@ it("never clears another holder for an update-only actor", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Unassign" }));
   expect(mocks.unassign).not.toHaveBeenCalled();
 });
-it("reports a refused archive batch instead of showing success", async () => {
-  mocks.archive.mockResolvedValue({
-    succeeded: [],
-    failed: [{ id: "HELP-7", reason: "Rule blocks archive" }],
-  });
+it("reports a refused archive instead of showing success", async () => {
+  mocks.archive.mockRejectedValue(new HttpError(422, "Archive refused"));
   mount();
   fireEvent.click(await screen.findByRole("button", { name: "Archive" }));
   await waitFor(() =>

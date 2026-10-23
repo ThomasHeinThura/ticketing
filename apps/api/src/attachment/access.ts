@@ -2,6 +2,7 @@ import type { Capability, ResolvedIdentity } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import type { Executor } from "../database/executor";
 import { personTable, workspaceTable } from "../database/schema";
+import { loadProjectAncestorIdsFor } from "../project/hierarchy.repository";
 import {
   evaluateProjectRead,
   hasProjectReadCapability,
@@ -41,7 +42,14 @@ export async function loadAttachmentCaller(
   const facts = {
     ...scope,
     organisationId: workspace.organisationId,
-    ancestorProjectIds: [],
+    // PR-2/PR-3: reach and attachment authority follow the ancestor chain.
+    ancestorProjectIds: await loadProjectAncestorIdsFor(
+      executor,
+      executor,
+      identity,
+      scope.workspaceId,
+      scope.projectId,
+    ),
     ownerTeamId: null,
   };
   if (

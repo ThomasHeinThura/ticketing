@@ -1,6 +1,8 @@
 import type { Capability } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import db from "../database";
+import { loadProjectAncestorIdsFor } from "../project/hierarchy.repository";
 import {
   hasProjectReadCapability,
   resolveCallerIdentity,
@@ -42,7 +44,20 @@ export async function scopeWorkCapabilitiesToProject(
   );
   if (!project) throw new HTTPException(404, { message: "Project not found" });
   const scoped = { ...flags };
-  const facts = { ...project, ancestorProjectIds: [], ownerTeamId: null };
+  // PR-2/PR-3: the flags must equal the server's decision, so authority follows the same
+  // ancestor chain the route guards use: with no direct project grant, the nearest ancestor's
+  // grant is the override, never the workspace role.
+  const facts = {
+    ...project,
+    ancestorProjectIds: await loadProjectAncestorIdsFor(
+      c,
+      db,
+      identity,
+      project.workspaceId,
+      project.projectId,
+    ),
+    ownerTeamId: null,
+  };
   await Promise.all(
     Object.entries(PROJECT_WORK_FLAGS).map(async ([name, capability]) => {
       const key = name as keyof typeof PROJECT_WORK_FLAGS;

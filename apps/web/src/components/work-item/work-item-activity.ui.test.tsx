@@ -15,6 +15,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { mocks, translate } = vi.hoisted(() => ({
   mocks: {
     createComment: vi.fn(),
+    enqueue: vi.fn(),
+    noUploads: [] as never[],
+    attachments: [] as Array<Record<string, unknown>>,
     fetchCanned: vi.fn(),
     updateComment: vi.fn(),
     preflightRefetch: vi.fn(),
@@ -22,7 +25,12 @@ const { mocks, translate } = vi.hoisted(() => ({
     rows: [] as Array<Record<string, unknown>>,
     activityRead: vi.fn(),
     cannedResponses: [] as Array<Record<string, unknown>>,
-    permissions: { public: true, internal: true, checking: false },
+    permissions: {
+      public: true,
+      internal: true,
+      checking: false,
+      attach: true,
+    },
     permissionWorkspaces: [] as Array<string | undefined>,
     activityState: { isLoading: false, isError: false },
   },
@@ -160,6 +168,9 @@ vi.mock("@tanstack/react-query", () => ({
         isError: false,
       };
     }
+    if (queryKey[1] === "attachments") {
+      return { data: mocks.attachments, isLoading: false, isError: false };
+    }
     if (queryKey[1] === "comment-mention-preflight") {
       return {
         data: { reachablePersonIds: [], unreachablePersonIds: [] },
@@ -171,6 +182,13 @@ vi.mock("@tanstack/react-query", () => ({
     return { data: mocks.cannedResponses, isLoading: false, isError: false };
   },
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+}));
+vi.mock("@/fetchers/attachment/work-item-upload-queue", () => ({
+  enqueueWorkItemUploads: mocks.enqueue,
+  retryWorkItemUpload: vi.fn(),
+  dismissWorkItemUpload: vi.fn(),
+  getWorkItemUploads: () => mocks.noUploads,
+  subscribeWorkItemUploads: () => () => undefined,
 }));
 vi.mock("@/fetchers/canned-response/list-canned-responses", () => ({
   default: mocks.fetchCanned,
@@ -235,6 +253,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     return {
       canCreatePublicComments: () => mocks.permissions.public,
       canCreateInternalComments: () => mocks.permissions.internal,
+      canCreateAttachments: () => mocks.permissions.attach,
       isCheckingPermissions: mocks.permissions.checking,
     };
   },
@@ -270,6 +289,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
   beforeEach(() => {
     window.localStorage.clear();
     mocks.createComment.mockReset().mockResolvedValue({});
+    mocks.enqueue.mockReset();
     mocks.updateComment.mockReset().mockResolvedValue({});
     mocks.preflightRefetch.mockReset().mockResolvedValue({
       data: {
@@ -283,7 +303,12 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       .mockReset()
       .mockImplementation(async () => mocks.cannedResponses);
     mocks.mentionCandidates = [];
-    mocks.permissions = { public: true, internal: true, checking: false };
+    mocks.permissions = {
+      public: true,
+      internal: true,
+      checking: false,
+      attach: true,
+    };
     mocks.permissionWorkspaces = [];
     mocks.activityState = { isLoading: false, isError: false };
   });
@@ -320,42 +345,150 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     ).toBe(true);
   });
 
-  it("maps selected Select values to translated labels and filters visibility by capability", () => {
-    mocks.permissions = { public: true, internal: false, checking: false };
+  it("maps the activity filter value to its translated label and resolves permissions for the item's workspace", () => {
     const view = renderActivity("item-workspace-B");
-    const [filter, visibility] = within(view.container).getAllByRole(
-      "combobox",
-    );
+    const [filter] = within(view.container).getAllByRole("combobox");
 
     expect(filter).toHaveValue("everything");
     expect(filter).toHaveAttribute("data-selected-label", "Everything");
-    expect(visibility).toHaveValue("public");
     expect(mocks.permissionWorkspaces).toContain("item-workspace-B");
-    expect(visibility).toHaveAttribute("data-selected-label", "Public");
-    expect(
-      within(visibility as HTMLElement).getAllByRole("option"),
-    ).toHaveLength(1);
-    expect(
-      within(visibility as HTMLElement).getByRole("option"),
-    ).toHaveTextContent("Public");
   });
 
-  it.each(["internal", "public"] as const)(
-    "starts the composer on the project's %s default comment visibility (CA-2)",
-    (defaultVisibility) => {
-      const view = renderActivity("workspace-1", defaultVisibility);
-      const [, visibility] = within(view.container).getAllByRole("combobox");
+  it("states the only allowed audience instead of offering a choice", () => {
+    mocks.permissions = {
+      public: true,
+      internal: false,
+      checking: false,
+      attach: true,
+    };
+    renderActivity();
+    const composer = screen.getByTestId("work-item-comment-composer");
+    expect(within(composer).getByText("Public")).toBeInTheDocument();
+    expect(
+      within(composer).queryByRole("button", { name: "Internal" }),
+    ).toBeNull();
+    expect(composer.querySelector("[data-visibility]")).toHaveAttribute(
+      "data-visibility",
+      "public",
+    );
+  });
 
-      expect(visibility).toHaveValue(defaultVisibility);
+  it.each([
+    ["internal", "Internal"],
+    ["public", "Public"],
+  ] as const)(
+    "starts the composer on the project's %s default comment visibility (CA-2)",
+    (defaultVisibility, label) => {
+      renderActivity("workspace-1", defaultVisibility);
+      const composer = screen.getByTestId("work-item-comment-composer");
+
+      expect(
+        within(composer).getByRole("button", { name: label, pressed: true }),
+      ).toBeInTheDocument();
     },
   );
 
   it("falls back to an allowed visibility when the project default is outside the caller's capability", () => {
-    mocks.permissions = { public: false, internal: true, checking: false };
-    const view = renderActivity("workspace-1", "public");
-    const [, visibility] = within(view.container).getAllByRole("combobox");
+    mocks.permissions = {
+      public: false,
+      internal: true,
+      checking: false,
+      attach: true,
+    };
+    renderActivity("workspace-1", "public");
+    const composer = screen.getByTestId("work-item-comment-composer");
 
-    expect(visibility).toHaveValue("internal");
+    expect(composer.querySelector("[data-visibility]")).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+  });
+
+  it("CA-1/CA-5: the audience toggle always shows the current choice in a neutral composer, never a warning surface", () => {
+    renderActivity("workspace-1", "internal");
+    const composer = screen.getByTestId("work-item-comment-composer");
+    const notice = within(composer).getByTestId("comment-audience-notice");
+    expect(notice).toHaveTextContent("activity:timeline.internalNotice");
+
+    fireEvent.click(within(composer).getByRole("button", { name: "Public" }));
+
+    expect(
+      within(composer).getByRole("button", { name: "Public", pressed: true }),
+    ).toBeInTheDocument();
+    expect(notice).toHaveTextContent("activity:timeline.publicNotice");
+    // No Alert (warning/error surface) is rendered for either audience.
+    expect(composer.querySelector('[data-slot="alert"]')).toBeNull();
+  });
+
+  it("AT-1/CA-15: files chosen or pasted into the composer are staged, then attached to the comment once it exists", async () => {
+    mocks.createComment.mockResolvedValue({ id: "comment-new" });
+    const view = renderActivity();
+    const file = new File(["png"], "screen.png", { type: "image/png" });
+    const picker =
+      view.container.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(picker).not.toBeNull();
+    fireEvent.change(picker as HTMLInputElement, { target: { files: [file] } });
+
+    // The file is only staged: nothing is uploaded and no comment exists yet.
+    expect(await screen.findByText("screen.png")).toBeInTheDocument();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+    expect(mocks.createComment).not.toHaveBeenCalled();
+
+    // A file alone is sendable (the screenshot-only comment).
+    const send = within(view.container).getByRole("button", {
+      name: "Send comment",
+    });
+    await waitFor(() => expect(send).toBeEnabled());
+    fireEvent.click(send);
+
+    await waitFor(() => expect(mocks.enqueue).toHaveBeenCalledOnce());
+    expect(mocks.createComment).toHaveBeenCalledOnce();
+    expect(mocks.enqueue.mock.calls[0]?.[0]).toMatchObject({
+      itemKey: "OPS-17",
+      commentId: "comment-new",
+      files: [file],
+    });
+    // The stored document never carries the local file or a blob URL.
+    expect(
+      JSON.stringify(mocks.createComment.mock.calls[0]?.[0]),
+    ).not.toContain("blob:");
+  });
+
+  it("CA-15: a screenshot pasted into the composer is staged as an attachment, never inlined into the document", async () => {
+    const view = renderActivity();
+    const composer = await waitFor(() => {
+      const node = editable(view.container);
+      expect(node).not.toBeNull();
+      return node as HTMLElement;
+    });
+    const screenshot = new File(["png"], "pasted.png", { type: "image/png" });
+    fireEvent.paste(composer, {
+      clipboardData: {
+        files: [screenshot],
+        items: [],
+        types: ["Files"],
+        getData: () => "",
+      },
+    });
+    expect(await screen.findByText("pasted.png")).toBeInTheDocument();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+    expect(composer.querySelector("img")).toBeNull();
+  });
+
+  it("offers no attach control and stages nothing without the attachment:create capability", () => {
+    mocks.permissions = {
+      public: true,
+      internal: true,
+      checking: false,
+      attach: false,
+    };
+    renderActivity();
+    expect(
+      within(screen.getByTestId("work-item-comment-composer")).queryByRole(
+        "button",
+        { name: "activity:comment.attachFile" },
+      ),
+    ).toBeNull();
   });
 
   it("opens a legacy string-bodied comment with editable Markdown and saves a document", async () => {
@@ -879,6 +1012,110 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     expect(timeline).not.toHaveTextContent('"direction"');
   });
 
+  it("AT-1/AT-8: shows a comment's own files on its card, never another comment's or the item's panel files", () => {
+    const file = (id: string, filename: string, commentId: string | null) => ({
+      id,
+      workItemId: "work-item-1",
+      commentId,
+      filename,
+      mimeType: filename.endsWith(".png") ? "image/png" : "application/pdf",
+      size: 1024,
+      state: "ready",
+      customerVisible: false,
+      uploadedBy: null,
+      canDelete: false,
+      createdAt: "2026-10-08T10:00:00.000Z",
+      deletedAt: null,
+    });
+    mocks.attachments = [
+      file("f1", "screen.png", "comment-1"),
+      file("f2", "log.pdf", "comment-1"),
+      file("f3", "elsewhere.png", "comment-2"),
+      file("f4", "panel-only.pdf", null),
+    ];
+    const comment = (id: string) => ({
+      id,
+      workItemId: "work-item-1",
+      actorId: "user-1",
+      actorType: "person",
+      verb: "commented",
+      field: null,
+      oldValue: null,
+      newValue: null,
+      payload: null,
+      visibility: "internal",
+      workflowVersionId: null,
+      createdAt: "2026-10-08T10:00:00.000Z",
+      kind: "comment",
+      body: "see attached",
+      activityId: null,
+      editedAt: null,
+      deletedAt: null,
+      deletedBy: null,
+    });
+    mocks.rows = [comment("comment-1"), comment("comment-2")];
+    renderActivity();
+    const first = document.getElementById("comment-comment-1") as HTMLElement;
+    const second = document.getElementById("comment-comment-2") as HTMLElement;
+    expect(
+      within(first).getByRole("button", {
+        name: "workItems:detail.attachments.preview",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(first).getByRole("link", { name: "log.pdf" }),
+    ).toBeInTheDocument();
+    expect(within(second).queryByText("screen.png")).toBeNull();
+    expect(
+      within(second).getByRole("button", {
+        name: "workItems:detail.attachments.preview",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("panel-only.pdf")).toBeNull();
+    // A deleted comment keeps no files on its tombstone.
+    cleanup();
+    mocks.rows = [
+      {
+        ...comment("comment-1"),
+        deletedAt: "2026-10-08T11:00:00.000Z",
+        deletedBy: "user-1",
+      },
+    ];
+    renderActivity();
+    expect(screen.queryByText("screen.png")).toBeNull();
+  });
+
+  it("CA-9: names the kind of non-person actor, or the automation that names itself, never a person", () => {
+    const row = (id: string, actorType: string, payload: unknown) => ({
+      id,
+      workItemId: "work-item-1",
+      actorId: null,
+      actorType,
+      verb: "updated",
+      field: "priority",
+      oldValue: "low",
+      newValue: "high",
+      payload,
+      visibility: "internal",
+      workflowVersionId: null,
+      createdAt: `2026-10-08T10:0${id.length}:00.000Z`,
+      kind: "activity",
+    });
+    mocks.rows = [
+      row("a", "automation", { automationName: "Escalate overdue" }),
+      row("bb", "system", null),
+      row("ccc", "api_key", null),
+      row("dddd", "automation", null),
+    ];
+    renderActivity();
+    const timeline = screen.getByTestId("work-item-activity");
+    expect(timeline).toHaveTextContent("Escalate overdue");
+    expect(timeline).toHaveTextContent("activity:timeline.actors.system");
+    expect(timeline).toHaveTextContent("activity:timeline.actors.apiKey");
+    expect(timeline).toHaveTextContent("activity:timeline.actors.automation");
+    expect(timeline).not.toHaveTextContent("Unknown");
+  });
+
   it("retains the legacy tombstone actor and withholds comment history", async () => {
     mocks.rows = [
       {
@@ -1012,7 +1249,12 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     ).toBeInTheDocument();
   });
   it("renders authoritative canonical author names for read-only viewers without mention-directory access", () => {
-    mocks.permissions = { public: false, internal: false, checking: false };
+    mocks.permissions = {
+      public: false,
+      internal: false,
+      checking: false,
+      attach: true,
+    };
     mocks.mentionCandidates = [];
     mocks.rows = [
       {

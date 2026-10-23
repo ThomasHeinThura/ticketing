@@ -2,6 +2,7 @@ import { appendAuditLog } from "../audit/audit-writer";
 import type { Transaction } from "../database/executor";
 import type { workItemTable } from "../database/schema";
 import { publishEvent } from "../events";
+import { resolveWorkItemEventRecipients } from "../notification/work-item-recipients";
 import {
   type ActivityActorType,
   diffWorkItemFieldChanges,
@@ -9,6 +10,7 @@ import {
   resolveVisibility,
 } from "./activity";
 import type { InitialWorkItemFields } from "./create-preparation";
+import { ensureImplicitAssigneeWatcher } from "./implicit-watcher";
 import { replaceWorkItemLabels } from "./labels-repository";
 import { publishWorkItemHint, recordWorkItemEvent } from "./native-event";
 
@@ -17,7 +19,7 @@ export async function recordInitialWorkItemFields(
   tx: Transaction,
   item: Item,
   fields: InitialWorkItemFields,
-  actorId: string,
+  actorId: string | null,
   actorType: ActivityActorType,
 ) {
   const common = {
@@ -104,6 +106,11 @@ export async function recordInitialWorkItemFields(
       assigneeId: fields.assigneeId,
       previousAssigneeId: null,
     };
+    // `WI-29`/`AS-16`: an initial assignee is an implicit watcher and is notified exactly
+    // as on the assign route (the actor excluded, `AS-18`).
+    if (fields.assigneeId) {
+      await ensureImplicitAssigneeWatcher(tx, item.id, fields.assigneeId);
+    }
     events.push({
       kind: "work_item.assigned",
       customerVisible: true,
@@ -112,7 +119,8 @@ export async function recordInitialWorkItemFields(
         ...common,
         kind: "work_item.assigned",
         customerVisible: true,
-        payload: { key: item.key, url, ...assignment },
+        notify: { resolveRecipients: resolveWorkItemEventRecipients },
+        payload: { workItemId: item.id, key: item.key, url, ...assignment },
       }),
     });
   }

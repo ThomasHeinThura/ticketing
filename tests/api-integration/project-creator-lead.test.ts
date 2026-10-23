@@ -30,6 +30,7 @@ import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
 import { deleteThroughApprovalAsCookie } from "./helpers/pending-deletion";
+import { projectKey } from "./helpers/project-key";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 type App = ReturnType<typeof createApp>["app"];
@@ -126,7 +127,7 @@ async function createProject(
     workspaceId,
     name: "P",
     icon: "Folder",
-    slug: `p-${randomUUID().slice(0, 8)}`,
+    slug: projectKey(),
   });
   return {
     status: response.status,
@@ -314,7 +315,7 @@ describe("a project's creator holds a project-lead membership", () => {
   it("a manager creates a project, then reads, lists, updates and works items in it; created_by, grant, membership and audit row are written", async () => {
     const world = await newWorld();
     const manager = await addManager(world);
-    const slug = `m-${randomUUID().slice(0, 8)}`;
+    const slug = projectKey();
     const response = await call(
       world.app,
       manager.cookie,
@@ -355,7 +356,7 @@ describe("a project's creator holds a project-lead membership", () => {
   it("a member is refused (403) on project creation and receives no creator grant (#708)", async () => {
     const world = await newWorld();
     const member = await addMember(world, "member");
-    const slug = `mm-${randomUUID().slice(0, 8)}`;
+    const slug = projectKey();
     const response = await call(
       world.app,
       member.cookie,

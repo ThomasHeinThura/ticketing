@@ -14,7 +14,12 @@ export * from "./approvals/types.js";
 export {
   evaluateAssigneeEligibility,
   planAssignment,
+  resolveAssigneeDisplayStatus,
 } from "./assignment/assignment.js";
+export type {
+  AssigneeDisplayFacts,
+  AssigneeDisplayStatus,
+} from "./assignment/types.js";
 export * from "./audit/audit.js";
 export * from "./audit/types.js";
 export * from "./calendar/calendar.js";

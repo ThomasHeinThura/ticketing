@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   transition: vi.fn(),
   assign: vi.fn(),
   unassign: vi.fn(),
+  children: vi.fn(),
   toastError: vi.fn(),
   canUpdate: true,
   canAssign: true,
@@ -46,6 +47,9 @@ vi.mock("@/fetchers/work-item/assign-work-item", () => ({
 }));
 vi.mock("@/fetchers/work-item/unassign-work-item", () => ({
   default: mocks.unassign,
+}));
+vi.mock("@/fetchers/work-item/get-hierarchy-children", () => ({
+  getHierarchyChildren: mocks.children,
 }));
 vi.mock("@/lib/toast", () => ({
   toast: { error: mocks.toastError, success: vi.fn() },
@@ -113,6 +117,7 @@ beforeEach(() => {
     mocks.transition,
     mocks.assign,
     mocks.unassign,
+    mocks.children,
     mocks.toastError,
   ]) {
     fn.mockReset();
@@ -541,6 +546,103 @@ describe("WorkItemProperties", () => {
         note: "Resolved by reset",
       }),
     );
+  });
+
+  describe("RH-10 / WI-18: closing a parent with open children", () => {
+    const openChildren = () =>
+      mocks.children.mockResolvedValue({
+        data: [
+          {
+            key: "HELP-8",
+            title: "Open child",
+            stateName: "In progress",
+            stateCategory: "started",
+          },
+        ],
+        progress: { total: 1, completed: 0 },
+      });
+    const closeOffer = (notePolicy: "none" | "required") => [
+      {
+        transitionId: "close",
+        toStateTemplateId: "tpl-done",
+        toStateName: "Done",
+        toStateCategory: "completed",
+        notePolicy,
+        available: notePolicy === "none",
+        blockedBy:
+          notePolicy === "none"
+            ? []
+            : [{ kind: "note", reasonCode: "note.required" }],
+      },
+    ];
+
+    it("lists the open children and moves only after confirming, without touching them", async () => {
+      openChildren();
+      mocks.transition.mockResolvedValue({});
+      mocks.transitions = closeOffer("none");
+      renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("work-item-state-control"));
+      fireEvent.click(await screen.findByRole("button", { name: /Done/ }));
+      expect(
+        await screen.findByTestId("open-children-warning"),
+      ).toHaveTextContent("workItems:openChildren.item");
+      expect(mocks.transition).not.toHaveBeenCalled();
+      fireEvent.click(
+        screen.getByRole("button", { name: "workItems:openChildren.confirm" }),
+      );
+      await waitFor(() =>
+        expect(mocks.transition.mock.calls[0]?.[0]).toEqual({
+          key: "HELP-7",
+          toStateTemplateId: "tpl-done",
+        }),
+      );
+    });
+
+    it("cancelling leaves the item where it is", async () => {
+      openChildren();
+      mocks.transitions = closeOffer("none");
+      renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("work-item-state-control"));
+      fireEvent.click(await screen.findByRole("button", { name: /Done/ }));
+      await screen.findByTestId("open-children-warning");
+      fireEvent.click(
+        screen.getByRole("button", { name: "common:actions.cancel" }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByTestId("open-children-warning")).toBeNull(),
+      );
+      expect(mocks.transition).not.toHaveBeenCalled();
+    });
+
+    it("a close that needs a note still reaches the note form after confirming", async () => {
+      openChildren();
+      mocks.transition.mockResolvedValue({});
+      mocks.transitions = closeOffer("required");
+      renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("work-item-state-control"));
+      fireEvent.click(await screen.findByRole("button", { name: /Done/ }));
+      await screen.findByTestId("open-children-warning");
+      fireEvent.click(
+        screen.getByRole("button", { name: "workItems:openChildren.confirm" }),
+      );
+      expect(
+        await screen.findByLabelText("workItems:properties.transitionNote"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not ask when nothing below is open", async () => {
+      mocks.children.mockResolvedValue({
+        data: [],
+        progress: { total: 0, completed: 0 },
+      });
+      mocks.transition.mockResolvedValue({});
+      mocks.transitions = closeOffer("none");
+      renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("work-item-state-control"));
+      fireEvent.click(await screen.findByRole("button", { name: /Done/ }));
+      await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(1));
+      expect(screen.queryByTestId("open-children-warning")).toBeNull();
+    });
   });
 
   it.each(["assign", "unassign"] as const)(

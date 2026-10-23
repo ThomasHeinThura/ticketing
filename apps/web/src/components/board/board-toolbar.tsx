@@ -76,18 +76,21 @@ function CheckSlot({ checked }: { checked: boolean }) {
   );
 }
 
-type ActiveFilterChipProps = {
+export type ActiveFilterChipProps = {
   subject: string;
   operator: string;
   value: ReactNode;
   onClear: () => void;
+  /** Accessible name of the remove button (the icon alone has none). */
+  clearLabel?: string;
 };
 
-function ActiveFilterChip({
+export function ActiveFilterChip({
   subject,
   operator,
   value,
   onClear,
+  clearLabel,
 }: ActiveFilterChipProps) {
   return (
     <div className="inline-flex h-7 items-center rounded-md border border-border bg-background text-xs shadow-xs">
@@ -101,6 +104,7 @@ function ActiveFilterChip({
         variant="ghost"
         className="inline-flex h-full w-7 items-center justify-center rounded-r-md text-foreground hover:bg-accent/70 hover:text-foreground"
         onClick={onClear}
+        aria-label={clearLabel}
         type="button"
       >
         <X className="h-3.5 w-3.5" />

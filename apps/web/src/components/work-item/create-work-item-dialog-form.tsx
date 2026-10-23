@@ -38,6 +38,7 @@ import { toast } from "@/lib/toast";
 import { dayToIso } from "@/lib/work-item-date";
 import CreateWorkItemProperties from "./create-work-item-properties";
 import CreateWorkItemStagedAttachments from "./create-work-item-staged-attachments";
+import CreateWorkItemTemplatePicker from "./create-work-item-template-picker";
 import { useCreateWorkItemAttachments } from "./use-create-work-item-attachments";
 import {
   type CreateWorkItemLabel,
@@ -78,6 +79,7 @@ export default function CreateWorkItemDialogForm({
   const [title, setTitle] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
   const [typeId, setTypeId] = useState<string | null>(null);
+  const [templateId, setTemplateId] = useState<string | null>(null);
   const [priority, setPriority] = useState<Priority | typeof NO_PRIORITY>(
     NO_PRIORITY,
   );
@@ -164,6 +166,7 @@ export default function CreateWorkItemDialogForm({
     dueDate: dueDate ? dayToIso(dueDate, null) : undefined,
     assigneeId: assigneeId || undefined,
     labelIds: labelIds.length ? labelIds : undefined,
+    templateId: templateId ?? undefined,
   });
   const busy = isPending || labelBusy || uploadBusy;
   const locked = busy || Boolean(createdKey) || createUnconfirmed;
@@ -216,6 +219,7 @@ export default function CreateWorkItemDialogForm({
     setDueDate(undefined);
     setAssigneeId("");
     setLabelIds([]);
+    setTemplateId(null);
     setCreatedLabels([]);
     setLabelDraftDirty(false);
     setSubmitError(null);
@@ -370,52 +374,70 @@ export default function CreateWorkItemDialogForm({
           onLabelDraftChange={setLabelDraftDirty}
           options={options}
           typeControl={
-            <Popover open={typeOpen} onOpenChange={setTypeOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  aria-label={t("workItems:create.fieldType")}
-                  className={cn(
-                    CREATE_TASK_PROPERTY_BUTTON_CLASS,
-                    selectedType
-                      ? "bg-accent/30 text-foreground"
-                      : "text-muted-foreground",
-                  )}
-                  disabled={isLoadingTypes || isTypesError || locked}
-                  data-testid="create-work-item-type-trigger"
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>
-                    {selectedType?.name ??
-                      (isLoadingTypes
-                        ? t("workItems:create.typesLoading")
-                        : t("workItems:create.typePlaceholder"))}
-                  </span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-1" align="start">
-                <div className="space-y-1">
-                  {(types ?? []).map((type) => (
-                    <Button
-                      key={type.id}
-                      type="button"
-                      variant="ghost"
-                      className={CREATE_TASK_PROPERTY_OPTION_CLASS}
-                      onClick={() => {
-                        setTypeId(type.id);
-                        setTypeOpen(false);
-                      }}
-                    >
-                      <span className="text-sm truncate">{type.name}</span>
-                      {typeId === type.id ? (
-                        <Check className="ml-auto h-4 w-4 shrink-0" />
-                      ) : null}
-                    </Button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <>
+              <CreateWorkItemTemplatePicker
+                workspaceId={workspaceId}
+                selectedId={templateId}
+                disabled={locked}
+                onSelect={(template) => {
+                  setTemplateId(template?.id ?? null);
+                  if (!template) return;
+                  // A template belongs to one type; its starting title only fills an empty title.
+                  setTypeId(template.typeId);
+                  setTitle((current) =>
+                    current.trim() ? current : template.title,
+                  );
+                }}
+              />
+              <Popover open={typeOpen} onOpenChange={setTypeOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    aria-label={t("workItems:create.fieldType")}
+                    className={cn(
+                      CREATE_TASK_PROPERTY_BUTTON_CLASS,
+                      selectedType
+                        ? "bg-accent/30 text-foreground"
+                        : "text-muted-foreground",
+                    )}
+                    disabled={isLoadingTypes || isTypesError || locked}
+                    data-testid="create-work-item-type-trigger"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>
+                      {selectedType?.name ??
+                        (isLoadingTypes
+                          ? t("workItems:create.typesLoading")
+                          : t("workItems:create.typePlaceholder"))}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-1" align="start">
+                  <div className="space-y-1">
+                    {(types ?? []).map((type) => (
+                      <Button
+                        key={type.id}
+                        type="button"
+                        variant="ghost"
+                        className={CREATE_TASK_PROPERTY_OPTION_CLASS}
+                        onClick={() => {
+                          setTypeId(type.id);
+                          // A template is bound to its type; choosing another type drops it.
+                          if (type.id !== typeId) setTemplateId(null);
+                          setTypeOpen(false);
+                        }}
+                      >
+                        <span className="text-sm truncate">{type.name}</span>
+                        {typeId === type.id ? (
+                          <Check className="ml-auto h-4 w-4 shrink-0" />
+                        ) : null}
+                      </Button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </>
           }
           priorityControl={
             <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>

@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
@@ -22,8 +23,24 @@ const state = vi.hoisted(() => ({
   panelProps: undefined as Record<string, unknown> | undefined,
   toolbarProps: undefined as Record<string, unknown> | undefined,
   listEnabled: undefined as boolean | undefined,
+  /** The (mocked) server `layout.<projectId>` preference. */
+  serverLayout: undefined as string | undefined,
+  serverLayoutSettled: true,
 }));
 
+vi.mock("@/hooks/use-project-view-preference", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/hooks/use-project-view-preference")
+  >()),
+  useProjectViewPreference: ({ name }: { name: string }) =>
+    name === "layout"
+      ? {
+          value: state.serverLayout,
+          set: vi.fn(),
+          settled: state.serverLayoutSettled,
+        }
+      : { value: undefined, set: vi.fn(), settled: true },
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
@@ -162,6 +179,8 @@ beforeEach(() => {
   window.localStorage.clear();
   state.search = { layout: "board", sort: "key", dir: "asc" };
   state.canAssign = false;
+  state.serverLayout = undefined;
+  state.serverLayoutSettled = true;
   state.listItems = [row("WLP-1"), row("WLP-2")];
   state.boardProps = undefined;
   state.paneProps = undefined;
@@ -225,6 +244,41 @@ describe("work route layouts", () => {
     };
     expect(update.search(state.search)).toMatchObject({ layout: "table" });
     expect(window.localStorage.getItem("taskdesk.layout.proj_1")).toBe("table");
+  });
+});
+
+describe("layout restore (VW-2)", () => {
+  const lastNavigation = () =>
+    (
+      state.navigate.mock.calls.at(-1)?.[0] as
+        | { search: (prev: Record<string, string>) => Record<string, string> }
+        | undefined
+    )?.search(state.search);
+
+  it("restores the server layout preference when the URL names no layout", async () => {
+    state.serverLayout = "list";
+    window.localStorage.setItem("taskdesk.layout.proj_1", "table");
+    await renderRoute();
+    await waitFor(() =>
+      expect(lastNavigation()).toMatchObject({ layout: "list" }),
+    );
+    // The server's choice is also remembered by this browser for offline fallback.
+    expect(window.localStorage.getItem("taskdesk.layout.proj_1")).toBe("list");
+  });
+
+  it("falls back to this browser's memory when the server holds none", async () => {
+    window.localStorage.setItem("taskdesk.layout.proj_1", "table");
+    await renderRoute();
+    await waitFor(() =>
+      expect(lastNavigation()).toMatchObject({ layout: "table" }),
+    );
+  });
+
+  it("waits for the server answer instead of flashing the local layout first", async () => {
+    state.serverLayoutSettled = false;
+    window.localStorage.setItem("taskdesk.layout.proj_1", "table");
+    await renderRoute();
+    expect(state.navigate).not.toHaveBeenCalled();
   });
 });
 
@@ -481,4 +535,71 @@ describe("canonical task sheet route ownership", () => {
       expect(state.search.filter).toBe("state = open");
     },
   );
+});
+
+describe("work route board grouping (VW-13, VW-1)", () => {
+  it("passes the URL's grouping to the board view and defaults to state", async () => {
+    await renderRoute();
+    expect(state.boardProps?.group).toBe("state");
+    cleanup();
+    state.search = {
+      layout: "board",
+      sort: "key",
+      dir: "asc",
+      group: "assignee",
+    };
+    await renderRoute();
+    expect(state.boardProps?.group).toBe("assignee");
+  });
+
+  it("offers the group menu on the board only", async () => {
+    await renderRoute();
+    expect(screen.getByRole("button", { name: "Group" })).toBeInTheDocument();
+    cleanup();
+    state.search = { layout: "list", sort: "key", dir: "asc" };
+    await renderRoute();
+    expect(screen.queryByRole("button", { name: "Group" })).toBeNull();
+  });
+
+  it("writes the chosen grouping to the URL, keeping the rest, and drops the default", async () => {
+    state.search = {
+      layout: "board",
+      sort: "key",
+      dir: "asc",
+      filter: "priority = high",
+    };
+    await renderRoute();
+    fireEvent.click(screen.getByRole("button", { name: "Group" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Priority" }));
+    const call = state.navigate.mock.calls.at(-1)?.[0] as {
+      search: (prev: Record<string, unknown>) => Record<string, unknown>;
+      replace?: boolean;
+    };
+    expect(call.replace).toBe(true);
+    expect(call.search(state.search)).toMatchObject({
+      layout: "board",
+      filter: "priority = high",
+      group: "priority",
+    });
+    const stateCall = call.search({ ...state.search, group: "priority" });
+    expect(stateCall.group).toBe("priority");
+  });
+
+  it("keeps the grouping when the layout is switched", async () => {
+    state.search = {
+      layout: "board",
+      sort: "key",
+      dir: "asc",
+      group: "assignee",
+    };
+    await renderRoute();
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    const call = state.navigate.mock.calls.at(-1)?.[0] as {
+      search: (prev: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(call.search(state.search)).toMatchObject({
+      layout: "list",
+      group: "assignee",
+    });
+  });
 });

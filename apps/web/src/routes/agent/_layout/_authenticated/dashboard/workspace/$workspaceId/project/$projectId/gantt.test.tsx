@@ -108,6 +108,12 @@ vi.mock("@/components/work-item/work-item-side-pane", () => ({
   default: () => null,
 }));
 
+// The lazy selection switch needs a query client and the capability queries; these tests are
+// about the timeline, and an async test would otherwise let that chunk load and fail.
+vi.mock("@/components/work-item/work-item-selection-toggle", () => ({
+  default: () => null,
+}));
+
 vi.mock("@/components/page-title", () => ({
   default: () => null,
 }));
@@ -479,5 +485,157 @@ describe("Gantt jump-to-today", () => {
     // component is correct.
     const container = screen.getByTestId("gantt-scroll-container");
     expect(container.style.scrollPaddingLeft).toBe("20rem");
+  });
+});
+
+describe("Gantt loading, error, empty and filter states (VW-7, VW-34)", () => {
+  it("shows a row skeleton while the schedule loads, not the empty state", () => {
+    useGetTasks.mockReturnValue({ data: undefined, isLoading: true });
+    render(<GanttRoute />);
+
+    expect(screen.getByTestId("gantt-loading")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    expect(screen.queryByTestId("gantt-empty")).not.toBeInTheDocument();
+  });
+
+  it("shows an error alert with a working retry when the load fails", () => {
+    const refetch = vi.fn();
+    useGetTasks.mockReturnValue({ data: undefined, isError: true, refetch });
+    render(<GanttRoute />);
+
+    expect(screen.getByTestId("gantt-error")).toBeInTheDocument();
+    expect(screen.queryByTestId("gantt-empty")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the plain empty state for a project with nothing scheduled", () => {
+    useGetTasks.mockReturnValue({
+      data: {
+        id: "project-1",
+        name: "Roadmap",
+        slug: "RM",
+        columns: [],
+        plannedTasks: [],
+        archivedTasks: [],
+      },
+    });
+    render(<GanttRoute />);
+
+    expect(screen.getByTestId("gantt-empty")).toHaveTextContent(
+      "No scheduled tasks",
+    );
+    expect(
+      screen.queryByTestId("schedule-filter-chips"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says the view is filtered, with a removable chip, when the URL filter matches nothing", () => {
+    routeState.search = { filter: "priority:high" };
+    useGetTasks.mockReturnValue({
+      data: {
+        id: "project-1",
+        name: "Roadmap",
+        slug: "RM",
+        columns: [],
+        plannedTasks: [],
+        archivedTasks: [],
+      },
+    });
+    render(<GanttRoute />);
+
+    expect(screen.getByTestId("gantt-empty")).toHaveTextContent(
+      "No work items match this filter",
+    );
+    expect(screen.getByTestId("schedule-filter-chips")).toHaveTextContent(
+      "Priority",
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove Priority filter" }),
+    );
+    expect(routeState.search).not.toHaveProperty("filter");
+  });
+});
+
+describe("Gantt grouping (VW-27, VW-1)", () => {
+  function mockAssignedTasks() {
+    useGetTasks.mockReturnValue({
+      data: {
+        id: "project-1",
+        name: "Roadmap",
+        slug: "RM",
+        columns: [
+          {
+            id: "col-1",
+            name: "In Progress",
+            tasks: [
+              makeTask({
+                id: "t-1",
+                title: "Bo task",
+                number: 1,
+                assigneeId: "p-bo",
+                assigneeName: "Bo",
+                startDate: "2026-08-28",
+                dueDate: "2026-09-02",
+              }),
+              makeTask({
+                id: "t-2",
+                title: "Loose task",
+                number: 2,
+                startDate: "2026-08-29",
+                dueDate: "2026-09-03",
+              }),
+              makeTask({
+                id: "t-3",
+                title: "Ann task",
+                number: 3,
+                assigneeId: "p-ann",
+                assigneeName: "Ann",
+                startDate: "2026-08-30",
+                dueDate: "2026-09-04",
+              }),
+            ],
+          },
+        ],
+        plannedTasks: [],
+        archivedTasks: [],
+      },
+    });
+  }
+
+  it("shows no group headings by default", () => {
+    mockAssignedTasks();
+    render(<GanttRoute />);
+    expect(screen.queryAllByTestId("gantt-group-row")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Group" })).toBeInTheDocument();
+  });
+
+  it("groups the bars by assignee from the URL, unassigned last", () => {
+    routeState.search = { group: "assignee" };
+    mockAssignedTasks();
+    render(<GanttRoute />);
+    const headings = screen
+      .getAllByTestId("gantt-group-row")
+      .map((row) => row.querySelector("h2")?.textContent);
+    expect(headings).toEqual(["Ann", "Bo", "Unassigned"]);
+    expect(
+      screen.getByRole("button", { name: "Assignee" }),
+    ).toBeInTheDocument();
+  });
+
+  it("writes the grouping to the URL and removes it again when set back to none", async () => {
+    // The menu opens asynchronously, which the faked clock would never advance.
+    vi.useRealTimers();
+    mockAssignedTasks();
+    render(<GanttRoute />);
+    fireEvent.click(screen.getByRole("button", { name: "Group" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Assignee" }));
+    expect(routeState.search).toMatchObject({ group: "assignee" });
+    fireEvent.click(screen.getByRole("button", { name: "Assignee" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "None" }));
+    expect(routeState.search).not.toHaveProperty("group");
   });
 });

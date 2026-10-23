@@ -6,6 +6,7 @@ import { schema } from "../database";
 import { workItemRelationTable } from "../database/schema";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
+import { projectAncestryFor } from "../utils/project-ancestry";
 import { lockRelationGraph } from "../work-item-relation/blockers";
 import {
   deleteWorkItemRelationInTransaction,
@@ -152,15 +153,23 @@ function snapshot(target: Target) {
   };
 }
 
-export function relationDeletionEndpointAccess(
+export async function relationDeletionEndpointAccess(
+  executor: object,
   identity: ResolvedIdentity,
   endpoint: Target["source"],
-): RequiredAccessDecision {
+): Promise<RequiredAccessDecision> {
+  const ancestorProjectIds = await projectAncestryFor(
+    executor,
+    identity,
+    endpoint.workspaceId,
+    endpoint.projectId,
+  );
   if (
     !reaches(identity, {
       projectId: endpoint.projectId,
       workspaceId: endpoint.workspaceId,
       organisationId: endpoint.organisationId,
+      ancestorProjectIds,
     })
   )
     return { allowed: false, failure: "reach", status: 404 };
@@ -169,6 +178,7 @@ export function relationDeletionEndpointAccess(
       workItemId: endpoint.id,
       workItemProjectId: endpoint.projectId,
       workspaceId: endpoint.workspaceId,
+      ancestorProjectIds,
     })
   )
     return { allowed: false, failure: "capability", status: 403 };
@@ -204,7 +214,11 @@ export async function evaluateRelationDeletionAccess(
   )
     return { allowed: false, failure: "target_scope", status: 404 };
   for (const endpoint of [target.source, target.target]) {
-    const decision = relationDeletionEndpointAccess(identity, endpoint);
+    const decision = await relationDeletionEndpointAccess(
+      tx,
+      identity,
+      endpoint,
+    );
     if (!decision.allowed) return decision;
   }
   if (
@@ -374,17 +388,25 @@ export async function relationDeletionReadSummary(
     );
   if (endpoints.length !== 2) return undefined;
   for (const endpoint of endpoints) {
+    if (endpoint.workspaceId !== row.workspaceId) return undefined;
+    const ancestorProjectIds = await projectAncestryFor(
+      executor,
+      identity,
+      endpoint.workspaceId,
+      endpoint.projectId,
+    );
     if (
-      endpoint.workspaceId !== row.workspaceId ||
       !reaches(identity, {
         projectId: endpoint.projectId,
         workspaceId: endpoint.workspaceId,
         organisationId: endpoint.organisationId,
+        ancestorProjectIds,
       }) ||
       !can(identity, "work_item:read", "work_item", {
         workItemId: endpoint.id,
         workItemProjectId: endpoint.projectId,
         workspaceId: endpoint.workspaceId,
+        ancestorProjectIds,
       })
     )
       return undefined;
@@ -431,7 +453,8 @@ export async function approveRelationDeletion(
                 ? target.target
                 : undefined;
           const access =
-            loaded && relationDeletionEndpointAccess(identity, loaded);
+            loaded &&
+            (await relationDeletionEndpointAccess(tx, identity, loaded));
           if (!access?.allowed)
             throw new HTTPException(403, { message: "Forbidden" });
         },

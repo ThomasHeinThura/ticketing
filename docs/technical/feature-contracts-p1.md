@@ -369,7 +369,7 @@ Backlog is a separate destination rather than a layout, because it has different
 
 **Shared across layouts**
 
-- `VW-1` Filter, sort, grouping and search live in the URL and survive a layout switch.
+- `VW-1` Filter, sort, grouping and search live in the URL and survive a layout switch. The board and timeline grouping is `group` (`assignee` or `priority`; `state` is the default and never written), the calendar range is `calendarView` (`week` or `day`) anchored on `date` (`YYYY-MM-DD`), and `month` still names the month view.
 - `VW-2` Layout choice is remembered per project per user, and the URL always wins. See
   [Per-user preferences](feature-contracts-p1.md#views-per-user-preferences).
 - `VW-3` Every layout supports multi-select and the same bulk action bar.
@@ -402,7 +402,12 @@ specified in [settings-hierarchy.md](feature-contracts-p4.md#settings-hierarchy-
   is the first-paint cache.
 - If the server is unreachable or rejects a read or write, the cache keeps working and the next
   load reconciles it. The UI never blocks on the route.
-- `VW-15`, `VW-19` and `VW-21` each require a registered key and value schema in the settings whitelist before persistence.
+- `VW-15` is the settings key `listGroups.<projectId>` (the collapsed group ids, at most 50) and `VW-19` is
+  `columns.<projectId>` (the chosen table columns in display order); both approved by the owner and registered with
+  their value schemas in the settings whitelist ([`ST-14`](feature-contracts-p4.md#settings-hierarchy-profile-settings-routes)).
+  A `columns` URL parameter still wins over the stored choice. Custom-field columns wait for P4.
+- `VW-21` requires its own registered key and value schema in the settings whitelist before persistence; none is
+  approved yet, so column widths are not persisted.
 
 **Board**
 
@@ -421,7 +426,7 @@ specified in [settings-hierarchy.md](feature-contracts-p4.md#settings-hierarchy-
 
 **List**
 
-- `VW-15` Grouped by state by default, with collapsible groups whose state persists.
+- `VW-15` Grouped by state by default, with collapsible groups whose state persists (`listGroups.<projectId>`, see above).
 - `VW-16` Each row shows key, title, assignee, priority, SLA badge and due date.
 - `VW-17` Inline editing of state, assignee and priority without leaving the row.
 - `VW-18` Virtualised above 100 rows.
@@ -429,7 +434,7 @@ specified in [settings-hierarchy.md](feature-contracts-p4.md#settings-hierarchy-
 **Table**
 
 - `VW-19` Columns are chosen by the user, including custom fields. The choice persists per
-  project per user.
+  project per user (`columns.<projectId>`; custom-field columns wait for P4).
 - `VW-20` Sortable by any column. Multi-column sort with modifier-click.
 - `VW-21` Column widths are draggable and persist.
 - `VW-22` Inline editing where the field type allows.
@@ -1193,9 +1198,10 @@ security-sensitive field in the product.
   client, never by a CSS class, never by a conditional render.
 - `CA-4` Visibility cannot be changed after posting. A comment sent to a customer has been
   sent. Delete and repost, which leaves a visible tombstone.
-- `CA-5` The composer's appearance differs unmistakably between modes — an internal
-  composer has a distinct background and a persistent label. This is a place where visual
-  redundancy is worth the noise.
+- `CA-5` The composer is neutral in both modes: it keeps Kaneo's original composer look
+  with no distinct background. Internal mode is shown by the Internal/Public toggle and the
+  explanatory sentence beside it. Owner decision, 22 Oct 2026 (warning-tinted composer
+  rejected; see `audit.md`, "neutral composer", and roadmap UI-04).
 
 <a id="comments-and-activity-activity"></a>
 ### Activity
@@ -1654,9 +1660,22 @@ and is right to.
 - `RH-10` Closing a parent with open children warns and lists them. It does not cascade.
 - `RH-11` Deleting a parent orphans its children rather than deleting them. The user is
   told exactly this before confirming.
+  Children keep their `parent_id` through the 30-day restore window (the soft-deleted parent still
+  holds them, so a restore returns the tree intact) and are orphaned only when the purge removes
+  the parent; decided 2026-10-23, no change to the current behaviour.
 - `RH-12` Moving a parent between projects offers to move its children too. Declining
   **detaches** the children — they stay in the old project with no parent, and the parent
   link is removed — so `RH-6` always holds. This is stated plainly before confirming.
+  Rules as built (`POST /api/v2/work-items/{key}/move`, 2026-10-23): reach plus `work_item:update` on
+  the source and reach plus `work_item:create`/`work_item:update` on the target, same workspace only
+  (an unreachable or foreign target is the same 404); `If-Match` required; the moved item's own
+  parent link is always removed; moving children moves the whole subtree (200 items at most), declining
+  detaches only the direct children; each moved item takes a new key and number in the target and the
+  old key is kept in `work_item_key_alias` and redirects reads (`308`) only after reach on the moved item;
+  states map by state template and a template the target lacks refuses the move (422); project labels
+  follow by name or are dropped; an assignee off the target roster, or an item with a requester or
+  organisation visibility crossing customer organisations, refuses (422); pending workflow timers
+  are discarded; cycle, module and estimate pointers are cleared; positions append to the target column.
 
 <a id="relations-and-hierarchy-epics"></a>
 ### Epics
