@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
+  Badge,
   Button,
   Collapsible,
   CollapsibleContent,
@@ -26,6 +27,7 @@ import {
   CircleAlert,
   History,
   Pencil,
+  TriangleAlert,
   UserRound,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -124,6 +126,20 @@ function jsonText(value: unknown) {
   }
 }
 
+/** `WF-21`: a customer reply or upload on a resolved request the workflow could not reopen. */
+export const REOPEN_REQUESTED_VERB = "reopen_requested";
+
+/** A bare activity verb as a sentence; keys with no catalogue label read as plain words. */
+export function activityVerbLabel(
+  verb: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const words = verb.replace(/[._]+/g, " ").trim();
+  return t(`activity:timeline.verbs.${verb.replace(/\./g, "_")}`, {
+    defaultValue: words.charAt(0).toUpperCase() + words.slice(1),
+  });
+}
+
 /** Relation activity carries type/direction only; never render arbitrary endpoint data. */
 export function activityChangeDescription(
   row: Pick<WorkItemActivityRow, "field" | "verb" | "oldValue" | "newValue">,
@@ -143,7 +159,8 @@ export function activityChangeDescription(
         : "activity:timeline.attachmentDeleted",
     );
   if (row.field !== "relation") {
-    const label = row.field ?? (includeVerb ? row.verb : undefined);
+    const label =
+      row.field ?? (includeVerb ? activityVerbLabel(row.verb, t) : undefined);
     return `${label ? `${label}: ` : ""}${jsonText(row.oldValue)} → ${jsonText(row.newValue)}`;
   }
   const relationLabel = (value: unknown): string => {
@@ -686,7 +703,9 @@ function WorkItemActivity({
           }
           const description = activityChangeDescription(row, t);
           const icon =
-            row.field === "priority" ? (
+            row.verb === REOPEN_REQUESTED_VERB ? (
+              <TriangleAlert className="size-4" />
+            ) : row.field === "priority" ? (
               <CircleAlert className="size-4" />
             ) : row.field === "assignee" ? (
               <UserRound className="size-4" />
@@ -714,7 +733,18 @@ function WorkItemActivity({
                 groups[index + 1] && !isComment(groups[index + 1][0]),
               )}
             >
-              {row.field ? (
+              {row.verb === REOPEN_REQUESTED_VERB ? (
+                <span
+                  className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+                  data-testid="work-item-reopen-requested"
+                >
+                  <Badge variant="warning">
+                    <TriangleAlert className="size-3" aria-hidden="true" />
+                    {t("activity:timeline.reopenRequested.badge")}
+                  </Badge>
+                  {t("activity:timeline.reopenRequested.description")}
+                </span>
+              ) : row.field ? (
                 <span className="text-sm text-muted-foreground">
                   {description}
                 </span>
@@ -723,7 +753,7 @@ function WorkItemActivity({
                   {row.verb === "attachment.added" ||
                   row.verb === "attachment.deleted"
                     ? activityChangeDescription(row, t)
-                    : row.verb}
+                    : activityVerbLabel(row.verb, t)}
                 </span>
               )}
               {group.length > 1 ? (

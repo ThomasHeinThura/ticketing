@@ -84,7 +84,7 @@ export async function emitUnblockedTargets(
   input: {
     targetIds: string[];
     formerBlockerId: string;
-    actorId: string;
+    actorId: string | null;
     actorType: ActivityActorType;
   },
 ) {
@@ -132,7 +132,11 @@ export async function emitUnblockedTargets(
 }
 export async function emitUnblockedAfterClosing(
   tx: Transaction,
-  input: { blockerId: string; actorId: string; actorType: ActivityActorType },
+  input: {
+    blockerId: string;
+    actorId: string | null;
+    actorType: ActivityActorType;
+  },
 ) {
   const edges = await tx
     .select({ targetId: workItemRelationTable.targetId })

@@ -16,6 +16,7 @@ import {
   Shield,
   Tag,
   Timer,
+  Workflow,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -74,6 +75,11 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       title: t("requestTypes:title"),
       url: "/agent/settings/request-types",
       icon: Inbox,
+    },
+    {
+      title: t("settings:workflows.title"),
+      url: "/agent/settings/workflows",
+      icon: Workflow,
     },
   ];
   const isActivePath = (path: string) =>

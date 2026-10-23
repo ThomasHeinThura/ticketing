@@ -52,4 +52,19 @@ export const auditPolicies = {
     scopeSource: "request",
     reach: "required",
   },
+  // AU-8/AU-9: an entity's own audit rows. Only the work_item type exists; reach and
+  // `work_item:read` are those of the work item itself (kind 1, resolved by `{type}`).
+  "GET /api/audit/entity/{type}/{id}": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+  // AU-8/AU-9: point-in-time reconstruction, a pure fold over the activity journal.
+  "GET /api/work-items/{key}/reconstruct": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
 } as const satisfies PolicyMap;

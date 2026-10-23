@@ -15,6 +15,8 @@ export type HolidayImportResponse = {
   calendar: ServiceCalendar;
   importedCount: number;
   duplicateCount: number;
+  /** CAL-13: open work items whose deadlines a past holiday in this import moves later. */
+  affectedWorkItemCount: number;
 };
 export type ServiceCalendarPreview = InferResponseType<
   (typeof client)["service-calendars"][":id"]["preview"]["$get"],
@@ -147,7 +149,9 @@ export async function updateServiceCalendar({
   id,
   version,
   data,
-}: UpdateServiceCalendarRequest): Promise<ServiceCalendar> {
+}: UpdateServiceCalendarRequest): Promise<
+  ServiceCalendar & { affectedWorkItemCount: number }
+> {
   const response = await client["service-calendars"][":id"].$patch({
     param: { id },
     header: { "if-match": `"${version}"` },

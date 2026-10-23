@@ -1,9 +1,11 @@
 import { client } from "@taskdesk/libs";
+import type { IntakeServerFilters } from "@/lib/intake-queue";
 
 export async function getSubmissions(
   workspaceId: string,
   state?: string,
   cursor?: string,
+  filters: IntakeServerFilters = {},
 ) {
   const response = await client.submissions.$get({
     query: {
@@ -20,6 +22,14 @@ export async function getSubmissions(
           }
         : {}),
       ...(cursor ? { cursor } : {}),
+      // `IQ-21`: applied by the server so a shared URL shows the same queue on any page.
+      ...(filters.requestTypeKey
+        ? { requestTypeKey: filters.requestTypeKey }
+        : {}),
+      ...(filters.assignee ? { assignee: filters.assignee } : {}),
+      ...(filters.olderThanDays !== undefined
+        ? { olderThanDays: String(filters.olderThanDays) }
+        : {}),
       limit: "50",
     },
   });

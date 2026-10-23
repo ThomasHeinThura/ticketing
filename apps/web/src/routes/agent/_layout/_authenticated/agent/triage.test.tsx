@@ -12,7 +12,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "./triage";
 
 const mocks = vi.hoisted(() => ({
-  search: { state: "new" } as { state: string; ref?: string },
+  search: { state: "new" } as {
+    state: string;
+    ref?: string;
+    assignee?: string;
+    age?: string;
+    requestType?: string;
+  },
   workItemTypes: [] as Array<{ id: string; name: string }>,
   navigate: vi.fn(),
   getSubmissions: vi.fn(),
@@ -22,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   declineSubmission: vi.fn(),
   downloadAttachment: vi.fn(),
   getDuplicateSuggestions: vi.fn(),
+  getRequestTypes: vi.fn(),
   getSubmission: vi.fn(),
   getSubmissionAttachments: vi.fn(),
   markDuplicate: vi.fn(),
@@ -42,6 +49,7 @@ vi.mock("@/fetchers/intake", () => ({
   declineSubmission: mocks.declineSubmission,
   downloadSubmissionAttachment: mocks.downloadAttachment,
   getDuplicateSuggestions: mocks.getDuplicateSuggestions,
+  getRequestTypes: mocks.getRequestTypes,
   getSubmission: mocks.getSubmission,
   getSubmissionAttachments: mocks.getSubmissionAttachments,
   getSubmissions: mocks.getSubmissions,
@@ -107,6 +115,12 @@ describe("intake triage route", () => {
     mocks.search = { state: "new" };
     mocks.workItemTypes = [];
     mocks.navigate.mockReset();
+    mocks.getRequestTypes.mockReset().mockResolvedValue({
+      requestTypes: [
+        { id: "rt_1", key: "access", name: "Access request" },
+        { id: "rt_2", key: "vpn", name: "VPN" },
+      ],
+    });
     mocks.getSubmissions
       .mockReset()
       .mockRejectedValueOnce(new Error("temporary failure"))
@@ -144,6 +158,132 @@ describe("intake triage route", () => {
     expect(
       screen.queryByText("New customer requests will appear here."),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the submission age and asks the server to apply the URL filters", async () => {
+    const hoursAgo = (hours: number) =>
+      new Date(Date.now() - hours * 3_600_000).toISOString();
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [
+        {
+          ref: "SUB-1",
+          summary: "Old one",
+          submission: {
+            state: "new",
+            createdAt: hoursAgo(5 * 24),
+            claimedBy: null,
+          },
+          requestType: { id: "rt_1", name: "Access request" },
+          requester: { displayName: "Ada" },
+          organisation: { name: "Northstar" },
+        },
+        {
+          ref: "SUB-2",
+          summary: "Fresh claimed",
+          submission: { state: "new", createdAt: hoursAgo(2), claimedBy: "p1" },
+          requestType: { id: "rt_2", name: "VPN" },
+          requester: { displayName: "Bo" },
+          organisation: { name: "Northstar" },
+        },
+      ],
+      page: { hasMore: false, nextCursor: null },
+    });
+    mocks.search = { state: "new" };
+    const first = renderTriage();
+    await screen.findByText("SUB-1");
+    expect(
+      screen.getAllByTestId("triage-row-age").map((cell) => cell.textContent),
+    ).toEqual(["5d", "2h"]);
+    first.unmount();
+
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [
+        {
+          ref: "SUB-1",
+          summary: "Old one",
+          submission: {
+            state: "new",
+            createdAt: hoursAgo(5 * 24),
+            claimedBy: null,
+          },
+          requestType: { id: "rt_1", name: "Access request" },
+          requester: { displayName: "Ada" },
+          organisation: { name: "Northstar" },
+        },
+      ],
+      page: { hasMore: false, nextCursor: null },
+    });
+    mocks.search = {
+      state: "new",
+      assignee: "unclaimed",
+      age: "3d",
+      requestType: "rt_1",
+    };
+    renderTriage();
+    await screen.findByText("SUB-1");
+    // IQ-21: the server applies request type key, assignee and age; not the page.
+    await waitFor(() =>
+      expect(mocks.getSubmissions).toHaveBeenCalledWith(
+        expect.anything(),
+        "new",
+        undefined,
+        { requestTypeKey: "access", assignee: "unclaimed", olderThanDays: 3 },
+      ),
+    );
+    const chips = screen.getByTestId("triage-filter-chips");
+    expect(within(chips).getByText("Unclaimed")).toBeVisible();
+    fireEvent.click(
+      within(chips).getByRole("button", { name: "Remove Age filter" }),
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      search: expect.objectContaining({ age: undefined, cursor: undefined }),
+    });
+  });
+
+  it("still narrows the loaded page for the claimed filter, which the server has no parameter for", async () => {
+    const now = new Date().toISOString();
+    const row = (ref: string, claimedBy: string | null) => ({
+      ref,
+      summary: `Summary of ${ref}`,
+      submission: { state: "new", createdAt: now, claimedBy },
+      requestType: { id: "rt_1", name: "Access request" },
+      requester: { displayName: "Ada" },
+      organisation: { name: "Northstar" },
+    });
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [row("SUB-1", null), row("SUB-2", "p1")],
+      page: { hasMore: false, nextCursor: null },
+    });
+    mocks.search = { state: "new", assignee: "claimed" };
+    renderTriage();
+    await screen.findByText("Summary of SUB-2");
+    expect(screen.queryByText("Summary of SUB-1")).not.toBeInTheDocument();
+    expect(mocks.getSubmissions).toHaveBeenCalledWith(
+      expect.anything(),
+      "new",
+      undefined,
+      {},
+    );
+  });
+
+  it("offers every request type in the filter menu and navigates with the choice", async () => {
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [],
+      page: { hasMore: false, nextCursor: null },
+    });
+    renderTriage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Filter queue" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Request type" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitemcheckbox", { name: "VPN" }),
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      search: expect.objectContaining({ requestType: "rt_2" }),
+    });
   });
 
   it("exposes the selected status filter and the open row to assistive technology", async () => {

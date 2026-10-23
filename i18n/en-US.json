@@ -1554,6 +1554,107 @@
 			},
 			"reorder": "Reorder {{name}}"
 		},
+		"workflows": {
+			"title": "Workflows",
+			"description": "State machines that decide which transitions a work item may take. Edit the transitions, save a draft, validate it against every project that uses it, then publish.",
+			"new": "New workflow",
+			"back": "All workflows",
+			"loading": "Loading workflows",
+			"loadErrorTitle": "Workflows could not be loaded",
+			"loadErrorDescription": "Check your connection and try again.",
+			"errorTitle": "That did not work",
+			"errorDescription": "The workflow request failed. Reload and try again.",
+			"readOnlyTitle": "Read-only",
+			"readOnlyDescription": "You can view workflows but not change them.",
+			"emptyTitle": "No workflows yet",
+			"emptyDescription": "Create a workflow, then add its transitions.",
+			"draftSaved": "Draft v{{number}} saved",
+			"published": "Version {{number}} published",
+			"list": {
+				"name": "Name",
+				"key": "Key",
+				"active": "Active version",
+				"notPublished": "Not published"
+			},
+			"status": {
+				"active": "Active",
+				"draft": "Draft",
+				"superseded": "Superseded"
+			},
+			"create": {
+				"title": "Create workflow",
+				"description": "A workflow starts empty. Add transitions and publish it to make it usable.",
+				"name": "Name",
+				"key": "Key",
+				"submit": "Create",
+				"keyTaken": "That workflow key is already taken.",
+				"error": "The workflow could not be created."
+			},
+			"versions": {
+				"title": "Versions",
+				"number": "Version",
+				"status": "Status",
+				"transitions": "Transitions",
+				"actions": "Actions",
+				"validate": "Validate"
+			},
+			"transitions": {
+				"title": "Transitions",
+				"basedOn": "Editing a copy of version {{number}}. Saving creates a new draft.",
+				"none": "This workflow has no versions yet.",
+				"emptyTitle": "No transitions",
+				"emptyDescription": "Add a transition to say how work items may move between states.",
+				"from": "From",
+				"to": "To",
+				"role": "Role",
+				"notes": "Note",
+				"rules": "Rules",
+				"anyState": "Any state",
+				"anyRole": "Any role",
+				"approval": "Approval",
+				"cab": "CAB",
+				"guards_one": "{{count}} guard",
+				"guards_other": "{{count}} guards",
+				"add": "Add transition",
+				"remove": "Remove transition from {{from}} to {{to}}",
+				"unsaved": "Unsaved changes",
+				"discard": "Discard",
+				"saveDraft": "Save draft"
+			},
+			"notePolicy": {
+				"none": "No note",
+				"optional": "Note optional",
+				"required": "Note required"
+			},
+			"add": {
+				"title": "Add transition",
+				"description": "Guards, approvals and effects on existing transitions are kept as they are.",
+				"toPlaceholder": "Choose a state",
+				"submit": "Add"
+			},
+			"validation": {
+				"title": "Validation of version {{number}}",
+				"description": "Checked against every project that uses this workflow.",
+				"valid": "No problems found",
+				"invalid": "This version has problems",
+				"publishNote": "Publishing does not move work items that are already in flight.",
+				"unreachable": "States nothing can reach",
+				"noOutbound": "States with no way out",
+				"roles": "Roles with no legal transition",
+				"stuckTitle_one": "{{count}} work item would be stranded",
+				"stuckTitle_other": "{{count}} work items would be stranded",
+				"stuckDescription": "These items sit in a state this version cannot move them out of. Open one to fix it before publishing.",
+				"workItem": "Work item",
+				"project": "Project",
+				"publish": "Publish version {{number}}",
+				"publishAnyway": "Publish version {{number}} anyway",
+				"unknownProject": "Unknown project",
+				"unknownState": "an unavailable state",
+				"noDefaultState": "No default state is selected.",
+				"defaultNotEnabled": "The default state \"{{state}}\" is not one of the enabled states.",
+				"stateNoOutbound": "\"{{state}}\" has no outbound transition in this workflow."
+			}
+		},
 		"workItemTemplates": {
 			"title": "Work item templates",
 			"description": "Reusable starting points for new work items. Creating from a template copies its description, labels and checklist, never the assignee or dates.",
@@ -1962,6 +2063,16 @@
 				"automation": "Automation",
 				"system": "System",
 				"apiKey": "API key"
+			},
+			"reopenRequested": {
+				"badge": "Reopen needs review",
+				"description": "A customer replied or uploaded to this resolved request, but it could not be reopened automatically. Please review it."
+			},
+			"verbs": {
+				"created": "Created",
+				"updated": "Updated",
+				"transitioned": "Changed state",
+				"commented": "Commented"
 			}
 		}
 	},
@@ -2840,6 +2951,14 @@
 				"unavailable": "SLA targets are not available for this item.",
 				"remaining": "{{time}} left",
 				"due": "due {{date}}",
+				"atRiskMark": "Close to its limit",
+				"atRiskPast": "Past the {{pct}}% at-risk mark",
+				"pausedSince": "Paused – {{reason}} since {{since}}",
+				"pauseReason": {
+					"waiting_customer": "waiting on customer",
+					"manual": "paused by an agent",
+					"other": "on hold"
+				},
 				"metric": {
 					"first_response": "First response",
 					"resolution": "Resolution"
@@ -2851,7 +2970,9 @@
 					"breached": "Breached",
 					"met": "Met",
 					"missed": "Missed"
-				}
+				},
+				"calendar": "Working calendar: {{name}}",
+				"atRiskMarkerAt": "At-risk mark at {{pct}}% of the target"
 			},
 			"attachments": {
 				"heading": "Attachments",
@@ -3170,6 +3291,60 @@
 			"failed": "Unable to move this work item.",
 			"confirm": "Move",
 			"success": "Moved as {{key}}."
+		},
+		"auditHistory": {
+			"title": "Audit history",
+			"error": "The audit history could not be loaded.",
+			"empty": "No audited changes for this work item.",
+			"when": "When",
+			"action": "Action",
+			"stateThen": "State then",
+			"stateAt": "Recorded values as of {{when}}",
+			"reconstructError": "This state could not be reconstructed.",
+			"noFields": "No field values were recorded by then.",
+			"emptyValue": "(empty)",
+			"noValue": "None",
+			"actions": {
+				"work_item_created": "Created",
+				"work_item_updated": "Updated",
+				"work_item_transitioned": "Changed state",
+				"work_item_assigned": "Assigned",
+				"work_item_unassigned": "Unassigned",
+				"work_item_deleted": "Deleted",
+				"work_item_commented": "Commented",
+				"work_item_escalated": "Escalated",
+				"work_item_exported": "Exported",
+				"work_item_archived": "Archived",
+				"work_item_restored": "Restored",
+				"work_item_moved": "Moved to another project",
+				"work_item_unblocked": "Unblocked",
+				"work_item_overdue": "Became overdue",
+				"work_item_due_soon": "Due soon",
+				"work_item_mentioned": "Mentioned someone",
+				"comment_updated": "Comment edited",
+				"comment_deleted": "Comment deleted",
+				"attachment_downloaded": "Attachment downloaded",
+				"audit_read": "Audit history viewed",
+				"pending_action_viewed": "Pending deletion viewed",
+				"bulk_performed": "Bulk change"
+			},
+			"fields": {
+				"stateId": "State",
+				"assigneeId": "Assignee",
+				"assignee": "Assignee",
+				"priority": "Priority",
+				"title": "Title",
+				"description": "Description",
+				"due_date": "Due date",
+				"start_date": "Start date",
+				"label": "Labels",
+				"parent": "Parent",
+				"project": "Project",
+				"archived_at": "Archived on",
+				"key": "Key",
+				"template": "Template",
+				"checklist": "Checklist"
+			}
 		}
 	},
 	"portal": {
@@ -3268,7 +3443,18 @@
 			"completeUpload": "Finish upload",
 			"completeUploadError": "Could not finish this upload.",
 			"attachmentListError": "Could not load attachments.",
-			"downloadError": "The file could not be downloaded. Try again."
+			"downloadError": "The file could not be downloaded. Try again.",
+			"sla": {
+				"label": "Service target",
+				"due": "Due {{when}}",
+				"state": {
+					"on_track": "On track",
+					"at_risk": "At risk",
+					"breached": "Overdue",
+					"met": "Met",
+					"missed": "Missed"
+				}
+			}
 		}
 	},
 	"instanceUsers": {
@@ -3542,7 +3728,25 @@
 		"prefilledFromType": "Prefilled from request type: {{name}}",
 		"convertedWorkItem": "Converted work item: {{label}}",
 		"retry": "Retry",
-		"nextPage": "Next page"
+		"nextPage": "Next page",
+		"age": "Age",
+		"filters": {
+			"menu": "Filter queue",
+			"filter": "Filter",
+			"filterBy": "Filter by",
+			"requestType": "Request type",
+			"assignee": "Assignee",
+			"assigneeValue": {
+				"claimed": "Claimed",
+				"unclaimed": "Unclaimed"
+			},
+			"age": "Age",
+			"ageValue": "Older than {{age}}",
+			"is": "is",
+			"remove": "Remove {{subject}} filter",
+			"noMatch": "No submissions match the filters",
+			"noMatchHint": "No submission in this state matches every filter. Remove one to see more."
+		}
 	},
 	"requestTypes": {
 		"title": "Request types",
@@ -3724,6 +3928,9 @@
 			"create": "Create calendar",
 			"saving": "Saving…",
 			"conflictTitle": "Calendar changed while you were editing",
+			"retroactiveTitle": "Deadlines may have moved",
+			"retroactiveDescription_one": "This holiday change covers days that have already passed. {{count}} open work item on this calendar has run through them, so its deadline moves later.",
+			"retroactiveDescription_other": "This holiday change covers days that have already passed. {{count}} open work items on this calendar have run through them, so their deadlines move later.",
 			"conflictDescription": "Your draft is still available. Reload the latest calendar to discard it, or keep your draft and save it against version {{version}}.",
 			"conflictRefreshing": "Refreshing the latest calendar…",
 			"conflictRefreshFailed": "The latest calendar could not be loaded. Your draft is safe; retry the refresh before choosing how to continue.",

@@ -78,6 +78,7 @@ vi.mock("./work-item-sla", () => ({
   default: () => <div data-testid="sla-section" />,
 }));
 vi.mock("./work-item-attachments", () => ({ default: () => null }));
+vi.mock("./work-item-audit-history", () => ({ default: () => null }));
 vi.mock("./work-item-activity", () => ({
   default: () => <div data-testid="work-item-activity" />,
 }));

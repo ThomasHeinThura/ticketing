@@ -1,5 +1,5 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { schema } from "../database";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
 import type { DbTransaction } from "../events/outbox";
@@ -497,6 +497,92 @@ export async function listWorkItemWatchers(
     })
     .from(schema.watcherTable)
     .where(eq(schema.watcherTable.workItemId, workItemId));
+}
+
+/**
+ * The stored facts `submission.replied` recipients are resolved from: owner, last handler and
+ * the workspace the submission's request type belongs to.
+ */
+export async function findSubmissionNotificationContext(
+  tx: DbTransaction,
+  number: number,
+) {
+  const [row] = await tx
+    .select({
+      id: schema.submissionTable.id,
+      requesterId: schema.submissionTable.requesterId,
+      claimedBy: schema.submissionTable.claimedBy,
+      workspaceId: schema.requestTypeTable.workspaceId,
+    })
+    .from(schema.submissionTable)
+    .innerJoin(
+      schema.requestTypeTable,
+      eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+    )
+    .where(eq(schema.submissionTable.number, number))
+    .limit(1);
+  return row ?? null;
+}
+
+/** The work item's current assignee person id (null when unassigned or missing). */
+export async function findWorkItemAssigneeId(
+  tx: DbTransaction,
+  workItemId: string,
+): Promise<string | null> {
+  const [row] = await tx
+    .select({ assigneeId: schema.workItemTable.assigneeId })
+    .from(schema.workItemTable)
+    .where(eq(schema.workItemTable.id, workItemId))
+    .limit(1);
+  return row?.assigneeId ?? null;
+}
+
+/**
+ * NO-21 "project leads": persons holding the system `project-lead` role at this project's own
+ * scope (`membership.scope = 'project'`). The role is resolved per workspace by key, never by
+ * display name; a deactivated person is filtered by the caller's active check.
+ */
+export async function listProjectLeadPersonIds(
+  tx: DbTransaction,
+  input: { projectId: string; workspaceId: string },
+): Promise<string[]> {
+  const rows = await tx
+    .select({ personId: schema.membershipTable.personId })
+    .from(schema.membershipTable)
+    .innerJoin(
+      schema.roleTable,
+      eq(schema.roleTable.id, schema.membershipTable.roleId),
+    )
+    .where(
+      and(
+        eq(schema.membershipTable.scope, "project"),
+        eq(schema.membershipTable.scopeId, input.projectId),
+        eq(schema.roleTable.scope, "project"),
+        eq(schema.roleTable.workspaceId, input.workspaceId),
+        eq(schema.roleTable.key, "project-lead"),
+      ),
+    );
+  return [...new Set(rows.map(({ personId }) => personId))];
+}
+
+/** The project's stakeholder rows for the escalation walk, ordered (SLA-17 / NO-22). */
+export async function listProjectStakeholders(
+  tx: DbTransaction,
+  projectId: string,
+) {
+  return tx
+    .select({
+      personId: schema.stakeholderTable.personId,
+      escalationOrder: schema.stakeholderTable.escalationOrder,
+      escalationWaitMinutes: schema.stakeholderTable.escalationWaitMinutes,
+      active: schema.stakeholderTable.active,
+    })
+    .from(schema.stakeholderTable)
+    .where(eq(schema.stakeholderTable.projectId, projectId))
+    .orderBy(
+      asc(schema.stakeholderTable.escalationOrder),
+      asc(schema.stakeholderTable.personId),
+    );
 }
 
 export async function listApprovalParticipantPersonIds(

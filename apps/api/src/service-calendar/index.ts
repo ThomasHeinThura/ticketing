@@ -43,6 +43,7 @@ import {
   calendarListSchema,
   calendarPreviewSchema,
   calendarSchema,
+  calendarUpdateSchema,
   calendarVersionConflictSchema,
 } from "./response";
 import {
@@ -178,7 +179,7 @@ const updateRouteDef = createRoute({
     },
   },
   responses: {
-    200: jsonResponse("Updated calendar", calendarSchema),
+    200: jsonResponse("Updated calendar", calendarUpdateSchema),
     400: errorResponse("Invalid calendar data"),
     403: errorResponse("Missing sla_policy:manage permission"),
     404: errorResponse("Service calendar not found"),
@@ -390,7 +391,13 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
     }
     if (!result)
       throw new HTTPException(404, { message: "Service calendar not found" });
-    return c.json(calendarSchema.parse(result.row), 200);
+    return c.json(
+      calendarUpdateSchema.parse({
+        ...result.row,
+        affectedWorkItemCount: result.affectedWorkItemCount,
+      }),
+      200,
+    );
   })
   .openapi(importHolidaysRoute, async (c) => {
     const id = c.req.valid("param").id;
@@ -438,6 +445,7 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
         calendar: result.row,
         importedCount: result.importedCount,
         duplicateCount: result.duplicateCount,
+        affectedWorkItemCount: result.affectedWorkItemCount,
       }),
       200,
     );

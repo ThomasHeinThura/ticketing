@@ -1047,6 +1047,14 @@ export const instanceSettingTable = pgTable(
     approvalDefaultExpiryDays: integer("approval_default_expiry_days")
       .notNull()
       .default(7),
+    // IQ-15 (data-model.md `instance_setting`): a submission `clarifying` for longer than this
+    // many days is auto-declined by `reminder-scan`. Default 14.
+    clarificationWindowDays: integer("clarification_window_days")
+      .notNull()
+      .default(14),
+    // CP-8 / WF-21 (data-model.md `instance_setting`): how long after resolution a customer may
+    // reopen a request (reopen, reply to a closed request, upload to a resolved one). Default 14.
+    reopenWindowDays: integer("reopen_window_days").notNull().default(14),
     localFactorPolicy: jsonb("local_factor_policy")
       .$type<{ mode: string; requiredRoleId: string | null }>()
       .notNull()
@@ -1103,6 +1111,14 @@ export const instanceSettingTable = pgTable(
     // going red. This CHECK makes the single-row invariant the comment above
     // already claims into something Postgres actually enforces.
     check("instance_setting_id_singleton", sql.raw("id = 'singleton'::text")),
+    check(
+      "instance_setting_clarification_window_days_positive",
+      sql.raw("clarification_window_days >= 1"),
+    ),
+    check(
+      "instance_setting_reopen_window_days_positive",
+      sql.raw("reopen_window_days >= 1"),
+    ),
     check(
       "instance_setting_observability_version_positive",
       sql.raw("observability_config_version >= 1"),
@@ -5061,6 +5077,21 @@ export const submissionTable = pgTable(
       onDelete: "restrict",
       onUpdate: "cascade",
     }),
+    // IQ-15: when the current `clarifying` period began (the clock `reminder-scan` measures
+    // against `instance_setting.clarification_window_days`). Set on every staff clarification
+    // and cleared by the customer's reply (IQ-13). `updated_at` cannot serve: a claim or any
+    // other write would restart the window.
+    clarifyingSince: timestamp("clarifying_since", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    // IQ-15: set only by the system's auto-decline. Only an auto-declined submission is
+    // reopenable by the customer; a staff decline (IQ-16) leaves this null and is final for
+    // them (decision log 2026-09-25). Cleared again when the customer reopens.
+    autoDeclinedAt: timestamp("auto_declined_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -5092,6 +5123,14 @@ export const submissionTable = pgTable(
       table.createdAt.desc(),
     ),
     check("submission_number_positive", sql.raw("number > 0")),
+    check(
+      "submission_auto_declined_state_consistent",
+      sql.raw("(auto_declined_at IS NULL) OR (state = 'declined'::text)"),
+    ),
+    // `reminder-scan` selects clarifying rows past their window; keeps that scan indexed.
+    index("submission_clarifying_since_idx")
+      .on(table.clarifyingSince)
+      .where(sql.raw("(state = 'clarifying'::text)")),
     check("submission_version_positive", sql.raw("version > 0")),
     check(
       "submission_state_allowed",
@@ -5989,5 +6028,83 @@ export const workItemSlaCacheTable = pgTable(
       sql` ${table.state} IN ('none', 'ok', 'at_risk', 'breached', 'met', 'missed') `,
     ),
     index("work_item_sla_cache_state_due_idx").on(table.state, table.dueAt),
+  ],
+);
+
+/**
+ * SLA-17 / NO-22 escalation walk, one row per (work item, metric, triggering `sla.breached`
+ * event). Created in the `sla-scan` transaction that emits the breach (the first stakeholder
+ * is notified in that same transaction); `reminder-scan`'s escalation step advances it, so a
+ * restart never loses a step. `trigger_event_id` is the `outbox.event_id` of the breach: each
+ * stakeholder's inbox row is keyed `(event_id, person_id)` on it, which makes every step
+ * idempotent. The three `*_at_start` columns are the NO-22 stop-condition baselines.
+ */
+export const slaEscalationTable = pgTable(
+  "sla_escalation",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    workItemId: text("work_item_id")
+      .notNull()
+      .references(() => workItemTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    metric: text("metric").notNull(),
+    triggerEventId: text("trigger_event_id").notNull(),
+    stateIdAtStart: text("state_id_at_start").notNull(),
+    assigneeIdAtStart: text("assignee_id_at_start"),
+    // `stakeholder.escalation_order` of the last stakeholder notified. Order, not position,
+    // so adding/reordering/standing down stakeholders mid-walk stays correct.
+    lastOrder: integer("last_order").notNull(),
+    // When the next stakeholder becomes due; null once the walk is no longer active.
+    nextDueAt: timestamp("next_due_at", { mode: "date", withTimezone: true }),
+    state: text("state").notNull().default("active"),
+    stopReason: text("stop_reason"),
+    startedAt: timestamp("started_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("sla_escalation_item_metric_trigger_unique").on(
+      table.workItemId,
+      table.metric,
+      table.triggerEventId,
+    ),
+    index("sla_escalation_due_idx")
+      .on(table.nextDueAt)
+      .where(sql.raw("(state = 'active'::text)")),
+    check(
+      "sla_escalation_metric_allowed",
+      sql.raw(
+        "metric = ANY (ARRAY['first_response'::text, 'resolution'::text])",
+      ),
+    ),
+    check(
+      "sla_escalation_state_allowed",
+      sql.raw(
+        "state = ANY (ARRAY['active'::text, 'completed'::text, 'stopped'::text])",
+      ),
+    ),
+    check(
+      "sla_escalation_active_has_due",
+      sql.raw("(state <> 'active'::text) OR (next_due_at IS NOT NULL)"),
+    ),
   ],
 );

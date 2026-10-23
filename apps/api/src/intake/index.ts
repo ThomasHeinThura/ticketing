@@ -21,6 +21,7 @@ import {
 import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { parseSubmissionListFilters } from "./list-filters";
 import {
   acceptSubmission,
   claimSubmission,
@@ -144,6 +145,13 @@ const portalSubmissionResponseSchema = z.object({
       description: z.string(),
       state: z.string(),
       priority: z.string().nullable(),
+      /** SLA-21: customer-safe projection; null when no SLA applies. */
+      sla: z
+        .object({
+          state: z.enum(["on_track", "at_risk", "breached", "met", "missed"]),
+          dueAt: z.string().datetime().nullable(),
+        })
+        .nullable(),
     })
     .nullable(),
   messages: z.array(
@@ -187,6 +195,10 @@ const queryList = workspaceQuery.extend({
       "withdrawn",
     ])
     .optional(),
+  // IQ-21: server-side queue filters (see ./list-filters).
+  requestTypeKey: z.string().max(200).optional(),
+  assignee: z.string().max(200).optional(),
+  olderThanDays: z.string().max(4).optional(),
   cursor: z.string().max(2048).optional(),
   limit: z.string().optional(),
 });
@@ -995,6 +1007,7 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
       query.state ? [query.state] : undefined,
       query.cursor,
       parseCollectionLimit(query.limit),
+      parseSubmissionListFilters(query),
     );
     return c.json(
       {

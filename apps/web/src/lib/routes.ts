@@ -615,14 +615,36 @@ export type IntakeQueueSearch = {
     | "withdrawn";
   ref?: string;
   cursor?: string;
+  /** `IQ-19`/`IQ-21`: request type id. */
+  requestType?: string;
+  /** `IQ-21`: whether a triager has claimed the submission. */
+  assignee?: IntakeAssigneeFilter;
+  /** `IQ-21`: only submissions at least this old. */
+  age?: IntakeAgeFilter;
 };
+export const INTAKE_ASSIGNEE_FILTERS = ["claimed", "unclaimed"] as const;
+export type IntakeAssigneeFilter = (typeof INTAKE_ASSIGNEE_FILTERS)[number];
+export const INTAKE_AGE_FILTERS = ["1d", "3d", "7d", "30d"] as const;
+export type IntakeAgeFilter = (typeof INTAKE_AGE_FILTERS)[number];
 export type RequestTypeEditorSearch = { requestTypeId?: string };
+export type WorkflowSettingsSearch = { workflowId?: string };
 export type PortalCatalogueSearch = { q?: string; key?: string };
 export type PortalSignInStage = "email" | "password" | "factor";
 export type PortalSignInSearch = {
   stage: PortalSignInStage;
   factor: "totp" | "backup";
 };
+
+export function parseWorkflowSettingsSearch(
+  raw: unknown,
+): WorkflowSettingsSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return typeof value.workflowId === "string" &&
+    value.workflowId.length > 0 &&
+    value.workflowId.length <= 200
+    ? { workflowId: value.workflowId }
+    : {};
+}
 
 export function parseRequestTypeEditorSearch(
   raw: unknown,
@@ -653,7 +675,24 @@ export function parseIntakeSearch(raw: unknown): IntakeQueueSearch {
     typeof value.cursor === "string" && value.cursor.length <= 2048
       ? value.cursor
       : undefined;
-  return { state, ...(ref ? { ref } : {}), ...(cursor ? { cursor } : {}) };
+  const requestType =
+    typeof value.requestType === "string" &&
+    value.requestType.length > 0 &&
+    value.requestType.length <= 200
+      ? value.requestType
+      : undefined;
+  const assignee = INTAKE_ASSIGNEE_FILTERS.find(
+    (candidate) => candidate === value.assignee,
+  );
+  const age = INTAKE_AGE_FILTERS.find((candidate) => candidate === value.age);
+  return {
+    state,
+    ...(ref ? { ref } : {}),
+    ...(cursor ? { cursor } : {}),
+    ...(requestType ? { requestType } : {}),
+    ...(assignee ? { assignee } : {}),
+    ...(age ? { age } : {}),
+  };
 }
 
 export function parsePortalCatalogueSearch(
@@ -729,6 +768,16 @@ export const routes = {
         : "/agent/settings/request-types";
     },
   },
+  /** `WF-9`: workflow versions, validation and publish, in the settings frame. */
+  workflowSettings: {
+    path: "/agent/settings/workflows" as const,
+    build: (search: WorkflowSettingsSearch = {}) => {
+      const resolved = parseWorkflowSettingsSearch(search);
+      return resolved.workflowId
+        ? `/agent/settings/workflows?workflowId=${encodeURIComponent(resolved.workflowId)}`
+        : "/agent/settings/workflows";
+    },
+  },
   intakeQueue: {
     path: "/agent/triage" as const,
     build: (search: IntakeQueueSearch = { state: "new" }) => {
@@ -736,6 +785,9 @@ export const routes = {
       const query = new URLSearchParams({ state: resolved.state });
       if (resolved.ref) query.set("ref", resolved.ref);
       if (resolved.cursor) query.set("cursor", resolved.cursor);
+      if (resolved.requestType) query.set("requestType", resolved.requestType);
+      if (resolved.assignee) query.set("assignee", resolved.assignee);
+      if (resolved.age) query.set("age", resolved.age);
       return `/agent/triage?${query.toString()}`;
     },
   },

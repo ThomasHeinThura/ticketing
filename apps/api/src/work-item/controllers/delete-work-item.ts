@@ -12,6 +12,7 @@ import {
 } from "../assert-work-item-live";
 import { WORK_ITEM_HIERARCHY_LOCK_NAMESPACE } from "../hierarchy-lock";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import { cancelPendingScheduledTransitions } from "../scheduled-transition-cancel";
 
 /** Executor-only mutation: approval and soft deletion must share this transaction. */
 export async function deleteWorkItemInTransaction(
@@ -61,6 +62,7 @@ export async function deleteWorkItemInTransaction(
     .returning();
   if (!deleted)
     throw new HTTPException(404, { message: "Work item not found" });
+  await cancelPendingScheduledTransitions(tx, deleted.id);
   // Stored parent/relation rows survive the restore window; live views hide deleted parents.
   await appendAuditLog(tx, {
     actorId,

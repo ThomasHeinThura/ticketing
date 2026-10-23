@@ -40,6 +40,9 @@ import {
   enqueueOutboxEvent,
   eventScope,
 } from "../events/outbox";
+import { logTaskDesk } from "../instance/observability/runtime";
+import { enqueueNotificationEvent } from "../notification/fanout";
+import { resolveSubmissionRepliedRecipients } from "../notification/submission-recipients";
 import { recordWorkItemActivity } from "../work-item/activity";
 import { resolveAssigneeEligibility } from "../work-item/assignee-eligibility";
 import { claimWorkItemNumber } from "../work-item/controllers/claim-work-item-number";
@@ -50,6 +53,17 @@ import {
   findWorkspaceDefaultSlaPolicyQuery,
   findWorkspaceOwnedSlaPolicyQuery,
 } from "../work-item/repository";
+import {
+  recordReopenRequested,
+  requestCustomerReopen,
+} from "../workflow/customer-reopen";
+import {
+  filtersScope,
+  olderThanCutoff,
+  type SubmissionListFilters,
+  UNCLAIMED,
+} from "./list-filters";
+import { loadPortalSla, type PortalSla } from "./portal-sla";
 
 type RequestTypeInput = {
   workspaceId: string;
@@ -1646,10 +1660,12 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
     description: string;
     state: string;
     priority: string | null;
+    sla: PortalSla | null;
   } | null = null;
   if (portalRow.submission.workItemId) {
     const [item] = await db
       .select({
+        id: schema.workItemTable.id,
         title: schema.workItemTable.title,
         description: schema.workItemTable.description,
         state: schema.stateTemplateTable.name,
@@ -1672,11 +1688,14 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
         ),
       )
       .limit(1);
-    if (item)
+    if (item) {
+      const { id: itemId, ...visible } = item;
       workItem = {
-        ...item,
+        ...visible,
         description: extractDocumentText(item.description),
+        sla: await loadPortalSla(itemId, requesterId),
       };
+    }
   }
   return {
     ref: portalRow.ref,
@@ -1747,19 +1766,45 @@ export async function listSubmissions(
   states?: string[],
   cursor?: string,
   limit = 50,
+  filters: SubmissionListFilters = {},
 ) {
   const visibleStates = states?.length ? states : ["new", "clarifying"];
-  const scope = `staff:${workspaceId}:${[...visibleStates].sort().join(",")}:limit:${limit}`;
+  const scope = `staff:${workspaceId}:${[...visibleStates].sort().join(",")}:limit:${limit}:filters:${filtersScope(filters)}`;
   const decoded = decodeSubmissionCursor(cursor, scope);
-  const conditions = [
+  // The filter predicates are shared by the page and the total, so `meta.total` counts the
+  // filtered queue. `olderThanDays` is evaluated once per request.
+  const filterConditions = [
     eq(schema.requestTypeTable.workspaceId, workspaceId),
     inArray(schema.submissionTable.state, visibleStates),
+    ...(filters.requestTypeKey
+      ? [eq(schema.requestTypeTable.key, filters.requestTypeKey)]
+      : []),
+    ...(filters.assignee === UNCLAIMED
+      ? [isNull(schema.submissionTable.claimedBy)]
+      : filters.assignee
+        ? [eq(schema.submissionTable.claimedBy, filters.assignee)]
+        : []),
+    ...(filters.olderThanDays !== undefined
+      ? [
+          lt(
+            schema.submissionTable.createdAt,
+            olderThanCutoff(filters.olderThanDays, new Date()),
+          ),
+        ]
+      : []),
+  ];
+  // `created_at` carries microseconds but the cursor round-trips through a JS Date
+  // (milliseconds): comparing raw values re-serves the last row of the previous page. Both
+  // the keyset predicate and the order use the millisecond-truncated value.
+  const createdAtMs = sql`date_trunc('milliseconds', ${schema.submissionTable.createdAt})`;
+  const conditions = [
+    ...filterConditions,
     ...(decoded
       ? [
           or(
-            gt(schema.submissionTable.createdAt, new Date(decoded.createdAt)),
+            sql`${createdAtMs} > ${new Date(decoded.createdAt)}`,
             and(
-              eq(schema.submissionTable.createdAt, new Date(decoded.createdAt)),
+              sql`${createdAtMs} = ${new Date(decoded.createdAt)}`,
               gt(schema.submissionTable.id, decoded.id),
             ),
           ),
@@ -1795,10 +1840,7 @@ export async function listSubmissions(
       eq(schema.organisationTable.id, schema.submissionTable.organisationId),
     )
     .where(and(...conditions))
-    .orderBy(
-      asc(schema.submissionTable.createdAt),
-      asc(schema.submissionTable.id),
-    )
+    .orderBy(asc(createdAtMs), asc(schema.submissionTable.id))
     .limit(limit + 1);
   const hasMore = rows.length > limit;
   const pageRows = rows.slice(0, limit);
@@ -1818,12 +1860,7 @@ export async function listSubmissions(
       schema.requestTypeTable,
       eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
     )
-    .where(
-      and(
-        eq(schema.requestTypeTable.workspaceId, workspaceId),
-        inArray(schema.submissionTable.state, visibleStates),
-      ),
-    );
+    .where(and(...filterConditions));
   return {
     submissions: pageRows.map((row) => {
       const form = row.version.formSchema as FormSchema;
@@ -1909,15 +1946,17 @@ export async function listOwnSubmissions(
       page: { nextCursor: null, hasMore: false },
       meta: { total: 0 },
     };
+  // `created_at` has microseconds; the cursor round-trips through a JS Date (milliseconds).
+  const ownCreatedAtMs = sql`date_trunc('milliseconds', ${schema.submissionTable.createdAt})`;
   const conditions = [
     eq(schema.submissionTable.requesterId, identity.personId),
     inArray(schema.requestTypeTable.workspaceId, enabledWorkspaceIds),
     ...(decoded
       ? [
           or(
-            lt(schema.submissionTable.createdAt, new Date(decoded.createdAt)),
+            sql`${ownCreatedAtMs} < ${new Date(decoded.createdAt)}`,
             and(
-              eq(schema.submissionTable.createdAt, new Date(decoded.createdAt)),
+              sql`${ownCreatedAtMs} = ${new Date(decoded.createdAt)}`,
               lt(schema.submissionTable.id, decoded.id),
             ),
           ),
@@ -1935,10 +1974,7 @@ export async function listOwnSubmissions(
       eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
     )
     .where(and(...conditions))
-    .orderBy(
-      desc(schema.submissionTable.createdAt),
-      desc(schema.submissionTable.id),
-    )
+    .orderBy(desc(ownCreatedAtMs), desc(schema.submissionTable.id))
     .limit(limit + 1);
   const hasMore = rows.length > limit;
   const pageRows = rows.slice(0, limit);
@@ -2166,6 +2202,42 @@ export async function postSubmissionMessage(input: {
   const number = parseSubmissionReference(input.ref);
   if (number === null)
     throw new HTTPException(404, { message: "Submission not found" });
+  const posted = await postSubmissionMessageInTransaction(input, number);
+  const { reopenWorkItemId, ...result } = posted as typeof posted & {
+    reopenWorkItemId?: string;
+  };
+  if (reopenWorkItemId) {
+    // WF-21: the reopen request is already durable (a non-warning `reopen_received` row written
+    // in the reply transaction; `reopen_requested` is the post-commit refusal flag only), so a failure here never fails the committed reply; it is
+    // logged, never swallowed.
+    try {
+      await requestCustomerReopen({
+        workItemId: reopenWorkItemId,
+        source: "reply",
+      });
+    } catch {
+      logTaskDesk({
+        module: "jobs",
+        message: "jobs.failure",
+        level: "error",
+        result: "degraded",
+      });
+    }
+  }
+  return result;
+}
+
+async function postSubmissionMessageInTransaction(
+  input: {
+    ref: string;
+    workspaceId?: string;
+    requesterId?: string;
+    actorId: string;
+    actorType: "customer" | "triager";
+    body: string;
+  },
+  number: number,
+) {
   return db.transaction(async (tx) => {
     const [row] = await tx
       .select({
@@ -2245,21 +2317,32 @@ export async function postSubmissionMessage(input: {
         entityId: row.submission.id,
         after: { number, by: "customer", workItemId: row.workItem.id },
       });
-      await enqueueOutboxEvent(tx, {
-        id: `evt_${createId()}`,
-        kind: "submission.replied",
-        occurredAt: now.toISOString(),
-        actor: { type: "person", id: input.actorId, name: "Customer" },
-        scope: eventScope({
+      await enqueueNotificationEvent(
+        tx,
+        {
+          id: `evt_${createId()}`,
+          kind: "submission.replied",
+          occurredAt: now.toISOString(),
+          actor: { type: "person", id: input.actorId, name: "Customer" },
+          scope: eventScope({
+            workspaceId: row.workspaceId,
+            organisationId: row.submission.organisationId,
+            projectId: row.workItem.projectId,
+          }),
+          payload: { ref: input.ref, by: "customer" },
+          causationId: null,
+          depth: 0,
+          originAutomationId: null,
+        },
+        { resolveRecipients: resolveSubmissionRepliedRecipients },
+      );
+      if (row.workItem.resolvedAt) {
+        await recordReopenRequested(tx, {
           workspaceId: row.workspaceId,
-          organisationId: row.submission.organisationId,
-          projectId: row.workItem.projectId,
-        }),
-        payload: { ref: input.ref, by: "customer" },
-        causationId: null,
-        depth: 0,
-        originAutomationId: null,
-      });
+          workItemId: row.workItem.id,
+          source: "reply",
+        });
+      }
       return {
         id: row.submission.id,
         ref: input.ref,
@@ -2271,6 +2354,8 @@ export async function postSubmissionMessage(input: {
           body: input.body,
           createdAt: comment.createdAt,
         },
+        // WF-21: a reply to a closed request reopens it; done after this commit.
+        reopenWorkItemId: row.workItem.id,
       };
     }
     const now = new Date();
@@ -2282,8 +2367,11 @@ export async function postSubmissionMessage(input: {
         state: before.state as never,
         claimedBy: before.claimedBy,
         claimedAt: before.claimedAt,
+        // IQ-15: the stored period start; `updated_at` only for rows that pre-date the column.
         clarifyingSince:
-          before.state === "clarifying" ? before.updatedAt : null,
+          before.state === "clarifying"
+            ? (before.clarifyingSince ?? before.updatedAt)
+            : null,
         staffMessageCount:
           input.actorType === "triager" && before.claimedBy ? 1 : 0,
       },
@@ -2309,6 +2397,9 @@ export async function postSubmissionMessage(input: {
       .update(schema.submissionTable)
       .set({
         state: transitioned.to,
+        // IQ-15 / IQ-13: a staff clarification (re)starts the window, the customer's reply
+        // ends it.
+        clarifyingSince: transitioned.record.clarifyingSince,
         claimedBy:
           input.actorType === "triager"
             ? (before.claimedBy ?? input.actorId)
@@ -2341,28 +2432,34 @@ export async function postSubmissionMessage(input: {
       entityId: before.id,
       after: { number, by: input.actorType },
     });
-    await enqueueOutboxEvent(tx, {
-      id: `evt_${createId()}`,
-      kind: "submission.replied",
-      occurredAt: now.toISOString(),
-      actor: {
-        type: "person",
-        id: input.actorId,
-        name: input.actorType === "customer" ? "Customer" : "Staff",
+    // IQ-12 / EV-1: the customer (staff message) or last handler (customer reply) is notified in
+    // this same transaction; the row is keyed `(event_id, person_id)`, so a replay is a no-op.
+    await enqueueNotificationEvent(
+      tx,
+      {
+        id: `evt_${createId()}`,
+        kind: "submission.replied",
+        occurredAt: now.toISOString(),
+        actor: {
+          type: "person",
+          id: input.actorId,
+          name: input.actorType === "customer" ? "Customer" : "Staff",
+        },
+        scope: eventScope({
+          workspaceId: row.workspaceId,
+          organisationId: before.organisationId,
+          projectId: null,
+        }),
+        payload: {
+          ref: input.ref,
+          by: input.actorType === "customer" ? "customer" : "staff",
+        },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
       },
-      scope: eventScope({
-        workspaceId: row.workspaceId,
-        organisationId: before.organisationId,
-        projectId: null,
-      }),
-      payload: {
-        ref: input.ref,
-        by: input.actorType === "customer" ? "customer" : "staff",
-      },
-      causationId: null,
-      depth: 0,
-      originAutomationId: null,
-    });
+      { resolveRecipients: resolveSubmissionRepliedRecipients },
+    );
     return { id: updated.id, ref: input.ref, state: updated.state, message };
   });
 }
@@ -2532,21 +2629,26 @@ export async function declineSubmission(
       entityId: before.id,
       after: { number, reason },
     });
-    await enqueueOutboxEvent(tx, {
-      id: `evt_${createId()}`,
-      kind: "submission.declined",
-      occurredAt: now.toISOString(),
-      actor: { type: "person", id: actorId, name: "Staff" },
-      scope: eventScope({
-        workspaceId,
-        organisationId: before.organisationId,
-        projectId: null,
-      }),
-      payload: { ref, reason },
-      causationId: null,
-      depth: 0,
-      originAutomationId: null,
-    });
+    // NO-21: the requester is told, with the reason verbatim (same path as IQ-15's auto-decline).
+    await enqueueNotificationEvent(
+      tx,
+      {
+        id: `evt_${createId()}`,
+        kind: "submission.declined",
+        occurredAt: now.toISOString(),
+        actor: { type: "person", id: actorId, name: "Staff" },
+        scope: eventScope({
+          workspaceId,
+          organisationId: before.organisationId,
+          projectId: null,
+        }),
+        payload: { ref, reason },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
+      },
+      { resolveRecipients: resolveSubmissionRepliedRecipients },
+    );
     return { ref, state: updated.state, reason, message };
   });
 }

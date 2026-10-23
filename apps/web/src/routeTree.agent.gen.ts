@@ -51,6 +51,7 @@ import { Route as LayoutAuthenticatedAgentSettingsRequestTypesRouteImport } from
 import { Route as LayoutAuthenticatedAgentSettingsSlaPoliciesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/sla-policies'
 import { Route as LayoutAuthenticatedAgentSettingsStatesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/states'
 import { Route as LayoutAuthenticatedAgentSettingsWorkItemTemplatesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/work-item-templates'
+import { Route as LayoutAuthenticatedAgentSettingsWorkflowsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/workflows'
 import { Route as LayoutAuthenticatedAgentViewsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/views/$id'
 import { Route as LayoutAuthenticatedAgentWorkItemsKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/work-items/$key'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account'
@@ -332,6 +333,12 @@ const LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute =
   LayoutAuthenticatedAgentSettingsWorkItemTemplatesRouteImport.update({
     id: '/work-item-templates',
     path: '/work-item-templates',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsWorkflowsRoute =
+  LayoutAuthenticatedAgentSettingsWorkflowsRouteImport.update({
+    id: '/workflows',
+    path: '/workflows',
     getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
   } as any)
 const LayoutAuthenticatedAgentViewsIdRoute =
@@ -659,6 +666,7 @@ export interface FileRoutesByFullPath {
   '/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/agent/settings/states': typeof LayoutAuthenticatedAgentSettingsStatesRoute
   '/agent/settings/work-item-templates': typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
+  '/agent/settings/workflows': typeof LayoutAuthenticatedAgentSettingsWorkflowsRoute
   '/agent/views/$id': typeof LayoutAuthenticatedAgentViewsIdRoute
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
@@ -742,6 +750,7 @@ export interface FileRoutesByTo {
   '/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/agent/settings/states': typeof LayoutAuthenticatedAgentSettingsStatesRoute
   '/agent/settings/work-item-templates': typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
+  '/agent/settings/workflows': typeof LayoutAuthenticatedAgentSettingsWorkflowsRoute
   '/agent/views/$id': typeof LayoutAuthenticatedAgentViewsIdRoute
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
@@ -828,6 +837,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/_layout/_authenticated/agent/settings/states': typeof LayoutAuthenticatedAgentSettingsStatesRoute
   '/_layout/_authenticated/agent/settings/work-item-templates': typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
+  '/_layout/_authenticated/agent/settings/workflows': typeof LayoutAuthenticatedAgentSettingsWorkflowsRoute
   '/_layout/_authenticated/agent/views/$id': typeof LayoutAuthenticatedAgentViewsIdRoute
   '/_layout/_authenticated/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/_layout/_authenticated/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
@@ -914,6 +924,7 @@ export interface FileRouteTypes {
     | '/agent/settings/sla-policies'
     | '/agent/settings/states'
     | '/agent/settings/work-item-templates'
+    | '/agent/settings/workflows'
     | '/agent/views/$id'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
@@ -997,6 +1008,7 @@ export interface FileRouteTypes {
     | '/agent/settings/sla-policies'
     | '/agent/settings/states'
     | '/agent/settings/work-item-templates'
+    | '/agent/settings/workflows'
     | '/agent/views/$id'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
@@ -1082,6 +1094,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/agent/settings/sla-policies'
     | '/_layout/_authenticated/agent/settings/states'
     | '/_layout/_authenticated/agent/settings/work-item-templates'
+    | '/_layout/_authenticated/agent/settings/workflows'
     | '/_layout/_authenticated/agent/views/$id'
     | '/_layout/_authenticated/agent/work-items/$key'
     | '/_layout/_authenticated/dashboard/settings/account'
@@ -1428,6 +1441,13 @@ declare module '@tanstack/react-router' {
       path: '/work-item-templates'
       fullPath: '/agent/settings/work-item-templates'
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
+    }
+    '/_layout/_authenticated/agent/settings/workflows': {
+      id: '/_layout/_authenticated/agent/settings/workflows'
+      path: '/workflows'
+      fullPath: '/agent/settings/workflows'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsWorkflowsRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
     }
     '/_layout/_authenticated/agent/views/$id': {
@@ -1843,6 +1863,7 @@ interface LayoutAuthenticatedAgentSettingsRouteChildren {
   LayoutAuthenticatedAgentSettingsSlaPoliciesRoute: typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   LayoutAuthenticatedAgentSettingsStatesRoute: typeof LayoutAuthenticatedAgentSettingsStatesRoute
   LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute: typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
+  LayoutAuthenticatedAgentSettingsWorkflowsRoute: typeof LayoutAuthenticatedAgentSettingsWorkflowsRoute
 }
 
 const LayoutAuthenticatedAgentSettingsRouteChildren: LayoutAuthenticatedAgentSettingsRouteChildren =
@@ -1867,6 +1888,8 @@ const LayoutAuthenticatedAgentSettingsRouteChildren: LayoutAuthenticatedAgentSet
       LayoutAuthenticatedAgentSettingsStatesRoute,
     LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute:
       LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute,
+    LayoutAuthenticatedAgentSettingsWorkflowsRoute:
+      LayoutAuthenticatedAgentSettingsWorkflowsRoute,
   }
 
 const LayoutAuthenticatedAgentSettingsRouteWithChildren =

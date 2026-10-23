@@ -4,7 +4,11 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { slaPauseTable } from "../../database/migration-schema";
 import { evaluatePinnedWorkItemSla } from "../../sla-policy/evaluation";
-import { getWorkItemSlaSourceQuery } from "../../sla-policy/repository";
+import {
+  getSlaPresentationForVersion,
+  getWorkItemSlaSourceQuery,
+} from "../../sla-policy/repository";
+import { openSlaPauses } from "../sla-response";
 
 export async function getWorkItemSla(key: string, workspaceId: string) {
   const [item] = await getWorkItemSlaSourceQuery(db, key, workspaceId);
@@ -41,5 +45,20 @@ export async function getWorkItemSla(key: string, workspaceId: string) {
     now,
   });
 
-  return { key: item.key, startedAt, evaluatedAt: now, metrics };
+  const presentation = item.slaPolicyVersionId
+    ? await getSlaPresentationForVersion(
+        item.slaPolicyVersionId,
+        item.workspaceId,
+      )
+    : undefined;
+
+  return {
+    key: item.key,
+    startedAt,
+    evaluatedAt: now,
+    metrics,
+    calendarName: presentation?.calendarName ?? null,
+    atRiskThresholdPct: presentation?.atRiskThresholdPct ?? null,
+    pauses: openSlaPauses(pauses),
+  };
 }

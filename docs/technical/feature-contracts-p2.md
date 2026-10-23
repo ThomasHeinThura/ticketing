@@ -180,6 +180,7 @@ the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.
   row whose item has already left `from_state_id`
   ([data-model.md](data-model.md)) — the "pending until" pattern,
   fired by the scheduler and cancelled if the item leaves the state first.
+  When a version holds several edges for the hop's template pair, the scheduled (system) hop applies the most restrictive one: any approval/CAB gate refuses it and every matching edge's guards must hold, regardless of edge order.
   Authoring checks the `set_assignee` payload shape only; an unknown person id may be
   saved. At execution, the selected person must be eligible in the work item's active
   project roster; if not, refuse the complete transition without applying any effect.

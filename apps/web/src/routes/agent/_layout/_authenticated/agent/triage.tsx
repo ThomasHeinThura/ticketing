@@ -29,6 +29,10 @@ import { Filter } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Layout from "@/components/common/layout";
+import {
+  TriageFilterChips,
+  TriageFilterMenu,
+} from "@/components/intake/triage-filter-menu";
 import PageTitle from "@/components/page-title";
 import {
   acceptSubmission,
@@ -37,6 +41,7 @@ import {
   declineSubmission,
   downloadSubmissionAttachment,
   getDuplicateSuggestions,
+  getRequestTypes,
   getSubmission,
   getSubmissionAttachments,
   getSubmissions,
@@ -45,6 +50,11 @@ import {
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import {
+  formatSubmissionAge,
+  matchesIntakeFilters,
+  splitIntakeFilters,
+} from "@/lib/intake-queue";
 import { submissionAnswerRows } from "@/lib/intake-validation";
 import { parseIntakeSearch } from "@/lib/routes";
 
@@ -60,8 +70,17 @@ function IntakeRoute() {
     workspaceId: workspace.data?.id,
   });
   const projects = useGetProjects({ workspaceId: workspace.data?.id ?? "" });
-  const { state, ref, cursor } = Route.useSearch();
+  const { state, ref, cursor, requestType, assignee, age } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const filters = { requestType, assignee, age };
+  // Filters and the selected submission live in the URL; a change keeps the rest.
+  const searchWith = (patch: Record<string, string | undefined>) => ({
+    state,
+    ref,
+    cursor,
+    ...filters,
+    ...patch,
+  });
   const cache = useQueryClient();
   const [projectId, setProjectId] = useState("");
   const [workItemTypeId, setWorkItemTypeId] = useState("");
@@ -73,10 +92,28 @@ function IntakeRoute() {
     ref: string;
     label: string;
   } | null>(null);
-  const queue = useQuery({
-    queryKey: ["intake", workspace.data?.id, state, cursor],
-    queryFn: () => getSubmissions(workspace.data?.id ?? "", state, cursor),
+  // The filter's request type options: every published type, not only those on this page.
+  const requestTypeList = useQuery({
+    queryKey: ["request-types", workspace.data?.id],
+    queryFn: () => getRequestTypes(workspace.data?.id ?? ""),
     enabled: Boolean(workspace.data?.id),
+  });
+  const requestTypeRefs = (
+    requestTypeList.data as unknown as
+      | { requestTypes?: Array<{ id: string; key?: string; name: string }> }
+      | undefined
+  )?.requestTypes;
+  // `IQ-21`: the server filters by request type key, assignee and age, so a shared URL shows
+  // the same queue on any page. Only a filter with no server parameter narrows client-side.
+  const { server, residual, pending } = splitIntakeFilters(
+    filters,
+    requestTypeList.isLoading ? undefined : (requestTypeRefs ?? []),
+  );
+  const queue = useQuery({
+    queryKey: ["intake", workspace.data?.id, state, cursor, server],
+    queryFn: () =>
+      getSubmissions(workspace.data?.id ?? "", state, cursor, server),
+    enabled: Boolean(workspace.data?.id) && !pending,
   });
   const detail = useQuery({
     queryKey: ["intake", "submission", ref],
@@ -199,57 +236,84 @@ function IntakeRoute() {
   const rows = (queue.data?.submissions ?? []) as unknown as Array<{
     ref: string;
     summary: string;
-    submission: { state: string; createdAt: string };
-    requestType: { name: string };
+    submission: {
+      state: string;
+      createdAt: string;
+      claimedBy: string | null;
+    };
+    requestType: { id: string; name: string };
     requester: { displayName?: string };
     organisation: { name: string };
   }>;
+  const requestTypeOptions = (
+    requestTypeRefs ??
+    Array.from(
+      new Map(
+        rows.map((row) => [row.requestType.id, row.requestType]),
+      ).values(),
+    )
+  ).map((type) => ({ id: type.id, name: type.name }));
+  const visibleRows = rows.filter((row) => matchesIntakeFilters(row, residual));
+  const hasFilters = Boolean(requestType || assignee || age);
+  const changeFilters = (patch: Record<string, string | undefined>) =>
+    void navigate({ search: searchWith({ ...patch, cursor: undefined }) });
   return (
     <div className="flex h-full w-full min-w-0 flex-col">
       <PageTitle title={t("title")} />
       <Layout.Header className="items-center justify-between">
         <h1 className="px-2 font-medium text-sm">{t("title")}</h1>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="xs"
-              aria-label="Submission status filter"
-            >
-              <Filter className="size-3" />
-              {t("status", { defaultValue: "Status" })}: {state}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {[
-              "new",
-              "clarifying",
-              "accepted",
-              "declined",
-              "duplicate",
-              "withdrawn",
-            ].map((value) => (
-              <DropdownMenuCheckboxItem
-                key={value}
-                checked={state === value}
-                onCheckedChange={() =>
-                  void navigate({
-                    search: {
-                      state: value as typeof state,
-                      ref,
-                      cursor: undefined,
-                    },
-                  })
-                }
+        <div className="flex items-center gap-1">
+          <TriageFilterMenu
+            filters={filters}
+            requestTypes={requestTypeOptions}
+            onChange={changeFilters}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="xs"
+                aria-label="Submission status filter"
               >
-                {value}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <Filter className="size-3" />
+                {t("status", { defaultValue: "Status" })}: {state}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {[
+                "new",
+                "clarifying",
+                "accepted",
+                "declined",
+                "duplicate",
+                "withdrawn",
+              ].map((value) => (
+                <DropdownMenuCheckboxItem
+                  key={value}
+                  checked={state === value}
+                  onCheckedChange={() =>
+                    void navigate({
+                      search: searchWith({
+                        state: value as typeof state,
+                        cursor: undefined,
+                      }),
+                    })
+                  }
+                >
+                  {value}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </Layout.Header>
       <Layout.Content className="overflow-y-auto">
         <p className="sr-only">{t("description")}</p>
+        <TriageFilterChips
+          filters={filters}
+          requestTypes={requestTypeOptions}
+          onChange={changeFilters}
+        />
         {!workspace.data?.id && <p role="status">{t("selectWorkspace")}</p>}
         {(detail.isError ||
           attachments.isError ||
@@ -270,8 +334,24 @@ function IntakeRoute() {
               {t("retry", { defaultValue: "Retry" })}
             </Button>
           </Alert>
-        ) : queue.isLoading ? (
+        ) : queue.isLoading || pending ? (
           <p role="status">{t("loading")}</p>
+        ) : visibleRows.length === 0 && hasFilters ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>
+                {t("filters.noMatch", {
+                  defaultValue: "No submissions match the filters",
+                })}
+              </EmptyTitle>
+              <EmptyDescription>
+                {t("filters.noMatchHint", {
+                  defaultValue:
+                    "No submission in this state matches every filter. Remove one to see more.",
+                })}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : rows.length === 0 ? (
           <Empty>
             <EmptyHeader>
@@ -299,10 +379,11 @@ function IntakeRoute() {
                 <TableHead>
                   {t("submittedAt", { defaultValue: "Submitted" })}
                 </TableHead>
+                <TableHead>{t("age", { defaultValue: "Age" })}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => (
+              {visibleRows.map((row) => (
                 <TableRow
                   key={row.ref}
                   data-state={ref === row.ref ? "selected" : undefined}
@@ -314,7 +395,7 @@ function IntakeRoute() {
                       aria-current={ref === row.ref ? "true" : undefined}
                       onClick={() =>
                         void navigate({
-                          search: { state, ref: row.ref, cursor },
+                          search: searchWith({ ref: row.ref }),
                         })
                       }
                       className="h-auto p-0 font-mono"
@@ -333,6 +414,9 @@ function IntakeRoute() {
                   <TableCell>
                     {new Date(row.submission.createdAt).toLocaleString()}
                   </TableCell>
+                  <TableCell data-testid="triage-row-age">
+                    {formatSubmissionAge(row.submission.createdAt)}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -343,7 +427,9 @@ function IntakeRoute() {
             variant="outline"
             onClick={() =>
               void navigate({
-                search: { state, ref, cursor: queue.data?.page.nextCursor },
+                search: searchWith({
+                  cursor: queue.data?.page.nextCursor ?? undefined,
+                }),
               })
             }
           >

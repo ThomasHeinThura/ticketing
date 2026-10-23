@@ -23,6 +23,7 @@ export type {
 export * from "./audit/audit.js";
 export * from "./audit/types.js";
 export * from "./calendar/calendar.js";
+export * from "./calendar/holiday-impact.js";
 export * from "./calendar/holiday-import.js";
 export * from "./calendar/types.js";
 export * from "./canned-response.js";
@@ -42,6 +43,7 @@ export * from "./intake/duplicate.js";
 export * from "./intake/request-type.js";
 export * from "./intake/submission.js";
 export * from "./intake/types.js";
+export * from "./sla/escalation.js";
 export * from "./sla/policy.js";
 export * from "./sla/scan.js";
 export * from "./sla/sla.js";

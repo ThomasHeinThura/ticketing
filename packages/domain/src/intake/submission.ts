@@ -28,7 +28,8 @@ export type TransitionRefusal =
   | "triage_started"
   | "missing_reason"
   | "missing_target"
-  | "missing_work_item";
+  | "missing_work_item"
+  | "not_reopenable";
 
 export type TransitionResult =
   | {
@@ -110,15 +111,11 @@ export function triageHasStarted(record: SubmissionRecord): boolean {
  *   id required (IQ-17's link).
  * - `withdraw`: customer only, from `new` or `clarifying` → `withdrawn`, refused once
  *   triage has started (IQ-16a). Retained, never deleted.
- * - `reopen`: customer only, from `declined` → `new` (IQ-15: "the customer may reopen
- *   it"). Thomas decided (2026-09-25, decision-log PR in flight) that a customer may
- *   reopen ONLY a submission the system auto-declined — a staff decline is final unless
- *   staff reopen it. That is not enforced here yet: `SubmissionRecord` has no field
- *   distinguishing an auto-decline from a staff decline (`decline`'s and `auto_decline`'s
- *   `reason` is never persisted onto the record), so this still accepts any `declined`
- *   submission. Enforcing the decision needs a new field on the shared `SubmissionRecord`
- *   type plus wiring through `decline`/`auto_decline` — tracked on its own issue, since no
- *   caller reaches `reopen` yet and it must land before any reopen route ships.
+ * - `reopen`: customer only, from an **auto-declined** `declined` submission → `new` (IQ-15:
+ *   "the customer may reopen it"; decision log 2026-09-25: only the system's auto-decline is
+ *   reopenable, a staff decline is final for the customer). `SubmissionRecord.autoDeclined`
+ *   carries the distinction: `decline` clears it, `auto_decline` sets it, and a `declined`
+ *   record without it refuses with `not_reopenable`.
  *
  * Terminal states (`accepted`, `duplicate`, `withdrawn`) accept no actions: the
  * submission has been disposed of, and nothing in either spec reopens them.
@@ -193,7 +190,11 @@ export function transitionSubmission(
       if (input.reason === undefined || input.reason.trim() === "") {
         return refuse("missing_reason");
       }
-      return advance("declined");
+      return {
+        ok: true,
+        to: "declined",
+        record: { ...record, state: "declined", autoDeclined: false },
+      };
     }
     case "auto_decline": {
       if (from !== "clarifying") return refuse("illegal_state");
@@ -203,7 +204,11 @@ export function transitionSubmission(
       if (input.reason === undefined || input.reason.trim() === "") {
         return refuse("missing_reason");
       }
-      return advance("declined");
+      return {
+        ok: true,
+        to: "declined",
+        record: { ...record, state: "declined", autoDeclined: true },
+      };
     }
     case "duplicate": {
       if (from !== "new" && from !== "clarifying")
@@ -224,7 +229,19 @@ export function transitionSubmission(
     }
     case "reopen": {
       if (from !== "declined") return refuse("illegal_state");
-      return advance("new");
+      // IQ-15 (decision log 2026-09-25): only the system's auto-decline is reopenable by the
+      // customer; a staff decline is final for them.
+      if (record.autoDeclined !== true) return refuse("not_reopenable");
+      return {
+        ok: true,
+        to: "new",
+        record: {
+          ...record,
+          state: "new",
+          autoDeclined: false,
+          clarifyingSince: null,
+        },
+      };
     }
   }
 }

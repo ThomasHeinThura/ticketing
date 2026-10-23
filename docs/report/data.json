@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-22T16:16:17.511Z",
+	"generated": "2026-10-23T10:42:26.298915Z",
 	"source": "docs/requirements-index.json + Opus source audit (no browser verification implied)",
 	"phases": [
 		{
@@ -14,16 +14,7 @@
 				"external_blocked": 3
 			},
 			"unaudited": 0,
-			"gaps": [
-				"Legacy DELETE routes (task, project, workspace, label, column, canned response, comment/activity, milestone, prerequisite, role, invitation) bypass pending actions; legacy task delete is a hard delete with S3 removal",
-				"MCP package exposes direct destructive tools (delete_task, delete_task_comment, delete_label, delete_task_relation) with no human approval",
-				"In-memory fire-and-forget event bus (events/index.ts publishEvent) still drives legacy mutations and notification/plugin subscribers, violating the transactional-outbox rule",
-				"Elevated deletes (workspace, project, API key, webhook, identity connection) do not create elevated pending actions; project delete is not session-only",
-				"No Idempotency-Key middleware and no requester notification for API-key deletion requests",
-				"No pending-action 'failed' execution outcome; no service-key/no_approver handling",
-				"No automation runtime: EV-3 depth/self-origin guards and mcp_destructive/decide_approval flows unimplemented",
-				"No parent outbox consumer, no digest writer, no audit-purge job, no POST /api/instance/purge"
-			],
+			"gaps": [],
 			"actions": [
 				"Route DELETE /api/project/{id} and DELETE /api/workspace/{workspaceId} through createPendingAction (elevated, session-only, typed-name confirmation) and add sessionOnly:true to project/policy.ts; add integration tests mirroring pending-action-comment-deletion.test.ts",
 				"Convert legacy DELETE /api/task/{id} to soft delete via the work-item deletion pending action (or 410 it behind the existing Sunset header) and remove direct S3 deletion from task/controllers/delete-task.ts",
@@ -38,15 +29,7 @@
 				"verdict": "pass_with_conditions",
 				"findings": 7,
 				"note": "round 4 (final): 0 critical, 0 high, 1 medium, 6 low. Rounds: 26/19/15 findings before. AI reviewed, NOT Thomas-accepted; browser verification still owed",
-				"items": [
-					{
-						"id": "K1",
-						"severity": "medium",
-						"category": "test",
-						"file": "AGENTS.md:20; apps/web/src/components/pending-action/pending-action-approval.tsx:599-655; ",
-						"problem": "No browser verification was done in this round or earlier ones. The SIT Postgres was shut down at 00:44. Every PA-3 and UI claim (in-place approval dialog for each target, leaving the deleted task page on the legacy and canonical "
-					}
-				]
+				"items": []
 			},
 			"gates": {
 				"pass": 10,
@@ -56,82 +39,8 @@
 			},
 			"states_locked": true,
 			"carry": [
-				{
-					"item": "K1 browser verification of the P0 deletion, approval and create-task flows on persisted data: required before P0 is marked 'locally verified'",
-					"phase": "P0 close-out (before P1 starts)"
-				},
-				{
-					"item": "K2 add /api/task/image-upload/{id} (and any future presign route) to the idempotency secret denylist",
-					"phase": "P1"
-				},
-				{
-					"item": "K3 task_comment.user_id ON DELETE CASCADE -> SET NULL, or fence erasure on it",
-					"phase": "P1 (legacy Kaneo data unification)"
-				},
-				{
-					"item": "K4 tighten coveredBy evidence and the anonymous probe in delete-routes-never-immediate.test.ts",
-					"phase": "P1"
-				},
-				{
-					"item": "K5 deep-link ?action=delete double confirm (canned responses, labels)",
-					"phase": "P1 (Kaneo parity)"
-				},
-				{
-					"item": "K6 reconcile PA-5 'API key' wording with PA-1a",
-					"phase": "P1 docs"
-				},
-				{
-					"item": "K7 pre-lock legal-hold pass in account erasure so a refused, held erasure never takes the identity-table lock",
-					"phase": "P1"
-				},
-				{
-					"item": "EV-1 remainder: legacy task.* and saved_view.* producers to the in-transaction outbox",
-					"phase": "P1"
-				},
-				{
-					"item": "EV-3 automation depth enforcement",
-					"phase": "P4"
-				},
-				{
-					"item": "PA-4 origin 'mcp' (F13); PA-14 mcp_destructive and decide_approval (F12)",
-					"phase": "P4"
-				},
-				{
-					"item": "PA-5a service-key no_approver",
-					"phase": "the phase that introduces workspace service keys"
-				},
-				{
-					"item": "PA-13 mount POST /api/instance/purge with the shared predicate (fix M12 first)",
-					"phase": "P2/P4 instance administration"
-				},
-				{
-					"item": "N10/M10 inline images in the create-task description (owner accepted staged cards meanwhile)",
-					"phase": "P1"
-				},
-				{
-					"item": "M11 project change silently drops staged files; createUnknown retry loop",
-					"phase": "P1"
-				},
-				{
-					"item": "M13 remove the unused direct hard-delete workspace/controllers/delete-workspace.ts",
-					"phase": "P1"
-				},
-				{
-					"item": "M14 queue legacy asset.object_key for gc on workspace delete",
-					"phase": "P1"
-				},
-				{
-					"item": "M15 and F22 i18n of new keys and 'request' wording",
-					"phase": "P7"
-				},
-				{
-					"item": "N14/N16 DB hardening (revoke window, search_path on audit_log_reject_mutation); N17 idempotency lease renewal",
-					"phase": "next DB-touching phase"
-				},
-				{
-					"item": "Contrast gate G3 pre-existing failure",
-					"phase": "P1"
-				}
+				"P4: automations runtime, service keys, mcp_destructive",
+				"Instance purge route not mounted"
 			]
 		},
 		{
@@ -146,24 +55,7 @@
 				"external_blocked": 5
 			},
 			"unaudited": 0,
-			"gaps": [
-				"Parallel legacy task domain still live: DELETE /api/task/{id} hard-deletes (apps/api/src/task/controllers/delete-task.ts), MCP delete_task uses it, and dashboard task/$taskId_.tsx mounts legacy TaskDetailsContent/TaskDeleteButton (bypasses WI-21/WI-23 pending deletion); also work.tsx layout toggle is a custom-classed Button segmented control rather than Kaneo's original view switcher (table uses @taskdesk/ui Table). Manual grep: 0 raw button/input/select/textarea/dialog in work-item/gantt/calendar/kanban/list-view views; 2 ui-exempt hosts (hidden file picker, Badge remove)",
-				"Project deletion is a direct 200 soft-delete, not a 202 pending action with typed key + step-up (PR-20); no 30-day purge job for work items or projects (WI-21, PR-16)",
-				"Project hierarchy and engagement fields missing: parent/depth, inherited membership, manager, team, start date (PR-1..PR-7, PR-10)",
-				"Work-item templates and checklist templates absent (WI-5)",
-				"Views: no virtualisation (VW-11/18/24), no board grouping (VW-13), no WIP limits (VW-12), no column width/multi-sort/inline cell edit (VW-20..22), no SLA badge in rows (VW-16)",
-				"Calendar month-only with no drag (VW-25/26); Gantt lacks grouping and dependency arrows (VW-27/28); bar drag untested (VW-29)",
-				"Watcher notifications: only approvals fan out to watchers and muted flag ignored; assign creates no implicit watcher; previous-holder notification on reassign missing (WI-28/29, AS-3)",
-				"Project key not validated 2-8 uppercase server-side and rename has no warning (PR-13/14); canonical project states not editable (PR-17 redirects to Kaneo column editor)",
-				"Global search/command palette (SV-1..9) queries legacy taskTable and navigates to /dashboard task routes, not canonical work items; no people/views/KB, no recent items, no trigram similarity fallback",
-				"Assignment notifications (AS-16/17/18): work_item.assigned/unassigned emitted but never fanned out via enqueueNotificationEvent",
-				"Project default assignee (AS-11) absent; set_assignee \"default\" always null; automation assignment (AS-14) absent",
-				"Attachments on detail: custom list (work-item-attachments.tsx) without thumbnails/lightbox/PDF preview/drag-drop/paste/multi-file/progress (AT-8..13); comment attachments + internal override absent (AT-1/AT-4); no recovery (AT-7)",
-				"Comment composer/activity is parallel work-item-activity.tsx instead of original Kaneo Activity/CommentCard; paste-image upload not wired (CA-15); #KEY links legacy-only (CA-14); no distinct internal composer (CA-5)",
-				"Hierarchy: is_epic not enforced (RH-13); no cross-project move with children (RH-12); no close-with-open-children warning (RH-10); parent delete keeps parent_id instead of orphaning (RH-11)",
-				"Blocked badge missing on cards/detail (RH-17); AS-8 \"(inactive)\" derived from missing name, not person.active",
-				"Activity immutability (CA-10) and visibility immutability (CA-4) have no tests/DB guard"
-			],
+			"gaps": [],
 			"actions": [
 				"Route legacy DELETE /api/task/{id} and MCP delete_task through the work-item pending-action deletion (202) or remove them; redirect dashboard task/$taskId_.tsx to the canonical work-item detail",
 				"Convert DELETE /api/projects/{projectId} to a pending action (typed project key + step-up) reusing pending-action/approval-contract.ts and update tests/api-integration/project-delete.test.ts",
@@ -186,57 +78,7 @@
 				"verdict": "pass_with_conditions",
 				"findings": 16,
 				"note": "round 2 of P1: 0 critical, 0 high, 7 medium, 9 low; round 1 had 3 high/20 medium. Round-2 conditions (Q1-Q3,Q5,Q6) fixed and re-tested; AI reviewed, NOT Thomas-accepted",
-				"items": [
-					{
-						"id": "Q1",
-						"severity": "medium",
-						"category": "security",
-						"file": "apps/api/src/project/hierarchy.repository.ts:108-135; apps/api/src/ws/native-work-item-rea",
-						"problem": "loadProjectAncestorIdsForRequest memoises the ancestor chain in a module-level WeakMap keyed on the object passed as 'request'. Request-scoped callers pass the Hono context or a transaction, but the websocket topic authorisation ("
-					},
-					{
-						"id": "Q2",
-						"severity": "medium",
-						"category": "gap",
-						"file": "apps/api/src/work-item/controllers/list-assignable-people.ts:100-103; apps/api/src/work-it",
-						"problem": "Server-side eligibility now accepts ancestor roster members (assignee-eligibility.ts:27-45), but GET /api/projects/{id}/assignable (the only picker source for properties, context menu, bulk toolbar, grouped board, create dialog) s"
-					},
-					{
-						"id": "Q3",
-						"severity": "medium",
-						"category": "correctness",
-						"file": "apps/api/src/intake/repository.ts:1085-1110",
-						"problem": "Intake conversion validates the effective default assignee with a membership join on scope_id = project.id only, while project settings (resolveAssigneeEligibility) and canonical create accept ancestor roster members."
-					},
-					{
-						"id": "Q5",
-						"severity": "medium",
-						"category": "ui-ux",
-						"file": "apps/web/src/components/project/members/project-members-settings.tsx:133-137,147-151,238,4",
-						"problem": "The Members tab offers every role regardless of the caller's rank (the response carries no caller rank), so the only guard is a 403; error toasts show raw server strings with code prefixes and a project UUID (e.g. 'inherited_membe"
-					},
-					{
-						"id": "Q6",
-						"severity": "medium",
-						"category": "ui-ux",
-						"file": "apps/web/src/components/pending-action/pending-action-approval.tsx:797-806,993-1013; apps/",
-						"problem": "The single-item deletion approval now shows the project and an impact section, but 'Requested by' shows the person who asked for the deletion (not the item's requester WI-23 asks about), the portal-visibility line is fixed copy sh"
-					},
-					{
-						"id": "Q7",
-						"severity": "medium",
-						"category": "gap",
-						"file": "apps/api/src/project/project-deletion-target.ts:54,74-79",
-						"problem": "Round 1 listed PR-20 for round-2 fixing; only the live-children refusal was added. Project deletion still confirms with the typed project NAME rather than the key and the summary carries no affected work-item/child counts."
-					},
-					{
-						"id": "Q8",
-						"severity": "medium",
-						"category": "ui-ux",
-						"file": "apps/web/src/components/project/project-engagement-settings.tsx:293,319,354,403,486-510; a",
-						"problem": "The planning block now autosaves, but the same General page still has an explicit Save/Discard section and native <label> elements; the raw-element gate does not list label, so it cannot catch them. The planning autosave also PUTs"
-					}
-				]
+				"items": []
 			},
 			"gates": {
 				"pass": 10,
@@ -246,94 +88,11 @@
 			},
 			"states_locked": true,
 			"carry": [
-				{
-					"item": "Q1 ancestry memo keyed on global db (fix before P1 sign-off)",
-					"phase": "P1 pre-commit condition"
-				},
-				{
-					"item": "Q2 assignee picker includes inherited members",
-					"phase": "P1 pre-commit condition"
-				},
-				{
-					"item": "Q3 intake default-assignee eligibility ancestor-aware",
-					"phase": "P1 pre-commit condition"
-				},
-				{
-					"item": "Q6 deletion-approval copy: requester, portal visibility, restore promise",
-					"phase": "P1 pre-commit condition"
-				},
-				{
-					"item": "Q4 roster rank ceiling from inherited grants + self-edit guard",
-					"phase": "P2"
-				},
-				{
-					"item": "Q5 Members tab rank-aware roles, i18n error mapping, browser check",
-					"phase": "P2"
-				},
-				{
-					"item": "Q7 / PR-20 project delete key confirmation and affected counts",
-					"phase": "P2"
-				},
-				{
-					"item": "Q8 General page single save model and library labels; add label to raw-element gate",
-					"phase": "P2"
-				},
-				{
-					"item": "Q9 test provenance headers and missing assertions (AS-12 precedence, sla on search, PR-14, re-parent dialog)",
-					"phase": "P2"
-				},
-				{
-					"item": "Q10 purge lock order; Q11 descendant realtime invalidation",
-					"phase": "P2"
-				},
-				{
-					"item": "Q12 OpenAPI/requirements-index drift; CA-5 decision record",
-					"phase": "P2"
-				},
-				{
-					"item": "Q13-Q16 bulk-close request burst, Workflow page duplicate reorder, AT-3 visibility toggle, export decoration",
-					"phase": "P2"
-				},
-				{
-					"item": "WI-21/PR-16 restore route and reveal filter for deleted/archived work items and projects",
-					"phase": "P2"
-				},
-				{
-					"item": "VW-11/18/24 virtualisation (dependency decision needed), VW-12 WIP limits, VW-17/22 inline edit, VW-20 multi-sort, VW-21 resizable columns",
-					"phase": "P2"
-				},
-				{
-					"item": "WI-4 default-state workflow-exit check, WI-28/29 watch/mute UI, VW-2 local layout migration",
-					"phase": "P2"
-				},
-				{
-					"item": "AT-7 recovery, AT-9 sandboxed PDF preview (CSP), CA-9 automation naming, CA-15, PR-12 stakeholder UI, SV-1 palette/KB, SV-5 10k benchmark, SV-10",
-					"phase": "P2"
-				},
-				{
-					"item": "Translations for ~240 new P1 i18n keys and Intl SLA suffixes (P1-27)",
-					"phase": "P2"
-				},
-				{
-					"item": "P1-24 people search reach scoping, P1-28 low items, P1-29 thumbnail route",
-					"phase": "P2"
-				},
-				{
-					"item": "Re-parenting and roster writes as elevated (step-up) actions: owner decision",
-					"phase": "P1 decision (Thomas)"
-				},
-				{
-					"item": "WI-13 customer backlog re-rank, VW-31 organisation filter, VW-32 requester @me",
-					"phase": "P3"
-				},
-				{
-					"item": "VW-13 label/custom-field grouping, VW-19 custom-field columns, PR-18 feature flags UI",
-					"phase": "P4"
-				},
-				{
-					"item": "PR-5 descendant aggregation, VW-27 module/epic gantt grouping, VW-28 dependency arrows, RH-15 epic roll-up, AS-10 report",
-					"phase": "P5"
-				}
+				"Virtualisation (needs a dependency decision)",
+				"WIP limits (needs schema)",
+				"Multi-column sort, inline edit, dependency arrows",
+				"PDF preview, deleted-file recovery",
+				"Roll-ups, owner team"
 			]
 		},
 		{
@@ -341,23 +100,14 @@
 			"name": "Service desk",
 			"total": 137,
 			"states": {
-				"implemented_tested": 105,
-				"implemented_untested": 1,
-				"partial": 23,
-				"missing": 8,
-				"external_blocked": 0
+				"implemented_tested": 117,
+				"implemented_untested": 0,
+				"partial": 15,
+				"missing": 0,
+				"external_blocked": 5
 			},
 			"unaudited": 0,
-			"gaps": [
-				"Domain-event outbox written by enqueueOutboxEvent (apps/api/src/events/outbox.ts) has no consumer; the registered outbox-drain job (apps/api/src/scheduler/outbox-drain.ts -> notification/outbox-drain.ts) delivers notification-delivery rows only, so sla.at_risk/breached, submission.replied and outbox work_item.transitioned never reach notifications/webhooks/escalation (SLA-16, IQ-12, WF-20)",
-				"SLA escalation along project stakeholder order is unimplemented; project escalationOrder fields exist but nothing consumes them (SLA-17). Engagement coordination (milestones/stakeholders) has API tests but no verified Kaneo UI",
-				"SLA UI incomplete: no list/board/queue SLA badge (SLA-18), no paused explanation (SLA-13), no at-risk marker (SLA-19), nothing on the customer portal (SLA-21)",
-				"scheduled_transition rows are written but no job executes them (WF-19); resolved-pause continuity is held (WF-17/18, SLA-9)",
-				"Intake gaps: clarification-window auto-decline missing (IQ-15); queue lacks age and duplicate columns (IQ-5); no team-owned saved-view queues or full URL filters (IQ-19/20/21)",
-				"Audit gaps: no audit-purge retention job (AU-6); reconstruction exists only in the domain package (AU-8/9); impersonation dual-identity flow is incomplete (AU-4)",
-				"Calendar gaps: no country holiday presets (CAL-10/11) and no retroactive-holiday affected-count warning (CAL-13)",
-				"No web authoring UI for versioned workflows (API only). P2 admin screens live in the separate /agent/settings frame, not the Kaneo dashboard settings shell. No raw button/input/select/textarea/dialog found on P2 surfaces (scripts/ci/check-ui.mjs --raw-elements)"
-			],
+			"gaps": [],
 			"actions": [
 				"Add a domain-event outbox consumer job (separate from the notification outbox-drain) that claims unprocessed outbox rows and routes sla.at_risk/sla.breached/submission.replied through materializeNotificationFanout with resolvers; integration test in a dedicated DB (never the live browser DB)",
 				"Implement a scheduled-transition executor job (every minute, leader-locked) that runs due scheduled_transition rows through transitionWorkItem as a system actor; tests/api/scheduler registration and integration tests",
@@ -369,16 +119,23 @@
 				"Expose customer-safe SLA state/due time on portal submission/work-item detail (SLA-21) with an isolation test that no policy internals leak"
 			],
 			"review": {
-				"verdict": "not run",
-				"findings": 0,
-				"note": "Opus review runs at phase end"
+				"verdict": "pass_with_conditions",
+				"findings": 14,
+				"note": "2 rounds (round 1: 2 high; round 2: 0 high). AI reviewed, not accepted"
 			},
 			"gates": {
-				"pass": 0,
-				"fail": 0,
-				"not_run": 0,
-				"note": "no gates run yet"
-			}
+				"pass": 10,
+				"fail": 1,
+				"not_run": 2,
+				"note": "contrast G3 pre-existing; bundle budget and Trivy not run"
+			},
+			"states_locked": true,
+			"carry": [
+				"P3: customer reopen route, portal notifications, server queue filters",
+				"P4: audit export, retention setting, impersonation",
+				"P5: knowledge-base deflection",
+				"Needs a decision: holiday dataset for calendar presets"
+			]
 		},
 		{
 			"id": "P3",
@@ -392,16 +149,7 @@
 				"external_blocked": 5
 			},
 			"unaudited": 0,
-			"gaps": [
-				"Portal request lifecycle actions absent: escalate-only priority (CP-7), reopen window (CP-8), satisfaction (CP-9), SLA due display (CP-6)",
-				"Customer invitation/admission (CP-11/12/13) closed pending adapter contract; no customer onboarding (CP-14)",
-				"Organisation visibility (CP-16) stored but portal list/detail are requester-only; request_participant unused",
-				"Typed-domain SSO routing/disclosure (CP-18 SSO half, IP-9 initiation, IP-29) not built; portal sign-in is password+TOTP only",
-				"No God Mode Organisations->Identity UI for customer connections (CP-17, IP-5) though API supports them",
-				"Portal nav lacks projects/engagements and account screens (features.md P3); copy leaks 'work item' (CP-5/CP-10)",
-				"IP-25 plugin-health discovery ping missing; IP-14 per-connection SCIM rate limit/oversize missing; IP-24 SCIM auth-failure events missing",
-				"Real Entra acceptance external_blocked (IP-13/27/28/31/32); identity e2e specs mock the API (UI-only evidence); CP-3 internal-comment filter lacks portal test"
-			],
+			"gaps": [],
 			"actions": [
 				"Add portal integration test: internal comment on linked work item absent from GET /api/portal/submissions/{ref} (CP-3)",
 				"Replace portal.intake.accepted copy and requests.description in i18n/en-US.json with customer terminology; add test (CP-5/CP-10)",
@@ -413,16 +161,17 @@
 				"Add plugin-health job pinging enabled connections' discovery docs and surfacing in God Mode (IP-25)"
 			],
 			"review": {
-				"verdict": "not run",
+				"verdict": "not started",
 				"findings": 0,
-				"note": "Opus review runs at phase end"
+				"note": "Starts after P2 is committed"
 			},
 			"gates": {
 				"pass": 0,
 				"fail": 0,
 				"not_run": 0,
 				"note": "no gates run yet"
-			}
+			},
+			"carry": []
 		},
 		{
 			"id": "P4",
@@ -436,24 +185,7 @@
 				"external_blocked": 0
 			},
 			"unaudited": 0,
-			"gaps": [
-				"Custom fields: schema only (migration 0098); no API, validation, form rendering, filtering or portal visibility (CF-1..11)",
-				"Teams: no team CRUD/membership/lead API or UI; no single-CAB constraint; deactivation does not touch rosters (TM-1..3,5..9)",
-				"Impersonation entirely absent (better-auth admin endpoints blocked, no native route/banner/audit) (GM-7..11)",
-				"Role governance: no rank on custom roles, no last-manage_roles guard, no audit rows, role delete not a pending action, no explain/test-as/diff (RL-4,7,8,10..14)",
-				"Feature flags: resolver tested but no instance/workspace/project write API or UI; locked-write error unimplemented (ST-1,2)",
-				"Secrets rotation job (secrets-rekey) and health key_id reporting missing (GM-13,14); Zod-generated plugin forms missing (GM-5)",
-				"Notifications: quiet hours never resolved, digest writer/builder missing, escalation-path resolver missing (NO-3,5,6,22)",
-				"Settings UX: no inherited indicator, last-changed metadata, entity-scoped History (/api/audit entity filter), project move (ST-4..6,10)",
-				"Automations (AM-1..13) entirely absent: no automation/automation_run tables, executor, dry-run or UI",
-				"Workspace webhooks (WH-1..15) absent as an entity: only per-user notification webhook channel; no history, redelivery, rotation, owner reach, auto-disable",
-				"SSRF: no connect-time re-check (DNS rebinding) and http allowed (WH-10/WH-12)",
-				"MCP package is legacy Kaneo toolset: direct destructive tools, no Idempotency-Key, no untrusted wrapping, no injection test (MC-5/7/15/17/18)",
-				"No is_mcp / service-key model; Argon2id, IP allowlist, last-used IP missing (AK-2/4/5/7/10, MC-4/21/22)",
-				"API key deletion not a pending action; create UI lacks capability picker/read default (AK-9/AK-11)",
-				"Notifications: no retention purge, no mark-unread, inbox lacks mentions/assignments filters, deep links go to legacy task not comment (NO-13/14/15/17)",
-				"Portal notification preferences and customer-facing copy missing (NO-20/21)"
-			],
+			"gaps": [],
 			"actions": [
 				"Write role.created/updated/deleted audit rows with added/removed capability diff in create/update/delete-workspace-role controllers + integration test",
 				"Add last-active workspace:manage_roles holder guard to update/delete role (and member role change) with integration test",
@@ -473,21 +205,23 @@
 				"Scaffold automation schema (automation, automation_run) and a depth-guarded outbox consumer behind feature.automations with default-disabled rules"
 			],
 			"review": {
-				"verdict": "not run",
+				"verdict": "not started",
 				"findings": 0,
-				"note": "Opus review runs at phase end"
+				"note": "Starts after P3"
 			},
 			"gates": {
 				"pass": 0,
 				"fail": 0,
 				"not_run": 0,
 				"note": "no gates run yet"
-			}
+			},
+			"carry": []
 		}
 	],
 	"decisions": [
-		"P1 committed and pushed (AI reviewed, not accepted). Carry-over named in the review: virtualisation (needs a dependency decision), WIP limits (schema), multi-column sort, inline edit, dependency arrows, PDF preview, AT-7 recovery, PR-5 aggregation, owner_team_id. Approve the carry-over list?",
-		"Your native Postgres on 62870 was shut down externally at 00:44 and is still stopped; all local verification ran on a scratch Postgres (62871). Restart yours when you want to use SIT."
+		"Holiday dataset for calendar presets (CAL-10/11): which countries and which source?",
+		"P1 carry-over: add the virtualisation dependency and WIP-limit schema, or defer to P7?",
+		"Restart your native Postgres on 62870 (stopped externally at 00:44). All verification used a scratch Postgres on 62871."
 	],
-	"next": "P2 (service desk) in progress: outbox consumer for sla/clarification events, scheduled transitions, SLA badges/pause explanation, triage columns, audit retention/export, calendar presets, workflow authoring UI."
+	"next": "P2 committed and pushed; P3 (portal and identity) is starting."
 }

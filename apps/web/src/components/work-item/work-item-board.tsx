@@ -41,6 +41,7 @@ import type { WorkItemRow } from "@/types/work-item";
 import useWorkItemDragDrop from "./use-work-item-drag-drop";
 import { WorkItemBlockedBadge } from "./work-item-blocked-badge";
 import WorkItemContextMenu from "./work-item-context-menu";
+import { WorkItemSlaBadge } from "./work-item-sla-badge";
 
 type ProjectState = { id: string; name: string; group?: string };
 
@@ -458,6 +459,7 @@ export function BoardCard({
         isFocused={false}
         selectionEnabled={canSelect && actionable}
         onToggleSelection={() => onSelectionChange(item.key, !selected)}
+        badges={item.sla ? <WorkItemSlaBadge sla={item.sla} /> : undefined}
         onContextMenuTask={() => {}}
         openTaskOnLinkClick={Boolean(onOpenItem)}
         onOpenTask={() => {

@@ -7,10 +7,10 @@ import {
   workItemSlaCacheTable,
   workItemTable,
 } from "../database/schema";
-import { enqueueOutboxEvent } from "../events/outbox";
 import { logTaskDesk } from "../instance/observability/runtime";
 import { evaluateStoredWorkItemSla } from "../sla-policy/evaluation";
 import { withJobLease } from "./leader-lock";
+import { enqueueSlaEvent } from "./sla-escalation";
 
 const BATCH_SIZE = 100;
 export type SlaScanOutcome = {
@@ -76,36 +76,54 @@ export async function scanWorkItemSla(itemId: string): Promise<number> {
           set: { state: metric.state, dueAt: metric.dueAt, computedAt: now },
         });
       for (const kind of decision.emit) {
-        await enqueueOutboxEvent(tx, {
-          id: createId(),
-          kind,
-          occurredAt: now.toISOString(),
-          actor: { type: "system", id: null, name: "SLA scanner" },
-          scope: {
+        // SLA-16 / EV-1: the outbox row and the assignee/lead (and, on a breach, first
+        // escalation stakeholder) fan-out commit with the cache write. A breach also starts the
+        // SLA-17 escalation walk.
+        await enqueueSlaEvent(
+          tx,
+          {
+            id: createId(),
+            kind,
+            occurredAt: now.toISOString(),
+            actor: { type: "system", id: null, name: "SLA scanner" },
+            scope: {
+              workspaceId: item.workspaceId,
+              projectId: item.projectId,
+              ...(project.organisationId
+                ? { organisationId: project.organisationId }
+                : {}),
+            },
+            payload: {
+              workItemId: item.id,
+              key: item.key,
+              url: `/agent/work-items/${encodeURIComponent(item.key)}`,
+              metric: metric.metric,
+              dueAt: metric.dueAt?.toISOString() ?? null,
+              ...(kind === "sla.at_risk"
+                ? { consumedPct: metric.consumedPct }
+                : {
+                    breachedByMinutes: Math.max(
+                      0,
+                      metric.consumedMinutes - (metric.targetMinutes ?? 0),
+                    ),
+                  }),
+            },
+            causationId: null,
+            depth: 0,
+            originAutomationId: null,
+          },
+          {
+            workItem: {
+              id: item.id,
+              stateId: item.stateId,
+              assigneeId: item.assigneeId,
+            },
             workspaceId: item.workspaceId,
             projectId: item.projectId,
-            ...(project.organisationId
-              ? { organisationId: project.organisationId }
-              : {}),
-          },
-          payload: {
-            workItemId: item.id,
-            key: item.key,
             metric: metric.metric,
-            dueAt: metric.dueAt?.toISOString() ?? null,
-            ...(kind === "sla.at_risk"
-              ? { consumedPct: metric.consumedPct }
-              : {
-                  breachedByMinutes: Math.max(
-                    0,
-                    metric.consumedMinutes - (metric.targetMinutes ?? 0),
-                  ),
-                }),
+            now,
           },
-          causationId: null,
-          depth: 0,
-          originAutomationId: null,
-        });
+        );
         emitted++;
       }
     }

@@ -1,5 +1,4 @@
 import { Cron } from "croner";
-import { scanApprovalReminders } from "../approval/reminder-scan";
 import {
   cleanupPendingAttachments,
   collectDeletedAttachments,
@@ -9,6 +8,8 @@ import { checkDueDateReminders } from "./due-date-reminders";
 import { drainOutbox } from "./outbox-drain";
 import { expirePendingActions } from "./pending-action-expire";
 import { runPositionRebalanceJob } from "./position-rebalance-job";
+import { runReminderScan } from "./reminder-scan";
+import { scanScheduledTransitions } from "./scheduled-transition";
 import { runSessionCleanup } from "./session-cleanup";
 import { scanSla } from "./sla-scan";
 
@@ -98,7 +99,13 @@ export function initializeScheduler(): void {
     {
       name: "reminder-scan",
       pattern: "*/15 * * * *",
-      handler: scanApprovalReminders,
+      handler: runReminderScan,
+    },
+    {
+      // WF-19: fires due `scheduled_transition` rows as a system actor, every minute.
+      name: "scheduled-transition",
+      pattern: "* * * * *",
+      handler: scanScheduledTransitions,
     },
     {
       name: "position-rebalance",
@@ -117,7 +124,7 @@ export function initializeScheduler(): void {
   }
 
   console.log(
-    "⏰ Scheduler started (outbox drain every 30 seconds, SLA scan every 5 minutes, due-date reminders every 5 minutes, audit purge daily 03:00, session cleanup with soft-delete purge daily 03:15, pending-action expiry every minute, reminder scan every 15 minutes, position rebalance every 5 minutes)",
+    "⏰ Scheduler started (outbox drain every 30 seconds, SLA scan every 5 minutes, due-date reminders every 5 minutes, audit purge daily 03:00, session cleanup with soft-delete purge daily 03:15, pending-action expiry every minute, reminder scan every 15 minutes, scheduled transitions every minute, position rebalance every 5 minutes)",
   );
 }
 

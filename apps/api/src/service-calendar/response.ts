@@ -32,8 +32,17 @@ export const calendarPreviewSchema = z.object({
   annualCoverMinutes: z.number().int(),
   hasCover: z.boolean(),
 });
+/** CAL-13: open work items whose deadlines a retroactive holiday moves later; 0 when none. */
+const affectedWorkItemCount = z.number().int().min(0).openapi({
+  description:
+    "CAL-13. Unresolved work items pinned to a policy version on this calendar that started on or before the end of a past or current-day holiday this change newly covers. Future-dated additions are not counted (due instants are not stored).",
+});
+export const calendarUpdateSchema = calendarSchema.extend({
+  affectedWorkItemCount,
+});
 export const calendarHolidayImportSchema = z.object({
   calendar: calendarSchema,
+  affectedWorkItemCount,
   importedCount: z.number().int().min(0),
   duplicateCount: z.number().int().min(0),
 });

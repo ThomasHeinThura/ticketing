@@ -173,6 +173,11 @@ The first column alone registers emitted identifiers. Other columns explain exis
   pending rows. This is intentional: those events have no side effects to run, and they are
   **not replayed** to consumers added later. A P4 consumer sees only events claimed after
   its registration point; it must backfill from the source tables if it needs earlier state.
+  **P2 note:** `sla.at_risk`, `sla.breached`, `submission.replied` and `submission.declined`
+  notifications are materialised by their producers in the producing transaction (`EV-1`) via
+  `enqueueNotificationEvent`, not by a parent consumer, so the registry stays empty and no
+  historical parent is replayed into notifications. The `NO-22` escalation steps reuse the
+  breach event id, so each stakeholder's inbox row stays keyed `(event_id, person_id)`.
 - `EV-3` `depth` increments on every event an automation's action produces; a rule does not
   fire on an event whose `originAutomationId` is itself (`AM-5`), and nothing fires past
   `depth = 5`.

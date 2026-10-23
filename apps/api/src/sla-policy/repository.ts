@@ -68,6 +68,35 @@ export async function getWorkItemSlaSourceQuery(
     .limit(1);
 }
 
+/** SLA-19: the pinned version's at-risk threshold and its calendar's name, for the detail display. */
+export async function getSlaPresentationForVersion(
+  policyVersionId: string,
+  workspaceId: string,
+  executor: Pick<typeof db, "select"> = db,
+) {
+  const [row] = await executor
+    .select({
+      atRiskThresholdPct: slaPolicyVersionTable.atRiskThresholdPct,
+      calendarName: serviceCalendarTable.name,
+    })
+    .from(slaPolicyVersionTable)
+    .leftJoin(
+      serviceCalendarTable,
+      and(
+        eq(serviceCalendarTable.id, slaPolicyVersionTable.calendarId),
+        eq(serviceCalendarTable.workspaceId, workspaceId),
+      ),
+    )
+    .where(
+      and(
+        eq(slaPolicyVersionTable.id, policyVersionId),
+        eq(slaPolicyVersionTable.workspaceId, workspaceId),
+      ),
+    )
+    .limit(1);
+  return row;
+}
+
 export async function getPinnedVersionForEvaluation(
   policyVersionId: string,
   workspaceId: string,

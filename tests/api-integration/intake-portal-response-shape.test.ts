@@ -291,4 +291,135 @@ describe("customer-facing intake responses expose only declared fields", () => {
       ).toEqual(value.typed);
     }
   });
+
+  it("SLA-21: shows the owner only state and due time; nothing from the policy or pauses", async () => {
+    const { t, customer, requestType } = await seed();
+    const other = await addCustomer(t);
+    const created = await portalRequest(
+      t,
+      customer,
+      "/api/portal/submissions",
+      {
+        method: "POST",
+        body: { key: requestType.key, formData: {} },
+      },
+    );
+    expect(created.status).toBe(200);
+    const { id: submissionId, ref } = (await created.json()) as {
+      id: string;
+      ref: string;
+    };
+    const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000);
+    const calendar = requireRow(
+      await db
+        .insert(schema.serviceCalendarTable)
+        .values({
+          workspaceId: t.workspaceId,
+          name: "INTERNAL-CALENDAR-NAME",
+          timezone: "UTC",
+          windows: Object.fromEntries(
+            ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => [
+              day,
+              [{ from: 0, to: 1440 }],
+            ]),
+          ),
+          holidays: [],
+        })
+        .returning(),
+      "calendar",
+    );
+    const policy = requireRow(
+      await db
+        .insert(schema.slaPolicyTable)
+        .values({ workspaceId: t.workspaceId, name: "INTERNAL-POLICY-NAME" })
+        .returning(),
+      "policy",
+    );
+    const version = requireRow(
+      await db
+        .insert(schema.slaPolicyVersionTable)
+        .values({
+          workspaceId: t.workspaceId,
+          policyId: policy.id,
+          calendarId: calendar.id,
+          number: 1,
+          atRiskThresholdPct: 75,
+        })
+        .returning(),
+      "version",
+    );
+    await db.insert(schema.slaGoalTable).values(
+      (["first_response", "resolution"] as const).flatMap((metric) =>
+        (["low", "medium", "high", "urgent"] as const).map((priority) => ({
+          workspaceId: t.workspaceId,
+          versionId: version.id,
+          metric,
+          priority,
+          workItemTypeId: t.type.id,
+          targetMinutes: 100,
+        })),
+      ),
+    );
+    await db
+      .update(schema.slaPolicyVersionTable)
+      .set({ effectiveFrom: ago(24 * 60) })
+      .where(eq(schema.slaPolicyVersionTable.id, version.id));
+    await db
+      .update(schema.workItemTable)
+      .set({
+        requesterId: customer.person.id,
+        customerVisibility: "organisation",
+        priority: "high",
+        slaPolicyVersionId: version.id,
+        slaStartedAt: ago(85),
+      })
+      .where(eq(schema.workItemTable.id, t.workItem.id));
+    await db
+      .update(schema.submissionTable)
+      .set({ workItemId: t.workItem.id })
+      .where(eq(schema.submissionTable.id, submissionId));
+
+    const response = await portalRequest(
+      t,
+      customer,
+      `/api/portal/submissions/${ref}`,
+    );
+    expect(response.status).toBe(200);
+    const text = await response.text();
+    const body = JSON.parse(text) as {
+      workItem: { sla: { state: string; dueAt: string | null } | null };
+    };
+    expect(body.workItem.sla).not.toBeNull();
+    expect(Object.keys(body.workItem.sla ?? {}).sort()).toEqual([
+      "dueAt",
+      "state",
+    ]);
+    expect(body.workItem.sla?.state).toBe("at_risk");
+    expect(Number.isNaN(Date.parse(body.workItem.sla?.dueAt ?? ""))).toBe(
+      false,
+    );
+    for (const internal of [
+      "targetMinutes",
+      "consumedMinutes",
+      "consumedPct",
+      "remainingMinutes",
+      "atRiskThresholdPct",
+      "calendar",
+      "INTERNAL-CALENDAR-NAME",
+      "INTERNAL-POLICY-NAME",
+      "slaPolicy",
+      "pause",
+      "first_response",
+    ])
+      expect(text, internal).not.toContain(internal);
+
+    // Another customer's request never carries this item's SLA, and cannot read the page.
+    const foreign = await portalRequest(
+      t,
+      other,
+      `/api/portal/submissions/${ref}`,
+    );
+    expect(foreign.status).toBe(404);
+    expect(await foreign.text()).not.toContain("at_risk");
+  });
 });

@@ -25,7 +25,8 @@ export async function enqueueWorkItemUnblocked(
   tx: Transaction,
   input: {
     item: UnblockedItem;
-    actorId: string;
+    /** Null for a system actor (WF-19 scheduled transition, WF-21 reopen). */
+    actorId: string | null;
     actorType: ActivityActorType;
     formerBlockerId: string | null;
   },
@@ -36,7 +37,7 @@ export async function enqueueWorkItemUnblocked(
     .from(projectTable)
     .where(eq(projectTable.id, item.projectId));
   const [actorPerson] =
-    input.actorType === "person"
+    input.actorType === "person" && input.actorId
       ? await tx
           .select({ id: personTable.id })
           .from(personTable)

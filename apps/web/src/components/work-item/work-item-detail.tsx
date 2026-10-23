@@ -30,6 +30,7 @@ import { extractDescription, type WorkItemDetailRow } from "@/types/work-item";
 import WorkItemActivity, { type ActivityFilter } from "./work-item-activity";
 import WorkItemApprovals from "./work-item-approvals";
 import WorkItemAttachments from "./work-item-attachments";
+import WorkItemAuditHistory from "./work-item-audit-history";
 import { WorkItemBlockedBadge } from "./work-item-blocked-badge";
 import WorkItemDescription from "./work-item-description";
 import WorkItemDetailLoading from "./work-item-detail-loading";
@@ -250,14 +251,21 @@ function WorkItemDetail({
       }
       supporting={variant === "pane" || isCompactPage ? extensions : null}
       activity={
-        <WorkItemActivity
-          workItemKey={workItemKey}
-          workspaceId={item.workspaceId}
-          defaultVisibility={item.defaultCommentVisibility}
-          focusedComment={focusedComment}
-          filter={activityFilter}
-          onFilterChange={onActivityFilterChange}
-        />
+        <>
+          <WorkItemActivity
+            workItemKey={workItemKey}
+            workspaceId={item.workspaceId}
+            defaultVisibility={item.defaultCommentVisibility}
+            focusedComment={focusedComment}
+            filter={activityFilter}
+            onFilterChange={onActivityFilterChange}
+          />
+          <WorkItemAuditHistory
+            workItemKey={workItemKey}
+            workspaceId={item.workspaceId}
+            projectId={item.projectId}
+          />
+        </>
       }
     />
   );

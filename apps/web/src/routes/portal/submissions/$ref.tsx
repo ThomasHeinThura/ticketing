@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Alert, AlertDescription, Button, Input, Textarea } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  Badge,
+  Button,
+  Input,
+  Textarea,
+} from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -13,6 +20,21 @@ import {
   withdrawPortalSubmission,
 } from "@/fetchers/intake";
 import { submissionAnswerRows } from "@/lib/intake-validation";
+
+const SLA_BADGE = {
+  on_track: "success",
+  at_risk: "warning",
+  breached: "error",
+  met: "success",
+  missed: "error",
+} as const;
+const SLA_DEFAULT = {
+  on_track: "On track",
+  at_risk: "At risk",
+  breached: "Overdue",
+  met: "Met",
+  missed: "Missed",
+} as const;
 
 export const Route = createFileRoute("/submissions/$ref")({
   component: PortalSubmissionPage,
@@ -102,6 +124,10 @@ function PortalSubmissionPage() {
           description: string;
           state: string;
           priority: string | null;
+          sla?: {
+            state: "on_track" | "at_risk" | "breached" | "met" | "missed";
+            dueAt: string | null;
+          } | null;
         } | null;
         requestType?: { name?: string };
         version?: {
@@ -189,6 +215,36 @@ function PortalSubmissionPage() {
                   <div>
                     <dt className="text-muted-foreground text-sm">Priority</dt>
                     <dd className="capitalize">{record.workItem.priority}</dd>
+                  </div>
+                )}
+                {record.workItem.sla && (
+                  <div>
+                    <dt className="text-muted-foreground text-sm">
+                      {t("portal:intake.sla.label", {
+                        defaultValue: "Service target",
+                      })}
+                    </dt>
+                    <dd className="flex flex-wrap items-center gap-2">
+                      <Badge variant={SLA_BADGE[record.workItem.sla.state]}>
+                        {t(
+                          `portal:intake.sla.state.${record.workItem.sla.state}`,
+                          {
+                            defaultValue:
+                              SLA_DEFAULT[record.workItem.sla.state],
+                          },
+                        )}
+                      </Badge>
+                      {record.workItem.sla.dueAt && (
+                        <span className="text-sm">
+                          {t("portal:intake.sla.due", {
+                            defaultValue: "Due {{when}}",
+                            when: new Date(
+                              record.workItem.sla.dueAt,
+                            ).toLocaleString(),
+                          })}
+                        </span>
+                      )}
+                    </dd>
                   </div>
                 )}
               </dl>

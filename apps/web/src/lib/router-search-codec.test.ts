@@ -17,6 +17,7 @@ import {
   parsePortalCatalogueSearch,
   parsePortalSignInSearch,
   parseRequestTypeEditorSearch,
+  parseWorkflowSettingsSearch,
   parseWorkItemDetailSearch,
   parseWorkItemListSearch,
   routes,
@@ -109,6 +110,12 @@ const cases: Case[] = [
         ref: "SUB-12",
         cursor: "c",
       }),
+      routes.intakeQueue.build({
+        state: "new",
+        requestType: "rt_1",
+        assignee: "claimed",
+        age: "7d",
+      }),
       "?state=declined&ref=SUB-7",
     ],
   },
@@ -139,6 +146,16 @@ const cases: Case[] = [
       routes.requestTypes.build(),
       routes.requestTypes.build({ requestTypeId: "rt-1" }),
       "?requestTypeId=123",
+    ],
+  },
+  {
+    name: "workflow settings",
+    pathname: routes.workflowSettings.path,
+    validate: parseWorkflowSettingsSearch,
+    urls: [
+      routes.workflowSettings.build(),
+      routes.workflowSettings.build({ workflowId: "wf-1" }),
+      "?workflowId=123",
     ],
   },
   {

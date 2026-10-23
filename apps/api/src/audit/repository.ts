@@ -41,6 +41,8 @@ export type AuditQuery = {
   readonly action?: string | undefined;
   readonly since?: string | undefined;
   readonly until?: string | undefined;
+  readonly entityType?: string | undefined;
+  readonly entityId?: string | undefined;
 };
 
 type AuditListRow = Omit<
@@ -91,6 +93,12 @@ function auditListFilters(query: AuditQuery): (SQL | undefined)[] {
     query.until === undefined
       ? undefined
       : lt(auditLogTable.createdAt, new Date(query.until)),
+    query.entityType === undefined
+      ? undefined
+      : eq(auditLogTable.entityType, query.entityType),
+    query.entityId === undefined
+      ? undefined
+      : eq(auditLogTable.entityId, query.entityId),
   ];
 }
 

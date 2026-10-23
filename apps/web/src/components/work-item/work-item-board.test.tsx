@@ -205,6 +205,28 @@ describe("WorkItemBoard layout (VW-8)", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the compact SLA badge on a card that has an SLA, and none on one without (SLA-18)", () => {
+    board({
+      workItems: [
+        item("WLP-1", "s-open", "1", {
+          sla: {
+            metric: "resolution",
+            state: "at_risk",
+            remainingMinutes: 90,
+            dueAt: null,
+            consumedPct: 80,
+          },
+        } as Partial<WorkItemRow>),
+        item("WLP-2", "s-open", "2"),
+      ],
+    });
+    const badge = within(card("WLP-1")).getByTestId("work-item-sla-badge");
+    expect(badge).toHaveAttribute("data-sla-state", "at_risk");
+    expect(
+      within(card("WLP-2")).queryByTestId("work-item-sla-badge"),
+    ).toBeNull();
+  });
+
   it("orders cards by position numerically within each column", () => {
     board({
       workItems: [

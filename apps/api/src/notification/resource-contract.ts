@@ -20,6 +20,9 @@ const RESOURCE_EVENT_KINDS = {
     "approval.withdrawn",
   ],
   workspace: ["workspace.created"],
+  // IQ-12 / IQ-15: a clarification reply reaches the customer who owns the request (or the
+  // triager who last handled it); a decline reaches the requester with its reason. Read access is the dedicated submission branch in `inbox.repository.ts`.
+  submission: ["submission.replied", "submission.declined"],
 } as const satisfies Record<string, readonly string[]>;
 
 export function isSupportedNotificationResourceEvent(

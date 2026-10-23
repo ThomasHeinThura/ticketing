@@ -86,6 +86,7 @@ export function useServiceCalendarEditor({
   });
   const [holidayIds, setHolidayIds] = useState<string[]>([]);
   const [windowError, setWindowError] = useState("");
+  const [retroactiveImpact, setRetroactiveImpact] = useState(0);
   const [timezoneConfirmationOpen, setTimezoneConfirmationOpen] =
     useState(false);
   const [pendingSaveValues, setPendingSaveValues] =
@@ -188,6 +189,7 @@ export function useServiceCalendarEditor({
         setCalendarConflict(null);
         setConflictFreshCalendar(null);
         setConflictRefreshState("idle");
+        setRetroactiveImpact(updated.affectedWorkItemCount ?? 0);
         toast.success(t("weekly.saved"));
       }
     } catch (error) {
@@ -402,6 +404,8 @@ export function useServiceCalendarEditor({
     windowIds,
     holidayIds,
     windowError,
+    retroactiveImpact,
+    dismissRetroactiveImpact: () => setRetroactiveImpact(0),
     saving: createCalendar.isPending || updateCalendar.isPending,
     canManageCalendars: canManageServiceCalendars(),
     isCheckingPermissions,

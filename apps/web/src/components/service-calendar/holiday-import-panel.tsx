@@ -27,6 +27,7 @@ export function HolidayImportPanel({
   const [result, setResult] = useState<{
     importedCount: number;
     duplicateCount: number;
+    affectedWorkItemCount: number;
   } | null>(null);
   const previewKeys = new Map<string, number>();
   const previewItems = names.map((name) => {
@@ -103,6 +104,7 @@ export function HolidayImportPanel({
       setResult({
         importedCount: imported.importedCount,
         duplicateCount: imported.duplicateCount,
+        affectedWorkItemCount: imported.affectedWorkItemCount ?? 0,
       });
       onImported(imported.calendar.holidays);
       setIcs(null);
@@ -172,6 +174,16 @@ export function HolidayImportPanel({
             {t("import.success", {
               imported: result.importedCount,
               duplicates: result.duplicateCount,
+            })}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      {result && result.affectedWorkItemCount > 0 ? (
+        <Alert variant="warning" role="status">
+          <AlertTitle>{t("editor.retroactiveTitle")}</AlertTitle>
+          <AlertDescription>
+            {t("editor.retroactiveDescription", {
+              count: result.affectedWorkItemCount,
             })}
           </AlertDescription>
         </Alert>

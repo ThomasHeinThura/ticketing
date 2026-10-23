@@ -372,6 +372,7 @@ describe("G5 route metadata", () => {
     expect(generatedRouteMetadata.agent).toContain(
       "/agent/settings/request-types",
     );
+    expect(generatedRouteMetadata.agent).toContain("/agent/settings/workflows");
     expect(generatedRouteMetadata.agent).toContain("/agent/triage");
     expect(generatedRouteMetadata.portal).toContain("/catalogue");
     expect(generatedRouteMetadata.portal).toContain("/sign-in");
@@ -442,6 +443,29 @@ describe("canonical intake URLs", () => {
     const parsed = parseIntakeSearch(search);
     expect(parsed).toEqual({ state: "clarifying", ref: "SUB-12" });
     expect(routes.intakeQueue.build(parsed)).toBe(url);
+  });
+
+  it("round-trips the richer triage filters and drops invalid ones", () => {
+    const url = routes.intakeQueue.build({
+      state: "new",
+      requestType: "rt_1",
+      assignee: "unclaimed",
+      age: "3d",
+    });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    const parsed = parseIntakeSearch(search);
+    expect(parsed).toEqual({
+      state: "new",
+      requestType: "rt_1",
+      assignee: "unclaimed",
+      age: "3d",
+    });
+    expect(routes.intakeQueue.build(parsed)).toBe(url);
+    expect(
+      parseIntakeSearch({ assignee: "me", age: "2y", requestType: "" }),
+    ).toEqual({
+      state: "new",
+    });
   });
 
   it("round-trips request type selection through the editor URL", () => {

@@ -3,8 +3,10 @@ import type { WorkItemActivityRow } from "@/fetchers/work-item/get-work-item-act
 import { translate } from "@/test/en-translation";
 import {
   activityChangeDescription,
+  activityVerbLabel,
   filterActivityRows,
   groupConsecutiveActivity,
+  REOPEN_REQUESTED_VERB,
 } from "./work-item-activity";
 
 function row(
@@ -184,7 +186,7 @@ describe("relation activity descriptions", () => {
     ).toBe('estimate: {"value":1} → —');
     expect(
       activityChangeDescription(change(null, "done", null), translate, true),
-    ).toBe("updated: — → done");
+    ).toBe("Updated: — → done");
     expect(
       activityChangeDescription(change(null, "done", null), translate),
     ).toBe("— → done");
@@ -243,5 +245,15 @@ describe("readable canonical activity summaries", () => {
         true,
       ),
     ).toBe("removed an attachment");
+  });
+});
+
+describe("activity verb labels (WF-21)", () => {
+  it("labels the flagged customer-reopen verb and never shows a raw key", () => {
+    expect(REOPEN_REQUESTED_VERB).toBe("reopen_requested");
+    expect(activityVerbLabel("reopen_requested", translate)).toBe(
+      "Reopen requested",
+    );
+    expect(activityVerbLabel("sla.paused", translate)).toBe("Sla paused");
   });
 });

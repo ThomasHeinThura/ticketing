@@ -131,6 +131,17 @@ export function ServiceCalendarEditorView({
           </Button>
         </div>
 
+        {state.retroactiveImpact > 0 ? (
+          <Alert variant="warning" role="status">
+            <AlertTitle>{t("editor.retroactiveTitle")}</AlertTitle>
+            <AlertDescription>
+              {t("editor.retroactiveDescription", {
+                count: state.retroactiveImpact,
+              })}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         {state.calendarConflict ? (
           <Alert variant="error" role="alert">
             <AlertTitle>{t("editor.conflictTitle")}</AlertTitle>

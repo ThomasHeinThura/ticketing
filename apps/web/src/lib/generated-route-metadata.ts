@@ -39,6 +39,7 @@ export const generatedRouteMetadata = {
     "/agent/settings/sla-policies/$id",
     "/agent/settings/states",
     "/agent/settings/work-item-templates",
+    "/agent/settings/workflows",
     "/agent/triage",
     "/agent/views",
     "/agent/views/$id",

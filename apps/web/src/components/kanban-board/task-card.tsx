@@ -16,7 +16,7 @@ import {
   GitPullRequest,
   SquareCheck,
 } from "lucide-react";
-import { type CSSProperties, memo } from "react";
+import { type CSSProperties, memo, type ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { cn } from "@/lib/cn";
@@ -50,6 +50,8 @@ export type TaskCardProps = {
   openTaskOnLinkClick?: boolean;
   selectionEnabled?: boolean;
   onToggleSelection?: () => void;
+  /** Extra metadata-row badges (`SLA-18`'s compact SLA badge). */
+  badges?: ReactNode;
 };
 
 export type TaskCardDisplayPreferences = {
@@ -82,6 +84,7 @@ function TaskCard({
   openTaskOnLinkClick = false,
   selectionEnabled = true,
   onToggleSelection,
+  badges,
   t,
 }: TaskCardProps) {
   const {
@@ -161,6 +164,7 @@ function TaskCard({
     showPriority ||
     Boolean(taskItemStats?.total) ||
     Boolean(dueDateStatus) ||
+    Boolean(badges) ||
     pullRequests.length > 0;
 
   function handleTaskCardClick(
@@ -328,6 +332,8 @@ function TaskCard({
               <span>{format(dueDate, "MMM d")}</span>
             </div>
           )}
+
+          {badges}
 
           {pullRequests.length === 1 && (
             <HoverCard openDelay={200} closeDelay={100}>

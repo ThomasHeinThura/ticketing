@@ -1,5 +1,6 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { handleUnauthorized, isUnauthorizedError } from "@/lib/http-error";
+import { followAuditInvalidation } from "./audit-invalidation";
 import { configureNotifyScheduler } from "./notify-scheduler";
 
 configureNotifyScheduler();
@@ -89,5 +90,7 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+followAuditInvalidation(queryClient);
 
 export default queryClient;

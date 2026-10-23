@@ -9,7 +9,9 @@ import {
   resolveAutomaticEffects,
   resolveEffects,
   resolveStateTemplateForProject,
+  type StateGroup,
   type TransitionOfferContext,
+  type WorkflowTransition,
 } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -39,6 +41,11 @@ import {
   hasOpenBlockers,
   lockRelationGraph,
 } from "../../work-item-relation/blockers";
+import {
+  type SystemTransitionOutcome,
+  type SystemTransitionRequest,
+  setSystemTransitionExecutor,
+} from "../../workflow/system-transition";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import {
   assertProjectStillLive,
@@ -48,6 +55,7 @@ import { resolveAssigneeEligibility } from "../assignee-eligibility";
 import { requireCommentPerson } from "../comment-access";
 import { ensureImplicitAssigneeWatcher } from "../implicit-watcher";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import { cancelPendingScheduledTransitions } from "../scheduled-transition-cancel";
 import {
   loadWorkflowTransitionContext,
   resolveActorRoleIds,
@@ -217,6 +225,19 @@ function resolveSetAssigneePersonId(
 }
 
 /**
+ * Deterministic most-restrictive-first order for edges sharing a template pair: an
+ * approval/CAB gate first, then more guards, then the edge id (never array order).
+ */
+export function compareEdgeRestrictiveness(
+  a: WorkflowTransition,
+  b: WorkflowTransition,
+): number {
+  const score = (t: WorkflowTransition) =>
+    (t.requiresApproval || t.requiresCab ? 1000 : 0) + t.guards.length;
+  return score(b) - score(a) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+}
+
+/**
  * `POST /api/work-items/{key}/transition` (`docs/03-features/workflows.md`, issue #442
  * -- the execution route the persistence PR (#31/#443) deliberately left unbuilt).
  *
@@ -281,41 +302,118 @@ function resolveSetAssigneePersonId(
  */
 export async function transitionWorkItem(
   workItemId: string,
-  identity: ResolvedIdentity,
+  identity: ResolvedIdentity | null,
   personId: string | null,
-  actorId: string,
+  actorId: string | null,
   actorType: ActivityActorType,
   input: TransitionWorkItemInput,
+  /** `WF-19` / `WF-21`: set only by `executeSystemTransition`; identity/actorId are then null. */
+  system?: SystemTransitionRequest,
 ): Promise<TransitionedWorkItem> {
   const ctx = await loadWorkflowTransitionContext(workItemId);
   if (!ctx) {
     throw new HTTPException(404, { message: "Work item not found" });
   }
-  if (!ctx.activeVersion) {
+  // A scheduled hop is the stored concrete transition (WF-19): it needs no active version.
+  if (!ctx.activeVersion && system?.kind !== "scheduled") {
     throw new NoMatchingTransitionError(
       "This work item's type has no active workflow version",
     );
   }
-  const activeVersion = ctx.activeVersion;
+  const workflowVersionNumber = ctx.activeVersion?.number ?? 0;
 
-  const actorRoleIds = await resolveActorRoleIds(
-    personId,
-    ctx.workItem.workspaceId,
-    ctx.workItem.projectId,
-  );
+  // A system actor bypasses role legality only (WF-21): every edge's role is acceptable.
+  const actorRoleIds = system
+    ? [...new Set(ctx.transitions.flatMap((t) => (t.roleId ? [t.roleId] : [])))]
+    : await resolveActorRoleIds(
+        personId,
+        ctx.workItem.workspaceId,
+        ctx.workItem.projectId,
+      );
   const legal = legalTransitions(
     ctx.transitions,
     ctx.currentStateTemplateId,
     actorRoleIds,
   );
   const offerable = filterOfferableForType(legal, ctx.isChangeType);
-  const targetTemplateId = asStateTemplateId(input.toStateTemplateId);
-  const match = offerable.find((t) => t.toStateTemplateId === targetTemplateId);
-  if (!match) {
+  if (
+    system?.kind === "scheduled" &&
+    ctx.workItem.stateId !== system.fromStateId
+  ) {
+    throw new TransitionConflictError(ctx.workItem.stateId);
+  }
+  let targetTemplateId = asStateTemplateId(input.toStateTemplateId);
+  let scheduledTargetGroup: StateGroup | null = null;
+  if (system?.kind === "scheduled") {
+    // The row already holds the concrete target state (WF-19: no template lookup to find the
+    // hop). Its template is read only to settle automatic effects and to honour any gate the
+    // current workflow version happens to place on the same template pair.
+    const [target] = await db
+      .select({
+        stateTemplateId: stateTable.stateTemplateId,
+        projectId: stateTable.projectId,
+        archivedAt: stateTable.archivedAt,
+        group: stateTemplateTable.group,
+      })
+      .from(stateTable)
+      .innerJoin(
+        stateTemplateTable,
+        eq(stateTable.stateTemplateId, stateTemplateTable.id),
+      )
+      .where(eq(stateTable.id, system.toStateId))
+      .limit(1);
+    if (
+      !target ||
+      target.archivedAt !== null ||
+      target.projectId !== ctx.workItem.projectId
+    ) {
+      throw new NoMatchingTransitionError("The scheduled target state is gone");
+    }
+    targetTemplateId = asStateTemplateId(target.stateTemplateId);
+    scheduledTargetGroup = target.group as StateGroup;
+  } else if (system?.kind === "reopen") {
+    const reopen = offerable.find((t) => t.isReopen);
+    if (!reopen) {
+      throw new NoMatchingTransitionError(
+        "The active workflow version has no reopen transition from this state",
+      );
+    }
+    targetTemplateId = reopen.toStateTemplateId;
+  }
+  // `WF-19`: a version may hold several edges for one template pair (different roles, or a
+  // null-from "any" edge beside a specific one). A scheduled hop is taken by a system actor
+  // for whom every role is acceptable, so ALL of them match; the most restrictive wins and
+  // every matching edge's guards must hold, independent of array order.
+  const matchingEdges = offerable
+    .filter(
+      (t) =>
+        t.toStateTemplateId === targetTemplateId &&
+        (system?.kind !== "reopen" || t.isReopen),
+    )
+    .sort(compareEdgeRestrictiveness);
+  const foundEdge = matchingEdges[0];
+  if (!foundEdge && system?.kind !== "scheduled") {
     throw new NoMatchingTransitionError(
       "No transition matches the requested target for this actor from the work item's current state",
     );
   }
+  // A scheduled hop with no edge in the current version is still executed (WF-19): it is the
+  // stored concrete transition. The inert edge below carries no guards, gates or authored
+  // effects; only the automatic WF-17/WF-18 effects of the state groups apply.
+  const match: WorkflowTransition = foundEdge ?? {
+    id: "",
+    fromStateTemplateId: ctx.currentStateTemplateId,
+    toStateTemplateId: targetTemplateId,
+    roleId: null,
+    notePolicy: "none",
+    noteVisibility: "internal",
+    requiresApproval: false,
+    approvalPolicy: null,
+    requiresCab: false,
+    isReopen: false,
+    guards: [],
+    effects: [],
+  };
   if (match.effects.some((effect) => effect.kind === "set_field")) {
     throw new TransitionBlockedError(
       [],
@@ -323,10 +421,13 @@ export async function transitionWorkItem(
     );
   }
 
-  const resolution = resolveStateTemplateForProject(
-    match.toStateTemplateId,
-    ctx.adoptedStates,
-  );
+  const resolution =
+    system?.kind === "scheduled"
+      ? ({ ok: true, stateId: system.toStateId } as const)
+      : resolveStateTemplateForProject(
+          match.toStateTemplateId,
+          ctx.adoptedStates,
+        );
   if (!resolution.ok) {
     // `WF-2`: the same 409 as "no matching transition" -- the target template has no
     // concrete state in this project.
@@ -335,12 +436,22 @@ export async function transitionWorkItem(
     );
   }
 
+  if (system && (match.requiresApproval || match.requiresCab)) {
+    // A system actor cannot satisfy an approval or CAB gate: fail closed.
+    throw new TransitionBlockedError(
+      [],
+      "A system transition cannot satisfy an approval gate",
+    );
+  }
+
   const hasNote =
     typeof input.note === "string" && input.note.trim().length > 0;
   const fromStateId = ctx.workItem.stateId;
   const toStateId = resolution.stateId;
   const toGroup =
-    ctx.templateGroups.get(match.toStateTemplateId) ?? ctx.currentGroup;
+    scheduledTargetGroup ??
+    ctx.templateGroups.get(match.toStateTemplateId) ??
+    ctx.currentGroup;
 
   const authoredEffects = resolveEffects(match);
   const automaticEffects = resolveAutomaticEffects(ctx.currentGroup, toGroup);
@@ -418,6 +529,12 @@ export async function transitionWorkItem(
       }
 
       await assertProjectStillLive(tx, locked.projectId);
+
+      // WF-19: fire the scheduled row exactly once, under the item lock and after the
+      // `from_state_id` re-check; losing the claim means another replica already fired it.
+      if (system?.kind === "scheduled" && !(await system.claim(tx))) {
+        throw new TransitionConflictError(locked.stateId);
+      }
 
       // AS-11 / WF-19: `set_assignee: "default"` resolves against the project's default
       // assignee inside this transaction; none or ineligible leaves the assignee untouched.
@@ -502,7 +619,7 @@ export async function transitionWorkItem(
         // gate between this read and the transition write.
         approvalRows = await lockApprovalsForWorkItemTransition(
           tx,
-          identity,
+          identity as ResolvedIdentity,
           ctx.workItem.id,
           ctx.workItem.workspaceId,
         );
@@ -531,7 +648,13 @@ export async function transitionWorkItem(
             })
           : true;
       }
-      const offer = offerTransition(match, offerContext);
+      const offer =
+        system?.kind === "scheduled" && matchingEdges.length > 1
+          ? (matchingEdges
+              .map((edge) => offerTransition(edge, offerContext))
+              .find((candidate) => !candidate.available) ??
+            offerTransition(match, offerContext))
+          : offerTransition(match, offerContext);
       if (!offer.available) {
         const blockedBy = offer.blockedBy.map((reason) => {
           if (reason.kind !== "approval" && reason.kind !== "cab")
@@ -739,6 +862,13 @@ export async function transitionWorkItem(
         }
       }
 
+      // WF-19 / R4: leaving a state cancels the pending hops waiting in the previous one, in
+      // this same transaction, so an A->B->A bounce can never fire a stale row early. The
+      // scheduler sweep stays as a safety net.
+      await cancelPendingScheduledTransitions(tx, ctx.workItem.id, {
+        exceptFromStateId: toStateId,
+      });
+
       for (const schedule of scheduleEffects) {
         const scheduleResolution = resolveStateTemplateForProject(
           asStateTemplateId(schedule.toStateTemplateId),
@@ -783,7 +913,10 @@ export async function transitionWorkItem(
           newValue: toStateId,
           // Durable record of which edge ran: approvals are single use, so an approval
           // created before this run no longer counts (owner decision 2026-10-10).
-          payload: { transitionId: match.id },
+          payload: {
+            transitionId: match.id === "" ? null : match.id,
+            ...(system?.kind === "scheduled" ? { scheduled: true } : {}),
+          },
           workflowVersionId: ctx.activeVersion?.id ?? null,
           // The database clock under the work-item lock (see approval `created_at`).
           createdAt: dbClockUtc(),
@@ -792,7 +925,7 @@ export async function transitionWorkItem(
       if (match.requiresApproval || match.requiresCab) {
         // Owner decision 2026-10-10: the run closes the other still-pending approvals.
         await closePendingApprovalsOnTransition(tx, {
-          identity,
+          identity: identity as ResolvedIdentity,
           workspaceId: ctx.workItem.workspaceId,
           projectId: ctx.workItem.projectId,
           workItemId: ctx.workItem.id,
@@ -865,7 +998,7 @@ export async function transitionWorkItem(
           workspaceId: ctx.workItem.workspaceId,
           workItemId: ctx.workItem.id,
           authorId: requireCommentPerson(
-            identity.personId ? { personId: identity.personId } : null,
+            identity?.personId ? { personId: identity.personId } : null,
           ),
           actorType,
           body: input.note,
@@ -914,7 +1047,7 @@ export async function transitionWorkItem(
           url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
           fromStateId,
           toStateId,
-          workflowVersion: activeVersion.number,
+          workflowVersion: workflowVersionNumber,
           ...(input.note !== undefined ? { note: input.note } : {}),
         },
       });
@@ -990,7 +1123,7 @@ export async function transitionWorkItem(
     projectId: ctx.workItem.projectId,
     fromStateId,
     toStateId,
-    workflowVersion: ctx.activeVersion.number,
+    workflowVersion: workflowVersionNumber,
     note: input.note,
     actorId,
     actorType,
@@ -1045,5 +1178,45 @@ export async function transitionWorkItem(
     version: result.version,
   };
 }
+
+/**
+ * `WF-19` / `WF-21` system-actor entry point (the port in `workflow/system-transition.ts`).
+ * Runs the very same transaction as a person's transition, as `system` with no identity.
+ */
+export async function executeSystemTransition(
+  request: SystemTransitionRequest,
+): Promise<SystemTransitionOutcome> {
+  try {
+    await transitionWorkItem(
+      request.workItemId,
+      null,
+      null,
+      null,
+      "system",
+      { toStateTemplateId: "" },
+      request,
+    );
+    return { kind: "applied" };
+  } catch (error) {
+    if (error instanceof TransitionConflictError) return { kind: "left_state" };
+    if (error instanceof NoMatchingTransitionError)
+      return request.kind === "reopen"
+        ? { kind: "none" }
+        : { kind: "blocked", reason: "target_unavailable" };
+    if (error instanceof TransitionBlockedError)
+      return {
+        kind: "blocked",
+        reason: error.blockedBy[0]
+          ? `${error.blockedBy[0].kind}`
+          : "guard_or_gate",
+      };
+    if (error instanceof HTTPException) return { kind: "unavailable" };
+    if (error instanceof SlaPauseConflictError)
+      return { kind: "blocked", reason: "sla_pause_conflict" };
+    throw error;
+  }
+}
+
+setSystemTransitionExecutor(executeSystemTransition);
 
 export default transitionWorkItem;

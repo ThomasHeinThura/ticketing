@@ -1,7 +1,23 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
-import { type Holiday, holidayImportIdentity } from "@taskdesk/domain";
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import {
+  type Holiday,
+  holidayImportIdentity,
+  retroactiveHolidayWindows,
+} from "@taskdesk/domain";
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import {
   type AppendAuditLogInput,
@@ -470,6 +486,67 @@ export async function createCalendar(input: {
   }
   return materializeCalendar(outcome.row);
 }
+/**
+ * CAL-13: open work items whose deadline a newly added holiday moves later. A holiday that
+ * takes effect in the past (or today, calendar-local) removes cover from time an unresolved
+ * item pinned to a policy version on this calendar has already run through, so the count is
+ * those items that started on or before the end of any newly covered past day. Future-dated
+ * additions are not counted: due instants are not stored, so their effect on each item is
+ * not known without evaluating every item. Pure read; runs inside the mutation transaction.
+ */
+export async function countRetroactiveHolidayImpact(
+  tx: Pick<typeof db, "select">,
+  input: {
+    workspaceId: string;
+    calendarId: string;
+    timezone: string;
+    before: Holiday[];
+    after: Holiday[];
+    now?: Date;
+  },
+): Promise<number> {
+  const windows = retroactiveHolidayWindows({
+    timezone: input.timezone,
+    before: input.before,
+    after: input.after,
+    now: input.now ?? new Date(),
+  });
+  if (windows.length === 0) return 0;
+  // The widest window's end bounds every narrower one: an item that started on or before
+  // an earlier window's end also started on or before the latest end.
+  const latestEnd = windows.reduce(
+    (latest, w) => (w.endsAt > latest ? w.endsAt : latest),
+    windows[0]?.endsAt ?? new Date(0),
+  );
+  const [row] = await tx
+    .select({ value: countDistinct(workItemTable.id) })
+    .from(workItemTable)
+    .innerJoin(
+      slaPolicyVersionTable,
+      eq(slaPolicyVersionTable.id, workItemTable.slaPolicyVersionId),
+    )
+    .where(
+      and(
+        eq(workItemTable.workspaceId, input.workspaceId),
+        eq(slaPolicyVersionTable.calendarId, input.calendarId),
+        isNull(workItemTable.resolvedAt),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        or(
+          and(
+            isNotNull(workItemTable.slaStartedAt),
+            lte(workItemTable.slaStartedAt, latestEnd),
+          ),
+          and(
+            isNull(workItemTable.slaStartedAt),
+            lte(workItemTable.createdAt, latestEnd),
+          ),
+        ),
+      ),
+    );
+  return row?.value ?? 0;
+}
+
 export async function updateCalendar(
   id: string,
   workspaceId: string,
@@ -533,7 +610,17 @@ export async function updateCalendar(
         actor,
         changedFields: changedCalendarFields(before, row),
       });
-      return { value: { before, row }, auditFailed };
+      const affectedWorkItemCount =
+        input.holidays === undefined
+          ? 0
+          : await countRetroactiveHolidayImpact(tx, {
+              workspaceId,
+              calendarId: row.id,
+              timezone: row.timezone,
+              before: before.holidays as Holiday[],
+              after: row.holidays as Holiday[],
+            });
+      return { value: { before, row, affectedWorkItemCount }, auditFailed };
     },
   );
   if (outcome?.auditFailed) {
@@ -543,6 +630,7 @@ export async function updateCalendar(
     ? {
         before: materializeCalendar(outcome.value.before),
         row: materializeCalendar(outcome.value.row),
+        affectedWorkItemCount: outcome.value.affectedWorkItemCount,
       }
     : undefined;
 }
@@ -589,7 +677,12 @@ export async function importCalendarHolidays(
       }
       if (additions.length === 0)
         return {
-          value: { row: before, importedCount: 0, duplicateCount },
+          value: {
+            row: before,
+            importedCount: 0,
+            duplicateCount,
+            affectedWorkItemCount: 0,
+          },
           auditFailed: false,
         };
       const [row] = await tx
@@ -622,8 +715,20 @@ export async function importCalendarHolidays(
         actor,
         changedFields: ["holidays"],
       });
+      const affectedWorkItemCount = await countRetroactiveHolidayImpact(tx, {
+        workspaceId,
+        calendarId: row.id,
+        timezone: row.timezone,
+        before: before.holidays as Holiday[],
+        after: row.holidays as Holiday[],
+      });
       return {
-        value: { row, importedCount: additions.length, duplicateCount },
+        value: {
+          row,
+          importedCount: additions.length,
+          duplicateCount,
+          affectedWorkItemCount,
+        },
         auditFailed,
       };
     },

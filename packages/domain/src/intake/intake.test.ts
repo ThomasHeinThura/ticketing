@@ -243,21 +243,78 @@ describe("transitionSubmission — customer actions", () => {
     expect(accepted).toEqual({ ok: false, refusal: "illegal_state" });
   });
 
-  it("reopen: customer only, declined→new (IQ-15 recovery)", () => {
-    const r = transition(record({ state: "declined" }), {
+  it("reopen: customer only, an auto-declined submission returns to new (IQ-15 recovery)", () => {
+    const r = transition(record({ state: "declined", autoDeclined: true }), {
       action: "reopen",
       actor: "customer",
       now: NOW,
     });
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.to).toBe("new");
+    if (r.ok) {
+      expect(r.to).toBe("new");
+      expect(r.record.autoDeclined).toBe(false);
+      expect(r.record.clarifyingSince).toBeNull();
+    }
     expect(
-      transition(record({ state: "declined" }), {
+      transition(record({ state: "declined", autoDeclined: true }), {
         action: "reopen",
         actor: "triager",
         now: NOW,
       }),
     ).toEqual({ ok: false, refusal: "not_your_action" });
+  });
+
+  it("reopen: a staff decline is final for the customer (IQ-15, decision 2026-09-25)", () => {
+    const staffDeclined = transition(record({ state: "new" }), {
+      action: "decline",
+      actor: "triager",
+      now: NOW,
+      reason: "Out of scope.",
+    });
+    expect(staffDeclined.ok).toBe(true);
+    if (!staffDeclined.ok) return;
+    expect(staffDeclined.record.autoDeclined).toBe(false);
+    expect(
+      transition(staffDeclined.record, {
+        action: "reopen",
+        actor: "customer",
+        now: NOW,
+      }),
+    ).toEqual({ ok: false, refusal: "not_reopenable" });
+    // A record that never recorded the distinction fails closed too.
+    expect(
+      transition(record({ state: "declined" }), {
+        action: "reopen",
+        actor: "customer",
+        now: NOW,
+      }),
+    ).toEqual({ ok: false, refusal: "not_reopenable" });
+  });
+
+  it("auto_decline marks the record reopenable; reopen then clears the mark", () => {
+    const declined = transition(
+      record({
+        state: "clarifying",
+        clarifyingSince: new Date("2026-09-01T12:00:00Z"),
+      }),
+      {
+        action: "auto_decline",
+        actor: "triager",
+        now: NOW,
+        reason: "No response within 14 days.",
+        clarifyingMaxDays: 14,
+      },
+    );
+    expect(declined.ok).toBe(true);
+    if (!declined.ok) return;
+    expect(declined.record.autoDeclined).toBe(true);
+    const reopened = transition(declined.record, {
+      action: "reopen",
+      actor: "customer",
+      now: NOW,
+    });
+    expect(reopened.ok).toBe(true);
+    if (reopened.ok) expect(reopened.record.state).toBe("new");
   });
 
   it("terminal states accept no actions", () => {

@@ -15363,6 +15363,26 @@
             "required": false,
             "name": "until",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "entityType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "entityId",
+            "in": "query"
           }
         ],
         "responses": {
@@ -15536,6 +15556,26 @@
             "required": false,
             "name": "until",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "entityType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "entityId",
+            "in": "query"
           }
         ],
         "responses": {
@@ -15644,6 +15684,287 @@
           },
           "403": {
             "description": "Not a workspace administrator",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/audit/entity/{type}/{id}": {
+      "get": {
+        "operationId": "getAuditEntityHistory",
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Read one entity's audit history",
+        "description": "Audit rows for one entity, newest first (at most 200). Only `type=work_item` is supported; its `id` is the work item key, and reach plus `work_item:read` are enforced exactly as for the work item itself. Each read is audited (AU-13).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "work_item"
+              ]
+            },
+            "required": true,
+            "name": "type",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit rows for the entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "entityType": {
+                      "type": "string"
+                    },
+                    "entityId": {
+                      "type": "string"
+                    },
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "seq": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "actorId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "actorType": {
+                            "type": "string"
+                          },
+                          "impersonatorId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "workspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "organisationId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "entityType": {
+                            "type": "string"
+                          },
+                          "entityId": {
+                            "type": "string"
+                          },
+                          "before": {},
+                          "after": {}
+                        },
+                        "required": [
+                          "id",
+                          "seq",
+                          "createdAt",
+                          "actorId",
+                          "actorType",
+                          "impersonatorId",
+                          "workspaceId",
+                          "organisationId",
+                          "action",
+                          "entityType",
+                          "entityId"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "entityType",
+                    "entityId",
+                    "rows"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid entity type or key",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/reconstruct": {
+      "get": {
+        "operationId": "reconstructWorkItem",
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Reconstruct a work item at an instant",
+        "description": "Replays the work item's activity journal up to `at` and returns each recorded field's value then (AU-8, AU-9). A field the journal never changed does not appear. `snapshot` is null when `at` precedes the first recorded activity. Never a stored snapshot.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": true,
+            "name": "at",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reconstructed state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "workItemId": {
+                      "type": "string"
+                    },
+                    "at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "snapshot": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "fields": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "fields"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "workItemId",
+                    "at",
+                    "snapshot"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid key or instant",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Journal too long to replay in one request",
             "content": {
               "text/plain": {
                 "schema": {
@@ -18678,6 +18999,11 @@
                     "version": {
                       "type": "integer",
                       "minimum": 1
+                    },
+                    "affectedWorkItemCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "CAL-13. Unresolved work items pinned to a policy version on this calendar that started on or before the end of a past or current-day holiday this change newly covers. Future-dated additions are not counted (due instants are not stored)."
                     }
                   },
                   "required": [
@@ -18689,7 +19015,8 @@
                     "name",
                     "createdAt",
                     "updatedAt",
-                    "version"
+                    "version",
+                    "affectedWorkItemCount"
                   ]
                 }
               }
@@ -19167,6 +19494,11 @@
                         "version"
                       ]
                     },
+                    "affectedWorkItemCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "CAL-13. Unresolved work items pinned to a policy version on this calendar that started on or before the end of a past or current-day holiday this change newly covers. Future-dated additions are not counted (due instants are not stored)."
+                    },
                     "importedCount": {
                       "type": "integer",
                       "minimum": 0
@@ -19178,6 +19510,7 @@
                   },
                   "required": [
                     "calendar",
+                    "affectedWorkItemCount",
                     "importedCount",
                     "duplicateCount"
                   ]
@@ -25039,13 +25372,63 @@
                           "remainingMinutes"
                         ]
                       }
+                    },
+                    "calendarName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "atRiskThresholdPct": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "pauses": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "string",
+                            "enum": [
+                              "first_response",
+                              "resolution"
+                            ]
+                          },
+                          "startedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "endedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "startedAt",
+                          "endedAt",
+                          "reason"
+                        ]
+                      }
                     }
                   },
                   "required": [
                     "key",
                     "startedAt",
                     "evaluatedAt",
-                    "metrics"
+                    "metrics",
+                    "calendarName",
+                    "atRiskThresholdPct",
+                    "pauses"
                   ]
                 }
               }
@@ -32258,6 +32641,33 @@
           {
             "schema": {
               "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "requestTypeKey",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "assignee",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 4
+            },
+            "required": false,
+            "name": "olderThanDays",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
               "maxLength": 2048
             },
             "required": false,
@@ -33468,13 +33878,43 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "sla": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "on_track",
+                                "at_risk",
+                                "breached",
+                                "met",
+                                "missed"
+                              ]
+                            },
+                            "dueAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "dueAt"
+                          ]
                         }
                       },
                       "required": [
                         "title",
                         "description",
                         "state",
-                        "priority"
+                        "priority",
+                        "sla"
                       ]
                     },
                     "messages": {

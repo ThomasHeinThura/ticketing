@@ -23,6 +23,8 @@ import {
   notificationTable,
   personTable,
   projectTable,
+  requestTypeTable,
+  submissionTable,
   taskTable,
   workItemTable,
   workspaceTable,
@@ -41,6 +43,10 @@ import {
   findCurrentNotificationResources,
   type NativeNotificationResourceRequest,
 } from "./repository";
+import {
+  canReadSubmissionNotification,
+  SUBMISSION_NOTIFICATION_KINDS,
+} from "./submission-reach";
 import { reachableTaskNotificationPredicate } from "./task-reach.repository";
 
 type NotificationRow = typeof notificationTable.$inferSelect;
@@ -139,6 +145,7 @@ function registeredNotificationResource() {
     eq(notificationTable.resourceType, "pending_action"),
     eq(notificationTable.resourceType, "instance"),
     eq(notificationTable.resourceType, "person"),
+    eq(notificationTable.resourceType, "submission"),
     sql`false`,
   );
 }
@@ -160,12 +167,18 @@ function taskNotificationReadable(
   );
 }
 
+// `created_at` is written by `defaultNow()` (microseconds) but the keyset cursor round-trips
+// through a JS Date (milliseconds): comparing raw values would SKIP rows that share the
+// boundary millisecond (every row of one fan-out transaction shares now()). The predicate and
+// every ORDER BY that feeds a cursor use the millisecond-truncated value instead.
+const createdAtMs = sql`date_trunc('milliseconds', ${notificationTable.createdAt})`;
+
 function cursorPredicate(cursor?: Cursor) {
   return cursor
     ? or(
-        lt(notificationTable.createdAt, cursor.createdAt),
+        sql`${createdAtMs} < ${cursor.createdAt}`,
         and(
-          eq(notificationTable.createdAt, cursor.createdAt),
+          sql`${createdAtMs} = ${cursor.createdAt}`,
           lt(notificationTable.id, cursor.id),
         ),
       )
@@ -300,6 +313,32 @@ async function readableNativeRows(
         )
     : [];
   const workspaceFacts = new Map(currentWorkspaces.map((row) => [row.id, row]));
+  // IQ-12: `submission.replied` rows point at a submission, not a work item. Facts are loaded
+  // once per page; the verdict is per row below.
+  const submissionIds = [
+    ...new Set(
+      rows
+        .filter((row) => row.resourceType === "submission" && row.resourceId)
+        .map((row) => row.resourceId as string),
+    ),
+  ];
+  const submissionFacts = new Map(
+    (submissionIds.length
+      ? await tx
+          .select({
+            id: submissionTable.id,
+            requesterId: submissionTable.requesterId,
+            workspaceId: requestTypeTable.workspaceId,
+          })
+          .from(submissionTable)
+          .innerJoin(
+            requestTypeTable,
+            eq(requestTypeTable.id, submissionTable.requestTypeId),
+          )
+          .where(inArray(submissionTable.id, submissionIds))
+      : []
+    ).map((row) => [row.id, row]),
+  );
   return rows.filter((row) => {
     if (
       !identity ||
@@ -387,6 +426,13 @@ async function readableNativeRows(
         row.personId === identity.personId
       );
     }
+    if (row.resourceType === "submission") {
+      // IQ-12 / IQ-15 / NO-21: see `canReadSubmissionNotification`.
+      const submission = submissionFacts.get(row.resourceId);
+      return Boolean(
+        submission && canReadSubmissionNotification(identity, row, submission),
+      );
+    }
     if (row.resourceType !== "work_item" && row.resourceType !== "comment")
       return false;
     const candidate: NativeInboxCandidate = {
@@ -465,7 +511,7 @@ async function selectCandidatePage(
     .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
     .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
     .where(cursorFilter ? and(visibleToUser, cursorFilter) : visibleToUser)
-    .orderBy(desc(notificationTable.createdAt), desc(notificationTable.id))
+    .orderBy(desc(createdAtMs), desc(notificationTable.id))
     .limit(CANDIDATE_PAGE_SIZE);
 }
 
@@ -545,6 +591,37 @@ function currentOwnerPredicate(
             eq(notificationTable.userId, identity.userId),
           ),
         ),
+    );
+  }
+  if (row.resourceType === "submission") {
+    // SQL mirror of `canReadSubmissionNotification`; the capability half stays in the JS filter.
+    return and(
+      eq(notificationTable.personId, identity.personId),
+      inArray(notificationTable.kind, [...SUBMISSION_NOTIFICATION_KINDS]),
+      exists(
+        executor
+          .select({ one: sql`1` })
+          .from(submissionTable)
+          .innerJoin(
+            requestTypeTable,
+            eq(requestTypeTable.id, submissionTable.requestTypeId),
+          )
+          .where(
+            and(
+              eq(submissionTable.id, notificationTable.resourceId),
+              identity.side === "customer"
+                ? eq(submissionTable.requesterId, identity.personId)
+                : and(
+                    eq(notificationTable.kind, "submission.replied"),
+                    currentWorkspaceReachPredicate(
+                      identity,
+                      requestTypeTable.workspaceId,
+                      executor,
+                    ),
+                  ),
+            ),
+          ),
+      ),
     );
   }
   if (row.resourceType === "work_item") {
@@ -643,7 +720,7 @@ async function fetchAllowedRows(
         ),
       ),
     )
-    .orderBy(desc(notificationTable.createdAt), desc(notificationTable.id));
+    .orderBy(desc(createdAtMs), desc(notificationTable.id));
 }
 
 async function bulkMutation(userId: string, mode: "read" | "delete") {
