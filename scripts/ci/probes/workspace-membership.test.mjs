@@ -21,12 +21,14 @@ import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import {
   cleanUpScratchRepos,
+  commit,
   evaluateInRepo,
   initRepo,
   installCheckers,
   installFromRepo,
   runChecker,
   scratchDir,
+  setOriginMain,
   write,
 } from "../lib/scratch-repo.mjs";
 
@@ -228,5 +230,26 @@ describe("A5 — workspace membership is derived, not hand-listed", () => {
     );
     const result = runChecker(dir, "check-overrides.mjs", []);
     assert.equal(result.status, 0, result.output);
+  });
+  it("a NEW workspace root is scanned by vocabulary against maintained contracts", () => {
+    const dir = workspace("new-root-vocabulary", (repo) => {
+      installFromRepo(repo, "docs/technical/data-model.md");
+      installFromRepo(repo, "scripts/ci/vocabulary-baseline.json");
+      write(
+        repo,
+        "pnpm-workspace.yaml",
+        "packages:\n  - packages/**\n  - apps/**\n  - tools/**\n",
+      );
+    });
+    setOriginMain(dir, commit(dir, "Vocabulary workspace fixture"));
+    write(
+      dir,
+      "tools/codegen/schema.ts",
+      'export const table = pgTable("new_root_vocabulary_probe", {});\n',
+    );
+    const result = runChecker(dir, "check-vocabulary.mjs", []);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /new_root_vocabulary_probe/);
+    assert.match(result.output, /tools\/codegen\/schema\.ts/);
   });
 });

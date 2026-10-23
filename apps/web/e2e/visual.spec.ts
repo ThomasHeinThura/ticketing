@@ -289,6 +289,52 @@ async function installAuthenticatedFixture(page: Page) {
               },
             ],
       };
+    } else if (path.endsWith("/api/portal/submissions")) {
+      body = {
+        submissions: [
+          {
+            ref: "SUB-7",
+            requestTypeName: "Access request",
+            state: "new",
+            customerVisibility: "private",
+            createdAt: "2026-09-15T00:00:00.000Z",
+          },
+        ],
+        page: { hasMore: false, nextCursor: null },
+      };
+    } else if (path.endsWith("/api/portal/approvals")) {
+      body = {
+        approvals: [
+          {
+            id: "visual-approval",
+            workItemKey: "HELP-7",
+            workItemTitle: "Approve workspace access",
+            state: "pending",
+            expiresAt: "2026-10-24T12:00:00.000Z",
+            approverReachLost: false,
+          },
+        ],
+      };
+    } else if (path.endsWith("/api/instance/audit")) {
+      body = {
+        rows: [
+          {
+            id: "visual-audit",
+            seq: "42",
+            createdAt: "2026-09-15T12:00:00.000Z",
+            actorId: "visual-user",
+            actorType: "person",
+            impersonatorId: null,
+            workspaceId: workspace.id,
+            organisationId: null,
+            action: "work_item.updated",
+            entityType: "work_item",
+            entityId: workItem.id,
+            before: { title: "Workspace access" },
+            after: { title: "Approve workspace access" },
+          },
+        ],
+      };
     } else if (path.endsWith("/api/portal/submissions/SUB-7")) {
       body = {
         submission: {
@@ -332,6 +378,7 @@ async function installAuthenticatedFixture(page: Page) {
       };
     } else if (path.endsWith("/api/workspace")) body = [workspace];
     else if (path.endsWith("/api/project")) body = [project];
+    else if (path.endsWith("/api/project/visual-project")) body = project;
     else if (path.endsWith("/api/workspace/visual-workspace/members")) {
       body = [
         {
@@ -863,6 +910,7 @@ test("portal catalogue selected form @visual", async ({ page }) => {
     page.getByRole("heading", { name: "Access request", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Summary" })).toBeVisible();
+  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-catalogue-selected-form.png", {
     animations: "disabled",
     caret: "hide",
@@ -883,6 +931,7 @@ test("portal submission detail @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Your answers" }),
   ).toBeVisible();
+  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-submission-detail.png", {
     animations: "disabled",
     caret: "hide",
@@ -1488,6 +1537,7 @@ test("workspace settings canned responses screen @visual", async ({ page }) => {
     if (path.endsWith("/api/auth/get-session")) body = session;
     else if (path.endsWith("/api/workspace")) body = [workspace];
     else if (path.endsWith("/api/project")) body = [project];
+    else if (path.endsWith("/api/project/visual-project")) body = project;
     else if (path.endsWith("/api/workspace/visual-workspace/members"))
       body = [
         {
@@ -1647,6 +1697,86 @@ test("project settings danger screen @visual", async ({ page }) => {
     page.getByRole("heading", { level: 1, name: "General Settings" }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("project-settings-danger.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+// These fixtures verify rendering only; live API journeys provide runtime evidence.
+test("portal home screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("http://127.0.0.1:4179/");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "SUB-7", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-home.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+test("portal requests screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("http://127.0.0.1:4179/requests");
+  await expect(
+    page.getByRole("heading", { name: "My requests", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "SUB-7", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-requests.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+test("portal approval decision screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("http://127.0.0.1:4179/approvals?approval=visual-approval");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Approve", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-approvals.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+test("instance audit screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/god-mode/audit");
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Audit log", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("work_item.updated", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("instance-audit.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

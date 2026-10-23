@@ -47,6 +47,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import WorkspaceLayout from "@/components/common/workspace-layout";
+import PageTitle from "@/components/page-title";
 import CreateProjectModal from "@/components/shared/modals/create-project-modal";
 import icons from "@/constants/project-icons";
 import { shortcuts } from "@/constants/shortcuts";
@@ -214,6 +215,7 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
     navigate({
       to: "/agent/projects/$projectKey/work",
       params: { projectKey },
+      search: { layout: "board", sort: "position", dir: "asc" },
     });
   };
 
@@ -274,6 +276,7 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
             ))}
           </TableBody>
         </Table>
+        <PageTitle title={t("workspace:projects.pageTitle")} />
       </WorkspaceLayout>
     );
   }
@@ -318,6 +321,7 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
               )}
             </EmptyContent>
           </Empty>
+          <PageTitle title={t("workspace:projects.pageTitle")} />
         </WorkspaceLayout>
 
         <CreateProjectModal
@@ -442,6 +446,7 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
             </TableBody>
           </Table>
         </DndContext>
+        <PageTitle title={t("workspace:projects.pageTitle")} />
       </WorkspaceLayout>
 
       <CreateProjectModal

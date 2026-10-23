@@ -21,6 +21,11 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 import {
+  approvePendingDeletion,
+  ensureAgentSession,
+  type PendingDeletionBody,
+} from "./helpers/pending-deletion";
+import {
   raceProjectArchive,
   raceProjectSoftDelete,
 } from "./helpers/race-soft-delete";
@@ -152,6 +157,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       "task label",
     );
     mockAuthenticatedSession(member.user);
+    await ensureAgentSession(member.user.id);
     await db
       .update(schema.projectTable)
       .set({ archivedAt: new Date() })
@@ -492,7 +498,28 @@ describe("API integration: legacy task writes respect PR-15 project archive free
 
     for (const [name, send] of cases) {
       const response = await send();
-      expect(response.status, name).toBe(404);
+      if (name === "workspace label cascade delete") {
+        // The workspace-label DELETE only requests (202); the archive freeze is enforced
+        // where the cascade runs, at approval, which refuses and leaves the copies alone.
+        expect(response.status, name).toBe(202);
+        const { app } = createApp();
+        const approved = await approvePendingDeletion(
+          app,
+          member.user.id,
+          (await response.json()) as PendingDeletionBody,
+        );
+        expect(approved.status, `${name} approval`).toBe(404);
+        continue;
+      }
+      // Legacy task, comment and relation deletion are retired (410 Gone) for every project state; every other
+      // legacy write family is still refused as not-found after archive.
+      expect(response.status, name).toBe(
+        name === "task delete" ||
+          name === "comment delete" ||
+          name === "relation delete"
+          ? 410
+          : 404,
+      );
     }
 
     const [taskAfter] = await db
@@ -1559,7 +1586,13 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     });
     await client.connect();
 
-    let deleteRequest: Promise<Response> | undefined;
+    // `DELETE /api/task/{id}` is retired (410), so the task row is removed with plain SQL on a
+    // second session, held at the same barrier trigger (as the project purge job would).
+    const deleter = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await deleter.connect();
+    let deleteRequest: Promise<{ rowCount: number | null }> | undefined;
     let detachRequest: Promise<Response> | undefined;
     let advisoryLockHeld = false;
     try {
@@ -1589,7 +1622,9 @@ describe("API integration: legacy task writes respect PR-15 project archive free
         throw new Error("could not read lock barrier backend pid");
       }
 
-      deleteRequest = request(`/task/${task.id}`, "delete");
+      deleteRequest = deleter.query("DELETE FROM task WHERE id = $1", [
+        task.id,
+      ]);
 
       let deleteBackendPid: number | undefined;
       const deleteDeadline = Date.now() + 5_000;
@@ -1651,7 +1686,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
         deleteRequest,
         detachRequest,
       ]);
-      expect(deleteResponse.status).toBe(200);
+      expect(deleteResponse.rowCount).toBe(1);
       expect(detachResponse.status).toBe(404);
       expect(
         await db
@@ -1674,6 +1709,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       await Promise.allSettled([deleteRequest, detachRequest].filter(Boolean));
       await client.query(`DROP TRIGGER IF EXISTS ${triggerName} ON task`);
       await client.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
+      await deleter.end();
       await client.end();
     }
   });

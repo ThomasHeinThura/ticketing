@@ -35,11 +35,10 @@ describe("useDeleteWorkspace", () => {
     mocks.del.mockReset();
   });
 
-  it("deletes via the native workspace route", async () => {
-    mocks.del.mockResolvedValue({
-      ok: true,
-      json: async () => ({ id: "workspace-1" }),
-    });
+  it("requests deletion via the native workspace route and returns the pending action", async () => {
+    mocks.del.mockResolvedValue(
+      Response.json({ pendingActionId: "pa-1" }, { status: 202 }),
+    );
 
     const { result } = renderHook(() => useDeleteWorkspace(), {
       wrapper: createWrapper(),
@@ -55,14 +54,27 @@ describe("useDeleteWorkspace", () => {
     expect(mocks.del).toHaveBeenCalledWith({
       param: { workspaceId: "workspace-1" },
     });
-    expect(deleted).toEqual({ id: "workspace-1" });
+    expect(deleted).toEqual({ pendingActionId: "pa-1" });
+  });
+
+  it("never treats a direct 200 as a requested deletion", async () => {
+    mocks.del.mockResolvedValue(Response.json({ id: "workspace-1" }));
+
+    const { result } = renderHook(() => useDeleteWorkspace(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({ workspaceId: "workspace-1" }),
+      ).rejects.toMatchObject({ status: 200 });
+    });
   });
 
   it("throws the response body text when the request fails", async () => {
-    mocks.del.mockResolvedValue({
-      ok: false,
-      text: async () => "Workspace not found",
-    });
+    mocks.del.mockResolvedValue(
+      new Response("Workspace not found", { status: 404 }),
+    );
 
     const { result } = renderHook(() => useDeleteWorkspace(), {
       wrapper: createWrapper(),
@@ -86,7 +98,7 @@ describe("useDeleteWorkspace", () => {
     // fallback that becomes `new Error("")`, and general.tsx's
     // `error instanceof Error ? error.message : t(...)` shows a BLANK toast —
     // the untranslated worst case, because the empty string is still an Error.
-    mocks.del.mockResolvedValue({ ok: false, text: async () => "" });
+    mocks.del.mockResolvedValue(new Response("", { status: 502 }));
 
     const { result } = renderHook(() => useDeleteWorkspace(), {
       wrapper: createWrapper(),

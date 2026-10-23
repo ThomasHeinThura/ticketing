@@ -116,7 +116,9 @@ describe("API integration: project reach, capability and credential cases", () =
           const withNull = await route.call(app, world, item);
           setAmbientHeaders({});
           const nullText = await withNull.text();
-          expect(withNull.status, nullText).toBe(403);
+          expect(withNull.status, nullText).toBe(
+            route.unscopedKeyStatus ?? 403,
+          );
           if ((route.readKeyStatus ?? 403) === 403) {
             expect(await snapshot()).toBe(before);
           }

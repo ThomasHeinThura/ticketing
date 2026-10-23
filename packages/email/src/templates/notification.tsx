@@ -11,6 +11,7 @@ export type NotificationEmailProps = {
   actionUrl?: string | null;
   actionLabel?: string;
   locale?: string | null;
+  preferenceUrl?: string;
 };
 
 const messages = {
@@ -19,6 +20,7 @@ const messages = {
     subtitle: "A notification matched your delivery preferences.",
     footer: "TaskDesk notification",
     actionLabel: "Open in TaskDesk",
+    preferenceLabel: "Notification preferences",
   },
   de: {
     preview: "Du hast eine neue TaskDesk-Benachrichtigung",
@@ -26,18 +28,21 @@ const messages = {
       "Eine Benachrichtigung entspricht deinen Zustellungs-Einstellungen.",
     footer: "TaskDesk-Benachrichtigung",
     actionLabel: "In TaskDesk oeffnen",
+    preferenceLabel: "Benachrichtigungseinstellungen",
   },
   vi: {
     preview: "Bạn có thông báo mới từ TaskDesk",
     subtitle: "Một thông báo khớp với tùy chọn nhận thông báo của bạn.",
     footer: "Thông báo TaskDesk",
     actionLabel: "Mở trong TaskDesk",
+    preferenceLabel: "Tùy chọn thông báo",
   },
   ja: {
     preview: "TaskDesk の新しい通知",
     subtitle: "配信設定に一致する通知がありました。",
     footer: "TaskDesk 通知",
     actionLabel: "TaskDesk で開く",
+    preferenceLabel: "通知設定",
   },
 } as const;
 
@@ -47,6 +52,7 @@ const NotificationEmail = ({
   actionUrl,
   actionLabel,
   locale,
+  preferenceUrl,
 }: NotificationEmailProps) => {
   const copy = messages[resolveEmailLocale(locale)];
 
@@ -61,6 +67,9 @@ const NotificationEmail = ({
         ) : null}
         <Section style={styles.divider} />
         <Text style={styles.footer}>{copy.footer}</Text>
+        {preferenceUrl ? (
+          <Link href={preferenceUrl}>{copy.preferenceLabel}</Link>
+        ) : null}
       </Section>
     </EmailShell>
   );

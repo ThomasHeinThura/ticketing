@@ -10,6 +10,7 @@ import {
   createWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 describe("POST /api/work-items/search", () => {
   beforeEach(async () => resetTestDatabase());
@@ -62,6 +63,11 @@ describe("POST /api/work-items/search", () => {
       .returning();
     if (!type || !template || !state)
       throw new Error("Search fixture creation failed");
+    await ensureCreationWorkflow({
+      workspaceId: member.workspace.id,
+      projectId: project.id,
+      typeId: type.id,
+    });
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
     const createdResponse = await app.request(
@@ -122,6 +128,19 @@ describe("POST /api/work-items/search", () => {
       hiddenProject.project.id,
       ["project:read", "work_item:read", "work_item:create"],
     );
+    const workflowStates = await db
+      .select({ stateTemplateId: schema.stateTable.stateTemplateId })
+      .from(schema.stateTable)
+      .where(eq(schema.stateTable.projectId, project.id));
+    await db.insert(schema.stateTable).values(
+      workflowStates
+        .filter((row) => row.stateTemplateId !== template.id)
+        .map((row) => ({
+          projectId: hiddenProject.project.id,
+          stateTemplateId: row.stateTemplateId,
+          isDefault: false,
+        })),
+    );
     const hiddenProjectItem = await app.request(
       `/api/projects/${hiddenProject.project.id}/work-items`,
       {
@@ -142,6 +161,75 @@ describe("POST /api/work-items/search", () => {
       .delete(schema.membershipTable)
       .where(eq(schema.membershipTable.roleId, hiddenGrant.id));
 
+    const [legacyTask] = await db
+      .insert(schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Legacy task",
+        number: 1,
+        status: "to-do",
+        userId: member.user.id,
+      })
+      .returning();
+    if (!legacyTask) throw new Error("Missing legacy task fixture");
+    const [
+      workspaceLabel,
+      projectLabel,
+      foreignLabel,
+      wrongProjectLabel,
+      taskLabel,
+    ] = await db
+      .insert(schema.labelTable)
+      .values([
+        {
+          workspaceId: member.workspace.id,
+          name: "Access",
+          color: "#123456",
+        },
+        {
+          workspaceId: member.workspace.id,
+          projectId: project.id,
+          name: "Project label",
+          color: "#654321",
+        },
+        {
+          workspaceId: foreign.workspace.id,
+          name: "Foreign label",
+          color: "#123456",
+        },
+        {
+          workspaceId: member.workspace.id,
+          projectId: hiddenProject.project.id,
+          name: "Hidden project label",
+          color: "#123456",
+        },
+        {
+          workspaceId: member.workspace.id,
+          taskId: legacyTask.id,
+          name: "Legacy task label",
+          color: "#123456",
+        },
+      ])
+      .returning();
+    if (
+      !workspaceLabel ||
+      !projectLabel ||
+      !foreignLabel ||
+      !wrongProjectLabel ||
+      !taskLabel
+    )
+      throw new Error("Missing label fixture");
+    await db
+      .insert(schema.workItemLabelTable)
+      .values(
+        [
+          workspaceLabel,
+          projectLabel,
+          foreignLabel,
+          wrongProjectLabel,
+          taskLabel,
+        ].map((label) => ({ workItemId: item.id, labelId: label.id })),
+      );
     const response = await app.request("/api/work-items/search", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -156,12 +244,22 @@ describe("POST /api/work-items/search", () => {
     });
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
-      data: { id: string }[];
+      data: {
+        id: string;
+        labels: { id: string; name: string; color: string }[];
+      }[];
       page: { nextCursor: string | null; hasMore: boolean };
       meta: { total: number };
     };
     expect(body.data).toHaveLength(1);
     expect(body.data[0]?.id).toBe(item.id);
+    expect(body.data[0]?.labels).toEqual(
+      [workspaceLabel, projectLabel].map(({ id, name, color }) => ({
+        id,
+        name,
+        color,
+      })),
+    );
     expect(body.page.hasMore).toBe(true);
     expect(body.page.nextCursor).toEqual(expect.any(String));
     expect(body.meta.total).toBe(2);

@@ -39,6 +39,7 @@ import {
 } from "./helpers/fixtures";
 import { signUpUser } from "./helpers/organization-http";
 import { PROJECT_SOCKET_ROUTE_KEYS } from "./helpers/project-reach-route-keys";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
@@ -669,6 +670,12 @@ describe("project socket reach (#745)", () => {
       { projectId: own.id, stateTemplateId: template.id, isDefault: true },
       { projectId: other.id, stateTemplateId: template.id, isDefault: true },
     ]);
+    for (const project of [own, other])
+      await ensureCreationWorkflow({
+        workspaceId: workspace.id,
+        projectId: project.id,
+        typeId: type.id,
+      });
     const ownItem = await createWorkItem({
       projectId: own.id,
       workspaceId: workspace.id,

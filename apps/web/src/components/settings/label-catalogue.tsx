@@ -43,6 +43,7 @@ import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useDeleteLabel from "@/hooks/mutations/label/use-delete-label";
 import useUpdateLabel from "@/hooks/mutations/label/use-update-label";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { resolveLabelColor } from "@/lib/label-color";
@@ -61,6 +62,7 @@ export function LabelCatalogue({
   onSearchChange: (search: LabelCatalogueSearch) => void;
 }) {
   const { t } = useTranslation();
+  const openPendingAction = useOpenPendingAction();
   const {
     workspace,
     canManageLabels,
@@ -122,7 +124,6 @@ export function LabelCatalogue({
   const projectDelete = useMutation({
     mutationFn: ({ id }: { id: string }) =>
       deleteProjectLabel(projectId ?? "", id),
-    onSuccess: invalidate,
   });
   const createLabel = projectId ? projectCreate : workspaceCreate;
   const updateLabel = projectId ? projectUpdate : workspaceUpdate;
@@ -307,26 +308,27 @@ export function LabelCatalogue({
     }
   };
 
-  const openDelete = (label: { id: string; name: string }) => {
-    setDeletingLabel(label);
-    onSearchChange({ action: "delete", label: label.id });
-  };
-
-  const handleDelete = async () => {
+  /**
+   * The delete button requests the deletion at once and the approval dialog is the single
+   * confirmation (PA-3). A `?action=delete&label=` link still opens its own confirmation,
+   * so a link never creates a pending action by itself.
+   */
+  const handleDelete = async (
+    target: { id: string; name: string } | null = deletingLabel,
+  ) => {
     const submittedBinding = liveBinding.current;
     if (!submittedBinding) return;
-    if (!deletingLabel) return;
+    if (!target) return;
 
     try {
-      await deleteLabel.mutateAsync({ id: deletingLabel.id });
+      // Deletion is only requested; the label stays until the requester approves it.
+      const pendingAction = await deleteLabel.mutateAsync({
+        id: target.id,
+      });
       if (liveBinding.current !== submittedBinding) return;
-      toast.success(
-        t("settings:workspaceLabels.deleteSuccess", {
-          defaultValue: "Label deleted",
-        }),
-      );
-      setDeleteOpen(false);
+      if (deleteOpen) setDeleteOpen(false);
       setDeletingLabel(null);
+      await openPendingAction(pendingAction);
     } catch (error) {
       if (liveBinding.current !== submittedBinding) return;
       toast.error(
@@ -467,8 +469,9 @@ export function LabelCatalogue({
                                 { defaultValue: "Delete" },
                               )}
                               className="h-8 w-8 text-destructive hover:text-destructive"
+                              disabled={deleteLabel.isPending}
                               onClick={() =>
-                                openDelete({
+                                void handleDelete({
                                   id: label.id,
                                   name: label.name,
                                 })
@@ -723,7 +726,7 @@ export function LabelCatalogue({
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDelete}
+              onClick={() => void handleDelete()}
               disabled={deleteLabel.isPending}
             >
               {t("settings:workspaceLabels.deleteLabel", {

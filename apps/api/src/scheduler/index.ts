@@ -1,8 +1,15 @@
 import { Cron } from "croner";
 import { scanApprovalReminders } from "../approval/reminder-scan";
+import {
+  cleanupPendingAttachments,
+  collectDeletedAttachments,
+} from "./attachment-cleanup";
+import { runAuditPurgeJob } from "./audit-purge";
 import { checkDueDateReminders } from "./due-date-reminders";
+import { drainOutbox } from "./outbox-drain";
 import { expirePendingActions } from "./pending-action-expire";
 import { runSessionCleanup } from "./session-cleanup";
+import { scanSla } from "./sla-scan";
 
 const jobs: Cron[] = [];
 
@@ -51,9 +58,31 @@ export function initializeScheduler(): void {
   }> = [
     // background-jobs.md's cadence table.
     {
+      name: "outbox-drain",
+      pattern: "*/30 * * * * *",
+      // Parent event envelopes, then immediate notification children (EV-1/EV-2).
+      handler: drainOutbox,
+    },
+    {
+      name: "attachment-pending-cleanup",
+      pattern: "0 * * * *",
+      handler: cleanupPendingAttachments,
+    },
+    {
+      name: "attachment-gc",
+      pattern: "30 3 * * *",
+      handler: collectDeletedAttachments,
+    },
+    { name: "sla-scan", pattern: "*/5 * * * *", handler: scanSla },
+    {
       name: "due-date-reminders",
       pattern: "*/5 * * * *",
       handler: checkDueDateReminders,
+    },
+    {
+      name: "audit-purge",
+      pattern: "0 3 * * *",
+      handler: runAuditPurgeJob,
     },
     {
       name: "session-cleanup",
@@ -82,7 +111,7 @@ export function initializeScheduler(): void {
   }
 
   console.log(
-    "⏰ Scheduler started (due-date reminders every 5 minutes, session cleanup daily 03:15, pending-action expiry every minute, reminder scan every 15 minutes)",
+    "⏰ Scheduler started (outbox drain every 30 seconds, SLA scan every 5 minutes, due-date reminders every 5 minutes, audit purge daily 03:00, session cleanup with soft-delete purge daily 03:15, pending-action expiry every minute, reminder scan every 15 minutes)",
   );
 }
 

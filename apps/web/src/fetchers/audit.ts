@@ -37,7 +37,7 @@ export async function getInstanceAudit(
   if (query?.since) params.set("since", query.since);
   if (query?.until) params.set("until", query.until);
   const suffix = params.toString() ? `?${params.toString()}` : "";
-  const response = await apiFetch(getApiUrl(`/api/instance/audit${suffix}`), {
+  const response = await apiFetch(getApiUrl(`/instance/audit${suffix}`), {
     credentials: "include",
     cache: "no-store",
   });

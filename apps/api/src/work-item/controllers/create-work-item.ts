@@ -1,18 +1,24 @@
-import { and, desc, eq, isNotNull, isNull, lte } from "drizzle-orm";
+import { and, desc, eq, isNotNull, lte } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
 import {
-  projectTable,
   slaPolicyTable,
   slaPolicyVersionTable,
-  stateTable,
   workItemTable,
-  workItemTypeTable,
   workspaceTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
+import {
+  publishInitialWorkItemFields,
+  recordInitialWorkItemFields,
+} from "../create-initial-fields";
+import {
+  type CreateAuthorization,
+  type InitialWorkItemFields,
+  prepareWorkItemCreation,
+  withCreationTransaction,
+} from "../create-preparation";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import { claimWorkItemNumber } from "./claim-work-item-number";
 
@@ -41,7 +47,8 @@ function eventSourceFor(actorType: ActivityActorType): "agent" | "api" {
   }
 }
 
-type CreateWorkItemInput = {
+type CreateWorkItemInput = InitialWorkItemFields & {
+  authorization?: CreateAuthorization;
   projectId: string;
   workspaceId: string;
   typeId: string;
@@ -61,16 +68,7 @@ type CreateWorkItemInput = {
  * ever sees.
  */
 export async function createWorkItem(input: CreateWorkItemInput) {
-  const {
-    projectId,
-    workspaceId,
-    typeId,
-    title,
-    description,
-    priority,
-    actorId,
-    actorType,
-  } = input;
+  const { title, description, priority, actorId, actorType } = input;
 
   // Resolved BEFORE any database write (Opus review, #412 F1): if `actorType` is ever
   // something `eventSourceFor` doesn't map, this throws here -- a clean failure before
@@ -78,86 +76,23 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // activity row have already committed, which would 500 a client that just succeeded
   // and risk a duplicate on retry.
   const source = eventSourceFor(actorType);
-
-  // `workspaceId` here is the one the route's own middleware already resolved (the
-  // project's true workspace, from a DB lookup) -- re-checking it against the freshly
-  // loaded project row below closes the same TOCTOU-adjacent class of gap
-  // `get-project.ts` closes for reads: the row loaded for the INSERT is scoped by BOTH
-  // its id and the workspace the caller was actually authorized against.
-  const project = await db.query.projectTable.findFirst({
-    where: and(
-      eq(projectTable.id, projectId),
-      eq(projectTable.workspaceId, workspaceId),
-      isNull(projectTable.deletedAt),
-    ),
-  });
-
-  if (!project) {
-    throw new HTTPException(404, { message: "Project not found" });
-  }
-
-  // `WI-1`: the type must exist AND belong to the SAME workspace as the project --
-  // exactly the boundary #192's composite FK (`work_item.workspace_id, type_id ->
-  // work_item_type.workspace_id, id`) enforces at the DB level. Checked here first so a
-  // cross-workspace pairing is a clean 400, not a raw FK-violation 500.
-  //
-  // #347: both conditions are ONE query (`id` AND `workspaceId` together), not a
-  // `findFirst` by `id` alone followed by a separate `workspaceId` comparison -- the
-  // two-query shape answered a distinguishable message for "no such type" (400 "Unknown
-  // work item type") versus "real type, foreign workspace" (400 "...does not belong to
-  // the project's workspace"), which is a cross-tenant existence oracle for
-  // `work_item_type` ids -- the same class #290/#307 closed in
-  // `workspace-access-middleware.ts`, and the same single-query-plus-single-message
-  // pattern already used by this codebase's other "row must belong to the same parent"
-  // checks (`upsert-workflow-rule.ts`'s `columnId`, `reorder-columns.ts`'s `col.id`,
-  // confirmed side by side in #307's own Opus review table). A nonexistent id and a
-  // real-but-foreign-workspace id now answer byte-identically.
-  const type = await db.query.workItemTypeTable.findFirst({
-    where: and(
-      eq(workItemTypeTable.id, typeId),
-      eq(workItemTypeTable.workspaceId, project.workspaceId),
-    ),
-  });
-
-  if (!type) {
-    throw new HTTPException(400, {
-      message: "Work item type does not belong to the project's workspace",
+  if (input.authorization && input.authorization.userId !== actorId)
+    throw new HTTPException(403, {
+      message: "Actor does not match authorization context",
     });
-  }
 
-  // `WI-4`: initial state is the project's own default state (`state.is_default`).
-  //
-  // NOT VALIDATED HERE, AND DELIBERATELY FLAGGED RATHER THAN GUESSED: WI-4 also requires
-  // the default state be "a state the type's workflow can leave". No `workflow` or
-  // `workflow_transition` table exists in this schema yet -- `work_item_type.workflow_id`
-  // is a plain nullable column with NO foreign key ("P2/P5 scope and does not exist in
-  // this schema yet", `schema.ts`'s own comment), and `workflows.md` (P2, a later stage)
-  // defines no "leaveable" predicate this code could check against. There is nothing to
-  // query. This is a TODO for the workflow-engine slice, not an omission in this one.
-  const defaultState = await db.query.stateTable.findFirst({
-    where: and(
-      eq(stateTable.projectId, project.id),
-      eq(stateTable.isDefault, true),
-    ),
-  });
-
-  if (!defaultState) {
-    throw new HTTPException(400, {
-      message: "Project has no default state configured",
-    });
-  }
-
-  // `WI-2`: the key is `{project.key}-{number}`, `number` from an atomic increment in the
-  // SAME transaction as the insert -- see `claim-work-item-number.ts` for the full
-  // concurrency analysis and the `project.key` naming judgment call (this codebase's
-  // live column is `project.slug`, which already plays exactly that role --
-  // `project/index.ts`: "The slug becomes the prefix of its task identifiers").
   let created: typeof workItemTable.$inferSelect;
   let realtimeEvent:
     | Awaited<ReturnType<typeof recordWorkItemEvent>>
     | undefined;
+  let initialEvents: Awaited<ReturnType<typeof recordInitialWorkItemFields>> =
+    [];
   try {
-    created = await db.transaction(async (tx) => {
+    created = await withCreationTransaction(async (tx) => {
+      const { project, type, defaultState } = await prepareWorkItemCreation(
+        tx,
+        input,
+      );
       const slaStartedAt = new Date();
       const [workspace] = await tx
         .select({ slaPolicyId: workspaceTable.defaultSlaPolicyId })
@@ -217,7 +152,13 @@ export async function createWorkItem(input: CreateWorkItemInput) {
           description: description ?? null,
           stateId: defaultState.id,
           priority: priority ?? null,
+          startDate: input.startDate ?? null,
+          dueDate: input.dueDate ?? null,
+          assigneeId: input.assigneeId ?? null,
           createdAt: slaStartedAt,
+          // Persist the same UTC instant through Drizzle's timestamp mapper. A SQL
+          // now() default on timestamp-without-time-zone adopts the session timezone.
+          updatedAt: slaStartedAt,
           slaStartedAt,
           slaPolicyVersionId: policyVersion?.id ?? null,
         })
@@ -266,6 +207,13 @@ export async function createWorkItem(input: CreateWorkItemInput) {
         },
       });
 
+      initialEvents = await recordInitialWorkItemFields(
+        tx,
+        inserted,
+        input,
+        actorId,
+        actorType,
+      );
       return inserted;
     });
   } catch (error) {
@@ -343,6 +291,7 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     });
   }
 
+  await publishInitialWorkItemFields(created, initialEvents);
   return created;
 }
 

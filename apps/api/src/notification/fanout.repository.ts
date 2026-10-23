@@ -112,3 +112,13 @@ export async function findMostSpecificPreferenceRow(
   `);
   return (result.rows as PreferenceRow[])[0];
 }
+
+/** Runtime administration determines installed channels; legacy personal toggles do not. */
+export async function configuredMentionChannels(
+  tx: DbTransaction,
+): Promise<readonly string[]> {
+  const result = await tx.execute(sql`SELECT 1 FROM instance_plugin_config
+    WHERE plugin_id = 'notify.email' AND instance_key = 'default' AND scope = 'instance'
+      AND workspace_id IS NULL AND portal_scope IS NULL AND enabled LIMIT 1`);
+  return result.rows.length ? ["notify.email"] : [];
+}

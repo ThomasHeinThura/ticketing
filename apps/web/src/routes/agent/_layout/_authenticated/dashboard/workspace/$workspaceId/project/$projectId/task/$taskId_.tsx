@@ -41,14 +41,6 @@ function RouteComponent() {
   );
   const isLoading = isTaskLoading || isProjectLoading || isActivitiesLoading;
 
-  const handleDeleted = () => {
-    navigate({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
-      params: { workspaceId, projectId },
-      replace: true,
-    });
-  };
-
   return (
     <TaskLayout
       taskId={taskId}
@@ -59,7 +51,13 @@ function RouteComponent() {
       taskNumber={task?.number}
       headerActions={
         !isLoading && task ? (
-          <TaskDeleteButton taskId={taskId} onDeleted={handleDeleted} />
+          <TaskDeleteButton
+            workItemKey={
+              project?.slug && task?.number
+                ? `${project.slug}-${task.number}`
+                : undefined
+            }
+          />
         ) : null
       }
       rightSidebar={

@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
 import { EVENT_KEYS } from "../../../apps/api/src/events/event-keys";
 
 const EVENTS_MD_PATH = fileURLToPath(
-  new URL("../../../docs/01-architecture/events.md", import.meta.url),
+  new URL("../../../docs/technical/events.md", import.meta.url),
 );
 
 /**

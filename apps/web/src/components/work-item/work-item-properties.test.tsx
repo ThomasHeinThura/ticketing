@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   peopleError: null as unknown,
 }));
 
+vi.mock("./work-item-actions", () => ({ default: () => null }));
 vi.mock("./work-item-parent-control", () => ({
   default: () => <div data-testid="parent-control" />,
 }));
@@ -147,6 +148,12 @@ describe("WorkItemProperties", () => {
       name: "tasks:properties.labels",
     });
     await waitFor(() => expect(trigger).toBeEnabled());
+    expect(screen.getByTestId("work-item-labels-group")).toContainElement(
+      trigger,
+    );
+    expect(
+      screen.getByTestId("work-item-property-controls"),
+    ).not.toContainElement(trigger);
     fireEvent.click(trigger);
     fireEvent.click(
       await screen.findByRole("checkbox", {
@@ -693,4 +700,197 @@ describe("WorkItemProperties", () => {
     fireEvent.click(screen.getByTestId("work-item-state-control"));
     expect(screen.queryByText("workItems:properties.noTransitions")).toBeNull();
   });
+});
+
+describe("original numbered property shortcuts", () => {
+  it("uses original priority order, exposes numbered hints, ignores modified keys and submits once while pending", async () => {
+    let finish: ((result: unknown) => void) | undefined;
+    mocks.update.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    fireEvent.keyDown(document.body, { key: "5" });
+    expect(mocks.update).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("work-item-priority-control"));
+    const urgent = await screen.findByRole("button", { name: /Urgent/ });
+    expect(
+      urgent.querySelector('[aria-hidden="true"]:last-child'),
+    ).toHaveTextContent("5");
+    fireEvent.keyDown(document.body, { key: "5", ctrlKey: true });
+    fireEvent.keyDown(document.body, { key: "5", isComposing: true });
+    expect(mocks.update).not.toHaveBeenCalled();
+    fireEvent.keyDown(document.body, { key: "5" });
+    fireEvent.keyDown(document.body, { key: "2" });
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledExactlyOnceWith({
+        key: "HELP-7",
+        version: 4,
+        priority: "urgent",
+      }),
+    );
+    finish?.({ key: "HELP-7", version: 5 });
+  });
+  it("maps one to no priority with the current version", async () => {
+    mocks.update.mockResolvedValue({ key: "HELP-7", version: 5 });
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("work-item-priority-control"));
+    fireEvent.keyDown(document.body, { key: "1" });
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        key: "HELP-7",
+        version: 4,
+        priority: null,
+      }),
+    );
+  });
+  it("keeps blocked state indices fixed and opens the existing required note flow", async () => {
+    mocks.transitions = [
+      {
+        transitionId: "blocked",
+        toStateTemplateId: "blocked-template",
+        toStateName: "CAB done",
+        notePolicy: "none",
+        available: false,
+        blockedBy: [{ reasonCode: "approval.pending" }],
+      },
+      {
+        transitionId: "note",
+        toStateTemplateId: "note-template",
+        toStateName: "Close with note",
+        notePolicy: "required",
+        available: false,
+        blockedBy: [{ reasonCode: "note.required" }],
+      },
+    ];
+    mocks.transition.mockResolvedValue({});
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("work-item-state-control"));
+    await screen.findByRole("button", { name: /CAB done/ });
+    fireEvent.keyDown(document.body, { key: "1" });
+    expect(mocks.transition).not.toHaveBeenCalled();
+    fireEvent.keyDown(document.body, { key: "2" });
+    const note = screen.getByLabelText("workItems:properties.transitionNote");
+    fireEvent.keyDown(document.body, { key: "2" });
+    expect(mocks.transition).not.toHaveBeenCalled();
+    fireEvent.change(note, { target: { value: "Actual resolution" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:properties.move" }),
+    );
+    await waitFor(() =>
+      expect(mocks.transition).toHaveBeenCalledWith({
+        key: "HELP-7",
+        toStateTemplateId: "note-template",
+        note: "Actual resolution",
+      }),
+    );
+  });
+  it("uses a permitted state offer rather than a state alias", async () => {
+    mocks.transitions = [
+      {
+        transitionId: "edge",
+        toStateTemplateId: "actual-template",
+        toStateName: "Actual next",
+        notePolicy: "none",
+        available: true,
+        blockedBy: [],
+      },
+    ];
+    mocks.transition.mockResolvedValue({});
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("work-item-state-control"));
+    fireEvent.keyDown(document.body, { key: "1" });
+    await waitFor(() =>
+      expect(mocks.transition).toHaveBeenCalledExactlyOnceWith({
+        key: "HELP-7",
+        toStateTemplateId: "actual-template",
+      }),
+    );
+  });
+  it("requires holder confirmation for numbered assignment and disables numbers inside that step", async () => {
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    mocks.assign.mockResolvedValue({ key: "HELP-7", version: 5 });
+    renderProps(
+      <WorkItemProperties
+        item={item({ assigneeId: "person-1", assigneeName: "Riley" })}
+        onAccessLost={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+    fireEvent.keyDown(document.body, { key: "2" });
+    const confirm = screen.getByRole("button", {
+      name: "workItems:journey.confirmAssignment",
+    });
+    fireEvent.keyDown(document.body, { key: "1" });
+    fireEvent.keyDown(document.body, { key: "2" });
+    expect(mocks.assign).not.toHaveBeenCalled();
+    expect(mocks.unassign).not.toHaveBeenCalled();
+    fireEvent.click(confirm);
+    await waitFor(() =>
+      expect(mocks.assign).toHaveBeenCalledExactlyOnceWith({
+        key: "HELP-7",
+        assigneeId: "person-2",
+        expectedCurrentAssigneeId: "person-1",
+      }),
+    );
+  });
+  it("does not use unassigned shortcut to clear somebody else's assignment for update-only actors", async () => {
+    mocks.canAssign = false;
+    mocks.people = [{ personId: "self", name: "Me" }];
+    renderProps(
+      <WorkItemProperties
+        item={item({ assigneeId: "another", assigneeName: "Another" })}
+        onAccessLost={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+    fireEvent.keyDown(document.body, { key: "1" });
+    expect(mocks.unassign).not.toHaveBeenCalled();
+  });
+  it("cleans open shortcuts when item and project context change", async () => {
+    const { client, rerender } = renderProps(
+      <WorkItemProperties item={item()} onAccessLost={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-priority-control"));
+    await screen.findByRole("button", { name: /Urgent/ });
+    rerender(
+      <QueryClientProvider client={client}>
+        <WorkItemProperties
+          item={item({ key: "OTHER-1", projectId: "p2", workspaceId: "w2" })}
+          onAccessLost={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+    fireEvent.keyDown(document.body, { key: "5" });
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: /Urgent/ }),
+    ).not.toBeInTheDocument();
+  });
+});
+it("never activates a priority shortcut without both scoped update and set-priority capabilities", () => {
+  mocks.canSetPriority = false;
+  renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+  fireEvent.click(screen.getByTestId("work-item-priority-control"));
+  fireEvent.keyDown(document.body, { key: "5" });
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+it("maps assignment nine to the eighth actual scoped candidate", async () => {
+  mocks.people = Array.from({ length: 9 }, (_, index) => ({
+    personId: `person-${index + 1}`,
+    name: `Person ${index + 1}`,
+  }));
+  mocks.assign.mockResolvedValue({ key: "HELP-7", version: 5 });
+  renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+  fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+  fireEvent.keyDown(document.body, { key: "9" });
+  await waitFor(() =>
+    expect(mocks.assign).toHaveBeenCalledExactlyOnceWith({
+      key: "HELP-7",
+      assigneeId: "person-8",
+      expectedCurrentAssigneeId: null,
+    }),
+  );
 });

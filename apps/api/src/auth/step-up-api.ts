@@ -31,6 +31,10 @@ import {
 import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { withEnlistedLocalFactorVerification } from "../pending-action/credential-invalidation";
+import {
+  isStepUpPendingDeletion,
+  pendingDeletionStepUpAccess,
+} from "../pending-action/deletion-targets";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
 import {
@@ -624,16 +628,33 @@ const routes = apiRouter()
         actor.factor.personId,
         new Date(),
       );
+      const isBulk =
+        action !== undefined &&
+        isStepUpPendingDeletion({
+          action: action.action,
+          targetType: action.targetType,
+          routeKey: action.routeKey,
+          confirmation: action.confirmation,
+        });
       if (
-        action?.action !== "delete" ||
-        action.targetType !== "user" ||
-        action.confirmation !== "typed_name_step_up" ||
-        action.routeKey !== "POST /api/instance/users/{id}/deactivate"
+        !isBulk &&
+        (action?.action !== "delete" ||
+          action.targetType !== "user" ||
+          action.confirmation !== "typed_name_step_up" ||
+          action.routeKey !== "POST /api/instance/users/{id}/deactivate")
       ) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(404, { message: "Pending action unavailable" });
       }
-      if (!(await isCurrentInstanceAdmin(c.get("userId")))) {
+      if (
+        isBulk
+          ? !(await pendingDeletionStepUpAccess(db, {
+              id: input.pendingActionId,
+              requesterPersonId: actor.factor.personId,
+              sessionId: actor.session.id,
+            }))
+          : !(await isCurrentInstanceAdmin(c.get("userId")))
+      ) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(403, { message: "Forbidden" });
       }
@@ -1231,11 +1252,21 @@ const routes = apiRouter()
   .openapi(proveRoute, async (c) => {
     c.header("Cache-Control", "no-store");
     const actor = await requireCurrentAgentSession(c);
-    if (!(await isCurrentInstanceAdmin(c.get("userId")))) {
+    const input = c.req.valid("json");
+    const isBulkPendingAction =
+      input.kind === "pending_action" &&
+      (await pendingDeletionStepUpAccess(db, {
+        id: input.pendingActionId,
+        requesterPersonId: actor.factor.personId,
+        sessionId: actor.session.id,
+      }));
+    if (
+      !isBulkPendingAction &&
+      !(await isCurrentInstanceAdmin(c.get("userId")))
+    ) {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "step_up_unavailable" });
     }
-    const input = c.req.valid("json");
     const operationInput = input as Extract<
       typeof input,
       { kind: "operation" }
@@ -1449,10 +1480,16 @@ const routes = apiRouter()
                 actor.session.id,
                 c.get("userId"),
               )) &&
-              (await isCurrentInstanceAdminForStepUp(
-                c.get("userId"),
-                finalExecutor,
-              ))
+              (isBulkPendingAction && input.kind === "pending_action"
+                ? await pendingDeletionStepUpAccess(finalExecutor, {
+                    id: input.pendingActionId,
+                    requesterPersonId: actor.factor.personId,
+                    sessionId: actor.session.id,
+                  })
+                : await isCurrentInstanceAdminForStepUp(
+                    c.get("userId"),
+                    finalExecutor,
+                  ))
             );
           },
         };
@@ -1497,10 +1534,16 @@ const routes = apiRouter()
                 actor.session.id,
                 c.get("userId"),
               )) &&
-              (await isCurrentInstanceAdminForStepUp(
-                c.get("userId"),
-                finalExecutor,
-              ))
+              (isBulkPendingAction && input.kind === "pending_action"
+                ? await pendingDeletionStepUpAccess(finalExecutor, {
+                    id: input.pendingActionId,
+                    requesterPersonId: actor.factor.personId,
+                    sessionId: actor.session.id,
+                  })
+                : await isCurrentInstanceAdminForStepUp(
+                    c.get("userId"),
+                    finalExecutor,
+                  ))
             );
           },
         };
@@ -1515,10 +1558,12 @@ const routes = apiRouter()
         new Date(),
       );
       if (
-        action?.action !== "delete" ||
-        action.targetType !== "user" ||
-        action.confirmation !== "typed_name_step_up" ||
-        action.routeKey !== "POST /api/instance/users/{id}/deactivate"
+        !action ||
+        (!isBulkPendingAction &&
+          (action.action !== "delete" ||
+            action.targetType !== "user" ||
+            action.confirmation !== "typed_name_step_up" ||
+            action.routeKey !== "POST /api/instance/users/{id}/deactivate"))
       ) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(404, { message: "Pending action unavailable" });
@@ -1532,10 +1577,10 @@ const routes = apiRouter()
           userId: c.get("userId"),
           pendingActionId: input.pendingActionId,
           expectedPendingAction: {
-            action: "delete",
-            targetType: "user",
-            confirmation: "typed_name_step_up",
-            routeKey: "POST /api/instance/users/{id}/deactivate",
+            action: action.action,
+            targetType: action.targetType,
+            confirmation: action.confirmation,
+            routeKey: action.routeKey,
           },
         },
         verifyAuthentication,

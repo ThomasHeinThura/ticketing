@@ -23,6 +23,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
+import { ensureAgentSession } from "./helpers/pending-deletion";
 import {
   PROJECT_READ_ROUTE_KEYS,
   PROJECT_WRITE_ROUTE_KEYS,
@@ -51,6 +52,8 @@ type Case = {
   /** Put the data into the state this route's success path needs. */
   prepare?: (world: ProjectWorld, ids: Ids) => Promise<void>;
   successStatus?: number;
+  /** Session-only route: every API key is refused with 403, outsiders included. */
+  apiKeyRefused?: boolean;
   call: (app: App, world: ProjectWorld, ids: Ids) => Promise<Response>;
 };
 
@@ -82,6 +85,8 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/project/{id}",
+    successStatus: 202,
+    apiKeyRefused: true,
     call: (app, _w, i) => json(app, "DELETE", `/api/project/${i.projectId}`),
   },
   {
@@ -120,6 +125,7 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/project/{id}/milestones/{milestoneId}",
+    successStatus: 202,
     call: (app, _w, i) =>
       json(
         app,
@@ -147,6 +153,7 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/project/{id}/prerequisites/{prerequisiteId}",
+    successStatus: 202,
     call: (app, _w, i) =>
       json(
         app,
@@ -192,6 +199,7 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/project/{id}/document-links/{documentLinkId}",
+    successStatus: 202,
     call: (app, _w, i) =>
       json(
         app,
@@ -247,6 +255,7 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/column/{id}",
+    successStatus: 202,
     prepare: async (_w, i) => {
       // A column holding no task, so the delete's own preconditions pass.
       await db.delete(schema.workflowRuleTable);
@@ -267,6 +276,8 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/workflow-rule/{id}",
+    // Browser session only: a workflow rule is a column-routing setting, not history.
+    apiKeyRefused: true,
     call: (app, _w, i) => json(app, "DELETE", `/api/workflow-rule/${i.ruleId}`),
   },
 ];
@@ -744,6 +755,8 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
     const { app } = createApp();
     const ids = await seedProjectRows(app, world);
     await route.prepare?.(world, ids);
+    // Deletion routes record pending actions bound to the caller's live session row.
+    await ensureAgentSession(world.projectAdmin.user.id);
     return { world, app, ids };
   }
 
@@ -830,7 +843,10 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
         setAmbientHeaders({ "x-api-key": outsiderKey });
         const outside = await route.call(app, world, ids);
         const outsideText = await outside.text();
-        expect(outside.status, outsideText).toBe(404);
+        // A session-only route refuses every key identically before reach is consulted.
+        expect(outside.status, outsideText).toBe(
+          route.apiKeyRefused ? 403 : 404,
+        );
         for (const marker of SECRET_MARKERS) {
           expect(outsideText).not.toContain(marker);
         }
@@ -852,8 +868,10 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
           const allowed = await route.call(app, world, ids);
           setAmbientHeaders({});
           expect(allowed.status, await allowed.clone().text()).toBe(
-            route.successStatus ?? 200,
+            route.apiKeyRefused ? 403 : (route.successStatus ?? 200),
           );
+          if (route.apiKeyRefused)
+            expect(await allowed.text()).toContain("session_required");
         }
       });
     });

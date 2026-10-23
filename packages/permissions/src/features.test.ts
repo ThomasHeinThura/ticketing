@@ -10,10 +10,7 @@ import {
 describe("feature flag registry", () => {
   it("matches the canonical architecture enumeration and selected defaults", () => {
     const authority = readFileSync(
-      new URL(
-        "../../../docs/01-architecture/plugin-architecture.md",
-        import.meta.url,
-      ),
+      new URL("../../../docs/technical/features.md", import.meta.url),
       "utf8",
     );
     const registryRows = authority
@@ -25,10 +22,19 @@ describe("feature flag registry", () => {
       ),
     );
     expect([...new Set(documented)].sort()).toEqual([...FEATURE_FLAGS].sort());
-    expect(FEATURE_FLAG_DEFAULTS["feature.intake"]).toBe(false);
-    expect(FEATURE_FLAG_DEFAULTS["feature.scim"]).toBe(true);
-    expect(FEATURE_FLAG_DEFAULTS["feature.import"]).toBe(true);
-    expect([...LOCKED_FEATURE_DEFAULTS]).toEqual(["feature.import"]);
+    const defaults = Object.fromEntries(
+      registryRows.map((line) => {
+        const cells = line.split("|").map((cell) => cell.trim());
+        expect(["true", "false"]).toContain(cells[2]);
+        expect(["true", "false"]).toContain(cells[3]);
+        return [cells[1]?.replace(/`/g, ""), cells[2] === "true"];
+      }),
+    );
+    expect(defaults).toEqual(FEATURE_FLAG_DEFAULTS);
+    const locked = registryRows
+      .filter((line) => line.split("|")[3]?.trim() === "true")
+      .map((line) => line.split("|")[1]?.trim().replace(/`/g, ""));
+    expect(locked.sort()).toEqual([...LOCKED_FEATURE_DEFAULTS].sort());
   });
 
   it("resolves project, workspace, instance, and locked instance precedence", () => {

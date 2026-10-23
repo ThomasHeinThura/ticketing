@@ -1,26 +1,13 @@
 import { useLocation } from "@tanstack/react-router";
 import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbSeparator,
   Button,
   Calendar,
-  Checkbox,
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Input,
   Popover,
   PopoverContent,
@@ -49,10 +36,10 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
+import CreateWorkItemStagedAttachments from "@/components/work-item/create-work-item-staged-attachments";
+import { useCreateWorkItemAttachments } from "@/components/work-item/use-create-work-item-attachments";
 import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useCreateTask from "@/hooks/mutations/task/use-create-task";
-import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
-import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -63,11 +50,20 @@ import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
 import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
-import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type Task from "@/types/task";
+import {
+  CREATE_TASK_DIALOG_CLASS,
+  CREATE_TASK_PROPERTY_BUTTON_CLASS,
+  CreateTaskBody,
+  CreateTaskDiscardDialog,
+  CreateTaskFooter,
+  CreateTaskHeader,
+  CreateTaskPropertyRow,
+  CreateTaskTitleInput,
+} from "./create-task-presentation";
 
 const TaskDescriptionEditor = lazy(
   () => import("@/components/task/task-description-editor"),
@@ -215,8 +211,13 @@ function CreateTaskModal({
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [createMore, setCreateMore] = useState(false);
   const [labels, setLabels] = useState<Label[]>([]);
-  const [draftTask, setDraftTask] = useState<Task | null>(null);
+  // Set once the task exists, so a retry after a failed upload never creates a second task.
+  const [createdTask, setCreatedTask] = useState<Task | null>(null);
   const [discardConfirmationOpen, setDiscardConfirmationOpen] = useState(false);
+  // True while the create request or the file uploads run: nothing can be edited, resubmitted
+  // or closed, so one click never creates two tasks.
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [labelsStep, setLabelsStep] = useState<PopoverStep>("select");
@@ -234,17 +235,23 @@ function CreateTaskModal({
     { workspaceId: workspace?.id || "" },
     open,
   );
-  const resolvedProject = explicitProjectId
-    ? project
-    : (workspaceProjects?.find((p) => p.id === resolvedProjectId) ?? null);
+  const resolvedProject =
+    // The store outlives navigation, so it only counts when it holds this very project.
+    (project?.id === resolvedProjectId ? project : null) ??
+    workspaceProjects?.find((p) => p.id === resolvedProjectId) ??
+    null;
+  const attachments = useCreateWorkItemAttachments(resolvedProjectId);
+  // Once the task exists the form is read-only: a retry only uploads the remaining files.
+  const locked = submitting || createdTask !== null;
+  const createdKey =
+    createdTask?.number != null && resolvedProject?.slug
+      ? `${resolvedProject.slug}-${createdTask.number}`
+      : null;
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const draftCreationPromiseRef = useRef<Promise<Task> | null>(null);
   const didSubmitRef = useRef(false);
 
   const { mutateAsync: createTask } = useCreateTask();
-  const { mutateAsync: updateTask } = useUpdateTask();
-  const { mutateAsync: deleteTask } = useDeleteTask();
 
   const filteredLabels = (() => {
     const searchFiltered = workspaceLabels.filter((label) =>
@@ -277,12 +284,10 @@ function CreateTaskModal({
       dueDate ||
       selectedProjectId ||
       labels.length > 0 ||
-      draftTask,
+      attachments.rows.length > 0,
   );
 
   const closeAndReset = () => {
-    const shouldDeleteDraft = draftTask && !didSubmitRef.current;
-
     setDiscardConfirmationOpen(false);
     setTitle("");
     setDescription("");
@@ -297,20 +302,23 @@ function CreateTaskModal({
     setSearchValue("");
     setSelectedColor("gray");
     setNewLabelName("");
-    draftCreationPromiseRef.current = null;
     didSubmitRef.current = false;
-    setDraftTask(null);
+    // Staged files live only in memory until the task exists: discarding drops them and
+    // nothing was ever created on the server, so there is no draft to delete or approve.
+    attachments.reset();
+    setCreatedTask(null);
     onClose();
-
-    if (shouldDeleteDraft) {
-      void deleteTask(draftTask.id).catch(() => {
-        // ignore cleanup failures for abandoned empty drafts
-      });
-    }
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) return;
+    if (submittingRef.current) return;
+
+    // A created task is kept: closing is not a discard (nothing is lost or deleted).
+    if (createdTask) {
+      closeAndReset();
+      return;
+    }
 
     if (hasUnsavedChanges && !didSubmitRef.current) {
       setDiscardConfirmationOpen(true);
@@ -375,117 +383,69 @@ function CreateTaskModal({
     [project, setProject, workspaceUsers?.members],
   );
 
-  const ensureDraftTask = useCallback(async () => {
-    if (draftTask) {
-      return draftTask.id;
-    }
-
-    if (draftCreationPromiseRef.current) {
-      const pendingTask = await draftCreationPromiseRef.current;
-      return pendingTask.id;
-    }
-
-    if (!resolvedProjectId) {
-      toast.error(t("common:modals.createTask.chooseProjectForImages"));
-      return null;
-    }
-
-    const draftStatus = "planned";
-    const draftPromise = createTask({
-      title: title.trim() || t("common:modals.createTask.untitledTask"),
-      description: description.trim() || "",
-      userId: assigneeId,
-      priority,
-      projectId: resolvedProjectId,
-      startDate: startDate ? startDate.toISOString() : undefined,
-      dueDate: dueDate ? dueDate.toISOString() : undefined,
-      status: draftStatus,
-    }).then((task) => normalizeTask(task));
-
-    draftCreationPromiseRef.current = draftPromise;
-
-    try {
-      const createdTask = await draftPromise;
-      setDraftTask(createdTask);
-      return createdTask.id;
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("common:modals.createTask.prepareTaskError"),
-      );
-      return null;
-    } finally {
-      draftCreationPromiseRef.current = null;
-    }
-  }, [
-    assigneeId,
-    createTask,
-    description,
-    draftTask,
-    startDate,
-    dueDate,
-    priority,
-    resolvedProjectId,
-    title,
-    t,
-  ]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     if (!title.trim() || !resolvedProjectId || !workspace?.id) return;
 
+    submittingRef.current = true;
+    setSubmitting(true);
     try {
       const taskStatus = status ?? "to-do";
       didSubmitRef.current = true;
 
-      const savedTask = draftTask
-        ? normalizeTask(
-            await updateTask({
-              ...draftTask,
-              title: title.trim(),
-              description: description.trim() || "",
-              userId: assigneeId || null,
-              status: taskStatus,
-              priority,
-              startDate: startDate ? startDate.toISOString() : null,
-              dueDate: dueDate ? dueDate.toISOString() : null,
-              projectId: resolvedProjectId,
-            }),
-          )
-        : normalizeTask(
-            await createTask({
-              title: title.trim(),
-              description: description.trim() || "",
-              userId: assigneeId,
-              priority,
-              projectId: resolvedProjectId,
-              startDate: startDate ? startDate.toISOString() : undefined,
-              dueDate: dueDate ? dueDate.toISOString() : undefined,
-              status: taskStatus,
+      let savedTask = createdTask;
+      if (!savedTask) {
+        savedTask = normalizeTask(
+          await createTask({
+            title: title.trim(),
+            description: description.trim() || "",
+            userId: assigneeId,
+            priority,
+            projectId: resolvedProjectId,
+            startDate: startDate ? startDate.toISOString() : undefined,
+            dueDate: dueDate ? dueDate.toISOString() : undefined,
+            status: taskStatus,
+          }),
+        );
+        setCreatedTask(savedTask);
+        for (const label of labels) {
+          try {
+            await createLabel({
+              name: label.name,
+              color: label.color,
+              taskId: savedTask.id,
+              workspaceId: workspace.id,
+            });
+          } catch (error) {
+            console.error("Failed to create label:", error);
+          }
+        }
+        syncTaskIntoProject(savedTask);
+      }
+
+      // Files staged while writing are uploaded now that the task exists.
+      if (attachments.rows.length > 0) {
+        if (savedTask.number == null || !resolvedProject?.slug) {
+          didSubmitRef.current = false;
+          toast.error(t("workItems:create.attachments.createUnknown"));
+          return;
+        }
+        const complete = await attachments.upload(
+          `${resolvedProject.slug}-${savedTask.number}`,
+        );
+        if (!complete) {
+          didSubmitRef.current = false;
+          toast.error(
+            t("workItems:create.attachments.partial", {
+              key: `${resolvedProject.slug}-${savedTask.number}`,
             }),
           );
-
-      for (const label of labels) {
-        try {
-          await createLabel({
-            name: label.name,
-            color: label.color,
-            taskId: savedTask.id,
-            workspaceId: workspace.id,
-          });
-        } catch (error) {
-          console.error("Failed to create label:", error);
+          return;
         }
       }
 
-      setDraftTask(savedTask);
-      syncTaskIntoProject(savedTask);
-      toast.success(
-        draftTask
-          ? t("common:modals.createTask.successUpdated")
-          : t("common:modals.createTask.successCreated"),
-      );
+      toast.success(t("common:modals.createTask.successCreated"));
 
       if (createMore) {
         setTitle("");
@@ -499,21 +459,22 @@ function CreateTaskModal({
         setSearchValue("");
         setSelectedColor("gray");
         setNewLabelName("");
-        draftCreationPromiseRef.current = null;
         didSubmitRef.current = false;
-        setDraftTask(null);
+        attachments.reset();
+        setCreatedTask(null);
       } else {
         closeAndReset();
       }
     } catch (error) {
       didSubmitRef.current = false;
-      if (!(error instanceof TaskUpdateError)) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : t("common:modals.createTask.createError"),
-        );
-      }
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("common:modals.createTask.createError"),
+      );
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   };
 
@@ -654,42 +615,32 @@ function CreateTaskModal({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="taskdesk-create-task-modal max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+        className={CREATE_TASK_DIALOG_CLASS}
         showCloseButton={false}
       >
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle asChild>
-            <Breadcrumb label={t("common:breadcrumb.label")}>
-              <BreadcrumbList>
-                <BreadcrumbItem className="text-muted-foreground font-semibold tracking-wider text-sm">
-                  {resolvedProject?.slug?.toUpperCase() ||
-                    t("common:modals.createTask.breadcrumbTask")}
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem className="text-foreground font-medium text-sm">
-                  {t("common:modals.createTask.title")}
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            {t("common:modals.createTask.description")}
-          </DialogDescription>
-        </DialogHeader>
+        <CreateTaskHeader
+          projectLabel={
+            resolvedProject?.slug?.toUpperCase() ||
+            t("common:modals.createTask.breadcrumbTask")
+          }
+          title={t("common:modals.createTask.title")}
+          description={t("common:modals.createTask.description")}
+          breadcrumbLabel={t("common:breadcrumb.label")}
+        />
 
         <form
           onSubmit={handleSubmit}
           className="flex flex-col flex-1 min-h-0 space-y-6"
         >
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-6 px-6">
-            <Input
+          <CreateTaskBody>
+            <CreateTaskTitleInput
               unstyled
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
               placeholder={t("common:modals.createTask.taskTitlePlaceholder")}
-              className="w-full [&_[data-slot=input]]:h-auto [&_[data-slot=input]]:px-0 [&_[data-slot=input]]:py-3 [&_[data-slot=input]]:text-2xl [&_[data-slot=input]]:leading-tight [&_[data-slot=input]]:font-semibold [&_[data-slot=input]]:tracking-tight [&_[data-slot=input]]:text-foreground [&_[data-slot=input]]:placeholder:text-muted-foreground [&_[data-slot=input]]:outline-none"
               required
+              disabled={locked}
             />
 
             <div className="min-h-[200px]">
@@ -704,11 +655,30 @@ function CreateTaskModal({
                   placeholder={t(
                     "common:modals.createTask.descriptionPlaceholder",
                   )}
-                  taskId={draftTask?.id}
-                  ensureTaskId={ensureDraftTask}
+                  onFilesSelected={locked ? undefined : attachments.stage}
+                  disabled={locked}
                 />
               </Suspense>
             </div>
+
+            <CreateWorkItemStagedAttachments
+              rows={attachments.rows}
+              onRemove={attachments.remove}
+              disabled={submitting}
+            />
+
+            {createdTask && createdKey && !submitting ? (
+              <Alert data-testid="create-task-partial">
+                <AlertTitle>
+                  {t("workItems:create.attachments.partial", {
+                    key: createdKey,
+                  })}
+                </AlertTitle>
+                <AlertDescription>
+                  {t("workItems:create.attachments.afterCreate")}
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
             {labels.length > 0 && (
               <div className="flex flex-wrap mb-2">
@@ -718,7 +688,9 @@ function CreateTaskModal({
                     color={label.color}
                     variant="outline"
                     className="flex items-center gap-1 pl-3 cursor-pointer hover:bg-accent/50 transition-colors"
-                    onClick={() => removeLabel(label.name)}
+                    onClick={() => {
+                      if (!locked) removeLabel(label.name);
+                    }}
                   >
                     <span
                       className="inline-block w-2 h-2 mr-1.5 rounded-full"
@@ -732,15 +704,16 @@ function CreateTaskModal({
               </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2 py-2">
+            <CreateTaskPropertyRow>
               {!explicitProjectId && (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
+                      disabled={locked}
                       variant="ghost"
                       type="button"
                       className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
+                        CREATE_TASK_PROPERTY_BUTTON_CLASS,
                         resolvedProjectId
                           ? "bg-accent/30 text-foreground"
                           : "text-muted-foreground",
@@ -785,10 +758,11 @@ function CreateTaskModal({
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
+                    disabled={locked}
                     variant="ghost"
                     type="button"
                     className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
+                      CREATE_TASK_PROPERTY_BUTTON_CLASS,
                       startDate
                         ? "bg-accent/30 text-foreground"
                         : "text-muted-foreground",
@@ -829,10 +803,11 @@ function CreateTaskModal({
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
+                    disabled={locked}
                     variant="ghost"
                     type="button"
                     className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
+                      CREATE_TASK_PROPERTY_BUTTON_CLASS,
                       priority !== "no-priority"
                         ? "bg-accent/30 text-foreground"
                         : "text-muted-foreground",
@@ -870,10 +845,11 @@ function CreateTaskModal({
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
+                    disabled={locked}
                     variant="ghost"
                     type="button"
                     className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
+                      CREATE_TASK_PROPERTY_BUTTON_CLASS,
                       selectedUser
                         ? "bg-accent/30 text-foreground"
                         : "text-muted-foreground",
@@ -953,10 +929,11 @@ function CreateTaskModal({
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
+                    disabled={locked}
                     variant="ghost"
                     type="button"
                     className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
+                      CREATE_TASK_PROPERTY_BUTTON_CLASS,
                       dueDate
                         ? "bg-accent/30 text-foreground"
                         : "text-muted-foreground",
@@ -997,10 +974,11 @@ function CreateTaskModal({
               <Popover open={labelsOpen} onOpenChange={setLabelsOpen}>
                 <PopoverTrigger asChild>
                   <Button
+                    disabled={locked}
                     variant="ghost"
                     type="button"
                     className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
+                      CREATE_TASK_PROPERTY_BUTTON_CLASS,
                       labels.length > 0
                         ? "bg-accent/30 text-foreground"
                         : "text-muted-foreground",
@@ -1140,76 +1118,46 @@ function CreateTaskModal({
                   )}
                 </PopoverContent>
               </Popover>
-            </div>
-          </div>
+            </CreateTaskPropertyRow>
+          </CreateTaskBody>
 
-          <DialogFooter className="flex-shrink-0 border-t border-border bg-background px-6 py-4">
-            <div className="flex items-center gap-3 mr-auto">
-              <label
-                htmlFor="create-task-create-more"
-                className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
-              >
-                <Checkbox
-                  id="create-task-create-more"
-                  checked={createMore}
-                  onCheckedChange={(value) => setCreateMore(Boolean(value))}
-                  className="rounded border-border bg-background text-primary focus:ring-ring focus:ring-offset-0 focus:ring-2 transition-[border-color,box-shadow]"
-                />
-                {t("common:modals.createTask.createMore")}
-              </label>
-            </div>
-
-            <Button
-              type="button"
-              onClick={() => handleOpenChange(false)}
-              variant="outline"
-              size="sm"
-              className="border-border text-foreground hover:bg-accent"
-            >
-              {t("common:actions.cancel")}
-            </Button>
-            <Button
-              type="submit"
-              disabled={!title.trim()}
-              size="sm"
-              className="disabled:opacity-50"
-            >
-              {t("common:modals.createTask.createButton")}
-            </Button>
-          </DialogFooter>
+          <CreateTaskFooter
+            createMore={createMore}
+            onCreateMoreChange={setCreateMore}
+            createMoreId="create-task-create-more"
+            createMoreLabel={t("common:modals.createTask.createMore")}
+            cancelLabel={
+              createdTask
+                ? t("workItems:create.attachments.createdClose")
+                : t("common:actions.cancel")
+            }
+            submitLabel={
+              submitting && createdTask
+                ? t("workItems:create.attachments.uploading")
+                : createdTask
+                  ? t("workItems:create.attachments.retry")
+                  : t("common:modals.createTask.createButton")
+            }
+            onCancel={() => handleOpenChange(false)}
+            disabled={!title.trim() || submitting}
+            pending={submitting}
+          />
         </form>
       </DialogContent>
 
-      <AlertDialog
+      <CreateTaskDiscardDialog
         open={discardConfirmationOpen}
         onOpenChange={setDiscardConfirmationOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("common:modals.createTask.discardTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("common:modals.createTask.discardDescription")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogClose
-              render={<Button type="button" variant="outline" size="sm" />}
-            >
-              {t("common:actions.cancel")}
-            </AlertDialogClose>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={closeAndReset}
-            >
-              {t("common:modals.createTask.discardButton")}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onDiscard={closeAndReset}
+        title={t("common:modals.createTask.discardTitle")}
+        description={t(
+          attachments.rows.length > 0
+            ? "common:modals.createTask.discardWithFilesDescription"
+            : "common:modals.createTask.discardDescription",
+        )}
+        cancelLabel={t("common:actions.cancel")}
+        discardLabel={t("common:modals.createTask.discardButton")}
+      />
     </Dialog>
   );
 }

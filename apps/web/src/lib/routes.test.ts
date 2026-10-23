@@ -975,3 +975,51 @@ describe("label catalogue dialog URLs", () => {
     ).toEqual({ action: "create" });
   });
 });
+
+describe("item-scoped Kaneo disclosure URLs", () => {
+  it("retains detail sections alongside the comment and activity selection", () => {
+    const sections = {
+      itemKey: "HELP-4",
+      open: ["sla", "approvals"] as ("sla" | "approvals")[],
+    };
+    const url = routes.workItemDetail.build(
+      { key: "HELP-4" },
+      { sections, comment: "comment-1", activity: "comments" },
+    );
+    expect(
+      parseWorkItemDetailSearch(
+        Object.fromEntries(new URLSearchParams(url.split("?")[1])),
+      ),
+    ).toEqual({ sections, comment: "comment-1", activity: "comments" });
+  });
+  it("retains disclosure state on the board without losing its order or item", () => {
+    const sections = {
+      itemKey: "HELP-4",
+      open: ["attachments"] as "attachments"[],
+    };
+    const url = routes.workItemList.build(
+      { projectKey: "HELP" },
+      {
+        layout: "board",
+        sort: "position",
+        dir: "asc",
+        item: "HELP-4",
+        sections,
+      },
+    );
+    expect(parseWorkItemListSearchFromQueryString(url.split("?")[1])).toEqual({
+      layout: "board",
+      sort: "position",
+      dir: "asc",
+      item: "HELP-4",
+      sections,
+    });
+  });
+  it("does not preserve unsupported section names from a shared URL", () => {
+    expect(
+      parseWorkItemDetailSearch({
+        sections: JSON.stringify({ itemKey: "HELP-4", open: ["secrets"] }),
+      }),
+    ).toEqual({});
+  });
+});

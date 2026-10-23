@@ -3,7 +3,7 @@ import test from "node:test";
 import { findEnvReads } from "./env-reads.mjs";
 
 // Opus review of #423 pass 4, finding F6
-// (docs/07-planning/security-reviews/423-env-reads-ast-rewrite.md, "pass 4"). An exported
+// (archive/2026-10-22/docs/07-planning/security-reviews/423-env-reads-ast-rewrite.md, "pass 4"). An exported
 // binding assigned LATER (not at its own declaration) crosses the same module boundary as
 // `export const p = process;`, but was silently uncharged because the `BinaryExpression`
 // dispatch for a plain reassignment always passed `exported = false` to

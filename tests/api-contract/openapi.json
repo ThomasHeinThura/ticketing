@@ -138,6 +138,10 @@
           "createTasks": {
             "type": "boolean"
           },
+          "createAttachments": {
+            "type": "boolean",
+            "description": "Strict attachment:create in the requested scope; absent means denied."
+          },
           "deleteTasks": {
             "type": "boolean"
           },
@@ -1843,6 +1847,61 @@
       "NotificationPreferences": {
         "type": "object",
         "properties": {
+          "canonicalPreferences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "eventKind": {
+                  "type": "string",
+                  "enum": [
+                    "work_item.mentioned"
+                  ]
+                },
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "notify.email"
+                  ]
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "global"
+                  ]
+                },
+                "scopeId": {
+                  "type": "null"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "digest": {
+                  "type": "string",
+                  "enum": [
+                    "off"
+                  ]
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "default",
+                    "global"
+                  ]
+                }
+              },
+              "required": [
+                "eventKind",
+                "channel",
+                "scope",
+                "scopeId",
+                "enabled",
+                "digest",
+                "source"
+              ],
+              "additionalProperties": false
+            }
+          },
           "emailAddress": {
             "type": [
               "string",
@@ -2238,6 +2297,39 @@
             "enum": [
               "executed",
               "expired"
+            ]
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "succeeded": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "failed": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "reason"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "succeeded",
+              "failed"
             ]
           }
         },
@@ -3344,22 +3436,6 @@
           "status"
         ]
       },
-      "CanceledInvitation": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "description": "Always `\"canceled\"`."
-          }
-        },
-        "required": [
-          "id",
-          "status"
-        ]
-      },
       "WorkspaceSummary": {
         "type": "object",
         "properties": {
@@ -3573,17 +3649,6 @@
           "createdAt"
         ]
       },
-      "DeletedWorkspace": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id"
-        ]
-      },
       "ActivatedWorkspace": {
         "type": "object",
         "properties": {
@@ -3693,21 +3758,6 @@
           "permission",
           "createdAt",
           "updatedAt"
-        ]
-      },
-      "DeletedWorkspaceRole": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "role"
         ]
       },
       "WorkItem": {
@@ -3875,6 +3925,28 @@
           {
             "type": "object",
             "properties": {
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "color": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "color"
+                  ]
+                }
+              },
               "stateName": {
                 "type": "string"
               },
@@ -4217,6 +4289,18 @@
               "title": {
                 "type": "string"
               },
+              "assigneeId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "assigneeName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "stateName": {
                 "type": "string"
               },
@@ -4234,6 +4318,8 @@
               "id",
               "key",
               "title",
+              "assigneeId",
+              "assigneeName",
               "stateName",
               "stateCategory",
               "parentId"
@@ -4253,6 +4339,18 @@
                 "title": {
                   "type": "string"
                 },
+                "assigneeId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "assigneeName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "stateName": {
                   "type": "string"
                 },
@@ -4270,6 +4368,8 @@
                 "id",
                 "key",
                 "title",
+                "assigneeId",
+                "assigneeName",
                 "stateName",
                 "stateCategory",
                 "parentId"
@@ -4291,6 +4391,18 @@
                 "title": {
                   "type": "string"
                 },
+                "assigneeId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "assigneeName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "stateName": {
                   "type": "string"
                 },
@@ -4305,6 +4417,8 @@
                 "id",
                 "key",
                 "title",
+                "assigneeId",
+                "assigneeName",
                 "stateName",
                 "stateCategory",
                 "hasChildren"
@@ -4423,34 +4537,6 @@
           "stateCategory",
           "isCurrent",
           "children"
-        ]
-      },
-      "DeletedWorkItem": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "key": {
-            "type": "string"
-          },
-          "workspaceId": {
-            "type": "string"
-          },
-          "projectId": {
-            "type": "string"
-          },
-          "deletedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "key",
-          "workspaceId",
-          "projectId",
-          "deletedAt"
         ]
       },
       "RankedWorkItem": {
@@ -4627,6 +4713,14 @@
             "type": "string",
             "format": "date-time",
             "description": "Comment rows only."
+          },
+          "canEdit": {
+            "type": "boolean",
+            "description": "Comment rows only: current caller may edit; server revalidates on mutation."
+          },
+          "canDelete": {
+            "type": "boolean",
+            "description": "Comment rows only: current caller has deletion authority; deletion confirmation remains required."
           }
         },
         "required": [
@@ -4824,6 +4918,214 @@
           "blockedBy"
         ]
       },
+      "WorkItemRelationCandidates": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "stateName": {
+                  "type": "string"
+                },
+                "stateCategory": {
+                  "type": "string"
+                },
+                "assigneeName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "key",
+                "title",
+                "projectId",
+                "stateName",
+                "stateCategory",
+                "assigneeName"
+              ]
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "hasMore": {
+                "type": "boolean"
+              },
+              "nextCursor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "hasMore",
+              "nextCursor"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "WorkItemRelations": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "relates",
+                    "blocks",
+                    "duplicates",
+                    "precedes",
+                    "requires"
+                  ]
+                },
+                "label": {
+                  "type": "string",
+                  "enum": [
+                    "relates",
+                    "blocks",
+                    "blocked_by",
+                    "duplicates",
+                    "duplicated_by",
+                    "precedes",
+                    "follows",
+                    "requires",
+                    "required_by"
+                  ]
+                },
+                "item": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "projectId": {
+                      "type": "string"
+                    },
+                    "stateName": {
+                      "type": "string"
+                    },
+                    "stateCategory": {
+                      "type": "string"
+                    },
+                    "assigneeName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "key",
+                    "title",
+                    "projectId",
+                    "stateName",
+                    "stateCategory",
+                    "assigneeName"
+                  ]
+                },
+                "blockingCycle": {
+                  "type": "boolean"
+                },
+                "canRemove": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "label",
+                "item",
+                "blockingCycle",
+                "canRemove"
+              ]
+            }
+          },
+          "hiddenCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "data",
+          "hiddenCount"
+        ]
+      },
+      "WorkItemRelation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "relates",
+              "blocks",
+              "duplicates",
+              "precedes",
+              "requires"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "sourceId",
+          "targetId",
+          "type",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
       "CommentVersionPage": {
         "type": "object",
         "properties": {
@@ -4932,6 +5234,9 @@
               "null"
             ]
           },
+          "canDelete": {
+            "type": "boolean"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -4953,6 +5258,7 @@
           "state",
           "customerVisible",
           "uploadedBy",
+          "canDelete",
           "createdAt",
           "deletedAt"
         ]
@@ -5468,6 +5774,112 @@
           },
           "302": {
             "description": "Redirects the browser to the web app device screen"
+          }
+        }
+      }
+    },
+    "/public/agent/notification-preference-handoffs": {
+      "post": {
+        "summary": "Exchange a notification preference link",
+        "operationId": "exchangeAgentNotificationPreferenceLink",
+        "tags": [
+          "Notification Preferences"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Link accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "accepted"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/portal/notification-preference-handoffs": {
+      "post": {
+        "summary": "Exchange a notification preference link",
+        "operationId": "exchangePortalNotificationPreferenceLink",
+        "tags": [
+          "Notification Preferences"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Link accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "accepted"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -6085,7 +6497,7 @@
           "Projects"
         ],
         "summary": "Delete project",
-        "description": "Soft-delete a project: it disappears from ordinary use immediately and, along with its work items, comments, attachments and time entries, is eligible for purge 30 days later, once the purge job (#198) exists. Archive it instead if you just want it out of the way without starting that clock.",
+        "description": "Soft-delete a project: it disappears from ordinary use immediately and, along with its work items, comments, attachments and time entries, is eligible for purge 30 days later, once the purge job (#198) exists. Archive it instead if you just want it out of the way without starting that clock. Requests a durable pending deletion (202); nothing changes until the requester approves it in a current browser session by typing the exact project name and completing step-up.",
         "parameters": [
           {
             "schema": {
@@ -6097,12 +6509,49 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted project",
+          "202": {
+            "description": "Pending deletion; project unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Project"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -6118,10 +6567,17 @@
             }
           },
           "401": {
-            "description": "Missing or invalid credentials"
+            "description": "No browser session",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Missing project:delete permission",
+            "description": "An API key or impersonation session (session_required), or missing project:delete permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6132,6 +6588,16 @@
           },
           "404": {
             "description": "Project not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An equivalent deletion is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6811,12 +7277,49 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted milestone",
+          "202": {
+            "description": "Pending deletion; milestone unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Milestone"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -6846,6 +7349,16 @@
           },
           "404": {
             "description": "Project or milestone not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An equivalent deletion is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7152,12 +7665,49 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted prerequisite",
+          "202": {
+            "description": "Pending deletion; prerequisite unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Prerequisite"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -7187,6 +7737,16 @@
           },
           "404": {
             "description": "Project or prerequisite not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An equivalent deletion is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7703,12 +8263,49 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted document link",
+          "202": {
+            "description": "Pending deletion; document link unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DocumentLink"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -7738,6 +8335,16 @@
           },
           "404": {
             "description": "Project or document link not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An equivalent deletion is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7965,7 +8572,7 @@
           "Tasks"
         ],
         "summary": "Bulk update tasks",
-        "description": "Apply one operation to many tasks at once. Every task must be in the same workspace.",
+        "description": "Apply one operation to many tasks at once. Every task must be in the same workspace. Operation `delete` is removed: it used to hard-delete tasks with no approval and now answers 410 Gone (after the same reach and permission checks). Request deletion through POST /api/work-items/bulk, which records a pending action.",
         "requestBody": {
           "required": true,
           "content": {
@@ -7997,7 +8604,7 @@
                       "string",
                       "null"
                     ],
-                    "description": "The new value for the chosen operation. Unused by `delete`; null clears an assignee or due date."
+                    "description": "The new value for the chosen operation; null clears an assignee or due date. `delete` is retired and answers 410 Gone (use POST /api/work-items/bulk)."
                   }
                 },
                 "required": [
@@ -8044,6 +8651,39 @@
           },
           "404": {
             "description": "No tasks found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Removed: operation `delete`; use POST /api/work-items/bulk (pending action)",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor operation that records a pending deletion.",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/work-items/bulk>; rel=\"successor-version\""
+                }
+              }
+            },
             "content": {
               "text/plain": {
                 "schema": {
@@ -8479,8 +9119,9 @@
         "tags": [
           "Tasks"
         ],
-        "summary": "Delete task",
-        "description": "Permanently delete a task and its comments, labels, and time entries.",
+        "deprecated": true,
+        "summary": "Delete task (removed; 410)",
+        "description": "Removed. This route used to hard-delete a task and its comments, labels, time entries and stored assets with no approval. It now answers 410 Gone (after the same reach and permission checks) under the compatibility Deprecation/Sunset headers. Request deletion through DELETE /api/work-items/{key}, which records a pending action for approval.",
         "parameters": [
           {
             "schema": {
@@ -8492,18 +9133,31 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted task",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Task"
-                }
-              }
-            }
-          },
           "400": {
             "description": "id must not contain a NUL (\\u0000) byte",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor operation (a work-item key, not this task id).",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/work-items/{key}>; rel=\"successor-version\""
+                }
+              }
+            },
             "content": {
               "text/plain": {
                 "schema": {
@@ -8517,6 +9171,29 @@
           },
           "403": {
             "description": "Missing work_item:delete permission",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor operation (a work-item key, not this task id).",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/work-items/{key}>; rel=\"successor-version\""
+                }
+              }
+            },
             "content": {
               "text/plain": {
                 "schema": {
@@ -8527,6 +9204,62 @@
           },
           "404": {
             "description": "Task not found",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor operation (a work-item key, not this task id).",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/work-items/{key}>; rel=\"successor-version\""
+                }
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Removed: use DELETE /api/work-items/{key} (pending action)",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor operation (a work-item key, not this task id).",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/work-items/{key}>; rel=\"successor-version\""
+                }
+              }
+            },
             "content": {
               "text/plain": {
                 "schema": {
@@ -10021,7 +10754,7 @@
           "Columns"
         ],
         "summary": "Delete column",
-        "description": "Delete an empty column. A column holding tasks is refused until they are moved or deleted.",
+        "description": "Request deletion of an empty column (202 pending action; executed on the requester's approval). A column holding tasks is refused, at request and again at approval, until they are moved or deleted.",
         "parameters": [
           {
             "schema": {
@@ -10033,12 +10766,49 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted column",
+          "202": {
+            "description": "Pending deletion; column unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Column"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -10077,7 +10847,7 @@
             }
           },
           "409": {
-            "description": "The column still contains tasks",
+            "description": "The column still contains tasks, or an equivalent deletion is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10397,8 +11167,9 @@
         "tags": [
           "Activity"
         ],
-        "summary": "Delete comment",
-        "description": "Delete a comment. Only the comment's author may do this.",
+        "deprecated": true,
+        "summary": "Delete comment (removed; 410)",
+        "description": "Removed. This route used to delete a comment immediately with no approval. It now answers 410 Gone (after the same reach checks). Request deletion through DELETE /api/comments/{id}, which records a pending action.",
         "requestBody": {
           "required": true,
           "content": {
@@ -10418,16 +11189,6 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "The deleted comment",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Activity"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Invalid body",
             "content": {
@@ -10442,7 +11203,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not the author",
+            "description": "Caller lacks reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10453,6 +11214,39 @@
           },
           "404": {
             "description": "Comment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Removed: use DELETE /api/comments/{id}",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor operation that records a pending deletion.",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/comments/{id}>; rel=\"successor-version\""
+                }
+              }
+            },
             "content": {
               "text/plain": {
                 "schema": {
@@ -10782,6 +11576,7 @@
           "Canned responses"
         ],
         "summary": "Delete canned response",
+        "description": "Requests a durable pending deletion (202); the canned response is unchanged until the requester approves.",
         "parameters": [
           {
             "schema": {
@@ -10794,12 +11589,49 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted canned response",
+          "202": {
+            "description": "Pending deletion; canned response unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CannedResponse"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -10819,6 +11651,16 @@
           },
           "404": {
             "description": "Canned response not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An equivalent deletion is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -11072,8 +11914,9 @@
         "tags": [
           "Comments"
         ],
-        "summary": "Delete task comment",
-        "description": "Delete a comment. Only the comment's author may do this.",
+        "deprecated": true,
+        "summary": "Delete task comment (removed; 410)",
+        "description": "Removed. This route used to delete a comment immediately with no approval. It now answers 410 Gone (after the same reach and permission checks). Request deletion through DELETE /api/comments/{id}, which records a pending action.",
         "parameters": [
           {
             "schema": {
@@ -11085,16 +11928,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted comment",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Activity"
-                }
-              }
-            }
-          },
           "400": {
             "description": "id must not contain a NUL (\\u0000) byte",
             "content": {
@@ -11109,7 +11942,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not the author, or missing work_item:update permission",
+            "description": "Missing work_item:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -11120,6 +11953,39 @@
           },
           "404": {
             "description": "Comment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Removed: use DELETE /api/comments/{id}",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor operation that records a pending deletion.",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/comments/{id}>; rel=\"successor-version\""
+                }
+              }
+            },
             "content": {
               "text/plain": {
                 "schema": {
@@ -11691,6 +12557,7 @@
           "Labels"
         ],
         "summary": "Delete a project label and journal its removed assignments",
+        "description": "Requests a durable pending deletion (202). The label and its work-item assignments are unchanged until the requester approves; approval clears the assignments (journaled) and deletes the label.",
         "parameters": [
           {
             "schema": {
@@ -11712,12 +12579,49 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Deleted project label",
+          "202": {
+            "description": "Pending deletion; project label unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectLabel"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -11747,6 +12651,16 @@
           },
           "404": {
             "description": "Project or label not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An equivalent deletion is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12103,7 +13017,7 @@
           "Labels"
         ],
         "summary": "Delete label",
-        "description": "Delete a label by ID",
+        "description": "Request deletion of a label by ID. Returns a durable pending action (202); the label and its task-level copies are unchanged until the requester approves the deletion.",
         "parameters": [
           {
             "schema": {
@@ -12115,12 +13029,49 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Label deleted successfully",
+          "202": {
+            "description": "Pending deletion; label unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Label"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -12150,6 +13101,16 @@
           },
           "404": {
             "description": "Label not found, or its task no longer exists",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An equivalent deletion is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12249,7 +13210,7 @@
           "Labels"
         ],
         "summary": "Detach label from task",
-        "description": "Detach a label from its current task",
+        "description": "Detach a label from its current task. This is an unlink (P0 decision F24, like unassign/unwatch/unparent): it removes only the per-task link row; a workspace or project catalogue label (no task) is refused with 400 and is never deleted. Deleting a label itself goes through DELETE /api/label/{id}, a pending action.",
         "parameters": [
           {
             "schema": {
@@ -12935,6 +13896,50 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "canonicalPreference": {
+                    "type": "object",
+                    "properties": {
+                      "eventKind": {
+                        "type": "string",
+                        "enum": [
+                          "work_item.mentioned"
+                        ]
+                      },
+                      "channel": {
+                        "type": "string",
+                        "enum": [
+                          "notify.email"
+                        ]
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "global"
+                        ]
+                      },
+                      "scopeId": {
+                        "type": "null"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "digest": {
+                        "type": "string",
+                        "enum": [
+                          "off"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "eventKind",
+                      "channel",
+                      "scope",
+                      "scopeId",
+                      "enabled",
+                      "digest"
+                    ],
+                    "additionalProperties": false
+                  },
                   "emailEnabled": {
                     "type": "boolean"
                   },
@@ -13362,6 +14367,10 @@
                   "typedName": {
                     "type": "string",
                     "maxLength": 320
+                  },
+                  "typedCount": {
+                    "type": "string",
+                    "maxLength": 3
                   }
                 },
                 "additionalProperties": false
@@ -17940,8 +18949,9 @@
         "tags": [
           "Task Relations"
         ],
-        "summary": "Delete task relation",
-        "description": "Remove a link between two tasks. Returns the deleted relation.",
+        "deprecated": true,
+        "summary": "Delete task relation (removed; 410)",
+        "description": "Removed. This route used to delete a relation immediately with no approval. It now answers 410 Gone (after the same reach and permission checks). Request deletion through DELETE /api/work-items/{key}/relations/{id}, which records a pending action.",
         "parameters": [
           {
             "schema": {
@@ -17953,16 +18963,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted relation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TaskRelation"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Missing or invalid credentials"
           },
@@ -17978,6 +18978,39 @@
           },
           "404": {
             "description": "Task relation not found, or its source task is gone",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Removed: use DELETE /api/work-items/{key}/relations/{id}",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor operation that records a pending deletion.",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/work-items/{key}/relations/{id}>; rel=\"successor-version\""
+                }
+              }
+            },
             "content": {
               "text/plain": {
                 "schema": {
@@ -18201,7 +19234,7 @@
           "Workflow Rules"
         ],
         "summary": "Delete workflow rule",
-        "description": "Delete a workflow rule. Returns the rule that was removed.",
+        "description": "Delete a workflow rule. Returns the rule that was removed. Browser session only; API and MCP keys are refused (403 session_required). A rule is a column-routing setting with no history of its own, so it is not a pending-action target.",
         "parameters": [
           {
             "schema": {
@@ -18234,10 +19267,17 @@
             }
           },
           "401": {
-            "description": "Missing or invalid credentials"
+            "description": "Not authenticated",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Missing project:update permission",
+            "description": "A browser session is required, or missing project:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -19102,7 +20142,7 @@
           "Invitations"
         ],
         "summary": "Cancel an invitation",
-        "description": "Cancel a pending invitation. Native replacement for authClient.organization.cancelInvitation().",
+        "description": "Request cancellation of a pending invitation. Native replacement for authClient.organization.cancelInvitation(). Returns a durable pending action (202); the invitation stays pending until the requester approves in a current browser session.",
         "parameters": [
           {
             "schema": {
@@ -19114,12 +20154,49 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The canceled invitation",
+          "202": {
+            "description": "Pending cancellation; invitation unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CanceledInvitation"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -19156,6 +20233,16 @@
           },
           "404": {
             "description": "No invitation with this id",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An equivalent cancellation is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -19637,7 +20724,7 @@
           "Workspaces"
         ],
         "summary": "Delete a workspace",
-        "description": "Delete a workspace and everything cascading off it. Native replacement for authClient.organization.delete().",
+        "description": "Request deletion of a workspace and everything cascading off it. Native replacement for authClient.organization.delete(). Returns a durable pending action (202); nothing changes until the requester approves it in a current browser session by typing the exact workspace name and completing step-up.",
         "parameters": [
           {
             "schema": {
@@ -19649,12 +20736,49 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted workspace's id",
+          "202": {
+            "description": "Pending deletion; workspace unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeletedWorkspace"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -19690,7 +20814,7 @@
             }
           },
           "409": {
-            "description": "Workspace is still referenced as an identity connection default_workspace_id, or workspace access is currently locked",
+            "description": "An equivalent deletion is already pending (execution-time refusals such as an identity connection default_workspace_id are returned by the approval)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -20707,7 +21831,7 @@
           "Workspaces"
         ],
         "summary": "Delete a workspace role",
-        "description": "Delete a custom role. Refused for 'owner' and for a role still assigned to any member. Identified by the role's opaque id, not its name. Native replacement for authClient.organization.deleteRole().",
+        "description": "Request deletion of a custom role (202 pending action, executed on the requester's click approval). Refused for 'owner' and for a role still assigned to any member, at request and again at approval. Identified by the role's opaque id, not its name. Native replacement for authClient.organization.deleteRole().",
         "parameters": [
           {
             "schema": {
@@ -20727,12 +21851,49 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted role's id and name",
+          "202": {
+            "description": "Pending deletion; role unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeletedWorkspaceRole"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -20769,6 +21930,16 @@
           },
           "404": {
             "description": "The role does not exist",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An equivalent deletion is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -20823,6 +21994,32 @@
                       "high",
                       "urgent"
                     ]
+                  },
+                  "startDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(\\.\\d{1,9})?(Z|[+-]\\d{2}:\\d{2})$"
+                  },
+                  "dueDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(\\.\\d{1,9})?(Z|[+-]\\d{2}:\\d{2})$"
+                  },
+                  "labelIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "maxItems": 100
+                  },
+                  "assigneeId": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [
@@ -21510,7 +22707,7 @@
           "Work items"
         ],
         "summary": "Delete work item",
-        "description": "Soft-deletes a work item (`WI-21`). KNOWN DEVIATION from `pending-actions.md`'s `WI-23` (this route deletes immediately rather than returning a `202` pending action awaiting browser approval) -- matches every OTHER existing delete route in this codebase today (e.g. `DELETE /api/projects/{id}`), none of which implement that mechanism yet. Tracked on issue #428.",
+        "description": "Requests durable click-confirmed deletion. The item remains intact until its requester approves in a current browser session; execution revalidates credential, version, scope and permissions.",
         "parameters": [
           {
             "schema": {
@@ -21522,12 +22719,48 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted work item",
+          "202": {
+            "description": "Pending deletion; item unchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeletedWorkItem"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -21547,6 +22780,16 @@
           },
           "404": {
             "description": "Work item not found, or already deleted",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An equivalent deletion is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -22714,6 +23957,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Rank precision exhausted or item state changed while awaiting partition lock",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -22853,7 +24106,7 @@
           "Work items"
         ],
         "summary": "Bulk work item operation",
-        "description": "Runs one operation (`delete`, `assign`, `set_priority`, `archive`, or `transition`) over multiple work items, transactional PER ITEM (`WI-25`): a partial failure reports per-item reasons rather than rolling back the whole batch. `workspaceId` scopes the batch; every id is re-checked for reach and capability the same way a single-item call would (`WI-25`: 'not found' and 'out of reach' share one reason).",
+        "description": "Bulk delete returns durable approval with typed count and step-up above 50 affected targets. Nothing is deleted until browser approval. Other operations (`assign`, `set_priority`, `set_due_date`, `add_label`, `remove_label`, `archive`, or `transition`) run over multiple work items, transactional PER ITEM (`WI-25`): a partial failure reports per-item reasons rather than rolling back the whole batch. `workspaceId` scopes the batch; every id is re-checked for reach and capability the same way a single-item call would (`WI-25`: 'not found' and 'out of reach' share one reason).",
         "requestBody": {
           "required": true,
           "content": {
@@ -22881,8 +24134,32 @@
                       "assign",
                       "set_priority",
                       "archive",
-                      "transition"
+                      "transition",
+                      "add_label",
+                      "remove_label",
+                      "set_due_date"
                     ]
+                  },
+                  "expectedCurrentAssigneeIds": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1
+                    }
+                  },
+                  "labelId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "dueDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(\\.\\d{1,9})?(Z|[+-]\\d{2}:\\d{2})$"
                   },
                   "assigneeId": {
                     "type": "string",
@@ -22917,11 +24194,58 @@
         },
         "responses": {
           "200": {
-            "description": "Per-item results",
+            "description": "Per-item results (or deletion with no eligible targets)",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BulkWorkItemsResult"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Pending bulk deletion; items unchanged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "bulk_delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "typed_count",
+                        "typed_count_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -22948,6 +24272,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "An equivalent deletion is already pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -22959,7 +24293,7 @@
           "Work items"
         ],
         "summary": "List work item activity",
-        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet. A tombstone includes its `deletedBy` actor id.",
+        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Optional comment anchors the first page at that scoped comment, including a deleted comment's tombstone; subsequent requests retain comment and its bound cursor. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet. A tombstone includes its `deletedBy` actor id.",
         "parameters": [
           {
             "schema": {
@@ -22987,11 +24321,22 @@
             "required": false,
             "name": "limit",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "^[A-Za-z0-9_-]+$/u"
+            },
+            "required": false,
+            "name": "comment",
+            "in": "query"
           }
         ],
         "responses": {
           "200": {
-            "description": "A page of the work item's activity",
+            "description": "A page of activity, optionally starting at the scoped comment anchor",
             "content": {
               "application/json": {
                 "schema": {
@@ -23024,7 +24369,7 @@
             }
           },
           "404": {
-            "description": "Work item not found",
+            "description": "Work item or scoped comment not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -23043,7 +24388,7 @@
           "Work items"
         ],
         "summary": "Transition work item",
-        "description": "Move a work item to a new state through its type's active workflow version (`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see `GET .../transitions`). Approval and CAB gates use persisted matching approval rows. Guard resolution is also partial today: `no_open_blockers` (no `work_item_relation` table yet), `field_required` (no custom-field/satellite value store yet) and `change_risk_at_most` (no change-risk column yet) always fail closed (blocked), never fabricated as satisfied. `pause_sla`/`resume_sla` apply the automatic `waiting_customer` lifecycle; manual and resolved-pause continuity remain held. `set_field` is held for this release; a previously stored transition containing it is refused with 422 before any work-item mutation. `set_assignee`'s `'default'` always resolves to no assignee (no project/type default-assignee column yet).",
+        "description": "Move a work item to a new state through its type's active workflow version (`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see `GET .../transitions`). Approval and CAB gates use persisted matching approval rows. `no_open_blockers` reads live canonical relation edges. Guard resolution remains partial for `field_required` (no custom-field/satellite value store yet) and `change_risk_at_most` (no change-risk column yet) always fail closed (blocked), never fabricated as satisfied. `pause_sla`/`resume_sla` apply the automatic `waiting_customer` lifecycle; manual and resolved-pause continuity remain held. `set_field` is held for this release; a previously stored transition containing it is refused with 422 before any work-item mutation. `set_assignee`'s `'default'` always resolves to no assignee (no project/type default-assignee column yet).",
         "parameters": [
           {
             "schema": {
@@ -23599,7 +24944,7 @@
           "Comments"
         ],
         "summary": "Delete comment",
-        "description": "Delete a comment (`CA-18`): sets a tombstone, clears the body, keeps the row. `comment:delete_own` deletes the author's own; `comment:delete_any` deletes anyone's. Idempotent on an already-deleted comment.",
+        "description": "Request comment deletion (`CA-18`). Explicit pending-action confirmation tombstones the comment; the request preserves its body. `comment:delete_own` deletes the author's own; `comment:delete_any` deletes anyone's. Idempotent on an already-deleted comment.",
         "parameters": [
           {
             "schema": {
@@ -23612,12 +24957,48 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted (tombstoned) comment",
+          "202": {
+            "description": "Deletion awaits explicit requester confirmation",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Comment"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -23637,6 +25018,405 @@
           },
           "404": {
             "description": "Comment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A deletion approval is already pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/relation-candidates": {
+      "get": {
+        "operationId": "getWorkItemRelationCandidates",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Search readable and updatable relation peers",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 25
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of scoped candidates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemRelationCandidates"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid candidate query",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Update permission required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/relations": {
+      "get": {
+        "operationId": "getWorkItemRelations",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Read canonical peer relations",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visible peer relations and hidden count",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemRelations"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid key",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Insufficient permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWorkItemRelation",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Link canonical work items",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "targetKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "relates",
+                      "blocks",
+                      "duplicates",
+                      "precedes",
+                      "requires"
+                    ]
+                  }
+                },
+                "required": [
+                  "targetKey",
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created or existing relation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemRelation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid relation",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Update permission required on both ends",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Self relation is invalid",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/relations/{id}": {
+      "delete": {
+        "operationId": "requestWorkItemRelationDeletion",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Request approved relation removal",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Pending relation removal; no relation deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid relation",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Update permission required on both ends",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Relation not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An equivalent deletion is pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -24139,6 +25919,285 @@
           },
           "422": {
             "description": "Approval request violates the approval contract",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/approval-request-context": {
+      "get": {
+        "operationId": "getApprovalRequestContext",
+        "tags": [
+          "Approvals"
+        ],
+        "summary": "Load current approval authoring options",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current request options",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "canRequestCustomer": {
+                      "type": "boolean"
+                    },
+                    "canRequestCab": {
+                      "type": "boolean"
+                    },
+                    "defaultExpiryDays": {
+                      "type": "integer"
+                    },
+                    "maxExpiryDays": {
+                      "type": "integer"
+                    },
+                    "transitions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "fromStateName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "toStateName": {
+                            "type": "string"
+                          },
+                          "requiresApproval": {
+                            "type": "boolean"
+                          },
+                          "requiresCab": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fromStateName",
+                          "toStateName",
+                          "requiresApproval",
+                          "requiresCab"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "canRequestCustomer",
+                    "canRequestCab",
+                    "defaultExpiryDays",
+                    "maxExpiryDays",
+                    "transitions"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Staff read authority required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/approval-candidates": {
+      "get": {
+        "operationId": "listApprovalCandidates",
+        "tags": [
+          "Approvals"
+        ],
+        "summary": "List eligible approvers with current work item reach",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "customer",
+                "cab"
+              ]
+            },
+            "required": true,
+            "name": "kind",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "default": ""
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 25,
+              "default": 25
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Eligible approvers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "displayName"
+                        ]
+                      }
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "hasMore": {
+                          "type": "boolean"
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "hasMore",
+                        "nextCursor"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid candidate query",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Approval request authority required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item or enabled requests unavailable",
             "content": {
               "text/plain": {
                 "schema": {
@@ -28843,7 +30902,7 @@
           "Attachments"
         ],
         "summary": "Delete an attachment",
-        "description": "AT-7: soft delete. Only the attachment's own uploader may do this.",
+        "description": "AT-7: request soft deletion; requester click confirmation is required before any change. Existing delete-own or delete-any authority is revalidated at execution.",
         "parameters": [
           {
             "schema": {
@@ -28855,12 +30914,48 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "The deleted attachment",
+          "202": {
+            "description": "Deletion awaits explicit requester confirmation",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Attachment"
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
                 }
               }
             }
@@ -28869,7 +30964,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not the uploader, or missing work_item:update permission",
+            "description": "Missing attachment delete authority",
             "content": {
               "text/plain": {
                 "schema": {
@@ -28880,6 +30975,16 @@
           },
           "404": {
             "description": "Attachment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A deletion approval is already pending",
             "content": {
               "text/plain": {
                 "schema": {
@@ -29019,30 +31124,69 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/Attachment"
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
                     },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "workItemId": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "submissionId": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        }
-                      },
-                      "required": [
-                        "submissionId"
+                    "workItemId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "filename": {
+                      "type": "string"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "state": {
+                      "type": "string",
+                      "description": "One of: pending, ready, deleted."
+                    },
+                    "customerVisible": {
+                      "type": "boolean"
+                    },
+                    "uploadedBy": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "deletedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "submissionId": {
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     }
+                  },
+                  "required": [
+                    "id",
+                    "workItemId",
+                    "filename",
+                    "mimeType",
+                    "size",
+                    "state",
+                    "customerVisible",
+                    "uploadedBy",
+                    "createdAt",
+                    "deletedAt",
+                    "submissionId"
                   ]
                 }
               }
@@ -30410,6 +32554,200 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/portal/csrf-token": {
+      "get": {
+        "operationId": "getPortalSessionCsrfToken",
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get the current session's CSRF token",
+        "description": "Returns a short-lived session- and origin-bound token for same-origin unsafe API requests. The matching token is also stored in an HttpOnly cookie.",
+        "responses": {
+          "200": {
+            "description": "Current session CSRF token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "expiresAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Issuer origin rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "enum": [
+                        "csrf_origin_invalid"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notification-preferences/email-link-handoff": {
+      "get": {
+        "summary": "Read the verified notification preference selector",
+        "operationId": "getAgentNotificationPreferenceHandoff",
+        "tags": [
+          "Notification Preferences"
+        ],
+        "responses": {
+          "200": {
+            "description": "Verified preference selector",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "eventKind": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "channel": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^notify\\.[a-z][a-z0-9._-]*$/u"
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "global",
+                        "workspace",
+                        "project"
+                      ]
+                    },
+                    "scopeId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  },
+                  "required": [
+                    "eventKind",
+                    "channel",
+                    "scope",
+                    "scopeId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      }
+    },
+    "/portal/notification-preferences/email-link-handoff": {
+      "get": {
+        "summary": "Read the verified notification preference selector",
+        "operationId": "getPortalNotificationPreferenceHandoff",
+        "tags": [
+          "Notification Preferences"
+        ],
+        "responses": {
+          "200": {
+            "description": "Verified preference selector",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "eventKind": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "channel": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^notify\\.[a-z][a-z0-9._-]*$/u"
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "global",
+                        "workspace",
+                        "project"
+                      ]
+                    },
+                    "scopeId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  },
+                  "required": [
+                    "eventKind",
+                    "channel",
+                    "scope",
+                    "scopeId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
           }
         }
       }
@@ -34314,6 +36652,439 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/instance/notification-providers/email": {
+      "get": {
+        "tags": [
+          "Notification providers"
+        ],
+        "operationId": "getEmailProvider",
+        "summary": "Get SMTP provider settings",
+        "responses": {
+          "200": {
+            "description": "Write-only secret metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "runtime",
+                        "bootstrap",
+                        "unconfigured"
+                      ]
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "config": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "host": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 253,
+                          "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u"
+                        },
+                        "port": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65535
+                        },
+                        "secure": {
+                          "type": "boolean"
+                        },
+                        "requireTLS": {
+                          "type": "boolean"
+                        },
+                        "username": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1,
+                          "maxLength": 320
+                        },
+                        "fromAddress": {
+                          "type": "string",
+                          "maxLength": 320,
+                          "format": "email"
+                        },
+                        "replyTo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 320,
+                          "format": "email"
+                        }
+                      },
+                      "required": [
+                        "host",
+                        "port",
+                        "secure",
+                        "requireTLS",
+                        "username",
+                        "fromAddress",
+                        "replyTo"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "passwordConfigured": {
+                      "type": "boolean"
+                    },
+                    "passwordPreview": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "••••••••"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "source",
+                    "enabled",
+                    "config",
+                    "passwordConfigured",
+                    "passwordPreview"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Notification providers"
+        ],
+        "operationId": "updateEmailProvider",
+        "summary": "Save SMTP provider settings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "config": {
+                    "type": "object",
+                    "properties": {
+                      "host": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 253,
+                        "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u"
+                      },
+                      "port": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 65535
+                      },
+                      "secure": {
+                        "type": "boolean"
+                      },
+                      "requireTLS": {
+                        "type": "boolean"
+                      },
+                      "username": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 320
+                      },
+                      "fromAddress": {
+                        "type": "string",
+                        "maxLength": 320,
+                        "format": "email"
+                      },
+                      "replyTo": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "maxLength": 320,
+                        "format": "email"
+                      }
+                    },
+                    "required": [
+                      "host",
+                      "port",
+                      "secure",
+                      "requireTLS",
+                      "username",
+                      "fromAddress",
+                      "replyTo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "password": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 16384
+                  }
+                },
+                "required": [
+                  "version",
+                  "enabled"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "runtime",
+                        "bootstrap",
+                        "unconfigured"
+                      ]
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "config": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "host": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 253,
+                          "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u"
+                        },
+                        "port": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65535
+                        },
+                        "secure": {
+                          "type": "boolean"
+                        },
+                        "requireTLS": {
+                          "type": "boolean"
+                        },
+                        "username": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1,
+                          "maxLength": 320
+                        },
+                        "fromAddress": {
+                          "type": "string",
+                          "maxLength": 320,
+                          "format": "email"
+                        },
+                        "replyTo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 320,
+                          "format": "email"
+                        }
+                      },
+                      "required": [
+                        "host",
+                        "port",
+                        "secure",
+                        "requireTLS",
+                        "username",
+                        "fromAddress",
+                        "replyTo"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "passwordConfigured": {
+                      "type": "boolean"
+                    },
+                    "passwordPreview": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "••••••••"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "source",
+                    "enabled",
+                    "config",
+                    "passwordConfigured",
+                    "passwordPreview"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      }
+    },
+    "/instance/notification-providers/email/test": {
+      "post": {
+        "tags": [
+          "Notification providers"
+        ],
+        "operationId": "testEmailProvider",
+        "summary": "Verify SMTP connectivity without sending mail",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "config": {
+                    "type": "object",
+                    "properties": {
+                      "host": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 253,
+                        "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u"
+                      },
+                      "port": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 65535
+                      },
+                      "secure": {
+                        "type": "boolean"
+                      },
+                      "requireTLS": {
+                        "type": "boolean"
+                      },
+                      "username": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 320
+                      },
+                      "fromAddress": {
+                        "type": "string",
+                        "maxLength": 320,
+                        "format": "email"
+                      },
+                      "replyTo": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "maxLength": 320,
+                        "format": "email"
+                      }
+                    },
+                    "required": [
+                      "host",
+                      "port",
+                      "secure",
+                      "requireTLS",
+                      "username",
+                      "fromAddress",
+                      "replyTo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "password": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 16384
+                  }
+                },
+                "required": [
+                  "version"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SMTP verified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "verified": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "verified"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
           }
         }
       }

@@ -13,6 +13,7 @@ import {
   createWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 const windows = {
   mon: [{ from: 540, to: 1020 }],
@@ -402,6 +403,11 @@ describe("API integration: SLA policy authoring contract", () => {
       createdAt,
       updatedAt: createdAt,
     });
+    await ensureCreationWorkflow({
+      workspaceId: owner.workspace.id,
+      projectId: project.id,
+      typeId: type.id,
+    });
     const create = await csrfRequest(
       app,
       `/api/sla-policies?workspaceId=${owner.workspace.id}`,
@@ -528,6 +534,11 @@ describe("API integration: SLA policy authoring contract", () => {
 
     const createWithType = async (title: string) => {
       const unboundType = await createType(owner.workspace.id);
+      await ensureCreationWorkflow({
+        workspaceId: owner.workspace.id,
+        projectId: project.id,
+        typeId: unboundType.id,
+      });
       const response = await csrfRequest(
         app,
         `/api/projects/${project.id}/work-items`,

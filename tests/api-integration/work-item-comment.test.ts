@@ -8,6 +8,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { subscribeToEvent } from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
@@ -36,6 +37,7 @@ import {
   raceProjectSoftDelete,
   raceWorkItemSoftDelete,
 } from "./helpers/race-soft-delete";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 type RecordedEvent = { type: string; data: unknown };
 let recordedEvents: RecordedEvent[] = [];
@@ -267,6 +269,11 @@ async function setupWorkItem(role: "member" | "admin" | "viewer" = "member") {
   await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   await makeDefaultState(creator.workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: creator.workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
 
   mockAuthenticatedSession(creator.user);
   const { app } = createApp();
@@ -332,8 +339,41 @@ function patchComment(
   });
 }
 
-function deleteComment(app: ReturnType<typeof createApp>["app"], id: string) {
-  return app.request(`/api/comments/${id}`, { method: "DELETE" });
+/** Existing CRUD cases now complete both real HTTP stages; request-only behavior has its own PA suite. */
+async function requestAndApproveCommentDeletion(
+  app: ReturnType<typeof createApp>["app"],
+  id: string,
+) {
+  const current = await auth.api.getSession({ headers: new Headers() });
+  if (current)
+    await db
+      .insert(schema.sessionTable)
+      .values({ ...current.session, portal: "agent" })
+      .onConflictDoNothing();
+  const response = await app.request(`/api/comments/${id}`, {
+    method: "DELETE",
+  });
+  if (response.status !== 202) return response;
+  const { pendingActionId } = (await response.json()) as {
+    pendingActionId: string;
+  };
+  const approved = await app.request(
+    `/api/me/pending-actions/${pendingActionId}/approve`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    },
+  );
+  if (approved.status !== 200) return approved;
+  const row = requireRow(
+    await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id)),
+    "confirmed tombstone",
+  );
+  return Response.json(row);
 }
 
 function commentVersions(
@@ -1907,7 +1947,7 @@ describe("API integration: work-item comments (#27)", () => {
     expect(response.status).toBe(200);
   });
 
-  it("CA-18: the author may delete their own comment; it tombstones, body cleared", async () => {
+  it("CA-18: the author may delete their own comment; confirmation tombstones, body cleared", async () => {
     const { app, workItem } = await setupWorkItem("member");
     const created = await postComment(app, workItem.key, {
       body: { type: "doc", content: [] },
@@ -1915,14 +1955,14 @@ describe("API integration: work-item comments (#27)", () => {
     });
     const { id } = (await created.json()) as { id: string };
 
-    const response = await deleteComment(app, id);
+    const response = await requestAndApproveCommentDeletion(app, id);
     expect(response.status).toBe(200);
     const deleted = (await response.json()) as Record<string, unknown>;
     expect(deleted.deletedAt).not.toBeNull();
     expect(deleted.body).toBeNull();
 
     // Idempotent: deleting again re-returns the same tombstoned row, not an error.
-    const again = await deleteComment(app, id);
+    const again = await requestAndApproveCommentDeletion(app, id);
     expect(again.status).toBe(200);
   });
 
@@ -1941,7 +1981,7 @@ describe("API integration: work-item comments (#27)", () => {
 
     const admin = await addWorkspaceMember(creator.workspace.id, "admin");
     mockAuthenticatedSession(admin);
-    const response = await deleteComment(app, id);
+    const response = await requestAndApproveCommentDeletion(app, id);
     expect(response.status).toBe(200);
     expect(((await response.json()) as { deletedBy: string }).deletedBy).toBe(
       admin.id,
@@ -1972,7 +2012,7 @@ describe("API integration: work-item comments (#27)", () => {
     });
     const { id } = (await created.json()) as { id: string };
 
-    const ownerDelete = await deleteComment(app, id);
+    const ownerDelete = await requestAndApproveCommentDeletion(app, id);
     expect(ownerDelete.status).toBe(200);
     await ownerDelete.text();
 
@@ -1981,7 +2021,7 @@ describe("API integration: work-item comments (#27)", () => {
       "member",
     );
     mockAuthenticatedSession(otherMember);
-    const unauthorizedDelete = await deleteComment(app, id);
+    const unauthorizedDelete = await requestAndApproveCommentDeletion(app, id);
     expect(unauthorizedDelete.status).toBe(403);
     await unauthorizedDelete.text();
   });
@@ -1997,7 +2037,7 @@ describe("API integration: work-item comments (#27)", () => {
     const otherUser = await addWorkspaceMember(creator.workspace.id, "member");
     mockAuthenticatedSession(otherUser);
 
-    const response = await deleteComment(app, id);
+    const response = await requestAndApproveCommentDeletion(app, id);
     expect(response.status).toBe(403);
   });
 
@@ -2018,7 +2058,7 @@ describe("API integration: work-item comments (#27)", () => {
     });
     expect(patchResponse.status).toBe(404);
 
-    const deleteResponse = await deleteComment(appB, id);
+    const deleteResponse = await requestAndApproveCommentDeletion(appB, id);
     expect(deleteResponse.status).toBe(404);
   });
 
@@ -2046,7 +2086,7 @@ describe("API integration: work-item comments (#27)", () => {
     });
     expect(patchResponse.status).toBe(404);
 
-    const deleteResponse = await deleteComment(app, id);
+    const deleteResponse = await requestAndApproveCommentDeletion(app, id);
     expect(deleteResponse.status).toBe(404);
 
     const [after] = await db
@@ -2080,7 +2120,7 @@ describe("API integration: work-item comments (#27)", () => {
     });
     expect(patchResponse.status).toBe(404);
 
-    const deleteResponse = await deleteComment(app, id);
+    const deleteResponse = await requestAndApproveCommentDeletion(app, id);
     expect(deleteResponse.status).toBe(404);
 
     const [after] = await db
@@ -2114,7 +2154,7 @@ describe("API integration: work-item comments (#27)", () => {
     });
     expect(patchResponse.status).toBe(404);
 
-    const deleteResponse = await deleteComment(app, id);
+    const deleteResponse = await requestAndApproveCommentDeletion(app, id);
     expect(deleteResponse.status).toBe(404);
 
     const [after] = await db
@@ -2149,7 +2189,7 @@ describe("API integration: work-item comments (#27)", () => {
     if (race.operation.status === "rejected") throw race.operation.reason;
     expect(race.operation.value.status).toBe(404);
 
-    const deleteResponse = await deleteComment(app, id);
+    const deleteResponse = await requestAndApproveCommentDeletion(app, id);
     expect(deleteResponse.status).toBe(404);
     const [after] = await db
       .select()
@@ -2596,11 +2636,307 @@ describe("API integration: work-item comments (#27)", () => {
       .where(eq(schema.commentTable.id, staleTarget));
     expect((await patchComment(app, staleTarget, {})).status).toBe(403);
 
-    expect((await deleteComment(app, deletedTarget)).status).toBe(200);
+    expect(
+      (await requestAndApproveCommentDeletion(app, deletedTarget)).status,
+    ).toBe(200);
     expect((await patchComment(app, deletedTarget, {})).status).toBe(404);
 
     const otherUser = await addWorkspaceMember(creator.workspace.id, "member");
     mockAuthenticatedSession(otherUser);
     expect((await patchComment(app, nonAuthorTarget, {})).status).toBe(403);
+  });
+  it("writes canonical authors, preserves editor metadata and projects exact own, expired and tombstone controls", async () => {
+    const { app, workItem, creator } = await setupWorkItem("member");
+    const [person] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, creator.user.id));
+    if (!person) throw new Error("No canonical person");
+    const posted = await postComment(app, workItem.key, {
+      body: "Original",
+      visibility: "internal",
+    });
+    expect(posted.status).toBe(200);
+    const created = (await posted.json()) as { id: string; authorId: string };
+    expect(created.authorId).toBe(person.id);
+    expect(created.authorId).not.toBe(creator.user.id);
+    const controls = async () => {
+      const response = await app.request(
+        `/api/work-items/${workItem.key}/activity`,
+      );
+      expect(response.status).toBe(200);
+      const page = (await response.json()) as {
+        data: Array<{ id: string; canEdit?: boolean; canDelete?: boolean }>;
+      };
+      return page.data.find((row) => row.id === created.id);
+    };
+    expect(await controls()).toMatchObject({ canEdit: true, canDelete: true });
+    expect(
+      (await patchComment(app, created.id, { body: "Edited" })).status,
+    ).toBe(200);
+    const [version] = await db
+      .select()
+      .from(schema.commentVersionTable)
+      .where(eq(schema.commentVersionTable.commentId, created.id));
+    expect(version?.editedBy).toBe(creator.user.id);
+    await db
+      .update(schema.commentTable)
+      .set({ createdAt: new Date(Date.now() - 16 * 60 * 1000) })
+      .where(eq(schema.commentTable.id, created.id));
+    expect(await controls()).toMatchObject({ canEdit: false, canDelete: true });
+    expect(
+      (await patchComment(app, created.id, { body: "Too late" })).status,
+    ).toBe(403);
+    expect(
+      (await requestAndApproveCommentDeletion(app, created.id)).status,
+    ).toBe(200);
+    expect(await controls()).toMatchObject({
+      canEdit: false,
+      canDelete: false,
+    });
+  });
+
+  it("preserves legacy user-authored ownership without rewriting historical author IDs", async () => {
+    const { app, workItem, creator } = await setupWorkItem("member");
+    const posted = await postComment(app, workItem.key, {
+      body: "Legacy body",
+      visibility: "internal",
+    });
+    const { id } = (await posted.json()) as { id: string };
+    await db
+      .update(schema.commentTable)
+      .set({ authorId: creator.user.id })
+      .where(eq(schema.commentTable.id, id));
+    const response = await app.request(
+      `/api/work-items/${workItem.key}/activity`,
+    );
+    const page = (await response.json()) as {
+      data: Array<{ id: string; actorId: string; canEdit: boolean }>;
+    };
+    expect(page.data.find((row) => row.id === id)).toMatchObject({
+      actorId: creator.user.id,
+      canEdit: true,
+    });
+    expect(
+      (await patchComment(app, id, { body: "Compatible edit" })).status,
+    ).toBe(200);
+    const [stored] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    expect(stored?.authorId).toBe(creator.user.id);
+  });
+
+  it("refuses ambiguous person/user collisions without transferring seeded or historical authorship", async () => {
+    const { app, workItem, creator } = await setupWorkItem("member");
+    const posted = await postComment(app, workItem.key, {
+      body: "Do not reassign",
+      visibility: "internal",
+    });
+    const { id } = (await posted.json()) as { id: string };
+    await db
+      .update(schema.commentTable)
+      .set({ authorId: creator.user.id })
+      .where(eq(schema.commentTable.id, id));
+    const other = await createWorkspaceMember({ role: "member" });
+    const [otherPerson] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, other.user.id));
+    if (!otherPerson) throw new Error("No other person");
+    await db.insert(schema.personTable).values({
+      id: creator.user.id,
+      userId: null,
+      organisationId: otherPerson.organisationId,
+      side: "staff",
+      active: true,
+      isPlaceholder: false,
+    });
+    mockAuthenticatedSession(creator.user);
+    const response = await app.request(
+      `/api/work-items/${workItem.key}/activity`,
+    );
+    const page = (await response.json()) as {
+      data: Array<{ id: string; canEdit: boolean; canDelete: boolean }>;
+    };
+    expect(page.data.find((row) => row.id === id)).toMatchObject({
+      canEdit: false,
+      canDelete: false,
+      actorPersonId: null,
+      actorDisplayName: null,
+    });
+    expect((await patchComment(app, id, { body: "Wrong owner" })).status).toBe(
+      403,
+    );
+    expect((await requestAndApproveCommentDeletion(app, id)).status).toBe(403);
+    const [stored] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    expect(stored?.authorId).toBe(creator.user.id);
+    expect(stored?.body).toBe("Do not reassign");
+  });
+
+  it("projects moderation without treating another member as an owner", async () => {
+    const { app, workItem, creator } = await setupWorkItem("member");
+    const posted = await postComment(app, workItem.key, {
+      body: "Owner body",
+      visibility: "internal",
+    });
+    const { id } = (await posted.json()) as { id: string };
+    const member = await addWorkspaceMember(creator.workspace.id, "member");
+    mockAuthenticatedSession(member);
+    const read = async () => {
+      const response = await app.request(
+        `/api/work-items/${workItem.key}/activity`,
+      );
+      const page = (await response.json()) as {
+        data: Array<{ id: string; canEdit: boolean; canDelete: boolean }>;
+      };
+      return page.data.find((row) => row.id === id);
+    };
+    expect(await read()).toMatchObject({ canEdit: false, canDelete: false });
+    const admin = await addWorkspaceMember(creator.workspace.id, "admin");
+    mockAuthenticatedSession(admin);
+    expect(await read()).toMatchObject({ canEdit: true, canDelete: true });
+    expect((await patchComment(app, id, { body: "Moderated" })).status).toBe(
+      200,
+    );
+  });
+  it("projects only the authenticated API key's comment capability ceiling", async () => {
+    const { app, workItem, creator } = await setupWorkItem("member");
+    const created = await postComment(app, workItem.key, {
+      body: "Key-scoped body",
+      visibility: "internal",
+    });
+    const { id } = (await created.json()) as { id: string };
+    const readKey = await createApiKeyFor(creator.user.id, {
+      project: ["read"],
+      work_item: ["read"],
+    });
+    const editKey = await createApiKeyFor(creator.user.id, {
+      project: ["read"],
+      work_item: ["read"],
+      comment: ["update_own"],
+    });
+    const controls = async (key: string) => {
+      const response = await app.request(
+        `/api/work-items/${workItem.key}/activity`,
+        { headers: { "x-api-key": key } },
+      );
+      expect(response.status).toBe(200);
+      const page = (await response.json()) as {
+        data: Array<{ id: string; canEdit: boolean; canDelete: boolean }>;
+      };
+      return page.data.find((row) => row.id === id);
+    };
+    expect(await controls(readKey)).toMatchObject({
+      canEdit: false,
+      canDelete: false,
+    });
+    expect(await controls(editKey)).toMatchObject({
+      canEdit: true,
+      canDelete: false,
+    });
+    const denied = await app.request(`/api/comments/${id}`, {
+      method: "PATCH",
+      headers: { "x-api-key": readKey, "content-type": "application/json" },
+      body: JSON.stringify({ body: "Denied" }),
+    });
+    expect(denied.status).toBe(403);
+  });
+
+  it("retains unlinked seeded person authors without inventing a login or transferring ownership", async () => {
+    const { app, workItem, creator } = await setupWorkItem("member");
+    const posted = await postComment(app, workItem.key, {
+      body: "Seeded person's comment",
+      visibility: "internal",
+    });
+    const { id } = (await posted.json()) as { id: string };
+    const [creatorPerson] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, creator.user.id));
+    if (!creatorPerson) throw new Error("No creator person");
+    const [seedPerson] = await db
+      .insert(schema.personTable)
+      .values({
+        organisationId: creatorPerson.organisationId,
+        side: "staff",
+        userId: null,
+        active: true,
+        isPlaceholder: false,
+        displayName: "Historical seeded author",
+      })
+      .returning();
+    if (!seedPerson) throw new Error("No seed person");
+    await db
+      .update(schema.commentTable)
+      .set({ authorId: seedPerson.id })
+      .where(eq(schema.commentTable.id, id));
+    const response = await app.request(
+      `/api/work-items/${workItem.key}/activity`,
+    );
+    const page = (await response.json()) as {
+      data: Array<{
+        id: string;
+        actorId: string;
+        canEdit: boolean;
+        canDelete: boolean;
+      }>;
+    };
+    expect(page.data.find((row) => row.id === id)).toMatchObject({
+      actorId: seedPerson.id,
+      actorPersonId: seedPerson.id,
+      actorDisplayName: "Historical seeded author",
+      canEdit: false,
+      canDelete: false,
+    });
+    expect(
+      (await patchComment(app, id, { body: "Claimed as mine" })).status,
+    ).toBe(403);
+    const [stored] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    expect(stored?.authorId).toBe(seedPerson.id);
+    expect(stored?.body).toBe("Seeded person's comment");
+  });
+  it("gives a read-only viewer the already-authorized comment author's canonical display name without directory email", async () => {
+    const { app, workItem, creator } = await setupWorkItem("member");
+    const [person] = await db
+      .update(schema.personTable)
+      .set({ displayName: "Canonical author name" })
+      .where(eq(schema.personTable.userId, creator.user.id))
+      .returning();
+    if (!person) throw new Error("No comment author");
+    const posted = await postComment(app, workItem.key, {
+      body: "Readable history",
+      visibility: "internal",
+    });
+    const { id } = (await posted.json()) as { id: string };
+    const viewer = await addWorkspaceMember(creator.workspace.id, "viewer");
+    mockAuthenticatedSession(viewer);
+    const response = await app.request(
+      `/api/work-items/${workItem.key}/activity`,
+    );
+    expect(response.status).toBe(200);
+    const page = (await response.json()) as {
+      data: Array<{
+        id: string;
+        actorPersonId: string;
+        actorDisplayName: string;
+        canEdit: boolean;
+        canDelete: boolean;
+      }>;
+    };
+    const row = page.data.find((row) => row.id === id);
+    expect(row).toMatchObject({
+      actorPersonId: person.id,
+      actorDisplayName: "Canonical author name",
+      canEdit: false,
+      canDelete: false,
+    });
+    expect(JSON.stringify(row)).not.toContain(creator.user.email);
   });
 });

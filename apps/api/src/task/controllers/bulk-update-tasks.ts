@@ -11,7 +11,6 @@ import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
 import {
   addTaskLabelForIdentity,
-  deleteTaskReturningId,
   findColumnBySlugForIdentity,
   findLabelInWorkspaceScope,
   findProjectWorkspaceContext,
@@ -25,6 +24,9 @@ import {
   assertValidPriority,
   assertValidTaskStatus,
 } from "../validate-task-fields";
+
+export const BULK_TASK_DELETION_GONE_MESSAGE =
+  'task_bulk_delete_gone: PATCH /api/task/bulk no longer deletes. Request deletion through POST /api/work-items/bulk with operation "delete", which records a pending action for approval.';
 
 type BulkOperation =
   | "updateStatus"
@@ -129,6 +131,11 @@ async function bulkUpdateTasks({
       message: "Could not determine workspace for this request",
     });
   }
+  // PA-1: this route used to hard-delete tasks with no approval. The route answers 410 before
+  // it gets here; refuse again so no other caller can reach a deletion (defence in depth).
+  if (operation === "delete") {
+    throw new HTTPException(410, { message: BULK_TASK_DELETION_GONE_MESSAGE });
+  }
 
   const membership = await findWorkspaceMembershipId(userId, workspaceId);
   if (!membership) {
@@ -216,11 +223,7 @@ async function bulkUpdateTasks({
         taskInScope = true;
         itemProjectId = task.projectId;
 
-        if (
-          operation !== "delete" &&
-          operation !== "updateDueDate" &&
-          value === undefined
-        ) {
+        if (operation !== "updateDueDate" && value === undefined) {
           throw new HTTPException(400, {
             message: "Value is required for this operation",
           });
@@ -360,22 +363,6 @@ async function bulkUpdateTasks({
             } else {
               itemEvents.push(() => publishEvent("task.unassigned", eventData));
             }
-            return 1;
-          }
-
-          case "delete": {
-            const deleted = await deleteTaskReturningId(tx, identity, taskId);
-            if (!deleted) {
-              throw new HTTPException(404, { message: "Task not found" });
-            }
-            itemEvents.push(() =>
-              publishEvent("task.deleted", {
-                taskId,
-                projectId: task.projectId,
-                userId,
-                title: task.title,
-              }),
-            );
             return 1;
           }
 

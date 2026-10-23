@@ -19,6 +19,32 @@ const hierarchy = {
   collapsed: true as const,
 };
 describe("hierarchy URL state", () => {
+  it("round-trips explicit tree mode while omission remains original direct subtasks", () => {
+    const state = { ...hierarchy, mode: "tree" as const };
+    const url = new URL(
+      routes.workItemDetail.build({ key: "TD-1" }, { hierarchy: state }),
+      "https://test.invalid",
+    );
+    expect(
+      parseWorkItemDetailSearch(Object.fromEntries(url.searchParams)),
+    ).toEqual({ hierarchy: state });
+    expect(
+      parseWorkItemHierarchySearch({
+        hierarchy: { itemKey: "TD-1", mode: "unknown" },
+      }),
+    ).toEqual({ hierarchy: { itemKey: "TD-1" } });
+  });
+
+  it("preserves case and hyphens in real project prefixes across reload", () => {
+    const hierarchy = {
+      itemKey: "service-team-1",
+      expanded: ["service-team-1"],
+      pages: { "service-team-1": 2 },
+    };
+    expect(
+      parseWorkItemHierarchySearch({ hierarchy: JSON.stringify(hierarchy) }),
+    ).toEqual({ hierarchy });
+  });
   it("round-trips detail activity and hierarchy disclosures/pages together", () => {
     const url = new URL(
       routes.workItemDetail.build(

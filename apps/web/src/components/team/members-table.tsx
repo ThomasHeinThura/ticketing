@@ -39,6 +39,7 @@ import useDeleteWorkspaceUser from "@/hooks/mutations/workspace-user/use-delete-
 import useUpdateWorkspaceUserRole from "@/hooks/mutations/workspace-user/use-update-workspace-user-role";
 import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
 import { useCopyInvitationLink } from "@/hooks/use-copy-invitation-link";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { formatDateMedium } from "@/lib/format";
@@ -94,14 +95,13 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
   const [memberToDelete, setMemberToDelete] = useState<WorkspaceUser | null>(
     null,
   );
-  const [invitationToCancel, setInvitationToCancel] =
-    useState<WorkspaceUserInvitation | null>(null);
 
   const { user: currentUser } = useAuth();
   const { mutateAsync: deleteWorkspaceUser, isPending: isDeleting } =
     useDeleteWorkspaceUser();
   const { mutateAsync: cancelInvitation, isPending: isCancelling } =
     useCancelInvitation();
+  const openPendingAction = useOpenPendingAction();
   const { mutateAsync: updateMemberRole } = useUpdateWorkspaceUserRole();
   const { copy: copyInvitationLink } = useCopyInvitationLink();
   const { data: allWorkspaceRoles = [] } = useWorkspaceRoles(workspaceId);
@@ -181,22 +181,24 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
     }
   };
 
-  const handleCancelInvitation = async () => {
-    if (!invitationToCancel) return;
+  // The in-place approval dialog is the single confirmation (PA-3): no pre-confirm.
+  const handleCancelInvitation = async (
+    invitationToCancel: WorkspaceUserInvitation,
+  ) => {
     try {
-      await cancelInvitation({
+      // Cancelling is only requested; the invitation stays until the requester
+      // approves the pending action.
+      const pendingAction = await cancelInvitation({
         invitationId: invitationToCancel.id,
         workspaceId,
       });
-      toast.success(t("team:membersTable.cancelInviteSuccess"));
+      await openPendingAction(pendingAction);
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : t("team:membersTable.cancelInviteError"),
       );
-    } finally {
-      setInvitationToCancel(null);
     }
   };
 
@@ -439,7 +441,10 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                           {t("team:invitations.copyLink")}
                         </MenuItem>
                         <MenuItem
-                          onClick={() => setInvitationToCancel(invitation)}
+                          onClick={() =>
+                            void handleCancelInvitation(invitation)
+                          }
+                          disabled={isCancelling}
                         >
                           <TrashIcon className="size-4" />
                           {t("team:membersTable.cancelInvitation")}
@@ -504,46 +509,6 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
             >
               <TrashIcon className="mr-2 size-4" />
               {t("team:membersTable.removeMember")}
-            </AlertDialogClose>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog
-        open={!!invitationToCancel}
-        onOpenChange={(open) => !open && setInvitationToCancel(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("team:membersTable.cancelDialogTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("team:membersTable.cancelDialogDescription", {
-                email: invitationToCancel?.email ?? "",
-              })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogClose
-              render={
-                <Button variant="outline" size="sm" disabled={isCancelling} />
-              }
-            >
-              {t("common:actions.cancel")}
-            </AlertDialogClose>
-            <AlertDialogClose
-              render={
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={isCancelling}
-                  onClick={handleCancelInvitation}
-                />
-              }
-            >
-              <TrashIcon className="mr-2 size-4" />
-              {t("team:membersTable.cancelInvitation")}
             </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>

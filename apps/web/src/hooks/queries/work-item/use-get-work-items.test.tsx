@@ -155,7 +155,9 @@ describe("useGetWorkItems: structured filter (SV-11)", () => {
       { wrapper: createWrapper() },
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mocks.getWorkItems).toHaveBeenCalledWith("proj-a", "title", "desc");
+    expect(mocks.getWorkItems).toHaveBeenCalledWith("proj-a", "title", "desc", {
+      cursor: undefined,
+    });
     expect(mocks.searchWorkItems).not.toHaveBeenCalled();
   });
 
@@ -320,4 +322,124 @@ describe("useGetWorkItems: a filter matching more than one page", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.hasNextPage).toBe(false);
   });
+});
+
+describe("canonical unfiltered cursor traversal", () => {
+  beforeEach(() => mocks.getWorkItems.mockReset());
+  const page = (ids: string[], cursor: string | null, partial = false) => ({
+    ...makeResult(ids),
+    hasMore: Boolean(cursor),
+    nextCursor: cursor,
+    hasPartialFailure: partial,
+  });
+  it("accumulates server order, deduplicates live overlaps and retains partial validation", async () => {
+    mocks.getWorkItems
+      .mockResolvedValueOnce(page(["b", "a"], "next"))
+      .mockResolvedValueOnce(page(["a", "c"], null, true));
+    const { result } = renderHook(
+      () => useGetWorkItems({ projectId: "p", sort: "title", dir: "desc" }),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true));
+    await result.current.fetchNextPage();
+    await waitFor(() =>
+      expect(result.current.data?.items.map((x) => x.id)).toEqual([
+        "b",
+        "a",
+        "c",
+      ]),
+    );
+    expect(mocks.getWorkItems).toHaveBeenLastCalledWith("p", "title", "desc", {
+      cursor: "next",
+    });
+    expect(result.current.data?.hasPartialFailure).toBe(true);
+    expect(result.current.hasNextPage).toBe(false);
+  });
+  it("sort changes restart at the first cursor without treating previous pages as the new ordering", async () => {
+    mocks.getWorkItems
+      .mockResolvedValueOnce(page(["a"], "next"))
+      .mockResolvedValueOnce(page(["b"], null));
+    const { result, rerender } = renderHook(
+      ({ sort }: { sort: "key" | "title" }) =>
+        useGetWorkItems({ projectId: "p", sort, dir: "asc" }),
+      {
+        wrapper: createWrapper(),
+        initialProps: { sort: "key" as "key" | "title" },
+      },
+    );
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true));
+    await result.current.fetchNextPage();
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
+    const pending = deferred<WorkItemsResult>();
+    mocks.getWorkItems.mockReturnValueOnce(pending.promise);
+    rerender({ sort: "title" });
+    expect(result.current.isPlaceholderData).toBe(true);
+    expect(result.current.hasNextPage).toBe(false);
+    expect(result.current.data?.items).toHaveLength(2);
+    pending.resolve(page(["b", "a"], null));
+    await waitFor(() => expect(result.current.isPlaceholderData).toBe(false));
+    expect(mocks.getWorkItems).toHaveBeenLastCalledWith("p", "title", "asc", {
+      cursor: undefined,
+    });
+    expect(result.current.data?.items.map((item) => item.id)).toEqual([
+      "b",
+      "a",
+    ]);
+  });
+  it("retains loaded rows after recoverable next-page failure and retries the same cursor", async () => {
+    mocks.getWorkItems
+      .mockResolvedValueOnce(page(["a"], "next"))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(page(["b"], null));
+    const { result } = renderHook(
+      () => useGetWorkItems({ projectId: "p", sort: "key", dir: "asc" }),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true));
+    await result.current.fetchNextPage();
+    await waitFor(() => expect(result.current.isLoadMoreError).toBe(true));
+    expect(result.current.isError).toBe(false);
+    expect(result.current.data?.items.map((x) => x.id)).toEqual(["a"]);
+    await result.current.fetchNextPage();
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
+    expect(
+      mocks.getWorkItems.mock.calls.slice(1).map((call) => call[3]),
+    ).toEqual([{ cursor: "next" }, { cursor: "next" }]);
+  });
+  it.each([403, 404])(
+    "hides cached rows after a fresh %s next-page denial",
+    async (status) => {
+      const { HttpError } = await import("@/lib/http-error");
+      mocks.getWorkItems
+        .mockResolvedValueOnce(page(["secret"], "next"))
+        .mockRejectedValueOnce(new HttpError(status, "denied"));
+      const { result } = renderHook(
+        () => useGetWorkItems({ projectId: "p", sort: "key", dir: "asc" }),
+        { wrapper: createWrapper() },
+      );
+      await waitFor(() => expect(result.current.hasNextPage).toBe(true));
+      await result.current.fetchNextPage();
+      await waitFor(() => expect(result.current.isError).toBe(true));
+      expect(result.current.data).toBeUndefined();
+      expect(result.current.hasNextPage).toBe(false);
+    },
+  );
+  it.each([null, "next"])(
+    "terminates missing or repeated cursor %s without discarding accumulated rows",
+    async (cursor) => {
+      mocks.getWorkItems
+        .mockResolvedValueOnce(page(["a"], "next"))
+        .mockResolvedValueOnce({ ...page(["b"], cursor), hasMore: true });
+      const { result } = renderHook(
+        () => useGetWorkItems({ projectId: "p", sort: "key", dir: "asc" }),
+        { wrapper: createWrapper() },
+      );
+      await waitFor(() => expect(result.current.hasNextPage).toBe(true));
+      await result.current.fetchNextPage();
+      await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
+      expect(result.current.hasNextPage).toBe(false);
+      expect(result.current.data?.hasMore).toBe(true);
+      expect(result.current.isLoadMoreError).toBe(true);
+    },
+  );
 });

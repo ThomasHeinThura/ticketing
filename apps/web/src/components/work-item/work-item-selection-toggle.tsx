@@ -5,31 +5,37 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 
 /**
  * The "Select items" switch for bulk actions. It lives in its own chunk so the work route does
- * not statically import the capability hook (G11 route graph), and it reports the strict
- * `assignTasks` result upward so the list and board can show their per-row controls only while
+ * not statically import the capability hook (G11 route graph), and it reports the per-action
+ * capability union upward so the list and board can show their per-row controls only while
  * selection mode is on and the capability is present. Nothing renders without the capability;
  * the server still enforces every bulk write.
  */
 export default function WorkItemSelectionToggle({
+  workspaceId,
+  projectId,
   selectionMode,
   onToggle,
   onCapabilityChange,
 }: {
+  workspaceId?: string;
+  projectId?: string;
   selectionMode: boolean;
   onToggle: () => void;
-  onCapabilityChange: (canAssign: boolean) => void;
+  onCapabilityChange: (canBulkAct: boolean) => void;
 }) {
   const { t } = useTranslation();
   const {
     canAssignTasks,
+    canUpdateTasks,
     canSetPriorityTasks,
     canTransitionTasks,
     canDeleteTasks,
     isCheckingPermissions,
-  } = useWorkspacePermission();
+  } = useWorkspacePermission(workspaceId, projectId);
   const canBulkAct =
     !isCheckingPermissions &&
     (canAssignTasks() ||
+      canUpdateTasks() ||
       (canSetPriorityTasks?.() ?? false) ||
       (canTransitionTasks?.() ?? false) ||
       (canDeleteTasks?.() ?? false));

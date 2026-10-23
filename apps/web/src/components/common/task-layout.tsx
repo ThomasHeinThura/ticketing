@@ -7,6 +7,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  useIsMobile,
 } from "@taskdesk/ui";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -56,8 +57,8 @@ export default function TaskLayout({
   };
 
   return (
-    <Layout className="flex flex-col lg:flex-row">
-      <div className="flex min-h-0 flex-1 flex-col">
+    <TaskPageFrame
+      header={
         <Layout.Header className="h-11 border-border/80 px-2">
           <div className="flex w-full items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
@@ -114,21 +115,46 @@ export default function TaskLayout({
             </div>
           </div>
         </Layout.Header>
+      }
+      notice={<RealtimeUnavailableNotice status={socketStatus} />}
+      rightSidebar={rightSidebar}
+    >
+      {children}
+    </TaskPageFrame>
+  );
+}
 
-        <RealtimeUnavailableNotice status={socketStatus} />
+/** Kaneo's original task-page frame: desktop Properties starts beside the header. */
+export function TaskPageFrame({
+  header,
+  notice,
+  children,
+  rightSidebar,
+}: {
+  header: ReactNode;
+  notice?: ReactNode;
+  children: ReactNode;
+  rightSidebar?: ReactNode;
+}) {
+  const compact = useIsMobile(1024);
+  return (
+    <Layout className="flex flex-col lg:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col">
+        {header}
+        {notice}
         <Layout.Content>
           <div className="flex h-full min-h-0 flex-col overflow-hidden lg:flex-row">
             <div className="order-2 min-h-0 flex-1 overflow-y-auto overscroll-contain lg:order-1">
               {children}
             </div>
             <div className="order-1 border-b border-border/80 lg:order-2 lg:hidden">
-              {rightSidebar}
+              {compact ? rightSidebar : null}
             </div>
           </div>
         </Layout.Content>
       </div>
       <div className="hidden border-l border-border/80 bg-card lg:flex lg:h-full lg:overflow-y-auto">
-        {rightSidebar}
+        {!compact ? rightSidebar : null}
       </div>
     </Layout>
   );

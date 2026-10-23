@@ -35,6 +35,14 @@ async function getSession(headers: Headers) {
   }
 }
 
+/** Optional cookie-only resolution for bounded public browser handoffs; explicit keys never substitute. */
+export async function resolveOptionalCookieSession(headers: Headers) {
+  const cookieHeaders = new Headers(headers);
+  cookieHeaders.delete("authorization");
+  cookieHeaders.delete("x-api-key");
+  return getSession(cookieHeaders);
+}
+
 function parseBearerToken(authHeader: string | undefined): {
   token: string | null;
   malformed: boolean;

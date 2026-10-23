@@ -1,5 +1,11 @@
+import { eq } from "drizzle-orm";
+import db, { schema } from "../../../apps/api/src/database";
 import { csrfRequest } from "./csrf";
 import type { App } from "./organization-http";
+import {
+  approvePendingDeletionAsCookie,
+  type PendingDeletionBody,
+} from "./pending-deletion";
 
 // HTTP helpers for the S4 NATIVE workspace write routes (issue #6, retrofit
 // plan §3, S4 row). Deliberately separate from `organization-http.ts`, which
@@ -69,4 +75,33 @@ export async function deleteWorkspaceNative(
     },
     cookie,
   );
+}
+
+/**
+ * `DELETE /api/workspace/{id}` only REQUESTS the deletion (202, nothing removed). The
+ * requester then approves with the exact workspace name plus step-up. Returns both the
+ * request response (status/body of the 202, or a refusal) and, when a pending action was
+ * recorded, the approve response, so callers can assert either outcome.
+ */
+export async function deleteWorkspaceThroughApproval(
+  app: App,
+  cookie: string,
+  workspaceId: string,
+  options: { typedName?: string } = {},
+) {
+  const requested = await deleteWorkspaceNative(app, cookie, workspaceId);
+  if (requested.status !== 202) return { requested, approved: undefined };
+  const pending = (await requested.clone().json()) as PendingDeletionBody;
+  const typedName =
+    options.typedName ??
+    (
+      await db
+        .select({ name: schema.workspaceTable.name })
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, workspaceId))
+    )[0]?.name;
+  const approved = await approvePendingDeletionAsCookie(app, cookie, pending, {
+    typedName,
+  });
+  return { requested, approved, pending };
 }

@@ -8,6 +8,8 @@ import TaskCard from "./task-card";
 const mocks = vi.hoisted(() => ({
   openContextMenu: vi.fn(),
   openTask: vi.fn(),
+  dragStart: vi.fn(),
+  dragKeyDown: vi.fn(),
 }));
 
 afterEach(() => {
@@ -21,9 +23,9 @@ afterEach(() => {
 });
 
 vi.mock("@dnd-kit/sortable", () => ({
-  useSortable: () => ({
-    attributes: { role: "button", tabIndex: 0 },
-    listeners: {},
+  useSortable: ({ disabled }: { disabled: boolean }) => ({
+    attributes: { role: "button", tabIndex: 0, "aria-disabled": disabled },
+    listeners: { onPointerDown: mocks.dragStart, onKeyDown: mocks.dragKeyDown },
     setNodeRef: vi.fn(),
     transform: null,
     transition: undefined,
@@ -36,7 +38,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@taskdesk/ui", async () => {
-  const { Button } =
+  const { Button, Avatar, AvatarFallback, AvatarImage } =
     await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const passthrough = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -50,6 +52,9 @@ vi.mock("@taskdesk/ui", async () => {
     AlertDialogHeader: passthrough,
     AlertDialogTitle: passthrough,
     Button,
+    Avatar,
+    AvatarFallback,
+    AvatarImage,
     HoverCard: passthrough,
     HoverCardContent: passthrough,
     HoverCardTrigger: passthrough,
@@ -288,5 +293,90 @@ describe("TaskCard keyboard context menu", () => {
     );
     expect(metadataRow).not.toBeNull();
     expect(metadataRow?.querySelector("svg")).not.toBeNull();
+  });
+});
+
+describe("canonical work-item card", () => {
+  it("keeps a non-draggable canonical card and its native link enabled without drag activators", () => {
+    render(
+      <TaskCard
+        task={task}
+        disableDragDrop
+        taskHref="/agent/work-items/PRJ-1"
+        projectSlug="PRJ"
+        taskIsCompleted={false}
+        displayPreferences={displayPreferences}
+        isSelected={false}
+        isFocused={false}
+        onOpenTask={mocks.openTask}
+        t={((key: string) => key) as unknown as TFunction}
+        onContextMenuTask={mocks.openContextMenu}
+      />,
+    );
+    const link = screen.getByRole("link", { name: "PRJ-1 Keyboard task" });
+    const card = link.closest('[role="button"]');
+    if (!(card instanceof HTMLElement))
+      throw new Error("Expected enabled card");
+    expect(card).not.toHaveAttribute("aria-disabled");
+    expect(link.closest('[aria-disabled="true"]')).toBeNull();
+    expect(card).toHaveAttribute("tabindex", "0");
+    link.focus();
+    expect(link).toHaveFocus();
+    // The link's Enter default remains available; the card must not intercept or open a second task.
+    expect(fireEvent.keyDown(link, { key: "Enter" })).toBe(true);
+    expect(mocks.openTask).not.toHaveBeenCalled();
+    const nativeClick = vi.fn((event: MouseEvent) => {
+      expect(event.defaultPrevented).toBe(false);
+      event.preventDefault();
+    });
+    link.addEventListener("click", nativeClick);
+    fireEvent.click(link);
+    expect(nativeClick).toHaveBeenCalledOnce();
+    fireEvent.pointerDown(card);
+    fireEvent.keyDown(card, { key: " " });
+    expect(mocks.dragStart).not.toHaveBeenCalled();
+    expect(mocks.dragKeyDown).not.toHaveBeenCalled();
+    card.focus();
+    fireEvent.keyDown(card, { key: "Enter" });
+    expect(mocks.openTask).toHaveBeenCalledExactlyOnceWith(task.id);
+  });
+  it("preserves enabled legacy drag activators", () => {
+    const card = renderTaskCard();
+    if (!(card instanceof HTMLElement)) throw new Error("Expected card");
+    fireEvent.pointerDown(card);
+    fireEvent.keyDown(card, { key: " " });
+    expect(mocks.dragStart).toHaveBeenCalledOnce();
+    expect(mocks.dragKeyDown).toHaveBeenCalledOnce();
+  });
+
+  it("renders person assignment and delegates selection without touching the legacy task selection store", () => {
+    const onToggleSelection = vi.fn();
+    render(
+      <TaskCard
+        task={{
+          ...task,
+          assigneeId: "person-9",
+          assigneeName: "Thomas Example",
+        }}
+        projectSlug="PRJ"
+        taskIsCompleted={false}
+        displayPreferences={{ ...displayPreferences, showAssignees: true }}
+        isSelected={false}
+        isFocused={false}
+        onOpenTask={mocks.openTask}
+        t={((key: string) => key) as unknown as TFunction}
+        taskHref="/agent/work/PRJ-1"
+        onContextMenuTask={mocks.openContextMenu}
+        onToggleSelection={onToggleSelection}
+      />,
+    );
+    const link = screen.getByRole("link", { name: "PRJ-1 Keyboard task" });
+    expect(link).toHaveAttribute("href", "/agent/work/PRJ-1");
+    expect(screen.getByText("TE")).toBeInTheDocument();
+    const card = link.closest('[role="button"]');
+    if (!card) throw new Error("Expected Kaneo card button");
+    fireEvent.click(card, { ctrlKey: true });
+    expect(onToggleSelection).toHaveBeenCalledOnce();
+    expect(useBulkSelectionStore.getState().selectedTaskIds.size).toBe(0);
   });
 });

@@ -1,10 +1,12 @@
+import type { JsonValue } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
-import { projectTable, workItemTable } from "../../database/schema";
+import { labelTable, projectTable, workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { lockWorkspaceLabelNames } from "../../label/repository";
 import {
   type ActivityActorType,
   diffWorkItemFieldChanges,
@@ -18,13 +20,16 @@ import {
   projectNotDeletedClause,
 } from "../assert-work-item-live";
 import type { BulkItemDecision } from "../bulk-reach";
+import {
+  listAssignedLabelIds,
+  replaceWorkItemLabels,
+} from "../labels-repository";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import {
   type AssignWorkItemInput,
   assignWorkItem,
   WorkItemAssigneeConflictError,
 } from "./assign-work-item";
-import { deleteWorkItem } from "./delete-work-item";
 import {
   NoMatchingTransitionError,
   SlaPauseConflictError,
@@ -38,14 +43,13 @@ import {
 // per WI-25").
 //
 // Supported operations (`WI-24`-`WI-27`):
-// - `"delete"` (`work_item:delete`)
+// - `"delete"` is dispatched to durable approval by the route; immediate invocation refuses.
 // - `"assign"` (`work_item:assign`)
 // - `"set_priority"` (`work_item:set_priority`)
 // - `"archive"` (`work_item:update`, `WI-20`)
 // - `"transition"` (`work_item:transition`, `WI-26`)
 //
-// Label add/remove (`work_item_label` join table) and cycle/module (`feature.cycles`) are
-// outside P1 schema scope.
+// Label add/remove and due date use work_item:update; cycle/module remain gated P5 scope.
 //
 // PER-ITEM AUTHORIZATION: every id gets the SAME two decisions a single-item call gets, from
 // the same source (`../bulk-reach.ts` -> `utils/caller-reach.ts`): project REACH (an
@@ -62,7 +66,14 @@ import {
 
 export type BulkWorkItemOperation =
   | { operation: "delete" }
-  | { operation: "assign"; assigneeId: string }
+  | {
+      operation: "assign";
+      assigneeId: string;
+      expectedCurrentAssigneeIds?: Record<string, string | null>;
+    }
+  | { operation: "add_label"; labelId: string }
+  | { operation: "remove_label"; labelId: string }
+  | { operation: "set_due_date"; dueDate: Date | null }
   | {
       operation: "set_priority";
       priority: "low" | "medium" | "high" | "urgent" | null;
@@ -81,15 +92,22 @@ export type BulkWorkItemResult = {
   failed: BulkWorkItemFailure[];
 };
 
-async function setPriorityWorkItem(
+async function updateBulkFields(
   key: string,
   workspaceId: string,
   actorId: string,
   actorType: ActivityActorType,
-  priority: "low" | "medium" | "high" | "urgent" | null,
+  op: Extract<
+    BulkWorkItemOperation,
+    {
+      operation: "set_priority" | "set_due_date" | "add_label" | "remove_label";
+    }
+  >,
 ): Promise<void> {
   const { updated, activityRows, realtimeEvent } = await db.transaction(
     async (tx) => {
+      if (op.operation === "add_label" || op.operation === "remove_label")
+        await lockWorkspaceLabelNames(tx, workspaceId, []);
       const [locked] = await tx
         .select()
         .from(workItemTable)
@@ -106,10 +124,53 @@ async function setPriorityWorkItem(
       assertWorkItemStillLive(locked);
       await assertProjectStillLive(tx, locked.projectId);
 
+      let labelChange: { before: string[]; after: string[] } | undefined;
+      if (op.operation === "add_label" || op.operation === "remove_label") {
+        // Validate the explicitly requested catalogue even when removal would be a no-op.
+        const [target] = await tx
+          .select({ id: labelTable.id })
+          .from(labelTable)
+          .where(
+            and(
+              eq(labelTable.id, op.labelId),
+              eq(labelTable.workspaceId, workspaceId),
+              isNull(labelTable.taskId),
+              or(
+                isNull(labelTable.projectId),
+                eq(labelTable.projectId, locked.projectId),
+              ),
+            ),
+          )
+          .for("key share");
+        if (!target)
+          throw new HTTPException(422, { message: "Label unavailable" });
+        const current = await listAssignedLabelIds(tx, locked.id);
+        const next =
+          op.operation === "add_label"
+            ? [...new Set([...current, op.labelId])]
+            : current.filter((id) => id !== op.labelId);
+        if (next.length > 100)
+          throw new HTTPException(422, {
+            message: "A work item may have at most 100 labels",
+          });
+        labelChange = await replaceWorkItemLabels(
+          tx,
+          locked.id,
+          workspaceId,
+          locked.projectId,
+          next,
+        );
+      }
+      const values =
+        op.operation === "set_priority"
+          ? { priority: op.priority }
+          : op.operation === "set_due_date"
+            ? { dueDate: op.dueDate }
+            : {};
       const [updated] = await tx
         .update(workItemTable)
         .set({
-          priority,
+          ...values,
           version: sql`${workItemTable.version} + 1`,
           updatedAt: new Date(),
         })
@@ -127,16 +188,24 @@ async function setPriorityWorkItem(
         throw new HTTPException(404, { message: "Work item not found" });
       }
 
-      const activityRows = diffWorkItemFieldChanges(
-        { priority: locked.priority },
-        { priority: updated.priority },
-        {
-          workspaceId: updated.workspaceId,
-          workItemId: updated.id,
-          actorId,
-          actorType,
-        },
-      );
+      const before: Record<string, JsonValue> =
+        op.operation === "set_priority"
+          ? { priority: locked.priority }
+          : op.operation === "set_due_date"
+            ? { dueDate: locked.dueDate?.toISOString() ?? null }
+            : { labelIds: labelChange?.before ?? [] };
+      const after: Record<string, JsonValue> =
+        op.operation === "set_priority"
+          ? { priority: updated.priority }
+          : op.operation === "set_due_date"
+            ? { dueDate: updated.dueDate?.toISOString() ?? null }
+            : { labelIds: labelChange?.after ?? [] };
+      const activityRows = diffWorkItemFieldChanges(before, after, {
+        workspaceId: updated.workspaceId,
+        workItemId: updated.id,
+        actorId,
+        actorType,
+      });
 
       if (activityRows.length > 0) {
         await recordWorkItemActivity(tx, activityRows);
@@ -150,8 +219,8 @@ async function setPriorityWorkItem(
         action: "work_item.updated",
         entityType: "work_item",
         entityId: updated.id,
-        before: { priority: locked.priority },
-        after: { priority: updated.priority },
+        before,
+        after,
       });
 
       const visibleChanges = activityRows
@@ -350,16 +419,25 @@ async function runOne(
   op: BulkWorkItemOperation,
 ): Promise<void> {
   if (op.operation === "delete") {
-    await deleteWorkItem(id, workspaceId, actorId, actorType);
-    return;
+    throw new HTTPException(409, { message: "pending_action_required" });
   }
   if (op.operation === "assign") {
-    const input: AssignWorkItemInput = { assigneeId: op.assigneeId };
+    const input: AssignWorkItemInput = {
+      assigneeId: op.assigneeId,
+      ...(op.expectedCurrentAssigneeIds
+        ? { expectedCurrentAssigneeId: op.expectedCurrentAssigneeIds[id] }
+        : {}),
+    };
     await assignWorkItem(id, workspaceId, actorId, actorType, null, input);
     return;
   }
-  if (op.operation === "set_priority") {
-    await setPriorityWorkItem(id, workspaceId, actorId, actorType, op.priority);
+  if (
+    op.operation === "set_priority" ||
+    op.operation === "set_due_date" ||
+    op.operation === "add_label" ||
+    op.operation === "remove_label"
+  ) {
+    await updateBulkFields(id, workspaceId, actorId, actorType, op);
     return;
   }
   if (op.operation === "archive") {
@@ -390,10 +468,12 @@ export async function bulkWorkItems(
    */
   authorise: (key: string) => Promise<BulkItemDecision>,
 ): Promise<BulkWorkItemResult> {
+  if (op.operation === "delete")
+    throw new HTTPException(409, { message: "pending_action_required" });
   const succeeded: string[] = [];
   const failed: BulkWorkItemFailure[] = [];
 
-  for (const key of workItemKeys) {
+  for (const key of new Set(workItemKeys)) {
     try {
       const decision = await authorise(key);
       if (decision === "not_found") {

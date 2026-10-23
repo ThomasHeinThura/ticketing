@@ -71,8 +71,9 @@ export async function getWorkItemSlaSourceQuery(
 export async function getPinnedVersionForEvaluation(
   policyVersionId: string,
   workspaceId: string,
+  executor: Pick<typeof db, "select"> = db,
 ) {
-  return await db
+  return await executor
     .select({
       id: slaPolicyVersionTable.id,
       calendarId: slaPolicyVersionTable.calendarId,
@@ -92,8 +93,9 @@ export async function getPinnedVersionForEvaluation(
 export async function getCalendarForEvaluation(
   calendarId: string,
   workspaceId: string,
+  executor: Pick<typeof db, "select"> = db,
 ) {
-  const rows = await db
+  const rows = await executor
     .select({
       timezone: serviceCalendarTable.timezone,
       windows: serviceCalendarTable.windows,
@@ -123,8 +125,9 @@ export async function getCalendarForEvaluation(
 export async function listGoalsForEvaluation(
   workspaceId: string,
   versionId: string,
+  executor: Pick<typeof db, "select"> = db,
 ) {
-  return await db
+  return await executor
     .select({
       metric: slaGoalTable.metric,
       workItemTypeId: slaGoalTable.workItemTypeId,

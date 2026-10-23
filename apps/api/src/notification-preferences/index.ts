@@ -1,3 +1,8 @@
+import { HTTPException } from "hono/http-exception";
+import {
+  getCanonicalPreferences,
+  saveCanonicalPreference,
+} from "../notification/canonical-preferences";
 import {
   apiRouter,
   createRoute,
@@ -106,18 +111,40 @@ const notificationPreferences = apiRouter()
     // The service reads only rows keyed by the authenticated caller. Mark the
     // comparison after that read succeeds so handler failures remain unknown.
     setShadowLegacyAuthorization(c, "allowed");
-    return c.json(preferences, 200);
-  })
-  .openapi(updatePreferencesRoute, async (c) =>
-    c.json(
-      await updateNotificationPreferences(
-        c.get("userId"),
-        c.get("userEmail") || null,
-        c.req.valid("json"),
-      ),
+    return c.json(
+      {
+        ...preferences,
+        canonicalPreferences: await getCanonicalPreferences(c.get("userId")),
+      },
       200,
-    ),
-  )
+    );
+  })
+  .openapi(updatePreferencesRoute, async (c) => {
+    const { canonicalPreference, ...legacy } = c.req.valid("json");
+    if (canonicalPreference && Object.keys(legacy).length)
+      throw new HTTPException(400, {
+        message: "Save canonical and legacy preferences separately",
+      });
+    if (canonicalPreference)
+      await saveCanonicalPreference(c.get("userId"), canonicalPreference);
+    const preferences = canonicalPreference
+      ? await getNotificationPreferences(
+          c.get("userId"),
+          c.get("userEmail") || null,
+        )
+      : await updateNotificationPreferences(
+          c.get("userId"),
+          c.get("userEmail") || null,
+          legacy,
+        );
+    return c.json(
+      {
+        ...preferences,
+        canonicalPreferences: await getCanonicalPreferences(c.get("userId")),
+      },
+      200,
+    );
+  })
   .openapi(upsertWorkspaceRuleRoute, async (c) =>
     c.json(
       await upsertWorkspaceRule(

@@ -1898,6 +1898,122 @@ export const notificationPreferenceTable = pgTable(
   ],
 );
 
+export const idempotencyKeyTable = pgTable(
+  "idempotency_key",
+  {
+    id: text("id").primaryKey(),
+    actorType: text("actor_type").notNull(),
+    actorId: text("actor_id").notNull(),
+    key: text("key").notNull(),
+    route: text("route").notNull(),
+    requestHash: text("request_hash").notNull(),
+    state: text("state").notNull(),
+    responseStatus: integer("response_status"),
+    responseBody: jsonb("response_body"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp("expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+  },
+  (t) => [
+    check(
+      "idempotency_key_actor_type_check",
+      sql.raw("actor_type = ANY (ARRAY['api_key'::text, 'user'::text])"),
+    ),
+    check(
+      "idempotency_key_state_check",
+      sql.raw("state = ANY (ARRAY['in_flight'::text, 'done'::text])"),
+    ),
+    check(
+      "idempotency_key_request_hash_check",
+      sql.raw("request_hash ~ '^[0-9a-f]{64}$'::text"),
+    ),
+    check(
+      "idempotency_key_done_response_check",
+      sql.raw(
+        "((state = 'done'::text) = ((response_status IS NOT NULL) AND (response_body IS NOT NULL)))",
+      ),
+    ),
+    uniqueIndex("idempotency_key_actor_key_unique").on(
+      t.actorType,
+      t.actorId,
+      t.key,
+    ),
+    index("idempotency_key_expires_idx").on(t.expiresAt),
+  ],
+);
+
+/**
+ * Object keys of attachments whose rows were removed by a cascading workspace deletion,
+ * queued in the same transaction so `attachment-gc` can still remove the stored objects
+ * (no foreign key on purpose: the queue must outlive the workspace).
+ */
+export const attachmentObjectGcTable = pgTable("attachment_object_gc", {
+  objectKey: text("object_key").primaryKey(),
+  sourceWorkspaceId: text("source_workspace_id"),
+  queuedAt: timestamp("queued_at", { mode: "date", withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+});
+
+export const auditChainAnchorTable = pgTable("audit_chain_anchor", {
+  id: text("id").primaryKey(),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  purgedThroughAt: timestamp("purged_through_at", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+  lastPurgedRowHash: text("last_purged_row_hash").notNull(),
+  firstPurgedCreatedAt: timestamp("first_purged_created_at", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+  purgedCount: integer("purged_count").notNull(),
+  nextRowHash: text("next_row_hash"),
+});
+
+export const notificationPreferenceHandoffTable = pgTable(
+  "notification_preference_handoff",
+  {
+    handleHash: bytea("handle_hash").primaryKey(),
+    audience: text("audience").notNull(),
+    recipientPersonId: text("recipient_person_id")
+      .notNull()
+      .references(() => personTable.id, { onDelete: "cascade" }),
+    eventKind: text("event_kind").notNull(),
+    channel: text("channel").notNull(),
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+  },
+  (t) => [
+    check(
+      "notification_preference_handoff_hash_check",
+      sql`octet_length(${t.handleHash}) = 32`,
+    ),
+    check(
+      "notification_preference_handoff_audience_check",
+      sql`${t.audience} IN ('agent', 'customer')`,
+    ),
+    check(
+      "notification_preference_handoff_scope_check",
+      sql`(${t.scope} = 'global' AND ${t.scopeId} IS NULL) OR (${t.scope} IN ('workspace', 'project') AND ${t.scopeId} IS NOT NULL)`,
+    ),
+    check(
+      "notification_preference_handoff_expiry_check",
+      sql`${t.expiresAt} = ${t.createdAt} + interval '10 minutes'`,
+    ),
+    index("notification_preference_handoff_expiry_idx").on(t.expiresAt),
+  ],
+);
+
 export const notificationDeliveryTable = pgTable(
   "notification_delivery",
   {
@@ -5525,6 +5641,58 @@ export const organizationRole = workspaceRoleTable;
 export const apikey = apikeyTable;
 
 // Auth-schema compatible relation exports in schema.ts
+// Canonical peer links; same-workspace and immutable endpoint isolation are enforced
+// by migration 0127, without copying legacy task records.
+export const workItemRelationTable = pgTable(
+  "work_item_relation",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => workItemTable.id, {
+        onDelete: "cascade",
+        onUpdate: "no action",
+      }),
+    targetId: text("target_id")
+      .notNull()
+      .references(() => workItemTable.id, {
+        onDelete: "cascade",
+        onUpdate: "no action",
+      }),
+    type: text("type").notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "work_item_relation_type_check",
+      sql`${table.type} in ('relates', 'blocks', 'duplicates', 'precedes', 'requires')`,
+    ),
+    check(
+      "work_item_relation_not_self_check",
+      sql`${table.sourceId} <> ${table.targetId}`,
+    ),
+    uniqueIndex("work_item_relation_directed_unique").on(
+      table.sourceId,
+      table.targetId,
+      table.type,
+    ),
+    uniqueIndex("work_item_relation_relates_unique")
+      .on(
+        sql`least(${table.sourceId}, ${table.targetId})`,
+        sql`greatest(${table.sourceId}, ${table.targetId})`,
+      )
+      .where(sql`${table.type} = 'relates'`),
+    index("work_item_relation_target_idx").on(table.targetId),
+  ],
+);
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
@@ -5605,4 +5773,33 @@ export const organizationRoleRelations = relations(
       references: [workspace.id],
     }),
   }),
+);
+
+/** SLA-14/15 edge-detection cache; detail reads always recompute authoritative state. */
+export const workItemSlaCacheTable = pgTable(
+  "work_item_sla_cache",
+  {
+    workItemId: text("work_item_id")
+      .notNull()
+      .references(() => workItemTable.id, { onDelete: "cascade" }),
+    metric: text("metric").notNull(),
+    state: text("state").notNull(),
+    dueAt: timestamp("due_at", { mode: "date", withTimezone: true }),
+    computedAt: timestamp("computed_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workItemId, table.metric] }),
+    check(
+      "work_item_sla_cache_metric_check",
+      sql` ${table.metric} IN ('first_response', 'resolution') `,
+    ),
+    check(
+      "work_item_sla_cache_state_check",
+      sql` ${table.state} IN ('none', 'ok', 'at_risk', 'breached', 'met', 'missed') `,
+    ),
+    index("work_item_sla_cache_state_due_idx").on(table.state, table.dueAt),
+  ],
 );

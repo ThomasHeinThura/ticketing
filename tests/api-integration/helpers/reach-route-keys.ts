@@ -79,6 +79,17 @@ export const READ_ROUTE_KEYS = [
  */
 export const OTHER_COVERED_ROUTE_KEYS = [
   "GET /api/canned-responses",
+  // Dedicated real credential/reach cases in approval authoring integration tests.
+  "GET /api/work-items/{key}/approval-request-context",
+  "GET /api/work-items/{key}/approval-candidates",
   "POST /api/work-items/search",
   ...TASK_TARGET_WORK_ITEM_ROUTE_KEYS,
+] as const;
+
+/** Real subject-reach and per-project capability table in work-item-relations.test.ts. */
+export const RELATION_REACH_ROUTE_KEYS = [
+  "GET /api/work-items/{key}/relations",
+  "GET /api/work-items/{key}/relation-candidates",
+  "POST /api/work-items/{key}/relations",
+  "DELETE /api/work-items/{key}/relations/{id}",
 ] as const;

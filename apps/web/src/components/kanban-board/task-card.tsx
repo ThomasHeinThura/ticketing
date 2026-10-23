@@ -45,6 +45,11 @@ export type TaskCardProps = {
   isFocused: boolean;
   onOpenTask: (taskId: string) => void;
   t: TFunction;
+  taskHref?: string;
+  /** Route-owned sheet opening while modifier clicks retain the real href. */
+  openTaskOnLinkClick?: boolean;
+  selectionEnabled?: boolean;
+  onToggleSelection?: () => void;
 };
 
 export type TaskCardDisplayPreferences = {
@@ -73,6 +78,10 @@ function TaskCard({
   isSelected,
   isFocused,
   onOpenTask,
+  taskHref,
+  openTaskOnLinkClick = false,
+  selectionEnabled = true,
+  onToggleSelection,
   t,
 }: TaskCardProps) {
   const {
@@ -83,6 +92,11 @@ function TaskCard({
     transition,
     isDragging,
   } = useSortable({ id: task.id, disabled: disableDragDrop });
+  // Sortable's disabled attributes describe a disabled drag activator, not a disabled task.
+  const dragListeners = disableDragDrop ? undefined : listeners;
+  const cardAttributes = disableDragDrop
+    ? { role: "button", tabIndex: 0 }
+    : attributes;
   const {
     showAssignees,
     showPriority,
@@ -92,9 +106,11 @@ function TaskCard({
   } = displayPreferences;
   const taskItemStats = !displayPreferences.showTaskItemCounts
     ? null
-    : task.description
-      ? getTaskItemStats(task.description)
-      : EMPTY_TASK_ITEM_STATS;
+    : task.taskItemStats !== undefined
+      ? task.taskItemStats
+      : task.description
+        ? getTaskItemStats(task.description)
+        : EMPTY_TASK_ITEM_STATS;
   const pullRequests = task.externalLinks?.length
     ? task.externalLinks.filter((link) => link.resourceType === "pull_request")
     : EMPTY_PULL_REQUESTS;
@@ -150,10 +166,13 @@ function TaskCard({
   function handleTaskCardClick(
     e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>,
   ) {
-    if (!workspaceId) return;
+    if (!workspaceId && !taskHref) return;
 
     if ((e as React.MouseEvent).metaKey || (e as React.KeyboardEvent).ctrlKey) {
-      useBulkSelectionStore.getState().toggleSelection(task.id);
+      if (selectionEnabled) {
+        if (onToggleSelection) onToggleSelection();
+        else useBulkSelectionStore.getState().toggleSelection(task.id);
+      }
       return;
     }
 
@@ -162,12 +181,17 @@ function TaskCard({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
-      useBulkSelectionStore.getState().toggleSelection(task.id);
+      if (selectionEnabled) {
+        if (onToggleSelection) onToggleSelection();
+        else useBulkSelectionStore.getState().toggleSelection(task.id);
+      }
     }
   };
 
   const handleCardKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    listeners?.onKeyDown?.(e);
+    // Native links/actions inside the card keep their own keyboard activation.
+    if (e.target !== e.currentTarget) return;
+    dragListeners?.onKeyDown?.(e);
     if (e.key === "Enter") {
       handleTaskCardClick(e);
     } else if (e.key === "Escape") {
@@ -184,7 +208,7 @@ function TaskCard({
       data-task-id={task.id}
       ref={setNodeRef}
       style={style}
-      {...listeners}
+      {...dragListeners}
       onClick={handleTaskCardClick}
       className={`kanban-board-task-card group relative rounded-lg border bg-background p-3 shadow-xs/5 [contain:layout_style] transition-[background-color,border-color,box-shadow,scale] duration-150 ease-out active:scale-[0.98] ${
         disableDragDrop ? "cursor-default" : "cursor-move"
@@ -199,7 +223,7 @@ function TaskCard({
       } ${isFocused ? "ring-2 ring-inset ring-ring/50" : ""}`}
       data-task-dragging={isDragging ? "true" : undefined}
       data-task-selected={isSelected ? "true" : undefined}
-      {...attributes}
+      {...cardAttributes}
       onKeyDown={handleCardKeyDown}
     >
       {showTaskNumbers && (
@@ -210,14 +234,14 @@ function TaskCard({
 
       {showAssignees && (
         <div className="absolute top-3 right-3">
-          {task.userId ? (
+          {task.userId || task.assigneeId ? (
             <Avatar className="h-5 w-5">
               <AvatarImage
                 src={assignee?.user?.image ?? ""}
-                alt={assignee?.user?.name || ""}
+                alt={assignee?.user?.name ?? task.assigneeName ?? ""}
               />
               <AvatarFallback className="text-xs font-medium border border-border/30">
-                {getInitials(assignee?.user?.name)}
+                {getInitials(assignee?.user?.name ?? task.assigneeName)}
               </AvatarFallback>
             </Avatar>
           ) : (
@@ -234,7 +258,30 @@ function TaskCard({
       )}
 
       <div className="mb-2.5 pr-6 overflow-hidden break-words leading-5 font-medium text-foreground text-[15px] line-clamp-3 hyphens-auto">
-        {task.title}
+        {taskHref ? (
+          <a
+            href={taskHref}
+            aria-label={`${projectSlug}-${task.number} ${task.title}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (
+                openTaskOnLinkClick &&
+                event.button === 0 &&
+                !event.metaKey &&
+                !event.ctrlKey &&
+                !event.shiftKey &&
+                !event.altKey
+              ) {
+                event.preventDefault();
+                onOpenTask(task.id);
+              }
+            }}
+          >
+            {task.title}
+          </a>
+        ) : (
+          task.title
+        )}
       </div>
 
       {showLabels && task.labels && task.labels.length > 0 && (

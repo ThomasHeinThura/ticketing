@@ -930,6 +930,9 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
       .where(eq(schema.commentTable.workItemId, workItemRow?.id ?? ""));
     expect(comments).toHaveLength(1);
     expect(comments[0]?.visibility).toBe("public");
+    const author = await makePerson(creator.id);
+    expect(comments[0]?.authorId).toBe(author.id);
+    expect(comments[0]?.authorId).not.toBe(creator.id);
   });
 
   it("GET /transitions returns only the legal edge, disabled with a reason when blocked", async () => {

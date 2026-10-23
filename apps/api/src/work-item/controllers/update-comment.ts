@@ -9,18 +9,17 @@ import {
   workItemTable,
 } from "../../database/schema";
 import type { ApiKey } from "../../openapi";
-import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
-import {
-  isUnambiguousMembership,
-  workspaceMemberRoles,
-} from "../../utils/workspace-member-roles";
 import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../assert-work-item-live";
+import {
+  commentAccess,
+  loadCommentCaller,
+  resolveCommentAuthors,
+} from "../comment-access";
 
 // `CA-17`: "Editing is allowed for 15 minutes by the author."
-const EDIT_WINDOW_MINUTES = 15;
 
 /**
  * `PATCH /api/comments/{id}`. `rbac.md`'s own worked example: `comment:update_any` is an
@@ -42,6 +41,7 @@ export async function updateComment(
   actorId: string,
   newBody: unknown,
   apiKey?: ApiKey,
+  impersonated = false,
 ) {
   return db.transaction(async (tx) => {
     const [locked] = await tx
@@ -77,39 +77,27 @@ export async function updateComment(
     assertWorkItemStillLive(workItem);
     await assertProjectStillLive(tx, workItem.projectId);
 
-    const roles = await workspaceMemberRoles(tx, workspaceId, actorId);
-    if (!isUnambiguousMembership(roles)) {
-      throw new HTTPException(403, { message: "Insufficient permissions" });
-    }
-
-    const hasAny = await builtInRoleHasCapability(
-      workspaceId,
-      roles[0],
-      "comment:update_any",
+    const caller = await loadCommentCaller(
       tx,
+      { userId: actorId, apiKey, impersonated },
+      {
+        workspaceId,
+        projectId: workItem.projectId,
+        workItemId: locked.workItemId,
+      },
     );
-
-    if (!hasAny) {
-      const isOwner = locked.authorId === actorId;
-      const withinWindow =
-        Date.now() - locked.createdAt.getTime() <=
-        EDIT_WINDOW_MINUTES * 60 * 1000;
-      const hasOwn =
-        isOwner &&
-        withinWindow &&
-        (await builtInRoleHasCapability(
-          workspaceId,
-          roles[0],
-          "comment:update_own",
-          tx,
-        ));
-
-      if (!hasOwn) {
-        throw new HTTPException(403, {
-          message:
-            "Not the author within the 15-minute edit window, or missing comment:update_own/comment:update_any permission",
-        });
-      }
+    const authors = await resolveCommentAuthors(tx, [locked.authorId]);
+    if (
+      !commentAccess(
+        caller,
+        locked.authorId ? (authors.get(locked.authorId) ?? null) : null,
+        locked,
+      ).canEdit
+    ) {
+      throw new HTTPException(403, {
+        message:
+          "Not the author within the 15-minute edit window, or missing comment:update_own/comment:update_any permission",
+      });
     }
 
     // `CA-17` (owner decision 2026-10-09): an omitted body is a write-free no-op -- no

@@ -1,21 +1,12 @@
-import { client } from "@taskdesk/libs";
-import type { InferRequestType } from "hono/client";
+import requestWorkItemDeletion from "@/fetchers/work-item/request-work-item-deletion";
 
-export type DeleteTaskRequest = InferRequestType<
-  (typeof client)["task"][":id"]["$delete"]
->["param"];
-
-async function deleteTask(taskId: string) {
-  const response = await client.task[":id"].$delete({ param: { id: taskId } });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error);
-  }
-
-  const data = await response.json();
-
-  return data;
+/**
+ * The legacy `DELETE /api/task/{id}` answers 410. Deletion goes through
+ * `DELETE /api/work-items/{key}`, keyed by the work item key (for example `PROJ-12`), and
+ * only creates a pending action.
+ */
+async function requestTaskDeletion(workItemKey: string) {
+  return requestWorkItemDeletion(workItemKey);
 }
 
-export default deleteTask;
+export default requestTaskDeletion;

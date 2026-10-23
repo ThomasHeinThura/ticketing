@@ -85,8 +85,8 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 const useGetTasks = vi.fn();
-vi.mock("@/hooks/queries/task/use-get-tasks", () => ({
-  useGetTasks: (projectId: string) => useGetTasks(projectId),
+vi.mock("@/hooks/queries/work-item/use-schedule-project", () => ({
+  useScheduleProject: (projectId: string) => useGetTasks(projectId),
 }));
 
 vi.mock("@taskdesk/ui", async (importOriginal) => {
@@ -104,7 +104,7 @@ vi.mock("@/components/common/project-layout", () => ({
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/components/task/task-details-sheet", () => ({
+vi.mock("@/components/work-item/work-item-side-pane", () => ({
   default: () => null,
 }));
 
@@ -112,8 +112,8 @@ vi.mock("@/components/page-title", () => ({
   default: () => null,
 }));
 
-vi.mock("@/components/gantt/gantt-task-bar", () => ({
-  GanttTaskBar: ({ task }: { task: { title: string } }) => (
+vi.mock("@/components/gantt/canonical-gantt-task-bar", () => ({
+  CanonicalGanttTaskBar: ({ task }: { task: { title: string } }) => (
     <div>{task.title}</div>
   ),
 }));

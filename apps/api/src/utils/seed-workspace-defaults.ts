@@ -1,7 +1,9 @@
 import type db from "../database";
-import { executorOrDefault } from "../database/executor";
+import { type Executor, executorOrDefault } from "../database/executor";
 import { DEFAULT_STATE_TEMPLATES } from "./default-state-templates";
 import { DEFAULT_WORK_ITEM_TYPES } from "./default-work-item-types";
+import { seedDefaultWorkflowInTransaction } from "./seed-default-workflow";
+import { lockWorkspaceDefaults } from "./seed-default-workflow.repository";
 import {
   insertDefaultStateTemplateRows,
   insertDefaultWorkItemTypeRows,
@@ -61,41 +63,21 @@ export async function seedDefaultStateTemplates(
   );
 }
 
-/**
- * Seeds a freshly created workspace's default `work_item_type` AND `state_template`
- * rows together (issue #309, `work-items.md` § "Default types", `PR-17`). Without this,
- * no work item can ever be created in a fresh workspace -- `WI-1` requires a
- * `work_item_type` and `WI-4` requires a project default `state`, and nothing else
- * creates either one.
- *
- * Called from `create-workspace.ts`'s own transaction, so the seed rows commit or roll
- * back together with the workspace itself -- exactly like the default `workspace_role`
- * rows and default team it already seeds in the same place, and for the same reason
- * (that function's own doc comment). **`dbOrTx` must be a transaction whenever this
- * function's own two inserts need to succeed or fail together** -- `onConflictDoNothing`
- * on each table's `unique(workspace_id, key)` index only makes EACH insert idempotent on
- * its own; it does nothing to stop a crash between the two inserts from committing types
- * without templates (or the reverse) when `dbOrTx` is the plain, autocommitting `db`.
- * `create-workspace.ts` already passes its own `tx` for exactly this reason. Issue #316's
- * backfill originally called this with the default `db` and reproduced that half-seeded
- * state live under an injected failure -- see `backfill-workspace-project-defaults.ts`'s
- * own comment for how its per-workspace transaction now covers this.
- *
- * Idempotent via each table's existing `unique(workspace_id, key)` index plus
- * `onConflictDoNothing` -- calling this twice for the same workspace, inside the SAME
- * transaction both times (or as two separate calls that each commit), inserts nothing
- * the second time. No new migration is needed: both constraints already exist.
- *
- * Takes an optional `dbOrTx` (defaulting to the module's own `db`), the same shape
- * `ensureInternalOrganisation` uses, so a caller already inside a transaction can pass
- * its `tx` and get these inserts covered by the same commit/rollback boundary.
+/** Seeds templates, builtin types and their validated default workflow atomically.
+ * The workspace lock serializes bootstrap/repair; configured customer rows are preserved.
+ * An existing transaction receives a savepoint; standalone calls get a real transaction.
  */
 export async function seedWorkspaceDefaults(
   workspaceId: string,
-  dbOrTx: Pick<typeof db, "insert"> = executorOrDefault(),
+  dbOrTx: Executor = executorOrDefault(),
 ): Promise<void> {
-  await seedDefaultWorkItemTypes(workspaceId, dbOrTx);
-  await seedDefaultStateTemplates(workspaceId, dbOrTx);
+  await dbOrTx.transaction(async (tx) => {
+    // One lock order covers concurrent bootstrap and explicit default-workflow repair.
+    await lockWorkspaceDefaults(tx, workspaceId);
+    await seedDefaultStateTemplates(workspaceId, tx);
+    await seedDefaultWorkItemTypes(workspaceId, tx);
+    await seedDefaultWorkflowInTransaction(workspaceId, tx);
+  });
 }
 
 export default seedWorkspaceDefaults;

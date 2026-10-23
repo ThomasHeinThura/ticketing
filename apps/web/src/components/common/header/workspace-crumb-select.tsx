@@ -10,6 +10,7 @@ export default function WorkspaceCrumbSelect() {
 
   return (
     <Button
+      aria-label={`${t("navigation:sidebar.overview")}: ${workspace?.name ?? t("navigation:workspaceSwitcher.selectWorkspace")}`}
       variant="ghost"
       size="xs"
       className="h-7 justify-between px-2 text-xs text-foreground"

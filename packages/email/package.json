@@ -6,6 +6,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./smtp-runtime": {
+      "types": "./dist/smtp-runtime.d.ts",
+      "default": "./dist/smtp-runtime.js"
     }
   },
   "main": "./dist/index.js",
@@ -32,6 +36,6 @@
     "@types/react-dom": "^19.2.4",
     "react-email": "6.9.2",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.12"
   }
 }

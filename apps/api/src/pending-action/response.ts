@@ -1,5 +1,9 @@
 import { z } from "../openapi";
 
+export const bulkDeletionResultSchema = z.object({
+  succeeded: z.array(z.string()),
+  failed: z.array(z.object({ id: z.string(), reason: z.string() })),
+});
 const pendingActionSummarySchema = z.record(z.string(), z.unknown());
 // Durable 0109 `user_deactivation` values remain database-only compatibility. Public
 // DTOs project a resolvable legacy row onto the canonical delete/user vocabulary.
@@ -92,5 +96,27 @@ export const pendingActionDecisionSchema = z
   .openapi("PendingActionDecision");
 
 export const pendingActionApprovalSchema = z
-  .object({ id: z.string(), state: z.enum(["executed", "expired"]) })
+  .object({
+    id: z.string(),
+    state: z.enum(["executed", "expired"]),
+    result: bulkDeletionResultSchema.optional(),
+  })
   .openapi("PendingActionApproval");
+
+export const pendingDeletionRequestSchema = z.object({
+  pendingActionId: z.string(),
+  action: z.literal("delete"),
+  summary: z.record(z.string(), z.unknown()),
+  confirmation: z.literal("click"),
+  expiresAt: z.string().datetime(),
+  approveUrl: z.string(),
+});
+
+export const pendingBulkDeletionRequestSchema = z.object({
+  pendingActionId: z.string(),
+  action: z.literal("bulk_delete"),
+  summary: z.record(z.string(), z.unknown()),
+  confirmation: z.enum(["typed_count", "typed_count_step_up"]),
+  expiresAt: z.string().datetime(),
+  approveUrl: z.string(),
+});

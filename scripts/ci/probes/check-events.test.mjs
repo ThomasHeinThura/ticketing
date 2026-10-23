@@ -34,7 +34,13 @@
  */
 
 import assert from "node:assert/strict";
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { after, describe, it } from "node:test";
 import { repoRoot } from "../lib/repo.mjs";
@@ -67,7 +73,12 @@ after(cleanUpScratchRepos);
 function bareRepo(name) {
   const dir = scratchDir(name);
   installCheckers(dir);
-  installFromRepo(dir, "docs/01-architecture/events.md");
+  installFromRepo(dir, "docs/technical/events.md");
+  assert.equal(
+    existsSync(path.join(dir, "archive")),
+    false,
+    "scratch checker must work without an archive tree",
+  );
   mkdirSync(path.join(dir, "apps/api/src"), { recursive: true });
   return dir;
 }
@@ -91,7 +102,7 @@ describe("check:events — the shipped tree", () => {
   it("passes GREEN against the real apps/api/src and the real events.md", () => {
     const dir = scratchDir("shipped");
     installCheckers(dir);
-    installFromRepo(dir, "docs/01-architecture/events.md");
+    installFromRepo(dir, "docs/technical/events.md");
     cpSync(
       path.join(repoRoot, "apps/api/src"),
       path.join(dir, "apps/api/src"),
@@ -133,10 +144,7 @@ describe("check:events — RED probe: a published key events.md does not declare
     const result = runChecker(dir, "check-events.mjs");
     assert.equal(result.status, 1, result.output);
     assert.match(result.output, /probe\.synthetic_key_not_declared/);
-    assert.match(
-      result.output,
-      /not named in docs\/01-architecture\/events\.md/,
-    );
+    assert.match(result.output, /not named in docs\/technical\/events\.md/);
   });
 
   it("PAIRED: the same key, declared, passes — so the RED case above is not vacuous", () => {
@@ -147,11 +155,11 @@ describe("check:events — RED probe: a published key events.md does not declare
       '  await publishEvent("probe.synthetic_key_not_declared", { id: "x" });',
     );
     // Append the key to events.md, backticked, exactly as the real registration does.
-    const eventsPath = path.join(dir, "docs/01-architecture/events.md");
+    const eventsPath = path.join(dir, "docs/technical/events.md");
     const current = readFileSync(eventsPath, "utf8");
     writeFileSync(
       eventsPath,
-      `${current}\n\n<!-- probe -->\n\`probe.synthetic_key_not_declared\`\n`,
+      `${current}\n\n## Catalogue\n| \`probe.synthetic_key_not_declared\` | Test-only declaration |\n`,
     );
 
     const result = runChecker(dir, "check-events.mjs");
@@ -211,11 +219,11 @@ describe("check:events — fails CLOSED, never silently, on a call it cannot rea
         '    : "probe.ternary_branch_declared";\n' +
         "  await publishEvent(kind, { id: 'x' });",
     );
-    const eventsPath = path.join(dir, "docs/01-architecture/events.md");
+    const eventsPath = path.join(dir, "docs/technical/events.md");
     const current = readFileSync(eventsPath, "utf8");
     writeFileSync(
       eventsPath,
-      `${current}\n\n<!-- probe -->\n\`probe.ternary_branch_declared\`\n`,
+      `${current}\n\n## Catalogue\n| \`probe.ternary_branch_declared\` | Test-only declaration |\n`,
     );
 
     const result = runChecker(dir, "check-events.mjs");
@@ -592,11 +600,11 @@ describe("check:events — call-detector shapes the review measured as silently 
     it(`PAIRED — ${shape.label}: the same key, declared, passes`, () => {
       const dir = bareRepo(`shape-green-${shape.slug}`);
       write(dir, "apps/api/src/probe/case.ts", shape.body);
-      const eventsPath = path.join(dir, "docs/01-architecture/events.md");
+      const eventsPath = path.join(dir, "docs/technical/events.md");
       const current = readFileSync(eventsPath, "utf8");
       writeFileSync(
         eventsPath,
-        `${current}\n\n<!-- probe -->\n\`${shape.key}\`\n`,
+        `${current}\n\n## Catalogue\n| \`${shape.key}\` | Test-only declaration |\n`,
       );
 
       const result = runChecker(dir, "check-events.mjs");
@@ -698,7 +706,7 @@ describe("check:events — probe gaps the review found (MEDIUM): KEY_SHAPE, and 
     // widened the way M5 did, this scenario flips from a thrown, fail-closed refusal to a
     // silent pass — which is exactly what this assertion catches.
     const dir = bareRepo("key-shape-guard");
-    const eventsPath = path.join(dir, "docs/01-architecture/events.md");
+    const eventsPath = path.join(dir, "docs/technical/events.md");
     const current = readFileSync(eventsPath, "utf8");
     writeFileSync(
       eventsPath,
@@ -729,7 +737,7 @@ describe("check:events — probe gaps the review found (MEDIUM): KEY_SHAPE, and 
     installCheckers(dir);
     write(
       dir,
-      "docs/01-architecture/events.md",
+      "docs/technical/events.md",
       "# Events\n\nNo event keys here — just prose, and a `singleword` mention.\n",
     );
     mkdirSync(path.join(dir, "apps/api/src"), { recursive: true });
@@ -798,4 +806,27 @@ describe("check:events — LOW/MEDIUM: source text reaching stderr is sanitised"
       assert.match(line, /\\n/, `expected an escaped newline on: ${line}`);
     }
   });
+});
+
+describe("maintained event declaration boundaries", () => {
+  for (const key of ["outbox.kind", "work_item.field_changed"])
+    it(`prose-only ${key} does not register an emitted event`, () => {
+      const dir = bareRepo("prose-event");
+      const eventsPath = path.join(dir, "docs/technical/events.md");
+      writeFileSync(
+        eventsPath,
+        readFileSync(eventsPath, "utf8") +
+          "\n## Explanation\nA field or retired name: `" +
+          key +
+          "`.\n",
+      );
+      controller(
+        dir,
+        "probe/prose.ts",
+        `  await publishEvent(${JSON.stringify(key)}, {id: 'fixture'});`,
+      );
+      const result = runChecker(dir, "check-events.mjs");
+      assert.notEqual(result.status, 0, result.output);
+      assert.match(result.output, /not named/);
+    });
 });

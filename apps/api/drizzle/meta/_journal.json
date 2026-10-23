@@ -890,6 +890,55 @@
 			"when": 1792584927635,
 			"tag": "0126_project_label_catalogues",
 			"breakpoints": true
+		},
+		{
+			"idx": 127,
+			"version": "7",
+			"when": 1792584927636,
+			"tag": "0127_canonical_work_item_relations",
+			"breakpoints": true
+		},
+		{
+			"idx": 128,
+			"version": "7",
+			"when": 1792584927637,
+			"tag": "0128_work_item_sla_cache",
+			"breakpoints": true
+		},
+		{
+			"idx": 129,
+			"version": "7",
+			"when": 1792659419294,
+			"tag": "0129_notification_preference_handoff",
+			"breakpoints": true
+		},
+		{
+			"idx": 130,
+			"version": "7",
+			"when": 1792659420294,
+			"tag": "0130_idempotency_key",
+			"breakpoints": true
+		},
+		{
+			"idx": 131,
+			"version": "7",
+			"when": 1792659421294,
+			"tag": "0131_audit_chain_anchor",
+			"breakpoints": true
+		},
+		{
+			"idx": 132,
+			"version": "7",
+			"when": 1792659422294,
+			"tag": "0132_audit_purge_hardening",
+			"breakpoints": true
+		},
+		{
+			"idx": 133,
+			"version": "7",
+			"when": 1792659423294,
+			"tag": "0133_attachment_object_gc",
+			"breakpoints": true
 		}
 	]
 }

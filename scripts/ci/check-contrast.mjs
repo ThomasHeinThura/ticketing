@@ -918,7 +918,11 @@ export function observedPairsInSources(
   return observed;
 }
 
-export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
+export function observeInheritedForegroundSurfaces(
+  sourcePaths,
+  tokenNames,
+  diagnose,
+) {
   const parser = new API({ cwd: repoRoot });
   const globalCss = requireFromWeb("node:fs").readFileSync(
     path.join(repoRoot, "apps/web/src/index.css"),
@@ -1010,26 +1014,71 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
           );
     if (expectedValue !== undefined) return false;
 
-    // Base UI emits highlighted state on its menu item primitives. The source
-    // wrapper must import that primitive and forward its props to the host.
+    // Verify the actual named primitive import and forwarded props, rather than
+    // trusting a local alias or the filename of a wrapper. These state contracts
+    // are declared by the installed Base UI item/tab DataAttributes modules.
     const tagName = ts.isJsxElement(node)
       ? node.openingElement.tagName.getText(sourceFile)
       : node.tagName.getText(sourceFile);
+    const [namespace, member, extra] = tagName.split(".");
+    const primitiveContracts = {
+      "@base-ui/react/menu": {
+        exported: "Menu",
+        members: ["Item", "CheckboxItem", "RadioItem"],
+        attribute: "data-highlighted",
+      },
+      "@base-ui/react/context-menu": {
+        exported: "ContextMenu",
+        members: ["Item", "CheckboxItem", "RadioItem"],
+        attribute: "data-highlighted",
+      },
+      "@base-ui/react/autocomplete": {
+        exported: "Autocomplete",
+        members: ["Item"],
+        attribute: "data-highlighted",
+      },
+      "@base-ui/react/combobox": {
+        exported: "Combobox",
+        members: ["Item"],
+        attribute: "data-highlighted",
+      },
+      "@base-ui/react/tabs": {
+        exported: "Tabs",
+        members: ["Tab"],
+        attribute: "data-active",
+      },
+    };
     if (
-      attributeName === "data-highlighted" &&
-      /^MenuPrimitive\.(?:Item|CheckboxItem|RadioItem)$/u.test(tagName) &&
-      sourceFile
-        .getText(sourceFile)
-        .includes(
-          'import { Menu as MenuPrimitive } from "@base-ui/react/menu"',
-        ) &&
+      member &&
+      !extra &&
       attributes.properties.some(
         (attribute) =>
           ts.isJsxSpreadAttribute(attribute) &&
           attribute.expression.getText(sourceFile) === "props",
       )
-    )
-      return true;
+    ) {
+      for (const statement of sourceFile.statements) {
+        if (!ts.isImportDeclaration(statement)) continue;
+        const contract =
+          primitiveContracts[
+            statement.moduleSpecifier.getText(sourceFile).slice(1, -1)
+          ];
+        const bindings = statement.importClause?.namedBindings;
+        if (
+          contract?.attribute === attributeName &&
+          contract.members.includes(member) &&
+          bindings &&
+          ts.isNamedImports(bindings) &&
+          bindings.elements.some(
+            (binding) =>
+              binding.name.getText(sourceFile) === namespace &&
+              (binding.propertyName ?? binding.name).getText(sourceFile) ===
+                contract.exported,
+          )
+        )
+          return true;
+      }
+    }
     const sourcePath = path.relative(repoRoot, sourceFile.fileName);
     const importedTarget = importsByPath.get(sourcePath)?.get(tagName);
     const primitiveByWrapper = {
@@ -1096,7 +1145,7 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
     }
     return utility;
   }
-  function paintedBackgroundOptions(node, sourceFile) {
+  function paintedBackgroundOptions(node, sourceFile, descendantSlot) {
     if (!node || (!ts.isJsxElement(node) && !ts.isJsxSelfClosingElement(node)))
       return [];
     const attributes = ts.isJsxElement(node)
@@ -1110,7 +1159,38 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
     if (!classAttribute) return [];
     const classSource = classAttribute.getText(sourceFile);
     function supportsVariant(variant) {
-      if (["dark", "light", "hover", "active"].includes(variant)) return true;
+      if (variant === "*") return descendantSlot !== undefined;
+      if (variant.startsWith("data-[slot=") && descendantSlot !== undefined)
+        return variant === `data-[slot=${descendantSlot}]`;
+      if (
+        [
+          "dark",
+          "light",
+          "hover",
+          "active",
+          "has-autofill",
+          "not-has-disabled",
+        ].includes(variant)
+      )
+        return true;
+      if (variant === "before") {
+        const classes = new Set(
+          classTokens(node, sourceFile).map((entry) => entry.className),
+        );
+        // Only a source-proven full host overlay is a foreground backdrop.
+        // Arbitrary decorative pseudo boxes cannot supply a text surface.
+        return (
+          [
+            "relative",
+            "before:absolute",
+            "before:inset-0",
+            "before:pointer-events-none",
+          ].every((value) => classes.has(value)) &&
+          ![...classes].some((value) =>
+            /^before:(?:z-|opacity-|translate-|scale-|rotate-)/u.test(value),
+          )
+        );
+      }
       if (/^(?:not-)?supports-\[backdrop-filter\]$/u.test(variant)) return true;
       const state = variant.match(
         /^(not-)?data-\[([a-z][a-z0-9-]*)=([a-z0-9_-]+)\]$/u,
@@ -2470,7 +2550,530 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       }
       return options;
     }
+    function componentTarget(tag, sourcePath) {
+      const imports = importsByPath.get(sourcePath) ?? new Map();
+      if (imports.has(tag)) return imports.get(tag);
+      const [base, member, extra] = tag.split(".");
+      if (!member || extra) return undefined;
+      const target = imports.get(base);
+      const source = target && sourceFilesByPath.get(target.file)?.getText();
+      if (!source) return undefined;
+      const name =
+        target.symbol === "default"
+          ? source.match(
+              /export\s+default\s+(?:function\s+)?([A-Za-z_$][\w$]*)/u,
+            )?.[1]
+          : target.symbol;
+      const assigned =
+        name &&
+        source.match(
+          new RegExp(
+            `\\b${name}\\.${member}\\s*=\\s*([A-Za-z_$][\\w$]*)\\s*;`,
+            "u",
+          ),
+        )?.[1];
+      return assigned ? { file: target.file, symbol: assigned } : undefined;
+    }
+    function componentHostSlot(target) {
+      const sourceFile = sourceFilesByPath.get(target.file);
+      if (!sourceFile) return undefined;
+      let owner;
+      sourceFile.forEachChild((node) => {
+        if (ts.isFunctionDeclaration(node) && node.name?.text === target.symbol)
+          owner = node;
+      });
+      if (!owner?.body || !ts.isBlock(owner.body)) return undefined;
+      const returns = owner.body.statements.filter(ts.isReturnStatement);
+      if (returns.length !== 1 || !returns[0].expression) return undefined;
+      let root = returns[0].expression;
+      while (ts.isParenthesizedExpression(root)) root = root.expression;
+      const attributes = ts.isJsxElement(root)
+        ? root.openingElement.attributes
+        : ts.isJsxSelfClosingElement(root)
+          ? root.attributes
+          : undefined;
+      const slot = attributes?.properties.find(
+        (attribute) =>
+          ts.isJsxAttribute(attribute) &&
+          attribute.name.getText(sourceFile) === "data-slot",
+      );
+      return slot?.initializer && ts.isStringLiteral(slot.initializer)
+        ? slot.initializer.text
+        : undefined;
+    }
+    function renderedSlotLocations(target, slot) {
+      const sourceFile = sourceFilesByPath.get(target.file);
+      if (!sourceFile) return undefined;
+      const text = sourceFile.getText();
+      const name =
+        target.symbol === "default"
+          ? text.match(
+              /export\s+default\s+(?:function\s+)?([A-Za-z_$][\w$]*)/u,
+            )?.[1]
+          : resolveLocalExport(target).symbol;
+      let owner;
+      sourceFile.forEachChild((node) => {
+        if (ts.isFunctionDeclaration(node) && node.name?.text === name)
+          owner = node;
+        if (ts.isVariableStatement(node)) {
+          for (const declaration of node.declarationList.declarations) {
+            if (
+              declaration.name.getText(sourceFile) === name &&
+              declaration.initializer
+            )
+              owner = wrappedFunctionInitializer(declaration.initializer);
+          }
+        }
+      });
+      if (!owner?.body) return undefined;
+      const parameter = owner.parameters[0]?.name;
+      let binding;
+      let objectBinding;
+      if (parameter && ts.isObjectBindingPattern(parameter)) {
+        const entry = parameter.elements.find(
+          (entry) =>
+            (entry.propertyName ?? entry.name).getText(sourceFile) === slot,
+        );
+        if (entry && ts.isIdentifier(entry.name)) binding = entry.name.text;
+      } else if (parameter && ts.isIdentifier(parameter))
+        objectBinding = parameter.text;
+      if (!binding && !objectBinding) return undefined;
+      const bindings = new Set(binding ? [binding] : []);
+      function returnsSlot(expression) {
+        if (ts.isIdentifier(expression)) return bindings.has(expression.text);
+        if (ts.isParenthesizedExpression(expression))
+          return returnsSlot(expression.expression);
+        if (ts.isConditionalExpression(expression))
+          return (
+            returnsSlot(expression.whenTrue) ||
+            returnsSlot(expression.whenFalse)
+          );
+        if (
+          ts.isBinaryExpression(expression) &&
+          [
+            ts.SyntaxKind.AmpersandAmpersandToken,
+            ts.SyntaxKind.BarBarToken,
+            ts.SyntaxKind.QuestionQuestionToken,
+          ].includes(expression.operatorToken.kind)
+        )
+          return (
+            returnsSlot(expression.right) ||
+            (expression.operatorToken.kind !==
+              ts.SyntaxKind.AmpersandAmpersandToken &&
+              returnsSlot(expression.left))
+          );
+        return false;
+      }
+      // A const alias that returns the slot value is still the same content.
+      // References used only in a condition or passed through an unknown call
+      // do not establish a rendered slot.
+      function collectAliases(node) {
+        if (
+          node !== owner.body &&
+          (ts.isFunctionDeclaration(node) ||
+            ts.isFunctionExpression(node) ||
+            ts.isArrowFunction(node))
+        )
+          return;
+        if (
+          ts.isVariableDeclaration(node) &&
+          ts.isIdentifier(node.name) &&
+          node.initializer &&
+          (node.parent.flags & ts.NodeFlags.Const) !== 0 &&
+          returnsSlot(node.initializer)
+        )
+          bindings.add(node.name.text);
+        node.forEachChild(collectAliases);
+      }
+      if (binding) collectAliases(owner.body);
+      const found = [];
+      function visit(node, ancestors, inJsx = false) {
+        // A callback parameter can shadow the component slot. It is a separate
+        // value, so its JSX cannot prove where the caller's content is painted.
+        if (
+          binding &&
+          node !== owner &&
+          (ts.isArrowFunction(node) ||
+            ts.isFunctionExpression(node) ||
+            ts.isFunctionDeclaration(node)) &&
+          node.parameters.some((parameter) =>
+            bindings.has(parameter.name.getText(sourceFile)),
+          )
+        )
+          return;
+        const isElement =
+          ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node);
+        const next = isElement ? [...ancestors, node] : ancestors;
+        const isSlot = binding
+          ? ts.isIdentifier(node) &&
+            bindings.has(node.text) &&
+            !(
+              ts.isPropertyAccessExpression(node.parent) &&
+              node.parent.name === node
+            )
+          : ts.isPropertyAccessExpression(node) &&
+            node.expression.getText(sourceFile) === objectBinding &&
+            node.name.text === slot;
+        if (
+          objectBinding &&
+          ts.isJsxSpreadAttribute(node) &&
+          ts.isIdentifier(node.expression) &&
+          node.expression.text === objectBinding
+        ) {
+          const host = node.parent.parent;
+          const element = ts.isJsxOpeningElement(host) ? host.parent : host;
+          const attributes = host.attributes?.properties ?? [];
+          const overridden =
+            attributes.some(
+              (attribute) =>
+                ts.isJsxAttribute(attribute) &&
+                attribute.name.getText(sourceFile) === slot,
+            ) ||
+            (slot === "children" &&
+              ts.isJsxElement(element) &&
+              element.children.some(
+                (child) =>
+                  !ts.isJsxText(child) ||
+                  child.getText(sourceFile).trim().length > 0,
+              ));
+          if (!overridden) found.push({ node, ancestors });
+        }
+        if (isSlot && inJsx) {
+          let attribute;
+          for (
+            let parent = node.parent;
+            parent && parent !== owner;
+            parent = parent.parent
+          ) {
+            if (ts.isJsxAttribute(parent)) {
+              attribute = parent;
+              break;
+            }
+            if (ts.isJsxElement(parent) || ts.isJsxSelfClosingElement(parent))
+              break;
+          }
+          const attributeName = attribute?.name.getText(sourceFile);
+          const host = attribute?.parent?.parent;
+          const hostTag =
+            host &&
+            (ts.isJsxOpeningElement(host) || ts.isJsxSelfClosingElement(host))
+              ? host.tagName.getText(sourceFile)
+              : undefined;
+          // Event handlers, refs and intrinsic attributes do not render React
+          // content. Named slots on component calls can be followed recursively.
+          if (
+            !attribute ||
+            (!/^(?:on[A-Z]|ref$)/u.test(attributeName) &&
+              hostTag &&
+              /^[A-Z]/u.test(hostTag))
+          )
+            found.push({ node, ancestors });
+        }
+        node.forEachChild((child) =>
+          visit(child, next, inJsx || ts.isJsxExpression(node)),
+        );
+      }
+      visit(owner.body, []);
+      // A declared but untraceable slot is not a licence to use a sibling surface.
+      return found.length ? found : null;
+    }
+    function activeIndicatorEntries(target, caller, callerFile, locations) {
+      const sourceFile = sourceFilesByPath.get(target.file);
+      if (!sourceFile) return [];
+      let namespace;
+      for (const statement of sourceFile.statements) {
+        if (
+          !ts.isImportDeclaration(statement) ||
+          statement.moduleSpecifier.getText(sourceFile).slice(1, -1) !==
+            "@base-ui/react/tabs"
+        )
+          continue;
+        const bindings = statement.importClause?.namedBindings;
+        if (bindings && ts.isNamedImports(bindings))
+          namespace = bindings.elements
+            .find(
+              (binding) =>
+                (binding.propertyName ?? binding.name).getText(sourceFile) ===
+                "Tabs",
+            )
+            ?.name.getText(sourceFile);
+      }
+      if (!namespace) return [];
+      const list = locations[0]?.ancestors.at(-1);
+      if (
+        !list ||
+        !ts.isJsxElement(list) ||
+        list.openingElement.tagName.getText(sourceFile) !== `${namespace}.List`
+      )
+        return [];
+      const indicators = list.children.filter(
+        (child) =>
+          ts.isJsxSelfClosingElement(child) &&
+          child.tagName.getText(sourceFile) === `${namespace}.Indicator`,
+      );
+      if (indicators.length === 0) return [];
+      if (indicators.length !== 1) return undefined;
+      let owner;
+      sourceFile.forEachChild((node) => {
+        if (ts.isFunctionDeclaration(node) && node.name?.text === target.symbol)
+          owner = node;
+      });
+      const parameter = owner?.parameters[0]?.name;
+      const values = new Map();
+      if (parameter && ts.isObjectBindingPattern(parameter))
+        for (const entry of parameter.elements) {
+          if (
+            ts.isIdentifier(entry.name) &&
+            entry.initializer &&
+            ts.isStringLiteral(entry.initializer)
+          )
+            values.set(entry.name.text, entry.initializer.text);
+        }
+      const callerAttributes = (
+        ts.isJsxElement(caller) ? caller.openingElement : caller
+      ).attributes.properties;
+      if (callerAttributes.some(ts.isJsxSpreadAttribute)) return undefined;
+      for (const attribute of callerAttributes) {
+        if (!ts.isJsxAttribute(attribute)) continue;
+        const name = attribute.name.getText(callerFile);
+        if (!values.has(name)) continue;
+        if (
+          !attribute.initializer ||
+          !ts.isStringLiteral(attribute.initializer)
+        )
+          return undefined;
+        values.set(name, attribute.initializer.text);
+      }
+      function selectedClasses(expression) {
+        if (ts.isStringLiteral(expression)) return expression.text;
+        if (
+          ts.isJsxExpression(expression) ||
+          ts.isParenthesizedExpression(expression)
+        )
+          return (
+            expression.expression && selectedClasses(expression.expression)
+          );
+        if (
+          ts.isCallExpression(expression) &&
+          ts.isIdentifier(expression.expression) &&
+          expression.expression.text === "cn"
+        ) {
+          const parts = expression.arguments.map(selectedClasses);
+          return parts.some((value) => value === undefined)
+            ? undefined
+            : parts.join(" ");
+        }
+        if (ts.isIdentifier(expression) && expression.text === "className") {
+          const override = callerAttributes.find(
+            (attribute) =>
+              ts.isJsxAttribute(attribute) &&
+              attribute.name.getText(callerFile) === "className",
+          );
+          if (!override) return "";
+          if (
+            !override.initializer ||
+            !ts.isStringLiteral(override.initializer) ||
+            /(?:^|\s)(?:\S*:)?bg-/u.test(override.initializer.text)
+          )
+            return undefined;
+          return "";
+        }
+        if (
+          ts.isConditionalExpression(expression) &&
+          ts.isBinaryExpression(expression.condition) &&
+          expression.condition.operatorToken.kind ===
+            ts.SyntaxKind.EqualsEqualsEqualsToken &&
+          ts.isIdentifier(expression.condition.left) &&
+          ts.isStringLiteral(expression.condition.right)
+        ) {
+          const value = values.get(expression.condition.left.text);
+          return value === undefined
+            ? undefined
+            : selectedClasses(
+                value === expression.condition.right.text
+                  ? expression.whenTrue
+                  : expression.whenFalse,
+              );
+        }
+        return undefined;
+      }
+      function classesOf(node) {
+        const attrs = (ts.isJsxElement(node) ? node.openingElement : node)
+          .attributes.properties;
+        const attribute = attrs.find(
+          (attribute) =>
+            ts.isJsxAttribute(attribute) &&
+            attribute.name.getText(sourceFile) === "className",
+        );
+        return attribute?.initializer && selectedClasses(attribute.initializer);
+      }
+      const listClasses = classesOf(list);
+      const indicator = indicators[0];
+      const classes = classesOf(indicator);
+      if (listClasses === undefined || classes === undefined) return undefined;
+      const tokens = new Set(classes.split(/\s+/u));
+      const backgrounds = [...tokens]
+        .map(parseClassToken)
+        .filter((entry) => /^bg-[a-z0-9-]+(?:\/\d+)?$/u.test(entry.utility));
+      // Underline indicators do not cover text and cannot become its backdrop.
+      if (
+        !tokens.has("h-(--active-tab-height)") ||
+        !tokens.has("w-(--active-tab-width)")
+      )
+        return undefined;
+      if (!tokens.has("-z-1")) {
+        if (values.get("variant") === "underline" && tokens.has("z-10"))
+          return [];
+        return undefined;
+      }
+      if (
+        ![
+          "bottom-0",
+          "left-0",
+          "translate-x-(--active-tab-left)",
+          "-translate-y-(--active-tab-bottom)",
+        ].every((value) => tokens.has(value))
+      )
+        return undefined;
+      if (
+        !tokens.has("absolute") ||
+        !listClasses.split(/\s+/u).includes("relative") ||
+        !listClasses.split(/\s+/u).includes("z-0")
+      )
+        return undefined;
+      if (
+        backgrounds.length === 0 ||
+        backgrounds.some((entry) =>
+          entry.variants.some(
+            (variant) => !["light", "dark"].includes(variant),
+          ),
+        )
+      )
+        return undefined;
+      const hasDark = backgrounds.some((entry) =>
+        entry.variants.includes("dark"),
+      );
+      const options = backgrounds.map((entry) => ({
+        ...entry,
+        themes: entry.variants.includes("dark")
+          ? ["dark"]
+          : entry.variants.includes("light") || hasDark
+            ? ["light"]
+            : ["light", "dark"],
+      }));
+      return [
+        {
+          ancestor: indicator,
+          sourceFile,
+          surfaceOptions: options,
+          suppressWrapper: true,
+          slotChain: [
+            `active-tab-indicator:${target.file}:${target.symbol}`,
+            `primitive:${namespace}.Indicator:active-tab-bounds`,
+          ],
+        },
+      ];
+    }
+    function containingSlot(ancestor, origin) {
+      for (let node = origin; node && node !== ancestor; node = node.parent) {
+        if (ts.isJsxAttribute(node)) return node.name.getText();
+      }
+      return "children";
+    }
+    function expandPaintAncestors(
+      ancestors,
+      sourcePath,
+      origin,
+      active = new Set(),
+    ) {
+      if (active.size > 16) return undefined;
+      const sourceFile = sourceFilesByPath.get(sourcePath);
+      if (!sourceFile) return undefined;
+      let paths = [[]];
+      for (const ancestor of [...ancestors].reverse()) {
+        const tag = ts.isJsxElement(ancestor)
+          ? ancestor.openingElement.tagName.getText(sourceFile)
+          : ancestor.tagName.getText(sourceFile);
+        const target = componentTarget(tag, sourcePath);
+        const slot = containingSlot(ancestor, origin);
+        const binding = target && `${target.file}:${target.symbol}.${slot}`;
+        const explicit = paintedBackgrounds(ancestor, sourceFile).length > 0;
+        const locations =
+          target && !explicit && !active.has(binding)
+            ? renderedSlotLocations(target, slot)
+            : undefined;
+        if (locations === null) return undefined;
+        if (locations) {
+          const indicators = activeIndicatorEntries(
+            target,
+            ancestor,
+            sourceFile,
+            locations,
+          );
+          if (indicators === undefined) return undefined;
+          const variants = locations.map((location) =>
+            expandPaintAncestors(
+              location.ancestors,
+              target.file,
+              location.node,
+              new Set(active).add(binding),
+            ),
+          );
+          if (variants.some((value) => !value)) return undefined;
+          paths = paths.flatMap((prefix) =>
+            variants.flatMap((value) =>
+              value.flatMap((entries) =>
+                [
+                  entries,
+                  ...(indicators.length ? [[...indicators, ...entries]] : []),
+                ].map((paint) => [
+                  ...prefix,
+                  ...paint.map((entry) => ({
+                    ...entry,
+                    slotChain: [
+                      `component-slot:${binding}`,
+                      ...(entry.slotChain ?? []),
+                    ],
+                  })),
+                  {
+                    ancestor,
+                    sourceFile,
+                    suppressWrapper: true,
+                    slotChain: [`component-slot:${binding}`],
+                  },
+                ]),
+              ),
+            ),
+          );
+        } else
+          paths = paths.map((prefix) => [...prefix, { ancestor, sourceFile }]);
+        if (paths.length > 64) return undefined;
+      }
+      return paths;
+    }
+
     function callerSurface(call, active = new Set(), depth = 0, pending = []) {
+      if (!call.paintAncestors) {
+        const paths = expandPaintAncestors(
+          call.ancestors,
+          call.callerPath,
+          call.node,
+        );
+        if (!paths) return undefined;
+        const descendantSlot = call.target
+          ? componentHostSlot(call.target)
+          : undefined;
+        const surfaces = paths.map((paintAncestors) =>
+          callerSurface(
+            { ...call, paintAncestors, descendantSlot },
+            active,
+            depth,
+            pending,
+          ),
+        );
+        return surfaces.some((value) => !value) ? undefined : surfaces.flat();
+      }
+
       if (depth > 8) return undefined;
       const callerFile = sourceFilesByPath.get(call.callerPath);
       if (!callerFile) return undefined;
@@ -2521,7 +3124,6 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
           }
         }
       }
-      const imports = importsByPath.get(call.callerPath) ?? new Map();
       let pendingOptions = pending;
       const resolvedOptions = [];
       let unpaintedPossible = false;
@@ -2577,14 +3179,37 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
           }
         }
       }
-      for (const ancestor of [...call.ancestors].reverse()) {
-        const backgrounds = paintedBackgroundOptions(ancestor, callerFile);
+      for (const [
+        paintDepth,
+        {
+          ancestor,
+          sourceFile: callerFile,
+          suppressWrapper,
+          slotChain = [],
+          surfaceOptions,
+        },
+      ] of call.paintAncestors.entries()) {
+        const imports =
+          importsByPath.get(path.relative(repoRoot, callerFile.fileName)) ??
+          new Map();
+        const backgrounds =
+          surfaceOptions ??
+          paintedBackgroundOptions(
+            ancestor,
+            callerFile,
+            call.paintAncestors
+              .slice(0, paintDepth)
+              .every((entry) => entry.surfaceOptions)
+              ? call.descendantSlot
+              : undefined,
+          );
         if (backgrounds === undefined) return undefined;
         if (backgrounds.length > 0) {
           unpaintedPossible ||= backgrounds.hasUnpainted === true;
           const chain = [
             `${call.callerPath}:${call.owner ?? "<module>"}`,
             `jsx:${call.path.join("/")}`,
+            ...slotChain,
           ];
           const opaque = [];
           const translucent = [];
@@ -2755,6 +3380,7 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
           if (backgrounds.hasUnpainted !== true && pendingOptions.length === 0)
             return resolvedOptions.length > 0 ? resolvedOptions : undefined;
         }
+        if (suppressWrapper) continue;
         const tag = ts.isJsxElement(ancestor)
           ? ancestor.openingElement.tagName.getText(callerFile)
           : ancestor.tagName.getText(callerFile);
@@ -3163,7 +3789,19 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       );
       if (calls.length === 0) continue;
       const surfaceOptions = calls.map((call) => callerSurface(call));
-      if (surfaceOptions.some((surface) => !surface)) continue;
+      if (surfaceOptions.some((surface) => !surface)) {
+        diagnose?.({
+          occurrence: occurrence.id,
+          calls: calls
+            .filter((_, i) => !surfaceOptions[i])
+            .map((call) => ({
+              path: call.callerPath,
+              owner: call.owner,
+              jsx: call.path,
+            })),
+        });
+        continue;
+      }
       const foreground = parseForegroundUtility(
         parseClassToken(occurrence.foregroundClass),
         tokenNames,
@@ -3298,7 +3936,19 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       const calls = componentCallSites(target);
       if (calls.length === 0) continue;
       const surfaceOptions = calls.map((call) => callerSurface(call));
-      if (surfaceOptions.some((surface) => !surface)) continue;
+      if (surfaceOptions.some((surface) => !surface)) {
+        diagnose?.({
+          occurrence: occurrence.id,
+          calls: calls
+            .filter((_, i) => !surfaceOptions[i])
+            .map((call) => ({
+              path: call.callerPath,
+              owner: call.owner,
+              jsx: call.path,
+            })),
+        });
+        continue;
+      }
       const foreground = parseForegroundUtility(
         parseClassToken(occurrence.foregroundClass),
         tokenNames,
@@ -3862,16 +4512,28 @@ async function main() {
           .locator("#contrast-probe")
           .evaluate((node) => {
             const style = getComputedStyle(node);
+            const backgroundStyle = /(?:^|\s)(?:[^\s]*:)?before:bg-/u.test(
+              node.className,
+            )
+              ? getComputedStyle(node, "::before")
+              : style;
             const backdrops = [];
             for (
               let current = node.parentElement;
               current?.dataset.contrastBackdrop;
               current = current.parentElement
             )
-              backdrops.push(getComputedStyle(current).backgroundColor);
+              backdrops.push(
+                getComputedStyle(
+                  current,
+                  /(?:^|\s)(?:[^\s]*:)?before:bg-/u.test(current.className)
+                    ? "::before"
+                    : undefined,
+                ).backgroundColor,
+              );
             return {
               fg: style.color,
-              bg: style.backgroundColor,
+              bg: backgroundStyle.backgroundColor,
               backdrops,
             };
           });

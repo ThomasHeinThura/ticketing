@@ -1,7 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
-import { isCapability, type PolicyMap } from "@taskdesk/permissions";
-import { and, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import type { PolicyMap, ResolvedIdentity } from "@taskdesk/permissions";
+import { and, desc, eq, gt, lt, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import { appendPendingActionStepUpAudit } from "../auth/step-up-audit";
@@ -11,14 +11,12 @@ import {
   apikeyTable,
   pendingActionTable,
   personTable,
-  projectTable,
   savedViewTable,
   serviceCalendarTable,
   userTable,
-  workItemTable,
-  workspaceTable,
 } from "../database/schema";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
+import { databaseErrorCode } from "../identity/grant-closure-retry";
 import {
   IdentityGrantClosureChangedError,
   retryIdentityGrantClosure,
@@ -33,11 +31,37 @@ import {
   assertAdminRemovalAllowed,
   lockInstanceAdminSerialization,
 } from "../instance/users/repository";
+import { enqueueNotificationEvent } from "../notification/fanout";
+import { resolvePendingActionEventRecipients } from "../notification/recipient-resolvers";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
 import { dbNowUtc } from "../utils/db-time";
+import {
+  apiKeyCapabilitySubset,
+  apiKeyScopeFromStoredPermissions,
+} from "../utils/require-api-key-permission-scope";
 import { invalidateNativeAuthorization } from "../ws";
 import { resolvePendingActionApprovalContract } from "./approval-contract";
+import {
+  ATTACHMENT_DELETION_ROUTE,
+  attachmentDeletionReadSummary,
+  resolveAttachmentDeletionRequestScope,
+} from "./attachment-deletion-target";
+import {
+  BULK_WORK_ITEM_DELETION_ROUTE,
+  bulkWorkItemDeletionReadSummary,
+  resolveBulkWorkItemDeletionRequestScope,
+} from "./bulk-work-item-deletion-target";
+import {
+  COMMENT_DELETION_ROUTE,
+  commentDeletionReadSummary,
+  resolveCommentDeletionRequestScope,
+} from "./comment-deletion-target";
+import {
+  isRegisteredDeletion,
+  resolveRegisteredDeletionRequestScope,
+} from "./deletion-targets";
+import { failOnExecutorError } from "./execution-failure";
 import { lockPendingActionLifecycle } from "./lifecycle-invalidation";
 import {
   type ConfirmationKind,
@@ -46,10 +70,27 @@ import {
   type PendingActionKind,
   requiredConfirmation,
 } from "./payload";
+import {
+  RELATION_DELETION_ROUTE,
+  relationDeletionReadSummary,
+  resolveRelationDeletionRequestScope,
+} from "./relation-deletion-target";
 import { evaluateActionRequiredAccess } from "./required-access";
 import { pendingActionReadSchema } from "./response";
+import {
+  resolveWorkItemDeletionRequestScope,
+  WORK_ITEM_DELETION_ROUTE,
+  workItemDeletionReadSummary,
+} from "./work-item-deletion-target";
 
 const ACTION_TTL_MS = 15 * 60 * 1000;
+/** SQLSTATEs `retryIdentityGrantClosure` retries rather than surfaces. */
+const RETRIED_GRANT_CLOSURE_CONFLICTS = new Set([
+  "40P01",
+  "40001",
+  "23503",
+  "23505",
+]);
 
 export type CreatePendingActionInput = {
   requesterPersonId: string;
@@ -78,7 +119,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
   const now = new Date();
   const id = createId();
   const traceId = createId();
-  const conflictTargetIds = [...input.targetIds].sort();
+  let conflictTargetIds = [...input.targetIds].sort();
   let requestAuditFailure = false;
   let created:
     | {
@@ -104,16 +145,18 @@ export async function createPendingAction(input: CreatePendingActionInput) {
       created = await db.transaction(async (tx) => {
         await lockPendingActionLifecycle(tx);
         const scope = await resolveRequestScope(tx, input);
+        const executionTargetIds = scope.executionTargetIds ?? input.targetIds;
+        conflictTargetIds = [...executionTargetIds].sort();
         const confirmation = requiredConfirmation({
           action: input.action,
           targetType: input.targetType,
-          targetCount: input.targetIds.length,
+          targetCount: executionTargetIds.length,
         });
         const payload = canonicalPendingActionPayload({
           action: input.action,
           route_key: input.routeKey,
           target_type: input.targetType,
-          target_ids: input.targetIds,
+          target_ids: executionTargetIds,
           workspace_id: scope.workspaceId,
           project_id: scope.projectId,
           organisation_id: scope.organisationId,
@@ -148,30 +191,54 @@ export async function createPendingAction(input: CreatePendingActionInput) {
           .returning({ id: pendingActionTable.id });
 
         if (!created) throw new Error("Pending action insert returned no row");
-        await enqueueOutboxEvent(tx, {
-          id: `evt_${createId()}`,
-          kind: "pending_action.requested",
-          occurredAt: now.toISOString(),
-          actor: {
-            type: "person",
-            id: input.requesterPersonId,
-            name: scope.actorName,
+        // PA-4: an API-key or MCP request is the key's act, not the person's, and the person
+        // is the one notified ("An agent using your key ... asked to delete ..."). Fan-out
+        // never notifies a person actor, so the envelope names the key as the actor.
+        const keyActor =
+          input.credentialType === "api_key" &&
+          input.credentialId &&
+          (input.origin === "api" || input.origin === "mcp")
+            ? await tx
+                .select({ id: apikeyTable.id, name: apikeyTable.name })
+                .from(apikeyTable)
+                .where(eq(apikeyTable.id, input.credentialId))
+                .limit(1)
+                .then(([key]) => key)
+            : undefined;
+        await enqueueNotificationEvent(
+          tx,
+          {
+            id: `evt_${createId()}`,
+            kind: "pending_action.requested",
+            occurredAt: now.toISOString(),
+            actor: keyActor
+              ? {
+                  type: "api_key",
+                  id: keyActor.id,
+                  name: keyActor.name ?? "API key",
+                }
+              : {
+                  type: "person",
+                  id: input.requesterPersonId,
+                  name: scope.actorName,
+                },
+            scope: eventScope(scope),
+            payload: {
+              key: id,
+              url: `/agent/settings/profile/pending-actions/${id}`,
+              pendingActionId: id,
+              action: input.action,
+              origin: input.origin,
+              targetType: input.targetType,
+              targetCount: payload.target_ids.length,
+              expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
+            },
+            causationId: null,
+            depth: 0,
+            originAutomationId: null,
           },
-          scope: eventScope(scope),
-          payload: {
-            key: id,
-            url: `/agent/settings/profile/pending-actions/${id}`,
-            pendingActionId: id,
-            action: input.action,
-            origin: input.origin,
-            targetType: input.targetType,
-            targetCount: payload.target_ids.length,
-            expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
-          },
-          causationId: null,
-          depth: 0,
-          originAutomationId: null,
-        });
+          { resolveRecipients: resolvePendingActionEventRecipients },
+        );
 
         try {
           await tx.transaction(async (auditTx) =>
@@ -245,10 +312,54 @@ export async function createPendingAction(input: CreatePendingActionInput) {
     await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
   }
 
+  let responseSummary = created.summary;
+  if (input.targetType === "work_item") {
+    const [row] = await db
+      .select()
+      .from(pendingActionTable)
+      .where(eq(pendingActionTable.id, id));
+    const [requester] = await db
+      .select({ userId: personTable.userId })
+      .from(personTable)
+      .where(eq(personTable.id, input.requesterPersonId));
+    const [key] =
+      input.credentialType === "api_key" && input.credentialId
+        ? await db
+            .select()
+            .from(apikeyTable)
+            .where(eq(apikeyTable.id, input.credentialId))
+        : [];
+    const viewer = requester?.userId
+      ? await resolveIdentity({
+          userId: requester.userId,
+          ...(input.credentialType === "api_key"
+            ? {
+                credential: "api_key" as const,
+                apiKey: {
+                  enabled: key?.enabled === true,
+                  ownerUserId: key?.referenceId ?? "",
+                  capabilities: apiKeyCapabilitySubset(
+                    apiKeyScopeFromStoredPermissions(key?.permissions ?? null),
+                  ),
+                },
+              }
+            : { credential: "session" as const }),
+        })
+      : null;
+    responseSummary =
+      row && viewer
+        ? ((await (input.action === "bulk_delete"
+            ? bulkWorkItemDeletionReadSummary
+            : workItemDeletionReadSummary)(row, db, viewer)) ?? {
+            redacted: true,
+            targetCount: 1,
+          })
+        : { redacted: true, targetCount: 1 };
+  }
   return {
     pendingActionId: id,
     action: input.action,
-    summary: created.summary,
+    summary: responseSummary,
     confirmation: created.confirmation,
     expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
     approveUrl: `/agent/settings/profile/pending-actions/${id}`,
@@ -320,7 +431,7 @@ export async function getOwnPendingActions(
   const pageRows = hasMore ? rows.slice(0, options.limit) : rows;
   const data = await Promise.all(
     pageRows.map(({ pendingAction, requestingKeyName }) =>
-      toPendingActionRead(pendingAction, requestingKeyName),
+      toPendingActionRead(pendingAction, requestingKeyName, identity),
     ),
   );
   for (const { pendingAction } of pageRows) {
@@ -389,6 +500,7 @@ export async function getOwnPendingAction(
   const data = await toPendingActionRead(
     result.pendingAction,
     result.requestingKeyName,
+    identity,
   );
   await auditViewed(
     result.pendingAction.id,
@@ -807,14 +919,25 @@ export async function approveUserDeactivation(input: {
         pendingActionId: row.id,
         traceId: input.traceId,
       });
-      const lifecycle = await transitionPersonLifecycleInTransaction(
-        tx,
-        target.id,
-        false,
-        "end_memberships",
-        { kind: "administrative" },
-        closure,
-      );
+      // PA-6 step 5: only the execution step itself can produce a `failed` outcome; the
+      // grant-closure retry signal and the conflicts `retryIdentityGrantClosure` retries
+      // keep their retry meaning.
+      const lifecycle = await failOnExecutorError(
+        () =>
+          transitionPersonLifecycleInTransaction(
+            tx,
+            target.id,
+            false,
+            "end_memberships",
+            { kind: "administrative" },
+            closure,
+          ),
+        {
+          passthrough: (error) =>
+            error instanceof IdentityGrantClosureChangedError ||
+            RETRIED_GRANT_CLOSURE_CONFLICTS.has(databaseErrorCode(error) ?? ""),
+        },
+      )();
       if (!lifecycle)
         throw new HTTPException(409, {
           message: "pending_action_target_changed",
@@ -1152,8 +1275,9 @@ function decodePendingActionCursor(value: string): PendingActionCursor {
 async function toPendingActionRead(
   row: typeof pendingActionTable.$inferSelect,
   requestingKeyName: string | null,
+  viewer: ResolvedIdentity,
 ) {
-  const publicFields = await publicPendingActionFields(row);
+  const publicFields = await publicPendingActionFields(row, db, viewer);
   return pendingActionReadSchema.parse({
     id: row.id,
     action: publicFields.action,
@@ -1201,7 +1325,83 @@ function isLegacyInstanceUserDeactivation(
 async function publicPendingActionFields(
   row: typeof pendingActionTable.$inferSelect,
   executor: typeof db | PendingActionTransaction = db,
+  viewer?: ResolvedIdentity,
 ): Promise<PublicPendingActionFields> {
+  if (
+    row.action === "delete" &&
+    row.targetType === "attachment" &&
+    row.routeKey === ATTACHMENT_DELETION_ROUTE
+  ) {
+    const summary = await attachmentDeletionReadSummary(row, executor, viewer);
+    return {
+      action: "delete",
+      targetType: "attachment",
+      targetIds: summary ? row.targetIds : [],
+      summary: summary ?? { redacted: true, targetCount: 1 },
+      approvalSupported: summary !== undefined,
+    };
+  }
+
+  if (
+    row.action === "delete" &&
+    row.targetType === "comment" &&
+    row.routeKey === COMMENT_DELETION_ROUTE
+  ) {
+    const summary = await commentDeletionReadSummary(row, executor, viewer);
+    return {
+      action: "delete",
+      targetType: "comment",
+      targetIds: summary ? row.targetIds : [],
+      summary: summary ?? { redacted: true, targetCount: 1 },
+      approvalSupported: summary !== undefined,
+    };
+  }
+
+  if (
+    row.targetType === "work_item" &&
+    ((row.action === "delete" && row.routeKey === WORK_ITEM_DELETION_ROUTE) ||
+      (row.action === "bulk_delete" &&
+        row.routeKey === BULK_WORK_ITEM_DELETION_ROUTE))
+  ) {
+    const summary = await (row.action === "bulk_delete"
+      ? bulkWorkItemDeletionReadSummary
+      : workItemDeletionReadSummary)(row, executor, viewer);
+    return {
+      action: row.action === "bulk_delete" ? "bulk_delete" : "delete",
+      targetType: "work_item",
+      targetIds: summary ? row.targetIds : [],
+      summary: summary ?? { redacted: true, targetCount: row.targetIds.length },
+      approvalSupported:
+        summary !== undefined &&
+        resolvePendingActionApprovalContract({
+          action: row.action,
+          targetType: row.targetType,
+          confirmationRequired: row.confirmationRequired,
+          routeKey: row.routeKey,
+        }) !== undefined,
+    };
+  }
+  if (
+    row.action === "delete" &&
+    row.targetType === "relation" &&
+    row.routeKey === RELATION_DELETION_ROUTE
+  ) {
+    const summary = await relationDeletionReadSummary(row, executor, viewer);
+    return {
+      action: "delete",
+      targetType: "relation",
+      targetIds: row.targetIds,
+      summary: summary ?? { redacted: true, targetCount: 1 },
+      approvalSupported:
+        summary !== undefined &&
+        resolvePendingActionApprovalContract({
+          action: row.action,
+          targetType: row.targetType,
+          confirmationRequired: row.confirmationRequired,
+          routeKey: row.routeKey,
+        }) !== undefined,
+    };
+  }
   if (
     row.action === "delete" ||
     row.action === "bulk_delete" ||
@@ -1278,6 +1478,7 @@ async function publicPendingActionFields(
 }
 
 type ResolvedRequestScope = {
+  executionTargetIds?: readonly string[];
   workspaceId: string | null;
   projectId: string | null;
   organisationId: string | null;
@@ -1294,6 +1495,35 @@ async function resolveRequestScope(
   tx: PendingActionTransaction,
   input: CreatePendingActionInput,
 ): Promise<ResolvedRequestScope> {
+  if (
+    input.action === "delete" &&
+    input.targetType === "attachment" &&
+    input.routeKey === ATTACHMENT_DELETION_ROUTE &&
+    input.targetIds.length === 1
+  )
+    return resolveAttachmentDeletionRequestScope(tx, input);
+
+  if (
+    input.action === "delete" &&
+    input.targetType === "comment" &&
+    input.routeKey === COMMENT_DELETION_ROUTE &&
+    input.targetIds.length === 1
+  )
+    return resolveCommentDeletionRequestScope(tx, input);
+
+  if (
+    input.action === "bulk_delete" &&
+    input.targetType === "work_item" &&
+    input.routeKey === BULK_WORK_ITEM_DELETION_ROUTE
+  )
+    return resolveBulkWorkItemDeletionRequestScope(tx, input);
+  if (
+    input.action === "delete" &&
+    input.targetType === "relation" &&
+    input.routeKey === RELATION_DELETION_ROUTE &&
+    input.targetIds.length === 1
+  )
+    return resolveRelationDeletionRequestScope(tx, input);
   if (
     input.action === "delete" &&
     input.targetType === "user" &&
@@ -1313,181 +1543,17 @@ async function resolveRequestScope(
     return resolveWorkspaceDeletionRequestScope(tx, input);
   }
   if (
-    input.targetType !== "work_item" ||
-    input.action !== "delete" ||
-    input.targetIds.length !== 1
-  ) {
-    throw new HTTPException(400, {
-      message:
-        "Pending actions currently support registered single-work-item deletions only",
-    });
-  }
-
-  const targetIds = [...new Set(input.targetIds)];
-  if (targetIds.length === 0 || targetIds.length !== input.targetIds.length) {
-    throw new TypeError("Pending action targets must be nonempty and unique");
-  }
-
-  const targets = await tx
-    .select({
-      key: workItemTable.key,
-      title: workItemTable.title,
-      projectName: projectTable.name,
-      workspaceId: workItemTable.workspaceId,
-      projectId: workItemTable.projectId,
-      organisationId: workspaceTable.organisationId,
-    })
-    .from(workItemTable)
-    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
-    .innerJoin(workspaceTable, eq(workspaceTable.id, projectTable.workspaceId))
-    .where(
-      and(
-        inArray(workItemTable.key, targetIds),
-        isNull(workItemTable.deletedAt),
-        isNull(workItemTable.archivedAt),
-        isNull(projectTable.archivedAt),
-        isNull(projectTable.deletedAt),
-      ),
-    )
-    .for("update")
-    .limit(targetIds.length);
-
-  if (targets.length !== targetIds.length) {
-    throw new HTTPException(404, {
-      message: "Pending action target not found",
-    });
-  }
-  const [target] = targets;
-  if (!target)
-    throw new HTTPException(404, {
-      message: "Pending action target not found",
-    });
-  if (
-    targets.some(
-      (row) =>
-        row.workspaceId !== target.workspaceId ||
-        row.projectId !== target.projectId ||
-        row.organisationId !== target.organisationId,
-    )
-  ) {
-    throw new HTTPException(404, {
-      message: "Pending action target not found",
-    });
-  }
-
-  if (
-    (input.workspaceId !== undefined &&
-      input.workspaceId !== target.workspaceId) ||
-    (input.projectId !== undefined && input.projectId !== target.projectId) ||
-    (input.organisationId !== undefined &&
-      input.organisationId !== target.organisationId)
-  ) {
-    throw new HTTPException(404, {
-      message: "Pending action target not found",
-    });
-  }
-
-  const [requester] = await tx
-    .select({
-      userId: personTable.userId,
-      active: personTable.active,
-      actorName: userTable.name,
-      banned: userTable.banned,
-    })
-    .from(personTable)
-    .innerJoin(userTable, eq(userTable.id, personTable.userId))
-    .where(eq(personTable.id, input.requesterPersonId))
-    .limit(1);
-  if (!requester?.userId || !requester.active || requester.banned) {
-    throw new HTTPException(403, {
-      message: "Pending-action requester is unavailable",
-    });
-  }
-
-  if (input.credentialType === "api_key") {
-    if (input.actorType !== "api_key" || input.actorId !== requester.userId) {
-      throw new HTTPException(403, {
-        message:
-          "API-key credential does not match the pending-action requester",
-      });
-    }
-    const keyCheckAt = new Date();
-    const [apiKey] = await tx
-      .select({ id: apikeyTable.id, permissions: apikeyTable.permissions })
-      .from(apikeyTable)
-      .where(
-        and(
-          eq(apikeyTable.id, input.credentialId ?? ""),
-          or(
-            eq(apikeyTable.referenceId, requester.userId),
-            eq(apikeyTable.userId, requester.userId),
-          ),
-          eq(apikeyTable.enabled, true),
-          or(
-            isNull(apikeyTable.expiresAt),
-            gt(apikeyTable.expiresAt, keyCheckAt),
-          ),
-        ),
-      )
-      .for("update")
-      .limit(1);
-    if (!apiKey) {
-      throw new HTTPException(403, {
-        message:
-          "API-key credential does not belong to the pending-action requester",
-      });
-    }
-  }
-
-  const route = policyRegistry.get(input.routeKey);
-  if (
-    input.routeKey !== "DELETE /api/work-items/{key}" ||
-    route?.kind !== "capability" ||
-    !("capability" in route.policy) ||
-    route.policy.scope !== "work_item" ||
-    !isCapability(route.policy.capability) ||
-    route.policy.capability !== "work_item:delete"
-  ) {
-    throw new TypeError(
-      "Pending-action route must be DELETE /api/work-items/{key}",
-    );
-  }
-
-  const access = await evaluateActionRequiredAccess(tx, {
-    requestedByPersonId: input.requesterPersonId,
-    credentialType: input.credentialType,
-    credentialId: input.credentialId,
-    action: input.action,
-    targetType: input.targetType,
-    targetIds: input.targetIds,
-    routeKey: input.routeKey,
-    workspaceId: target.workspaceId,
-    projectId: target.projectId,
-    organisationId: target.organisationId,
-    confirmationRequired: requiredConfirmation({
-      action: input.action,
-      targetType: input.targetType,
-      targetCount: input.targetIds.length,
-    }),
+    input.action === "delete" &&
+    input.targetType === "work_item" &&
+    input.routeKey === WORK_ITEM_DELETION_ROUTE &&
+    input.targetIds.length === 1
+  )
+    return resolveWorkItemDeletionRequestScope(tx, input);
+  if (isRegisteredDeletion(input) && input.targetIds.length === 1)
+    return resolveRegisteredDeletionRequestScope(tx, input);
+  throw new HTTPException(400, {
+    message: "Pending action target/action/route is unsupported",
   });
-  if (!access.allowed) {
-    throw new HTTPException(access.status === 404 ? 404 : 403, {
-      message: access.failure === "reach" ? "Out of reach" : "Forbidden",
-    });
-  }
-
-  return {
-    workspaceId: target.workspaceId,
-    projectId: target.projectId,
-    organisationId: target.organisationId,
-    actorName: requester.actorName,
-    summary: {
-      key: target.key,
-      title: target.title,
-      projectName: target.projectName,
-      requesterName: requester.actorName,
-    },
-  };
 }
 
 async function resolveWorkspaceDeletionRequestScope(

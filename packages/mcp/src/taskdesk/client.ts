@@ -8,6 +8,21 @@ export type Json =
   | Json[]
   | { [key: string]: Json };
 
+/**
+ * A failed API call. `message` is trusted (path and HTTP status only); `detail` is the
+ * server-supplied error text, which can echo user input, so it is carried separately and
+ * wrapped as untrusted content at the output boundary (PA-10).
+ */
+export class TaskDeskApiError extends Error {
+  constructor(
+    message: string,
+    readonly detail: string | null = null,
+  ) {
+    super(message);
+    this.name = "TaskDeskApiError";
+  }
+}
+
 export class TaskDeskClient {
   readonly baseUrl: string;
   private readonly auth: AuthService;
@@ -58,7 +73,7 @@ export class TaskDeskClient {
       }
     }
     if (!res.ok) {
-      let detail: string;
+      let detail: string | null = null;
       if (
         typeof body === "object" &&
         body !== null &&
@@ -68,10 +83,8 @@ export class TaskDeskClient {
         detail = (body as { message: string }).message;
       } else if (typeof body === "string" && body.length > 0) {
         detail = body.length > 500 ? `${body.slice(0, 500)}…` : body;
-      } else {
-        detail = `HTTP ${res.status}`;
       }
-      throw new Error(`${path}: ${detail}`);
+      throw new TaskDeskApiError(`${path}: HTTP ${res.status}`, detail);
     }
     return body as T;
   }

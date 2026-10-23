@@ -6,6 +6,7 @@ import useGetProjectStates from "@/hooks/queries/project/use-get-project-states"
 import useGetBoardWorkItems from "@/hooks/queries/work-item/use-get-board-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
 import WorkItemBoard from "./work-item-board";
 
 const WorkItemListRealtime = lazy(
@@ -24,6 +25,8 @@ export default function WorkItemBoardView({
   project,
   workspaceId,
   filter,
+  sort = "position",
+  dir = "asc",
   onErrorChange,
   realtimeProjectId,
   realtimeStatus,
@@ -32,10 +35,13 @@ export default function WorkItemBoardView({
   selectedKeys,
   onSelectionChange,
   onPruneSelection,
+  onOpenItem,
 }: {
   project: { id: string; slug?: string };
   workspaceId?: string;
   filter?: string;
+  sort?: WorkItemSortField;
+  dir?: WorkItemSortDirection;
   onErrorChange?: (error: unknown) => void;
   realtimeProjectId: string | undefined;
   realtimeStatus:
@@ -49,19 +55,24 @@ export default function WorkItemBoardView({
   selectedKeys: string[];
   onSelectionChange: (key: string, checked: boolean) => void;
   onPruneSelection: (present: Set<string>) => void;
+  onOpenItem?: (key: string) => void;
 }) {
   const { t } = useTranslation();
   const { canTransitionTasks, canRankTasks, isCheckingPermissions } =
-    useWorkspacePermission();
+    useWorkspacePermission(workspaceId, project.id);
   const status =
     realtimeStatus && realtimeStatus.projectId === project.id
       ? realtimeStatus.status
       : "connecting";
+  const effectiveSort = filter?.trim() && sort === "position" ? "key" : sort;
+  const effectiveDir = filter?.trim() && sort === "position" ? "asc" : dir;
   const items = useGetBoardWorkItems({
     projectId: project.id,
     projectSlug: project.slug,
     workspaceId,
     filter,
+    sort: effectiveSort,
+    dir: effectiveDir,
     realtimeStatus: status,
   });
   const states = useGetProjectStates(project.id);
@@ -80,7 +91,14 @@ export default function WorkItemBoardView({
 
   // A selected item that has left the loaded set must not stay selected.
   useEffect(() => {
-    if (workItems) onPruneSelection(new Set(workItems.map((item) => item.key)));
+    if (workItems)
+      onPruneSelection(
+        new Set(
+          workItems
+            .filter((item) => !item.unavailableFields.includes("key"))
+            .map((item) => item.key),
+        ),
+      );
   }, [workItems, onPruneSelection]);
 
   return (
@@ -98,6 +116,8 @@ export default function WorkItemBoardView({
       ) : null}
       <WorkItemBoard
         projectId={project.id}
+        sort={effectiveSort}
+        dir={effectiveDir}
         states={states.data}
         statesError={states.isError}
         workItems={workItems}
@@ -117,6 +137,7 @@ export default function WorkItemBoardView({
         canRank={!isCheckingPermissions && canRankTasks()}
         selectedKeys={selectedKeys}
         onSelectionChange={onSelectionChange}
+        onOpenItem={onOpenItem}
       />
       {!isLoading && realtimeProjectId === project.id ? (
         <Suspense fallback={<WorkItemListLoading />}>

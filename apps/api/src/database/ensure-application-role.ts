@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { APPEND_ONLY_TABLES } from "./append-only-tables";
+import { APPEND_ONLY_TABLES, READ_ONLY_TABLES } from "./append-only-tables";
 import type { DatabaseInstance } from "./index";
 import { resolveDatabaseConfig } from "./resolve-database-url";
 import { computeScramSha256Verifier } from "./scram-sha-256";
@@ -182,6 +182,7 @@ export async function ensureApplicationRole(
           WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
     );
     const appendOnly = new Set(APPEND_ONLY_TABLES);
+    const readOnly = new Set(READ_ONLY_TABLES);
 
     for (const row of existingTables.rows as Array<{ table_name: string }>) {
       const tableName = row.table_name;
@@ -195,7 +196,11 @@ export async function ensureApplicationRole(
         sql.raw(`REVOKE ALL ON TABLE ${quotedTable} FROM ${quotedRole}`),
       );
 
-      if (appendOnly.has(tableName)) {
+      if (readOnly.has(tableName)) {
+        await tx.execute(
+          sql.raw(`GRANT SELECT ON TABLE ${quotedTable} TO ${quotedRole}`),
+        );
+      } else if (appendOnly.has(tableName)) {
         await tx.execute(
           sql.raw(
             `GRANT SELECT, INSERT ON TABLE ${quotedTable} TO ${quotedRole}`,
@@ -216,6 +221,20 @@ export async function ensureApplicationRole(
     await tx.execute(
       sql.raw(
         `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${quotedRole}`,
+      ),
+    );
+
+    // The anchored audit purge (migration 0132) runs as SECURITY DEFINER so the
+    // application role never holds DELETE on `audit_log` nor INSERT on `audit_chain_anchor`;
+    // it only needs EXECUTE. Granted only when the function exists so an older database
+    // still boots.
+    await tx.execute(
+      sql.raw(
+        `DO $grant$ BEGIN
+           IF to_regprocedure('audit_log_purge_prefix(bigint)') IS NOT NULL THEN
+             EXECUTE 'GRANT EXECUTE ON FUNCTION audit_log_purge_prefix(bigint) TO ${quotedRole}';
+           END IF;
+         END $grant$`,
       ),
     );
 

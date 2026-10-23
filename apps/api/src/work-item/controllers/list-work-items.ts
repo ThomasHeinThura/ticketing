@@ -1,10 +1,12 @@
-import { and, eq, inArray, isNull, lt, type SQL, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
 import db from "../../database";
 import {
+  labelTable,
   personTable,
   stateTable,
   stateTemplateTable,
   userTable,
+  workItemLabelTable,
   workItemTable,
   workspaceUserTable,
 } from "../../database/schema";
@@ -44,10 +46,10 @@ import type { ListWorkItemsQuery } from "../schema";
  * fixed allowlist (`schema.ts`'s `listWorkItemsQuery`), so a request naming any other
  * column is a 400, never silently accepted.
  *
- * Bounded queries, no N+1: exactly two queries run regardless of how many rows match --
+ * Bounded queries, no N+1: at most three queries run regardless of how many rows match --
  * one `SELECT ... LEFT/INNER JOIN ...` that resolves state name/category and assignee
  * name for the whole page in one round trip, and one `SELECT count(*)` for
- * `meta.total`. Neither cost scales with the number of ROWS returned per item.
+ * `meta.total`. A third bounded query resolves assigned labels for this page only; there is no per-item query.
  */
 
 const WORK_ITEM_PRIORITY_COLUMN_VALUES = [
@@ -234,8 +236,44 @@ export async function listWorkItems(
         })
       : null;
 
+  const labels = page.length
+    ? await db
+        .select({
+          workItemId: workItemLabelTable.workItemId,
+          id: labelTable.id,
+          name: labelTable.name,
+          color: labelTable.color,
+        })
+        .from(workItemLabelTable)
+        .innerJoin(labelTable, eq(labelTable.id, workItemLabelTable.labelId))
+        .where(
+          and(
+            inArray(
+              workItemLabelTable.workItemId,
+              page.map((row) => row.workItem.id),
+            ),
+            eq(labelTable.workspaceId, workspaceId),
+            isNull(labelTable.taskId),
+            or(
+              isNull(labelTable.projectId),
+              eq(labelTable.projectId, projectId),
+            ),
+          ),
+        )
+        .orderBy(labelTable.name, labelTable.id)
+    : [];
+  const labelsByItem = new Map<
+    string,
+    Array<{ id: string; name: string; color: string }>
+  >();
+  for (const { workItemId, ...label } of labels) {
+    const assigned = labelsByItem.get(workItemId) ?? [];
+    assigned.push(label);
+    labelsByItem.set(workItemId, assigned);
+  }
   return {
     data: page.map((row) => ({
+      labels: labelsByItem.get(row.workItem.id) ?? [],
       ...row.workItem,
       stateName: row.stateName,
       stateCategory: row.stateCategory,

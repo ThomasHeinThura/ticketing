@@ -135,6 +135,7 @@ function registeredNotificationResource() {
     eq(notificationTable.resourceType, "work_item"),
     eq(notificationTable.resourceType, "comment"),
     eq(notificationTable.resourceType, "workspace"),
+    eq(notificationTable.resourceType, "pending_action"),
     eq(notificationTable.resourceType, "instance"),
     eq(notificationTable.resourceType, "person"),
     sql`false`,
@@ -255,7 +256,7 @@ async function readableNativeRows(
   const workspaceRows = rows.filter(
     (row) =>
       row.resourceType === "workspace" &&
-      row.type === "workspace_created" &&
+      (row.type === "workspace_created" || row.kind === "workspace.created") &&
       row.resourceId,
   );
   const workspaceIds = [
@@ -313,6 +314,14 @@ async function readableNativeRows(
         ].includes(row.kind ?? "")
       );
     }
+    if (row.resourceType === "pending_action") {
+      return (
+        row.personId === identity.personId &&
+        ["pending_action.requested", "pending_action.executed"].includes(
+          row.kind ?? "",
+        )
+      );
+    }
     if (row.resourceType === "workspace") {
       const workspace = workspaceFacts.get(row.resourceId);
       const reachable =
@@ -332,7 +341,8 @@ async function readableNativeRows(
               grant.scope === "workspace" && grant.scopeId === workspace.id,
           ));
       return (
-        row.type === "workspace_created" &&
+        (row.type === "workspace_created" ||
+          row.kind === "workspace.created") &&
         Boolean(
           workspace &&
             reachable &&
@@ -466,6 +476,15 @@ function currentOwnerPredicate(
   }
   if (row.resourceType === "approval")
     return approvalNotificationReadable(row.userId, executor);
+  if (row.resourceType === "pending_action") {
+    return and(
+      eq(notificationTable.personId, identity.personId),
+      inArray(notificationTable.kind, [
+        "pending_action.requested",
+        "pending_action.executed",
+      ]),
+    );
+  }
   if (row.resourceType === "workspace") {
     return exists(
       executor
@@ -480,7 +499,10 @@ function currentOwnerPredicate(
               workspaceTable.id,
               executor,
             ),
-            eq(notificationTable.type, "workspace_created"),
+            or(
+              eq(notificationTable.type, "workspace_created"),
+              eq(notificationTable.kind, "workspace.created"),
+            ),
           ),
         ),
     );

@@ -19,6 +19,7 @@ const priorEnforcementSetting = vi.hoisted(() => {
     "apps/api/src/workspace/policy.ts",
     "apps/api/src/invitation/policy.ts",
     "apps/api/src/work-item/policy.ts",
+    "apps/api/src/work-item-relation/policy.ts",
     "apps/api/src/time-entry/policy.ts",
     "apps/api/src/capabilities/policy.ts",
     "apps/api/src/column/policy.ts",
@@ -30,7 +31,9 @@ const priorEnforcementSetting = vi.hoisted(() => {
     "apps/api/src/approval/policy.ts",
     "apps/api/src/canned-response/policy.ts",
     "apps/api/src/notification/policy.ts",
+    "apps/api/src/notification-provider/policy.ts",
     "apps/api/src/notification-preferences/policy.ts",
+    "apps/api/src/notification/preference-handoff-policy.ts",
     "apps/api/src/search/policy.ts",
     "apps/api/src/user/policy.ts",
     "apps/api/src/user-preference/policy.ts",
@@ -66,6 +69,11 @@ import {
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
+import {
+  deleteThroughApproval,
+  ensureAgentSession,
+} from "./helpers/pending-deletion";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 function hashApiKey(key: string): string {
   return createHash("sha256")
@@ -223,6 +231,11 @@ describe("strict policy runtime enforcement against the production API graph", (
     );
     const type = await createWorkItemType(member.workspace.id);
     await createDefaultState(member.workspace.id, project.id);
+    await ensureCreationWorkflow({
+      workspaceId: member.workspace.id,
+      projectId: project.id,
+      typeId: type.id,
+    });
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -616,6 +629,11 @@ describe("strict policy runtime enforcement against the production API graph", (
     );
     const foreignType = await createWorkItemType(foreign.workspace.id);
     await createDefaultState(foreign.workspace.id, foreignProject.id);
+    await ensureCreationWorkflow({
+      workspaceId: foreign.workspace.id,
+      projectId: foreignProject.id,
+      typeId: foreignType.id,
+    });
 
     mockAuthenticatedSession(foreign.user);
     const { app } = createApp();
@@ -719,6 +737,11 @@ describe("strict policy runtime enforcement against the production API graph", (
     ]);
     const type = await createWorkItemType(member.workspace.id);
     await createDefaultState(member.workspace.id, project.id);
+    await ensureCreationWorkflow({
+      workspaceId: member.workspace.id,
+      projectId: project.id,
+      typeId: type.id,
+    });
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -768,6 +791,11 @@ describe("strict policy runtime enforcement against the production API graph", (
     await grantProjectReach(staff.user.id, staff.workspace.id, project.id);
     const type = await createWorkItemType(staff.workspace.id);
     await createDefaultState(staff.workspace.id, project.id);
+    await ensureCreationWorkflow({
+      workspaceId: staff.workspace.id,
+      projectId: project.id,
+      typeId: type.id,
+    });
 
     const organisation = requireRow(
       await db
@@ -847,8 +875,11 @@ describe("strict policy runtime enforcement against the production API graph", (
       });
       expect(updated.status, await updated.clone().text()).toBe(200);
 
-      const deleted = await app.request(base, { method: "DELETE" });
-      expect(deleted.status, await deleted.clone().text()).toBe(200);
+      // The DELETE requests (202); the owner's typed-name + step-up approval executes it.
+      await ensureAgentSession(owner.user.id);
+      await deleteThroughApproval(app, owner.user, base, {
+        typedName: "Strict row scope workspace",
+      });
     });
 
     it("loads persisted asset workspace scope before strict evaluation and preserves native reach responses", async () => {

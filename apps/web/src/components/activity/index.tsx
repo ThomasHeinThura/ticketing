@@ -14,6 +14,7 @@ import { getInitials } from "@/lib/get-initials";
 import { getPriorityLabel, getStatusLabel } from "@/lib/i18n/domain";
 import { Avatar, AvatarFallback, AvatarImage } from "../avatar";
 import CommentCard from "./comment-card";
+import { ActivityEventPresentation } from "./comment-card-presentation";
 import { isCommentActivity } from "./utils";
 
 type ActivityItem = {
@@ -467,29 +468,24 @@ function Activity({
   const activityIcon = getActivityTypeIcon(activity.type);
 
   return (
-    <TimelineItem
-      className="relative m-0! flex-row items-center gap-3 py-2.5!"
+    <ActivityEventPresentation
       step={step}
-    >
-      {showConnector && (
-        <span className="-translate-x-1/2 absolute top-9 bottom-0 left-3 w-px bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)] dark:bg-[color-mix(in_srgb,var(--foreground)_26%,transparent)]" />
-      )}
-      <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground">
-        {activityIcon}
-      </span>
-      <ActorAvatar user={user || null} fallbackName={actorName} />
-      <TimelineContent className="text-sm leading-6 text-foreground">
-        <UserHoverName user={user || null} fallbackName={actorName} />{" "}
-        {renderActivityContent({
-          activity,
-          workspaceUsers: workspaceUsers as WorkspaceUser[] | undefined,
-          t,
-        })}{" "}
+      showConnector={showConnector}
+      icon={activityIcon}
+      avatar={<ActorAvatar user={user || null} fallbackName={actorName} />}
+      actor={<UserHoverName user={user || null} fallbackName={actorName} />}
+      timestamp={
         <span className="whitespace-nowrap text-muted-foreground text-xs">
           {formatRelativeTime(activity.createdAt)}
         </span>
-      </TimelineContent>
-    </TimelineItem>
+      }
+    >
+      {renderActivityContent({
+        activity,
+        workspaceUsers: workspaceUsers as WorkspaceUser[] | undefined,
+        t,
+      })}
+    </ActivityEventPresentation>
   );
 }
 

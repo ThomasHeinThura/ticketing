@@ -280,6 +280,8 @@ export type RouteCase = {
   readOnlyStatus?: number;
   /** Status an API key with read-only scope (owned by a fully-capable project member) gets. Default 403. */
   readKeyStatus?: number;
+  /** Status an UNSCOPED API key (no read capability, so no reach) gets. Default 403. */
+  unscopedKeyStatus?: number;
   call: (app: App, world: World, item: Fixture) => Promise<Response>;
 };
 
@@ -340,6 +342,16 @@ export const ROUTES: RouteCase[] = [
   },
   {
     matrixKey: "DELETE /api/work-items/{key}",
+    successStatus: 202,
+    prepare: async (world) => {
+      await db.insert(schema.sessionTable).values({
+        id: `session-${world.projectMember.user.id}`,
+        userId: world.projectMember.user.id,
+        token: randomUUID(),
+        portal: "agent",
+        expiresAt: new Date(Date.now() + 3_600_000),
+      });
+    },
     call: (app, _w, i) => json(app, "DELETE", `/api/work-items/${i.key}`),
   },
   {
@@ -452,10 +464,28 @@ async function asProjectMember(world: World, fn: () => Promise<void>) {
   await fn();
 }
 
+async function ensureProjectMemberSession(world: World) {
+  await db
+    .insert(schema.sessionTable)
+    .values({
+      id: `session-${world.projectMember.user.id}`,
+      userId: world.projectMember.user.id,
+      token: randomUUID(),
+      portal: "agent",
+      expiresAt: new Date(Date.now() + 3_600_000),
+    })
+    .onConflictDoNothing();
+}
+
 ROUTES.push(
   {
     matrixKey: "DELETE /api/attachments/{id}",
+    // Durable deletion: the capable member's request is accepted (202) against their live
+    // session; an unscoped key holds no read capability, so the target is masked as 404.
+    successStatus: 202,
+    unscopedKeyStatus: 404,
     prepare: async (w, i, app) => {
+      await ensureProjectMemberSession(w);
       await asProjectMember(w, async () => {
         const r = await json(
           app,
@@ -518,7 +548,9 @@ ROUTES.push(
   },
   {
     matrixKey: "DELETE /api/comments/{id}",
+    successStatus: 202,
     prepare: async (w, i, app) => {
+      await ensureProjectMemberSession(w);
       await asProjectMember(w, async () => {
         const r = await json(app, "POST", `/api/work-items/${i.key}/comments`, {
           body: { type: "doc", content: [] },

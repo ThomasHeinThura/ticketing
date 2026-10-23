@@ -23,6 +23,23 @@ import { stopObservabilityRuntime } from "../../apps/api/src/instance/observabil
 import { shutdownScheduler } from "../../apps/api/src/scheduler";
 import { shutdownWebSocketAdapter } from "../../apps/api/src/ws";
 
+// Keep a real listener while avoiding the laptop API's fixed metrics port.
+vi.mock(
+  "../../apps/api/src/observability/metrics-listener",
+  async (original) => {
+    const actual =
+      await original<
+        typeof import("../../apps/api/src/observability/metrics-listener")
+      >();
+    return {
+      ...actual,
+      createMetricsListener: (
+        options: import("../../apps/api/src/observability/metrics-listener").MetricsListenerOptions,
+      ) => actual.createMetricsListener({ ...options, testPort: 0 }),
+    };
+  },
+);
+
 function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`;
 }
@@ -73,6 +90,7 @@ describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as th
   let originalDatabaseUrl: string | undefined;
   let originalMigrationUrl: string | undefined;
   let seededWorkspaceId: string | undefined;
+  let seededDenseWorkspaceId: string | undefined;
   let seededOrganisationId: string | undefined;
 
   afterEach(async () => {
@@ -107,6 +125,12 @@ describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as th
             .query("DELETE FROM workspace WHERE id = $1", [seededWorkspaceId])
             .catch(() => undefined);
         }
+        if (seededDenseWorkspaceId)
+          await owner
+            .query("DELETE FROM workspace WHERE id = $1", [
+              seededDenseWorkspaceId,
+            ])
+            .catch(() => undefined);
         if (seededOrganisationId) {
           await owner
             .query("DELETE FROM organisation WHERE id = $1", [
@@ -165,6 +189,13 @@ describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as th
     // tracked) only if it does not. Either way, `ensureInternalOrganisation` (called
     // from inside runApiBootTasks, before the backfill) is a get-or-create keyed on
     // `is_internal`, so it adopts whichever row is here rather than racing a second one.
+    const denseWorkspaceId = `dense_ws_${randomSuffix()}`;
+    seededDenseWorkspaceId = denseWorkspaceId;
+    const denseProjectId = `project_${randomSuffix()}`;
+    const denseProjectSlug = `BR${randomSuffix().toUpperCase()}`;
+    const denseStateId = `state_${randomSuffix()}`;
+    const denseTemplateId = `template_${randomSuffix()}`;
+    const denseTypeId = `type_${randomSuffix()}`;
     const legacyWorkspaceId = `ws_${randomSuffix()}`;
     seededWorkspaceId = legacyWorkspaceId;
     const seedClient = new Client({ connectionString: originalDatabaseUrl });
@@ -188,6 +219,39 @@ describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as th
         "INSERT INTO workspace (id, organisation_id, name, slug, created_at) VALUES ($1, $2, 'Legacy workspace', $3, now())",
         [legacyWorkspaceId, internalOrganisationId, `legacy-${randomSuffix()}`],
       );
+      await seedClient.query(
+        "INSERT INTO workspace (id, organisation_id, name, slug, created_at) VALUES ($1,$2,'Dense workspace',$3,now())",
+        [denseWorkspaceId, internalOrganisationId, `dense-${randomSuffix()}`],
+      );
+      await seedClient.query(
+        "INSERT INTO project (id, workspace_id, slug, name) VALUES ($1,$2,$3,'Dense boot project')",
+        [denseProjectId, denseWorkspaceId, denseProjectSlug],
+      );
+      await seedClient.query(
+        `INSERT INTO state_template (id,workspace_id,key,name,"group") VALUES ($1,$2,'boot-rank','Backlog','backlog')`,
+        [denseTemplateId, denseWorkspaceId],
+      );
+      await seedClient.query(
+        "INSERT INTO state (id,project_id,state_template_id,is_default) VALUES ($1,$2,$3,true)",
+        [denseStateId, denseProjectId, denseTemplateId],
+      );
+      await seedClient.query(
+        "INSERT INTO work_item_type (id,workspace_id,key,name,category) VALUES ($1,$2,'boot-rank','Task','delivery')",
+        [denseTypeId, denseWorkspaceId],
+      );
+      for (const number of [1, 2])
+        await seedClient.query(
+          "INSERT INTO work_item (id,workspace_id,project_id,type_id,state_id,number,key,title,position) VALUES ($1,$2,$3,$4,$5,$6,$7,'Dense persisted item',0)",
+          [
+            `boot_rank_${number}`,
+            denseWorkspaceId,
+            denseProjectId,
+            denseTypeId,
+            denseStateId,
+            number,
+            `${denseProjectSlug}-${number}`,
+          ],
+        );
     } finally {
       await seedClient.end();
     }
@@ -221,6 +285,26 @@ describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as th
     // own coverage of what it does) is what proves it actually ran as part of THIS
     // boot sequence, under the app role, not merely that it exists somewhere.
     expect(logged.some((line) => /backfill/i.test(line))).toBe(true);
+    expect(
+      logged.some((line) => /Position recovery: 1 partition/.test(line)),
+    ).toBe(true);
+    const verifyClient = new Client({ connectionString: originalDatabaseUrl });
+    await verifyClient.connect();
+    try {
+      const result = await verifyClient.query<{
+        position: string;
+        version: number;
+      }>(
+        "SELECT position::text, version FROM work_item WHERE project_id=$1 ORDER BY position",
+        [denseProjectId],
+      );
+      expect(result.rows).toEqual([
+        { position: "1.0000000000", version: 2 },
+        { position: "2.0000000000", version: 2 },
+      ]);
+    } finally {
+      await verifyClient.end();
+    }
 
     // The owner/admin reach reconcile (decision log 2026-10-14) is wired into the boot
     // sequence: it always logs one summary line, so removing the call fails here.

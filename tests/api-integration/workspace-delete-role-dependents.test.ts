@@ -26,7 +26,7 @@ import {
 import { signUpUser } from "./helpers/organization-http";
 import {
   createWorkspaceNative,
-  deleteWorkspaceNative,
+  deleteWorkspaceThroughApproval,
 } from "./helpers/workspace-write-http";
 
 const ENCRYPTION_KEY = "ab".repeat(32);
@@ -277,12 +277,17 @@ describe("#180 workspace delete with role-referencing rows", () => {
       "project:read",
     ]);
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
 
     expect(
       await db
@@ -339,12 +344,17 @@ describe("#180 workspace delete with role-referencing rows", () => {
       directOrigin: "system_backfill",
     });
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
 
     expect(await countDependents(workspaceId, [])).toEqual({
       roles: 0,
@@ -367,12 +377,17 @@ describe("#180 workspace delete with role-referencing rows", () => {
       owner.user.id,
     );
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
 
     expect(await db.select().from(schema.oidcGroupMappingTable)).toHaveLength(
       0,
@@ -426,12 +441,17 @@ describe("#180 workspace delete with role-referencing rows", () => {
       owner.user.id,
     );
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
 
     expect(
       await db
@@ -584,12 +604,17 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
       roleId: role.id,
     });
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
     expect(
       await db
         .select()
@@ -625,12 +650,17 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
       },
     ]);
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
     const remaining = await db
       .select()
       .from(schema.membershipTable)
@@ -706,12 +736,17 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
     });
     expect(doomed.connectionId).not.toBe(survivor.connectionId);
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
     expect(await db.select().from(schema.scimGroupMemberTable)).toHaveLength(0);
     // The surviving workspace's grant is untouched.
     expect(
@@ -734,12 +769,17 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
       roleId: roleA.id,
     });
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
     expect(
       await db
         .select()
@@ -1355,12 +1395,17 @@ describe("#734 account erasure and IdP-provisioned members", () => {
       priority: "medium",
     });
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
     expect(
       await db
         .select()
@@ -1394,12 +1439,17 @@ describe("#734 account erasure and IdP-provisioned members", () => {
       enabled: true,
     });
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(409);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(409);
     expect(
       await db
         .select()

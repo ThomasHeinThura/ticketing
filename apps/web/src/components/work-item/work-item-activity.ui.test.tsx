@@ -1,3 +1,5 @@
+vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
+
 import {
   cleanup,
   fireEvent,
@@ -18,6 +20,7 @@ const { mocks, translate } = vi.hoisted(() => ({
     preflightRefetch: vi.fn(),
     mentionCandidates: [] as Array<Record<string, unknown>>,
     rows: [] as Array<Record<string, unknown>>,
+    activityRead: vi.fn(),
     cannedResponses: [] as Array<Record<string, unknown>>,
     permissions: { public: true, internal: true, checking: false },
     permissionWorkspaces: [] as Array<string | undefined>,
@@ -44,6 +47,10 @@ const { mocks, translate } = vi.hoisted(() => ({
         "activity:timeline.comments": "Comments",
         "activity:timeline.edited": "Edited",
         "common:people.unknown": "Unknown",
+        "tasks:relations.title": "Relations",
+        "workItems:relations.types.relates": "relates to",
+        "workItems:relations.types.blocked_by": "blocked by",
+        "workItems:detail.unavailable": "Unavailable",
       }[key] ?? key
     );
   },
@@ -186,14 +193,17 @@ vi.mock("@/hooks/mutations/work-item/use-update-work-item-comment", () => ({
   }),
 }));
 vi.mock("@/hooks/queries/work-item/use-get-work-item-activity", () => ({
-  default: () => ({
-    data: { pages: [{ data: mocks.rows }] },
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    isLoading: mocks.activityState.isLoading,
-    isError: mocks.activityState.isError,
-    refetch: vi.fn(),
-  }),
+  default: (input: unknown) => {
+    mocks.activityRead(input);
+    return {
+      data: { pages: [{ data: mocks.rows }] },
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      isLoading: mocks.activityState.isLoading,
+      isError: mocks.activityState.isError,
+      refetch: vi.fn(),
+    };
+  },
 }));
 vi.mock(
   "@/hooks/queries/workspace-users/use-get-active-workspace-users",
@@ -283,6 +293,33 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     window.localStorage.clear();
   });
 
+  it("keeps the composer above loading, empty and populated history", () => {
+    const view = renderActivity();
+    const composer = screen.getByTestId("work-item-comment-composer");
+    const history = screen.getByRole("list", { name: "Activity & comments" });
+    expect(
+      Boolean(
+        composer.compareDocumentPosition(history) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
+    expect(
+      within(composer).getByRole("button", { name: "Send comment" }),
+    ).toBeDisabled();
+    view.unmount();
+    mocks.activityState.isLoading = true;
+    renderActivity();
+    expect(
+      Boolean(
+        screen
+          .getByTestId("work-item-comment-composer")
+          .compareDocumentPosition(
+            screen.getByTestId("work-item-activity-loading"),
+          ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
+  });
+
   it("maps selected Select values to translated labels and filters visibility by capability", () => {
     mocks.permissions = { public: true, internal: false, checking: false };
     const view = renderActivity("item-workspace-B");
@@ -337,6 +374,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
         workflowVersionId: null,
         createdAt: "2026-10-08T10:00:00.000Z",
         kind: "comment",
+        canEdit: true,
         body: "**workflow transition note**",
         activityId: "activity-1",
         editedAt: null,
@@ -746,6 +784,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
         workflowVersionId: null,
         createdAt: "2026-10-08T10:00:00.000Z",
         kind: "comment",
+        canEdit: true,
         body: {
           type: "doc",
           content: [
@@ -791,6 +830,55 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     );
   });
 
+  it("renders grouped relation additions and removals as human labels without endpoint details", () => {
+    const common = {
+      workItemId: "work-item-1",
+      actorId: "user-1",
+      actorType: "person",
+      verb: "updated",
+      field: "relation",
+      payload: null,
+      visibility: "internal",
+      workflowVersionId: null,
+      kind: "activity",
+    };
+    mocks.rows = [
+      {
+        ...common,
+        id: "relation-remove",
+        createdAt: "2026-10-08T10:01:00Z",
+        oldValue: {
+          type: "relates",
+          direction: "outgoing",
+          targetId: "private-peer-uuid",
+        },
+        newValue: null,
+      },
+      {
+        ...common,
+        id: "relation-add",
+        createdAt: "2026-10-08T10:00:00Z",
+        oldValue: null,
+        newValue: {
+          type: "blocks",
+          direction: "incoming",
+          targetKey: "SECRET-9",
+        },
+      },
+    ];
+    renderActivity();
+    const timeline = screen.getByTestId("work-item-activity");
+    expect(timeline).toHaveTextContent("Relations: — → blocked by");
+    expect(timeline.querySelector("details")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "activity:timeline.groupedChanges" }),
+    );
+    expect(timeline).toHaveTextContent("Relations: relates to → —");
+    expect(timeline).not.toHaveTextContent("private-peer-uuid");
+    expect(timeline).not.toHaveTextContent("SECRET-9");
+    expect(timeline).not.toHaveTextContent('"direction"');
+  });
+
   it("retains the legacy tombstone actor and withholds comment history", async () => {
     mocks.rows = [
       {
@@ -807,6 +895,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
         workflowVersionId: null,
         createdAt: "2026-10-08T10:00:00.000Z",
         kind: "comment",
+        canEdit: true,
         body: null,
         activityId: "activity-1",
         editedAt: "2026-10-08T10:02:00.000Z",
@@ -824,5 +913,147 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     expect(
       screen.queryByRole("button", { name: /^Edited/ }),
     ).not.toBeInTheDocument();
+  });
+  it("requests the scoped comment page and focuses the rendered comment without revealing other rows", () => {
+    mocks.rows = [
+      {
+        id: "comment-deep",
+        kind: "comment",
+        canEdit: true,
+        actorId: "person-1",
+        actorType: "person",
+        createdAt: "2026-10-08T10:00:00.000Z",
+        visibility: "internal",
+        body: "Selected comment",
+        verb: "commented",
+      },
+    ];
+    render(
+      <WorkItemActivity
+        workItemKey="OPS-17"
+        workspaceId="workspace-1"
+        defaultVisibility="internal"
+        filter="everything"
+        focusedComment="comment-deep"
+        onFilterChange={() => undefined}
+      />,
+    );
+    expect(mocks.activityRead).toHaveBeenLastCalledWith({
+      key: "OPS-17",
+      comment: "comment-deep",
+    });
+    const comment = document.getElementById("comment-comment-deep");
+    expect(comment).toHaveClass("rounded-xl", "bg-card/60");
+    expect(comment?.closest('[data-slot="timeline-item"]')).toHaveAttribute(
+      "role",
+      "listitem",
+    );
+    expect(comment?.closest('[data-slot="timeline"]')).toHaveAttribute(
+      "role",
+      "list",
+    );
+    const editButton = within(comment as HTMLElement).getByRole("button", {
+      name: "Edit",
+    });
+    expect(editButton.querySelector("svg")).not.toBeNull();
+    expect(editButton.textContent).toBe("");
+    expect(comment).toHaveFocus();
+    expect(document.getElementById("comment-comment-deep")).toHaveAttribute(
+      "data-focused-comment",
+      "true",
+    );
+  });
+  it.each([undefined, false])(
+    "does not offer Edit without authoritative permission (%s)",
+    (canEdit) => {
+      mocks.rows = [
+        {
+          id: "not-editable",
+          kind: "comment",
+          actorId: "user-1",
+          actorType: "person",
+          createdAt: "2026-10-08T10:00:00.000Z",
+          visibility: "internal",
+          body: "Visible retained comment",
+          verb: "commented",
+          canEdit,
+        },
+      ];
+      renderActivity();
+      expect(screen.getByText("Visible retained comment")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+      expect(screen.queryByRole("button", { name: /delete/i })).toBeNull();
+    },
+  );
+  it("offers original trash independently of Edit only for authoritative delete permission", () => {
+    mocks.rows = [
+      {
+        id: "can-delete",
+        kind: "comment",
+        actorId: "user-1",
+        actorType: "person",
+        createdAt: "2026-10-08T10:00:00.000Z",
+        visibility: "internal",
+        body: "Retained before confirmation",
+        verb: "commented",
+        canEdit: false,
+        canDelete: true,
+      },
+    ];
+    renderActivity();
+    const trash = screen.getByRole("button", {
+      name: "common:actions.delete",
+    });
+    expect(trash.querySelector("svg")).not.toBeNull();
+    expect(trash.textContent).toBe("");
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(
+      screen.getByText("Retained before confirmation"),
+    ).toBeInTheDocument();
+  });
+  it("renders authoritative canonical author names for read-only viewers without mention-directory access", () => {
+    mocks.permissions = { public: false, internal: false, checking: false };
+    mocks.mentionCandidates = [];
+    mocks.rows = [
+      {
+        id: "read-only-history",
+        kind: "comment",
+        actorId: "legacy-user",
+        actorPersonId: "canonical-person",
+        actorDisplayName: "Canonical history author",
+        actorType: "person",
+        createdAt: "2026-10-08T10:00:00.000Z",
+        visibility: "internal",
+        body: "Readable history",
+        verb: "commented",
+        canEdit: false,
+      },
+    ];
+    renderActivity();
+    expect(
+      screen.getByRole("button", { name: /Canonical history author/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+  });
+  it("never guesses an ambiguous comment author from the legacy user directory", () => {
+    mocks.rows = [
+      {
+        id: "ambiguous-history",
+        kind: "comment",
+        actorId: "user-1",
+        actorPersonId: null,
+        actorDisplayName: null,
+        actorType: "person",
+        createdAt: "2026-10-08T10:00:00.000Z",
+        visibility: "internal",
+        body: "Retained ambiguous history",
+        verb: "commented",
+        canEdit: false,
+      },
+    ];
+    renderActivity();
+    expect(screen.getByRole("button", { name: /Unknown/ })).toBeInTheDocument();
+    expect(screen.queryByText("Alice")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
   });
 });

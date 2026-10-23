@@ -34,6 +34,8 @@ type Task = {
   projectId: string;
   columnId?: string | null;
   labels?: TaskLabel[];
+  /** Canonical rich-text checklist projection; null means unavailable. */
+  taskItemStats?: { total: number; completed: number } | null;
   externalLinks?: TaskExternalLink[];
 };
 

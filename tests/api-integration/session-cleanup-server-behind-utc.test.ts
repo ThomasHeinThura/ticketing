@@ -16,9 +16,16 @@ import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
-import { deleteExpiredSessions } from "../../apps/api/src/scheduler/session-cleanup";
+import {
+  deleteExpiredSessions,
+  runSessionCleanup,
+} from "../../apps/api/src/scheduler/session-cleanup";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import {
+  plantPreferenceHandoff,
+  preferenceHandoffExists,
+} from "./helpers/preference-handoff-fixture";
 
 // America/New_York is UTC-04:00 in September, so a UTC wall clock read as local lands four
 // hours in the future.
@@ -67,6 +74,23 @@ describe("API integration: session-cleanup on a database server behind UTC", () 
 
   afterAll(() => {
     delete process.env.PGOPTIONS;
+  });
+
+  it("purges only expired UTC handoffs through the real leased job", async () => {
+    const member = await createWorkspaceMember();
+    const person = requireRow(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, member.user.id)),
+      "handoff recipient",
+    );
+    const expired = await plantPreferenceHandoff(person.id, -1);
+    const live = await plantPreferenceHandoff(person.id, 5);
+    const result = await runSessionCleanup();
+    expect(result.notificationPreferenceHandoffsDeleted).toBe(1);
+    expect(await preferenceHandoffExists(expired)).toBe(false);
+    expect(await preferenceHandoffExists(live)).toBe(true);
   });
 
   it("runs against a session that is genuinely not UTC", async () => {

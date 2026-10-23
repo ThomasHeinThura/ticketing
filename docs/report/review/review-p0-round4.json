@@ -1,0 +1,310 @@
+{
+	"verdict": "pass_with_conditions",
+	"summary": "M1 (high) is fixed. Account erasure now takes LOCK TABLE legal_hold and refuses with 409 legal_hold before any credential invalidation or deletion when a hold covers the person, their organisation or an erased workspace. An integration test drives the real better-auth delete-user route, and each refusal is paired with a lifted-hold success.\nM2, M3, M4, M6, M7, M8 and M9 are fixed in source with tests. M5 is fixed on paper: PA-1a now matches the allow-list and is recorded as accepted by Thomas on 23 Oct. That acceptance comes from the coordinator; I did not see it.\nNo critical or high finding remains. The new findings are one medium (process) and six lows: an unlisted presign route in the idempotency denylist, legacy task_comment cascade on erasure, weak coveredBy evidence in the auth-route inventory, a deep-link double confirm, PA-5 wording, and a held erasure that takes the identity-table lock before refusing. The registered deletion targets (column, label, canned response, invitation, relation, comment, attachment, work item) delete nothing held: work items, comments and attachments are soft-deleted, and a column delete sets task.column_id to null.\nThe one condition: AGENTS.md:20 requires browser verification on persisted data, and none was done (SIT Postgres down). P0 is implemented and AI-reviewed, but 'locally verified' cannot be claimed until the listed flows are checked in a browser.\nThe partial or blocked items (EV-1, EV-3, PA-4 origin, PA-5a, PA-13, PA-14) are carried with named phases. None of them is a P0 blocker under the stated bias.",
+	"round3_status": [
+		{
+			"id": "M1",
+			"status": "fixed",
+			"evidence": "apps/api/src/user/controllers/delete-account-data.ts:165-194 refuseIfUnderLegalHold. It runs lockLegalHolds (utils/workspace-legal-hold.ts:27-29), then checks a person hold or organisation hold on the erasing user's persons, then isWorkspaceUnderOpenLegalHold for each plan.workspaceIdsToDelete. It throws APIError CONFLICT code legal_hold and is called at :310, before invalidateAccountDeletionCredentials (:312) and deleteWorkspaceRoleDependents (:321). The path is wired through auth.ts:382-387 (beforeDelete) and covers deleteUserCallback via the same hook. Test: tests/api-integration/account-erasure-legal-hold.test.ts:122-199 goes through POST /api/auth/delete-user. It covers a held stakeholder, a held erasing person and a held organisation, and asserts that the user, the workspace and the sessions survive, then that the erasure succeeds after the hold is lifted."
+		},
+		{
+			"id": "M2",
+			"status": "fixed",
+			"evidence": "apps/web/src/components/shared/modals/create-task-modal.tsx:238-242 uses the store project only when project.id === resolvedProjectId, falling back to the workspaceProjects lookup. The upload key is built at :429-441. Test: create-task-modal.test.tsx:321-335 ('uploads to the created task's own project even when the store holds another project')."
+		},
+		{
+			"id": "M3",
+			"status": "fixed",
+			"evidence": "apps/web/src/components/pending-action/pending-action-approval.tsx:599-655. The slug comes from queryClient.getQueryData(['projects', workspaceId, projectId]) (:613-619), which matches use-get-project.ts:18. The function navigates to the board with replace (:624-631), handles the canonical /agent/work-items/$key page (:635-647), and removes ['task', id] and ['work-items', 'detail', key]. Tests: pending-action-approval-executed.test.tsx:141 (no seeded store) and :155 (canonical page). Unit-level only; not browser-verified."
+		},
+		{
+			"id": "M4",
+			"status": "fixed",
+			"evidence": "fetchers/work-item/relations.ts:90, saved-views.ts:141 and service-calendar.ts:130 use readPendingDeletion (a 409 'pending_approval: <id>' reopens the action). work-item-relations.tsx:84,143, views.tsx:147,320 and calendar-usage-card.tsx:61-77 open the dialog in place with no second AlertDialog. Tests: relations.test.ts:52-60 and calendar-usage-card.test.tsx:119. Residual: the ?action=delete deep-link entries for canned responses and labels deliberately keep their own confirm (K5)."
+		},
+		{
+			"id": "M5",
+			"status": "fixed",
+			"evidence": "docs/technical/safety-and-runtime.md:2469-2486. PA-1a now names workspace membership removal, own settings and inbox, session-only workflow-rule deletion, better-auth own-session and own-key revocation, and SCIM deprovision under its bearer token. These match ALLOWED_IMMEDIATE in tests/api-integration/delete-routes-never-immediate.test.ts:30-62. The doc records it as 'accepted by Thomas, 23 Oct 2026'; that acceptance is the coordinator's claim and was not independently verifiable. Residual wording: PA-5 (:~2505) still lists 'API key' deletion as elevated (K6)."
+		},
+		{
+			"id": "M6",
+			"status": "fixed",
+			"evidence": "tests/api-integration/delete-routes-never-immediate.test.ts:18-24,74-150,328-400. The test enumerates every live auth.api endpoint whose path matches delete, remove, revoke, unlink, disable or sign-out. Each must appear in AUTH_DESTRUCTIVE_ROUTES with a reason and a coveredBy file, with no stale entries. An anonymous probe asserts that user, session, key and workspace counts are unchanged and that /admin/* returns 404. The PATCH /api/task/bulk delete runtime test that asserts 410 and that the row survives is at task-target-reach.test.ts:541-564. Weaknesses are listed as K4."
+		},
+		{
+			"id": "M7",
+			"status": "fixed",
+			"evidence": "apps/api/src/middleware/idempotency.ts:28-40 and :240-277. Every 2xx application/json response up to 256 KiB is stored and replayed, except the SECRET_BEARING_ROUTES denylist (step-up, SCIM rotate/revoke-token, metrics-token rotate, /api/auth, /api/me api-key/mfa/totp/backup, attachments/presign, invitations). The middleware is mounted for every non-GET/HEAD/OPTIONS method at index.ts:1421-1424. Tests: tests/api/middleware/idempotency.test.ts:234 (201 create replayed) and :246-258 (denylisted paths never stored). Gap: PUT /api/task/image-upload/{id} (presigned URL) is not on the denylist (K2)."
+		},
+		{
+			"id": "M8",
+			"status": "fixed",
+			"evidence": "apps/api/src/utils/legal-hold-scope.ts:150-176 workspaceOwnPeople covers submission requester_id and claimed_by (by request type or work item), the uploaders of every workspace attachment (including submission attachments), and the membership and membership_grant person_id values, matching role, scope and OIDC/SCIM mapping predicates the same way delete-workspace-role-dependents.ts:75-148 does. It is wired into workspaceUnderOpenHold at :184-210, and submission organisations are included at :205-207. Tests: workspace-legal-hold-scope.test.ts:277-355, including the other-workspace control at :343."
+		},
+		{
+			"id": "M9",
+			"status": "fixed",
+			"evidence": "apps/api/src/utils/legal-hold-scope.ts:35-47 resolves comment.deleted_by and comment_version.edited_by through person.user_id, keeping the raw value as well. The predicate is shared, so the purge, gc and workspace delete all pick it up. Tests now seed user ids: workspace-legal-hold-scope.test.ts:225-233 (deletedBy: by.userId) and :251-272 (editedBy: by.userId)."
+		}
+	],
+	"findings": [
+		{
+			"id": "K1",
+			"severity": "medium",
+			"category": "test",
+			"requirement": "AGENTS.md:20 (verify affected screens in a real browser on persisted data); PA-3",
+			"file": "AGENTS.md:20; apps/web/src/components/pending-action/pending-action-approval.tsx:599-655; apps/web/src/components/shared/modals/create-task-modal.tsx:238-441",
+			"problem": "No browser verification was done in this round or earlier ones. The SIT Postgres was shut down at 00:44. Every PA-3 and UI claim (in-place approval dialog for each target, leaving the deleted task page on the legacy and canonical routes, create-task staged uploads to the right key, relation, saved-view and calendar dialogs, and member/role/workspace/project delete flows) rests on unit tests that mock react-query and the router.",
+			"impact": "The 'locally verified' state cannot be claimed for P0. The Kaneo-parity rule ('compare each touched screen against the Kaneo original in a browser') is unmet for the touched screens.",
+			"recommended_fix": "Before P0 is marked locally verified, restart a non-live test database (not taskdesk_browser_journey_1022_test with resetting fixtures) and walk these flows in a browser. Delete a task from its own page (legacy and /agent/work-items) and approve. Bulk delete. Comment and attachment delete. Relation remove. Saved-view delete. Service-calendar delete. Project, workspace and role delete with step-up. Create a task with staged files after first visiting another project's settings. Account deletion under a hold should show the 409 message. Record screenshots as phase evidence."
+		},
+		{
+			"id": "K2",
+			"severity": "low",
+			"category": "security",
+			"requirement": "PA-15 / api-design idempotency (secret-bearing responses are never persisted)",
+			"file": "apps/api/src/middleware/idempotency.ts:28-36; apps/api/src/task/index.ts:695-722 (PUT /api/task/image-upload/{id})",
+			"problem": "The denylist excludes /attachments/presign but not the legacy Kaneo image-upload route. That route answers 200 JSON carrying a presigned S3 PUT URL (or a filesystem-upload capability URL). A keyed PUT stores that URL in idempotency_key.response_body for 24 h, and a keyed retry replays it after it may have expired.",
+			"impact": "A short-lived upload credential is persisted in the database for 24 h, and a client retrying within 24 h gets a possibly expired URL and a failed upload. It is per-actor scoped and single-object, so exposure is low.",
+			"recommended_fix": "Add /\\/image-upload\\/[^/]+$/ (or a generic presign/upload-URL marker) to SECRET_BEARING_ROUTES and add it to the it.each case list in idempotency.test.ts. Better: let routes declare the flag next to their schema, so a new presign route cannot be missed."
+		},
+		{
+			"id": "K3",
+			"severity": "low",
+			"category": "data-loss",
+			"requirement": "PA-12; operations-and-distribution.md (erasure retains authored content)",
+			"file": "apps/api/src/database/schema.ts:1608-1616 (task_comment.user_id onDelete cascade); apps/api/src/user/controllers/delete-account-data.ts:333-339",
+			"problem": "For workspaces the erasing user leaves rather than deletes, the better-auth user-row delete cascades the legacy Kaneo task_comment rows they authored. The hold check covers the erasing person, their organisation and the erased workspaces. It does not cover a hold on a surviving workspace's or project's organisation, and authored content is meant to be retained regardless. time_entry and task_activity are SET NULL, so they survive.",
+			"impact": "Legacy imported Kaneo comments by the erasing user disappear from surviving, possibly held, workspaces. No current controller writes task_comment, so only imported legacy data is affected.",
+			"recommended_fix": "Change task_comment.user_id to ON DELETE SET NULL (nullable) in a migration, or have the erasure refuse when it would cascade task_comment rows under an open hold. Track this with the P1 legacy-data unification."
+		},
+		{
+			"id": "K4",
+			"severity": "low",
+			"category": "test",
+			"requirement": "PA-1 (M6 route-guard inventory)",
+			"file": "tests/api-integration/delete-routes-never-immediate.test.ts:126-150,346-358,364-400",
+			"problem": "coveredBy is checked only for file existence. /unlink-account and /two-factor/disable name pending-action-credential-revocation.test.ts, which never calls either route (grep finds zero matches). The anonymous probe compares row counts, which proves nothing if those tables are empty when the probe runs, and it asserts status only for /admin/*.",
+			"impact": "The inventory forces classification of new better-auth routes, which is good. Its 'covered by' evidence overstates what is tested for two entries.",
+			"recommended_fix": "Point those entries at a test that exercises them, or mark them 'no business data; no dedicated test'. Seed one user, session, key and workspace before the anonymous probe, and assert a 401/403/404 status for every non-sign-out entry."
+		},
+		{
+			"id": "K5",
+			"severity": "low",
+			"category": "ui-ux",
+			"requirement": "PA-3 ('to the person it is a confirm dialog')",
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx:254-259,404-440; apps/web/src/components/settings/label-catalogue.tsx:189-197",
+			"problem": "The ?action=delete deep-link entries for canned responses and labels show their own AlertDialog first and then the approval dialog, so the person confirms twice. The comment says this is deliberate, so a link cannot fire a request on its own.",
+			"impact": "Minor inconsistency with the row buttons, which confirm once. It is not a safety problem.",
+			"recommended_fix": "Either accept and document this as the deep-link pattern, or make the deep link open a neutral 'Request deletion' entry that goes straight to the approval dialog."
+		},
+		{
+			"id": "K6",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "PA-5 vs PA-1a",
+			"file": "docs/technical/safety-and-runtime.md:2469-2486 (PA-1a) and the PA-5 bullet that follows PA-4; apps/api/src/auth.ts:525-532",
+			"problem": "PA-5 still lists 'API key' deletion as elevated, while PA-1a exempts better-auth own-key revocation as immediate. In practice the route is session-only (enableSessionForAPIKeys: false, so an API key cannot call /api/auth/api-key/delete), but it has no typed confirmation and no pending action.",
+			"impact": "The two contract bullets contradict each other on the same route.",
+			"recommended_fix": "Amend PA-5 to say 'API-key creation/rotation' (or note the PA-1a revocation exemption) so the contract matches the code."
+		},
+		{
+			"id": "K7",
+			"severity": "low",
+			"category": "security",
+			"requirement": "PA-12 (M1 fix); availability of identity provisioning",
+			"file": "apps/api/src/user/controllers/delete-account-data.ts:244-310",
+			"problem": "The new legal-hold refusal runs only at :310. That is after the instance-wide LOCK TABLE person, membership_grant, membership IN SHARE ROW EXCLUSIVE at :289-303, so a held user's refused erasure still takes that lock and evaluates the full workspaceUnderOpenHold union before it rolls back. The file's own rule at :246-249 says a refused erasure must not take the lock, because repeated refused calls could stall every provisioning writer (OIDC JIT login, SCIM).",
+			"impact": "A user under a hold, for example a departing employee, can repeat delete-user (password only) and repeatedly block person, grant and membership writers for the duration of the hold query. The data is never at risk; this is an availability nuisance only.",
+			"recommended_fix": "Run a cheap pre-lock pass of refuseIfUnderLegalHold (without lockLegalHolds) next to the first refuseIfOthersHaveAccess at :264, and keep the locked re-check at :310. Alternatively take lockLegalHolds before the table lock: legal_hold SHARE is compatible with the purge and workspace-delete holders, so no lock cycle is introduced."
+		}
+	],
+	"requirements": [
+		{
+			"id": "EV-1",
+			"state": "partial",
+			"note": "Pending actions, work-item native events, workspace.created, SCIM, intake, SLA and calendar events use the in-transaction outbox. Legacy task.* and saved_view.* still use the in-process publishEvent; owner-accepted carry-over to P1."
+		},
+		{
+			"id": "EV-2",
+			"state": "met",
+			"note": "Unique (event_id, person_id) and (event_id, recipient, channel) are in place. Carried from round 2 without regression; not re-audited in depth."
+		},
+		{
+			"id": "EV-3",
+			"state": "blocked",
+			"note": "Needs the P4 automation runtime."
+		},
+		{
+			"id": "EV-4",
+			"state": "met",
+			"note": "No key renamed or removed; check:events passes per the coordinator."
+		},
+		{
+			"id": "EV-5",
+			"state": "partial",
+			"note": "Customer gating at read and send time exists; the legacy producers' projection was not swept. Not re-verified this round."
+		},
+		{
+			"id": "PA-1",
+			"state": "met",
+			"note": "Every router DELETE is 202, 410 or on the PA-1a allow-list (accepted). The non-OpenAPI better-auth destructive routes are inventoried. Account erasure is fenced (M1). The bulk task delete returns 410 at runtime."
+		},
+		{
+			"id": "PA-2",
+			"state": "met",
+			"note": "Registered targets answer 202 with the envelope and do not mutate; workflow-rule delete is exempt under the accepted PA-1a."
+		},
+		{
+			"id": "PA-3",
+			"state": "met",
+			"note": "The in-place dialog is used for every target, including relations, saved views and calendars. Post-execution navigation is fixed. Unit-tested only; browser verification is outstanding (K1). Deep-link double confirm (K5)."
+		},
+		{
+			"id": "PA-4",
+			"state": "partial",
+			"note": "202, notification, the pending unique index and keyed replay (now every 2xx) are in place. The 'mcp' origin is never set (F13, P4)."
+		},
+		{
+			"id": "PA-5",
+			"state": "partial",
+			"note": "Workspace, project and role deletes are session-only with typed confirmation and step-up. API-key revoke is session-only, but the wording conflicts with PA-1a (K6). Webhook and organisation delete routes do not exist yet."
+		},
+		{
+			"id": "PA-5a",
+			"state": "blocked",
+			"note": "No workspace service-key credential exists yet."
+		},
+		{
+			"id": "PA-6",
+			"state": "met",
+			"note": "Approve is session-only and the executor re-checks state, policy, hash, version and scope. Unchanged."
+		},
+		{
+			"id": "PA-7",
+			"state": "met",
+			"note": "Conditional transitions plus payload hash and fingerprint. Unchanged."
+		},
+		{
+			"id": "PA-8",
+			"state": "met",
+			"note": "15-minute expiry job. Not re-verified this round."
+		},
+		{
+			"id": "PA-9",
+			"state": "partial",
+			"note": "Credential-revocation invalidation is tested (pending-action-credential-revocation.test.ts). Proactive invalidation for the newer target types is not verified."
+		},
+		{
+			"id": "PA-10",
+			"state": "met",
+			"note": "No MCP approve tool (packages/mcp/src/tools/pending-deletion.ts:6-12)."
+		},
+		{
+			"id": "PA-11",
+			"state": "met",
+			"note": "Audit row and event for each transition, as in round 2."
+		},
+		{
+			"id": "PA-12",
+			"state": "met",
+			"note": "One shared predicate covers the purge, attachment-gc, the pending-action workspace delete and now account erasure. M8 and M9 people are included, and the gc queue is filled in the same transaction. Low residuals: K3 legacy task_comment cascade, M14 asset keys not queued."
+		},
+		{
+			"id": "PA-13",
+			"state": "partial",
+			"note": "No MCP or automation purge exists. POST /api/instance/purge is not mounted, and purge-target.ts:152-170 still has its own narrower hold list (M12)."
+		},
+		{
+			"id": "PA-14",
+			"state": "blocked",
+			"note": "mcp_destructive and decide_approval are P4."
+		},
+		{
+			"id": "PA-15",
+			"state": "met",
+			"note": "Step-up responses are on the idempotency denylist and are never persisted (idempotency.ts:29)."
+		}
+	],
+	"carry_to_later_phases": [
+		{
+			"item": "K1 browser verification of the P0 deletion, approval and create-task flows on persisted data: required before P0 is marked 'locally verified'",
+			"phase": "P0 close-out (before P1 starts)"
+		},
+		{
+			"item": "K2 add /api/task/image-upload/{id} (and any future presign route) to the idempotency secret denylist",
+			"phase": "P1"
+		},
+		{
+			"item": "K3 task_comment.user_id ON DELETE CASCADE -> SET NULL, or fence erasure on it",
+			"phase": "P1 (legacy Kaneo data unification)"
+		},
+		{
+			"item": "K4 tighten coveredBy evidence and the anonymous probe in delete-routes-never-immediate.test.ts",
+			"phase": "P1"
+		},
+		{
+			"item": "K5 deep-link ?action=delete double confirm (canned responses, labels)",
+			"phase": "P1 (Kaneo parity)"
+		},
+		{
+			"item": "K6 reconcile PA-5 'API key' wording with PA-1a",
+			"phase": "P1 docs"
+		},
+		{
+			"item": "K7 pre-lock legal-hold pass in account erasure so a refused, held erasure never takes the identity-table lock",
+			"phase": "P1"
+		},
+		{
+			"item": "EV-1 remainder: legacy task.* and saved_view.* producers to the in-transaction outbox",
+			"phase": "P1"
+		},
+		{ "item": "EV-3 automation depth enforcement", "phase": "P4" },
+		{
+			"item": "PA-4 origin 'mcp' (F13); PA-14 mcp_destructive and decide_approval (F12)",
+			"phase": "P4"
+		},
+		{
+			"item": "PA-5a service-key no_approver",
+			"phase": "the phase that introduces workspace service keys"
+		},
+		{
+			"item": "PA-13 mount POST /api/instance/purge with the shared predicate (fix M12 first)",
+			"phase": "P2/P4 instance administration"
+		},
+		{
+			"item": "N10/M10 inline images in the create-task description (owner accepted staged cards meanwhile)",
+			"phase": "P1"
+		},
+		{
+			"item": "M11 project change silently drops staged files; createUnknown retry loop",
+			"phase": "P1"
+		},
+		{
+			"item": "M13 remove the unused direct hard-delete workspace/controllers/delete-workspace.ts",
+			"phase": "P1"
+		},
+		{
+			"item": "M14 queue legacy asset.object_key for gc on workspace delete",
+			"phase": "P1"
+		},
+		{
+			"item": "M15 and F22 i18n of new keys and 'request' wording",
+			"phase": "P7"
+		},
+		{
+			"item": "N14/N16 DB hardening (revoke window, search_path on audit_log_reject_mutation); N17 idempotency lease renewal",
+			"phase": "next DB-touching phase"
+		},
+		{ "item": "Contrast gate G3 pre-existing failure", "phase": "P1" }
+	],
+	"unverified": [
+		"No browser verification of any P0 screen (K1).",
+		"The test suites were not re-run by this reviewer. Pass counts (3836 integration and the unit totals) are the coordinator's evidence.",
+		"Thomas's chat acceptance of PA-1a and N10 is the coordinator's claim, recorded in safety-and-runtime.md:2469; I could not see the chat.",
+		"Migrations 0130-0133 were read but not re-run. The audit purge hold check is inside the SECURITY DEFINER function, and its caller takes LOCK TABLE legal_hold (audit/purge.repository.ts:61).",
+		"EV-2, EV-5, PA-8, PA-9 and PA-11 were carried from earlier rounds without a fresh deep audit.",
+		"M11, M15, N14, N16 and N17 were not re-checked; M12 and M13 were confirmed still present."
+	]
+}

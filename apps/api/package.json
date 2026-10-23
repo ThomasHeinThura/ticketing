@@ -63,11 +63,11 @@
     "@types/node": "^26.1.2",
     "@types/pg": "^8.20.4",
     "@types/ws": "8.18.2",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.12",
     "esbuild": "0.28.1",
     "testcontainers": "^12.1.0",
     "tsx": "^4.23.9",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.12"
   }
 }

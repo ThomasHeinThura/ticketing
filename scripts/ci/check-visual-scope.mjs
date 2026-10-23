@@ -6,7 +6,7 @@ import { API } from "typescript/unstable/sync";
 import { repoRoot } from "./lib/repo.mjs";
 
 const manifestPath = "apps/web/e2e/visual-screens.json";
-const inventoryPath = "docs/02-design/screen-inventory.md";
+const inventoryPath = "docs/screens.md";
 const routeTreePaths = [
   "apps/web/src/routeTree.agent.gen.ts",
   "apps/web/src/routeTree.portal.gen.ts",

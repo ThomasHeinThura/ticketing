@@ -308,3 +308,41 @@ describe("CommentEditor lifecycle", () => {
     });
   });
 });
+
+it("uses the original attachment picker to stage every file without a task or legacy draft", async () => {
+  const selected = vi.fn();
+  const ensureTaskId = vi.fn();
+  const { container } = render(
+    <CommentEditor
+      value=""
+      onFilesSelected={selected}
+      ensureTaskId={ensureTaskId}
+    />,
+  );
+  const input = container.querySelector(
+    'input[type="file"]',
+  ) as HTMLInputElement;
+  const files = [new File(["a"], "a.txt"), new File(["b"], "b.txt")];
+  fireEvent.change(input, { target: { files } });
+  expect(selected).toHaveBeenCalledWith(files);
+  expect(ensureTaskId).not.toHaveBeenCalled();
+});
+it("stages every pasted/dropped file through the real editor without uploading", async () => {
+  const selected = vi.fn();
+  const { container } = render(
+    <CommentEditor value="" onFilesSelected={selected} />,
+  );
+  const host = container.querySelector(
+    '[contenteditable="true"]',
+  ) as HTMLElement;
+  const files = [new File(["a"], "a.txt"), new File(["b"], "b.txt")];
+  fireEvent.paste(host, { clipboardData: { files, getData: () => "" } });
+  expect(selected).toHaveBeenCalledWith(files);
+  selected.mockClear();
+  fireEvent.drop(host, {
+    dataTransfer: { files, items: files.map(() => ({ kind: "file" })) },
+    clientX: 0,
+    clientY: 0,
+  });
+  expect(selected).toHaveBeenCalledWith(files);
+});

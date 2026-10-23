@@ -152,6 +152,7 @@
 				"createButton": "Create Task",
 				"discardTitle": "Discard task?",
 				"discardDescription": "Your unsaved task details will be lost.",
+				"discardWithFilesDescription": "Your unsaved task details and the files you added will be lost.",
 				"discardButton": "Discard task",
 				"untitledTask": "Untitled task",
 				"labelColors": {
@@ -166,6 +167,10 @@
 					"crimson": "Crimson"
 				}
 			}
+		},
+		"pendingDeletion": {
+			"requested": "Deletion requested. Approve it to complete.",
+			"requestFailed": "Deletion could not be requested."
 		}
 	},
 	"auth": {
@@ -1390,6 +1395,12 @@
 		}
 	},
 	"navigation": {
+		"projectViews": {
+			"workItems": "Tasks",
+			"calendar": "Calendar",
+			"selectProject": "Select project",
+			"noProjects": "No projects"
+		},
 		"commandPalette": {
 			"suggestions": "Suggestions",
 			"commands": "Commands",
@@ -1436,7 +1447,7 @@
 			"linkCopied": "Project link copied to clipboard",
 			"addProject": "Add project",
 			"deleteConfirmTitle": "Delete Project?",
-			"deleteConfirmDescription": "This will hide the project and all its data immediately. It becomes eligible for permanent deletion after 30 days.",
+			"deleteConfirmDescription": "This creates a pending action. The project is hidden only after you approve it on the next screen, and it becomes eligible for permanent deletion after 30 days.",
 			"deletedToast": "Project deleted",
 			"deleteProject": "Delete Project"
 		},
@@ -1741,7 +1752,11 @@
 			"mentionWarning": "{{people}} cannot access this work item and will not be notified.",
 			"mentionUnavailable": "A selected person",
 			"mentionCheckFailed": "Mention access could not be checked. The server will recheck when you send.",
-			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry.",
+			"descriptionUpdated": "updated the description",
+			"labelsUpdated": "updated labels",
+			"attachmentAdded": "added an attachment",
+			"attachmentDeleted": "removed an attachment"
 		}
 	},
 	"tasks": {
@@ -2155,7 +2170,8 @@
 			"actions": "Actions",
 			"searchActions": "Search actions...",
 			"noActionsFound": "No actions found.",
-			"changeStatus": "Change Status"
+			"changeStatus": "Change Status",
+			"removeLabel": "Remove label"
 		},
 		"editor": {
 			"table": {
@@ -2350,6 +2366,30 @@
 		}
 	},
 	"workItems": {
+		"relations": {
+			"add": "Add relation",
+			"type": "Relation type",
+			"hidden_one": "{{count}} related item you cannot see",
+			"hidden_other": "{{count}} related items you cannot see",
+			"cycle": "Blocking cycle",
+			"error": "Relations could not be loaded. Try again.",
+			"linkError": "The relation could not be added. Check access and try again.",
+			"removeError": "The removal request could not be created. Try again.",
+			"pending": "Relation removal requested. The relation remains until approved.",
+			"reviewPending": "View removal request",
+			"searchError": "Work items could not be searched. Try again.",
+			"types": {
+				"relates": "relates to",
+				"blocks": "blocks",
+				"blocked_by": "blocked by",
+				"duplicates": "duplicates",
+				"duplicated_by": "duplicated by",
+				"precedes": "precedes",
+				"follows": "follows",
+				"requires": "requires",
+				"required_by": "required by"
+			}
+		},
 		"parent": {
 			"label": "Parent",
 			"none": "No parent",
@@ -2450,7 +2490,24 @@
 			"errorInvalid": "Check the fields and try again.",
 			"errorGeneric": "Something went wrong while creating the work item.",
 			"loadFailed": "The create form could not be loaded.",
-			"reload": "Reload page"
+			"reload": "Reload page",
+			"attachments": {
+				"staged": "Ready to attach",
+				"heading": "Attachments",
+				"remove": "Remove {{name}}",
+				"retry": "Retry failed uploads",
+				"partial": "Work item {{key}} was created. Some files still need uploading.",
+				"createdClose": "Close created work item",
+				"failed": "Could not attach this file. Retry the upload.",
+				"uploading": "Attaching files…",
+				"uploaded": "Attached",
+				"complete": "Work item {{key}} was created and files attached.",
+				"createUnknown": "The create request did not return a confirmed result. Check the project before creating again.",
+				"unknown": "Upload outcome could not be confirmed. Retry to check it.",
+				"empty": "Only non-empty files can be attached.",
+				"afterCreate": "The work item already exists. Closing keeps it and all completed attachments.",
+				"retryPermission": "Upload permission is no longer available."
+			}
 		},
 		"detail": {
 			"loading": "Loading work item…",
@@ -2519,7 +2576,32 @@
 				"confirmReject": "Reject with note",
 				"decideErrorTitle": "The decision was not recorded",
 				"decideFailed": "The decision could not be recorded.",
-				"decideConflict": "This approval was already decided, withdrawn or expired. The list now shows its current state."
+				"decideConflict": "This approval was already decided, withdrawn or expired. The list now shows its current state.",
+				"request": {
+					"action": "Request approval",
+					"title": "Request approval",
+					"description": "Choose a workflow gate and a person who can approve this work item.",
+					"kind": "Approval kind",
+					"transition": "Workflow transition",
+					"anyState": "Any state",
+					"chooseTransition": "Choose a transition",
+					"approver": "Approver",
+					"search": "Search eligible approvers",
+					"chooseApprover": "Choose an approver",
+					"noCandidates": "No eligible approvers found.",
+					"more": "Load more approvers",
+					"expiryDays": "Expires in (days)",
+					"expiryHint": "Choose between 1 and {{max}} days. Instance default: {{days}} days.",
+					"submit": "Request approval",
+					"submitting": "Requesting…",
+					"error": "The approval could not be requested. Refresh the options and try again.",
+					"optionsError": "Approval request options could not be loaded.",
+					"candidatesError": "Eligible approvers could not be loaded.",
+					"unavailable": "Approval requests are no longer available for this work item.",
+					"invalidExpiry": "Expiry must be a whole number from 1 to {{max}} days.",
+					"success": "Approval requested.",
+					"noTransitions": "This work item’s workflow has no approval gates."
+				}
 			},
 			"sla": {
 				"heading": "SLA",
@@ -2673,7 +2755,21 @@
 			"saving": "Assigning…",
 			"selectMode": "Select items",
 			"modeOn": "Selection mode on. Use the checkboxes to choose work items.",
-			"modeOff": "Selection mode off. Selection cleared."
+			"modeOff": "Selection mode off. Selection cleared.",
+			"operationResult": "{{succeeded}} updated, {{failed}} failed.",
+			"preparing": "Checking selected work items…",
+			"confirmReassignTitle": "Reassign selected work items?",
+			"confirmReassignDescription": "These items are already assigned. Confirm replacing the holders shown below with {{name}}.",
+			"previousHolder": "{{key}} — {{name}}",
+			"selectionUnavailable": "Some selected items are no longer available. Refresh and select them again.",
+			"operationFailure": {
+				"gone": "The selected work items are no longer available to you.",
+				"conflict": "The selected work items changed. Refresh and try again.",
+				"rejected": "This action is not available for the selected work items.",
+				"invalid": "The request was not valid. No updates were applied.",
+				"forbidden": "You do not have permission for this action.",
+				"unknown": "Could not update the selected work items. Try again."
+			}
 		},
 		"filter": {
 			"formLabel": "Work item filters",
@@ -2750,9 +2846,92 @@
 			"clearDate": "Clear date",
 			"reloadLatest": "Reload latest",
 			"unsaved": "Not saved yet. It will be tried again when you leave the field."
+		},
+		"deletion": {
+			"actions": "Work item actions",
+			"requestFailed": "The deletion request could not be created. Check access and try again.",
+			"hidden": "Work item details are no longer available.",
+			"childrenAffected_one": "This item has {{count}} child item. Deleting the parent keeps its children.",
+			"childrenAffected_other": "This item has {{count}} child items. Deleting the parent keeps its children."
+		},
+		"legacyView": {
+			"unsupportedTitle": "Some saved controls need attention",
+			"unsupportedDescription": "These controls cannot be applied to the current project view: {{controls}}.",
+			"continue": "Open without unsupported controls",
+			"unavailable": "This project or task is unavailable.",
+			"opening": "Opening project…",
+			"controls": {
+				"q": "Search",
+				"status": "Status",
+				"assignee": "Assignee",
+				"labels": "Labels",
+				"dueDate": "Due date",
+				"priority": "Priority",
+				"sort": "Sort",
+				"filter": "Filter"
+			}
+		},
+		"sidePane": {
+			"ariaLabel": "Work item {{key}}",
+			"openFullPage": "Open full page",
+			"close": "Close task"
 		}
 	},
 	"portal": {
+		"navigation": {
+			"title": "Customer portal",
+			"description": "Navigate your requests and approvals.",
+			"home": "Home",
+			"catalogue": "Request catalogue",
+			"requests": "My requests",
+			"approvals": "Approvals",
+			"signOut": "Sign out",
+			"signOutFailed": "Could not sign out. Try again.",
+			"breadcrumb": "Breadcrumb",
+			"request": "Request"
+		},
+		"home": {
+			"title": "How can we help?",
+			"description": "Raise a request, track progress or review an approval.",
+			"recent": "Recent requests",
+			"allRequests": "View all requests"
+		},
+		"requests": {
+			"title": "My requests",
+			"description": "Track requests you submitted or can view across your organisation.",
+			"newRequest": "New request",
+			"emptyTitle": "No requests yet",
+			"emptyDescription": "You have no visible requests. Choose a request type to get started.",
+			"browseCatalogue": "Browse request catalogue",
+			"loadFailed": "Could not load your requests. Try again.",
+			"reference": "Reference",
+			"type": "Request type",
+			"status": "Status",
+			"visibility": "Visibility",
+			"submitted": "Submitted",
+			"pagination": "Request pages",
+			"latest": "Back to latest",
+			"older": "Older requests"
+		},
+		"approvals": {
+			"title": "Approvals",
+			"description": "Review customer approvals addressed to you.",
+			"recorded": "Decision recorded.",
+			"conflict": "This approval was decided, withdrawn or expired. Its current state has been refreshed.",
+			"forbidden": "This approval is no longer available to you.",
+			"failed": "Could not record your decision. Try again.",
+			"loadFailed": "Could not load approvals. Try again.",
+			"empty": "No approvals are waiting for you.",
+			"request": "Request",
+			"expires": "Expires",
+			"decision": "Decision",
+			"review": "Review approval",
+			"loading": "Loading approval…",
+			"unavailable": "This approval is no longer awaiting your decision or is unavailable to you.",
+			"note": "Decision note (required when rejecting)",
+			"approve": "Approve",
+			"reject": "Reject"
+		},
 		"unavailable": {
 			"title": "Customer portal unavailable",
 			"description": "Customer access is not available yet. Contact your service desk administrator for help."
@@ -2912,6 +3091,15 @@
 		"emailMismatch": "The exact current email did not match. The request remains pending.",
 		"staleApproval": "The account or approval changed. Reload to see its current state.",
 		"approvalFailed": "Approval could not be completed. Verify your details and try again.",
+		"stepUp": {
+			"attemptLimit": "Too many fresh-authentication attempts. Wait a few minutes, then try again.",
+			"proofRejected": "That password or code was not accepted. The request remains pending.",
+			"forbidden": "You are not allowed to approve this request. The request remains pending."
+		},
+		"dialog": {
+			"executed": "Deletion approved.",
+			"cancelled": "Deletion request cancelled."
+		},
 		"requestFreshDeactivation": "This request is no longer active. Return to Users to check the current account email and request a new deactivation approval.",
 		"openUsers": "Open Users",
 		"copy": {
@@ -2980,6 +3168,56 @@
 			"authenticatorCode": "Authenticator code",
 			"backupCode": "Backup code",
 			"accountPassword": "Account password"
+		},
+		"bulk": {
+			"count_one": "Delete {{count}} work item",
+			"count_other": "Delete {{count}} work items",
+			"targets": "Exact work items selected for deletion",
+			"confirmCount": "Type {{count}} to confirm this exact batch",
+			"recovery": "Deletion is recoverable for 30 days. Children remain unless explicitly included in this batch.",
+			"result": "{{succeeded}} deleted; {{failed}} could not be deleted.",
+			"excluded": "{{count}} selected items were excluded from this request.",
+			"succeeded_one": "{{count}} work item deleted",
+			"succeeded_other": "{{count}} work items deleted",
+			"action": "Delete work items"
+		},
+		"comment": {
+			"action": "Delete comment",
+			"hidden": "This comment is no longer available to you.",
+			"preview": "Comment preview",
+			"public": "Public comment",
+			"internal": "Internal comment",
+			"alreadyDeleted": "This comment is already deleted.",
+			"empty": "This comment has no text preview.",
+			"open": "Open the exact comment",
+			"confirmation": "Confirm deletion of this comment on the work item shown above. The activity history will retain a deletion record."
+		},
+		"attachment": {
+			"action": "Delete attachment",
+			"hidden": "This attachment is no longer available for confirmation.",
+			"preview": "Attachment to delete",
+			"bytes": "{{count}} bytes",
+			"alreadyDeleted": "This attachment has already been deleted.",
+			"confirmation": "This removes the file from the work item shown above. The file is retained for at least {{hours}} hours.",
+			"open": "Open attachments on this work item"
+		},
+		"registered": {
+			"nameMismatch": "The name you typed does not match.",
+			"confirmName": "Type the exact name to confirm",
+			"hidden": "This request is no longer available for confirmation.",
+			"actions": {
+				"project": "Delete project",
+				"workspace": "Delete workspace",
+				"label": "Delete label",
+				"project_label": "Delete project label",
+				"column": "Delete column",
+				"canned_response": "Delete canned response",
+				"milestone": "Delete milestone",
+				"prerequisite": "Delete prerequisite",
+				"document_link": "Delete document link",
+				"workspace_role": "Delete workspace role",
+				"invitation": "Cancel invitation"
+			}
 		}
 	},
 	"intake": {
@@ -3699,6 +3937,50 @@
 					"target": "Choose an eligible workspace and role."
 				}
 			}
+		}
+	},
+	"notificationProvider": {
+		"title": "Notification delivery",
+		"email": "Email provider",
+		"description": "Configure the SMTP connection used for email across this instance.",
+		"enabled": "Enable email delivery",
+		"sources": {
+			"runtime": "Using saved instance configuration.",
+			"bootstrap": "Using initial server configuration. Saving here creates instance configuration.",
+			"unconfigured": "No email provider is configured."
+		},
+		"host": "SMTP host",
+		"port": "Port",
+		"fromAddress": "From address",
+		"replyTo": "Reply-to address (optional)",
+		"username": "Username (optional)",
+		"password": "Password",
+		"passwordHelp": "Leave blank to keep the saved password. Saved passwords are never returned.",
+		"secure": "Use TLS from connection start",
+		"requireTLS": "Require TLS before authentication",
+		"clearPassword": "Remove the saved password",
+		"save": "Save configuration",
+		"test": "Test connection",
+		"testHelp": "Checks connection and authentication without sending an email.",
+		"verified": "Connection verified. No email was sent.",
+		"saved": "Email configuration saved.",
+		"conflict": "The configuration changed. Reload this page before saving again.",
+		"rateLimited": "Too many connection tests. Wait before trying again.",
+		"operationFailed": "The request failed. Check the connection details and try again.",
+		"unavailable": "Email configuration unavailable",
+		"loadFailed": "Your access or the provider configuration could not be verified.",
+		"retry": "Try again",
+		"mention": {
+			"title": "Work item mention emails",
+			"description": "Email me when someone mentions me in a work item comment.",
+			"enabled": "Email for mentions",
+			"providerRequired": "Email delivery also requires an enabled instance email provider.",
+			"save": "Save mention preference",
+			"saved": "Mention preference saved.",
+			"saveFailed": "The preference could not be saved. Try again.",
+			"unsupported": "This email refers to a preference that this page cannot edit yet. No preference has been changed.",
+			"linkUnavailable": "The email preference link could not be verified. Sign in as its recipient and try again.",
+			"unavailable": "Your mention preference could not be loaded."
 		}
 	}
 }

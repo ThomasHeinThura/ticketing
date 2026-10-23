@@ -178,6 +178,17 @@ describe("saved-view API calls", () => {
     expect(mocks.del).toHaveBeenCalledWith({ param: { id: "v1" } });
   });
 
+  it("reopens the requester's own pending deletion on a 409", async () => {
+    mocks.del.mockResolvedValue({
+      ok: false,
+      status: 409,
+      text: async () => "pending_approval: pa-7",
+    });
+    expect(await requestSavedViewDeletion("v1")).toEqual({
+      pendingActionId: "pa-7",
+    });
+  });
+
   it("surfaces a refused deletion request with its status, for the permission message", async () => {
     mocks.del.mockResolvedValue({ ok: false, status: 403 });
     await expect(requestSavedViewDeletion("v1")).rejects.toMatchObject({

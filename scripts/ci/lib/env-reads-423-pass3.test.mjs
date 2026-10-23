@@ -3,7 +3,7 @@ import test from "node:test";
 import { findEnvReads } from "./env-reads.mjs";
 
 // Opus review of #423 pass 3 (short delta on the F1-F5 fix)
-// (docs/07-planning/security-reviews/423-env-reads-ast-rewrite.md, "pass 3"). The F3 fix in
+// (archive/2026-10-22/docs/07-planning/security-reviews/423-env-reads-ast-rewrite.md, "pass 3"). The F3 fix in
 // `871e16d`/`6d9b83b` exempted `x = <value>` from the generic default charge whenever `x` is
 // a plain, already-tracked identifier — but did so unconditionally, regardless of whether the
 // assignment's own VALUE is actually consumed as an expression somewhere, or thrown away as a

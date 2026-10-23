@@ -35,9 +35,11 @@ import {
   updateWorkspaceMemberRoleNative,
 } from "./helpers/workspace-membership-write-http";
 import {
+  approveWorkspaceRoleDeletion,
   createWorkspaceRoleNative,
   deleteWorkspaceRoleNative,
   listWorkspaceRolesNative,
+  requestWorkspaceRoleDeletion,
   updateWorkspaceRoleNative,
 } from "./helpers/workspace-role-write-http";
 import {
@@ -136,6 +138,30 @@ async function waitForAdvisoryWait(namespace: number) {
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   throw new Error(`Timed out waiting for advisory lock namespace ${namespace}`);
+}
+
+/**
+ * A SECOND actor is queued behind the first one's role-assignment locks. Member-role changes
+ * and pending-action requests/approvals also hold the global pending-action lifecycle gate
+ * (taken before 4_002), so the second actor may be parked on either 4_002 or that gate.
+ */
+async function waitForQueuedBehindFirstActor() {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const result = await getDatabasePool().query<{ waiting: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM pg_locks
+         WHERE locktype = 'advisory' AND NOT granted
+           AND classid::bigint IN (
+             4002,
+             (hashtext('taskdesk:pending-action-lifecycle')::bigint & 4294967295)
+           )
+       ) AS waiting`,
+    );
+    if (result.rows[0]?.waiting) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error("Timed out waiting for a queued role-lock actor");
 }
 
 beforeEach(async () => {
@@ -528,7 +554,7 @@ describe("issue #156: role assignment and deletion share a fixed lock order", ()
         workspaceId,
         roleId,
       );
-      await waitForAdvisoryWait(4_002);
+      await waitForQueuedBehindFirstActor();
 
       gate.release();
       const [added, deleted] = await Promise.all([adding, deleting]);
@@ -578,20 +604,27 @@ describe("issue #156: role assignment and deletion share a fixed lock order", ()
     // Deletion takes 4_002 before it blocks on our 4_003 gate. The later assignment
     // therefore waits on 4_002. Once the gate opens, deletion commits first and the
     // assignment's role lookup must fail inside its transaction.
+    // The DELETE route only requests (202); the approval is the transaction that deletes
+    // the role, so it is the actor that must win the shared locks.
+    const pendingDelete = await requestWorkspaceRoleDeletion(
+      app,
+      owner.cookie,
+      workspaceId,
+      roleId,
+    );
     const gate = await holdWorkspaceRoleLock(workspaceId);
     try {
-      const deleting = deleteWorkspaceRoleNative(
+      const deleting = approveWorkspaceRoleDeletion(
         app,
         owner.cookie,
-        workspaceId,
-        roleId,
+        pendingDelete,
       );
       await waitForAdvisoryWait(4_003);
       const adding = addWorkspaceMemberNative(app, owner.cookie, workspaceId, {
         userId: target.user.id,
         role: "serialized-role",
       });
-      await waitForAdvisoryWait(4_002);
+      await waitForQueuedBehindFirstActor();
 
       gate.release();
       const [deleted, added] = await Promise.all([deleting, adding]);
@@ -659,7 +692,7 @@ describe("issue #156: role assignment and deletion share a fixed lock order", ()
         workspaceId,
         roleId,
       );
-      await waitForAdvisoryWait(4_002);
+      await waitForQueuedBehindFirstActor();
       firstGate.release();
       const [updated, deleted] = await Promise.all([updating, deleting]);
       expect(updated.status).toBe(200);
@@ -682,13 +715,18 @@ describe("issue #156: role assignment and deletion share a fixed lock order", ()
       { role: "member" },
     );
     expect(restored.status).toBe(200);
+    const pendingDelete = await requestWorkspaceRoleDeletion(
+      app,
+      owner.cookie,
+      workspaceId,
+      roleId,
+    );
     const secondGate = await holdWorkspaceRoleLock(workspaceId);
     try {
-      const deleting = deleteWorkspaceRoleNative(
+      const deleting = approveWorkspaceRoleDeletion(
         app,
         owner.cookie,
-        workspaceId,
-        roleId,
+        pendingDelete,
       );
       await waitForAdvisoryWait(4_003);
       const updating = updateWorkspaceMemberRoleNative(
@@ -698,7 +736,7 @@ describe("issue #156: role assignment and deletion share a fixed lock order", ()
         member.user.id,
         { role: "serialized-role" },
       );
-      await waitForAdvisoryWait(4_002);
+      await waitForQueuedBehindFirstActor();
       secondGate.release();
       const [deleted, updated] = await Promise.all([deleting, updating]);
       expect(deleted.status).toBe(200);
@@ -756,7 +794,7 @@ describe("issue #156: role assignment and deletion share a fixed lock order", ()
         workspaceId,
         firstRoleId,
       );
-      await waitForAdvisoryWait(4_002);
+      await waitForQueuedBehindFirstActor();
       firstGate.release();
       const [accepted, deleted] = await Promise.all([accepting, deleting]);
       expect(accepted.status).toBe(200);
@@ -792,13 +830,18 @@ describe("issue #156: role assignment and deletion share a fixed lock order", ()
     });
 
     // Deletion gets 4_002 then waits at 4_003; acceptance queues behind 4_002.
+    const pendingDelete = await requestWorkspaceRoleDeletion(
+      app,
+      owner.cookie,
+      workspaceId,
+      secondRoleId,
+    );
     const secondGate = await holdWorkspaceRoleLock(workspaceId);
     try {
-      const deleting = deleteWorkspaceRoleNative(
+      const deleting = approveWorkspaceRoleDeletion(
         app,
         owner.cookie,
-        workspaceId,
-        secondRoleId,
+        pendingDelete,
       );
       await waitForAdvisoryWait(4_003);
       const accepting = acceptInvitationNative(
@@ -806,7 +849,7 @@ describe("issue #156: role assignment and deletion share a fixed lock order", ()
         secondInvitee.cookie,
         secondInviteId,
       );
-      await waitForAdvisoryWait(4_002);
+      await waitForQueuedBehindFirstActor();
       secondGate.release();
       const [deleted, accepted] = await Promise.all([deleting, accepting]);
       expect(deleted.status).toBe(200);
@@ -1031,13 +1074,20 @@ describe("S7 delete role (DELETE /api/workspace/{id}/roles/{roleId})", () => {
     const [viewerRole] = await roleRows(workspaceId, "viewer");
     if (!viewerRole) throw new Error("expected a seeded viewer role row");
 
-    const response = await deleteWorkspaceRoleNative(
+    // The route only requests (202); the row is removed when the owner approves.
+    const pendingDelete = await requestWorkspaceRoleDeletion(
       app,
       owner.cookie,
       workspaceId,
       viewerRole.id,
     );
-    expect(response.status).toBe(200);
+    expect(await roleRows(workspaceId, "viewer")).toHaveLength(1);
+    const response = await approveWorkspaceRoleDeletion(
+      app,
+      owner.cookie,
+      pendingDelete,
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
     expect(await roleRows(workspaceId, "viewer")).toHaveLength(0);
   });
 
@@ -1132,13 +1182,19 @@ describe("S7 delete role (DELETE /api/workspace/{id}/roles/{roleId})", () => {
       { role: "viewer" },
     );
 
-    const freed = await deleteWorkspaceRoleNative(
+    const pendingDelete = await requestWorkspaceRoleDeletion(
       app,
       owner.cookie,
       workspaceId,
       roleId,
     );
-    expect(freed.status).toBe(200);
+    expect(await roleRows(workspaceId, "custom")).toHaveLength(1);
+    const freed = await approveWorkspaceRoleDeletion(
+      app,
+      owner.cookie,
+      pendingDelete,
+    );
+    expect(freed.status, await freed.clone().text()).toBe(200);
     expect(await roleRows(workspaceId, "custom")).toHaveLength(0);
   });
 

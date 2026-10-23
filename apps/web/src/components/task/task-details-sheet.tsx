@@ -1,5 +1,5 @@
 import { Sheet, SheetContent } from "@taskdesk/ui";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TaskDetailsSkeleton,
@@ -35,51 +35,71 @@ function TaskDetailsSheetLoading() {
   );
 }
 
+/** Original Kaneo sheet geometry and retained-content lifecycle, shared by both data models. */
+export function TaskDetailsSheetFrame({
+  itemId,
+  onClose,
+  children,
+  ariaLabel,
+}: {
+  itemId: string | undefined;
+  onClose: () => void;
+  children: (visibleItemId: string) => ReactNode;
+  ariaLabel?: string;
+}) {
+  const { t } = useTranslation();
+  const [currentItemId, setCurrentItemId] = useState<string | undefined>(
+    itemId,
+  );
+
+  useEffect(() => {
+    if (itemId) {
+      // Update itemId immediately without closing/reopening
+      setCurrentItemId(itemId);
+    } else {
+      // Delay clearing to allow exit animation
+      const timer = setTimeout(() => {
+        setCurrentItemId(undefined);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [itemId]);
+
+  const visibleItemId = itemId ?? currentItemId;
+
+  return (
+    <Sheet open={!!itemId} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent
+        side="right"
+        className="w-full max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl p-0 gap-0 [&>button]:hidden"
+        closeLabel={t("common:actions.close")}
+        aria-label={ariaLabel}
+      >
+        {visibleItemId ? children(visibleItemId) : null}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export default function TaskDetailsSheet({
   taskId,
   projectId,
   workspaceId,
   onClose,
 }: TaskDetailsSheetProps) {
-  const { t } = useTranslation();
-  const [currentTaskId, setCurrentTaskId] = useState<string | undefined>(
-    taskId,
-  );
-
-  useEffect(() => {
-    if (taskId) {
-      // Update taskId immediately without closing/reopening
-      setCurrentTaskId(taskId);
-    } else {
-      // Delay clearing to allow exit animation
-      const timer = setTimeout(() => {
-        setCurrentTaskId(undefined);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [taskId]);
-
-  const visibleTaskId = taskId ?? currentTaskId;
-
   return (
-    <Sheet open={!!taskId} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent
-        side="right"
-        className="w-full max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl p-0 gap-0 [&>button]:hidden"
-        closeLabel={t("common:actions.close")}
-      >
-        {visibleTaskId ? (
-          <Suspense fallback={<TaskDetailsSheetLoading />}>
-            <TaskDetailsSheetBody
-              key={visibleTaskId}
-              taskId={visibleTaskId}
-              projectId={projectId}
-              workspaceId={workspaceId}
-              onClose={onClose}
-            />
-          </Suspense>
-        ) : null}
-      </SheetContent>
-    </Sheet>
+    <TaskDetailsSheetFrame itemId={taskId} onClose={onClose}>
+      {(visibleTaskId) => (
+        <Suspense fallback={<TaskDetailsSheetLoading />}>
+          <TaskDetailsSheetBody
+            key={visibleTaskId}
+            taskId={visibleTaskId}
+            projectId={projectId}
+            workspaceId={workspaceId}
+            onClose={onClose}
+          />
+        </Suspense>
+      )}
+    </TaskDetailsSheetFrame>
   );
 }

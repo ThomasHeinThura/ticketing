@@ -13,9 +13,9 @@ import { buildMonthWeeks } from "@/components/calendar/month-grid-model";
 import ProjectLayout from "@/components/common/project-layout";
 import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
 import PageTitle from "@/components/page-title";
-import TaskDetailsSheet from "@/components/task/task-details-sheet";
+import WorkItemSidePane from "@/components/work-item/work-item-side-pane";
 import { shortcuts } from "@/constants/shortcuts";
-import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
+import { useScheduleProject } from "@/hooks/queries/work-item/use-schedule-project";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { authClient } from "@/lib/auth-client";
 import { filterProjectTasks } from "@/lib/filter-project-tasks";
@@ -60,7 +60,11 @@ function RouteComponent() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: session } = authClient.useSession();
-  const { data: project, isLoading, isError } = useGetTasks(projectId);
+  const {
+    data: project,
+    isLoading,
+    isError,
+  } = useScheduleProject(projectId, workspaceId, search.filter);
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const isMobile = useIsMobile();
   const visibleMonth = useMemo(
@@ -159,7 +163,7 @@ function RouteComponent() {
   }, [navigate, projectId, workspaceId]);
 
   const viewShortcutHandlers = createProjectViewShortcutHandlers(
-    { workspaceId, projectId },
+    { workspaceId, projectId, projectKey: project?.slug },
     location.searchStr,
     (href) => navigate({ href }),
     (layout) =>
@@ -185,6 +189,7 @@ function RouteComponent() {
 
   return (
     <ProjectLayout
+      realtimeMode="canonical"
       projectId={projectId}
       workspaceId={workspaceId}
       activeView="calendar"
@@ -241,12 +246,7 @@ function RouteComponent() {
           onOpenTask={handleOpenTask}
         />
 
-        <TaskDetailsSheet
-          taskId={taskId}
-          projectId={projectId}
-          workspaceId={workspaceId}
-          onClose={handleCloseTaskSheet}
-        />
+        <WorkItemSidePane itemKey={taskId} onClose={handleCloseTaskSheet} />
       </div>
     </ProjectLayout>
   );

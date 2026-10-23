@@ -31,6 +31,7 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   // which follow the broader legacy statement (#708).
   manageProjectSettings?: boolean;
   manageLabels?: boolean;
+  createAttachments?: boolean;
 };
 
 // Mirrors apps/api/src/capabilities/response.ts's capabilitiesResponseSchema
@@ -122,6 +123,7 @@ export function useWorkspacePermission(
       canDeleteProjects: () => can.deleteProjects,
       canUpdateTasks: () => can.updateTasks,
       canCreateTasks: () => can.createTasks,
+      canCreateAttachments: () => can.createAttachments === true,
       canDeleteTasks: () => can.deleteTasks,
       canAssignTasks: () => can.assignTasks,
       canManageLabels: () => can.manageLabels === true,

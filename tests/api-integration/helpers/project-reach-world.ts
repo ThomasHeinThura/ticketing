@@ -36,7 +36,7 @@ export const PROJECT_ADMIN_CAPABILITIES = [
 export const PROJECT_KEY_SCOPE = {
   project: ["read", "create", "update", "delete", "manage_settings"],
   work_item: ["read", "create", "update", "delete", "assign"],
-  label: ["create", "update", "delete"],
+  label: ["create", "update", "delete", "manage"],
   time_entry: ["create", "read_any", "update_any"],
   workspace: ["read"],
 };

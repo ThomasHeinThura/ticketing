@@ -27,6 +27,7 @@ import {
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 import { raceWorkItemSoftDelete } from "./helpers/race-soft-delete";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 async function makeWorkItemType(workspaceId: string) {
   const now = new Date();
@@ -122,6 +123,11 @@ async function setupProjectWithDefaultState() {
   await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   await makeDefaultState(creator.workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: creator.workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, project, type };
 }
 
@@ -283,7 +289,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
       version: number;
     };
     expect(attachedBody.version).toBe(2);
-    const before = JSON.stringify(await db.select().from(schema.activityTable));
+    const before = await db.select().from(schema.activityTable);
     for (const method of ["POST", "DELETE"] as const) {
       const stale = await write(method, '"1"');
       expect(stale.status).toBe(409);
@@ -292,9 +298,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
         currentVersion: 2,
       });
     }
-    expect(JSON.stringify(await db.select().from(schema.activityTable))).toBe(
-      before,
-    );
+    expect(await db.select().from(schema.activityTable)).toEqual(before);
     const [row] = await db
       .select()
       .from(schema.workItemTable)
@@ -628,6 +632,14 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     });
     await grantWorkItemProjectAccess(creator.user.id, otherProject.id);
     await makeDefaultState(creator.workspace.id, otherProject.id);
+    // The other project's default state belongs to its own template, so its creation
+    // workflow is bound to a type of its own.
+    const otherType = await makeWorkItemType(creator.workspace.id);
+    await ensureCreationWorkflow({
+      workspaceId: creator.workspace.id,
+      projectId: otherProject.id,
+      typeId: otherType.id,
+    });
 
     const item = (await (
       await createWorkItemRequest(app, project.id, {
@@ -637,7 +649,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     ).json()) as CreatedWorkItem;
     const otherProjectItem = (await (
       await createWorkItemRequest(app, otherProject.id, {
-        typeId: type.id,
+        typeId: otherType.id,
         title: "Different project",
       })
     ).json()) as CreatedWorkItem;
@@ -767,6 +779,11 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     await grantWorkItemProjectAccess(stranger.user.id, strangerProject.id);
     const strangerType = await makeWorkItemType(stranger.workspace.id);
     await makeDefaultState(stranger.workspace.id, strangerProject.id);
+    await ensureCreationWorkflow({
+      workspaceId: stranger.workspace.id,
+      projectId: strangerProject.id,
+      typeId: strangerType.id,
+    });
     mockAuthenticatedSession(stranger.user);
     const strangerItem = (await (
       await createWorkItemRequest(app, strangerProject.id, {

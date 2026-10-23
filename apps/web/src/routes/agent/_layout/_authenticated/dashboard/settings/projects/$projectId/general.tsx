@@ -1,18 +1,7 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useParams } from "@tanstack/react-router";
 import {
-  createFileRoute,
-  useNavigate,
-  useParams,
-} from "@tanstack/react-router";
-import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
   Form,
   FormControl,
@@ -39,6 +28,7 @@ import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
@@ -98,12 +88,11 @@ function RouteComponent() {
   );
 
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const openPendingAction = useOpenPendingAction();
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSavingRef = useRef(false);
   const queuedSaveRef = useRef<ProjectFormValues | null>(null);
   const lastSavedRef = useRef<NormalizedProjectValues | null>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [iconPopoverOpen, setIconPopoverOpen] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
 
@@ -298,15 +287,10 @@ function RouteComponent() {
     if (!project?.id) return;
 
     try {
-      await deleteProject({ id: project.id });
-      toast.success(t("settings:projectGeneral.toastDeleted"));
-
-      await queryClient.invalidateQueries({ queryKey: ["projects"] });
-
-      navigate({
-        to: "/dashboard/workspace/$workspaceId",
-        params: { workspaceId: workspace?.id || "" },
-      });
+      // The in-place approval dialog is the single confirmation (PA-3). Deletion is only
+      // requested: the project stays (and the user stays on it) until the requester approves.
+      const pendingAction = await deleteProject({ id: project.id });
+      await openPendingAction(pendingAction);
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -314,7 +298,7 @@ function RouteComponent() {
           : t("settings:projectGeneral.toastDeleteError"),
       );
     }
-  }, [project?.id, deleteProject, queryClient, navigate, workspace?.id, t]);
+  }, [project?.id, deleteProject, openPendingAction, t]);
 
   return (
     <>
@@ -590,52 +574,17 @@ function RouteComponent() {
                   size="sm"
                   className="text-destructive hover:text-destructive transition-colors"
                   type="button"
-                  onClick={() => setIsDeleteModalOpen(true)}
-                  disabled={!project}
+                  onClick={() => void handleDeleteProject()}
+                  disabled={!project || isDeleting}
                 >
-                  {t("settings:projectGeneral.deleteProject")}
+                  {isDeleting
+                    ? t("common:actions.deleting")
+                    : t("settings:projectGeneral.deleteProject")}
                 </Button>
               </div>
             </div>
           </div>
         )}
-
-        <AlertDialog
-          open={isDeleteModalOpen}
-          onOpenChange={setIsDeleteModalOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t("settings:projectGeneral.deleteModalTitle")}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t("settings:projectGeneral.deleteModalDescription", {
-                  name: project?.name ?? "",
-                })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogClose render={<Button variant="outline" size="sm" />}>
-                {t("common:actions.cancel")}
-              </AlertDialogClose>
-              <AlertDialogClose
-                render={
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={isDeleting}
-                    onClick={handleDeleteProject}
-                  />
-                }
-              >
-                {isDeleting
-                  ? t("common:actions.deleting")
-                  : t("settings:projectGeneral.deleteModalConfirm")}
-              </AlertDialogClose>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </>
   );

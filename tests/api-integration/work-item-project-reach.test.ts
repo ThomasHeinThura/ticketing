@@ -201,7 +201,7 @@ describe("API integration: project reach on item-scoped work-item routes", () =>
       const before = await snapshot();
       mockAuthenticatedSession(world.readerLead.user);
       for (const body of [
-        { operation: "delete" },
+        { operation: "set_priority", priority: "high" },
         { operation: "assign", assigneeId: world.projectMember.personId },
       ]) {
         const response = await json(app, "POST", "/api/work-items/bulk", {
@@ -226,7 +226,8 @@ describe("API integration: project reach on item-scoped work-item routes", () =>
       const allowed = await json(app, "POST", "/api/work-items/bulk", {
         workspaceId: world.workspaceId,
         workItemKeys: [item.key],
-        operation: "delete",
+        operation: "set_priority",
+        priority: "high",
       });
       expect(
         ((await allowed.json()) as { succeeded: string[] }).succeeded,

@@ -14,6 +14,7 @@ import {
   createWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 function hashApiKeyForTest(key: string): string {
   return createHash("sha256")
@@ -227,6 +228,12 @@ describe("POST /api/work-items/export", () => {
         updatedAt: now,
       },
     ]);
+    for (const project of [reachable.project, unreachable.project])
+      await ensureCreationWorkflow({
+        workspaceId: owner.workspace.id,
+        projectId: project.id,
+        typeId: type.id,
+      });
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();
     const reachableCreated = await app.request(
@@ -315,6 +322,11 @@ describe("POST /api/work-items/export", () => {
       isDefault: true,
       createdAt: now,
       updatedAt: now,
+    });
+    await ensureCreationWorkflow({
+      workspaceId: owner.workspace.id,
+      projectId: reachable.project.id,
+      typeId: type.id,
     });
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();

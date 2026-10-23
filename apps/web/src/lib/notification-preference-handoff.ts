@@ -1,0 +1,98 @@
+const HANDOFF_PATH = "/agent/settings/profile/notifications";
+const DEADLINE_MS = 5000;
+
+/** Consume the email fragment before routing, auth redirects, or providers run.
+ * The signed capability remains only in this short-lived closure and the POST body.
+ */
+export function initializeNotificationPreferenceHandoff(
+  browser: Pick<Window, "location" | "history"> = window,
+  fetcher: typeof fetch = fetch,
+  deadlineMs = DEADLINE_MS,
+): Promise<void> {
+  const fragment = new URLSearchParams(browser.location.hash.slice(1));
+  if (!fragment.has("preference_token")) return Promise.resolve();
+
+  const tokens = fragment.getAll("preference_token");
+  // Remove the whole fragment, including duplicate/invalid capabilities, before
+  // doing anything asynchronous. Never copy it to a return URL or browser storage.
+  try {
+    browser.history.replaceState(
+      browser.history.state,
+      "",
+      `${browser.location.pathname}${browser.location.search}`,
+    );
+  } catch {
+    // Continuing to auth routing could copy the capability into a return URL.
+    return Promise.reject(
+      new Error("Unable to initialize notification preferences"),
+    );
+  }
+  const token = tokens[0];
+  if (
+    browser.location.pathname.replace(/\/$/, "") !== HANDOFF_PATH ||
+    tokens.length !== 1 ||
+    !token ||
+    token.length > 4096 ||
+    !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u.test(token)
+  ) {
+    return Promise.resolve();
+  }
+
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<void>((resolve) => {
+    timeout = setTimeout(() => {
+      controller.abort();
+      resolve();
+    }, deadlineMs);
+  });
+  const exchange = async () => {
+    try {
+      const csrf = await fetcher("/api/me/csrf-token", {
+        credentials: "include",
+        cache: "no-store",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      };
+      if (csrf.ok) {
+        const payload: unknown = await csrf.json();
+        if (
+          !payload ||
+          typeof payload !== "object" ||
+          !("token" in payload) ||
+          typeof payload.token !== "string" ||
+          !payload.token ||
+          !("expiresAt" in payload) ||
+          typeof payload.expiresAt !== "string"
+        )
+          return;
+        headers["x-taskdesk-csrf"] = payload.token;
+      } else if (csrf.status !== 401) {
+        return;
+      }
+      if (controller.signal.aborted) return;
+      // The generic public response is deliberately neither decoded nor rendered.
+      await fetcher("/api/public/agent/notification-preference-handoffs", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        headers,
+        body: JSON.stringify({ token }),
+        signal: controller.signal,
+      });
+    } catch {
+      // Invalid/expired links and transport failures reveal no capability details.
+    }
+  };
+  return Promise.race([exchange(), deadline]).finally(() =>
+    clearTimeout(timeout),
+  );
+}

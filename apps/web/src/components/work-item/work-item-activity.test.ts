@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { WorkItemActivityRow } from "@/fetchers/work-item/get-work-item-activity";
+import { translate } from "@/test/en-translation";
 import {
+  activityChangeDescription,
   filterActivityRows,
   groupConsecutiveActivity,
 } from "./work-item-activity";
@@ -108,5 +110,138 @@ describe("filterActivityRows", () => {
     expect(filterActivityRows(rows, "public").map((entry) => entry.id)).toEqual(
       ["public-comment"],
     );
+  });
+});
+
+describe("relation activity descriptions", () => {
+  function change(
+    oldValue: unknown,
+    newValue: unknown,
+    field: string | null = "relation",
+  ) {
+    return { field, verb: "updated", oldValue, newValue };
+  }
+  it("shows relation creation and removal as readable from/to labels", () => {
+    expect(
+      activityChangeDescription(
+        change(null, { type: "relates", direction: "outgoing" }),
+        translate,
+      ),
+    ).toBe("Relations: — → relates to");
+    expect(
+      activityChangeDescription(
+        change({ type: "blocks", direction: "incoming" }, null),
+        translate,
+      ),
+    ).toBe("Relations: blocked by → —");
+  });
+  it.each([
+    ["relates", "relates to"],
+    ["blocks", "blocked by"],
+    ["duplicates", "duplicated by"],
+    ["precedes", "follows"],
+    ["requires", "required by"],
+  ])("renders incoming %s using its declared inverse", (type, label) => {
+    expect(
+      activityChangeDescription(
+        change(null, { type, direction: "incoming" }),
+        translate,
+      ),
+    ).toBe(`Relations: — → ${label}`);
+  });
+  it("ignores endpoint identifiers and redacts unknown relation values instead of spilling JSON", () => {
+    expect(
+      activityChangeDescription(
+        change(null, {
+          type: "blocks",
+          direction: "outgoing",
+          sourceId: "private-uuid",
+          targetKey: "SECRET-9",
+        }),
+        translate,
+      ),
+    ).toBe("Relations: — → blocks");
+    for (const value of [
+      { type: "future", direction: "incoming", secret: "SECRET-9" },
+      { type: "blocks", direction: "future" },
+      "private-uuid",
+      ["SECRET-9"],
+    ]) {
+      const text = activityChangeDescription(change(null, value), translate);
+      expect(text).toBe("Relations: — → Unavailable");
+      expect(text).not.toMatch(/SECRET|private|\{|\[/);
+    }
+  });
+  it("preserves other field rendering and grouped verb prefixes", () => {
+    expect(
+      activityChangeDescription(change("low", "high", "priority"), translate),
+    ).toBe("priority: low → high");
+    expect(
+      activityChangeDescription(
+        change({ value: 1 }, null, "estimate"),
+        translate,
+      ),
+    ).toBe('estimate: {"value":1} → —');
+    expect(
+      activityChangeDescription(change(null, "done", null), translate, true),
+    ).toBe("updated: — → done");
+    expect(
+      activityChangeDescription(change(null, "done", null), translate),
+    ).toBe("— → done");
+  });
+});
+
+describe("readable canonical activity summaries", () => {
+  it("does not print rich-text documents, label identifiers or implementation verbs into the timeline", () => {
+    expect(
+      activityChangeDescription(
+        {
+          field: "description",
+          verb: "updated",
+          oldValue: null,
+          newValue: {
+            type: "doc",
+            content: [{ type: "text", text: "Visible description" }],
+          },
+        },
+        translate,
+      ),
+    ).toBe("updated the description");
+    expect(
+      activityChangeDescription(
+        {
+          field: "label",
+          verb: "updated",
+          oldValue: ["opaque-old-id"],
+          newValue: ["opaque-new-id"],
+        },
+        translate,
+        true,
+      ),
+    ).toBe("updated labels");
+    expect(
+      activityChangeDescription(
+        {
+          field: null,
+          verb: "attachment.added",
+          oldValue: null,
+          newValue: null,
+        },
+        translate,
+        true,
+      ),
+    ).toBe("added an attachment");
+    expect(
+      activityChangeDescription(
+        {
+          field: null,
+          verb: "attachment.deleted",
+          oldValue: null,
+          newValue: null,
+        },
+        translate,
+        true,
+      ),
+    ).toBe("removed an attachment");
   });
 });

@@ -30,6 +30,7 @@ import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/cn";
 import { formatRelativeTime } from "@/lib/format";
 import { getStatusLabel } from "@/lib/i18n/domain";
+import { routes } from "@/lib/routes";
 import type { Notification } from "@/types/notification";
 
 export type NotificationDropdownRef = {
@@ -192,6 +193,16 @@ export function getNotificationContent(
   return notification.content ?? "";
 }
 
+/** A `pending_action` notification opens the requester's approval page for that action. */
+export function getPendingActionNotificationHref(
+  notification: Pick<Notification, "resourceType" | "resourceId">,
+): string | null {
+  return notification.resourceType === "pending_action" &&
+    notification.resourceId
+    ? routes.pendingAction.build({ id: notification.resourceId })
+    : null;
+}
+
 /**
  * Marks a notification read and opens what it is about. Shared by the dropdown and the
  * full-page inbox (`/agent/inbox`).
@@ -203,6 +214,12 @@ export function useNotificationClick() {
     (notification: Notification) => {
       if (!notification.isRead) {
         markAsRead(notification.id);
+      }
+
+      const pendingActionHref = getPendingActionNotificationHref(notification);
+      if (pendingActionHref) {
+        void navigate({ href: pendingActionHref });
+        return;
       }
 
       const ed = getEventDataRecord(notification.eventData);

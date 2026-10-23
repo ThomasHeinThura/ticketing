@@ -96,6 +96,7 @@ export async function findAttachmentWorkItemForReach(
   return await executor
     .select({
       id: attachmentTable.id,
+      uploadedBy: attachmentTable.uploadedBy,
       workItemId: attachmentTable.workItemId,
       workspaceId: attachmentTable.workspaceId,
       projectId: workItemTable.projectId,
@@ -111,6 +112,7 @@ export async function findAttachmentWorkItemForReach(
         isNull(workItemTable.deletedAt),
         isNull(workItemTable.archivedAt),
         isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
       ),
     )
     .limit(1);

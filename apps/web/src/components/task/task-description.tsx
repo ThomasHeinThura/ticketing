@@ -89,6 +89,7 @@ import {
 } from "./extensions/shiki-code-block";
 import { TaskItemWithCheckbox } from "./extensions/task-item-with-checkbox";
 import { TaskDeskIssueLink } from "./extensions/taskdesk-issue-link";
+import { TaskDescriptionPresentation } from "./task-detail-presentation";
 import "tippy.js/dist/tippy.css";
 
 type TaskDescriptionProps = {
@@ -1399,7 +1400,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
   );
 
   return (
-    <section
+    <TaskDescriptionPresentation
       ref={editorShellRef}
       aria-label={t("tasks:detail.editor.ariaLabel")}
       className={cn(
@@ -1990,7 +1991,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
           )}
         </DialogPopup>
       </Dialog>
-    </section>
+    </TaskDescriptionPresentation>
   );
 }
 

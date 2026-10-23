@@ -27,6 +27,7 @@ import {
   grantProjectManageAccess,
   grantProjectRole,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 type App = ReturnType<typeof createApp>["app"];
 
@@ -558,6 +559,11 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
         isDefault: true,
         createdAt: now,
         updatedAt: now,
+      });
+      await ensureCreationWorkflow({
+        workspaceId,
+        projectId,
+        typeId: type.id,
       });
       await grantProjectRole(userId, projectId, [
         "project:read",

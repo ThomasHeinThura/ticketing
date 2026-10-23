@@ -6,6 +6,10 @@ export type CreateWorkItemInput = {
   typeId: string;
   title: string;
   description?: unknown;
+  startDate?: string | null;
+  dueDate?: string | null;
+  labelIds?: string[];
+  assigneeId?: string;
   priority?: "low" | "medium" | "high" | "urgent";
 };
 

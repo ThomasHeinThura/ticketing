@@ -5,10 +5,15 @@
  * deferral.
  */
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
+import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import {
+  rebalancePositionPartition,
+  recoverDensePositionPartitions,
+} from "../../apps/api/src/scheduler/position-rebalance";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -17,8 +22,13 @@ import {
   grantProjectAccessForWorkspaceRole,
   grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
+  requireRow,
 } from "./helpers/fixtures";
-import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
+import {
+  raceProjectSoftDelete,
+  waitForLockBlocker,
+} from "./helpers/race-soft-delete";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 async function makeWorkItemType(workspaceId: string) {
   const now = new Date();
@@ -37,7 +47,11 @@ async function makeWorkItemType(workspaceId: string) {
   return type;
 }
 
-async function makeDefaultState(workspaceId: string, projectId: string) {
+async function makeDefaultState(
+  workspaceId: string,
+  projectId: string,
+  isDefault = true,
+) {
   const now = new Date();
   const [stateTemplate] = await db
     .insert(schema.stateTemplateTable)
@@ -56,7 +70,7 @@ async function makeDefaultState(workspaceId: string, projectId: string) {
     .values({
       projectId,
       stateTemplateId: stateTemplate.id,
-      isDefault: true,
+      isDefault,
       createdAt: now,
       updatedAt: now,
     })
@@ -110,6 +124,11 @@ async function setupProjectWithDefaultState(
   await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   const state = await makeDefaultState(creator.workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: creator.workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, project, type, state };
 }
 
@@ -269,6 +288,11 @@ describe("API integration: work item rank (#23 fourth slice)", () => {
     await grantWorkItemProjectAccess(creator.user.id, otherProject.id);
     const otherType = await makeWorkItemType(creator.workspace.id);
     await makeDefaultState(creator.workspace.id, otherProject.id);
+    await ensureCreationWorkflow({
+      workspaceId: creator.workspace.id,
+      projectId: otherProject.id,
+      typeId: otherType.id,
+    });
     const foreign = (await (
       await createWorkItemRequest(app, otherProject.id, {
         typeId: otherType.id,
@@ -388,5 +412,508 @@ describe("API integration: work item rank (#23 fourth slice)", () => {
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.id, target.id));
     expect(after).toEqual(before);
+  });
+  async function denseFixture(positions = ["1", "1.0000001", "5"]) {
+    const fixture = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(fixture.creator.user);
+    const { app } = createApp();
+    const items = [];
+    for (const [index, position] of positions.entries()) {
+      const response = await createWorkItemRequest(app, fixture.project.id, {
+        typeId: fixture.type.id,
+        title: `Rank ${index}`,
+      });
+      expect(response.status).toBe(200);
+      const item = (await response.json()) as {
+        id: string;
+        key: string;
+        version: number;
+      };
+      await db
+        .update(schema.workItemTable)
+        .set({ position })
+        .where(eq(schema.workItemTable.id, item.id));
+      items.push(item);
+    }
+    return {
+      ...fixture,
+      app,
+      items,
+      partition: {
+        workspaceId: fixture.creator.workspace.id,
+        projectId: fixture.project.id,
+        stateId: fixture.state.id,
+      },
+    };
+  }
+
+  it("WI-12: a rank leaving an exact numeric small gap repairs the state and returns its current version", async () => {
+    const { app, items, project } = await denseFixture(["1", "1.0000015", "5"]);
+    const response = await rankWorkItemRequest(
+      app,
+      requireRow([items[2]], "rank fixture row").key,
+      {
+        beforeId: requireRow([items[0]], "rank fixture row").id,
+        afterId: requireRow([items[1]], "rank fixture row").id,
+      },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      position: string;
+      version: number;
+    };
+    const rows = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, project.id))
+      .orderBy(asc(schema.workItemTable.position));
+    expect(rows.map((row) => row.id)).toEqual([
+      requireRow([items[0]], "rank fixture row").id,
+      requireRow([items[2]], "rank fixture row").id,
+      requireRow([items[1]], "rank fixture row").id,
+    ]);
+    expect(rows.map((row) => row.position)).toEqual([
+      "1.0000000000",
+      "2.0000000000",
+      "3.0000000000",
+    ]);
+    expect(body).toMatchObject({
+      position: requireRow([rows[1]], "rank fixture row").position,
+      version: requireRow([rows[1]], "rank fixture row").version,
+    });
+    expect(body.version).toBe(3);
+    expect(requireRow([rows[0]], "rank fixture row").version).toBe(1);
+  });
+
+  it("does not rebalance a gap exactly equal to the threshold", async () => {
+    const { partition } = await denseFixture(["1", "1.000001"]);
+    expect(await rebalancePositionPartition(partition)).toEqual({
+      status: "healthy",
+      changed: 0,
+    });
+  });
+
+  it("keeps exact large numeric midpoint precision", async () => {
+    const { app, items } = await denseFixture([
+      "1234567890.1234567890",
+      "1234567890.1234767890",
+      "5",
+    ]);
+    const response = await rankWorkItemRequest(
+      app,
+      requireRow([items[2]], "rank fixture row").key,
+      {
+        beforeId: requireRow([items[0]], "rank fixture row").id,
+        afterId: requireRow([items[1]], "rank fixture row").id,
+      },
+    );
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { position: string }).position).toBe(
+      "1234567890.1234667890",
+    );
+  });
+
+  it("recovers persisted dense partitions after another replica's lease is released", async () => {
+    const { partition } = await denseFixture();
+    await db.execute(
+      sql`INSERT INTO job_lease (name, owner, expires_at) VALUES ('position-rebalance', 'another-holder', clock_timestamp() AT TIME ZONE 'UTC' + interval '5 minutes')`,
+    );
+    expect(await rebalancePositionPartition(partition)).toEqual({
+      status: "leased",
+      changed: 0,
+    });
+    await db.execute(
+      sql`DELETE FROM job_lease WHERE name = 'position-rebalance'`,
+    );
+    const recovered = await recoverDensePositionPartitions();
+    expect(recovered).toHaveLength(1);
+    expect(requireRow([recovered[0]], "rank fixture row").outcome.status).toBe(
+      "rebalanced",
+    );
+    expect(await recoverDensePositionPartitions()).toEqual([]);
+  });
+
+  it("preserves deterministic tie order, other states, archived and deleted rows", async () => {
+    const { partition, project, creator, items } = await denseFixture([
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+    ]);
+    const state = await makeDefaultState(
+      creator.workspace.id,
+      project.id,
+      false,
+    );
+    await db
+      .update(schema.workItemTable)
+      .set({ stateId: state.id })
+      .where(
+        eq(
+          schema.workItemTable.id,
+          requireRow([items[2]], "rank fixture row").id,
+        ),
+      );
+    await db
+      .update(schema.workItemTable)
+      .set({ archivedAt: new Date() })
+      .where(
+        eq(
+          schema.workItemTable.id,
+          requireRow([items[3]], "rank fixture row").id,
+        ),
+      );
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: new Date() })
+      .where(
+        eq(
+          schema.workItemTable.id,
+          requireRow([items[4]], "rank fixture row").id,
+        ),
+      );
+    const outcome = await rebalancePositionPartition(partition);
+    expect(outcome).toEqual({ status: "rebalanced", changed: 2 });
+    const rows = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, project.id));
+    const active = rows
+      .filter((row) => items.slice(0, 2).some((item) => item.id === row.id))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    expect(active.map((row) => row.position)).toEqual([
+      "1.0000000000",
+      "2.0000000000",
+    ]);
+    for (const item of items.slice(2))
+      expect(rows.find((row) => row.id === item.id)).toMatchObject({
+        position: "0.0000000000",
+        version: 1,
+      });
+  });
+
+  it("rolls back busy partition locks while a genuine hierarchy mutation waits, then recovers", async () => {
+    const { app, items, partition } = await denseFixture();
+    const client = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await client.connect();
+    let mutation: Response | Promise<Response> | undefined;
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT id FROM work_item WHERE id=$1 FOR UPDATE", [
+        requireRow([items[0]], "rank fixture row").id,
+      ]);
+      const pid = requireRow(
+        (await client.query<{ pid: number }>("SELECT pg_backend_pid() AS pid"))
+          .rows,
+        "lock owner pid",
+      ).pid;
+      mutation = app.request(
+        `/api/v2/work-items/${requireRow([items[1]], "rank fixture row").key}/parent`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "if-match": '"1"' },
+          body: JSON.stringify({
+            parentKey: requireRow([items[0]], "rank fixture row").key,
+          }),
+        },
+      );
+      expect(await waitForLockBlocker(client, pid)).toBe(true);
+      expect(await rebalancePositionPartition(partition)).toEqual({
+        status: "busy",
+        changed: 0,
+      });
+      await client.query("COMMIT");
+      expect((await mutation).status).toBe(200);
+      expect(
+        requireRow(await recoverDensePositionPartitions(), "recovery partition")
+          .outcome.status,
+      ).toBe("rebalanced");
+    } finally {
+      await client.query("ROLLBACK");
+      if (mutation) await mutation;
+      await client.end();
+    }
+  });
+  it("refuses an exhausted midpoint without moving the target when another replica holds the worker lease", async () => {
+    const { app, items } = await denseFixture(["1", "1.0000000001", "5"]);
+    await db.execute(
+      sql`INSERT INTO job_lease (name, owner, expires_at) VALUES ('position-rebalance', 'another-holder', clock_timestamp() AT TIME ZONE 'UTC' + interval '5 minutes')`,
+    );
+    const response = await rankWorkItemRequest(
+      app,
+      requireRow([items[2]], "rank fixture row").key,
+      {
+        beforeId: requireRow([items[0]], "rank fixture row").id,
+        afterId: requireRow([items[1]], "rank fixture row").id,
+      },
+    );
+    expect(response.status).toBe(409);
+    const [target] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(
+        eq(
+          schema.workItemTable.id,
+          requireRow([items[2]], "rank fixture row").id,
+        ),
+      );
+    expect(target).toMatchObject({ position: "5.0000000000", version: 1 });
+    await db.execute(
+      sql`DELETE FROM job_lease WHERE name = 'position-rebalance'`,
+    );
+    expect(
+      requireRow(await recoverDensePositionPartitions(), "recovery partition")
+        .outcome.status,
+    ).toBe("rebalanced");
+    expect(
+      (
+        await rankWorkItemRequest(
+          app,
+          requireRow([items[2]], "rank fixture row").key,
+          {
+            beforeId: requireRow([items[0]], "rank fixture row").id,
+            afterId: requireRow([items[1]], "rank fixture row").id,
+          },
+        )
+      ).status,
+    ).toBe(200);
+  });
+  it("does not wait on a live rank partition holder and preserves a concurrent rank after release", async () => {
+    const { app, items, partition } = await denseFixture(["1", "3", "5"]);
+    const client = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await client.connect();
+    let ranking: Response | Promise<Response> | undefined;
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+        [
+          JSON.stringify([
+            "work-item-position",
+            partition.workspaceId,
+            partition.projectId,
+            partition.stateId,
+          ]),
+        ],
+      );
+      const pid = requireRow(
+        (await client.query<{ pid: number }>("SELECT pg_backend_pid() AS pid"))
+          .rows,
+        "lock owner pid",
+      ).pid;
+      ranking = rankWorkItemRequest(
+        app,
+        requireRow([items[2]], "rank fixture row").key,
+        {
+          beforeId: requireRow([items[0]], "rank fixture row").id,
+          afterId: requireRow([items[1]], "rank fixture row").id,
+        },
+      );
+      expect(await waitForLockBlocker(client, pid)).toBe(true);
+      expect(await rebalancePositionPartition(partition)).toEqual({
+        status: "busy",
+        changed: 0,
+      });
+      await client.query("COMMIT");
+      const response = await ranking;
+      expect(response.status).toBe(200);
+      expect(((await response.json()) as { position: string }).position).toBe(
+        "2.0000000000",
+      );
+    } finally {
+      await client.query("ROLLBACK");
+      if (ranking) await ranking;
+      await client.end();
+    }
+  });
+
+  it("never repairs a frozen project or discovers it as live recovery work", async () => {
+    const { partition, project, items } = await denseFixture();
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    expect(await rebalancePositionPartition(partition)).toEqual({
+      status: "unavailable",
+      changed: 0,
+    });
+    expect(await recoverDensePositionPartitions()).toEqual([]);
+    const rows = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, project.id));
+    expect(
+      rows.find(
+        (row) => row.id === requireRow([items[1]], "rank fixture row").id,
+      ),
+    ).toMatchObject({
+      position: "1.0000001000",
+      version: 1,
+    });
+  });
+  it("does not deadlock a genuine transition holding the parent while waiting for its child", async () => {
+    const { app, items, partition, creator, project, type, state } =
+      await denseFixture();
+    const destination = await makeDefaultState(
+      creator.workspace.id,
+      project.id,
+      false,
+    );
+    await db
+      .update(schema.stateTemplateTable)
+      .set({ group: "completed" })
+      .where(eq(schema.stateTemplateTable.id, destination.stateTemplateId));
+    const [workflow] = await db
+      .insert(schema.workflowTable)
+      .values({
+        workspaceId: creator.workspace.id,
+        key: `rank-workflow-${randomUUID()}`,
+        name: "Ranking concurrency",
+      })
+      .returning();
+    if (!workflow) throw new Error("Workflow fixture missing");
+    const [version] = await db
+      .insert(schema.workflowVersionTable)
+      .values({ workflowId: workflow.id, number: 1, publishedAt: new Date() })
+      .returning();
+    if (!version) throw new Error("Workflow version fixture missing");
+    await db
+      .update(schema.workflowTable)
+      .set({ activeVersionId: version.id })
+      .where(eq(schema.workflowTable.id, workflow.id));
+    await db.insert(schema.workflowTransitionTable).values({
+      versionId: version.id,
+      fromStateTemplateId: state.stateTemplateId,
+      toStateTemplateId: destination.stateTemplateId,
+      guards: [{ type: "children_closed" }],
+      effects: [],
+    });
+    await db
+      .update(schema.workItemTypeTable)
+      .set({ workflowId: workflow.id })
+      .where(eq(schema.workItemTypeTable.id, type.id));
+    await db
+      .update(schema.workItemTable)
+      .set({ parentId: requireRow([items[0]], "rank fixture row").id })
+      .where(
+        eq(
+          schema.workItemTable.id,
+          requireRow([items[1]], "rank fixture row").id,
+        ),
+      );
+    const client = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await client.connect();
+    let transition: Response | Promise<Response> | undefined;
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT id FROM work_item WHERE id=$1 FOR UPDATE", [
+        requireRow([items[1]], "rank fixture row").id,
+      ]);
+      const pid = requireRow(
+        (await client.query<{ pid: number }>("SELECT pg_backend_pid() AS pid"))
+          .rows,
+        "lock owner pid",
+      ).pid;
+      transition = app.request(
+        `/api/work-items/${requireRow([items[0]], "rank fixture row").key}/transition`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            toStateTemplateId: destination.stateTemplateId,
+          }),
+        },
+      );
+      expect(await waitForLockBlocker(client, pid)).toBe(true);
+      expect(await rebalancePositionPartition(partition)).toEqual({
+        status: "busy",
+        changed: 0,
+      });
+      await client.query("COMMIT");
+      const response = await transition;
+      expect(response.status).toBe(422);
+      expect(await response.json()).toMatchObject({
+        blockedBy: [{ kind: "guard", reasonCode: "guard.children_closed" }],
+      });
+      expect(
+        requireRow(await recoverDensePositionPartitions(), "recovery partition")
+          .outcome.status,
+      ).toBe("rebalanced");
+    } finally {
+      await client.query("ROLLBACK");
+      if (transition) await transition;
+      await client.end();
+    }
+  });
+  it("never renumbers another workspace/project's equally dense partition", async () => {
+    const source = await denseFixture(["0", "0"]);
+    const other = await denseFixture(["0", "0"]);
+    expect((await rebalancePositionPartition(source.partition)).status).toBe(
+      "rebalanced",
+    );
+    const rows = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, other.project.id));
+    expect(rows).toHaveLength(2);
+    expect(
+      rows.every((row) => row.position === "0.0000000000" && row.version === 1),
+    ).toBe(true);
+  });
+  it("returns a retry conflict rather than overflowing numeric rank capacity", async () => {
+    const { app, items } = await denseFixture(["9999999999.9999999999", "5"]);
+    expect(
+      (
+        await rankWorkItemRequest(
+          app,
+          requireRow([items[1]], "rank fixture row").key,
+          { beforeId: requireRow([items[0]], "rank fixture row").id },
+        )
+      ).status,
+    ).toBe(409);
+    const [target] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(
+        eq(
+          schema.workItemTable.id,
+          requireRow([items[1]], "rank fixture row").id,
+        ),
+      );
+    expect(target).toMatchObject({ position: "5.0000000000", version: 1 });
+  });
+  it("bounds startup discovery and refuses oversized partitions without partial writes", async () => {
+    const { partition, project } = await denseFixture(["0", "0", "0"]);
+    expect(
+      await recoverDensePositionPartitions(10, {
+        scanRows: 1,
+        maxPartitionRows: 1,
+      }),
+    ).toEqual([]);
+    const bounded = await recoverDensePositionPartitions(10, {
+      scanRows: 10,
+      maxPartitionRows: 1,
+    });
+    expect(requireRow(bounded, "bounded recovery").outcome).toEqual({
+      status: "bounded",
+      changed: 0,
+    });
+    const rows = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, project.id));
+    expect(
+      rows.every((row) => row.position === "0.0000000000" && row.version === 1),
+    ).toBe(true);
+    expect((await rebalancePositionPartition(partition)).status).toBe(
+      "rebalanced",
+    );
   });
 });

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   my: [] as { id: string }[],
 }));
 
+vi.mock("./work-item-approval-request", () => ({ default: () => null }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
   initReactI18next: { type: "3rdParty", init: () => {} },

@@ -1967,3 +1967,338 @@ describe("G3 contrast inventory and math", () => {
     assert.equal(contrastRatio([255, 255, 255], [255, 255, 255]), 1);
   });
 });
+
+describe("source-bound shared component paint slots", () => {
+  async function inspectFixture(source, inspect) {
+    const fixture = `apps/web/src/components/.contrast-slots-${process.pid}.tsx`;
+    try {
+      await writeFile(fixture, source);
+      const result = observeInheritedForegroundSurfaces(
+        [fixture],
+        new Set([
+          "foreground",
+          "muted-foreground",
+          "background",
+          "card",
+          "muted",
+          "popover",
+          "accent",
+          "accent-foreground",
+        ]),
+      );
+      inspect(result, fixture);
+    } finally {
+      await rm(fixture, { force: true });
+    }
+  }
+  it("binds a main children slot without claiming the sibling rightSidebar card", async () => {
+    await inspectFixture(
+      'function TaskPageFrame({children,rightSidebar}) {return <main><section className="bg-background">{children}</section><aside className="bg-card">{rightSidebar}</aside></main>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <TaskPageFrame rightSidebar={<span/>}><Leaf/></TaskPageFrame>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        assert.ok(
+          result.pairs.has(
+            "--color-foreground|--color-background|bg-background|light",
+          ),
+        );
+        assert.ok(
+          !result.pairs.has("--color-foreground|--color-card|bg-card|light"),
+        );
+        const contexts = result.uses.occurrences.get(
+          "--color-foreground|--color-background|bg-background|light",
+        );
+        assert.ok(
+          contexts.some((context) =>
+            context.chain.some(
+              (entry) =>
+                entry.includes("component-slot:") &&
+                entry.includes("TaskPageFrame.children"),
+            ),
+          ),
+        );
+      },
+    );
+  });
+  it("measures main and rightSidebar slots independently when each actually renders text", async () => {
+    await inspectFixture(
+      'function TaskPageFrame({children,rightSidebar}) {return <main><section className="bg-background">{children}</section><aside className="bg-card">{rightSidebar}</aside></main>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <TaskPageFrame rightSidebar={<Leaf/>}><Leaf/></TaskPageFrame>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        for (const bg of ["background", "card"])
+          for (const theme of ["light", "dark"])
+            assert.ok(
+              result.pairs.has(
+                `--color-foreground|--color-${bg}|bg-${bg}|${theme}`,
+              ),
+            );
+      },
+    );
+  });
+  it("traces render-prop children(visibleItemId) to the exact Sheet body", async () => {
+    await inspectFixture(
+      'function SheetFrame({children,visibleItemId}) {return <section className="bg-background">{visibleItemId ? children(visibleItemId) : null}</section>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <SheetFrame>{visibleItemId=><Leaf id={visibleItemId}/>}</SheetFrame>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        assert.ok(
+          result.pairs.has(
+            "--color-foreground|--color-background|bg-background|dark",
+          ),
+        );
+      },
+    );
+  });
+  it("resolves heading/subtasks/relations/activity by their actual named JSX slots", async () => {
+    await inspectFixture(
+      'function Detail({heading,subtasks,relations,activity}) {return <main className="bg-background"><header className="bg-background">{heading}</header><section className="bg-card">{subtasks}</section><section className="bg-muted">{relations}</section><section className="bg-popover">{activity}</section></main>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <Detail heading={<Leaf/>} subtasks={<Leaf/>} relations={<Leaf/>} activity={<Leaf/>}/>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        for (const bg of ["background", "card", "popover"])
+          assert.ok(
+            result.pairs.has(`--color-foreground|--color-${bg}|bg-${bg}|light`),
+          );
+        assert.ok(
+          result.pairs.has(
+            "--color-foreground|--color-muted|bg-muted|light|backdrop:bg-background",
+          ),
+        );
+      },
+    );
+  });
+  it("keeps a shared translucent CommentCard over its actual caller backdrop", async () => {
+    await inspectFixture(
+      'function CommentCard({children}) {return <article className="bg-card/60">{children}</article>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <main className="bg-background"><CommentCard><Leaf/></CommentCard></main>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        for (const theme of ["light", "dark"])
+          assert.ok(
+            result.pairs.has(
+              `--color-foreground|--color-card|bg-card/60|${theme}|backdrop:bg-background`,
+            ),
+          );
+      },
+    );
+  });
+  it("does not invent a surface for an unpainted slot from an opaque sibling", async () => {
+    await inspectFixture(
+      'function Frame({children}) {return <main><aside className="bg-card">Other</aside><section>{children}</section></main>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <Frame><Leaf/></Frame>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 1);
+        assert.ok(
+          !result.pairs.has("--color-foreground|--color-card|bg-card|light"),
+        );
+      },
+    );
+  });
+  it("proves forwarded ContextMenu highlighted state and still refuses unknown primitives", async () => {
+    await inspectFixture(
+      'import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu"; export function ContextMenuItem(){return <div className="bg-popover"><ContextMenuPrimitive.Item className="data-highlighted:bg-accent" {...props}><span className="text-foreground"/></ContextMenuPrimitive.Item></div>;} export function Unknown(){return <div className="bg-popover"><Mystery.Item className="data-highlighted:bg-accent" {...props}><span className="text-foreground"/></Mystery.Item></div>;}',
+      (result) => {
+        assert.ok(
+          result.pairs.has(
+            "--color-foreground|--color-accent|data-highlighted:bg-accent|light|backdrop:bg-popover",
+          ),
+        );
+        assert.equal(result.unresolved.size, 1);
+      },
+    );
+  });
+  it("refuses a declared slot that is discarded despite an opaque sibling", async () => {
+    await inspectFixture(
+      'function Frame({children}) {return <main className="bg-card">Other</main>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <Frame><Leaf/></Frame>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 1);
+        assert.equal(result.pairs.size, 0);
+      },
+    );
+  });
+  it("does not treat a slot used only as an event handler as rendered content", async () => {
+    await inspectFixture(
+      'function Frame({children}) {return <main className="bg-card" onClick={children}>Other</main>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <Frame><Leaf/></Frame>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 1);
+        assert.equal(result.pairs.size, 0);
+      },
+    );
+  });
+  it("rejects a shadowed slot while tracing destructured aliases and object properties", async () => {
+    await inspectFixture(
+      'function Alias({children:content}) {return <main className="bg-card">{content}</main>;} function ObjectFrame(props){return <main className="bg-background">{props.children}</main>;} function Shadow({children}){return <main className="bg-card">{[1].map(children => <section>{children}</section>)}</main>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <><Alias><Leaf/></Alias><ObjectFrame><Leaf/></ObjectFrame><Shadow><Leaf/></Shadow></>;}',
+      (result) => {
+        // One unresolved caller invalidates the shared leaf's overall proof.
+        assert.equal(result.unresolved.size, 1);
+      },
+    );
+  });
+
+  it("binds actual aliased Base UI item imports but refuses a forged alias or missing forwarding", async () => {
+    await inspectFixture(
+      'import { ContextMenu as Real } from "@base-ui/react/context-menu"; import { ContextMenu as Fake } from "unknown-library"; export function Good(){return <div className="bg-popover"><Real.Item className="data-highlighted:bg-card" {...props}><span className="text-foreground"/></Real.Item></div>;} export function Forged(){return <div className="bg-popover"><Fake.Item className="data-highlighted:bg-card" {...props}><span className="text-foreground"/></Fake.Item></div>;} export function NotForwarded(){return <div className="bg-popover"><Real.Item className="data-highlighted:bg-card"><span className="text-foreground"/></Real.Item></div>;}',
+      (result) => {
+        assert.ok(
+          result.pairs.has(
+            "--color-foreground|--color-card|data-highlighted:bg-card|light",
+          ),
+        );
+        assert.equal(result.unresolved.size, 2);
+      },
+    );
+  });
+  it("follows property-object spread forwarding without treating replaced children as forwarded", async () => {
+    await inspectFixture(
+      'function Forward(props){return <section className="bg-card" {...props}/>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <Forward><Leaf/></Forward>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        assert.ok(
+          result.pairs.has("--color-foreground|--color-card|bg-card|dark"),
+        );
+      },
+    );
+    await inspectFixture(
+      'function Replaced(props){return <section className="bg-card" {...props}>Other</section>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <Replaced><Leaf/></Replaced>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 1);
+      },
+    );
+  });
+  it("traces destructured aliases and property access slots to both painted branches", async () => {
+    await inspectFixture(
+      'function Alias({children:content}){return <section className="bg-card">{content}</section>;} function ObjectFrame(props){return <section className="bg-background">{props.children}</section>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <><Alias><Leaf/></Alias><ObjectFrame><Leaf/></ObjectFrame></>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        for (const bg of ["card", "background"])
+          for (const theme of ["light", "dark"])
+            assert.ok(
+              result.pairs.has(
+                `--color-foreground|--color-${bg}|bg-${bg}|${theme}`,
+              ),
+            );
+      },
+    );
+  });
+  it("follows a const slot alias through a returned conditional without treating condition-only references as values", async () => {
+    await inspectFixture(
+      'function Frame({render,enabled}){const content=enabled ? render : null; return <section className="bg-card">{content}</section>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <Frame render={<Leaf/>}/>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        assert.ok(
+          result.pairs.has("--color-foreground|--color-card|bg-card|light"),
+        );
+      },
+    );
+    await inspectFixture(
+      'function Frame({render}){const content=render ? "Other" : null; return <section className="bg-card">{content}</section>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <Frame render={<Leaf/>}/>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 1);
+      },
+    );
+    await inspectFixture(
+      'function Frame({render}){const content=unknownTransform(render); return <section className="bg-card">{content}</section>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <Frame render={<Leaf/>}/>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 1);
+      },
+    );
+  });
+  it("composites a proven full-host before layer over its actual opaque surface", async () => {
+    await inspectFixture(
+      'function Frame({children}){return <section className="relative bg-popover before:absolute before:inset-0 before:pointer-events-none before:bg-muted/72">{children}</section>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <Frame><Leaf/></Frame>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        for (const theme of ["light", "dark"])
+          assert.ok(
+            result.pairs.has(
+              `--color-foreground|--color-muted|before:bg-muted/72|${theme}|backdrop:bg-popover`,
+            ),
+          );
+      },
+    );
+  });
+  it("refuses an unproven decorative pseudo box instead of using it as a full text backdrop", async () => {
+    await inspectFixture(
+      'function Frame({children}){return <section className="bg-popover before:bg-muted/72">{children}</section>;} function Leaf(){return <p className="text-foreground">Text</p>;} export function Page(){return <Frame><Leaf/></Frame>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 1);
+      },
+    );
+  });
+
+  it("binds descendant hover backgrounds only to the actual child host slot", async () => {
+    await inspectFixture(
+      'function Frame({children}){return <section className="bg-card *:data-[slot=control]:hover:bg-accent">{children}</section>;} function Leaf(){return <button data-slot="control" className="text-foreground">Text</button>;} export function Page(){return <Frame><Leaf/></Frame>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        assert.ok(
+          result.pairs.has(
+            "--color-foreground|--color-accent|*:data-[slot=control]:hover:bg-accent|light|backdrop:bg-card",
+          ),
+        );
+      },
+    );
+    await inspectFixture(
+      'function Frame({children}){return <section className="bg-card *:data-[slot=control]:hover:bg-accent">{children}</section>;} function Leaf(){return <button data-slot="other" className="text-foreground">Text</button>;} export function Page(){return <Frame><Leaf/></Frame>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 1);
+      },
+    );
+  });
+
+  it("does not apply a direct-child slot selector through an intervening DOM wrapper", async () => {
+    await inspectFixture(
+      'function Frame({children}){return <section className="bg-card *:data-[slot=control]:hover:bg-accent"><div>{children}</div></section>;} function Leaf(){return <button data-slot="control" className="text-foreground">Text</button>;} export function Page(){return <Frame><Leaf/></Frame>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 1);
+      },
+    );
+  });
+  it("measures a source-proven Base UI active tab indicator as an additional sibling backdrop", async () => {
+    await inspectFixture(
+      'import { Tabs as T } from "@base-ui/react/tabs"; function TabList({children,variant="default",className}){return <T.List className="relative z-0 bg-card">{children}<T.Indicator className={cn("absolute bottom-0 left-0 translate-x-(--active-tab-left) -translate-y-(--active-tab-bottom) h-(--active-tab-height) w-(--active-tab-width)",variant === "underline" ? "z-10 bg-card" : "-z-1 bg-background dark:bg-input",className)}/></T.List>;} function Leaf(){return <button data-slot="control" className="data-active:text-foreground">Text</button>;} export function Page(){return <TabList><Leaf/></TabList>;}',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        for (const bg of ["card", "background"])
+          assert.ok(
+            result.pairs.has(`--color-foreground|--color-${bg}|bg-${bg}|light`),
+          );
+        assert.ok(
+          result.pairs.has(
+            "--color-foreground|--color-input|dark:bg-input|dark|backdrop:bg-card",
+          ),
+        );
+        const proof = result.uses.occurrences.get(
+          "--color-foreground|--color-background|bg-background|light",
+        );
+        assert.ok(
+          proof.some((value) =>
+            value.chain.some((entry) =>
+              entry.startsWith("active-tab-indicator:"),
+            ),
+          ),
+        );
+      },
+    );
+  });
+
+  it("refuses unknown active-indicator geometry or a dynamic presentation variant", async () => {
+    const base =
+      'import { Tabs as T } from "@base-ui/react/tabs"; function TabList({children,variant="default",className}){return <T.List className="relative z-0 bg-card">{children}<T.Indicator className={cn("absolute bottom-0 left-0 translate-x-(--active-tab-left) -translate-y-(--active-tab-bottom) h-(--active-tab-height) w-(--active-tab-width)",variant === "underline" ? "z-10 bg-card" : "-z-1 bg-background",className)}/></T.List>;} function Leaf(){return <button data-slot="control" className="data-active:text-foreground">Text</button>;} export function Page(){return <TabList><Leaf/></TabList>;}';
+    await inspectFixture(
+      base.replace("w-(--active-tab-width)", "w-4"),
+      (result) => assert.equal(result.unresolved.size, 1),
+    );
+    await inspectFixture(
+      base.replace("<TabList>", "<TabList variant={unknownVariant}>"),
+      (result) => assert.equal(result.unresolved.size, 1),
+    );
+    await inspectFixture(
+      base.replace("<TabList>", '<TabList variant="underline">'),
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        assert.equal(
+          result.pairs.has(
+            "--color-foreground|--color-background|bg-background|light",
+          ),
+          false,
+        );
+      },
+    );
+  });
+});

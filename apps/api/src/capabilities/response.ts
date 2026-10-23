@@ -8,6 +8,10 @@ export const capabilitiesResponseSchema = z
     deleteProjects: z.boolean(),
     updateTasks: z.boolean(),
     createTasks: z.boolean(),
+    createAttachments: z.boolean().optional().openapi({
+      description:
+        "Strict attachment:create in the requested scope; absent means denied.",
+    }),
     deleteTasks: z.boolean(),
     assignTasks: z.boolean(),
     manageLabels: z.boolean().optional().openapi({

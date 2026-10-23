@@ -1,26 +1,15 @@
-<!-- Keep it short. Fill every section, or write "n/a — <reason>". -->
-
 ## What and why
 
-<!-- One or two sentences. Link the issue if there is one. -->
+<!-- Describe the visible result. Batch related integration work. -->
 
 ## How it was checked
 
-<!-- Commands run and what you looked at. CI must be green; never [skip ci]. -->
+<!-- Actual local checks and persisted journeys, including failures and anything unverified. -->
 
-## Reviewed by
+## Phase completion
 
-<!-- One independent session that did not write this change: model and a link to its review comment. -->
-
-## Security
-
-<!-- Required when auth, permissions, tenancy or routes change (paths in docs/04-engineering/ci-cd.md):
-     what could leak or escalate, and why it cannot. Otherwise "n/a — reason". -->
-
-## Screens
-
-<!-- Required when apps/web changes: route, before/after screenshot, next to the kaneo original. -->
-
-## Not done
-
-<!-- What this deliberately leaves out, or "Nothing." -->
+<!-- Optional: unfinished integration needs no independent review on this PR.
+For a finished phase, replace the value below with P0..P9 and add
+**Report:** docs/evidence/Pn-review.json referencing the single consolidated
+independent design/integration/security review. This does not record Thomas's acceptance. -->
+**Phase:** not submitted

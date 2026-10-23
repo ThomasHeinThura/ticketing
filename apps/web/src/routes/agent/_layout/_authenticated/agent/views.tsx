@@ -28,6 +28,7 @@ import {
   toggleSavedViewPin,
 } from "@/fetchers/saved-views";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import { parseSavedViewsSearch, routes } from "@/lib/routes";
@@ -143,6 +144,7 @@ function SavedViewsIndexRoute() {
     mutationFn: toggleSavedViewPin,
     onSuccess: refreshViews,
   });
+  const openPendingAction = useOpenPendingAction();
   const deletion = useMutation({
     mutationFn: requestSavedViewDeletion,
     onSuccess: async () =>
@@ -314,11 +316,10 @@ function SavedViewsIndexRoute() {
                       disabled={deletion.isPending}
                       onClick={async () => {
                         try {
-                          const result = await deletion.mutateAsync(view.id);
-                          void navigate({
-                            to: routes.pendingAction.path,
-                            params: { id: result.pendingActionId },
-                          });
+                          // The approval opens in place as the one confirm dialog.
+                          await openPendingAction(
+                            await deletion.mutateAsync(view.id),
+                          );
                         } catch {
                           // The inline error below keeps the list and its URL intact.
                         }

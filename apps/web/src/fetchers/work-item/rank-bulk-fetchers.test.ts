@@ -51,6 +51,7 @@ describe("bulkAssignWorkItems", () => {
   it("posts the assign operation scoped to the workspace", async () => {
     mocks.bulk.mockResolvedValue({
       ok: true,
+      status: 200,
       json: async () => ({ succeeded: ["WLP-1"], failed: [] }),
     });
     const result = await bulkAssignWorkItems({

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -22,23 +22,27 @@ import {
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { getPortalSubmissions } from "@/fetchers/intake";
-import { routes } from "@/lib/routes";
+import { parsePortalRequestsSearch, routes } from "@/lib/routes";
 
 export const Route = createFileRoute("/requests")({
+  validateSearch: parsePortalRequestsSearch,
   component: PortalRequestsPage,
 });
 
 function PortalRequestsPage() {
   const { t } = useTranslation("portal");
+  const { portalUserId } = Route.useRouteContext();
+  const { cursor } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const query = useQuery({
-    queryKey: ["portal", "submissions"],
-    queryFn: () => getPortalSubmissions(),
+    queryKey: ["portal", portalUserId, "submissions", cursor],
+    queryFn: () => getPortalSubmissions({ cursor }),
   });
 
   const submissions = query.data?.submissions ?? [];
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-4xl flex-col gap-6 p-6">
+    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div>
           <h1 className="text-2xl font-semibold">
@@ -52,11 +56,9 @@ function PortalRequestsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to={routes.portalCatalogue.path}>
-            <Button>
-              {t("requests.newRequest", { defaultValue: "New request" })}
-            </Button>
-          </Link>
+          <Button render={<Link to={routes.portalCatalogue.path} />}>
+            {t("requests.newRequest", { defaultValue: "New request" })}
+          </Button>
         </div>
       </header>
 
@@ -66,9 +68,7 @@ function PortalRequestsPage() {
             {t("error.title", { defaultValue: "Unable to load requests" })}
           </AlertTitle>
           <AlertDescription className="flex items-center justify-between">
-            <span>
-              {query.error?.message || "Could not load your submissions."}
-            </span>
+            <span>{t("requests.loadFailed")}</span>
             <Button
               size="sm"
               variant="outline"
@@ -104,13 +104,14 @@ function PortalRequestsPage() {
                 </EmptyDescription>
               </EmptyHeader>
               <div className="mt-4 flex justify-center">
-                <Link to={routes.portalCatalogue.path}>
-                  <Button variant="outline">
-                    {t("requests.browseCatalogue", {
-                      defaultValue: "Browse request catalogue",
-                    })}
-                  </Button>
-                </Link>
+                <Button
+                  variant="outline"
+                  render={<Link to={routes.portalCatalogue.path} />}
+                >
+                  {t("requests.browseCatalogue", {
+                    defaultValue: "Browse request catalogue",
+                  })}
+                </Button>
               </div>
             </Empty>
           </CardContent>
@@ -120,11 +121,11 @@ function PortalRequestsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Reference</TableHead>
-                <TableHead>Request Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Visibility</TableHead>
-                <TableHead>Submitted</TableHead>
+                <TableHead>{t("requests.reference")}</TableHead>
+                <TableHead>{t("requests.type")}</TableHead>
+                <TableHead>{t("requests.status")}</TableHead>
+                <TableHead>{t("requests.visibility")}</TableHead>
+                <TableHead>{t("requests.submitted")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -161,6 +162,33 @@ function PortalRequestsPage() {
           </Table>
         </div>
       )}
+      <nav
+        aria-label={t("requests.pagination")}
+        className="flex items-center justify-between gap-2"
+      >
+        {cursor ? (
+          <Button
+            variant="outline"
+            onClick={() => void navigate({ search: {} })}
+          >
+            {t("requests.latest")}
+          </Button>
+        ) : (
+          <span />
+        )}
+        {query.data?.page.hasMore && query.data.page.nextCursor ? (
+          <Button
+            variant="outline"
+            onClick={() =>
+              void navigate({
+                search: { cursor: query.data?.page.nextCursor ?? undefined },
+              })
+            }
+          >
+            {t("requests.older")}
+          </Button>
+        ) : null}
+      </nav>
     </main>
   );
 }

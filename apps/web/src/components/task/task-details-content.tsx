@@ -17,6 +17,7 @@ import type { ExternalLink } from "@/types/external-link";
 import type { Project } from "@/types/project";
 import type Task from "@/types/task";
 import TaskDescription from "./task-description";
+import { TaskDetailContentPresentation } from "./task-detail-presentation";
 import TaskRelations from "./task-relations";
 import TaskSubtasks from "./task-subtasks";
 import TaskTitle from "./task-title";
@@ -86,64 +87,71 @@ function TaskDetailsContent({
   if (!taskId) return null;
 
   return (
-    <div className={`${className} gap-4`} data-testid={dataTestId}>
-      <div className="flex flex-col gap-2.5">
-        {parentTask && (
-          <Button
-            variant="ghost"
-            type="button"
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-fit"
-            onClick={() =>
-              navigate({
-                to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
-                params: {
-                  workspaceId,
-                  projectId,
-                  taskId: parentTask.id,
-                },
-              })
-            }
-          >
-            <ArrowUpRight className="size-3" />
-            <span>
-              {t("tasks:detail.subtaskOf")}{" "}
-              <span className="font-medium">{parentTask.title}</span>
-            </span>
-          </Button>
-        )}
-        <p className="text-xs font-semibold text-foreground">
-          {project?.slug}-{currentTask?.number}
-        </p>
-        <TaskTitle taskId={taskId} task={titleTask} />
-        <TaskDescription taskId={taskId} task={descriptionTask} />
-      </div>
-      {!isLoadingExternalLinks && externalLinks.length > 0 && (
-        <div className="mt-4">
-          <ExternalLinksAccordion
-            externalLinks={externalLinks as ExternalLink[]}
-            isLoading={isLoadingExternalLinks}
-          />
-        </div>
-      )}
-      <div className="mt-4">
-        {taskId && (
+    <TaskDetailContentPresentation
+      className={className}
+      dataTestId={dataTestId}
+      heading={
+        <>
+          {parentTask && (
+            <Button
+              variant="ghost"
+              type="button"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-fit"
+              onClick={() =>
+                navigate({
+                  to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
+                  params: {
+                    workspaceId,
+                    projectId,
+                    taskId: parentTask.id,
+                  },
+                })
+              }
+            >
+              <ArrowUpRight className="size-3" />
+              <span>
+                {t("tasks:detail.subtaskOf")}{" "}
+                <span className="font-medium">{parentTask.title}</span>
+              </span>
+            </Button>
+          )}
+          <p className="text-xs font-semibold text-foreground">
+            {project?.slug}-{currentTask?.number}
+          </p>
+          <TaskTitle taskId={taskId} task={titleTask} />
+          <TaskDescription taskId={taskId} task={descriptionTask} />
+        </>
+      }
+      beforeSubtasks={
+        !isLoadingExternalLinks &&
+        externalLinks.length > 0 && (
+          <div className="mt-4">
+            <ExternalLinksAccordion
+              externalLinks={externalLinks as ExternalLink[]}
+              isLoading={isLoadingExternalLinks}
+            />
+          </div>
+        )
+      }
+      subtasks={
+        taskId && (
           <TaskSubtasks
             taskId={taskId}
             projectId={projectId}
             workspaceId={workspaceId}
           />
-        )}
-      </div>
-      <div className="mt-2">
+        )
+      }
+      relations={
         <TaskRelations
           taskId={taskId}
           projectId={projectId}
           workspaceId={workspaceId}
+          taskNumber={currentTask?.number}
         />
-      </div>
-      <span className="text-sm font-medium text-muted-foreground h-[1px] bg-border w-full block shrink-0" />
-      <TaskActivitySection taskId={taskId} />
-    </div>
+      }
+      activity={<TaskActivitySection taskId={taskId} />}
+    />
   );
 }
 

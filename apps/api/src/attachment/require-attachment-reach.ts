@@ -24,18 +24,11 @@ import { findAttachmentWorkItemForReach } from "./repository";
  * caller's workspace reach from the attachment's own id, via a genuine DB lookup, the same
  * shape `work-item/require-work-item-reach.ts` uses for `work_item.key`.
  *
- * Only ever reaches a `work_item_id`-attached row today (`../database/schema.ts`'s comment
- * on `attachmentTable`: `comment_id`/`submission_id` are reserved, unpopulated columns in
- * this slice), so this middleware 404s outright on a `comment_id`/`submission_id` row --
- * there is no such row to find yet, but the check is here so a future writer that starts
- * populating those columns does not silently fall through this middleware's join.
+ * This route family handles work-item attachments. Comment/submission parents do not
+ * fall through its work-item join and retain their separately scoped routes.
  *
- * A soft-deleted attachment (`state = 'deleted'`) still resolves here -- `DELETE` is
- * idempotent (deleting an already-deleted row is a no-op in the controller) and a deleted
- * row must still 404 exactly like a nonexistent one from the OUTSIDE (no distinguishing
- * "gone" from "never existed" to a caller without read access), which is why the download
- * route re-checks `state = 'ready'` itself rather than relying on this middleware to filter
- * it.
+ * Tombstones still resolve for an authorized confirmed no-op. Download independently
+ * requires ready state; missing and unreachable resources use the same404 response.
  */
 export function requireAttachmentReach(
   idKey = "id",
@@ -80,6 +73,7 @@ export function requireAttachmentReach(
     c.set("projectId", row.projectId);
     c.set("workItemId", row.workItemId);
     c.set("policyScopeResource", "work_item");
+    c.set("policyRowFacts", { personId: row.uploadedBy });
     if (policyShadowEnabled) {
       c.set("projectReachFacts", {
         projectId: row.projectId,

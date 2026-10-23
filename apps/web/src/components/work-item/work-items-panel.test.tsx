@@ -44,6 +44,13 @@ vi.mock("./work-item-list", () => ({
   },
 }));
 
+vi.mock("./work-item-kaneo-list", () => ({
+  default: (props: Record<string, unknown>) => {
+    testState.listProps = props;
+    return <div data-testid="work-item-list-populated">Kaneo grouped list</div>;
+  },
+}));
+
 vi.mock("./work-item-list-realtime", () => ({
   default: ({ projectId }: { projectId: string }) => (
     <div data-testid="work-list-realtime">Realtime {projectId}</div>
@@ -443,6 +450,26 @@ describe("work-item list realtime startup", () => {
 describe("work-item panel structured query props", () => {
   afterEach(cleanup);
 
+  it("mounts the Kaneo grouped list with the real project and scoped selection", async () => {
+    const onSelectionChange = vi.fn();
+    render(
+      <WorkItemsPanel
+        {...panelProps({ isLoading: false })}
+        layout="list"
+        selectedKeys={["WLP-0"]}
+        canBulkAssign
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+    expect(await screen.findByText("Kaneo grouped list")).toBeVisible();
+    expect(testState.listProps).toMatchObject({
+      projectId: "project-a",
+      selectedKeys: ["WLP-0"],
+      canBulkAssign: true,
+      onSelectionChange,
+    });
+  });
+
   it("forwards the chosen columns and the filtered flag to the list", async () => {
     render(
       <WorkItemsPanel
@@ -473,6 +500,8 @@ describe("work-item panel pagination props", () => {
         {...panelProps({ isLoading: false })}
         hasMore
         isLoadingMore
+        isLoadMoreError
+        isPlaceholderData
         onLoadMore={onLoadMore}
       />,
     );
@@ -484,6 +513,8 @@ describe("work-item panel pagination props", () => {
     expect(testState.listProps).toMatchObject({
       hasMore: true,
       isLoadingMore: true,
+      isLoadMoreError: true,
+      isPlaceholderData: true,
       onLoadMore,
     });
   });

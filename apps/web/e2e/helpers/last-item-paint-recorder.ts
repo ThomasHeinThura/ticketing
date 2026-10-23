@@ -1,8 +1,9 @@
 import type { Page } from "@playwright/test";
 
-export type LastItemPaintRecorderOptions =
+export type LastItemPaintRecorderOptions = (
   | { kind: "list"; metric: "listPaint"; expectedCount: 500 }
-  | { kind: "board"; metric: "boardPaint"; expectedCount: 200 };
+  | { kind: "board"; metric: "boardPaint"; expectedCount: 200 }
+) & { canonical?: { selector: string; expectedIds: string[] } };
 
 type RecorderMetrics = Window & {
   __g11Metrics?: Record<string, number>;
@@ -120,8 +121,30 @@ export function installLastItemPaintRecorderInDocument(
       };
     };
 
-    const readCurrent = () =>
-      kind === "list" ? readListTarget() : readBoardTarget();
+    const readCurrent = () => {
+      if (options.canonical) {
+        const { selector, expectedIds } = options.canonical;
+        const nodes = [...document.querySelectorAll(selector)];
+        const ids = nodes.map((node) => node.getAttribute("data-task-id"));
+        const exact =
+          expectedIds.length === expectedCount &&
+          new Set(expectedIds).size === expectedCount &&
+          nodes.length === expectedCount &&
+          new Set(ids).size === expectedCount &&
+          expectedIds.every((id) => ids.includes(id));
+        return {
+          count: nodes.length,
+          target: exact
+            ? (nodes.find(
+                (node) =>
+                  node.getAttribute("data-task-id") ===
+                  expectedIds[expectedCount - 1],
+              ) ?? null)
+            : null,
+        };
+      }
+      return kind === "list" ? readListTarget() : readBoardTarget();
+    };
 
     const visibleBox = (target: Element) => {
       if (!target.isConnected || target.getClientRects().length === 0)

@@ -17,6 +17,7 @@ const state = vi.hoisted(() => ({
   /** What the (mocked) selection toggle reports as the caller's assignTasks. */
   canAssign: false,
   listItems: [] as unknown[],
+  paneProps: undefined as Record<string, unknown> | undefined,
   boardProps: undefined as Record<string, unknown> | undefined,
   panelProps: undefined as Record<string, unknown> | undefined,
   toolbarProps: undefined as Record<string, unknown> | undefined,
@@ -48,6 +49,15 @@ vi.mock("@/components/work-item/work-items-panel", () => ({
   default: (props: Record<string, unknown>) => {
     state.panelProps = props;
     return <div data-testid="panel" />;
+  },
+}));
+vi.mock("@/components/work-item/work-item-list-controls", () => ({
+  default: () => <div data-testid="filter-controls" />,
+}));
+vi.mock("@/components/work-item/work-item-side-pane", () => ({
+  default: (props: Record<string, unknown>) => {
+    state.paneProps = props;
+    return <div data-testid="sheet-frame" />;
   },
 }));
 vi.mock("@/components/work-item/work-item-board-view", () => ({
@@ -154,6 +164,7 @@ beforeEach(() => {
   state.canAssign = false;
   state.listItems = [row("WLP-1"), row("WLP-2")];
   state.boardProps = undefined;
+  state.paneProps = undefined;
   state.panelProps = undefined;
   state.toolbarProps = undefined;
   state.navigate.mockReset();
@@ -321,6 +332,21 @@ describe("selection announcements (accessibility.md)", () => {
   });
 });
 
+describe("canonical schedule selection compatibility", () => {
+  it("retains a permanent selected key through the work route validator", () => {
+    const validate = Route.options.validateSearch as (
+      raw: unknown,
+    ) => Record<string, unknown>;
+    expect(validate({ layout: "board", taskId: "WLP-1" })).toMatchObject({
+      layout: "board",
+      item: "WLP-1",
+    });
+    expect(
+      validate({ taskId: "f3d637ba-77bf-43e2-bd63-356da999a531" }),
+    ).not.toHaveProperty("item");
+  });
+});
+
 describe("selection toggle placement (no layout shift when it arrives)", () => {
   it("is the first control in the header actions, ahead of the layout buttons", async () => {
     state.canAssign = true;
@@ -420,4 +446,39 @@ describe("bulk selection", () => {
     act(() => view.rerender(<Component />));
     expect(state.toolbarProps?.selectedKeys).toEqual(["WLP-2"]);
   });
+});
+
+describe("canonical task sheet route ownership", () => {
+  it.each(["board", "list", "table"])(
+    "opens %s items without losing view state or scroll",
+    async (layout) => {
+      state.search = {
+        layout,
+        sort: "key",
+        dir: "desc",
+        filter: "state = open",
+        item: "WLP-1",
+      };
+      const view = await renderRoute();
+      const props = layout === "board" ? state.boardProps : state.panelProps;
+      callProp(props, "onOpenItem", "WLP-2");
+      const navigation = state.navigate.mock.calls.at(-1)?.[0];
+      expect(navigation).toMatchObject({ replace: true, resetScroll: false });
+      expect(navigation.search(state.search)).toEqual({
+        ...state.search,
+        item: "WLP-2",
+      });
+      expect(navigation.href).toBeUndefined();
+      await screen.findByTestId("sheet-frame");
+      callProp(state.paneProps, "onClose");
+      const closing = state.navigate.mock.calls.at(-1)?.[0];
+      expect(closing).toMatchObject({ replace: true, resetScroll: false });
+      state.search = closing.search(state.search);
+      const Component = Route.options.component as () => React.JSX.Element;
+      act(() => view.rerender(<Component />));
+      expect(screen.getByTestId("sheet-frame")).toBeInTheDocument();
+      expect(state.paneProps?.itemKey).toBeUndefined();
+      expect(state.search.filter).toBe("state = open");
+    },
+  );
 });

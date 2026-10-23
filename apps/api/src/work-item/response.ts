@@ -100,6 +100,9 @@ export const workItemDetailSchema = workItemShape
 // finding, even though nothing about its runtime behaviour would change.
 export const workItemListItemSchema = workItemSchema
   .extend({
+    labels: z
+      .array(z.object({ id: z.string(), name: z.string(), color: z.string() }))
+      .optional(),
     stateName: z.string(),
     stateCategory: z.string().openapi({
       description:
@@ -390,6 +393,14 @@ export const workItemActivityRowSchema = z
     updatedAt: responseTimestamp.optional().openapi({
       description: "Comment rows only.",
     }),
+    canEdit: z.boolean().optional().openapi({
+      description:
+        "Comment rows only: current caller may edit; server revalidates on mutation.",
+    }),
+    canDelete: z.boolean().optional().openapi({
+      description:
+        "Comment rows only: current caller has deletion authority; deletion confirmation remains required.",
+    }),
   })
   .openapi("WorkItemActivityRow");
 
@@ -520,6 +531,8 @@ const hierarchyPageNodeSchema = z.object({
   id: z.string(),
   key: z.string(),
   title: z.string(),
+  assigneeId: z.string().nullable(),
+  assigneeName: z.string().nullable(),
   stateName: z.string(),
   stateCategory: z.string(),
 });

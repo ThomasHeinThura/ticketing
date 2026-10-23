@@ -39,7 +39,6 @@
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
-import { subscribeToEvent } from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
@@ -92,18 +91,6 @@ async function snapshotAllTableCounts(): Promise<Record<string, number>> {
   return counts;
 }
 
-type RecordedEvent = { type: string; data: unknown };
-const recordedEvents: RecordedEvent[] = [];
-let eventSubscribersInitialized = false;
-
-function initEventSubscribers() {
-  if (eventSubscribersInitialized) return;
-  eventSubscribersInitialized = true;
-  subscribeToEvent("workspace.created", async (data) => {
-    recordedEvents.push({ type: "workspace.created", data });
-  });
-}
-
 const armedTables = new Set<string>();
 async function arm(table: string) {
   armedTables.add(table);
@@ -112,8 +99,6 @@ async function arm(table: string) {
 
 beforeEach(async () => {
   await resetTestDatabase();
-  recordedEvents.length = 0;
-  initEventSubscribers();
 });
 
 afterEach(async () => {
@@ -174,7 +159,7 @@ describe("S4 native create is atomic with its default-role seed (A2-P6, A2-P7, A
 
     // Effect 4 must not fire on a rolled-back create, so effect 9 cannot
     // either: no notification about a workspace nobody can reach.
-    expect(recordedEvents).toHaveLength(0);
+    expect(await db.select().from(schema.outboxTable)).toHaveLength(0);
     expect(await db.select().from(schema.notificationTable)).toHaveLength(0);
   });
 
@@ -191,7 +176,8 @@ describe("S4 native create is atomic with its default-role seed (A2-P6, A2-P7, A
     expect(created.status).toBeGreaterThanOrEqual(500);
 
     expect(await snapshotAllTableCounts()).toEqual(before);
-    expect(recordedEvents).toHaveLength(0);
+    expect(await db.select().from(schema.outboxTable)).toHaveLength(0);
+    expect(await db.select().from(schema.notificationTable)).toHaveLength(0);
   });
 
   it("A2-P9 a retry after the failure clears produces exactly ONE complete workspace, with no duplicated or leftover partial state", async () => {
@@ -234,11 +220,13 @@ describe("S4 native create is atomic with its default-role seed (A2-P6, A2-P7, A
 
     // Exactly one event and one notification — the rolled-back attempt
     // published nothing, so the retry cannot double-notify.
-    const events = recordedEvents.filter(
-      (e) => (e.data as { workspaceId?: string }).workspaceId === workspace.id,
-    );
-    expect(events).toHaveLength(1);
-    expect(recordedEvents).toHaveLength(1);
+    const outbox = await db.select().from(schema.outboxTable);
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0]?.workspaceId).toBe(workspace.id);
+    const notifications = await db.select().from(schema.notificationTable);
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]?.kind).toBe("workspace.created");
+    expect(notifications[0]?.resourceId).toBe(workspace.id);
   });
 
   it("A2-P10 every successful native create has all three required role rows — swept across repeated creates", async () => {

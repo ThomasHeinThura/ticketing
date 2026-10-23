@@ -3,6 +3,19 @@ import {
   defaultStringifySearch,
 } from "@tanstack/react-router";
 import type { SortDirection, SortField } from "./sort-tasks";
+import {
+  parseWorkItemDetailSectionsSearch,
+  type WorkItemDetailSectionsSearch,
+} from "./work-item-detail-sections-search";
+import {
+  parseWorkItemHierarchySearch,
+  type WorkItemHierarchySearch,
+} from "./work-item-hierarchy-search";
+import { isValidWorkItemKeyParam } from "./work-item-list-search";
+import {
+  parseWorkItemRelationsSearch,
+  type WorkItemRelationsSearch,
+} from "./work-item-relations-search";
 
 export type ProjectBoardLayout = "board" | "list";
 
@@ -28,14 +41,18 @@ export const DUE_DATE_FILTER_VALUES = {
   noDueDate: "noDueDate",
 } as const;
 
-export type ProjectViewSearch = ProjectViewFilters & {
-  taskId?: string;
-  layout?: ProjectBoardLayout;
-  month?: string;
-  q?: string;
-  sort?: SortField;
-  dir?: SortDirection;
-};
+export type ProjectViewSearch = ProjectViewFilters &
+  WorkItemHierarchySearch &
+  WorkItemRelationsSearch &
+  WorkItemDetailSectionsSearch & {
+    filter?: string;
+    taskId?: string;
+    layout?: ProjectBoardLayout;
+    month?: string;
+    q?: string;
+    sort?: SortField;
+    dir?: SortDirection;
+  };
 
 export type ProjectBoardSearch = ProjectViewSearch;
 export type ProjectBacklogSearch = ProjectViewSearch;
@@ -57,7 +74,7 @@ const FILTER_KEYS = [
   "dueDate",
   "labels",
 ] as const;
-const SCALAR_KEYS = ["taskId", "month", "q", "sort", "dir"] as const;
+const SCALAR_KEYS = ["filter", "taskId", "month", "q", "sort", "dir"] as const;
 
 // A value the router's default codec typed as a number or boolean is read back as its
 // string form, so a project view never drops `q=123` when the search was parsed for
@@ -88,7 +105,13 @@ export function parseProjectViewSearch(
   calendar = false,
 ): ProjectViewSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
-  const search: ProjectViewSearch = {};
+  const search: ProjectViewSearch = {
+    ...parseWorkItemHierarchySearch(candidate),
+    ...parseWorkItemRelationsSearch(candidate),
+    ...parseWorkItemDetailSectionsSearch(candidate),
+  };
+  if (!candidate.taskId && isValidWorkItemKeyParam(candidate.item))
+    search.taskId = candidate.item;
   for (const key of SCALAR_KEYS) {
     const value = searchString(candidate[key]);
     if (
@@ -207,6 +230,8 @@ export function appendProjectViewSearchParams(
     if (Array.isArray(value)) {
       for (const entry of value)
         params.append(key, stringifyProjectSearchValue(key, entry));
+    } else if (value && typeof value === "object") {
+      params.set(key, JSON.stringify(value));
     } else if (value) {
       params.set(key, stringifyProjectSearchValue(key, value));
     }

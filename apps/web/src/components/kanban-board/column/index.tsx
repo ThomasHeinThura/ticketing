@@ -8,6 +8,7 @@ import type {
 } from "../task-card";
 import { ColumnDropzone } from "./column-dropzone";
 import { ColumnHeader } from "./column-header";
+import { ColumnShell } from "./column-shell";
 
 type ColumnProps = {
   column: ProjectWithTasks["columns"][number];
@@ -45,36 +46,30 @@ function Column({
   const [isDropzoneOver, setIsDropzoneOver] = useState(false);
 
   return (
-    <div
+    <ColumnShell
       data-column-id={column.id}
-      className={`group relative flex h-full min-h-0 w-full flex-col rounded-xl border transition-colors duration-150 ${
-        isDropzoneOver
-          ? "border-ring/40 bg-accent/60 shadow-md ring-2 ring-ring/30"
-          : "border-border/70 bg-muted/40 shadow-xs/5 hover:border-border/90 dark:bg-card/90"
-      }`}
-    >
-      <div className="shrink-0 border-b border-border/60 px-3 py-2">
+      isOver={isDropzoneOver}
+      header={
         <ColumnHeader column={column} onCreateTask={onCreateTask} t={t} />
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-1 [-webkit-overflow-scrolling:touch]">
-        <ColumnDropzone
-          column={column}
-          projectSlug={projectSlug}
-          projectColumns={projectColumns}
-          columnCompletionBySlug={columnCompletionBySlug}
-          displayPreferences={displayPreferences}
-          selectedTaskIds={selectedTaskIds}
-          focusedTaskId={focusedTaskId}
-          disableDragDrop={disableDragDrop}
-          onIsOverChange={setIsDropzoneOver}
-          workspaceId={workspaceId}
-          workspaceUsersById={workspaceUsersById}
-          onContextMenuTask={onContextMenuTask}
-          onOpenTask={onOpenTask}
-          t={t}
-        />
-      </div>
-    </div>
+      }
+    >
+      <ColumnDropzone
+        column={column}
+        projectSlug={projectSlug}
+        projectColumns={projectColumns}
+        columnCompletionBySlug={columnCompletionBySlug}
+        displayPreferences={displayPreferences}
+        selectedTaskIds={selectedTaskIds}
+        focusedTaskId={focusedTaskId}
+        disableDragDrop={disableDragDrop}
+        onIsOverChange={setIsDropzoneOver}
+        workspaceId={workspaceId}
+        workspaceUsersById={workspaceUsersById}
+        onContextMenuTask={onContextMenuTask}
+        onOpenTask={onOpenTask}
+        t={t}
+      />
+    </ColumnShell>
   );
 }
 

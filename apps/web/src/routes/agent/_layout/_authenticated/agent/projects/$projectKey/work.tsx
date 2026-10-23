@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@taskdesk/ui";
-import { ListFilter } from "lucide-react";
+import { Filter, PanelsTopLeft, Rows3, Table2 } from "lucide-react";
 import {
   lazy,
   Suspense,
@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import SortControl from "@/components/common/sort-control";
 import PageTitle from "@/components/page-title";
 import {
   loadWorkItemCreateDialogShell,
@@ -21,8 +22,10 @@ import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useBulkSelectionKeyboardShortcuts } from "@/hooks/use-bulk-selection-keyboard-shortcuts";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
+import { normalizeCanonicalWorkItemSelection } from "@/lib/project-layout-navigation";
 
 type CreateDialogShellComponent = Awaited<
   ReturnType<typeof loadWorkItemCreateDialogShell>
@@ -100,7 +103,8 @@ import {
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/projects/$projectKey/work",
 )({
-  validateSearch: parseWorkItemListSearch,
+  validateSearch: (raw) =>
+    parseWorkItemListSearch(normalizeCanonicalWorkItemSelection(raw)),
   beforeLoad: preloadWorkItemsPanel,
   component: WorkItemsRouteComponent,
 });
@@ -115,6 +119,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { layout, sort, dir, filter, filterMode, columns, item } =
     Route.useSearch();
   const isFiltered = !!filter?.trim();
+  const boardSort = isFiltered && sort === "position" ? "key" : sort;
+  const boardDir = isFiltered && sort === "position" ? "asc" : dir;
   const [isFilterOpen, setIsFilterOpen] = useState(isFiltered);
   // Focus moves into the editor only when the user opens it, never when the URL did.
   const [focusFilterEditor, setFocusFilterEditor] = useState(false);
@@ -130,6 +136,18 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     }
   }, [isFilterOpen]);
   const navigate = Route.useNavigate();
+  const hasOpenedSidePane = useRef(false);
+  if (item) hasOpenedSidePane.current = true;
+  const openSidePane = useCallback(
+    (key: string) => {
+      void navigate({
+        search: (prev: WorkItemListSearch) => ({ ...prev, item: key }),
+        replace: true,
+        resetScroll: false,
+      });
+    },
+    [navigate],
+  );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   // The dialog composition is warmed by the create trigger once it is visible (G11), so create
   // intent opens it as soon as it is clicked; its query-heavy form is a further dynamic module.
@@ -139,6 +157,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     "idle" | "loading" | "failed"
   >("idle");
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const loadedSelectionKeys = useRef(new Set<string>());
   // Per-row selection controls cost 500 Base UI checkboxes on a full list (G11), so they exist
   // only while the user is in selection mode.
   const [selectionMode, setSelectionMode] = useState(false);
@@ -170,10 +189,10 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     status: WorkItemRealtimeStatus;
   }>();
   const [boardFilterError, setBoardFilterError] = useState<unknown>();
-  // `assignTasks`, reported by the lazy selection toggle once capabilities are known. It only
+  // The per-operation capability union is reported by the lazy selection toggle. It only
   // decides which controls render; the server enforces each bulk write.
-  const [canAssign, setCanAssign] = useState(false);
-  const canBulkAssign = canAssign && selectionMode;
+  const [canBulkAct, setCanBulkAct] = useState(false);
+  const canBulkAssign = canBulkAct && selectionMode;
 
   const {
     data: workspace,
@@ -206,6 +225,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     pendingFocusRestoreRef.current = undefined;
     setIsCreateOpen(false);
     setCreateIntentProjectContext(undefined);
+    setSelectedKeys([]);
+    setSelectionMode(false);
+    loadedSelectionKeys.current = new Set();
   }, [projectContext]);
 
   useLayoutEffect(
@@ -269,6 +291,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     refetch: refetchWorkItems,
     hasNextPage: hasMoreWorkItems,
     isFetchingNextPage: isLoadingMoreWorkItems,
+    isLoadMoreError,
+    isPlaceholderData,
     fetchNextPage: fetchMoreWorkItems,
   } = useGetWorkItems({
     projectId: project?.id,
@@ -413,6 +437,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         item: undefined,
       }),
       replace: true,
+      resetScroll: false,
     });
   }, [navigate]);
 
@@ -424,7 +449,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const handleSelectionChange = useCallback((key: string, checked: boolean) => {
     setSelectedKeys((current) =>
       checked
-        ? current.includes(key)
+        ? current.includes(key) || current.length >= 500
           ? current
           : [...current, key]
         : current.filter((selected) => selected !== key),
@@ -439,7 +464,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         .map((item) => item.key);
       setSelectedKeys((current) =>
         checked
-          ? [...new Set([...current, ...keys])]
+          ? [...new Set([...current, ...keys])].slice(0, 500)
           : current.filter((key) => !keys.includes(key)),
       );
     },
@@ -450,6 +475,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   // away) must not stay selected: the bulk bar would count and send a key the user can no
   // longer see. The board view reports its own loaded set through the same callback.
   const pruneSelection = useCallback((present: Set<string>) => {
+    loadedSelectionKeys.current = present;
     setSelectedKeys((current) =>
       current.every((key) => present.has(key))
         ? current
@@ -458,10 +484,31 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   }, []);
   useEffect(() => {
     if (visibleItems) {
-      pruneSelection(new Set(visibleItems.map((item) => item.key)));
+      pruneSelection(
+        new Set(
+          visibleItems
+            .filter((item) => !item.unavailableFields.includes("key"))
+            .map((item) => item.key),
+        ),
+      );
     }
   }, [visibleItems, pruneSelection]);
 
+  const selectLoadedKeys = useCallback(() => {
+    setSelectionMode(true);
+    setSelectedKeys([...loadedSelectionKeys.current].slice(0, 500));
+  }, []);
+  const clearBulkSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedKeys([]);
+  }, []);
+  useBulkSelectionKeyboardShortcuts(
+    canBulkAct && !item && !isCreateOpenForProject,
+    {
+      selectAll: selectLoadedKeys,
+      clearSelection: clearBulkSelection,
+    },
+  );
   const hasEnteredSelectionMode = useRef(false);
   const toggleSelectionMode = useCallback(() => {
     hasEnteredSelectionMode.current = true;
@@ -489,91 +536,106 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             : t("workItems:list.pageTitle")
         }
       />
-      <div
-        className={`flex h-full flex-col gap-4 overflow-y-auto p-6${
-          layout === "board" || isFilterOpen || item ? " w-full min-w-0" : ""
-        }`}
-      >
+      <div className="flex h-full min-h-0 min-w-0 w-full flex-col overflow-y-auto">
         <p className="sr-only" role="status" aria-live="polite">
           {selectionAnnouncement}
         </p>
-        <div
-          className={`flex items-center justify-between gap-3${
-            layout === "board" ? " flex-wrap" : ""
-          }`}
-        >
-          <h1 className="font-semibold text-lg">
-            {project ? project.name : projectKey} ·{" "}
-            {t("workItems:list.heading")}
-          </h1>
-          <div className="flex items-center gap-2">
-            {/* First in the right-aligned group: it arrives after capabilities load, and
-                anything inserted at the leading edge leaves the controls after it where they are. */}
-            {project ? (
-              <Suspense fallback={null}>
-                <WorkItemSelectionToggle
-                  selectionMode={selectionMode}
-                  onToggle={toggleSelectionMode}
-                  onCapabilityChange={setCanAssign}
+        <h1 className="sr-only">
+          {project ? project.name : projectKey} · {t("workItems:list.heading")}
+        </h1>
+        <div className="border-border/80 border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/70">
+          <div className="flex min-h-10 items-center px-2 py-1.5 md:px-3">
+            <div className="flex w-full flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button
+                  ref={filterToggleRef}
+                  variant="ghost"
+                  type="button"
+                  className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-foreground text-xs font-medium outline-none ring-0 hover:bg-accent/60"
+                  aria-expanded={isFilterOpen}
+                  aria-controls={
+                    isFilterOpen ? "work-item-filter-controls" : undefined
+                  }
+                  onClick={toggleFilter}
+                >
+                  <Filter className="h-3 w-3" />
+                  {isFiltered
+                    ? t("workItems:filter.toggleActive")
+                    : t("common:actions.filter")}
+                </Button>
+                <SortControl
+                  fields={
+                    layout === "board" && isFiltered
+                      ? ["title", "priority", "dueDate", "number"]
+                      : ["position", "title", "priority", "dueDate", "number"]
+                  }
+                  sort={{
+                    field:
+                      (layout === "board" ? boardSort : sort) === "key"
+                        ? "number"
+                        : layout === "board"
+                          ? boardSort
+                          : sort,
+                    direction: layout === "board" ? boardDir : dir,
+                  }}
+                  onSortChange={(next) => {
+                    if (next.field === "createdAt") return;
+                    handleSortChange(
+                      next.field === "number" ? "key" : next.field,
+                      next.direction,
+                    );
+                  }}
                 />
-              </Suspense>
-            ) : null}
-            <fieldset
-              aria-label={t("workItems:list.layoutGroup")}
-              className="m-0 flex min-w-0 items-center gap-1 border-0 p-0"
-            >
-              <Button
-                variant={layout === "list" ? "secondary" : "outline"}
-                size="sm"
-                aria-pressed={layout === "list"}
-                onClick={() => handleLayoutChange("list")}
-              >
-                {t("workItems:list.listLayout")}
-              </Button>
-              <Button
-                variant={layout === "board" ? "secondary" : "outline"}
-                size="sm"
-                aria-pressed={layout === "board"}
-                onClick={() => handleLayoutChange("board")}
-              >
-                {t("workItems:list.boardLayout")}
-              </Button>
-              <Button
-                variant={layout === "table" ? "secondary" : "outline"}
-                size="sm"
-                aria-pressed={layout === "table"}
-                onClick={() => handleLayoutChange("table")}
-              >
-                {t("workItems:list.tableLayout")}
-              </Button>
-            </fieldset>
-            <Button
-              ref={filterToggleRef}
-              variant={isFiltered ? "secondary" : "outline"}
-              size="sm"
-              // A disclosure: expanded state only, and a controlled id only while it exists.
-              aria-expanded={isFilterOpen}
-              aria-controls={
-                isFilterOpen ? "work-item-filter-controls" : undefined
-              }
-              onClick={toggleFilter}
-            >
-              <ListFilter />
-              {isFiltered
-                ? t("workItems:filter.toggleActive")
-                : t("workItems:filter.toggle")}
-            </Button>
-            {project ? (
-              <Suspense fallback={null}>
-                <WorkItemCreateTrigger
-                  workspaceId={project.workspaceId}
-                  projectId={project.id}
-                  buttonRef={createTriggerRef}
-                  pending={createDialogLoad === "loading"}
-                  onClick={openCreateDialog}
-                />
-              </Suspense>
-            ) : null}
+              </div>
+              <div className="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 sm:w-auto">
+                {project ? (
+                  <Suspense fallback={null}>
+                    <WorkItemSelectionToggle
+                      workspaceId={project.workspaceId}
+                      projectId={project.id}
+                      selectionMode={selectionMode}
+                      onToggle={toggleSelectionMode}
+                      onCapabilityChange={setCanBulkAct}
+                    />
+                  </Suspense>
+                ) : null}
+                <fieldset
+                  aria-label={t("workItems:list.layoutGroup")}
+                  className="m-0 inline-flex min-w-0 items-center gap-1 border-0 p-0"
+                >
+                  {(
+                    [
+                      ["board", PanelsTopLeft, "tasks:view.board"],
+                      ["list", Rows3, "tasks:view.list"],
+                      ["table", Table2, "workItems:list.tableLayout"],
+                    ] as const
+                  ).map(([mode, Icon, label]) => (
+                    <Button
+                      key={mode}
+                      variant="ghost"
+                      type="button"
+                      className={`inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors ${layout === mode ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"}`}
+                      aria-pressed={layout === mode}
+                      onClick={() => handleLayoutChange(mode)}
+                    >
+                      <Icon className="h-3 w-3" />
+                      {t(label)}
+                    </Button>
+                  ))}
+                </fieldset>
+                {project ? (
+                  <Suspense fallback={null}>
+                    <WorkItemCreateTrigger
+                      workspaceId={project.workspaceId}
+                      projectId={project.id}
+                      buttonRef={createTriggerRef}
+                      pending={createDialogLoad === "loading"}
+                      onClick={openCreateDialog}
+                    />
+                  </Suspense>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
         {isFilterOpen ? (
@@ -629,13 +691,14 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                   current.filter((key) => !succeeded.includes(key)),
                 )
               }
-              onClear={() => setSelectedKeys([])}
+              onClear={clearBulkSelection}
             />
           </Suspense>
         ) : null}
         {isTabularLayout ? (
           <Suspense fallback={<WorkItemListLoading />}>
             <WorkItemsPanel
+              layout={layout === "list" ? "list" : "table"}
               project={project}
               workItemsResult={workItemsResult as WorkItemsResult | undefined}
               isLoading={isLoading}
@@ -652,15 +715,20 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               hasMore={hasMoreWorkItems}
               onLoadMore={() => void fetchMoreWorkItems()}
               isLoadingMore={isLoadingMoreWorkItems}
+              isLoadMoreError={isLoadMoreError}
+              isPlaceholderData={isPlaceholderData}
               selectedKeys={selectedKeys}
               canBulkAssign={canBulkAssign}
               onSelectionChange={handleSelectionChange}
               onSelectAll={handleSelectAll}
+              onOpenItem={openSidePane}
             />
           </Suspense>
         ) : project ? (
           <Suspense fallback={<WorkItemListLoading />}>
             <WorkItemBoardView
+              sort={boardSort}
+              dir={boardDir}
               project={project}
               workspaceId={workspace?.id}
               filter={filter}
@@ -671,12 +739,14 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               selectedKeys={selectedKeys}
               onSelectionChange={handleSelectionChange}
               onPruneSelection={pruneSelection}
+              onOpenItem={openSidePane}
               onErrorChange={setBoardFilterError}
             />
           </Suspense>
         ) : (
           <Suspense fallback={<WorkItemListLoading />}>
             <WorkItemsPanel
+              layout={layout === "list" ? "list" : "table"}
               project={project}
               workItemsResult={undefined}
               isLoading={isLoading}
@@ -691,7 +761,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             />
           </Suspense>
         )}
-        {item ? (
+        {hasOpenedSidePane.current ? (
           <Suspense fallback={null}>
             <WorkItemSidePane itemKey={item} onClose={handleCloseSidePane} />
           </Suspense>

@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import deleteTask from "@/fetchers/task/delete-task";
+import requestTaskDeletion from "@/fetchers/task/delete-task";
 import useProjectStore from "@/store/project";
 import type Task from "@/types/task";
 import { useDeleteTask } from "./use-delete-task";
@@ -82,56 +82,44 @@ afterEach(() => {
 });
 
 describe("useDeleteTask", () => {
-  it("removes a deleted task from query and project-store state", async () => {
-    const project = makeProject();
-    const deletedTask = {
-      ...makeTask("delete-me"),
-      priority: "no-priority",
-    };
-    queryClient.setQueryData(["tasks", project.id], project);
-    queryClient.setQueryData(["task", deletedTask.id], deletedTask);
-    useProjectStore.getState().setProject(project);
-    vi.mocked(deleteTask).mockResolvedValue(deletedTask);
-
-    const { result } = renderHook(() => useDeleteTask(), { wrapper: Wrapper });
-
-    await act(async () => {
-      await result.current.mutateAsync(deletedTask.id);
-    });
-
-    const cachedProject = queryClient.getQueryData<
-      ReturnType<typeof makeProject>
-    >(["tasks", project.id]);
-    expect(cachedProject?.columns[0]?.tasks.map(({ id }) => id)).toEqual([
-      "keep-me",
-    ]);
-    expect(cachedProject?.plannedTasks).toEqual([]);
-    expect(cachedProject?.archivedTasks).toEqual([]);
-    expect(queryClient.getQueryData(["task", deletedTask.id])).toBeUndefined();
-    expect(
-      queryClient.getQueryState(["tasks", project.id])?.isInvalidated,
-    ).toBe(true);
-
-    const storedProject = useProjectStore.getState().project;
-    expect(storedProject?.columns[0]?.tasks.map(({ id }) => id)).toEqual([
-      "keep-me",
-    ]);
-    expect(storedProject?.plannedTasks).toEqual([]);
-    expect(storedProject?.archivedTasks).toEqual([]);
-  });
-
-  it("leaves query and project-store state unchanged when deletion fails", async () => {
+  it("requests deletion by work item key and removes nothing until approval", async () => {
     const project = makeProject();
     const task = makeTask("delete-me");
     queryClient.setQueryData(["tasks", project.id], project);
     queryClient.setQueryData(["task", task.id], task);
     useProjectStore.getState().setProject(project);
-    vi.mocked(deleteTask).mockRejectedValue(new Error("Delete failed"));
+    vi.mocked(requestTaskDeletion).mockResolvedValue({
+      pendingActionId: "pa-1",
+    });
+
+    const { result } = renderHook(() => useDeleteTask(), { wrapper: Wrapper });
+
+    let requested: unknown;
+    await act(async () => {
+      requested = await result.current.mutateAsync("PROJ-1");
+    });
+
+    expect(requestTaskDeletion).toHaveBeenCalledWith("PROJ-1");
+    expect(requested).toEqual({ pendingActionId: "pa-1" });
+    expect(queryClient.getQueryData(["tasks", project.id])).toEqual(project);
+    expect(queryClient.getQueryData(["task", task.id])).toEqual(task);
+    expect(useProjectStore.getState().project).toEqual(project);
+  });
+
+  it("leaves query and project-store state unchanged when the request fails", async () => {
+    const project = makeProject();
+    const task = makeTask("delete-me");
+    queryClient.setQueryData(["tasks", project.id], project);
+    queryClient.setQueryData(["task", task.id], task);
+    useProjectStore.getState().setProject(project);
+    vi.mocked(requestTaskDeletion).mockRejectedValue(
+      new Error("Delete failed"),
+    );
 
     const { result } = renderHook(() => useDeleteTask(), { wrapper: Wrapper });
 
     await act(async () => {
-      await expect(result.current.mutateAsync(task.id)).rejects.toThrow(
+      await expect(result.current.mutateAsync("PROJ-1")).rejects.toThrow(
         "Delete failed",
       );
     });

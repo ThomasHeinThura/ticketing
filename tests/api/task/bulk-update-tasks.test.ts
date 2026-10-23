@@ -51,6 +51,23 @@ describe("issue #307 S6: bulkUpdateTasks fails closed when workspaceId is falsy"
     ).rejects.toMatchObject({ status: 500 });
   });
 
+  it("refuses operation delete with 410 and never reaches the database (PA-1)", async () => {
+    await expect(
+      bulkUpdateTasks({
+        identity,
+        taskIds: ["some-task-id"],
+        operation: "delete",
+        userId: "some-user-id",
+        workspaceId: "some-workspace-id",
+        reach: {
+          reaches: async () => true,
+          can: async () => true,
+          reachableProjectIds: async () => [],
+        },
+      }),
+    ).rejects.toMatchObject({ status: 410 });
+  });
+
   it("throws 500 when the route's reach context is missing, before any database access", async () => {
     await expect(
       bulkUpdateTasks({

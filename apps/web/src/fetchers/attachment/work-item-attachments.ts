@@ -1,5 +1,6 @@
 import { client } from "@taskdesk/libs";
 import type { InferResponseType } from "hono/client";
+import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 import { HttpError, readErrorDetail } from "@/lib/http-error";
 
 const workItemAttachments = client["work-items"][":key"].attachments;
@@ -20,12 +21,16 @@ export async function listWorkItemAttachments(
   return response.json();
 }
 
-/**
- * Presign, PUT the bytes to storage, then complete (`attachments.md` AT-2). The server
- * checks the magic bytes on complete; a rejection keeps its exact reason (AT-14).
- */
-export async function uploadWorkItemAttachment(key: string, file: File) {
-  const presign = await workItemAttachments.presign.$post({
+/** A resumable checkpoint belongs to one file on one already-created work item. */
+export type AttachmentUploadCheckpoint = {
+  attachmentId: string;
+  uploadUrl: string;
+  uploadHeaders: Record<string, string>;
+  uploaded: boolean;
+};
+
+export async function presignWorkItemAttachment(key: string, file: File) {
+  const response = await workItemAttachments.presign.$post({
     param: { key },
     json: {
       filename: file.name,
@@ -33,48 +38,75 @@ export async function uploadWorkItemAttachment(key: string, file: File) {
       size: file.size,
     },
   });
-  if (!presign.ok) {
-    throw new HttpError(presign.status, await readErrorDetail(presign));
+  if (!response.ok)
+    throw new HttpError(response.status, await readErrorDetail(response));
+  return { ...(await response.json()), uploaded: false };
+}
+
+export async function completeWorkItemAttachment(id: string) {
+  const response = await client.attachments[":id"].complete.$post({
+    param: { id },
+  });
+  if (!response.ok)
+    throw new HttpError(response.status, await readErrorDetail(response));
+  return response.json();
+}
+
+/** Retry the same attachment ID, reconciling a lost completion response before any write. */
+export async function resumeWorkItemAttachment(
+  key: string,
+  file: File,
+  checkpoint: AttachmentUploadCheckpoint | undefined,
+  onCheckpoint: (value: AttachmentUploadCheckpoint) => void,
+) {
+  let current = checkpoint;
+  if (current?.uploaded) {
+    const row = (await listWorkItemAttachments(key)).find(
+      (attachment) => attachment.id === current?.attachmentId,
+    );
+    if (!row) throw new HttpError(404, "Attachment not found");
+    if (row.state === "ready") return row;
+    if (row.state !== "pending")
+      throw new HttpError(409, "Attachment is no longer pending");
   }
-  const { attachmentId, uploadUrl, uploadHeaders } = await presign.json();
-  let put: Response;
-  try {
-    put = await fetch(uploadUrl, {
+  if (!current) {
+    current = await presignWorkItemAttachment(key, file);
+    onCheckpoint(current);
+  }
+  if (!current.uploaded) {
+    const response = await fetch(current.uploadUrl, {
       method: "PUT",
-      headers: uploadHeaders,
+      headers: current.uploadHeaders,
       body: file,
     });
-  } catch (cause) {
-    await discardPending(attachmentId);
-    throw cause;
+    if (!response.ok) throw new HttpError(response.status, "");
+    current = { ...current, uploaded: true };
+    onCheckpoint(current);
   }
-  if (!put.ok) {
-    // A pending row still counts toward the item's attachment limit; remove it.
-    await discardPending(attachmentId);
-    // No server message to show; the caller falls back to its translated text.
-    throw new HttpError(put.status, "");
-  }
-  const complete = await client.attachments[":id"].complete.$post({
-    param: { id: attachmentId },
-  });
-  if (!complete.ok) {
-    throw new HttpError(complete.status, await readErrorDetail(complete));
-  }
-  return complete.json();
-}
-
-async function discardPending(attachmentId: string) {
   try {
-    await client.attachments[":id"].$delete({ param: { id: attachmentId } });
-  } catch {
-    // Best effort; the upload already failed and that is what the user is told.
+    return await completeWorkItemAttachment(current.attachmentId);
+  } catch (error) {
+    // Concurrent completion can legitimately return409. Only this exact ready ID proves success.
+    if (error instanceof HttpError && error.status === 409) {
+      const row = (await listWorkItemAttachments(key)).find(
+        (attachment) => attachment.id === current?.attachmentId,
+      );
+      if (row?.state === "ready") return row;
+    }
+    throw error;
   }
 }
 
-/** `DELETE /api/attachments/{id}` (soft delete, uploader only). */
-export async function deleteAttachment(id: string) {
+/** Existing callers retain the single-upload interface and the same persisted policies. */
+export async function uploadWorkItemAttachment(key: string, file: File) {
+  return resumeWorkItemAttachment(key, file, undefined, () => {});
+}
+
+/**
+ * A delete request preserves the row until its requester confirms the durable action; a
+ * repeated request reopens the requester's existing pending action.
+ */
+export async function requestAttachmentDeletion(id: string) {
   const response = await client.attachments[":id"].$delete({ param: { id } });
-  if (!response.ok) {
-    throw new HttpError(response.status, await readErrorDetail(response));
-  }
+  return readPendingDeletion(response, "Unable to request attachment deletion");
 }

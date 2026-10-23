@@ -1,18 +1,34 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import db from "../../database";
+import { eq } from "drizzle-orm";
+import db, { schema } from "../../database";
+import { attachmentDeletionAccess, loadAttachmentCaller } from "../access";
 import { listWorkItemAttachments as listRows } from "../repository";
 
-/**
- * `GET /api/work-items/{key}/attachments`. Excludes soft-deleted rows -- a deleted
- * attachment is recoverable within the GC window (AT-7), but it is gone from the
- * work item's own list the instant it is deleted, not just once the object itself is
- * purged.
- */
+/** Live files and authoritative per-viewer deletion controls; tombstones remain hidden. */
 export async function listWorkItemAttachments(
   identity: ResolvedIdentity | null,
   workItemId: string,
 ) {
-  return listRows(db, identity, workItemId);
+  return db.transaction(
+    async (tx) => {
+      const rows = await listRows(tx, identity, workItemId);
+      if (rows.length === 0) return [];
+      const [item] = await tx
+        .select({
+          workspaceId: schema.workItemTable.workspaceId,
+          projectId: schema.workItemTable.projectId,
+        })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.id, workItemId));
+      const caller = item
+        ? await loadAttachmentCaller(tx, identity, { ...item, workItemId })
+        : null;
+      return rows.map((row) => ({
+        ...row,
+        canDelete: attachmentDeletionAccess(caller, row).canDelete,
+      }));
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" },
+  );
 }
-
 export default listWorkItemAttachments;

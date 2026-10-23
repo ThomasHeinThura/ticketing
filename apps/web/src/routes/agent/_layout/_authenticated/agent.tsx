@@ -8,12 +8,29 @@ import { Skeleton } from "@taskdesk/ui";
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import WorkspaceLayout from "@/components/common/workspace-layout";
+import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 
 // `/agent` home is kaneo's own projects page, and every other `/agent/*` page renders inside
 // kaneo's layout (AppSidebar + SidebarInset + breadcrumb header), the same shell as
 // `/dashboard/*` — docs/02-design/design-principles.md § Integrate, don't add.
+// Project controls are needed only after the project resolves. Keep them out of
+// unrelated agent pages; the inherited frame loads alongside project data.
+const loadProjectLayout = () => import("@/components/common/project-layout");
+const ProjectLayout = lazy(loadProjectLayout);
+// UI chunks may download during the session check; data access still waits for it.
+if (
+  typeof window !== "undefined" &&
+  /^\/agent\/projects\/[^/]+\/(work|backlog)\/?$/u.test(
+    window.location.pathname,
+  )
+) {
+  void loadProjectLayout().catch(() => {
+    // Rendering the lazy component surfaces a failed chunk through the route boundary.
+  });
+}
+
 const ProjectsPage = lazy(
   () => import("@/components/project-list/projects-page"),
 );
@@ -74,6 +91,39 @@ function AgentSectionTitle({ pathname }: { pathname: string }) {
   return t(agentSectionTitleKey(pathname));
 }
 
+function CanonicalProjectFrame({
+  projectKey,
+  backlog,
+}: {
+  projectKey: string;
+  backlog: boolean;
+}) {
+  const { data: workspace } = useActiveWorkspace();
+  const { data: projects } = useGetProjects({
+    workspaceId: workspace?.id ?? "",
+  });
+  const project = projects?.find((candidate) => candidate.slug === projectKey);
+  return (
+    <Suspense
+      fallback={
+        <WorkspaceLayout title={projectKey}>
+          <Skeleton className="h-10 w-full" />
+        </WorkspaceLayout>
+      }
+    >
+      <ProjectLayout
+        projectId={project?.id ?? ""}
+        workspaceId={project?.workspaceId ?? workspace?.id ?? ""}
+        showViewSwitcher={Boolean(project)}
+        activeView={backlog ? "backlog" : "board"}
+        realtimeMode={backlog ? "canonical" : "page"}
+      >
+        <Outlet />
+      </ProjectLayout>
+    </Suspense>
+  );
+}
+
 // No `useTranslation` here: a translation load would re-render this route and with it the
 // whole page under `<Outlet />` (500 work-list rows, G11 LCP). Only the title subscribes.
 function AgentRootRoute() {
@@ -82,8 +132,29 @@ function AgentRootRoute() {
     return <AgentHome />;
   }
   // Settings use kaneo's full-page settings shell, as /dashboard/settings does.
-  if (location.pathname.startsWith("/agent/settings")) {
+  if (
+    location.pathname.startsWith("/agent/settings") ||
+    location.pathname.startsWith("/agent/god-mode") ||
+    /^\/agent\/work-items\/[^/]+\/?$/u.test(location.pathname)
+  ) {
     return <Outlet />;
+  }
+  const projectPath = /^\/agent\/projects\/([^/]+)\/(work|backlog)\/?$/u.exec(
+    location.pathname,
+  );
+  if (projectPath) {
+    let projectKey = projectPath[1] ?? "";
+    try {
+      projectKey = decodeURIComponent(projectKey);
+    } catch {
+      /* The route handles malformed identifiers. */
+    }
+    return (
+      <CanonicalProjectFrame
+        projectKey={projectKey}
+        backlog={projectPath[2] === "backlog"}
+      />
+    );
   }
   return (
     <WorkspaceLayout title={<AgentSectionTitle pathname={location.pathname} />}>

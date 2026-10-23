@@ -58,9 +58,11 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
 
-  # Local mail. Every notification the instance sends lands here instead of a
-  # real inbox; SMTP host/port are configured in God Mode -> Notifications
-  # (mailpit:1025), exactly as a real deployment would configure a real relay.
+  # Optional local test inbox. Starting this service does not configure SMTP.
+  # The current runtime provider rejects private destinations, including this
+  # Docker address (mailpit:1025). Isolated mail tests use an injected local
+  # transport; a supported runtime capture configuration remains open.
+  # Production never loads this overlay.
   mailpit:
     image: axllent/mailpit:v1.28
     restart: unless-stopped

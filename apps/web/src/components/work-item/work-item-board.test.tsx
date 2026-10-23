@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -10,10 +11,25 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
+import { WorkItemTransitionBlockedError } from "@/lib/work-item-transition-reasons";
+import { useUserPreferencesStore } from "@/store/user-preferences";
 import { translate } from "@/test/en-translation";
 import type { WorkItemRow } from "@/types/work-item";
 import WorkItemBoard from "./work-item-board";
 
+const drag = vi.hoisted(() => ({
+  callbacks: undefined as Record<string, unknown> | undefined,
+}));
+vi.mock("@dnd-kit/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@dnd-kit/core")>();
+  return {
+    ...actual,
+    DndContext: (props: React.ComponentProps<typeof actual.DndContext>) => {
+      drag.callbacks = props as unknown as Record<string, unknown>;
+      return <actual.DndContext {...props} />;
+    },
+  };
+});
 const rankWorkItem = vi.hoisted(() => vi.fn());
 const transitionWorkItem = vi.hoisted(() => vi.fn());
 const getWorkItemTransitions = vi.hoisted(() => vi.fn());
@@ -139,14 +155,34 @@ function card(key: string) {
   return found;
 }
 
-/** Base UI selects an option on the real pointer sequence, not on a bare click. */
-function pickOption(option: HTMLElement) {
-  fireEvent.pointerDown(option);
-  fireEvent.pointerUp(option);
-  fireEvent.click(option);
+function stateId(name: string) {
+  return states.find((state) => state.name === name)?.id ?? name;
 }
-
+function callDrag(name: string, event: unknown) {
+  const callback = drag.callbacks?.[name];
+  if (typeof callback !== "function") throw new Error(`missing ${name}`);
+  return callback(event);
+}
+async function dragTo(key: string, target: string | null, keyboard = false) {
+  const id = `id-${key}`;
+  const over =
+    target === null
+      ? null
+      : { id: target.startsWith("WLP-") ? `id-${target}` : target };
+  act(() =>
+    callDrag("onDragStart", {
+      active: { id },
+      activatorEvent: keyboard
+        ? new KeyboardEvent("keydown", { code: "Space" })
+        : new MouseEvent("mousedown"),
+    }),
+  );
+  await act(async () => {
+    await callDrag("onDragEnd", { active: { id }, over });
+  });
+}
 beforeEach(() => {
+  useUserPreferencesStore.getState().resetDisplayPreferences();
   rankWorkItem.mockReset();
   rankWorkItem.mockResolvedValue({});
   transitionWorkItem.mockReset();
@@ -253,201 +289,60 @@ describe("G6 states of the board", () => {
   });
 });
 
-describe("capability gating (no UI-only security, but no controls without the flag)", () => {
-  it("renders no rank, state or selection controls and no draggable cards with no capability", () => {
-    board();
+describe("Kaneo card-only capability composition", () => {
+  it.each([
+    { canRank: false, canTransition: false },
+    { canRank: true, canTransition: false },
+    { canRank: false, canTransition: true },
+  ])("has no substitute move/state buttons for %j", (capability) => {
+    board(capability);
     expect(screen.queryByRole("button", { name: /^Move up/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Move down/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Change state/ })).toBeNull();
-    expect(screen.queryByRole("checkbox")).toBeNull();
-    for (const el of screen.getAllByTestId("work-item-board-card")) {
-      expect(el).toHaveAttribute("draggable", "false");
-    }
+    expect(card("WLP-1")).not.toHaveAttribute("draggable", "true");
+    const activator = card("WLP-1").querySelector("[data-task-id]");
+    expect(activator).toHaveAttribute("role", "button");
+    expect(activator).toHaveAttribute("tabindex", "0");
+    expect(activator).not.toHaveAttribute("aria-disabled", "true");
   });
-
-  it("rank alone renders Move up/down but not Change state", () => {
+  it("registers the pinned mouse, touch and keyboard sensors", () => {
     board({ canRank: true });
-    expect(
-      screen.getAllByRole("button", { name: /^Move up/ }).length,
-    ).toBeGreaterThan(0);
-    expect(screen.queryByRole("button", { name: /^Change state/ })).toBeNull();
-    expect(card("WLP-1")).toHaveAttribute("draggable", "true");
+    const sensors = drag.callbacks?.sensors as {
+      sensor: { name: string };
+      options: unknown;
+    }[];
+    expect(sensors.map((sensor) => sensor.sensor.name)).toEqual([
+      "MouseSensor",
+      "TouchSensor",
+      "KeyboardSensor",
+    ]);
+    expect(sensors[0].options).toEqual({
+      activationConstraint: { distance: 8 },
+    });
+    expect(sensors[1].options).toEqual({
+      activationConstraint: { delay: 250, tolerance: 10 },
+    });
   });
-
-  it("transition alone renders Change state but not Move up/down", () => {
-    board({ canTransition: true });
-    expect(
-      screen.getAllByRole("button", { name: /^Change state/ }).length,
-    ).toBeGreaterThan(0);
-    expect(screen.queryByRole("button", { name: /^Move up/ })).toBeNull();
-  });
-
-  it("selection checkboxes exist only when canSelect, with a distinct name per card", () => {
-    board({ canSelect: true });
-    expect(
-      screen.getByRole("checkbox", { name: "Select WLP-1" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("checkbox", { name: "Select all work items in Open" }),
-    ).toBeInTheDocument();
-  });
-
-  it("an item with an unavailable key gets no link, controls or selection", () => {
+  it("never enables a missing-key card or unauthorized drag", async () => {
     board({
       canSelect: true,
       canRank: true,
-      canTransition: true,
       workItems: [item("WLP-9", "s-open", "1", { unavailableFields: ["key"] })],
     });
     expect(screen.queryByRole("link")).toBeNull();
     expect(
       screen.getByRole("checkbox", { name: "Select WLP-9" }),
     ).toHaveAttribute("aria-disabled", "true");
-    expect(screen.queryByRole("button", { name: /^Move up/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Change state/ })).toBeNull();
-    expect(card("WLP-9")).toHaveAttribute("draggable", "false");
+    await dragTo("WLP-9", "s-done");
+    expect(getWorkItemTransitions).not.toHaveBeenCalled();
+    expect(rankWorkItem).not.toHaveBeenCalled();
+    expect(transitionWorkItem).not.toHaveBeenCalled();
   });
 });
-
-describe("keyboard rank (VW-14 alternative to dragging)", () => {
-  it("moves a card down by naming both new neighbours, announces it, and refreshes", async () => {
-    const { client } = board({ canRank: true });
-    const invalidate = vi.spyOn(client, "invalidateQueries");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
-    );
-    await waitFor(() =>
-      expect(rankWorkItem).toHaveBeenCalledWith({
-        key: "WLP-1",
-        beforeId: "id-WLP-2",
-        afterId: "id-WLP-3",
-      }),
-    );
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "WLP-1 moved to position 2 of 3 in Open.",
-    );
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ["work-items", "proj_1"],
-    });
-  });
-
-  it("moves a card up", async () => {
-    board({ canRank: true });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move up: WLP-3 in Open" }),
-    );
-    await waitFor(() =>
-      expect(rankWorkItem).toHaveBeenCalledWith({
-        key: "WLP-3",
-        beforeId: "id-WLP-1",
-        afterId: "id-WLP-2",
-      }),
-    );
-  });
-
-  it("disables Move up on the first card and Move down on the last", () => {
-    board({ canRank: true });
-    expect(
-      screen.getByRole("button", { name: "Move up: WLP-1 in Open" }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "Move down: WLP-3 in Open" }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
-    ).toBeEnabled();
-  });
-
-  it("keeps focus on the same control after the board re-renders in the new order", async () => {
-    const view = board({ canRank: true });
-    const down = screen.getByRole("button", {
-      name: "Move down: WLP-1 in Open",
-    });
-    down.focus();
-    fireEvent.click(down);
-    await waitFor(() => expect(rankWorkItem).toHaveBeenCalled());
-    view.rerender({
-      canRank: true,
-      workItems: [
-        item("WLP-2", "s-open", "1"),
-        item("WLP-1", "s-open", "2"),
-        item("WLP-3", "s-open", "3"),
-        item("WLP-4", "s-done", "1"),
-        item("WLP-5", "s-done", "2"),
-      ],
-    });
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
-      ).toHaveFocus(),
-    );
-  });
-
-  it("falls back to the other direction when the moved card reaches the end", async () => {
-    const view = board({ canRank: true });
-    const down = screen.getByRole("button", {
-      name: "Move down: WLP-2 in Open",
-    });
-    down.focus();
-    fireEvent.click(down);
-    await waitFor(() => expect(rankWorkItem).toHaveBeenCalled());
-    view.rerender({
-      canRank: true,
-      workItems: [
-        item("WLP-1", "s-open", "1"),
-        item("WLP-3", "s-open", "2"),
-        item("WLP-2", "s-open", "3"),
-      ],
-    });
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Move up: WLP-2 in Open" }),
-      ).toHaveFocus(),
-    );
-  });
-
-  it("does not allow a second move while one is in flight", async () => {
-    let finish: (value: unknown) => void = () => {};
-    rankWorkItem.mockReturnValue(new Promise((resolve) => (finish = resolve)));
-    board({ canRank: true });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Move down: WLP-2 in Open" }),
-      ).toBeDisabled(),
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move down: WLP-2 in Open" }),
-    );
-    expect(rankWorkItem).toHaveBeenCalledTimes(1);
-    finish({});
-  });
-});
-
-describe("one write at a time", () => {
-  it("ignores a drop that arrives while a keyboard move is still in flight", async () => {
-    let finish: (value: unknown) => void = () => {};
-    rankWorkItem.mockReturnValue(new Promise((resolve) => (finish = resolve)));
-    board({ canRank: true });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
-    );
-    await waitFor(() => expect(rankWorkItem).toHaveBeenCalledTimes(1));
-    fireEvent.dragStart(card("WLP-3"));
-    fireEvent.drop(card("WLP-1"));
-    await Promise.resolve();
-    expect(rankWorkItem).toHaveBeenCalledTimes(1);
-    finish({});
-  });
-});
-
 describe("drag to rank and transition (VW-9, VW-10)", () => {
   it("dropping a card on a later card in the same column ranks it after that card's slot", async () => {
     board({ canRank: true });
-    fireEvent.dragStart(card("WLP-1"));
-    fireEvent.drop(card("WLP-3"));
+    await dragTo("WLP-1", "WLP-3");
     await waitFor(() =>
       expect(rankWorkItem).toHaveBeenCalledWith({
         key: "WLP-1",
@@ -458,8 +353,7 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
 
   it("dropping a card on an earlier card ranks it before that card", async () => {
     board({ canRank: true });
-    fireEvent.dragStart(card("WLP-3"));
-    fireEvent.drop(card("WLP-1"));
+    await dragTo("WLP-3", "WLP-1");
     await waitFor(() =>
       expect(rankWorkItem).toHaveBeenCalledWith({
         key: "WLP-3",
@@ -470,8 +364,7 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
 
   it("does not rank on a same-column drop without rank capability", async () => {
     board({ canTransition: true });
-    fireEvent.dragStart(card("WLP-1"));
-    fireEvent.drop(card("WLP-3"));
+    await dragTo("WLP-1", "WLP-3");
     await Promise.resolve();
     expect(rankWorkItem).not.toHaveBeenCalled();
   });
@@ -488,8 +381,7 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
       },
     ]);
     board({ canTransition: true, canRank: true });
-    fireEvent.dragStart(card("WLP-1"));
-    fireEvent.drop(card("WLP-5"));
+    await dragTo("WLP-1", "WLP-5");
     await waitFor(() =>
       expect(transitionWorkItem).toHaveBeenCalledWith({
         key: "WLP-1",
@@ -503,9 +395,9 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
         afterId: "id-WLP-5",
       }),
     );
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "WLP-1 moved to Done.",
-    );
+    expect(
+      await within(screen.getByTestId("work-item-board")).findByRole("status"),
+    ).toHaveTextContent("WLP-1 moved to Done.");
   });
 
   it("dropping on a column's empty area appends after its last card", async () => {
@@ -520,8 +412,7 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
       },
     ]);
     board({ canTransition: true, canRank: true });
-    fireEvent.dragStart(card("WLP-1"));
-    fireEvent.drop(column("Done"));
+    await dragTo("WLP-1", stateId("Done"));
     await waitFor(() =>
       expect(rankWorkItem).toHaveBeenCalledWith({
         key: "WLP-1",
@@ -532,8 +423,7 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
 
   it("without transition capability a cross-column drop is refused locally and writes nothing", async () => {
     board({ canRank: true });
-    fireEvent.dragStart(card("WLP-1"));
-    fireEvent.drop(card("WLP-5"));
+    await dragTo("WLP-1", "WLP-5");
     expect(
       await screen.findByText(
         "You don't have permission to change the state of work items.",
@@ -555,11 +445,12 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
       },
     ]);
     board({ canTransition: true });
-    fireEvent.dragStart(card("WLP-1"));
-    fireEvent.drop(column("Done"));
+    await dragTo("WLP-1", stateId("Done"));
     expect(
       await screen.findByTestId("work-item-board-error"),
-    ).toHaveTextContent("WLP-1 can't move there right now (note.required).");
+    ).toHaveTextContent(
+      "WLP-1 can't move there right now (a note is required). Open it to add what's missing.",
+    );
     expect(transitionWorkItem).not.toHaveBeenCalled();
   });
 
@@ -576,8 +467,7 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
     ]);
     transitionWorkItem.mockRejectedValue(new HttpError(400, "x"));
     board({ canTransition: true });
-    fireEvent.dragStart(card("WLP-1"));
-    fireEvent.drop(column("Done"));
+    await dragTo("WLP-1", stateId("Done"));
     expect(
       await screen.findByTestId("work-item-board-error"),
     ).toHaveTextContent("The state change for WLP-1 was not valid.");
@@ -585,8 +475,7 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
 
   it("reports no edge to that state as unavailable", async () => {
     board({ canTransition: true });
-    fireEvent.dragStart(card("WLP-1"));
-    fireEvent.drop(column("Done"));
+    await dragTo("WLP-1", stateId("Done"));
     expect(
       await screen.findByTestId("work-item-board-error"),
     ).toHaveTextContent("WLP-1 can't move to that state right now.");
@@ -605,8 +494,7 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
     ]);
     rankWorkItem.mockRejectedValue(new HttpError(409, "x"));
     board({ canTransition: true, canRank: true });
-    fireEvent.dragStart(card("WLP-1"));
-    fireEvent.drop(card("WLP-5"));
+    await dragTo("WLP-1", "WLP-5");
     expect(
       await screen.findByTestId("work-item-board-error"),
     ).toHaveTextContent(
@@ -638,9 +526,7 @@ describe("failure handling for rank (404, 409, 422, 400, 403)", () => {
       rankWorkItem.mockRejectedValue(new HttpError(status, "x"));
       const { client } = board({ canRank: true });
       const invalidate = vi.spyOn(client, "invalidateQueries");
-      fireEvent.click(
-        screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
-      );
+      await dragTo("WLP-1", "WLP-2");
       const alert = await screen.findByTestId("work-item-board-error");
       expect(alert).toHaveTextContent(text);
       expect(alert).toHaveAttribute("role", "alert");
@@ -649,323 +535,138 @@ describe("failure handling for rank (404, 409, 422, 400, 403)", () => {
       });
     },
   );
+});
 
-  it("a failed move leaves no focus target, so a later refetch does not steal focus", async () => {
-    rankWorkItem.mockRejectedValue(new HttpError(409, "x"));
+describe("DnD lifecycle, keyboard and concurrency", () => {
+  it("keyboard drag uses both neighbours, announces the persisted move and refreshes", async () => {
+    const { client } = board({ canRank: true });
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    await dragTo("WLP-1", "WLP-2", true);
+    expect(rankWorkItem).toHaveBeenCalledWith({
+      key: "WLP-1",
+      beforeId: "id-WLP-2",
+      afterId: "id-WLP-3",
+    });
+    expect(
+      within(screen.getByTestId("work-item-board")).getByRole("status"),
+    ).toHaveTextContent("WLP-1 moved to position 2 of 3 in Open.");
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["work-items", "proj_1"],
+    });
+  });
+  it("never starts a write without capabilities or when cancelled/outside/same-item", async () => {
+    const view = board();
+    await dragTo("WLP-1", "s-done");
+    view.rerender({ canRank: true });
+    await dragTo("WLP-1", null);
+    await dragTo("WLP-1", "WLP-1");
+    act(() => {
+      callDrag("onDragStart", {
+        active: { id: "id-WLP-1" },
+        activatorEvent: new MouseEvent("mousedown"),
+      });
+      callDrag("onDragCancel", {});
+    });
+    await act(async () => {
+      await callDrag("onDragEnd", {
+        active: { id: "id-WLP-1" },
+        over: { id: "id-WLP-2" },
+      });
+    });
+    expect(rankWorkItem).not.toHaveBeenCalled();
+    expect(getWorkItemTransitions).not.toHaveBeenCalled();
+  });
+  it("accepts only one write in flight and allows a new drag after completion", async () => {
+    let finish!: (value: unknown) => void;
+    rankWorkItem.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    board({ canRank: true, canTransition: true });
+    act(() =>
+      callDrag("onDragStart", {
+        active: { id: "id-WLP-1" },
+        activatorEvent: new MouseEvent("mousedown"),
+      }),
+    );
+    let pending: Promise<unknown>;
+    act(() => {
+      pending = callDrag("onDragEnd", {
+        active: { id: "id-WLP-1" },
+        over: { id: "id-WLP-2" },
+      });
+    });
+    await dragTo("WLP-3", "s-done");
+    expect(rankWorkItem).toHaveBeenCalledTimes(1);
+    expect(getWorkItemTransitions).not.toHaveBeenCalled();
+    await act(async () => {
+      finish({});
+      await pending;
+    });
+    await dragTo("WLP-3", "WLP-1");
+    expect(rankWorkItem).toHaveBeenCalledTimes(2);
+  });
+  it("restores keyboard focus to the moved card after persisted rows change", async () => {
     const view = board({ canRank: true });
-    const down = screen.getByRole("button", {
-      name: "Move down: WLP-1 in Open",
-    });
-    down.focus();
-    fireEvent.click(down);
-    await screen.findByTestId("work-item-board-error");
-    const elsewhere = screen.getByRole("link", { name: /WLP-5/ });
-    elsewhere.focus();
-    // A later refetch (realtime, polling) delivers a re-ordered board.
+    await dragTo("WLP-1", "WLP-3", true);
     view.rerender({
-      canRank: true,
-      workItems: [
-        item("WLP-2", "s-open", "1"),
-        item("WLP-1", "s-open", "2"),
-        item("WLP-3", "s-open", "3"),
-        item("WLP-4", "s-done", "1"),
-        item("WLP-5", "s-done", "2"),
-      ],
+      workItems: baseItems.map((entry) =>
+        entry.key === "WLP-1" ? { ...entry, position: "4" } : entry,
+      ),
     });
-    await Promise.resolve();
-    expect(screen.getByRole("link", { name: /WLP-5/ })).toHaveFocus();
+    expect(document.activeElement).toBe(
+      card("WLP-1").querySelector("[data-task-id]"),
+    );
   });
-
-  it("a failed Change state leaves no focus target, so a later refetch that moves the card does not steal focus", async () => {
-    const offersFor = [
-      {
-        transitionId: "t1",
-        toStateId: "s-done",
-        toStateTemplateId: "tpl-done",
-        toStateName: "Done",
-        available: true,
-        blockedBy: [],
-      },
-    ];
-    getWorkItemTransitions.mockResolvedValue(offersFor);
-    transitionWorkItem.mockRejectedValue(new HttpError(409, "x"));
-    const view = board({ canTransition: true });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Change state of WLP-1" }),
-    );
-    fireEvent.click(
-      await screen.findByRole("combobox", { name: "New state for WLP-1" }),
-    );
-    pickOption(await screen.findByRole("option", { name: "Done" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move WLP-1 to the chosen state" }),
-    );
-    await screen.findByTestId("work-item-board-error");
-    const elsewhere = screen.getByRole("link", { name: /WLP-5/ });
-    elsewhere.focus();
-    view.rerender({
-      canTransition: true,
-      workItems: [
-        item("WLP-2", "s-open", "2"),
-        item("WLP-3", "s-open", "3"),
-        item("WLP-1", "s-done", "0"),
-        item("WLP-4", "s-done", "1"),
-        item("WLP-5", "s-done", "2"),
-      ],
-    });
-    await Promise.resolve();
-    expect(screen.getByRole("link", { name: /WLP-5/ })).toHaveFocus();
+  it("a failed keyboard move does not steal focus on a later refresh", async () => {
+    rankWorkItem.mockRejectedValue(new HttpError(409, "conflict"));
+    const view = board({ canRank: true });
+    await dragTo("WLP-1", "WLP-3", true);
+    const other = card("WLP-2").querySelector<HTMLElement>("[data-task-id]");
+    other?.focus();
+    view.rerender({ workItems: [...baseItems] });
+    expect(document.activeElement).toBe(other);
   });
-
-  it("a keyboard move that finds no neighbours (a no-op) leaves no focus target either", async () => {
+  it("a no-neighbour rank is a no-op without a saved announcement", async () => {
     noNeighbours.active = true;
     try {
-      const view = board({ canRank: true });
-      const down = screen.getByRole("button", {
-        name: "Move down: WLP-1 in Open",
-      });
-      expect(down).toBeEnabled();
-      down.focus();
-      fireEvent.click(down);
-      // The move ran and resolved as a no-op: nothing was written, nothing is announced.
-      await waitFor(() => expect(down).toBeEnabled());
+      board({ canRank: true });
+      await dragTo("WLP-1", "WLP-2", true);
       expect(rankWorkItem).not.toHaveBeenCalled();
-      const elsewhere = screen.getByRole("link", { name: /WLP-5/ });
-      elsewhere.focus();
-      view.rerender({
-        canRank: true,
-        workItems: [
-          item("WLP-2", "s-open", "1"),
-          item("WLP-1", "s-open", "2"),
-          item("WLP-3", "s-open", "3"),
-          item("WLP-4", "s-done", "1"),
-          item("WLP-5", "s-done", "2"),
-        ],
-      });
-      await Promise.resolve();
-      expect(screen.getByRole("link", { name: /WLP-5/ })).toHaveFocus();
+      expect(
+        within(screen.getByTestId("work-item-board")).getByRole("status"),
+      ).toBeEmptyDOMElement();
     } finally {
       noNeighbours.active = false;
     }
   });
-
-  it("a move whose write throws past its own handling leaves no focus target and surfaces the error", async () => {
-    // The rank write fails and then the refresh inside the handler fails too, so the task
-    // rejects instead of returning an error notice.
-    rankWorkItem.mockRejectedValue(new HttpError(409, "x"));
-    const view = board({ canRank: true });
-    vi.spyOn(view.client, "invalidateQueries").mockRejectedValue(
-      new Error("refresh failed"),
+  it("does not fabricate success or leave an unhandled error if refreshing fails", async () => {
+    const { client } = board({ canRank: true });
+    vi.spyOn(client, "invalidateQueries").mockRejectedValue(
+      new Error("offline"),
     );
-    const escaped: unknown[] = [];
-    const previous = process.listeners("unhandledRejection");
-    process.removeAllListeners("unhandledRejection");
-    process.on("unhandledRejection", (reason) => escaped.push(reason));
-    try {
-      const down = screen.getByRole("button", {
-        name: "Move down: WLP-1 in Open",
-      });
-      down.focus();
-      fireEvent.click(down);
-      await waitFor(() => expect(escaped).toHaveLength(1));
-      expect((escaped[0] as Error).message).toBe("refresh failed");
-      // The guard is released, so the controls work again.
-      await waitFor(() => expect(down).toBeEnabled());
-      const elsewhere = screen.getByRole("link", { name: /WLP-5/ });
-      elsewhere.focus();
-      view.rerender({
-        canRank: true,
-        workItems: [
-          item("WLP-2", "s-open", "1"),
-          item("WLP-1", "s-open", "2"),
-          item("WLP-3", "s-open", "3"),
-          item("WLP-4", "s-done", "1"),
-          item("WLP-5", "s-done", "2"),
-        ],
-      });
-      await Promise.resolve();
-      expect(screen.getByRole("link", { name: /WLP-5/ })).toHaveFocus();
-    } finally {
-      process.removeAllListeners("unhandledRejection");
-      for (const listener of previous)
-        process.on("unhandledRejection", listener);
-    }
-  });
-
-  it("re-enables the controls after a failed move", async () => {
-    rankWorkItem.mockRejectedValue(new HttpError(409, "x"));
-    board({ canRank: true });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
-    );
-    await screen.findByTestId("work-item-board-error");
+    await dragTo("WLP-1", "WLP-2");
+    expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
-    ).toBeEnabled();
+      within(screen.getByTestId("work-item-board")).getByRole("status"),
+    ).toBeEmptyDOMElement();
   });
 });
-
-describe("Change state control", () => {
-  const offers = [
-    {
-      transitionId: "t1",
-      toStateId: "s-done",
-      toStateTemplateId: "tpl-done",
-      toStateName: "Done",
-      available: true,
-      blockedBy: [],
-    },
-    {
-      transitionId: "t2",
-      toStateId: "s-x",
-      toStateTemplateId: "tpl-x",
-      toStateName: "Hidden",
-      available: false,
-      blockedBy: [],
-    },
-  ];
-
-  async function chooseDone() {
-    fireEvent.click(
-      screen.getByRole("button", { name: "Change state of WLP-1" }),
-    );
-    fireEvent.click(
-      await screen.findByRole("combobox", { name: "New state for WLP-1" }),
-    );
-    pickOption(await screen.findByRole("option", { name: "Done" }));
-  }
-
-  it("offers only available edges and applies the chosen one", async () => {
-    getWorkItemTransitions.mockResolvedValue(offers);
-    board({ canTransition: true });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Change state of WLP-1" }),
-    );
-    fireEvent.click(
-      await screen.findByRole("combobox", { name: "New state for WLP-1" }),
-    );
-    const done = await screen.findByRole("option", { name: "Done" });
-    expect(screen.queryByRole("option", { name: "Hidden" })).toBeNull();
-    pickOption(done);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move WLP-1 to the chosen state" }),
-    );
-    await waitFor(() =>
-      expect(transitionWorkItem).toHaveBeenCalledWith({
-        key: "WLP-1",
-        toStateTemplateId: "tpl-done",
-      }),
-    );
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "WLP-1 moved to Done.",
-    );
-  });
-
-  it("after Move the card changes column and focus lands on its Change state button there", async () => {
-    getWorkItemTransitions.mockResolvedValue(offers);
-    const view = board({ canTransition: true });
-    // The server's refetch moves the card: the mock re-renders with it in Done.
-    transitionWorkItem.mockImplementation(async () => {
-      view.rerender({
-        canTransition: true,
-        workItems: [
-          item("WLP-2", "s-open", "2"),
-          item("WLP-3", "s-open", "3"),
-          item("WLP-1", "s-done", "0"),
-          item("WLP-4", "s-done", "1"),
-          item("WLP-5", "s-done", "2"),
-        ],
-      });
-      return {};
-    });
-    await chooseDone();
-    const move = screen.getByRole("button", {
-      name: "Move WLP-1 to the chosen state",
-    });
-    move.focus();
-    fireEvent.click(move);
-    await waitFor(() => expect(transitionWorkItem).toHaveBeenCalled());
-    await waitFor(() => expect(keysIn("Done")).toContain("WLP-1"));
-    await waitFor(() => {
-      const toggle = screen.getByRole("button", {
-        name: "Change state of WLP-1",
-      });
-      expect(toggle).toHaveFocus();
-      expect(column("Done")).toContainElement(toggle);
-    });
-  });
-
-  it("a drag cannot start while a select transition is in flight", async () => {
-    getWorkItemTransitions.mockResolvedValue(offers);
-    let finish: (value: unknown) => void = () => {};
-    transitionWorkItem.mockReturnValue(
-      new Promise((resolve) => (finish = resolve)),
-    );
-    board({ canTransition: true, canRank: true });
-    await chooseDone();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move WLP-1 to the chosen state" }),
-    );
-    await waitFor(() => expect(transitionWorkItem).toHaveBeenCalledTimes(1));
-    fireEvent.dragStart(card("WLP-3"));
-    fireEvent.drop(card("WLP-1"));
-    await Promise.resolve();
-    expect(rankWorkItem).not.toHaveBeenCalled();
-    expect(getWorkItemTransitions).toHaveBeenCalledTimes(1);
-    finish({});
-  });
-
-  it("a select transition is ignored while a rank move is in flight", async () => {
-    getWorkItemTransitions.mockResolvedValue(offers);
-    let finish: (value: unknown) => void = () => {};
-    rankWorkItem.mockReturnValue(new Promise((resolve) => (finish = resolve)));
-    board({ canTransition: true, canRank: true });
-    await chooseDone();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
-    );
-    await waitFor(() => expect(rankWorkItem).toHaveBeenCalledTimes(1));
-    expect(
-      screen.getByRole("button", { name: "Move WLP-1 to the chosen state" }),
-    ).toBeDisabled();
-    expect(transitionWorkItem).not.toHaveBeenCalled();
-    finish({});
-  });
-
-  it("a 400 from a transition does not claim a position was not saved", async () => {
-    getWorkItemTransitions.mockResolvedValue(offers);
-    transitionWorkItem.mockRejectedValue(new HttpError(400, "x"));
-    board({ canTransition: true });
-    await chooseDone();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move WLP-1 to the chosen state" }),
-    );
-    const alert = await screen.findByTestId("work-item-board-error");
-    expect(alert).toHaveTextContent(
-      "The state change for WLP-1 was not valid. The board was refreshed.",
-    );
-    expect(alert).not.toHaveTextContent("position");
-  });
-
-  it.each([
-    [404, "WLP-1 is no longer available to you."],
-    [409, "WLP-1 changed in the meantime"],
-    [422, "WLP-1 can't be moved right now because a rule blocks it."],
-  ])("HTTP %i from transition is reported", async (status, text) => {
-    getWorkItemTransitions.mockResolvedValue(offers);
-    transitionWorkItem.mockRejectedValue(new HttpError(status, "x"));
-    board({ canTransition: true });
-    await chooseDone();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Move WLP-1 to the chosen state" }),
-    );
-    expect(
-      await screen.findByTestId("work-item-board-error"),
-    ).toHaveTextContent(text);
-  });
-});
-
 describe("selection", () => {
+  it("renders selection checkboxes only when canSelect, one distinct name per card", () => {
+    board({ canSelect: false });
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    cleanup();
+    board({ canSelect: true });
+    const names = screen
+      .getAllByRole("checkbox", { name: /^Select WLP-/ })
+      .map((box) => box.getAttribute("aria-label"));
+    expect(new Set(names).size).toBe(names.length);
+    expect(names).toContain("Select WLP-1");
+  });
+
   it("reports single and column-wide selection through onSelectionChange", () => {
     const onSelectionChange = vi.fn();
     board({ canSelect: true, onSelectionChange });
@@ -997,5 +698,265 @@ describe("paging", () => {
     view.rerender({ hasMore: true, onLoadMore });
     fireEvent.click(screen.getByRole("button", { name: "Load more" }));
     expect(onLoadMore).toHaveBeenCalledOnce();
+  });
+});
+
+describe("canonical board sort and manual rank", () => {
+  it("preserves server sort order per state as additional cursor pages arrive", () => {
+    const first = board({
+      sort: "priority",
+      dir: "desc",
+      workItems: [
+        item("WLP-3", "s-open", "3", { priority: "urgent" }),
+        item("WLP-2", "s-open", "2", { priority: "high" }),
+      ],
+    });
+    expect(keysIn("Open")).toEqual(["WLP-3", "WLP-2"]);
+    first.rerender({
+      workItems: [
+        item("WLP-3", "s-open", "3", { priority: "urgent" }),
+        item("WLP-2", "s-open", "2", { priority: "high" }),
+        item("WLP-1", "s-open", "1", { priority: null }),
+      ],
+    });
+    expect(keysIn("Open")).toEqual(["WLP-3", "WLP-2", "WLP-1"]);
+  });
+
+  it("disables manual rank writes under an explicit sort", async () => {
+    board({ sort: "title", dir: "asc", canRank: true, canTransition: true });
+    expect(screen.queryByRole("button", { name: /Move WLP-1 up/ })).toBeNull();
+    expect(document.querySelector("[data-rank-button]")).toBeNull();
+    await dragTo("WLP-1", "WLP-3");
+    expect(rankWorkItem).not.toHaveBeenCalled();
+    expect(transitionWorkItem).not.toHaveBeenCalled();
+  });
+
+  it("keeps workflow transitions available under explicit sorts without hidden rank writes", async () => {
+    getWorkItemTransitions.mockResolvedValue([
+      {
+        toStateId: "s-done",
+        toStateTemplateId: "template-done",
+        available: true,
+      },
+    ]);
+    board({ sort: "dueDate", dir: "desc", canRank: true, canTransition: true });
+    await dragTo("WLP-1", "WLP-5");
+    await waitFor(() =>
+      expect(transitionWorkItem).toHaveBeenCalledWith({
+        key: "WLP-1",
+        toStateTemplateId: "template-done",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId("work-item-board")).getByRole("status"),
+      ).toHaveTextContent("Done"),
+    );
+    expect(rankWorkItem).not.toHaveBeenCalled();
+  });
+
+  it("orders descending fractional positions precisely with stable ID ties and no rank actions", () => {
+    board({
+      sort: "position",
+      dir: "desc",
+      canRank: true,
+      workItems: [
+        item("WLP-3", "s-open", "1.0000000001"),
+        item("WLP-2", "s-open", "1.0000000002"),
+        item("WLP-1", "s-open", "1.0000000002"),
+      ],
+    });
+    expect(keysIn("Open")).toEqual(["WLP-1", "WLP-2", "WLP-3"]);
+    expect(document.querySelector("[data-rank-button]")).toBeNull();
+  });
+});
+
+it("opens canonical card and title through the sheet callback, preserving modified full-page links", () => {
+  const onOpenItem = vi.fn();
+  board({ onOpenItem });
+  const title = within(card("WLP-1")).getByRole("link", {
+    name: "WLP-1 Title WLP-1",
+  });
+  expect(fireEvent.click(title)).toBe(false);
+  expect(onOpenItem).toHaveBeenLastCalledWith("WLP-1");
+  fireEvent.click(within(card("WLP-2")).getByText("WLP-2"));
+  expect(onOpenItem).toHaveBeenLastCalledWith("WLP-2");
+  onOpenItem.mockClear();
+  for (const modifiers of [
+    { ctrlKey: true },
+    { metaKey: true },
+    { shiftKey: true },
+    { altKey: true },
+    { button: 1 },
+  ]) {
+    expect(fireEvent.click(title, modifiers)).toBe(true);
+  }
+  expect(onOpenItem).not.toHaveBeenCalled();
+  expect(title).toHaveAttribute("href", "/agent/work-items/WLP-1");
+});
+
+it("starts and cancels an actual keyboard sensor drag with only the Kaneo card in its overlay", async () => {
+  board({ canRank: true, canTransition: true });
+  const activator = card("WLP-1").querySelector<HTMLElement>("[data-task-id]");
+  if (!activator) throw new Error("missing canonical card activator");
+  activator.focus();
+  fireEvent.keyDown(activator, { key: " ", code: "Space" });
+  const overlay = await screen.findByTestId("work-item-drag-overlay-card");
+  expect(
+    within(overlay).getByRole("link", { name: "WLP-1 Title WLP-1" }),
+  ).toBeInTheDocument();
+  expect(
+    within(overlay).queryByRole("button", { name: /^Move|^Change state/ }),
+  ).not.toBeInTheDocument();
+  fireEvent.keyDown(document, { key: "Escape", code: "Escape" });
+  await waitFor(() =>
+    expect(
+      screen.queryByTestId("work-item-drag-overlay-card"),
+    ).not.toBeInTheDocument(),
+  );
+  expect(rankWorkItem).not.toHaveBeenCalled();
+  expect(transitionWorkItem).not.toHaveBeenCalled();
+});
+
+it.each([
+  [404, "is no longer available"],
+  [403, "don't have permission"],
+  [409, "changed in the meantime"],
+  [422, "a rule blocks it"],
+  [500, "Couldn't move"],
+])(
+  "surfaces transition HTTP %i and re-enables later gestures without faking a move",
+  async (status, message) => {
+    getWorkItemTransitions.mockResolvedValue([
+      {
+        toStateId: "s-done",
+        toStateTemplateId: "tpl-done",
+        available: true,
+        blockedBy: [],
+      },
+    ]);
+    transitionWorkItem.mockRejectedValueOnce(new HttpError(status, "blocked"));
+    board({ canRank: true, canTransition: true });
+    await dragTo("WLP-1", "s-done");
+    expect(screen.getByTestId("work-item-board-error")).toHaveTextContent(
+      message,
+    );
+    expect(keysIn("Open")).toContain("WLP-1");
+    expect(rankWorkItem).not.toHaveBeenCalled();
+    transitionWorkItem.mockResolvedValueOnce({});
+    await dragTo("WLP-1", "s-done");
+    expect(transitionWorkItem).toHaveBeenCalledTimes(2);
+  },
+);
+
+it("retains the actual keyboard focus on a completed cross-column transition", async () => {
+  getWorkItemTransitions.mockResolvedValue([
+    {
+      toStateId: "s-done",
+      toStateTemplateId: "tpl-done",
+      available: true,
+      blockedBy: [],
+    },
+  ]);
+  const view = board({ canTransition: true });
+  await dragTo("WLP-1", "s-done", true);
+  view.rerender({
+    workItems: baseItems.map((entry) =>
+      entry.key === "WLP-1" ? { ...entry, stateId: "s-done" } : entry,
+    ),
+  });
+  expect(document.activeElement).toBe(
+    card("WLP-1").querySelector("[data-task-id]"),
+  );
+});
+
+it.each(["offer", "write"])(
+  "translates bounded %s approval blocker codes and never spills unknown server values",
+  async (source) => {
+    const blockedBy = [
+      { reasonCode: "cab.pending" },
+      { reasonCode: "secret-account-or-other-unrecognized-detail" },
+    ];
+    getWorkItemTransitions.mockResolvedValue([
+      {
+        toStateId: "s-done",
+        toStateTemplateId: "tpl-done",
+        available: source === "write",
+        blockedBy,
+      },
+    ]);
+    if (source === "write")
+      transitionWorkItem.mockRejectedValue(
+        new WorkItemTransitionBlockedError(
+          blockedBy.map((reason) => reason.reasonCode),
+        ),
+      );
+    board({ canTransition: true });
+    await dragTo("WLP-1", "s-done");
+    const alert = screen.getByTestId("work-item-board-error");
+    expect(alert).not.toHaveTextContent("cab.pending");
+    expect(alert).not.toHaveTextContent("secret-account");
+    expect(alert).toHaveTextContent(
+      translate("workItems:journey.reasonCabPending"),
+    );
+    expect(alert).toHaveTextContent(
+      translate("workItems:journey.reasonUnknown"),
+    );
+    expect(rankWorkItem).not.toHaveBeenCalled();
+  },
+);
+
+describe("original card display preferences over persisted projections", () => {
+  it("renders labels and genuine rich-text checklist counts, and immediately respects the original display toggles", () => {
+    board({
+      workItems: [
+        item("WLP-1", "s-open", "1", {
+          labels: [
+            {
+              id: "label-access",
+              name: "Access",
+              color: "var(--color-primary)",
+            },
+          ],
+          description: {
+            type: "doc",
+            content: [
+              {
+                type: "taskList",
+                content: [
+                  {
+                    type: "taskItem",
+                    attrs: { checked: true },
+                    content: [{ type: "paragraph" }],
+                  },
+                  {
+                    type: "taskItem",
+                    attrs: { checked: false },
+                    content: [{ type: "paragraph" }],
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+      ],
+    });
+    expect(within(card("WLP-1")).getByText("Access")).toBeInTheDocument();
+    expect(within(card("WLP-1")).getByText("1/2")).toBeInTheDocument();
+    expect(within(card("WLP-1")).getByText("WLP-1")).toBeInTheDocument();
+    act(() =>
+      useUserPreferencesStore.setState({
+        showLabels: false,
+        showTaskItemCounts: false,
+        showTaskNumbers: false,
+      }),
+    );
+    expect(within(card("WLP-1")).queryByText("Access")).toBeNull();
+    expect(within(card("WLP-1")).queryByText("1/2")).toBeNull();
+    expect(within(card("WLP-1")).queryByText("WLP-1")).toBeNull();
+    expect(within(card("WLP-1")).getByRole("link")).toHaveAttribute(
+      "href",
+      "/agent/work-items/WLP-1",
+    );
   });
 });

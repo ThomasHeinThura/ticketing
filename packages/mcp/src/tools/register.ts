@@ -1,9 +1,22 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import type { TaskDeskClient } from "../taskdesk/client.js";
+import { TaskDeskApiError, type TaskDeskClient } from "../taskdesk/client.js";
 import { buildFullTaskUpdateBody } from "../taskdesk/task-helpers.js";
-import { errorResult, textResult } from "../utils/mcp-result.js";
+import {
+  errorResult,
+  errorResultWithDetail,
+  textResult,
+} from "../utils/mcp-result.js";
+import {
+  UNTRUSTED_OUTPUT_NOTICE,
+  untrustedContent,
+  wrapUntrusted,
+} from "../utils/untrusted.js";
+import {
+  PENDING_DELETION_NOTICE,
+  requestPendingDeletion,
+} from "./pending-deletion.js";
 
 const prioritySchema = z.enum([
   "no-priority",
@@ -28,11 +41,24 @@ const hexColorSchema = z
     "Expected a hex color like #FF6600",
   );
 
+/**
+ * MC-15: every successful tool response passes through `wrapUntrusted` here, at the output
+ * boundary, so user-authored fields reach the model only inside `untrusted_content`. A
+ * bare string body (a non-JSON response) is wholly user-controllable and is wrapped too.
+ */
 function run(fn: () => Promise<unknown>): Promise<CallToolResult> {
   return fn()
-    .then((data) => textResult(data))
+    .then((data) =>
+      textResult(
+        typeof data === "string"
+          ? untrustedContent(data, "customer")
+          : wrapUntrusted(data),
+      ),
+    )
     .catch((e: unknown) =>
-      errorResult(e instanceof Error ? e.message : String(e)),
+      e instanceof TaskDeskApiError
+        ? errorResultWithDetail(e.message, e.detail)
+        : errorResult(e instanceof Error ? e.message : String(e)),
     );
 }
 
@@ -42,7 +68,23 @@ export function registerTools(
 ): void {
   const { client } = ctx;
 
-  server.registerTool(
+  // MC-15: the tool descriptions say, in words the model reads, that output is untrusted.
+  const registerTool = ((
+    name: string,
+    config: { description?: string },
+    cb: unknown,
+  ) =>
+    server.registerTool(
+      name,
+      {
+        ...config,
+        description:
+          `${config.description ?? ""} ${UNTRUSTED_OUTPUT_NOTICE}`.trim(),
+      } as never,
+      cb as never,
+    )) as McpServer["registerTool"];
+
+  registerTool(
     "whoami",
     {
       description:
@@ -53,7 +95,7 @@ export function registerTools(
       run(() => client.json("/api/auth/get-session", { method: "GET" })),
   );
 
-  server.registerTool(
+  registerTool(
     "list_workspaces",
     {
       description:
@@ -64,7 +106,7 @@ export function registerTools(
       run(() => client.json("/api/auth/organization/list", { method: "GET" })),
   );
 
-  server.registerTool(
+  registerTool(
     "list_projects",
     {
       description: "List projects in a workspace.",
@@ -88,7 +130,7 @@ export function registerTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
     "get_project",
     {
       description: "Get a single project by ID.",
@@ -98,7 +140,7 @@ export function registerTools(
       run(() => client.json(`/api/project/${encodeURIComponent(args.id)}`)),
   );
 
-  server.registerTool(
+  registerTool(
     "create_project",
     {
       description: "Create a project in a workspace.",
@@ -123,7 +165,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "update_project",
     {
       description:
@@ -193,7 +235,7 @@ export function registerTools(
     dueAfter: optionalIsoDateTimeSchema,
   });
 
-  server.registerTool(
+  registerTool(
     "list_tasks",
     {
       description: "List tasks for a project (optionally filtered/sorted).",
@@ -214,7 +256,7 @@ export function registerTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
     "get_task",
     {
       description: "Get a task by ID.",
@@ -228,7 +270,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "create_task",
     {
       description: "Create a task in a project.",
@@ -281,7 +323,7 @@ export function registerTools(
     userId: nullableOptionalNonEmptyString,
   });
 
-  server.registerTool(
+  registerTool(
     "update_task",
     {
       description:
@@ -306,7 +348,7 @@ export function registerTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
     "move_task",
     {
       description:
@@ -331,7 +373,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "update_task_status",
     {
       description: "Update only the status (column) of a task.",
@@ -349,7 +391,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "list_task_comments",
     {
       description: "List comments on a task.",
@@ -363,7 +405,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "create_task_comment",
     {
       description: "Add a comment to a task.",
@@ -381,7 +423,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "update_task_comment",
     {
       description: "Update one of your comments on a task.",
@@ -399,21 +441,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
-    "delete_task_comment",
-    {
-      description: "Delete one of your comments from a task.",
-      inputSchema: z.object({ commentId: nonEmptyString }),
-    },
-    async (args) =>
-      run(() =>
-        client.json(`/api/comment/${encodeURIComponent(args.commentId)}`, {
-          method: "DELETE",
-        }),
-      ),
-  );
-
-  server.registerTool(
+  registerTool(
     "list_workspace_labels",
     {
       description: "List labels defined in a workspace.",
@@ -428,7 +456,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "create_label",
     {
       description:
@@ -454,7 +482,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "attach_label_to_task",
     {
       description: "Attach an existing label to a task.",
@@ -472,21 +500,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
-    "detach_label_from_task",
-    {
-      description: "Detach a label from its current task.",
-      inputSchema: z.object({ labelId: nonEmptyString }),
-    },
-    async (args) =>
-      run(() =>
-        client.json(`/api/label/${encodeURIComponent(args.labelId)}/task`, {
-          method: "DELETE",
-        }),
-      ),
-  );
-
-  server.registerTool(
+  registerTool(
     "create_task_relation",
     {
       description:
@@ -510,7 +524,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "get_task_relations",
     {
       description:
@@ -525,45 +539,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
-    "delete_task_relation",
-    {
-      description: "Delete a task relation by its relation ID.",
-      inputSchema: z.object({ id: nonEmptyString }),
-    },
-    async (args) =>
-      run(() =>
-        client.json(`/api/task-relation/${encodeURIComponent(args.id)}`, {
-          method: "DELETE",
-        }),
-      ),
-  );
-
-  server.registerTool(
-    "delete_label",
-    {
-      description:
-        "Delete a label by ID. Only task-associated labels can be deleted; workspace-level labels (taskId null) are rejected by the API.",
-      inputSchema: z.object({ id: nonEmptyString }),
-    },
-    async (args) =>
-      run(async () => {
-        const label = (await client.json(
-          `/api/label/${encodeURIComponent(args.id)}`,
-          { method: "GET" },
-        )) as { taskId?: string | null };
-        if (!label?.taskId) {
-          throw new Error(
-            "Label is not associated with a task and cannot be deleted (workspace-level labels are not deletable via this endpoint).",
-          );
-        }
-        return client.json(`/api/label/${encodeURIComponent(args.id)}`, {
-          method: "DELETE",
-        });
-      }),
-  );
-
-  server.registerTool(
+  registerTool(
     "list_workspace_members",
     {
       description:
@@ -578,7 +554,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "search",
     {
       description:
@@ -617,7 +593,7 @@ export function registerTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
     "list_project_columns",
     {
       description:
@@ -630,21 +606,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
-    "delete_task",
-    {
-      description: "Delete a task by ID.",
-      inputSchema: z.object({ taskId: nonEmptyString }),
-    },
-    async (args) =>
-      run(() =>
-        client.json(`/api/task/${encodeURIComponent(args.taskId)}`, {
-          method: "DELETE",
-        }),
-      ),
-  );
-
-  server.registerTool(
+  registerTool(
     "update_task_assignee",
     {
       description:
@@ -665,7 +627,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "update_task_due_date",
     {
       description: "Set a task's due date. Omit dueDate to clear it.",
@@ -685,7 +647,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "list_task_time_entries",
     {
       description: "List the time entries logged against a task.",
@@ -697,7 +659,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "get_time_entry",
     {
       description: "Get a single time entry by ID.",
@@ -707,7 +669,7 @@ export function registerTools(
       run(() => client.json(`/api/time-entry/${encodeURIComponent(args.id)}`)),
   );
 
-  server.registerTool(
+  registerTool(
     "create_time_entry",
     {
       description:
@@ -733,7 +695,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "update_time_entry",
     {
       description:
@@ -758,7 +720,7 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "list_task_activity",
     {
       description: "List a task's activity history.",
@@ -770,12 +732,148 @@ export function registerTools(
       ),
   );
 
-  server.registerTool(
+  registerTool(
     "list_notifications",
     {
       description: "List the signed-in user's notifications.",
       inputSchema: z.object({}),
     },
     async () => run(() => client.json("/api/notification")),
+  );
+
+  registerTool(
+    "get_work_item",
+    {
+      description:
+        "Get a work item by its permanent key, e.g. PROJ-123 (GET /api/work-items/{key}; needs work_item:read). Read-only.",
+      inputSchema: z.object({
+        key: nonEmptyString.describe("Work item key, e.g. PROJ-123"),
+      }),
+    },
+    async (args) =>
+      run(() =>
+        client.json(`/api/work-items/${encodeURIComponent(args.key)}`, {
+          method: "GET",
+        }),
+      ),
+  );
+
+  registerTool(
+    "list_work_item_relations",
+    {
+      description:
+        "List a work item's relations (GET /api/work-items/{key}/relations; needs work_item:read). Read-only. The returned relation ids are the ones delete_relation accepts.",
+      inputSchema: z.object({
+        key: nonEmptyString.describe("Work item key, e.g. PROJ-123"),
+      }),
+    },
+    async (args) =>
+      run(() =>
+        client.json(
+          `/api/work-items/${encodeURIComponent(args.key)}/relations`,
+          { method: "GET" },
+        ),
+      ),
+  );
+
+  registerTool(
+    "list_work_item_activity",
+    {
+      description:
+        'List a work item\'s combined activity and comment stream, newest first (GET /api/work-items/{key}/activity; needs work_item:read). Read-only. Rows with kind "comment" carry the comment ids delete_comment accepts.',
+      inputSchema: z.object({
+        key: nonEmptyString.describe("Work item key, e.g. PROJ-123"),
+        cursor: optionalNonEmptyString.describe(
+          "Opaque cursor from a previous page",
+        ),
+        limit: z.number().int().min(1).max(200).optional(),
+      }),
+    },
+    async (args) => {
+      const qs = new URLSearchParams();
+      if (args.cursor) qs.set("cursor", args.cursor);
+      if (args.limit !== undefined) qs.set("limit", String(args.limit));
+      const q = qs.toString();
+      return run(() =>
+        client.json(
+          `/api/work-items/${encodeURIComponent(args.key)}/activity${q ? `?${q}` : ""}`,
+          { method: "GET" },
+        ),
+      );
+    },
+  );
+
+  // MC-7 / MC-17 / PA-10: the destructive tools below never delete. Each one only asks
+  // the canonical route for a pending action and hands back its id; a human approves it
+  // out of band. The legacy direct-delete routes (`DELETE /api/task/{id}`,
+  // `/api/comment/{id}`, `/api/task-relation/{id}`, `/api/label/{id}` and
+  // `/api/label/{id}/task`) are not reachable from this server at all.
+  registerTool(
+    "delete_work_item",
+    {
+      description: `Request deletion of a work item by key (DELETE /api/work-items/{key} → 202 pending action; needs work_item:delete). ${PENDING_DELETION_NOTICE}`,
+      inputSchema: z.object({
+        key: nonEmptyString.describe("Work item key, e.g. PROJ-123"),
+      }),
+    },
+    async (args) =>
+      run(() =>
+        requestPendingDeletion(
+          client,
+          `/api/work-items/${encodeURIComponent(args.key)}`,
+          `work item ${args.key}`,
+        ),
+      ),
+  );
+
+  registerTool(
+    "delete_comment",
+    {
+      description: `Request deletion of a work-item comment by comment ID (DELETE /api/comments/{id} → 202 pending action; needs comment:delete_own for your own comment or comment:delete_any). The id must be a comment row id from list_work_item_activity (kind "comment"), not an id from list_task_comments, which reads the legacy task comments. ${PENDING_DELETION_NOTICE}`,
+      inputSchema: z.object({ commentId: nonEmptyString }),
+    },
+    async (args) =>
+      run(() =>
+        requestPendingDeletion(
+          client,
+          `/api/comments/${encodeURIComponent(args.commentId)}`,
+          `comment ${args.commentId}`,
+        ),
+      ),
+  );
+
+  registerTool(
+    "delete_relation",
+    {
+      description: `Request removal of a relation from a work item (DELETE /api/work-items/{key}/relations/{id} → 202 pending action; needs work_item:update on both ends). The relationId must come from list_work_item_relations, not from get_task_relations, which reads the legacy task relations. ${PENDING_DELETION_NOTICE}`,
+      inputSchema: z.object({
+        key: nonEmptyString.describe("Key of a work item on either end"),
+        relationId: nonEmptyString,
+      }),
+    },
+    async (args) =>
+      run(() =>
+        requestPendingDeletion(
+          client,
+          `/api/work-items/${encodeURIComponent(args.key)}/relations/${encodeURIComponent(args.relationId)}`,
+          `relation ${args.relationId} on work item ${args.key}`,
+        ),
+      ),
+  );
+
+  registerTool(
+    "get_pending_action",
+    {
+      description:
+        "Poll one of your own pending actions (GET /api/me/pending-actions/{id}) to learn whether a human approved, denied or let it expire, and whether it executed. Read-only: this tool cannot approve, deny or cancel anything.",
+      inputSchema: z.object({ pendingActionId: nonEmptyString }),
+    },
+    async (args) =>
+      run(() =>
+        client.json(
+          `/api/me/pending-actions/${encodeURIComponent(args.pendingActionId)}`,
+          { method: "GET" },
+        ),
+      ),
   );
 }

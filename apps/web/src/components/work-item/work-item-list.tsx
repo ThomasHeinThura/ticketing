@@ -68,16 +68,19 @@ export type WorkItemListProps = {
   columns?: WorkItemSearchColumn[];
   /** A structured filter is applied, so an empty result means "no match", not "no items". */
   isFiltered?: boolean;
-  /** More matching pages exist (structured search only); the list offers to load them. */
+  /** More matching pages exist; the list offers to load them. */
   hasMore?: boolean;
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
+  isLoadMoreError?: boolean;
+  isPlaceholderData?: boolean;
   /** Keys currently selected for a bulk action (`VW-3`). */
   selectedKeys?: string[];
   onSelectionChange?: (key: string, checked: boolean) => void;
   onSelectAll?: (checked: boolean) => void;
   /** The strict `assignTasks` capability. Selection controls are not rendered without it. */
   canBulkAssign?: boolean;
+  onOpenItem?: (key: string) => void;
 };
 
 const DEFAULT_COLUMNS: WorkItemSearchColumn[] = [
@@ -211,10 +214,12 @@ function WorkItemList({
   hasMore = false,
   onLoadMore,
   isLoadingMore = false,
+  isLoadMoreError = false,
   selectedKeys = [],
   onSelectionChange = () => {},
   onSelectAll = () => {},
   canBulkAssign = false,
+  onOpenItem,
 }: WorkItemListProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -305,6 +310,10 @@ function WorkItemList({
     }
 
     event.preventDefault();
+    if (onOpenItem) {
+      onOpenItem(key);
+      return;
+    }
     void router.navigate({
       to: routes.workItemDetail.path,
       params: { key },
@@ -582,6 +591,22 @@ function WorkItemList({
           })}
         </TableBody>
       </Table>
+      {isLoadMoreError ? (
+        <Alert
+          variant="error"
+          role="alert"
+          data-testid="work-item-list-page-error"
+        >
+          <AlertDescription>
+            {t("workItems:list.errorDescription")}
+            {!hasMore ? (
+              <Button variant="outline" size="sm" onClick={onRetry}>
+                {t("workItems:list.retry")}
+              </Button>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+      ) : null}
       {hasMore && onLoadMore ? (
         <div className="flex justify-center bg-background">
           <Button
@@ -593,7 +618,11 @@ function WorkItemList({
           >
             {isLoadingMore
               ? t("workItems:list.loadingMore")
-              : t("workItems:list.loadMore")}
+              : t(
+                  isLoadMoreError
+                    ? "workItems:list.retry"
+                    : "workItems:list.loadMore",
+                )}
           </Button>
         </div>
       ) : null}

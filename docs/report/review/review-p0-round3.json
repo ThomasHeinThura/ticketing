@@ -1,0 +1,370 @@
+{
+	"verdict": "fail",
+	"summary": "Fail on one high, M1. Account erasure (better-auth deleteUser, enabled) hard-deletes sole-access workspaces with no legal-hold fence, which data-model.md:39 forbids. The issue predates round 3, but N4 did not cover this second workspace hard-delete path.\nN1, N3, N5 and N13 are fixed and sound. N2, N4, N6, N7, N8 and N11 are partial. N9, N10 and N12 are not fixed: N9's navigation depends on an unpopulated project store, and N12's test seeds a person id that production never writes.\nThe round-3 create-task change adds a silent wrong-work-item upload (M2). The new 202-only idempotency breaks the api-design 'repeat returns the original response' contract (M7).\nThe 0130-0133 migrations are sound. The attachment_object_gc drain cannot delete an object a row still names. The asset/attachment key templates differ.\nNo destructive web action fires without a visible confirmation. PA-3 is still not universal (relations, saved views, service calendars).\nPA-14, EV-3 and PA-13's route are acceptable to defer. PA-1a needs Thomas's confirmation. No browser verification was done, which AGENTS.md requires.",
+	"round2_status": [
+		{
+			"id": "N1",
+			"status": "fixed",
+			"evidence": "apps/api/src/task/index.ts:816-819 returns 410 before the controller; bulk-update-tasks.ts:134-138 refuses delete again (defence in depth); no hard delete of task/work_item remains (grep .delete(taskTable|workItemTable) in apps/api/src: none); OpenAPI declares 410 at task/index.ts:145,173; unit test tests/api/task/bulk-update-tasks.test.ts:54-68."
+		},
+		{
+			"id": "N2",
+			"status": "partial",
+			"evidence": "tests/api-integration/delete-routes-never-immediate.test.ts:72-98,110-120,174-196 now scans non-DELETE operations whose OpenAPI request body has a 'delete' enum/const. It still judges declared statuses, not runtime behaviour, and sees only OpenAPI operations. better-auth POST deletions (/api/auth/delete-user, which hard-deletes workspaces via delete-account-data.ts:282, and /api/auth/api-key/delete per auth.ts:119-121) and non-enum deletions are invisible to it. The comment at :55-57 promises a runtime probe that this test does not contain."
+		},
+		{
+			"id": "N3",
+			"status": "fixed",
+			"evidence": "apps/api/src/middleware/idempotency.ts:227-236 stores only 202 application/json; the other 2xx responses release the key. Test tests/api/middleware/idempotency.test.ts:215. The only other 202s (notification/preference-handoff.ts:85, work-item-relation/index.ts:235) carry no secret. Side effect: see M7."
+		},
+		{
+			"id": "N4",
+			"status": "partial",
+			"evidence": "apps/api/src/utils/legal-hold-scope.ts:25-157 is shared by the workspace pending-action delete (workspace-deletion-target.ts:78 via utils/workspace-legal-hold.ts:42-49), the purge (soft-delete-purge.repository.ts:4-8,37,59) and attachment-gc (attachment-cleanup.ts:14-17,118-122). Not covered: (a) account erasure (user/controllers/delete-account-data.ts:262-282) deletes workspaces with no hold check (M1); (b) instance/purge-target.ts:152-170 keeps its own requester/assignee-only list (M12); (c) the workspace predicate omits submission requester/claimed_by and membership/membership_grant persons (M8)."
+		},
+		{
+			"id": "N5",
+			"status": "fixed",
+			"evidence": "drizzle/0133_attachment_object_gc.sql; utils/attachment-object-queue.ts:22-39 is called inside the delete transaction from delete-workspace-role-dependents.ts:184-186, which both the workspace delete and account erasure use. attachment-cleanup.ts:236-302 drains under FOR UPDATE SKIP LOCKED and deletes an object only when no attachment row names the key (:272-277). The asset key template (storage/shared.ts:108-135, project/.../task/...) differs from the attachment template (presign-attachment.ts:155-163, work-item/...), so no cross-table key collision. Tests: workspace-legal-hold-scope.test.ts:190-247."
+		},
+		{
+			"id": "N6",
+			"status": "partial",
+			"evidence": "docs/technical/safety-and-runtime.md:2469-2477 records PA-1a as a proposal 'pending Thomas's confirmation'. workflow-rule delete is session-only (workflow-rule/index.ts:82, policy.ts:68). The proposal does not match its allow-list (delete-routes-never-immediate.test.ts:21-52): it says 'member removal from a team' while the allow-list exempts workspace membership removal; SCIM deprovision and DELETE /api/auth/* fit none of its three categories; and PA-5 lists API-key deletion as elevated although better-auth revokes keys immediately (M5)."
+		},
+		{
+			"id": "N7",
+			"status": "partial",
+			"evidence": "[sub-review for line ranges beyond the spot-checked files] Fixed: work-item, comment, attachment and bulk deletes use openPendingAction and readPendingDeletion (use-work-item-deletion.ts:38-40, work-item-comment-delete.tsx:44-46, work-item-attachments.tsx:68-71, bulk-assign-toolbar.tsx:307-315; fetchers request-work-item-deletion.ts:14, request-comment-deletion.ts:14, attachment/work-item-attachments.ts:110-111). Not fixed: relations (components/work-item/work-item-relations.tsx:137-141,307-314; fetchers/work-item/relations.ts:81-98) still link to the profile page and show raw 409 text."
+		},
+		{
+			"id": "N8",
+			"status": "partial",
+			"evidence": "[sub-review for line ranges beyond the spot-checked files] The pre-confirm is removed on the row buttons (nav-projects.tsx:77-89; settings/workspace/general.tsx:268-286; roles.tsx:201-215; members-table.tsx:185-203 for invitation cancel; task-delete-button.tsx:32-56; canned-responses.tsx:363-371; label-catalogue.tsx:316-332). Both confirmations remain on the ?action=delete entry (canned-responses.tsx:404-440; label-catalogue.tsx ~726) and on service-calendar delete (calendar-usage-card.tsx:76-92). Member removal (an immediate route) correctly keeps its Kaneo confirm (members-table.tsx:340,478+)."
+		},
+		{
+			"id": "N9",
+			"status": "not_fixed",
+			"evidence": "components/pending-action/pending-action-approval.tsx:596-627 needs useProjectStore's project with id === projectId (:609). The task page loads the project through react-query only ($taskId_.tsx:34-37), and the store's only route writer is settings/projects/$projectId/general.tsx:107, so deletedHere is false: no navigation, and ['task',id] is not removed. pending-action-approval-executed.test.tsx seeds the store, which masks this."
+		},
+		{
+			"id": "N10",
+			"status": "not_fixed",
+			"evidence": "Stated as not done. components/activity/comment-editor.tsx:714-721,801-816 and create-task-modal.tsx:657: pasted or dropped images become staged cards and are no longer inline (M10)."
+		},
+		{
+			"id": "N11",
+			"status": "partial",
+			"evidence": "[sub-review for line ranges beyond the spot-checked files] Fixed: busy guard submittingRef (create-task-modal.tsx:219-220,387-391,474-476), close blocked while busy (:314), form locked after create (:244), Retry/Uploading label (:1133-1138), a failed staged file is removable (use-create-work-item-attachments.ts:72; create-work-item-staged-attachments.tsx:71-84). Not fixed: changing the project silently drops staged files (create-task-modal.tsx:737; use-create-work-item-attachments.ts:38-43). New: wrong-project slug (M2)."
+		},
+		{
+			"id": "N12",
+			"status": "not_fixed",
+			"evidence": "utils/legal-hold-scope.ts:34,38 compares comment.deleted_by and comment_version.edited_by directly with person ids. Production writes user ids (work-item/controllers/delete-comment.ts:62,91 deletedBy: actorId = userId; update-comment.ts:82,120). The test workspace-legal-hold-scope.test.ts:122-134 seeds deletedBy with a person id, a shape production never writes (M9)."
+		},
+		{
+			"id": "N13",
+			"status": "fixed",
+			"evidence": "scheduler/attachment-cleanup.ts:99-128 applies WORK_ITEM_UNDER_OPEN_HOLD and PROJECT_UNDER_OPEN_HOLD once the owning item or project is soft-deleted, under LOCK TABLE legal_hold IN SHARE MODE (:188). Sharing now counts only live rows, plus held deleted siblings (:135-152). Tests: workspace-legal-hold-scope.test.ts:288-340."
+		},
+		{
+			"id": "N14",
+			"status": "not_fixed",
+			"evidence": "Low; unchanged (ensure-application-role.ts:228 revoke window). Not re-verified in depth."
+		},
+		{
+			"id": "N16",
+			"status": "not_fixed",
+			"evidence": "Low; drizzle/0132_audit_purge_hardening.sql:8-60: audit_log_reject_mutation still has no SET search_path. Not exploitable: the app role has no DELETE/UPDATE on audit_log."
+		},
+		{
+			"id": "N17",
+			"status": "partial",
+			"evidence": "Only 202 is stored now, so the large/non-JSON 2xx re-execution case is by design; the 60 s lease is still not renewed (idempotency.ts:29)."
+		},
+		{
+			"id": "N19",
+			"status": "partial",
+			"evidence": "Work-item, pending-action, SCIM, intake, SLA and service-calendar events use enqueueOutboxEvent in-tx (e.g. work-item/native-event.ts:20-40; click-deletion-executor.ts:236-270). 51 publishEvent calls (in-process emitter, events/index.ts:18-40) remain, mainly in legacy task controllers."
+		}
+	],
+	"findings": [
+		{
+			"id": "M1",
+			"severity": "high",
+			"category": "data-loss",
+			"requirement": "PA-12, PA-13; data-model.md:39 (an open legal_hold suspends hard delete of held business/history data in scope); N4; operations-and-distribution.md:916-927 (erasure 'checks legal hold first'; authored content is retained)",
+			"file": "apps/api/src/user/controllers/delete-account-data.ts:262-282 (called from apps/api/src/auth.ts:382-387, deleteUser.enabled: true)",
+			"problem": "This predates round 3, and delete-account-data.ts is not on the changed-file list. It is in scope for three reasons. First, round 3 changed the listed shared helper delete-workspace-role-dependents.ts:184-186, and that helper now serves this exact path through the queue fill. Second, N4's fix claim covers 'workspace delete'. Third, PA-12 is a P0 requirement. Account erasure hard-deletes every workspace that only the erasing user can reach (deleteWorkspaceRoleDependents + deleteWorkspacesByIds). It never takes LOCK TABLE legal_hold or evaluates workspaceUnderOpenHold. A repo-wide sweep for legal_hold|legalHold finds no reference in user/ or auth.ts. data-model.md:33 names account erasure of a sole-member workspace as one of the two workspace-deletion paths; only the pending-action path got the N4 fence. The N2 guard cannot see it, because this is a better-auth POST outside OpenAPI. The contract is explicit in operations-and-distribution.md:916-927: erasure anonymises, authored content is retained, and erasure 'checks legal hold first'. A self-service account deletion that hard-deletes held workspaces breaks both rules.",
+			"impact": "A person under an open person or organisation hold, for example a departing employee under a litigation hold, can delete their account. That irreversibly destroys the held work items, comments, activity, approvals and attachments in their sole-access workspaces (the objects are queued for gc). This is spoliation of legally held data.",
+			"recommended_fix": "Under the existing erasure lock, call lockLegalHolds and isWorkspaceUnderOpenLegalHold for each plan.workspaceIdsToDelete. Also refuse when the erasing person is under a person hold. Answer 409 legal_hold before anything is deleted. Add an integration test through the real better-auth delete-user path. Add the path to the route-guard inventory."
+		},
+		{
+			"id": "M2",
+			"severity": "medium",
+			"category": "correctness",
+			"requirement": "PA-3 / create flow (round-3 N11 change)",
+			"file": "apps/web/src/components/shared/modals/create-task-modal.tsx:238-241,427-441",
+			"problem": "resolvedProject takes the zustand project store's project whenever a project id comes from the route or a prop, without checking project.id === resolvedProjectId. The store is in-memory and survives client navigation: it is set by settings/projects/$projectId/general.tsx:107 and not cleared on navigation. Staged files then upload to `${storeProject.slug}-${savedTask.number}`, which is a work item in a different project.",
+			"impact": "The user opens project Q's settings, then creates a task with attachments in project P. The files silently attach to Q-n, an unrelated existing work item visible to Q's audience, and the success toast is shown. Where Q-n does not exist the upload fails with a confusing 'partial' error.",
+			"recommended_fix": "Use the store project only when project?.id === resolvedProjectId; otherwise use the workspaceProjects lookup or the project query. Better: take the key from the create response, or re-read it, instead of composing slug-number on the client. Add a test with a stale store project."
+		},
+		{
+			"id": "M3",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "PA-3; AGENTS.md (preserve Kaneo interactions)",
+			"file": "apps/web/src/components/pending-action/pending-action-approval.tsx:596-627",
+			"problem": "N9 is not effective. leaveDeletedWorkItems derives the slug from useProjectStore, which the legacy task page never fills (it uses react-query, $taskId_.tsx:34-37), so deletedHere is false. [sub-review] ['task',taskId] is never removed: :560 invalidates ['tasks'], which does not match ['task',id]. [sub-review] On canonical /agent/work-items/$key the refetch drops the page into its 404 state instead of returning to the board. The test seeds the store and mocks react-query, which masks this.",
+			"impact": "After approving deletion of the task being viewed, the person stays on a page showing a deleted record, or on a 404, unlike Kaneo, which went back to the board.",
+			"recommended_fix": "Resolve the slug from queryClient.getQueryData(['projects', workspaceId, projectId]) or from the project query on the page. Always remove ['task', taskId] for the open page and navigate to the board. Do the same for /agent/work-items/$key. Test without seeding the store."
+		},
+		{
+			"id": "M4",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "PA-3 (in-place confirm dialog; 409 reopens the existing action)",
+			"file": "apps/web/src/components/work-item/work-item-relations.tsx:137-141,307-314; apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx:315-321; apps/web/src/components/service-calendar/calendar-usage-card.tsx:76-92; apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx:404-440",
+			"problem": "Relation, saved-view and service-calendar deletes still navigate to the profile pending-action page or render a link, and do not open the in-place dialog. Their fetchers do not use readPendingDeletion (fetchers/work-item/relations.ts:81-98; fetchers/saved-views.ts:138-146; fetchers/service-calendar.ts:124-145), so a repeat shows raw or 'already requested' text. Service-calendar delete, and the ?action=delete entries for canned responses and labels, still confirm twice. [sub-review] The fetcher lines (saved-views.ts, service-calendar.ts) and label-catalogue.tsx ~726 come from the sub-review; calendar-usage-card.tsx:70-95, views.tsx:312-323 and work-item-relations.tsx:135-141 were read directly.",
+			"impact": "The PA-3 'to the person it is a confirm dialog' rule holds for most but not all targets, and the behaviour differs between screens. This is not a safety hole: every one of these is still a 202 request.",
+			"recommended_fix": "Route all three through openPendingAction and readPendingDeletion, and remove the extra AlertDialogs on the link entries and the calendar card."
+		},
+		{
+			"id": "M5",
+			"severity": "medium",
+			"category": "gap",
+			"requirement": "PA-1, PA-2, PA-5 (PA-1a proposal)",
+			"file": "docs/technical/safety-and-runtime.md:2469-2477; tests/api-integration/delete-routes-never-immediate.test.ts:21-52",
+			"problem": "PA-1a is a coordinator proposal awaiting Thomas, and it does not match the list it governs. It names 'member removal from a team', but the allow-list exempts DELETE /api/workspace/{id}/members/{userId}. SCIM Users/Groups DELETE and DELETE /api/auth/* fit none of its three categories. PA-5 names API-key deletion as elevated (session-only, typed confirmation), yet better-auth's POST /api/auth/api-key/delete (auth.ts:119-121) revokes immediately and appears nowhere. Workflow-rule delete stays immediate (200) on the strength of the unapproved exemption.",
+			"impact": "A safety-contract change was made unilaterally. Until Thomas confirms it, PA-1 and PA-2 ('nothing is deleted at this point, whatever the client') are formally unmet for those routes.",
+			"recommended_fix": "Reconcile PA-1a with every allow-list entry: workspace membership, SCIM deprovision under its own bearer, better-auth own-session and own-key revocation as an explicit revocation exemption, and workflow rules. Get Thomas's sign-off and record it in the decision log; alternatively convert workflow-rule delete to a click pending action."
+		},
+		{
+			"id": "M6",
+			"severity": "medium",
+			"category": "test",
+			"requirement": "PA-1 (bulk action / any request to delete)",
+			"file": "tests/api-integration/delete-routes-never-immediate.test.ts:54-62,100-132,174-196",
+			"problem": "The guard enumerates only DELETE routes in the router plus OpenAPI operations whose body has a 'delete' enum, and judges them by declared statuses. It cannot see deletions reachable through better-auth POSTs (delete-user, which erases workspaces; api-key/delete), operations named otherwise (remove, purge, erase, boolean flags), or a route that declares 202 but deletes inline. The comment promises a runtime probe for each allow-listed operation that the test does not perform. No integration test sends PATCH /api/task/bulk delete as an authorised member and asserts 410 with the task surviving; workspace-rbac.test.ts:612,838 covers only 403.",
+			"impact": "M1 was invisible to this guard. A future deletion path can pass it while deleting immediately.",
+			"recommended_fix": "Add an explicit inventory of non-OpenAPI mutating auth routes, with reasons, and an integration probe per entry. Assert runtime behaviour for allow-listed delete operations: 202 with the row still present, and a 410 runtime test for PATCH /api/task/bulk."
+		},
+		{
+			"id": "M7",
+			"severity": "medium",
+			"category": "correctness",
+			"requirement": "api-design Idempotency (safety-and-runtime.md:936-939); PA-4",
+			"file": "apps/api/src/middleware/idempotency.ts:227-236",
+			"problem": "To keep secrets out of the store, the middleware now stores and replays only 202 responses. The contract says that for unsafe requests the key, hash and response are stored and 'a repeat returns the original response', and that keys are mandatory for AI-agent callers that may retry. A keyed retry of POST create work item, comment or time entry now executes again.",
+			"impact": "An agent's or importer's network retry with the same Idempotency-Key creates duplicates. The deletion path (202) is unaffected, so PA-4 holds.",
+			"recommended_fix": "Store every 2xx JSON response by default. Keep a registered denylist of secret-bearing routes (step-up challenges, metrics and SCIM token rotation, API-key create), for which only a digest is stored and a keyed repeat answers 409 idempotency_key_consumed instead of replaying. Add a test that a keyed POST create is replayed."
+		},
+		{
+			"id": "M8",
+			"severity": "medium",
+			"category": "data-loss",
+			"requirement": "PA-12; data-model.md:39",
+			"file": "apps/api/src/utils/legal-hold-scope.ts:138-157; apps/api/src/workspace/controllers/delete-workspace-role-dependents.ts:263-280; apps/api/src/database/schema.ts:4850,4864",
+			"problem": "The workspace hold predicate omits people whose rows hard-delete with the workspace: submission.requester_id and claimed_by (submissions are deleted at delete-workspace-role-dependents.ts:275), uploaders of submission attachments, and members known only through membership or membership_grant rows. It covers only legacy workspace_member at :145-147.",
+			"impact": "A hold on a portal customer whose submission is still pending, or on an OIDC/SCIM-only member, does not fence the workspace hard delete.",
+			"recommended_fix": "Add the submission requester, claimed_by and uploaders, and the membership and membership_grant person_ids scoped to the workspace or its projects, to workspaceUnderOpenHold. Add integration cases."
+		},
+		{
+			"id": "M9",
+			"severity": "low",
+			"category": "test",
+			"requirement": "PA-12 (N12)",
+			"file": "apps/api/src/utils/legal-hold-scope.ts:34,38; tests/api-integration/workspace-legal-hold-scope.test.ts:122-134",
+			"problem": "comment.deleted_by and comment_version.edited_by hold user ids in production (delete-comment.ts:62,91; update-comment.ts:120), but the predicate compares them raw with person ids. The test that claims to cover this seeds deletedBy with a person id.",
+			"impact": "A hold on a moderator who deleted or edited comments, but did not author them, does not fence the purge, the workspace delete or gc. The test gives false assurance.",
+			"recommended_fix": "Resolve both columns through person.user_id, as is done for author_id and actor_id, and seed the test with a user id."
+		},
+		{
+			"id": "M10",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "AGENTS.md: preserve working Kaneo interactions / never drop a feature",
+			"file": "apps/web/src/components/activity/comment-editor.tsx:714-721,801-816; apps/web/src/components/shared/modals/create-task-modal.tsx:657",
+			"problem": "N10 is not done. In the create-task description, pasted or dropped images become staged attachment cards instead of inline images as in Kaneo.",
+			"impact": "A visible Kaneo regression on the primary create flow. AGENTS.md treats broken Kaneo UX as phase-failing unless Thomas accepts the change.",
+			"recommended_fix": "Either upload inline images once the task exists and rewrite the description's placeholders into inline image nodes, or get Thomas's explicit acceptance of the staged-card design and record it. Track this in P1 (Kaneo parity) if it is deferred."
+		},
+		{
+			"id": "M11",
+			"severity": "low",
+			"category": "ui-ux",
+			"requirement": "create flow (N11 remainder)",
+			"file": "apps/web/src/components/shared/modals/create-task-modal.tsx:737,428-432; apps/web/src/components/work-item/use-create-work-item-attachments.ts:38-43",
+			"problem": "Changing the project before submit silently discards staged files. If the create response lacks a number, every Retry repeats the same createUnknown toast with no way forward.",
+			"impact": "Files are lost without notice; the user can get stuck in a retry loop.",
+			"recommended_fix": "Warn before dropping staged files, or carry them over to the new project. Offer close, or re-read the key, on createUnknown."
+		},
+		{
+			"id": "M12",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "PA-13",
+			"file": "apps/api/src/instance/purge-target.ts:152-170",
+			"problem": "The (unmounted) instance hard purge keeps its own requester/assignee-only hold list, contrary to the 'never copy the lists' rule in legal-hold-scope.ts:10.",
+			"impact": "Latent: once POST /api/instance/purge is mounted, holds on participants, commenters or watchers would not fence it.",
+			"recommended_fix": "Build the check from WORK_ITEM_UNDER_OPEN_HOLD and PROJECT_UNDER_OPEN_HOLD before mounting the route."
+		},
+		{
+			"id": "M13",
+			"severity": "low",
+			"category": "security",
+			"requirement": "PA-1, PA-12",
+			"file": "apps/api/src/workspace/controllers/delete-workspace.ts:30-58",
+			"problem": "A direct hard-delete workspace controller with no legal-hold check remains in the tree. It has no importer today.",
+			"impact": "It is a trap for a future caller, which would bypass the pending action and the hold fence.",
+			"recommended_fix": "Delete the file, or make it call assertWorkspaceNotUnderLegalHold."
+		},
+		{
+			"id": "M14",
+			"severity": "low",
+			"category": "data-loss",
+			"requirement": "PA-12 (erasure completeness)",
+			"file": "apps/api/src/utils/attachment-object-queue.ts:22-39; apps/api/src/database/schema.ts:1224 (asset.object_key)",
+			"problem": "Legacy Kaneo asset rows (task description and comment images) cascade away with the workspace's projects, but their object keys are not queued for gc.",
+			"impact": "Storage leak; erased workspaces leave image objects behind.",
+			"recommended_fix": "Queue asset.object_key for the workspace's projects in the same transaction."
+		},
+		{
+			"id": "M15",
+			"severity": "low",
+			"category": "ui-ux",
+			"requirement": "F22 / i18n",
+			"file": "[sub-review] apps/web/src/fetchers/workspace/delete-workspace.ts:12; apps/web/src/fetchers/workspace/delete-workspace-role.ts:21; i18n/de-DE.json:168,2599",
+			"problem": "Fallback errors are hard-coded English and say 'Failed to delete' when only a request was made. New keys are English in non-English locales.",
+			"impact": "Misleading copy and untranslated UI.",
+			"recommended_fix": "Use i18n keys with 'request' wording, and translate the new keys."
+		}
+	],
+	"requirements": [
+		{
+			"id": "EV-1",
+			"state": "partial",
+			"note": "In-transaction outbox for work-item native events (native-event.ts:20-40), pending_action.* (click-deletion-executor.ts:236-270), workspace.created, SCIM, intake, SLA and service calendar. 51 in-process publishEvent calls remain (events/index.ts:18), mainly legacy task.* and saved_view.*, which contradicts 'no fire-and-forget path'."
+		},
+		{
+			"id": "EV-2",
+			"state": "met",
+			"note": "Carried from round 2: unique (event_id, person_id) and (event_id, recipient, channel); no-backfill decision recorded. Not re-verified in depth this round."
+		},
+		{
+			"id": "EV-3",
+			"state": "blocked",
+			"note": "Needs the P4 automation runtime; depth and originAutomationId are carried, not enforced."
+		},
+		{
+			"id": "EV-4",
+			"state": "met",
+			"note": "No event key change observed; check:events passes per the coordinator."
+		},
+		{
+			"id": "EV-5",
+			"state": "partial",
+			"note": "Customer gating at read and send time exists; the legacy producers' projection was not fully swept."
+		},
+		{
+			"id": "PA-1",
+			"state": "partial",
+			"note": "Every OpenAPI DELETE and bulk delete is 202/410 or allow-listed. Account erasure (M1) and better-auth API-key delete are immediate and invisible to the guard. The PA-1a exemptions await Thomas (M5)."
+		},
+		{
+			"id": "PA-2",
+			"state": "partial",
+			"note": "Registered targets answer 202 with the full envelope and do not mutate (e.g. pending-action-project-workspace-deletion.test.ts:135,253). workflow-rule delete is immediate pending PA-1a."
+		},
+		{
+			"id": "PA-3",
+			"state": "partial",
+			"note": "The in-place dialog works for the main targets. Relations, saved views and service calendars navigate away; some link entries confirm twice; navigation after an executed task delete is broken (M3, M4). No browser verification."
+		},
+		{
+			"id": "PA-4",
+			"state": "partial",
+			"note": "202, notification, the 409 unique index and keyed 202 replay are in place. Origin 'mcp' is never set (F13, P4)."
+		},
+		{
+			"id": "PA-5",
+			"state": "partial",
+			"note": "Workspace, project and role deletes are session-only with typed confirmation and step-up. API-key deletion goes through better-auth immediately. Webhook, identity-connection and organisation delete routes do not exist yet."
+		},
+		{
+			"id": "PA-5a",
+			"state": "blocked",
+			"note": "No workspace service-key credential exists (grep for service_key and no_approver in apps/api/src: none); it belongs with the phase that introduces service keys."
+		},
+		{
+			"id": "PA-6",
+			"state": "met",
+			"note": "Approve is requireSessionOnly (pending-action/index.ts:117) and refuses any API key or impersonation (require-session-only.ts). The executor re-checks state, policy, hash, version and scope (rounds 1 and 2; unchanged)."
+		},
+		{
+			"id": "PA-7",
+			"state": "met",
+			"note": "Conditional state transitions plus payload hash and fingerprint; unchanged."
+		},
+		{
+			"id": "PA-8",
+			"state": "met",
+			"note": "Not re-verified this round; no regression seen."
+		},
+		{
+			"id": "PA-9",
+			"state": "partial",
+			"note": "Approval-time invalidation is present; proactive invalidation for the newer target types is not verified."
+		},
+		{
+			"id": "PA-10",
+			"state": "met",
+			"note": "N1 is closed. MCP has no approve or decide tool (packages/mcp/src/tools/register.test.ts:352), and approval is session-only."
+		},
+		{
+			"id": "PA-11",
+			"state": "met",
+			"note": "Audit row plus event for each transition, as in round 2."
+		},
+		{
+			"id": "PA-12",
+			"state": "partial",
+			"note": "Shared predicate for purge, gc and the pending-action workspace delete; the gc queue closes the object orphaning. Open: account-erasure bypass (M1), missing people (M8), user-id columns (M9)."
+		},
+		{
+			"id": "PA-13",
+			"state": "partial",
+			"note": "No MCP or automation purge exists. POST /api/instance/purge is not mounted, and its hold check is narrower than the shared predicate (M12)."
+		},
+		{
+			"id": "PA-14",
+			"state": "blocked",
+			"note": "There is no mcp_destructive mechanism. decide_approval is a P4 MCP tool (feature-contracts-p4.md:2697,2845), and no MCP decide tool exists today."
+		},
+		{
+			"id": "PA-15",
+			"state": "met",
+			"note": "N3 is fixed; the step-up nonce is no longer persisted by idempotency (idempotency.ts:227-236)."
+		}
+	],
+	"carry_to_later_phases": [
+		"PA-14 / F12: mcp_destructive pending action for decide_approval and bulk operations above 50 items: P4 (MCP tools land there).",
+		"F13: is_mcp key flag and origin 'mcp': P4.",
+		"EV-3: automation depth and self-origin enforcement: P4 (automation runtime).",
+		"EV-1 remainder: convert the legacy task.* and saved_view.* publishEvent producers to in-transaction outbox: P1 (work-item/Kaneo data unification), before any P4 consumer is registered.",
+		"PA-5a: service-key no_approver refusal: the phase that introduces workspace service keys.",
+		"PA-13: mount POST /api/instance/purge with the shared hold predicate, typed confirmation and step-up: P2/P4 instance administration, before it is reachable.",
+		"N10 inline images in create-task description: P1 (Kaneo parity), only if Thomas explicitly accepts staged cards meanwhile.",
+		"F22 translations of new keys: P7 localisation pass (low).",
+		"Contrast gate G3 (pre-existing failure): P1 UI work, tracked, not exempted.",
+		"N14/N16 low DB hardening (revoke window, search_path on audit_log_reject_mutation): next DB-touching phase."
+	],
+	"unverified": [
+		"No browser verification of any delete dialog, navigation-after-delete or create-task flow (AGENTS.md phase loop step 2); the web evidence is unit tests with mocked react-query.",
+		"Test suite results (3820 integration, etc.) were not rerun by this reviewer; taken from the coordinator.",
+		"Whether better-auth /api/auth/api-key/delete and /api/auth/delete-user accept an API-key credential (not traced).",
+		"PA-8 and PA-9 proactive invalidation for the newer target types (column, label, invitation, canned response) were not re-traced.",
+		"EV-2 and EV-5 were not re-verified beyond round 2.",
+		"OpenAPI regeneration and the drizzle snapshot drift test were not re-run."
+	]
+}

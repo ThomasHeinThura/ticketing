@@ -1,0 +1,480 @@
+{
+	"phase": "P4",
+	"items": [
+		{
+			"id": "NO-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/outbox-drain.ts; apps/api/src/notification/delivery-primitives.ts (30s..24h backoff, 6 attempts); apps/api/src/scheduler/outbox-drain.ts registered in scheduler/index.ts; tests/api-integration/notification-outbox-delivery.test.ts; tests/api/notification/delivery-primitives.test.ts; tests/api/scheduler/immediate-outbox-budget.test.ts",
+			"gap": "Eligibility still 'unresolved' for quiet hours/customer destinations (backs off, never delivers)"
+		},
+		{
+			"id": "NO-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/fanout.ts (in-tx enqueue); apps/api/src/notification/outbox-drain.ts; tests/api-integration/notification-outbox-delivery.test.ts; tests/api-integration/notification-immediate-mention.test.ts",
+			"gap": "No explicit test asserting originating mutation rolls back when inbox/child persistence fails"
+		},
+		{
+			"id": "NO-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/delivery-primitives.ts notificationDedupeKey (notification:v1: + SHA-256 domain tag); tests/api/notification/delivery-primitives.test.ts",
+			"gap": ""
+		},
+		{
+			"id": "NO-12",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/notification/notification-dropdown.tsx (Bell + unread badge, Kaneo DropdownMenu/Button); apps/web/src/components/notification/notification-dropdown.test.ts",
+			"gap": "Count derived from loaded list page, not a server unread count"
+		},
+		{
+			"id": "NO-13",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx; apps/web/src/components/notification/notification-inbox.tsx (filter = all|unread only)",
+			"gap": "Mentions and assignments filters missing"
+		},
+		{
+			"id": "NO-14",
+			"state": "partial",
+			"evidence": "apps/web/src/components/notification/notification-dropdown.tsx useNotificationClick",
+			"gap": "Navigates only resourceType=task to legacy /dashboard task route; no comment anchor, no work_item/approval/canonical /agent links"
+		},
+		{
+			"id": "NO-15",
+			"state": "partial",
+			"evidence": "apps/api/src/notification/index.ts (PATCH /{id}/read, /read-all, DELETE /clear-all)",
+			"gap": "No mark-unread endpoint or UI"
+		},
+		{
+			"id": "NO-16",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/ws/index.ts (notification.created -> broadcastToUser NOTIFICATION_CREATED); apps/web/src/hooks/use-user-websocket.ts; apps/web/src/hooks/use-user-websocket.test.ts; tests/api-integration/node-server-websocket.test.ts",
+			"gap": "Confirm no residual refetchInterval polling on notifications query"
+		},
+		{
+			"id": "NO-17",
+			"state": "missing",
+			"evidence": "No notification retention purge job in apps/api/src/scheduler/index.ts; no God Mode retention setting found",
+			"gap": "Add 90-day read-notification purge job + instance setting"
+		},
+		{
+			"id": "NO-18",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/customer-event-audience.ts; apps/api/src/notification/current-eligibility.ts; apps/api/src/notification/native-inbox-reach.ts; tests/api/notification-current-eligibility.test.ts; tests/api/notification/native-inbox-reach.test.ts",
+			"gap": "Customer external destinations unresolved, so only inbox path exercised"
+		},
+		{
+			"id": "NO-19",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/customer-event-audience.ts (excludes assignment/internal, requires customerVisible); tests/api/notification-current-eligibility.test.ts",
+			"gap": ""
+		},
+		{
+			"id": "NO-20",
+			"state": "partial",
+			"evidence": "apps/api/src/notification/customer-event-audience.ts gates events; no customer-specific copy/templates found",
+			"gap": "No customer-facing templates or test asserting absence of staff names/internal terms"
+		},
+		{
+			"id": "NO-21",
+			"state": "missing",
+			"evidence": "apps/web/src/routes/portal/* has no account/preferences screen; apps/api/src/notification-preferences/* is staff-side",
+			"gap": "Portal preference controls under account screen missing"
+		},
+		{
+			"id": "AM-1",
+			"state": "missing",
+			"evidence": "No automation table/domain in apps/api/src/database/schema.ts; apps/api/src/workflow-rule/* is legacy integration-event column mover",
+			"gap": "Automation rules engine absent"
+		},
+		{
+			"id": "AM-2",
+			"state": "missing",
+			"evidence": "Event bus/outbox exists (apps/api/src/events/outbox.ts) but no automation consumer",
+			"gap": "No automation consumer"
+		},
+		{
+			"id": "AM-3",
+			"state": "missing",
+			"evidence": "No automation actor/effective-role config",
+			"gap": "System actor with capped role not implemented"
+		},
+		{
+			"id": "AM-4",
+			"state": "partial",
+			"evidence": "apps/api/src/audit/audit-writer.ts and activity actor_type vocabulary include 'automation' (apps/api/src/database/schema.ts)",
+			"gap": "No automation writer path"
+		},
+		{
+			"id": "AM-5",
+			"state": "partial",
+			"evidence": "apps/api/src/events/outbox.ts envelope carries causationId and depth; tests/api/events/outbox.test.ts",
+			"gap": "No depth/loop guard in an automation executor"
+		},
+		{
+			"id": "AM-6",
+			"state": "missing",
+			"evidence": "No automation.position / stop_processing columns",
+			"gap": "Ordering/stop-processing absent"
+		},
+		{
+			"id": "AM-7",
+			"state": "missing",
+			"evidence": "No automation executor",
+			"gap": "Per-action outcome recording absent"
+		},
+		{
+			"id": "AM-8",
+			"state": "missing",
+			"evidence": "No automation_run table",
+			"gap": "Run log + 30-day retention absent"
+		},
+		{
+			"id": "AM-9",
+			"state": "missing",
+			"evidence": "No dry-run route",
+			"gap": "Dry-run with windowDays absent"
+		},
+		{
+			"id": "AM-10",
+			"state": "missing",
+			"evidence": "No automation create route",
+			"gap": "Default-disabled absent"
+		},
+		{
+			"id": "AM-11",
+			"state": "missing",
+			"evidence": "No placeholder expansion",
+			"gap": "Visibility-aware placeholders absent"
+		},
+		{
+			"id": "AM-12",
+			"state": "missing",
+			"evidence": "No webhook action / workspace webhook entity",
+			"gap": "Depends on WH-14"
+		},
+		{
+			"id": "AM-13",
+			"state": "missing",
+			"evidence": "Vacuously no delete action because no action vocabulary exists",
+			"gap": "Encode vocabulary + test once automations exist"
+		},
+		{
+			"id": "WH-1",
+			"state": "partial",
+			"evidence": "apps/api/src/notification-preferences/delivery.ts (X-TaskDesk-Signature HMAC-SHA256 for per-user notification webhook channel); apps/api/src/database/schema.ts webhookSecret plaintext column",
+			"gap": "No workspace webhook entity; secret not rotatable/write-only"
+		},
+		{
+			"id": "WH-2",
+			"state": "missing",
+			"evidence": "Only X-TaskDesk-Signature found in apps/api/src/notification-preferences/delivery.ts",
+			"gap": "Event/Delivery/Timestamp headers absent"
+		},
+		{
+			"id": "WH-3",
+			"state": "partial",
+			"evidence": "apps/api/src/events/outbox.ts + tests/api/events/outbox.test.ts (transactional outbox exists)",
+			"gap": "No webhook outbox consumer"
+		},
+		{
+			"id": "WH-4",
+			"state": "partial",
+			"evidence": "apps/api/src/notification/delivery-primitives.ts has exact 30s/2m/10m/1h/6h/24h, 6 attempts (notifications only)",
+			"gap": "Not applied to webhooks"
+		},
+		{
+			"id": "WH-5",
+			"state": "partial",
+			"evidence": "apps/api/src/notification-preferences/delivery.ts 15s timeout; NOTIFICATION_PROVIDER_DEADLINE_MS=30s",
+			"gap": "10s timeout and 2xx-only webhook semantics not implemented"
+		},
+		{
+			"id": "WH-6",
+			"state": "missing",
+			"evidence": "No webhook_delivery table/UI",
+			"gap": "Delivery history absent"
+		},
+		{
+			"id": "WH-7",
+			"state": "missing",
+			"evidence": "No auto-disable logic",
+			"gap": "24h auto-disable + owner notify absent"
+		},
+		{
+			"id": "WH-8",
+			"state": "missing",
+			"evidence": "No redelivery route/UI",
+			"gap": "Redelivery absent"
+		},
+		{
+			"id": "WH-13",
+			"state": "missing",
+			"evidence": "No secret rotation",
+			"gap": "Dual-signature 24h window absent"
+		},
+		{
+			"id": "WH-14",
+			"state": "missing",
+			"evidence": "No owner-reach evaluation at delivery",
+			"gap": "Owner-reach filtering absent"
+		},
+		{
+			"id": "WH-15",
+			"state": "missing",
+			"evidence": "No webhook create/update route",
+			"gap": "Elevated (step-up) create/url-change absent"
+		},
+		{
+			"id": "WH-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/utils/assert-public-destination.ts (DNS lookup, private/loopback/link-local/169.254/CGNAT); tests/api/utils/assert-public-destination.test.ts; tests/api/notification-preferences/delivery-ssrf.test.ts",
+			"gap": "Only wired for notification webhook/provider destinations"
+		},
+		{
+			"id": "WH-10",
+			"state": "missing",
+			"evidence": "apps/api/src/notification-preferences/delivery.ts uses plain fetch after pre-check; no pinned dispatcher/connect-time check",
+			"gap": "DNS rebinding not defeated"
+		},
+		{
+			"id": "WH-11",
+			"state": "partial",
+			"evidence": "apps/api/src/notification-preferences/delivery.ts redirect:'manual'; tests/api/notification-preferences/delivery-ssrf.test.ts",
+			"gap": "Only notification channel; no webhook client"
+		},
+		{
+			"id": "WH-12",
+			"state": "missing",
+			"evidence": "apps/api/src/utils/assert-public-destination.ts ALLOWED_URL_PROTOCOLS = http:, https:",
+			"gap": "HTTPS-only with NODE_ENV=development allowlist not enforced"
+		},
+		{
+			"id": "AK-1",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/developer.tsx; apps/web/src/components/settings/create-api-key-dialog.tsx; apps/api/src/auth.ts apiKey() plugin",
+			"gap": "Workspace service keys absent; UI under legacy /dashboard settings"
+		},
+		{
+			"id": "AK-2",
+			"state": "partial",
+			"evidence": "apps/web/src/components/settings/api-key-created-modal.tsx (shown once); apps/api/src/utils/verify-api-key.ts hashes with SHA-256",
+			"gap": "Argon2id storage not implemented"
+		},
+		{
+			"id": "AK-3",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/utils/require-api-key-permission-scope.ts; apps/api/src/utils/require-workspace-capability.ts; apps/api/src/utils/verify-api-key.ts (owner active check); tests/api-integration/api-key-project-role-clamp.test.ts; tests/api-integration/api-key-project-role-clamp-strict.test.ts; tests/api-integration/api-key-owner-state.test.ts",
+			"gap": "Create UI exposes no capability subset picker"
+		},
+		{
+			"id": "AK-4",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts apikey.expiresAt, rateLimit*; apps/api/src/auth.ts rateLimit 100/min",
+			"gap": "IP allowlist and per-key configurable rate limit absent"
+		},
+		{
+			"id": "AK-5",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts apikey.lastRequest (better-auth)",
+			"gap": "Last-used IP not recorded or shown"
+		},
+		{
+			"id": "AK-6",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/utils/verify-api-key.ts (DB lookup per request); apps/api/src/pending-action/credential-invalidation.ts; tests/api-integration/resolve-request-identity.test.ts; tests/api-integration/api-key-owner-state.test.ts",
+			"gap": "Explicit delete-then-401 test not confirmed"
+		},
+		{
+			"id": "AK-7",
+			"state": "missing",
+			"evidence": "No service key (person_id NULL) model",
+			"gap": "Service keys + api_key:manage elevation absent"
+		},
+		{
+			"id": "AK-9",
+			"state": "partial",
+			"evidence": "apps/api/src/utils/require-api-key-permission-scope.ts (null scope = no grants, fail-closed)",
+			"gap": "Not read-set by default; no write opt-in with warning in UI"
+		},
+		{
+			"id": "AK-10",
+			"state": "missing",
+			"evidence": "No is_mcp column/credential kind (apps/api/src/permissions/resolve-identity.ts KNOWN GAP 2)",
+			"gap": "is_mcp column + CHECK constraint absent"
+		},
+		{
+			"id": "AK-12",
+			"state": "partial",
+			"evidence": "packages/permissions/src/capabilities.ts header documents two-phase rename",
+			"gap": "No migration/CI enforcement for api_key capability strings"
+		},
+		{
+			"id": "AK-11",
+			"state": "missing",
+			"evidence": "apps/web/src/hooks/mutations/api-key/use-delete-api-key.ts calls authClient.apiKey.delete directly; apps/api/src/pending-action/credential-invalidation.ts only invalidates dependent actions",
+			"gap": "Key/webhook deletion not a typed-name step-up pending action"
+		},
+		{
+			"id": "AK-8",
+			"state": "partial",
+			"evidence": "tests/api-integration/api-key-bearer.test.ts; apps/api/src/utils/authenticate-api-request.ts (Bearer -> x-api-key)",
+			"gap": "Bearer works; 'tdk_' key prefix not configured"
+		},
+		{
+			"id": "MC-1",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/developer.tsx",
+			"gap": "No capability subset chosen at creation; no MCP key type"
+		},
+		{
+			"id": "MC-2",
+			"state": "partial",
+			"evidence": "Key clamp tests (tests/api-integration/api-key-project-role-clamp*.test.ts); packages/mcp/src/tools/register.ts calls legacy task routes",
+			"gap": "Not verified for every legacy route MCP uses"
+		},
+		{
+			"id": "MC-3",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/auth/auth-service.ts (device flow removed); packages/mcp/src/auth/auth-service.test.ts; apps/api/src/auth.ts deviceAuthorization removed",
+			"gap": "Out of scope; removal verified"
+		},
+		{
+			"id": "MC-4",
+			"state": "missing",
+			"evidence": "No is_mcp column/credential kind (apps/api/src/permissions/resolve-identity.ts KNOWN GAP 2); audit has api_key_id only",
+			"gap": "Agent-originated audit marking absent"
+		},
+		{
+			"id": "MC-5",
+			"state": "missing",
+			"evidence": "No Idempotency-Key in packages/mcp/src/tools/register.ts or API",
+			"gap": "Idempotent write tools absent"
+		},
+		{
+			"id": "MC-6",
+			"state": "partial",
+			"evidence": "packages/mcp/src/tools/register.ts descriptions",
+			"gap": "Descriptions do not state required permissions/side effects systematically"
+		},
+		{
+			"id": "MC-7",
+			"state": "missing",
+			"evidence": "packages/mcp/src/tools/register.ts exposes delete_task, delete_task_comment, delete_label, delete_task_relation directly",
+			"gap": "Destructive tools bypass pending actions; no decide_approval/bulk"
+		},
+		{
+			"id": "MC-7a",
+			"state": "missing",
+			"evidence": "packages/mcp/src/tools/register.ts uses legacy update_task/update_task_assignee etc.",
+			"gap": "Canonical assign/transition/update/set_custom_field tools absent"
+		},
+		{
+			"id": "MC-8",
+			"state": "partial",
+			"evidence": "packages/mcp/src/utils/mcp-result.ts errorResult wraps message in JSON {error}",
+			"gap": "Readable guidance text not produced"
+		},
+		{
+			"id": "MC-9",
+			"state": "partial",
+			"evidence": "packages/mcp/src/tools/register.ts",
+			"gap": "No compact projection / explicit full-detail fetch contract"
+		},
+		{
+			"id": "MC-10",
+			"state": "partial",
+			"evidence": "apps/api/src/auth.ts apiKey rateLimit 100/min shared",
+			"gap": "No stricter MCP/bulk limits"
+		},
+		{
+			"id": "MC-15",
+			"state": "missing",
+			"evidence": "No untrusted-content delimiters in packages/mcp/src/",
+			"gap": "Prompt-injection wrapping absent"
+		},
+		{
+			"id": "MC-16",
+			"state": "partial",
+			"evidence": "apps/api/src/utils/require-api-key-permission-scope.ts fail-closed",
+			"gap": "No read default set"
+		},
+		{
+			"id": "MC-17",
+			"state": "missing",
+			"evidence": "packages/mcp/src/tools/register.ts direct destructive tools",
+			"gap": "Out-of-band approval absent"
+		},
+		{
+			"id": "MC-18",
+			"state": "missing",
+			"evidence": "tests/mcp/injection.test.ts does not exist",
+			"gap": "Injection test absent"
+		},
+		{
+			"id": "MC-11",
+			"state": "implemented_untested",
+			"evidence": "packages/mcp/package.json (@taskdesk/mcp, bin taskdesk-mcp)",
+			"gap": "Publishing is external"
+		},
+		{
+			"id": "MC-12",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/server.ts (TASKDESK_API_URL/TASKDESK_API_KEY); packages/mcp/src/auth/auth-service.test.ts; packages/mcp/src/utils/normalize-base-url.test.ts",
+			"gap": ""
+		},
+		{
+			"id": "MC-13",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/cli.ts (setup -> runInstall wizard); packages/mcp/src/install/wizard.ts; packages/mcp/src/install/parse-install-args.test.ts; packages/mcp/src/install/merge-config.test.ts",
+			"gap": "Wizard flow itself not unit-tested"
+		},
+		{
+			"id": "MC-14",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts feature_key allows 'feature.mcp'",
+			"gap": "No enforcement since keys cannot be flagged is_mcp"
+		},
+		{
+			"id": "MC-19",
+			"state": "partial",
+			"evidence": "MCP calls same REST API with key auth (apps/api/src/utils/authenticate-api-request.ts)",
+			"gap": "Legacy task routes, not canonical work-item/pending-action paths"
+		},
+		{
+			"id": "MC-20",
+			"state": "partial",
+			"evidence": "apps/api/src/utils/verify-api-key.ts owner current state; tests/api-integration/api-key-owner-state.test.ts",
+			"gap": "No is_mcp column/credential kind (apps/api/src/permissions/resolve-identity.ts KNOWN GAP 2)"
+		},
+		{
+			"id": "MC-21",
+			"state": "missing",
+			"evidence": "No service keys and no is_mcp CHECK",
+			"gap": "Schema constraint absent"
+		},
+		{
+			"id": "MC-22",
+			"state": "missing",
+			"evidence": "No is_mcp column/credential kind (apps/api/src/permissions/resolve-identity.ts KNOWN GAP 2)",
+			"gap": "Stricter is_mcp write/bulk limits and visible marking absent"
+		}
+	],
+	"top_gaps": [
+		"Automations (AM-1..13) entirely absent: no automation/automation_run tables, executor, dry-run or UI",
+		"Workspace webhooks (WH-1..15) absent as an entity: only per-user notification webhook channel; no history, redelivery, rotation, owner reach, auto-disable",
+		"SSRF: no connect-time re-check (DNS rebinding) and http allowed (WH-10/WH-12)",
+		"MCP package is legacy Kaneo toolset: direct destructive tools, no Idempotency-Key, no untrusted wrapping, no injection test (MC-5/7/15/17/18)",
+		"No is_mcp / service-key model; Argon2id, IP allowlist, last-used IP missing (AK-2/4/5/7/10, MC-4/21/22)",
+		"API key deletion not a pending action; create UI lacks capability picker/read default (AK-9/AK-11)",
+		"Notifications: no retention purge, no mark-unread, inbox lacks mentions/assignments filters, deep links go to legacy task not comment (NO-13/14/15/17)",
+		"Portal notification preferences and customer-facing copy missing (NO-20/21)"
+	],
+	"tonight_actions": [
+		"Add notification-retention-purge job in apps/api/src/scheduler (90-day default, instance setting) with PostgreSQL integration test",
+		"Add PATCH /api/notification/{id}/unread + inbox mentions/assignments tabs and canonical /agent deep links with comment anchor; extend notification-dropdown.test.ts",
+		"Replace plain fetch in notification-preferences/delivery.ts with pinned-lookup undici dispatcher re-checking connected IP; enforce https unless NODE_ENV=development; add delivery-ssrf tests",
+		"Route API-key deletion through pending-action (typed name + step-up) and add capability picker defaulting to read set in create-api-key-dialog.tsx",
+		"Add apikey extension columns (is_mcp, person_id CHECK, ip_allowlist, last_used_ip) via drizzle migration; record last-used IP in verify-api-key.ts",
+		"In packages/mcp/src/tools/register.ts remove/redirect delete_* tools to pending-action creation, wrap user content in untrusted delimiters, add Idempotency-Key header on writes, and create tests/mcp/injection.test.ts",
+		"Scaffold automation schema (automation, automation_run) and a depth-guarded outbox consumer behind feature.automations with default-disabled rules"
+	]
+}

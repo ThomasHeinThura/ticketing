@@ -407,7 +407,7 @@ async function runVisualScope({
     "dir",
   );
 
-  write(dir, "docs/02-design/screen-inventory.md", inventory);
+  write(dir, "docs/screens.md", inventory);
   write(dir, "apps/web/src/routeTree.agent.gen.ts", routeTree(routes));
   write(
     dir,

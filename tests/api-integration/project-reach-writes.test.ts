@@ -30,12 +30,39 @@ import {
   addMember,
   json,
   makeApiKey,
-  makeState,
   setAmbientHeaders,
 } from "./helpers/reach-world";
 
 const rows = async (table: typeof schema.savedViewTable) =>
   Number((await db.select({ n: count() }).from(table))[0]?.n);
+
+/**
+ * A sibling project's states must reuse the tenant's own templates: the type's published
+ * workflow leaves `backlog` for `done`, so creating or accepting an item in a second
+ * project needs a default `backlog` state and a concrete `done` state there too.
+ */
+async function makeSiblingStates(
+  t: { backlog: { id: string }; done: { id: string } },
+  projectId: string,
+) {
+  const now = new Date();
+  await db.insert(schema.stateTable).values([
+    {
+      projectId,
+      stateTemplateId: t.backlog.id,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      projectId,
+      stateTemplateId: t.done.id,
+      isDefault: false,
+      createdAt: now,
+      updatedAt: now,
+    },
+  ]);
+}
 
 describe("API integration: project reach on body-targeted writes (#741)", () => {
   beforeEach(async () => {
@@ -216,7 +243,7 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
         .update(schema.projectTable)
         .set({ organisationId: s.customer.orgId })
         .where(eq(schema.projectTable.id, second.id));
-      await makeState(wsId, second.id, "backlog", true);
+      await makeSiblingStates(s.t, second.id);
       const secondStaff = await addMember(wsId, "admin");
       await grantProjectRole(secondStaff.user.id, second.id, [
         "project:read",
@@ -364,7 +391,7 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
         .update(schema.projectTable)
         .set({ organisationId: s.customer.orgId })
         .where(eq(schema.projectTable.id, second.id));
-      await makeState(wsId, second.id, "backlog", true);
+      await makeSiblingStates(s.t, second.id);
       const secondStaff = await addMember(wsId, "admin");
       await grantProjectRole(secondStaff.user.id, second.id, [
         "project:read",
@@ -484,7 +511,7 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
         .update(schema.projectTable)
         .set({ organisationId: s.customer.orgId })
         .where(eq(schema.projectTable.id, second.id));
-      await makeState(wsId, second.id, "backlog", true);
+      await makeSiblingStates(s.t, second.id);
       const secondStaff = await addMember(wsId, "admin");
       await grantProjectRole(secondStaff.user.id, second.id, [
         "project:read",
@@ -564,7 +591,7 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
         .update(schema.projectTable)
         .set({ organisationId: s.customer.orgId })
         .where(eq(schema.projectTable.id, second.id));
-      await makeState(wsId, second.id, "backlog", true);
+      await makeSiblingStates(s.t, second.id);
       const secondStaff = await addMember(wsId, "admin");
       await grantProjectRole(secondStaff.user.id, second.id, [
         "project:read",

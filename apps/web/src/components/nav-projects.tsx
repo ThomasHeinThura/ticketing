@@ -1,13 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
   Collapsible,
   CollapsiblePanel,
@@ -39,6 +31,7 @@ import type getProjects from "@/fetchers/project/get-projects";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
 
@@ -60,7 +53,7 @@ export function NavProjects() {
   const { data: projects } = useGetProjects({
     workspaceId: workspace?.id || "",
   });
-  const queryClient = useQueryClient();
+  const openPendingAction = useOpenPendingAction();
   const { mutateAsync: deleteProject } = useDeleteProject();
   const { canCreateProjects, canDeleteProjects, canUpdateProjects } =
     useWorkspacePermission();
@@ -80,11 +73,20 @@ export function NavProjects() {
 
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
-  const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] =
-    useState(false);
-  const [projectToDeleteId, setProjectToDeleteID] = useState<string | null>(
-    null,
-  );
+  // The in-place approval dialog is the single confirmation (PA-3): no pre-confirm.
+  const requestProjectDeletion = async (id: string) => {
+    try {
+      // Deletion is only requested; the project stays until the requester approves it.
+      const pendingAction = await deleteProject({ id });
+      await openPendingAction(pendingAction);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("common:pendingDeletion.requestFailed"),
+      );
+    }
+  };
 
   const isCurrentProject = (project: ProjectRecord) => {
     return (
@@ -99,6 +101,7 @@ export function NavProjects() {
       params: {
         projectKey: project.slug,
       },
+      search: { layout: "board", sort: "position", dir: "asc" },
     });
   };
 
@@ -143,7 +146,7 @@ export function NavProjects() {
             className="h-7 items-start cursor-pointer text-sm"
             onClick={() => {
               navigator.clipboard.writeText(
-                `${window.location.origin}/agent/projects/${encodeURIComponent(project.slug)}/work`,
+                `${window.location.origin}/agent/projects/${encodeURIComponent(project.slug)}/work?layout=board&sort=position&dir=asc`,
               );
               toast.success(t("navigation:projectList.linkCopied"));
             }}
@@ -168,10 +171,7 @@ export function NavProjects() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="h-7 items-start text-destructive cursor-pointer text-sm"
-                onClick={() => {
-                  setProjectToDeleteID(project.id);
-                  setIsDeleteProjectModalOpen(true);
-                }}
+                onClick={() => void requestProjectDeletion(project.id)}
               >
                 <Trash2 className="text-destructive" />
                 <span>{t("navigation:projectList.deleteProject")}</span>
@@ -248,52 +248,6 @@ export function NavProjects() {
           />
         </Suspense>
       ) : null}
-
-      <AlertDialog
-        open={isDeleteProjectModalOpen}
-        onOpenChange={setIsDeleteProjectModalOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("navigation:projectList.deleteConfirmTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("navigation:projectList.deleteConfirmDescription")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" size="sm" />}>
-              {t("common:actions.cancel")}
-            </AlertDialogClose>
-            <AlertDialogClose
-              render={
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={async () => {
-                    await deleteProject({
-                      id: projectToDeleteId || "",
-                    });
-                    toast.success(t("navigation:projectList.deletedToast"));
-                    queryClient.invalidateQueries({
-                      queryKey: ["projects"],
-                    });
-                    navigate({
-                      to: "/dashboard/workspace/$workspaceId",
-                      params: {
-                        workspaceId: workspace?.id || "",
-                      },
-                    });
-                  }}
-                />
-              }
-            >
-              {t("navigation:projectList.deleteProject")}
-            </AlertDialogClose>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

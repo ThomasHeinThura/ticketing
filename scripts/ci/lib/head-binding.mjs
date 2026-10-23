@@ -1,5 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { ReviewBindingUnavailableError } from "./security-review-note.mjs";
+export class HeadBindingUnavailableError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "HeadBindingUnavailableError";
+  }
+}
 
 /**
  * `HEAD`'s own SHA and its parent SHAs, in order.
@@ -29,7 +34,7 @@ export function headParents(cwd) {
     { cwd, encoding: "utf8" },
   );
   if (result.status !== 0) {
-    throw new ReviewBindingUnavailableError(
+    throw new HeadBindingUnavailableError(
       `could not read HEAD's parents (git exited ${result.status}): ` +
         `${(result.stderr ?? "").trim() || "no output"}. A git failure is not evidence ` +
         "that HEAD is not a merge — treating it as one would trust an unverified " +

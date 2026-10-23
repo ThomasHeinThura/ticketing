@@ -29,6 +29,11 @@ import {
   createWorkspaceMember,
   grantProjectManageAccess,
 } from "./helpers/fixtures";
+import {
+  deleteThroughApproval,
+  ensureAgentSession,
+} from "./helpers/pending-deletion";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 function createProjectRequest(
   app: ReturnType<typeof createApp>["app"],
@@ -74,13 +79,6 @@ async function waitForBlockedProjectUpdate() {
   throw new Error(
     "Timed out waiting for the project rename to reach its row lock",
   );
-}
-
-function deleteWorkspaceRequest(
-  app: ReturnType<typeof createApp>["app"],
-  workspaceId: string,
-) {
-  return app.request(`/api/workspace/${workspaceId}`, { method: "DELETE" });
 }
 
 function createWorkItemRequest(
@@ -171,6 +169,11 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
 
     const type = await makeWorkItemType(attacker.workspace.id);
     await makeDefaultState(attacker.workspace.id, attackerProject.id);
+    await ensureCreationWorkflow({
+      workspaceId: attacker.workspace.id,
+      projectId: attackerProject.id,
+      typeId: type.id,
+    });
     const attackerWorkItem = await createWorkItemRequest(
       attackerApp,
       attackerProject.id,
@@ -229,6 +232,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     // `require-workspace-role-authority.ts`).
     const attacker = await createWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(attacker.user);
+    await ensureAgentSession(attacker.user.id);
     const { app: attackerApp } = createApp();
 
     const attackerCreate = await createProjectRequest(attackerApp, {
@@ -246,6 +250,11 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
 
     const type = await makeWorkItemType(attacker.workspace.id);
     await makeDefaultState(attacker.workspace.id, attackerProject.id);
+    await ensureCreationWorkflow({
+      workspaceId: attacker.workspace.id,
+      projectId: attackerProject.id,
+      typeId: type.id,
+    });
     for (let i = 0; i < 3; i++) {
       const created = await createWorkItemRequest(
         attackerApp,
@@ -265,11 +274,13 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     // Attacker hard-deletes their own workspace. This cascades away the workspace,
     // its project and every work item -- but `work_item_key_claim` has no FK to any of
     // it (deliberately), so the claims survive.
-    const deletion = await deleteWorkspaceRequest(
+    // The DELETE only requests (202); the owner's typed-name + step-up approval executes it.
+    await deleteThroughApproval(
       attackerApp,
-      attacker.workspace.id,
+      attacker.user,
+      `/api/workspace/${attacker.workspace.id}`,
+      { typedName: attacker.workspace.name },
     );
-    expect(deletion.status).toBe(200);
 
     // Confirm the cascade really did remove everything an operator would think to look
     // at -- this is D1's "no trace left" property.
@@ -350,6 +361,11 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
 
     const type = await makeWorkItemType(attacker.workspace.id);
     await makeDefaultState(attacker.workspace.id, attackerProject.id);
+    await ensureCreationWorkflow({
+      workspaceId: attacker.workspace.id,
+      projectId: attackerProject.id,
+      typeId: type.id,
+    });
     const burn = await createWorkItemRequest(attackerApp, attackerProject.id, {
       typeId: type.id,
       title: "Burn OPS-5 specifically",
@@ -421,6 +437,11 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
 
     const type = await makeWorkItemType(holder.workspace.id);
     await makeDefaultState(holder.workspace.id, project.id);
+    await ensureCreationWorkflow({
+      workspaceId: holder.workspace.id,
+      projectId: project.id,
+      typeId: type.id,
+    });
 
     const attempt = await createWorkItemRequest(app, project.id, {
       typeId: type.id,

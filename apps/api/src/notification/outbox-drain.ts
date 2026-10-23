@@ -14,7 +14,10 @@ import {
 import type { DbTransaction } from "../events/outbox";
 import { logTaskDesk } from "../instance/observability/runtime";
 import { evaluateCurrentNotificationReachAndPreference } from "./current-eligibility";
-import { NotificationReservationContentionError } from "./delivery-errors";
+import {
+  NotificationProviderOutcomeAmbiguous,
+  NotificationReservationContentionError,
+} from "./delivery-errors";
 import {
   callNotificationProvider,
   NOTIFICATION_LEASE_MS,
@@ -52,7 +55,11 @@ export type NotificationOutboxRuntime = {
   send(
     channel: string,
     projection: NotificationProjection,
-    options: { signal: AbortSignal; idempotencyKey: string },
+    options: {
+      signal: AbortSignal;
+      idempotencyKey: string;
+      delivery: ClaimedNotificationDelivery;
+    },
   ): Promise<void>;
 };
 
@@ -391,6 +398,7 @@ export async function processNextNotificationDelivery(
         runtime.send(delivery.channel, preflight.eligibility.projection, {
           signal,
           idempotencyKey: delivery.id,
+          delivery,
         }),
       {
         signal: controller.signal,
@@ -401,6 +409,7 @@ export async function processNextNotificationDelivery(
   } catch (error) {
     outcome =
       error instanceof NotificationProviderDeadlineExceeded ||
+      error instanceof NotificationProviderOutcomeAmbiguous ||
       controller.signal.aborted
         ? "ambiguous"
         : "failed";

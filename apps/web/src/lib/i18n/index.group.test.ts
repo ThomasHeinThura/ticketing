@@ -57,7 +57,7 @@ describe("i18n group mode on the work list", () => {
 
   it("paints with the first-paint namespaces and defers every other one until after first paint", async () => {
     const { i18n } = await importInGroupMode();
-    await flush();
+    await vi.waitFor(() => expect(i18n.hasLoadedNamespace("tasks")).toBe(true));
 
     expect(i18n.t("workItems:list.heading")).not.toBe("workItems:list.heading");
     expect(i18n.t("navigation:page.projectsTitle")).not.toBe(
@@ -65,7 +65,7 @@ describe("i18n group mode on the work list", () => {
     );
     expect(rest.requests).toBe(0);
     expect(i18n.hasLoadedNamespace("settings")).toBe(false);
-    expect(i18n.hasLoadedNamespace("tasks")).toBe(false);
+    expect(i18n.hasLoadedNamespace("tasks")).toBe(true);
 
     afterPaint.release();
     await vi.waitFor(() => expect(rest.requests).toBeGreaterThan(0));

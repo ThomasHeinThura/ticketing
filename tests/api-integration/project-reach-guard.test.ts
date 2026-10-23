@@ -13,6 +13,7 @@ import {
   createWorkspaceMember,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 type App = ReturnType<typeof createApp>["app"];
 type AuthModule = typeof import("../../apps/api/src/auth");
@@ -302,6 +303,11 @@ describe("native project read reach", () => {
       isDefault: true,
       createdAt: now,
       updatedAt: now,
+    });
+    await ensureCreationWorkflow({
+      workspaceId: owner.workspace.id,
+      projectId: project.id,
+      typeId: type.id,
     });
 
     const [legacyTask] = await db

@@ -27,6 +27,7 @@ import {
   createWorkspaceMember,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 type RecordedEvent = { type: string; data: unknown };
 const recordedEvents: RecordedEvent[] = [];
@@ -107,6 +108,11 @@ async function setupProjectWithDefaultState(
   await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   const state = await makeDefaultState(creator.workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: creator.workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, project, type, state };
 }
 

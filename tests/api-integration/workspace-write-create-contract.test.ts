@@ -17,7 +17,6 @@
  */
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const notificationWork = vi.hoisted(() => {
@@ -160,15 +159,10 @@ vi.mock(
 );
 
 import db, { schema } from "../../apps/api/src/database";
-import { subscribeToEvent } from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
-
-type RecordedEvent = { type: string; data: unknown };
-const recordedEvents: RecordedEvent[] = [];
-let eventSubscribersInitialized = false;
 
 async function quiesceThenReset(options?: {
   onResetDelegated?: () => void;
@@ -181,20 +175,8 @@ async function quiesceThenReset(options?: {
   notificationWork.mark("reset:complete");
 }
 
-function initEventSubscribers() {
-  if (eventSubscribersInitialized) return;
-  eventSubscribersInitialized = true;
-  // Subscribe to the real event bus, exactly as the S1 oracle does, rather
-  // than mocking publishEvent — a mock would characterize the stand-in.
-  subscribeToEvent("workspace.created", async (data) => {
-    recordedEvents.push({ type: "workspace.created", data });
-  });
-}
-
 beforeEach(async () => {
   await quiesceThenReset();
-  recordedEvents.length = 0;
-  initEventSubscribers();
 });
 
 afterEach(async () => {
@@ -260,24 +242,28 @@ describe("S4 native create: the NINE-effect contract (A2-P1..A2-P4)", () => {
     );
     expect(roleRows.some((r) => r.role === "owner")).toBe(false);
 
-    // (4) the workspace.created event, PAYLOAD included: effect 9 is produced
-    // from exactly these fields, so a handler that published with a missing
-    // ownerId would silently stop producing the notification while still
-    // "publishing workspace.created".
-    const createdEvents = recordedEvents.filter(
-      (e) =>
-        e.type === "workspace.created" &&
-        (e.data as { workspaceId?: string }).workspaceId === workspace.id,
-    );
-    expect(createdEvents).toHaveLength(1);
-    const createdPayload = createdEvents[0]?.data as {
-      workspaceId?: string;
-      workspaceName?: string;
-      ownerId?: string;
+    // (4) the workspace.created event is a durable outbox row written in the creation
+    // transaction (EV-1), PAYLOAD included: effect 9 is produced from exactly these fields.
+    const outboxRows = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "workspace.created"),
+          eq(schema.outboxTable.workspaceId, workspace.id),
+        ),
+      );
+    expect(outboxRows).toHaveLength(1);
+    const envelope = outboxRows[0]?.payload as {
+      payload?: {
+        workspaceId?: string;
+        workspaceName?: string;
+        ownerId?: string;
+      };
     };
-    expect(createdPayload.workspaceId).toBe(workspace.id);
-    expect(createdPayload.workspaceName).toBe("Acme Inc");
-    expect(createdPayload.ownerId).toBe(owner.user.id);
+    expect(envelope.payload?.workspaceId).toBe(workspace.id);
+    expect(envelope.payload?.workspaceName).toBe("Acme Inc");
+    expect(envelope.payload?.ownerId).toBe(owner.user.id);
 
     // (5)+(6) the default team and its team_member, in the SAME request.
     const teamRows = await db
@@ -305,30 +291,20 @@ describe("S4 native create: the NINE-effect contract (A2-P1..A2-P4)", () => {
     expect(sessionsAfter[0]?.activeOrganizationId).toBe(workspace.id);
     expect(sessionsAfter[0]?.activeTeamId).toBe(team.id);
 
-    // (9) the one-hop durable consequence, asserted as EVENTUAL.
-    const findNotification = () =>
-      db
-        .select()
-        .from(schema.notificationTable)
-        .where(
-          and(
-            eq(schema.notificationTable.userId, owner.user.id),
-            eq(schema.notificationTable.type, "workspace_created"),
-            eq(schema.notificationTable.resourceId, workspace.id),
-          ),
-        );
-    const notificationDeadline = Date.now() + 5_000;
-    let notifications = await findNotification();
-    while (notifications.length === 0 && Date.now() < notificationDeadline) {
-      await new Promise((resolve) => setTimeout(resolve, 25));
-      notifications = await findNotification();
-    }
+    // (9) the owner's inbox notification is written in the SAME transaction (NO-8, EV-1):
+    // no waiting, no in-memory subscriber. UNRUN here (needs a database).
+    const notifications = await db
+      .select()
+      .from(schema.notificationTable)
+      .where(
+        and(
+          eq(schema.notificationTable.userId, owner.user.id),
+          eq(schema.notificationTable.kind, "workspace.created"),
+          eq(schema.notificationTable.resourceId, workspace.id),
+        ),
+      );
     expect(notifications).toHaveLength(1);
     expect(notifications[0]?.resourceType).toBe("workspace");
-    expect(
-      (notifications[0]?.eventData as { workspaceName?: string } | null)
-        ?.workspaceName,
-    ).toBe("Acme Inc");
   });
 
   it("A2-P2 rejects a name that fails checkWorkspaceName before any row is written", async () => {
@@ -454,284 +430,30 @@ describe("S4 native create: the NINE-effect contract (A2-P1..A2-P4)", () => {
     expect(row?.logo).toBe("https://cdn.example.com/logo.png");
   });
 
-  it("joins the real workspace subscriber and detached delivery before resetting its database", async () => {
-    const connectionString = process.env.TASKDESK_DATABASE_URL;
-    if (!connectionString) throw new Error("expected test database URL");
-    const observer = new Client({ connectionString, statement_timeout: 2_000 });
-    const blocker = new Client({ connectionString, statement_timeout: 2_000 });
-    const suffix = randomUUID().replaceAll("-", "");
-    const functionName = `taskdesk_test_807_${suffix}`;
-    const triggerName = `taskdesk_test_807_${suffix}`;
-    const advisoryKey1 = Number.parseInt(suffix.slice(0, 7), 16);
-    const advisoryKey2 = Number.parseInt(suffix.slice(7, 14), 16);
-    let blockerConnected = false;
-    let observerConnected = false;
-    let advisoryLockHeld = false;
-    let functionCreated = false;
-    let triggerCreated = false;
-    let requestPromise: Promise<Response> | undefined;
-    let resetPromise: Promise<void> | undefined;
-    let ownerId: string | undefined;
-    let workspaceId: string | undefined;
-    let resetDelegated = false;
-    let lockUnavailableAttempts = 0;
-    let primaryError: unknown;
-    let cleanupError: unknown;
+  it("writes the owner notification inside the creating transaction: no post-commit subscriber work remains (EV-1, NO-8)", async () => {
+    // UNRUN (needs a database). The previous version of this test gated a post-commit
+    // `workspace.created` subscriber; that subscriber no longer exists, so the notification
+    // row must be visible the instant the 200 response returns, with no async work pending.
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const response = await createWorkspaceNative(app, owner.cookie, {
+      name: "Transactional notification",
+    });
+    expect(response.status).toBe(200);
+    const { id: workspaceId } = (await response.json()) as { id: string };
 
-    const waitFor = async (
-      description: string,
-      condition: () => Promise<boolean>,
-    ) => {
-      const deadline = Date.now() + 5_000;
-      while (Date.now() < deadline) {
-        if (await condition()) return;
-        await new Promise((resolve) => setTimeout(resolve, 25));
-      }
-      throw new Error(`Timed out waiting for ${description}`);
-    };
-
-    try {
-      await observer.connect();
-      observerConnected = true;
-      await blocker.connect();
-      blockerConnected = true;
-      await blocker.query("SELECT pg_advisory_lock($1, $2)", [
-        advisoryKey1,
-        advisoryKey2,
-      ]);
-      advisoryLockHeld = true;
-      await blocker.query(`
-        CREATE FUNCTION public.${functionName}()
-        RETURNS trigger LANGUAGE plpgsql AS $$
-        BEGIN
-          PERFORM pg_advisory_xact_lock(${advisoryKey1}, ${advisoryKey2});
-          RETURN NEW;
-        END;
-        $$
-      `);
-      functionCreated = true;
-      await blocker.query(`
-        CREATE TRIGGER ${triggerName}
-        BEFORE INSERT ON public.notification
-        FOR EACH ROW EXECUTE FUNCTION public.${functionName}()
-      `);
-      triggerCreated = true;
-
-      notificationWork.gateDeliveryUser();
-      const timelineStart = notificationWork.timeline().length;
-      const workspaceSubscriberBaseline =
-        notificationWork.completionCount("workspace.created");
-      const { app } = createApp();
-      const owner = await signUpUser(app);
-      ownerId = owner.user.id;
-      requestPromise = createWorkspaceNative(app, owner.cookie, {
-        name: "Notification fixture lifetime regression",
-      });
-      const response = await requestPromise;
-      expect(response.status).toBe(200);
-      workspaceId = ((await response.json()) as { id: string }).id;
-      notificationWork.mark("http:complete");
-
-      await waitFor(
-        "the actual notification insert to hold its table lock",
-        async () => {
-          const result = await observer.query(`
-          SELECT a.pid
-          FROM pg_stat_activity AS a
-          JOIN pg_locks AS l ON l.pid = a.pid
-          WHERE a.datname = current_database()
-            AND a.pid <> pg_backend_pid()
-            AND a.state = 'active'
-            AND a.query ILIKE '%insert%notification%'
-            AND l.locktype = 'relation'
-            AND l.relation = to_regclass('public.notification')
-            AND l.mode = 'RowExclusiveLock'
-            AND l.granted
-        `);
-          return (
-            result.rows.length > 0 &&
-            notificationWork.activeCount("workspace.created") > 0
-          );
-        },
+    expect(notificationWork.completionCount("workspace.created")).toBe(0);
+    expect(notificationWork.activeCount("workspace.created")).toBe(0);
+    const rows = await db
+      .select()
+      .from(schema.notificationTable)
+      .where(
+        and(
+          eq(schema.notificationTable.userId, owner.user.id),
+          eq(schema.notificationTable.kind, "workspace.created"),
+          eq(schema.notificationTable.resourceId, workspaceId),
+        ),
       );
-      expect(
-        notificationWork.handlerCount("workspace.created"),
-      ).toBeGreaterThan(0);
-
-      resetPromise = quiesceThenReset({
-        onResetDelegated: () => {
-          resetDelegated = true;
-        },
-        onLockUnavailable: () => {
-          lockUnavailableAttempts += 1;
-        },
-      });
-      // Keep an early reset rejection handled while both controlled barriers
-      // are still held; the awaited promise below preserves the failure.
-      void resetPromise.catch(() => undefined);
-      await Promise.resolve();
-      expect(resetDelegated).toBe(false);
-
-      notificationWork.mark("insert:barrier-released");
-      await blocker.query("SELECT pg_advisory_unlock($1, $2)", [
-        advisoryKey1,
-        advisoryKey2,
-      ]);
-      advisoryLockHeld = false;
-
-      await notificationWork.waitForDeliveryUserQuery();
-      await waitFor(
-        "the actual workspace subscriber to settle",
-        async () =>
-          notificationWork.completionCount("workspace.created") >
-          workspaceSubscriberBaseline,
-      );
-      expect(notificationWork.activeCount("workspace.created")).toBe(0);
-      expect(notificationWork.activeCount("notification.created")).toBe(0);
-      expect(
-        notificationWork.activeCount("deliverNotification"),
-      ).toBeGreaterThan(0);
-      expect(resetDelegated).toBe(false);
-
-      notificationWork.mark("delivery:barrier-released");
-      notificationWork.releaseDeliveryUser();
-      await resetPromise;
-      expect(resetDelegated).toBe(true);
-      expect(lockUnavailableAttempts).toBe(0);
-      const timeline = notificationWork.timeline().slice(timelineStart);
-      const eventIndex = (event: string) => {
-        const index = timeline.indexOf(event);
-        expect(
-          index,
-          `expected timeline event ${event}`,
-        ).toBeGreaterThanOrEqual(0);
-        return index;
-      };
-      expect(eventIndex("http:complete")).toBeLessThan(
-        eventIndex("insert:barrier-released"),
-      );
-      expect(eventIndex("insert:barrier-released")).toBeLessThan(
-        eventIndex("notification.created:start"),
-      );
-      expect(eventIndex("notification.created:start")).toBeLessThan(
-        eventIndex("delivery:user-query-entered"),
-      );
-      expect(eventIndex("workspace.created:complete")).toBeLessThan(
-        eventIndex("reset:delegated"),
-      );
-      expect(eventIndex("deliverNotification:complete")).toBeLessThan(
-        eventIndex("reset:delegated"),
-      );
-      expect(eventIndex("reset:delegated")).toBeLessThan(
-        eventIndex("reset:complete"),
-      );
-      if (!ownerId || !workspaceId) {
-        throw new Error(
-          "workspace identity missing after successful create response",
-        );
-      }
-      expect(
-        await db
-          .select()
-          .from(schema.workspaceTable)
-          .where(eq(schema.workspaceTable.id, workspaceId)),
-      ).toHaveLength(0);
-      expect(
-        await db
-          .select()
-          .from(schema.notificationTable)
-          .where(
-            and(
-              eq(schema.notificationTable.userId, ownerId),
-              eq(schema.notificationTable.resourceId, workspaceId),
-            ),
-          ),
-      ).toHaveLength(0);
-    } catch (error) {
-      primaryError = error;
-    } finally {
-      notificationWork.releaseDeliveryUser();
-      if (advisoryLockHeld && blockerConnected) {
-        try {
-          await blocker.query("SELECT pg_advisory_unlock($1, $2)", [
-            advisoryKey1,
-            advisoryKey2,
-          ]);
-          advisoryLockHeld = false;
-        } catch (error) {
-          cleanupError ??= error;
-          try {
-            await blocker.end();
-            blockerConnected = false;
-            advisoryLockHeld = false;
-          } catch (closeError) {
-            cleanupError ??= closeError;
-          }
-        }
-      }
-      for (const pending of [requestPromise, resetPromise]) {
-        if (!pending) continue;
-        try {
-          await pending;
-        } catch (error) {
-          cleanupError ??= error;
-        }
-      }
-      try {
-        await notificationWork.join();
-      } catch (error) {
-        cleanupError ??= error;
-      }
-      const ddlClient = blockerConnected
-        ? blocker
-        : observerConnected
-          ? observer
-          : undefined;
-      if (triggerCreated && ddlClient) {
-        try {
-          await ddlClient.query(
-            `DROP TRIGGER ${triggerName} ON public.notification`,
-          );
-          triggerCreated = false;
-        } catch (error) {
-          cleanupError ??= error;
-        }
-      }
-      if (functionCreated && ddlClient) {
-        try {
-          await ddlClient.query(`DROP FUNCTION public.${functionName}()`);
-          functionCreated = false;
-        } catch (error) {
-          cleanupError ??= error;
-        }
-      }
-      if (blockerConnected) {
-        try {
-          await blocker.end();
-        } catch (error) {
-          cleanupError ??= error;
-        }
-      }
-      if (observerConnected) {
-        try {
-          await observer.end();
-        } catch (error) {
-          cleanupError ??= error;
-        }
-      }
-      if (triggerCreated || functionCreated || advisoryLockHeld) {
-        cleanupError ??= new Error(
-          "notification regression could not remove all owned PostgreSQL state",
-        );
-      }
-    }
-    if (primaryError && cleanupError) {
-      throw new AggregateError(
-        [primaryError, cleanupError],
-        "notification regression failed and cleanup also failed",
-      );
-    }
-    if (primaryError) throw primaryError;
-    if (cleanupError) throw cleanupError;
-  }, 30_000);
+    expect(rows).toHaveLength(1);
+  });
 });

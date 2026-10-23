@@ -13,6 +13,11 @@ import {
   grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
+import {
+  approvePendingDeletion,
+  ensureAgentSession,
+  requestDeletion,
+} from "./helpers/pending-deletion";
 
 const DELETE_BARRIER_NAMESPACE = 4_006;
 const DELETE_BARRIER_KEY = "taskdesk_workspace_label_task_delete_race";
@@ -41,13 +46,24 @@ async function waitForBlockedPid(client: Client, blockerPid: number) {
   throw new Error(`No PostgreSQL session blocked by pid ${blockerPid}`);
 }
 
+/**
+ * Legacy `DELETE /api/task/{id}` is retired (410), so no HTTP route removes a `task` row any
+ * more. The race keeps its subject (a workspace-label operation meeting a task row that is
+ * deleted underneath it, as the project purge or any remaining deleter does) by deleting the
+ * task with plain SQL on a second session, held at the same barrier trigger.
+ *
+ * `labelOperation` starts the label request AFTER the task delete is blocked; for a label
+ * delete it is the pending-action APPROVAL (the deletion's only executing step), prepared by
+ * the caller.
+ */
 async function raceWorkspaceLabelOperationWithTaskDelete(
-  app: ReturnType<typeof createApp>["app"],
   taskId: string,
-  labelId: string,
-  operation: "rename" | "delete",
+  labelOperation: () => Promise<Response>,
 ) {
   const client = new Client({
+    connectionString: process.env.TASKDESK_DATABASE_URL,
+  });
+  const deleter = new Client({
     connectionString: process.env.TASKDESK_DATABASE_URL,
   });
   const suffix = randomUUID().replaceAll("-", "");
@@ -55,10 +71,11 @@ async function raceWorkspaceLabelOperationWithTaskDelete(
   const triggerName = `label_task_delete_race_${suffix}`;
   const escapedTaskId = taskId.replaceAll("'", "''");
   let barrierHeld = false;
-  let deleteRequest: Promise<Response> | undefined;
+  let deleteRequest: Promise<{ rowCount: number | null }> | undefined;
   let labelRequest: Promise<Response> | undefined;
 
   await client.connect();
+  await deleter.connect();
   try {
     await client.query(`
       CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -92,20 +109,10 @@ async function raceWorkspaceLabelOperationWithTaskDelete(
       throw new Error("Could not read task-delete barrier pid");
     }
 
-    deleteRequest = Promise.resolve(
-      app.request(`/api/task/${taskId}`, { method: "DELETE" }),
-    );
+    deleteRequest = deleter.query("DELETE FROM task WHERE id = $1", [taskId]);
     const deletePid = await waitForBlockedPid(client, barrierPid);
 
-    labelRequest = Promise.resolve(
-      operation === "rename"
-        ? app.request(`/api/label/${labelId}`, {
-            method: "PUT",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ name: "After task delete", color: "blue" }),
-          })
-        : app.request(`/api/label/${labelId}`, { method: "DELETE" }),
-    );
+    labelRequest = Promise.resolve(labelOperation());
     await waitForBlockedPid(client, deletePid);
 
     await client.query(
@@ -125,11 +132,13 @@ async function raceWorkspaceLabelOperationWithTaskDelete(
     }
     await Promise.allSettled(
       [deleteRequest, labelRequest].filter(
-        (request): request is Promise<Response> => request !== undefined,
+        (request): request is NonNullable<typeof request> =>
+          request !== undefined,
       ),
     );
     await client.query(`DROP TRIGGER IF EXISTS ${triggerName} ON task`);
     await client.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
+    await deleter.end();
     await client.end();
   }
 }
@@ -190,13 +199,16 @@ describe("API integration: workspace-label cascade vs task deletion", () => {
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
     const { deleteResponse, labelResponse } =
-      await raceWorkspaceLabelOperationWithTaskDelete(
-        app,
-        task.id,
-        label.id,
-        "rename",
+      await raceWorkspaceLabelOperationWithTaskDelete(task.id, () =>
+        Promise.resolve(
+          app.request(`/api/label/${label.id}`, {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ name: "After task delete", color: "blue" }),
+          }),
+        ),
       );
-    expect(deleteResponse.status).toBe(200);
+    expect(deleteResponse.rowCount).toBe(1);
     expect(labelResponse.status).toBe(200);
 
     const [renamedLabel] = await db
@@ -257,16 +269,17 @@ describe("API integration: workspace-label cascade vs task deletion", () => {
     });
 
     mockAuthenticatedSession(member.user);
+    await ensureAgentSession(member.user.id);
     const { app } = createApp();
+    // The label DELETE only requests (202); its approval is the step that deletes the label
+    // and its task copies, so that is what races the task delete.
+    const pending = await requestDeletion(app, `/api/label/${label.id}`);
     const { deleteResponse, labelResponse } =
-      await raceWorkspaceLabelOperationWithTaskDelete(
-        app,
-        task.id,
-        label.id,
-        "delete",
+      await raceWorkspaceLabelOperationWithTaskDelete(task.id, () =>
+        approvePendingDeletion(app, member.user.id, pending),
       );
-    expect(deleteResponse.status).toBe(200);
-    expect(labelResponse.status).toBe(200);
+    expect(deleteResponse.rowCount).toBe(1);
+    expect(labelResponse.status, await labelResponse.clone().text()).toBe(200);
     expect(
       await db
         .select()

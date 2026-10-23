@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   boardProps: undefined as Record<string, unknown> | undefined,
   pages: [] as unknown[],
   itemsLoading: false,
+  queryProps: undefined as Record<string, unknown> | undefined,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -26,15 +27,18 @@ vi.mock("./work-item-board", () => ({
   },
 }));
 vi.mock("@/hooks/queries/work-item/use-get-board-work-items", () => ({
-  default: () => ({
-    data: { pages: state.pages },
-    isLoading: state.itemsLoading,
-    isError: false,
-    refetch: vi.fn(),
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-  }),
+  default: (props: Record<string, unknown>) => {
+    state.queryProps = props;
+    return {
+      data: { pages: state.pages },
+      isLoading: state.itemsLoading,
+      isError: false,
+      refetch: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    };
+  },
 }));
 vi.mock("@/hooks/queries/project/use-get-project-states", () => ({
   default: () => ({
@@ -154,4 +158,15 @@ describe("WorkItemBoardView data", () => {
     mount();
     expect(await screen.findByTestId("realtime")).toBeInTheDocument();
   });
+});
+
+it("forwards an explicit sort consistently to the query and canonical board", () => {
+  mount({ sort: "priority", dir: "desc" });
+  expect(state.queryProps).toMatchObject({ sort: "priority", dir: "desc" });
+  expect(state.boardProps).toMatchObject({ sort: "priority", dir: "desc" });
+});
+it("does not present filtered key pages as manually ranked cards", () => {
+  mount({ filter: "priority = high", sort: "position", dir: "desc" });
+  expect(state.queryProps).toMatchObject({ sort: "key", dir: "asc" });
+  expect(state.boardProps).toMatchObject({ sort: "key", dir: "asc" });
 });

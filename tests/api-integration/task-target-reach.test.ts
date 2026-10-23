@@ -20,6 +20,11 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 import {
+  approvePendingDeletion,
+  ensureAgentSession,
+  type PendingDeletionBody,
+} from "./helpers/pending-deletion";
+import {
   TASK_TARGET_ROUTE_KEYS,
   TASK_TARGET_WORK_ITEM_ROUTE_KEYS,
 } from "./helpers/project-reach-route-keys";
@@ -182,6 +187,8 @@ const CASES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/label/{id}",
+    // Durable deletion: a capable caller's request is accepted (202), not executed.
+    successStatus: 202,
     call: (app, _w, i) => json(app, "DELETE", `/api/label/${i.taskLabelId}`),
     missing: (app) => json(app, "DELETE", `/api/label/missing-${randomUUID()}`),
   },
@@ -295,6 +302,9 @@ describe("API integration: project reach on task-targeting routes (#720)", () =>
     const world = await setupProjectWorld();
     const { app } = createApp();
     const ids = await seed(world);
+    // Deletion routes record pending actions bound to the caller's live session row.
+    await ensureAgentSession(world.projectAdmin.user.id);
+    await ensureAgentSession(world.outsiderAdmin.user.id);
     return { world, app, ids };
   }
 
@@ -511,16 +521,74 @@ describe("API integration: project reach on task-targeting routes (#720)", () =>
         { name: "Renamed definition", color: "#333333" },
       );
       expect(renamed.status, await renamed.clone().text()).toBe(200);
+      // The deletion is requested (202) and executes only on the requester's approval.
       const removed = await json(
         app,
         "DELETE",
         `/api/label/${ids.workspaceLabelId}`,
       );
-      expect(removed.status, await removed.clone().text()).toBe(200);
+      expect(removed.status, await removed.clone().text()).toBe(202);
+      const approved = await approvePendingDeletion(
+        app,
+        world.outsiderAdmin.user.id,
+        (await removed.json()) as PendingDeletionBody,
+      );
+      expect(approved.status, await approved.clone().text()).toBe(200);
     });
   });
 
   describe("PATCH /api/task/bulk: per-item reach and capability", () => {
+    it("operation delete answers 410 for a session and a fully scoped key and leaves the task row in place (PA-1)", async () => {
+      const { world, app, ids } = await arrange();
+      const before = await projectSnapshot();
+      for (const credential of ["session", "key"] as const) {
+        if (credential === "session") {
+          mockAuthenticatedSession(world.projectAdmin.user);
+        } else {
+          mockAnonymousSession();
+          setAmbientHeaders({
+            "x-api-key": await makeApiKey(
+              world.projectAdmin.user.id,
+              PROJECT_KEY_SCOPE,
+            ),
+          });
+        }
+        const response = await json(app, "PATCH", "/api/task/bulk", {
+          taskIds: [ids.taskId],
+          operation: "delete",
+        });
+        setAmbientHeaders({});
+        expect(
+          response.status,
+          `${credential}: ${await response.clone().text()}`,
+        ).toBe(410);
+        expect(response.headers.get("Deprecation")).not.toBeNull();
+        expect(response.headers.get("Link")).toContain("/api/work-items/bulk");
+        const [row] = await db
+          .select({ id: schema.taskTable.id })
+          .from(schema.taskTable)
+          .where(eq(schema.taskTable.id, ids.taskId));
+        expect(row?.id).toBe(ids.taskId);
+        expect(await projectSnapshot()).toBe(before);
+      }
+    });
+
+    it("operation delete is refused for a caller without reach or permission before the 410", async () => {
+      const { world, app, ids } = await arrange();
+      mockAuthenticatedSession(world.outsiderAdmin.user);
+      const response = await json(app, "PATCH", "/api/task/bulk", {
+        taskIds: [ids.taskId],
+        operation: "delete",
+      });
+      expect(response.status).not.toBe(410);
+      expect(response.status).not.toBe(200);
+      const [row] = await db
+        .select({ id: schema.taskTable.id })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.id, ids.taskId));
+      expect(row?.id).toBe(ids.taskId);
+    });
+
     it("an unreachable task is reported like a missing id; nothing changes", async () => {
       const { world, app, ids } = await arrange();
       const before = await projectSnapshot();
@@ -589,7 +657,6 @@ describe("API integration: project reach on task-targeting routes (#720)", () =>
       // passes and the task is in reach, so only the per-item project capability refuses.
       mockAuthenticatedSession(world.readerAdmin.user);
       for (const body of [
-        { operation: "delete" },
         { operation: "updatePriority", value: "urgent" },
         { operation: "updateAssignee", value: world.projectAdmin.user.id },
         { operation: "addLabel", value: ids.workspaceLabelId },

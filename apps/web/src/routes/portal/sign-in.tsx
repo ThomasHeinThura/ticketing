@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
@@ -42,6 +43,7 @@ function storeEmail(email: string | null) {
 
 function PortalSignIn() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const navigate = useNavigate({ from: Route.fullPath });
   const search = Route.useSearch();
   const [stage, setStage] = useState<PortalSignInStage>(search.stage);
@@ -120,6 +122,8 @@ function PortalSignIn() {
         setFailed(true);
         return;
       }
+      // Reauthentication can bypass sidebar sign-out; discard the former identity.
+      queryClient.clear();
       storeEmail(null);
       await navigate({ to: "/catalogue" });
     } catch {
@@ -148,6 +152,8 @@ function PortalSignIn() {
         setFailed(true);
         return;
       }
+      // Reauthentication can bypass sidebar sign-out; discard the former identity.
+      queryClient.clear();
       storeEmail(null);
       await navigate({ to: "/catalogue" });
     } catch {

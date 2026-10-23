@@ -11,10 +11,14 @@ import {
 } from "../openapi";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
+import {
+  legacyDeletionGoneMessage,
+  legacyDeletionGoneMiddleware,
+  legacyDeletionGoneResponseHeaders,
+} from "../utils/legacy-deletion-gone";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createComment from "./controllers/create-comment";
-import deleteComment from "./controllers/delete-comment";
 import getComments from "./controllers/get-comments";
 import updateComment from "./controllers/update-comment";
 import { commentListSchema } from "./response";
@@ -24,6 +28,8 @@ import {
   taskIdParam,
   updateCommentBody,
 } from "./schema";
+
+const COMMENT_DELETION_SUCCESSOR = "/api/comments/{id}";
 
 async function requestIdentity(
   c: Context<{ Variables: BaseVariables }>,
@@ -125,9 +131,12 @@ const deleteTaskCommentRoute = createRoute({
   operationId: "deleteTaskComment",
   path: "/{id}",
   tags: ["Comments"],
-  summary: "Delete task comment",
-  description: "Delete a comment. Only the comment's author may do this.",
+  deprecated: true,
+  summary: "Delete task comment (removed; 410)",
+  description:
+    "Removed. This route used to delete a comment immediately with no approval. It now answers 410 Gone (after the same reach and permission checks). Request deletion through DELETE /api/comments/{id}, which records a pending action.",
   middleware: [
+    legacyDeletionGoneMiddleware(COMMENT_DELETION_SUCCESSOR),
     workspaceAccess.fromComment("id", {
       requireProjectReach: true,
       deferApiKeyCapability: true,
@@ -136,12 +145,13 @@ const deleteTaskCommentRoute = createRoute({
   ] as const,
   request: { params: commentParam },
   responses: {
-    200: jsonResponse("The deleted comment", activitySchema),
     400: errorResponse("id must not contain a NUL (\\u0000) byte"),
-    403: errorResponse(
-      "Not the author, or missing work_item:update permission",
-    ),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Comment not found"),
+    410: {
+      ...errorResponse("Removed: use DELETE /api/comments/{id}"),
+      headers: legacyDeletionGoneResponseHeaders(COMMENT_DELETION_SUCCESSOR),
+    },
   },
 });
 
@@ -189,15 +199,8 @@ const comment = apiRouter()
       200,
     );
   })
-  .openapi(deleteTaskCommentRoute, async (c) =>
-    c.json(
-      await deleteComment(
-        await requestIdentity(c),
-        c.get("userId"),
-        c.req.valid("param").id,
-      ),
-      200,
-    ),
+  .openapi(deleteTaskCommentRoute, (c) =>
+    c.text(legacyDeletionGoneMessage(COMMENT_DELETION_SUCCESSOR), 410),
   );
 
 export default comment;

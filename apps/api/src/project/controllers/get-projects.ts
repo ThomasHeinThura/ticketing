@@ -1,7 +1,12 @@
 import type { SQL } from "drizzle-orm";
 import { and, count, eq, inArray, isNull, min, sql } from "drizzle-orm";
 import db from "../../database";
-import { projectTable, taskTable } from "../../database/schema";
+import {
+  projectTable,
+  stateTable,
+  stateTemplateTable,
+  workItemTable,
+} from "../../database/schema";
 
 type ProjectStatistics = {
   completionPercentage: number;
@@ -30,15 +35,20 @@ async function getProjectStatistics(
   // constant regardless of how many projects the workspace has.
   const rows = await db
     .select({
-      projectId: taskTable.projectId,
+      projectId: workItemTable.projectId,
       totalTasks: count(),
       completedTasks: count(
-        sql`case when ${taskTable.status} in ('done', 'archived') then 1 end`,
+        sql`case when ${stateTemplateTable.group} in ('completed', 'cancelled') then 1 end`,
       ),
-      dueDate: min(taskTable.dueDate),
+      dueDate: min(workItemTable.dueDate),
     })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
+    .from(workItemTable)
+    .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
+    .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
+    .innerJoin(
+      stateTemplateTable,
+      eq(stateTable.stateTemplateId, stateTemplateTable.id),
+    )
     .where(
       // #187: a soft-deleted project's statistics never surface, `includeArchived` or
       // not -- `archivedAt` and `deletedAt` are independent (PR-16), and there is no
@@ -46,17 +56,21 @@ async function getProjectStatistics(
       includeArchived
         ? and(
             eq(projectTable.workspaceId, workspaceId),
+            isNull(workItemTable.archivedAt),
+            isNull(workItemTable.deletedAt),
             isNull(projectTable.deletedAt),
             reachFilter,
           )
         : and(
             eq(projectTable.workspaceId, workspaceId),
+            isNull(workItemTable.archivedAt),
+            isNull(workItemTable.deletedAt),
             isNull(projectTable.archivedAt),
             isNull(projectTable.deletedAt),
             reachFilter,
           ),
     )
-    .groupBy(taskTable.projectId);
+    .groupBy(workItemTable.projectId);
 
   for (const row of rows) {
     const totalTasks = Number(row.totalTasks);

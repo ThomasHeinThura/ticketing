@@ -21,7 +21,7 @@ type MobileProjectNavProps = {
   onSelectCalendar: () => void;
   onSelectGantt: () => void;
   onSelectProject: (projectId: string) => void;
-  onAddProject: () => void;
+  onAddProject?: () => void;
 };
 
 export default function MobileProjectNav({
@@ -98,7 +98,7 @@ export default function MobileProjectNav({
                 )}
               >
                 <CalendarRange className="size-3.5" />
-                {t("tasks:calendar.title")}
+                {t("navigation:projectViews.calendar")}
               </Button>
               <Button
                 variant="ghost"
@@ -149,15 +149,17 @@ export default function MobileProjectNav({
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={onAddProject}
-            className="flex w-full items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
-          >
-            <Plus className="size-3.5" />
-            Add project
-          </Button>
+          {onAddProject ? (
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={onAddProject}
+              className="flex w-full items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+            >
+              <Plus className="size-3.5" />
+              Add project
+            </Button>
+          ) : null}
         </div>
       </PopoverContent>
     </Popover>

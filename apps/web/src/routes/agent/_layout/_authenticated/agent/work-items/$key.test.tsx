@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Button } from "@taskdesk/ui";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,18 +8,57 @@ import { Route } from "./$key";
 
 const mocks = vi.hoisted(() => ({
   params: { key: "WLP-1" },
+  search: {} as Record<string, unknown>,
+  navigate: vi.fn(),
   query: {} as Record<string, unknown>,
   titles: [] as string[],
   projectLookups: [] as Array<string | undefined>,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
     useParams: () => mocks.params,
-    useSearch: () => ({}),
-    useNavigate: () => vi.fn(),
+    useSearch: () => mocks.search,
+    useNavigate: () => mocks.navigate,
   }),
+}));
+
+vi.mock("@taskdesk/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@taskdesk/ui")>()),
+  SidebarTrigger: () => <span />,
+}));
+vi.mock("@/components/work-item/work-item-actions", () => ({
+  default: () => null,
+}));
+vi.mock("@/components/work-item/work-item-crumb-select", () => ({
+  default: ({
+    itemKey,
+    workspaceId,
+    projectId,
+    onSelect,
+  }: {
+    itemKey: string;
+    workspaceId: string;
+    projectId: string;
+    onSelect: (key: string) => void;
+  }) => (
+    <Button
+      onClick={() => onSelect("WLP-2")}
+      data-testid="canonical-crumb"
+      data-workspace={workspaceId}
+      data-project={projectId}
+    >
+      {itemKey}
+    </Button>
+  ),
+}));
+
+vi.mock("@/components/common/task-layout", () => ({
+  TaskPageFrame: ({ children }: React.PropsWithChildren) => (
+    <div data-testid="task-page-frame">{children}</div>
+  ),
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -48,8 +88,10 @@ vi.mock("@/components/work-item/load-work-item-detail", () => ({
         project: { name: string } | undefined;
         isNotFound: boolean;
         onAccessLost: () => void;
+        pageHeader?: React.ReactNode;
       }) => (
         <div data-testid="detail-stub">
+          {props.pageHeader}
           <span data-testid="stub-item">{props.item?.title ?? "none"}</span>
           <span data-testid="stub-project">
             {props.project?.name ?? "none"}
@@ -90,6 +132,8 @@ const lastTitle = () => mocks.titles[mocks.titles.length - 1];
 beforeEach(() => {
   queryClient = new QueryClient();
   mocks.params = { key: "WLP-1" };
+  mocks.search = {};
+  mocks.navigate.mockReset();
   mocks.titles = [];
   mocks.projectLookups = [];
   mocks.query = {
@@ -185,5 +229,26 @@ describe("work-item detail route access loss", () => {
     expect(
       queryClient.getQueryData(["work-items", "detail", "WLP-2"]),
     ).toBeDefined();
+  });
+});
+
+it("switches the authorized canonical crumb using its permanent key and only preserves general activity state", async () => {
+  mocks.search = {
+    activity: "comments",
+    comment: "private-old-comment",
+    hierarchy: { item: "WLP-1" },
+    relations: { item: "WLP-1" },
+    sections: { item: "WLP-1" },
+    approvalRequest: { item: "WLP-1" },
+  };
+  render(<Page />);
+  const crumb = await screen.findByTestId("canonical-crumb");
+  expect(crumb).toHaveAttribute("data-workspace", "ws_1");
+  expect(crumb).toHaveAttribute("data-project", "proj_1");
+  fireEvent.click(crumb);
+  expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({
+    to: "/agent/work-items/$key",
+    params: { key: "WLP-2" },
+    search: { activity: "comments" },
   });
 });

@@ -1,17 +1,9 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import deleteTaskRelation from "@/fetchers/task-relation/delete-task-relation";
 
-function useDeleteTaskRelation(taskId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: deleteTaskRelation,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["task-relations", taskId],
-      });
-    },
-  });
+/** Requests relation removal; nothing is removed (or refetched) until the approval executes. */
+function useDeleteTaskRelation() {
+  return useMutation({ mutationFn: deleteTaskRelation });
 }
 
 export default useDeleteTaskRelation;

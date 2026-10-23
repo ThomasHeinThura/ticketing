@@ -5,6 +5,10 @@ import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  deleteThroughApproval,
+  ensureAgentSession,
+} from "./helpers/pending-deletion";
 
 // GET /api/workspace/{id}/invitations -- the native replacement for
 // authClient.organization.listInvitations() (retrofit plan, S2 row, issue
@@ -110,6 +114,7 @@ describe("GET /api/workspace/{id}/invitations", () => {
     if (!expired) throw new Error("failed to plant the expired invitation");
 
     mockAuthenticatedSession(user);
+    await ensureAgentSession(user.id);
     const { app } = createApp();
 
     const listed = await app.request(
@@ -123,10 +128,16 @@ describe("GET /api/workspace/{id}/invitations", () => {
     const found = invitations.find((i) => i.id === expired.id);
     expect(found?.email).toBe("stale@example.com");
 
-    const canceled = await app.request(`/api/invitation/${expired.id}`, {
-      method: "DELETE",
+    // DELETE requests a click-confirmed deletion (202); the invitation stays pending until approval.
+    await deleteThroughApproval(app, user, `/api/invitation/${expired.id}`, {
+      afterRequest: async () => {
+        const [pending] = await db
+          .select({ status: schema.invitationTable.status })
+          .from(schema.invitationTable)
+          .where(eq(schema.invitationTable.id, expired.id));
+        expect(pending?.status).toBe("pending");
+      },
     });
-    expect(canceled.status).toBe(200);
 
     const [row] = await db
       .select({ status: schema.invitationTable.status })

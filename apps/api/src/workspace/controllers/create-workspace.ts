@@ -2,7 +2,9 @@ import { createId } from "@paralleldrive/cuid2";
 import { DEFAULT_ROLE_NAMES, defaultRolePayloads } from "@taskdesk/permissions";
 import { eq, like, or } from "drizzle-orm";
 import db, { schema } from "../../database";
-import { publishEvent } from "../../events";
+import type { DomainEventEnvelope } from "../../events/outbox";
+import { enqueueNotificationEvent } from "../../notification/fanout";
+import { resolveWorkspaceCreatedRecipient } from "../../notification/recipient-resolvers";
 import { ensureProjectLeadRole } from "../../project/project-creator-grant";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { ensureInternalOrganisation } from "../../utils/seed-internal-organisation";
@@ -77,13 +79,14 @@ async function proposeSlug(name: string): Promise<string> {
  * team_member row and the creating session's active workspace/team either
  * COMMIT TOGETHER or ROLL BACK TOGETHER.
  *
- * `publishEvent` deliberately runs AFTER the commit: publishing inside the
- * transaction would announce — and, one hop later, persist a notification
- * about — a workspace a rollback then removed.
+ * The `workspace.created` outbox envelope AND the owner's inbox notification are
+ * written inside the same transaction (EV-1, NO-8): both commit with the workspace
+ * or both roll back with it. There is no post-commit in-memory publish; nothing
+ * announces or notifies about a workspace a rollback then removed.
  *
  * The eight first-order effects of the create contract (retrofit plan §2.5)
- * are all here; effect 9, the `workspace_created` notification, follows from
- * the event and is eventual by design.
+ * are all here; effect 9, the owner's `workspace.created` notification, is written
+ * in the same transaction by `enqueueNotificationEvent`.
  */
 async function createWorkspace(input: CreateWorkspaceInput) {
   const explicitSlug = typeof input.slug === "string" && input.slug.length > 0;
@@ -222,18 +225,48 @@ async function createWorkspace(input: CreateWorkspaceInput) {
           })
           .where(eq(schema.sessionTable.id, input.sessionId));
 
-        return { workspace, team };
-      });
+        // (4)+(9) the durable domain event (EV-1) and the owner's notification: the outbox
+        // row and the inbox row commit or roll back with the workspace itself. This runs
+        // after the owner membership and reach grant are written, because the recipient
+        // resolver re-evaluates `workspace:read` from those persisted facts.
+        const [owner] = await tx
+          .select({ name: schema.userTable.name })
+          .from(schema.userTable)
+          .where(eq(schema.userTable.id, input.ownerId))
+          .limit(1);
+        const event: DomainEventEnvelope<Record<string, unknown>> = {
+          id: `evt_${createId()}`,
+          kind: "workspace.created",
+          occurredAt: now.toISOString(),
+          actor: {
+            type: "person",
+            id: input.ownerId,
+            name: owner?.name ?? "Workspace owner",
+          },
+          scope: {
+            workspaceId: workspace.id,
+            organisationId: internalOrganisation.id,
+          },
+          payload: {
+            workspaceId: workspace.id,
+            workspaceName: workspace.name,
+            ownerId: input.ownerId,
+          },
+          causationId: null,
+          depth: 0,
+          originAutomationId: null,
+        };
+        await enqueueNotificationEvent(tx, event, {
+          // External channel adapters stay with the notification worker slice.
+          resolveRecipients: (resolverTx, envelope) =>
+            resolveWorkspaceCreatedRecipient(
+              resolverTx,
+              envelope,
+              async () => [],
+            ),
+        });
 
-      // (4) the domain event, only ever on a committed workspace. Its three
-      // fields ARE the contract: effect 9's notification row is built from
-      // exactly these. The inherited call also passed an `ownerEmail` field
-      // holding the user's NAME, which no consumer reads and which §2.5
-      // rules out of the contract — it is not reproduced.
-      await publishEvent("workspace.created", {
-        workspaceId: created.workspace.id,
-        workspaceName: created.workspace.name,
-        ownerId: input.ownerId,
+        return { workspace, team };
       });
 
       return created.workspace;

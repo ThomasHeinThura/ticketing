@@ -133,7 +133,7 @@ describe("API integration: activity through the repository", () => {
     expect(rows[0]?.eventData).toBeNull();
   });
 
-  it("only the author can update or delete a comment; others get 404 and nothing changes", async () => {
+  it("only the author can update a comment (others get 404), the retired delete route deletes nothing for anyone", async () => {
     const { member, project, seed } = await world();
     const other = await createWorkspaceMember({ role: "owner" });
     await db.insert(schema.workspaceUserTable).values({
@@ -162,7 +162,9 @@ describe("API integration: activity through the repository", () => {
     const foreignDelete = await call("DELETE", "/api/activity/comment", {
       activityId: id,
     });
-    expect(foreignDelete.status).toBe(404);
+    // Retired route: 410 for any reachable caller, author or not, and nothing is deleted.
+    // The canonical non-author refusal is pinned in pending-action-comment-deletion.test.ts.
+    expect(foreignDelete.status).toBe(410);
     await foreignDelete.text();
     const [row] = await db
       .select()
@@ -189,10 +191,11 @@ describe("API integration: activity through the repository", () => {
     });
     expect(notAComment.status).toBe(404);
     await notAComment.text();
+    // The route is retired: a reachable caller gets 410 for any activity id, deletes nothing.
     const notDeletable = await call("DELETE", "/api/activity/comment", {
       activityId: event.id,
     });
-    expect(notDeletable.status).toBe(404);
+    expect(notDeletable.status).toBe(410);
     await notDeletable.text();
     const [eventRow] = await db
       .select()
@@ -211,14 +214,17 @@ describe("API integration: activity through the repository", () => {
     const deleted = await call("DELETE", "/api/activity/comment", {
       activityId: id,
     });
-    expect(deleted.status).toBe(200);
+    expect(deleted.status).toBe(410);
+    expect(deleted.headers.get("Deprecation")).toBeTruthy();
+    expect(deleted.headers.get("Sunset")).toBeTruthy();
+    expect(deleted.headers.get("Link")).toContain("/api/comments/{id}");
     await deleted.text();
     expect(
       await db
         .select()
         .from(schema.taskActivityTable)
         .where(eq(schema.taskActivityTable.id, id)),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
   });
 });
 
@@ -276,12 +282,20 @@ describe("API integration: task relations through the repository", () => {
       "Beta task",
     ]);
 
+    // The route is retired: it answers 410 and the relation survives.
     const removed = await call("DELETE", `/api/task-relation/${relation.id}`);
-    expect(removed.status).toBe(200);
+    expect(removed.status).toBe(410);
+    expect(removed.headers.get("Deprecation")).toBeTruthy();
+    expect(removed.headers.get("Link")).toContain(
+      "/api/work-items/{key}/relations/{id}",
+    );
     await removed.text();
-    const gone = await call("DELETE", `/api/task-relation/${relation.id}`);
-    expect(gone.status).toBe(404);
-    await gone.text();
+    expect(
+      await db
+        .select()
+        .from(schema.taskRelationTable)
+        .where(eq(schema.taskRelationTable.id, relation.id)),
+    ).toHaveLength(1);
   });
 
   it("a task in another workspace is not a valid relation endpoint", async () => {

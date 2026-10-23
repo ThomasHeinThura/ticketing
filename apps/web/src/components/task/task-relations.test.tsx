@@ -12,7 +12,10 @@ vi.mock("@/hooks/mutations/task-relation/use-create-task-relation", () => ({
   default: () => ({ mutateAsync: vi.fn() }),
 }));
 vi.mock("@/hooks/mutations/task-relation/use-delete-task-relation", () => ({
-  default: () => ({ mutate: vi.fn() }),
+  default: () => ({ mutateAsync: vi.fn() }),
+}));
+vi.mock("@/hooks/use-open-pending-action", () => ({
+  useOpenPendingAction: () => vi.fn(),
 }));
 vi.mock("@/hooks/queries/project/use-get-project", () => ({
   default: () => ({ data: { slug: "PRJ" } }),

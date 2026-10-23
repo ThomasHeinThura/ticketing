@@ -1,4 +1,5 @@
 import { client } from "@taskdesk/libs";
+import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 import { HttpError, readErrorDetail } from "@/lib/http-error";
 
 async function checked<T extends Response>(response: T): Promise<T> {
@@ -42,12 +43,12 @@ export async function updateProjectLabel(
     )
   ).json();
 }
+/** Requests deletion; the label is only removed once the requester approves it. */
 export async function deleteProjectLabel(projectId: string, id: string) {
-  return (
-    await checked(
-      await client.label.project[":projectId"].catalogue[":id"].$delete({
-        param: { projectId, id },
-      }),
-    )
-  ).json();
+  return readPendingDeletion(
+    await client.label.project[":projectId"].catalogue[":id"].$delete({
+      param: { projectId, id },
+    }),
+    "Failed to request label deletion",
+  );
 }

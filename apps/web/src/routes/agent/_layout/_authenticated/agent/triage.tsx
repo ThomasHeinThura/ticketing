@@ -4,6 +4,10 @@ import {
   Alert,
   AlertDescription,
   Button,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -13,10 +17,18 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Textarea,
 } from "@taskdesk/ui";
+import { Filter } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import Layout from "@/components/common/layout";
 import PageTitle from "@/components/page-title";
 import {
   acceptSubmission,
@@ -193,350 +205,392 @@ function IntakeRoute() {
     organisation: { name: string };
   }>;
   return (
-    <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+    <div className="flex h-full w-full min-w-0 flex-col">
       <PageTitle title={t("title")} />
-      <header>
-        <h1 className="font-semibold text-2xl">{t("title")}</h1>
-        <p className="text-muted-foreground text-sm">{t("description")}</p>
-      </header>
-      {!workspace.data?.id && <p role="status">{t("selectWorkspace")}</p>}
-      {(detail.isError ||
-        attachments.isError ||
-        claim.isError ||
-        accept.isError ||
-        decline.isError ||
-        download.isError ||
-        clarify.isError ||
-        duplicate.isError) && (
-        <Alert variant="error" role="alert">
-          <AlertDescription>{t("actionError")}</AlertDescription>
-        </Alert>
-      )}
-      <fieldset className="flex flex-wrap gap-2">
-        <legend className="sr-only">Submission status filter</legend>
-        {[
-          "new",
-          "clarifying",
-          "accepted",
-          "declined",
-          "duplicate",
-          "withdrawn",
-        ].map((value) => (
+      <Layout.Header className="items-center justify-between">
+        <h1 className="px-2 font-medium text-sm">{t("title")}</h1>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="xs"
+              aria-label="Submission status filter"
+            >
+              <Filter className="size-3" />
+              {t("status", { defaultValue: "Status" })}: {state}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {[
+              "new",
+              "clarifying",
+              "accepted",
+              "declined",
+              "duplicate",
+              "withdrawn",
+            ].map((value) => (
+              <DropdownMenuCheckboxItem
+                key={value}
+                checked={state === value}
+                onCheckedChange={() =>
+                  void navigate({
+                    search: {
+                      state: value as typeof state,
+                      ref,
+                      cursor: undefined,
+                    },
+                  })
+                }
+              >
+                {value}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </Layout.Header>
+      <Layout.Content className="overflow-y-auto">
+        <p className="sr-only">{t("description")}</p>
+        {!workspace.data?.id && <p role="status">{t("selectWorkspace")}</p>}
+        {(detail.isError ||
+          attachments.isError ||
+          claim.isError ||
+          accept.isError ||
+          decline.isError ||
+          download.isError ||
+          clarify.isError ||
+          duplicate.isError) && (
+          <Alert variant="error" role="alert">
+            <AlertDescription>{t("actionError")}</AlertDescription>
+          </Alert>
+        )}
+        {queue.isError ? (
+          <Alert variant="error" role="alert">
+            <AlertDescription>{t("actionError")}</AlertDescription>
+            <Button variant="outline" onClick={() => void queue.refetch()}>
+              {t("retry", { defaultValue: "Retry" })}
+            </Button>
+          </Alert>
+        ) : queue.isLoading ? (
+          <p role="status">{t("loading")}</p>
+        ) : rows.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>{t("noState", { state })}</EmptyTitle>
+              <EmptyDescription>{t("newRequests")}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <Table aria-label={t("title")}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>
+                  {t("reference", { defaultValue: "Reference" })}
+                </TableHead>
+                <TableHead>
+                  {t("summary", { defaultValue: "Summary" })}
+                </TableHead>
+                <TableHead>
+                  {t("requestType", { defaultValue: "Request type" })}
+                </TableHead>
+                <TableHead>{t("customer")}</TableHead>
+                <TableHead>
+                  {t("organisation", { defaultValue: "Organisation" })}
+                </TableHead>
+                <TableHead>
+                  {t("submittedAt", { defaultValue: "Submitted" })}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow
+                  key={row.ref}
+                  data-state={ref === row.ref ? "selected" : undefined}
+                >
+                  <TableCell>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      aria-current={ref === row.ref ? "true" : undefined}
+                      onClick={() =>
+                        void navigate({
+                          search: { state, ref: row.ref, cursor },
+                        })
+                      }
+                      className="h-auto p-0 font-mono"
+                    >
+                      {row.ref}
+                    </Button>
+                  </TableCell>
+                  <TableCell className="whitespace-normal">
+                    {row.summary}
+                  </TableCell>
+                  <TableCell>{row.requestType.name}</TableCell>
+                  <TableCell>
+                    {row.requester.displayName ?? t("customer")}
+                  </TableCell>
+                  <TableCell>{row.organisation.name}</TableCell>
+                  <TableCell>
+                    {new Date(row.submission.createdAt).toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        {queue.data?.page?.hasMore && (
           <Button
-            key={value}
-            variant={state === value ? "default" : "outline"}
-            aria-pressed={state === value}
+            variant="outline"
             onClick={() =>
               void navigate({
-                search: {
-                  state: value as typeof state,
-                  ref,
-                  cursor: undefined,
-                },
+                search: { state, ref, cursor: queue.data?.page.nextCursor },
               })
             }
           >
-            {value}
+            {t("nextPage", { defaultValue: "Next page" })}
           </Button>
-        ))}
-      </fieldset>
-      {queue.isError ? (
-        <Alert variant="error" role="alert">
-          <AlertDescription>{t("actionError")}</AlertDescription>
-          <Button variant="outline" onClick={() => void queue.refetch()}>
-            {t("retry", { defaultValue: "Retry" })}
-          </Button>
-        </Alert>
-      ) : queue.isLoading ? (
-        <p role="status">{t("loading")}</p>
-      ) : rows.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>{t("noState", { state })}</EmptyTitle>
-            <EmptyDescription>{t("newRequests")}</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : (
-        <ul className="flex min-w-0 flex-col gap-2">
-          {rows.map((row) => (
-            <li key={row.ref} className="min-w-0">
-              <Button
-                variant={ref === row.ref ? "secondary" : "outline"}
-                aria-current={ref === row.ref ? "true" : undefined}
-                className="h-auto w-full min-w-0 flex-wrap justify-start gap-x-4 gap-y-1 whitespace-normal p-3 text-left"
-                onClick={() =>
-                  void navigate({ search: { state, ref: row.ref } })
-                }
-              >
-                <span className="font-mono">{row.ref}</span>
-                <span className="min-w-24">{row.requestType.name}</span>
-                <span>
-                  {row.requester.displayName ?? t("customer")} ·{" "}
-                  {row.organisation.name}
-                </span>
-                <span className="min-w-0 max-w-full truncate text-muted-foreground">
-                  {row.summary}
-                </span>
-                <span className="ml-auto whitespace-nowrap">
-                  {new Date(row.submission.createdAt).toLocaleString()}
-                </span>
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {queue.data?.page?.hasMore && (
-        <Button
-          variant="outline"
-          onClick={() =>
-            void navigate({
-              search: { state, ref, cursor: queue.data?.page.nextCursor },
-            })
-          }
-        >
-          {t("nextPage", { defaultValue: "Next page" })}
-        </Button>
-      )}
-      {ref && (
-        <section
-          className="flex min-w-0 flex-col gap-4 rounded-md border p-4"
-          aria-label={`Submission ${ref}`}
-        >
-          <h2 className="font-semibold text-xl">
-            {ref} · {current?.requestType?.name ?? "Submission"}
-          </h2>
-          {detail.isLoading ? (
-            <p role="status">Loading details…</p>
-          ) : (
-            current && (
-              <>
-                <div
-                  ref={statusRef}
-                  role="status"
-                  tabIndex={-1}
-                  className="outline-none"
-                >
-                  <p>
-                    {t("status", { defaultValue: "Status" })}:{" "}
-                    <strong>{current.submission?.state}</strong>
-                  </p>
-                  {current.submission?.claimedAt ? (
-                    <p className="text-muted-foreground text-sm">
-                      {t("claimedAt", {
-                        defaultValue: "Claimed {{date}}",
-                        date: new Date(
-                          current.submission.claimedAt,
-                        ).toLocaleString(),
+        )}
+        {ref && (
+          <section
+            className="flex min-w-0 flex-col gap-4 border-t p-4"
+            aria-label={`Submission ${ref}`}
+          >
+            <h2 className="font-semibold text-xl">
+              {ref} · {current?.requestType?.name ?? "Submission"}
+            </h2>
+            {detail.isLoading ? (
+              <p role="status">Loading details…</p>
+            ) : (
+              current && (
+                <>
+                  <div
+                    ref={statusRef}
+                    role="status"
+                    tabIndex={-1}
+                    className="outline-none"
+                  >
+                    <p>
+                      {t("status", { defaultValue: "Status" })}:{" "}
+                      <strong>{current.submission?.state}</strong>
+                    </p>
+                    {current.submission?.claimedAt ? (
+                      <p className="text-muted-foreground text-sm">
+                        {t("claimedAt", {
+                          defaultValue: "Claimed {{date}}",
+                          date: new Date(
+                            current.submission.claimedAt,
+                          ).toLocaleString(),
+                        })}
+                      </p>
+                    ) : null}
+                  </div>
+                  <h3 className="font-medium">{t("submittedAnswers")}</h3>
+                  <dl className="grid gap-2 sm:grid-cols-2">
+                    {submissionAnswerRows(
+                      current.version?.formSchema?.fields,
+                      current.submission?.formData,
+                    ).map((answer) => (
+                      <div key={answer.key} className="min-w-0">
+                        <dt className="text-muted-foreground text-sm">
+                          {answer.label}
+                        </dt>
+                        <dd className="wrap-anywhere">{answer.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <h3 className="font-medium">{t("conversation")}</h3>
+                  <ol className="flex flex-col gap-2">
+                    {(current.messages ?? []).map((entry) => (
+                      <li key={entry.id} className="rounded border p-3">
+                        <p className="text-sm">
+                          {entry.actorType} ·{" "}
+                          {new Date(entry.createdAt).toLocaleString()}
+                        </p>
+                        <p className="wrap-anywhere">{entry.body}</p>
+                      </li>
+                    ))}
+                  </ol>
+                  <h3 className="font-medium">{t("attachments")}</h3>
+                  {(attachments.data ?? []).map((file) => (
+                    <div
+                      className="flex items-center justify-between gap-3 rounded border p-3"
+                      key={file.id}
+                    >
+                      <span className="min-w-0 wrap-anywhere">
+                        {file.filename} · {file.state}
+                      </span>
+                      <Button
+                        variant="outline"
+                        onClick={() => download.mutate(file)}
+                        disabled={file.state !== "ready"}
+                      >
+                        Download
+                      </Button>
+                    </div>
+                  ))}
+                  {current.submission?.state === "new" ||
+                  current.submission?.state === "clarifying" ? (
+                    <>
+                      <div className="flex flex-wrap items-end gap-2">
+                        <div className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
+                          Destination project
+                          <Select
+                            value={
+                              projectId ||
+                              current.version?.defaultProjectId ||
+                              undefined
+                            }
+                            onValueChange={(value: string | null) => {
+                              if (value !== null) setProjectId(value);
+                            }}
+                          >
+                            <SelectTrigger aria-label="Destination project">
+                              <SelectValue placeholder="Choose a project">
+                                {selectedProject
+                                  ? `${selectedProject.name} (${selectedProject.slug})`
+                                  : undefined}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {projects.data?.map((project) => (
+                                <SelectItem key={project.id} value={project.id}>
+                                  {project.name} ({project.slug})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
+                          Work item type
+                          <Select
+                            value={
+                              workItemTypeId ||
+                              current.version?.workItemTypeId ||
+                              undefined
+                            }
+                            onValueChange={(value: string | null) => {
+                              if (value !== null) setWorkItemTypeId(value);
+                            }}
+                          >
+                            <SelectTrigger aria-label="Work item type">
+                              <SelectValue placeholder="Choose a work item type">
+                                {selectedWorkItemType?.name}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {workItemTypes.data?.map((type) => (
+                                <SelectItem key={type.id} value={type.id}>
+                                  {type.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {selectedWorkItemType?.name ? (
+                          <p className="text-sm">
+                            {t("prefilledFromType", {
+                              defaultValue:
+                                "Prefilled from request type: {{name}}",
+                              name: selectedWorkItemType.name,
+                            })}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          onClick={() => claim.mutate()}
+                          disabled={claim.isPending}
+                        >
+                          {t("claim")}
+                        </Button>
+                        <Button
+                          onClick={() => accept.mutate()}
+                          disabled={accept.isPending}
+                        >
+                          {t("accept")}
+                        </Button>
+                      </div>
+                      {duplicateSuggestions.data?.suggestions?.length ? (
+                        <section className="flex flex-col gap-2">
+                          <h3 className="font-medium">
+                            {t("possibleDuplicates")}
+                          </h3>
+                          {duplicateSuggestions.data.suggestions.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-center justify-between gap-3 rounded border p-3"
+                            >
+                              <span>
+                                {item.key} · {item.title} (
+                                {Math.round(item.score * 100)}%)
+                              </span>
+                              <Button
+                                variant="outline"
+                                onClick={() => duplicate.mutate(item.id)}
+                                disabled={duplicate.isPending}
+                              >
+                                {t("linkDuplicate")}
+                              </Button>
+                            </div>
+                          ))}
+                        </section>
+                      ) : null}
+                      <label
+                        className="flex flex-col gap-1"
+                        htmlFor="clarification-message"
+                      >
+                        {t("clarificationMessage")}
+                        <Textarea
+                          id="clarification-message"
+                          value={message}
+                          onChange={(event) => setMessage(event.target.value)}
+                        />
+                      </label>
+                      <Button
+                        variant="outline"
+                        onClick={() => clarify.mutate()}
+                        disabled={!message.trim() || clarify.isPending}
+                      >
+                        {t("clarify")}
+                      </Button>
+                      <label
+                        className="flex flex-col gap-1"
+                        htmlFor="decline-reason"
+                      >
+                        {t("declineReason")}
+                        <Textarea
+                          id="decline-reason"
+                          value={declineReason}
+                          onChange={(event) =>
+                            setDeclineReason(event.target.value)
+                          }
+                        />
+                      </label>
+                      <Button
+                        variant="destructive"
+                        onClick={() => decline.mutate()}
+                        disabled={!declineReason.trim() || decline.isPending}
+                      >
+                        {t("decline")}
+                      </Button>
+                    </>
+                  ) : current.submission?.workItemId ? (
+                    <p>
+                      {t("convertedWorkItem", {
+                        defaultValue: "Converted work item: {{label}}",
+                        label:
+                          acceptedItem && acceptedItem.ref === ref
+                            ? acceptedItem.label
+                            : current.submission.workItemId,
                       })}
                     </p>
                   ) : null}
-                </div>
-                <h3 className="font-medium">{t("submittedAnswers")}</h3>
-                <dl className="grid gap-2 sm:grid-cols-2">
-                  {submissionAnswerRows(
-                    current.version?.formSchema?.fields,
-                    current.submission?.formData,
-                  ).map((answer) => (
-                    <div key={answer.key} className="min-w-0">
-                      <dt className="text-muted-foreground text-sm">
-                        {answer.label}
-                      </dt>
-                      <dd className="wrap-anywhere">{answer.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-                <h3 className="font-medium">{t("conversation")}</h3>
-                <ol className="flex flex-col gap-2">
-                  {(current.messages ?? []).map((entry) => (
-                    <li key={entry.id} className="rounded border p-3">
-                      <p className="text-sm">
-                        {entry.actorType} ·{" "}
-                        {new Date(entry.createdAt).toLocaleString()}
-                      </p>
-                      <p className="wrap-anywhere">{entry.body}</p>
-                    </li>
-                  ))}
-                </ol>
-                <h3 className="font-medium">{t("attachments")}</h3>
-                {(attachments.data ?? []).map((file) => (
-                  <div
-                    className="flex items-center justify-between gap-3 rounded border p-3"
-                    key={file.id}
-                  >
-                    <span className="min-w-0 wrap-anywhere">
-                      {file.filename} · {file.state}
-                    </span>
-                    <Button
-                      variant="outline"
-                      onClick={() => download.mutate(file)}
-                      disabled={file.state !== "ready"}
-                    >
-                      Download
-                    </Button>
-                  </div>
-                ))}
-                {current.submission?.state === "new" ||
-                current.submission?.state === "clarifying" ? (
-                  <>
-                    <div className="flex flex-wrap items-end gap-2">
-                      <div className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
-                        Destination project
-                        <Select
-                          value={
-                            projectId ||
-                            current.version?.defaultProjectId ||
-                            undefined
-                          }
-                          onValueChange={(value: string | null) => {
-                            if (value !== null) setProjectId(value);
-                          }}
-                        >
-                          <SelectTrigger aria-label="Destination project">
-                            <SelectValue placeholder="Choose a project">
-                              {selectedProject
-                                ? `${selectedProject.name} (${selectedProject.slug})`
-                                : undefined}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {projects.data?.map((project) => (
-                              <SelectItem key={project.id} value={project.id}>
-                                {project.name} ({project.slug})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
-                        Work item type
-                        <Select
-                          value={
-                            workItemTypeId ||
-                            current.version?.workItemTypeId ||
-                            undefined
-                          }
-                          onValueChange={(value: string | null) => {
-                            if (value !== null) setWorkItemTypeId(value);
-                          }}
-                        >
-                          <SelectTrigger aria-label="Work item type">
-                            <SelectValue placeholder="Choose a work item type">
-                              {selectedWorkItemType?.name}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {workItemTypes.data?.map((type) => (
-                              <SelectItem key={type.id} value={type.id}>
-                                {type.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {selectedWorkItemType?.name ? (
-                        <p className="text-sm">
-                          {t("prefilledFromType", {
-                            defaultValue:
-                              "Prefilled from request type: {{name}}",
-                            name: selectedWorkItemType.name,
-                          })}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        onClick={() => claim.mutate()}
-                        disabled={claim.isPending}
-                      >
-                        {t("claim")}
-                      </Button>
-                      <Button
-                        onClick={() => accept.mutate()}
-                        disabled={accept.isPending}
-                      >
-                        {t("accept")}
-                      </Button>
-                    </div>
-                    {duplicateSuggestions.data?.suggestions?.length ? (
-                      <section className="flex flex-col gap-2">
-                        <h3 className="font-medium">
-                          {t("possibleDuplicates")}
-                        </h3>
-                        {duplicateSuggestions.data.suggestions.map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center justify-between gap-3 rounded border p-3"
-                          >
-                            <span>
-                              {item.key} · {item.title} (
-                              {Math.round(item.score * 100)}%)
-                            </span>
-                            <Button
-                              variant="outline"
-                              onClick={() => duplicate.mutate(item.id)}
-                              disabled={duplicate.isPending}
-                            >
-                              {t("linkDuplicate")}
-                            </Button>
-                          </div>
-                        ))}
-                      </section>
-                    ) : null}
-                    <label
-                      className="flex flex-col gap-1"
-                      htmlFor="clarification-message"
-                    >
-                      {t("clarificationMessage")}
-                      <Textarea
-                        id="clarification-message"
-                        value={message}
-                        onChange={(event) => setMessage(event.target.value)}
-                      />
-                    </label>
-                    <Button
-                      variant="outline"
-                      onClick={() => clarify.mutate()}
-                      disabled={!message.trim() || clarify.isPending}
-                    >
-                      {t("clarify")}
-                    </Button>
-                    <label
-                      className="flex flex-col gap-1"
-                      htmlFor="decline-reason"
-                    >
-                      {t("declineReason")}
-                      <Textarea
-                        id="decline-reason"
-                        value={declineReason}
-                        onChange={(event) =>
-                          setDeclineReason(event.target.value)
-                        }
-                      />
-                    </label>
-                    <Button
-                      variant="destructive"
-                      onClick={() => decline.mutate()}
-                      disabled={!declineReason.trim() || decline.isPending}
-                    >
-                      {t("decline")}
-                    </Button>
-                  </>
-                ) : current.submission?.workItemId ? (
-                  <p>
-                    {t("convertedWorkItem", {
-                      defaultValue: "Converted work item: {{label}}",
-                      label:
-                        acceptedItem && acceptedItem.ref === ref
-                          ? acceptedItem.label
-                          : current.submission.workItemId,
-                    })}
-                  </p>
-                ) : null}
-              </>
-            )
-          )}
-        </section>
-      )}
+                </>
+              )
+            )}
+          </section>
+        )}
+      </Layout.Content>
     </div>
   );
 }

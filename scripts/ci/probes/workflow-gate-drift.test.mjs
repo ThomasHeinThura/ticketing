@@ -68,7 +68,7 @@ function repoWithWorkflows(name, mutate = () => {}) {
   const dir = scratchDir(`m2-${name}`);
   initRepo(dir);
   installCheckers(dir);
-  installFromRepo(dir, "docs/04-engineering/ci-cd.md");
+  installFromRepo(dir, "docs/technical/ci-gates.md");
   installFromRepo(dir, ".github/workflows/ci-fast.yml");
   installFromRepo(dir, ".github/workflows/ci-full.yml");
   // The workflows reference `uses: ./.github/actions/setup`, and the scanner follows local

@@ -1,6 +1,6 @@
 /**
  * Closed feature-flag registry. Keep the key set in sync with
- * `docs/01-architecture/plugin-architecture.md` § Feature toggles; the contract test
+ * `docs/technical/features.md` § Feature toggles; the contract test
  * compares the two so a flag cannot quietly exist in only one authority.
  */
 export const FEATURE_FLAGS = [

@@ -41,6 +41,12 @@ vi.mock("@/hooks/queries/column/use-get-columns", () => ({
 vi.mock("@/hooks/queries/task-relation/use-get-task-relations", () => ({
   default: () => ({ data: [] }),
 }));
+vi.mock("@/hooks/queries/project/use-get-project", () => ({
+  default: () => ({ data: { id: "project-1", slug: "PROJ" } }),
+}));
+vi.mock("@/hooks/use-open-pending-action", () => ({
+  useOpenPendingAction: () => vi.fn(),
+}));
 vi.mock("@/hooks/queries/task/use-get-task", () => ({
   default: () => ({ data: undefined }),
 }));

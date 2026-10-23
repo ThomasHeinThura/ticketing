@@ -26,6 +26,11 @@ import {
   grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
+import {
+  deleteThroughApproval,
+  ensureAgentSession,
+} from "./helpers/pending-deletion";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 async function identityFor(userId: string) {
   const identity = await resolveIdentity({ userId, credential: "session" });
@@ -76,6 +81,11 @@ async function createWorkItem(
     isDefault: true,
     createdAt: now,
     updatedAt: now,
+  });
+  await ensureCreationWorkflow({
+    workspaceId: admin.workspace.id,
+    projectId: project.id,
+    typeId: type.id,
   });
   const response = await app.request(`/api/projects/${project.id}/work-items`, {
     method: "POST",
@@ -282,6 +292,7 @@ describe("API integration: canned responses (#27)", () => {
   it("CA-19: an admin creates, lists, updates and deletes a canned response", async () => {
     const creator = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(creator.user);
+    await ensureAgentSession(creator.user.id);
     const { app } = createApp();
 
     const created = await app.request("/api/canned-responses", {
@@ -319,11 +330,21 @@ describe("API integration: canned responses (#27)", () => {
     expect(updated.status).toBe(200);
     expect(((await updated.json()) as { name: string }).name).toBe("Renamed");
 
-    const deleted = await app.request(
+    // DELETE requests a click-confirmed deletion (202); the row survives until approval.
+    await deleteThroughApproval(
+      app,
+      creator.user,
       `/api/canned-responses/${createdBody.id}`,
-      { method: "DELETE" },
+      {
+        afterRequest: async () => {
+          const [pending] = await db
+            .select()
+            .from(schema.cannedResponseTable)
+            .where(eq(schema.cannedResponseTable.id, createdBody.id));
+          expect(pending).toBeDefined();
+        },
+      },
     );
-    expect(deleted.status).toBe(200);
 
     const [row] = await db
       .select()

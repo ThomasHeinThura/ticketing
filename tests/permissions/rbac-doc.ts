@@ -1,24 +1,18 @@
-/**
- * `docs/01-architecture/rbac.md`, parsed.
- *
- * rbac.md is the single authoritative home for capabilities and policy kinds (AGENTS.md
- * do-not 11), and its built-in-role table "is the seed data and the permission-matrix
- * fixture". Parsing it here is what makes "add it there first, in the same change" a build
- * failure rather than a sentence.
- */
+/** Maintained capability, role and elevated-route tables, parsed for exact registry comparisons. */
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 export const RBAC_PATH = fileURLToPath(
-  new URL("../../docs/01-architecture/rbac.md", import.meta.url),
+  new URL("../../docs/technical/permissions.md", import.meta.url),
 );
 
 const RBAC = readFileSync(RBAC_PATH, "utf8");
 
 function tableRowsAfter(heading: string): string[][] {
   const start = RBAC.indexOf(heading);
-  if (start === -1) throw new Error(`rbac.md no longer contains: ${heading}`);
+  if (start === -1)
+    throw new Error(`permissions.md no longer contains: ${heading}`);
   const lines = RBAC.slice(start).split("\n");
   const rows: string[][] = [];
   let seenSeparator = false;
@@ -155,7 +149,7 @@ export function resolveRoleCapabilities(
     }
 
     throw new Error(
-      `rbac.md's role table uses a phrase this parser does not understand: "${term}". Either write it as a capability list, or teach tests/permissions/rbac-doc.ts the new shorthand — do not let it be silently ignored.`,
+      `permissions.md's role table uses a phrase this parser does not understand: "${term}". Either write it as a capability list, or teach tests/permissions/rbac-doc.ts the new shorthand — do not let it be silently ignored.`,
     );
   }
 
@@ -167,7 +161,7 @@ export function resolveRoleCapabilities(
 export function documentedElevatedRoutes(): string[] {
   const start = RBAC.indexOf("## Elevated and audited actions");
   if (start === -1) {
-    throw new Error("rbac.md no longer has the elevated-action table");
+    throw new Error("permissions.md no longer has the elevated-action table");
   }
   const section = RBAC.slice(start, RBAC.indexOf("\n## ", start + 1));
   const routes = new Set<string>();

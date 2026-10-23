@@ -202,6 +202,7 @@ describe("NavProjects drag-and-drop setup", () => {
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/agent/projects/$projectKey/work",
       params: { projectKey: "VIS" },
+      search: { layout: "board", sort: "position", dir: "asc" },
     });
   });
 

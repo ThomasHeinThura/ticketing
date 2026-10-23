@@ -1,6 +1,5 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
-import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -35,6 +34,7 @@ import useTransferWorkspaceOwnership from "@/hooks/mutations/workspace/use-trans
 import useUpdateWorkspace from "@/hooks/mutations/workspace/use-update-workspace";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetFullWorkspace from "@/hooks/queries/workspace/use-get-full-workspace";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
 
@@ -88,13 +88,10 @@ function RouteComponent() {
     [t],
   );
 
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSavingRef = useRef(false);
   const queuedSaveRef = useRef<WorkspaceFormValues | null>(null);
   const lastSavedRef = useRef<NormalizedWorkspaceValues | null>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [selectedNewOwnerId, setSelectedNewOwnerId] = useState<string>("");
 
@@ -104,6 +101,7 @@ function RouteComponent() {
     workspaceId: workspace?.id,
   });
   const { mutateAsync: updateWorkspace } = useUpdateWorkspace();
+  const openPendingAction = useOpenPendingAction();
   const { mutateAsync: deleteWorkspace, isPending: isDeleting } =
     useDeleteWorkspace();
   const { mutateAsync: transferOwnership, isPending: isTransferring } =
@@ -271,16 +269,13 @@ function RouteComponent() {
     if (!workspace?.id) return;
 
     try {
-      await deleteWorkspace({ workspaceId: workspace.id });
-      toast.success(t("settings:workspaceGeneral.toastDeleted"));
-
-      // Invalidate all workspace-related queries. (["active-organization"]
-      // was invalidated here too before -- nothing subscribes to that key,
-      // same as the identical dead call removed from saveWorkspace above and
-      // from use-transfer-workspace-ownership.ts's onSuccess.)
-      await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-
-      navigate({ to: "/dashboard" });
+      // The in-place approval dialog is the single confirmation (PA-3). Deletion is
+      // only requested: the workspace stays (and the user stays in
+      // it) until the requester approves the pending action.
+      const pendingAction = await deleteWorkspace({
+        workspaceId: workspace.id,
+      });
+      await openPendingAction(pendingAction);
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -288,7 +283,7 @@ function RouteComponent() {
           : t("settings:workspaceGeneral.toastDeleteError"),
       );
     }
-  }, [workspace?.id, deleteWorkspace, queryClient, navigate, t]);
+  }, [workspace?.id, deleteWorkspace, openPendingAction, t]);
 
   const debouncedSave = useCallback(
     (data: WorkspaceFormValues) => {
@@ -534,9 +529,12 @@ function RouteComponent() {
                   size="sm"
                   className="text-destructive hover:text-destructive transition-colors"
                   type="button"
-                  onClick={() => setIsDeleteModalOpen(true)}
+                  disabled={isDeleting}
+                  onClick={() => void handleDeleteWorkspace()}
                 >
-                  {t("settings:workspaceGeneral.deleteWorkspace")}
+                  {isDeleting
+                    ? t("common:actions.deleting")
+                    : t("settings:workspaceGeneral.deleteWorkspace")}
                 </Button>
               </div>
             </div>
@@ -595,43 +593,6 @@ function RouteComponent() {
                   : t("settings:workspaceGeneral.transferOwnership.confirm", {
                       defaultValue: "Transfer ownership",
                     })}
-              </AlertDialogClose>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog
-          open={isDeleteModalOpen}
-          onOpenChange={setIsDeleteModalOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t("settings:workspaceGeneral.deleteModalTitle")}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t("settings:workspaceGeneral.deleteModalDescription", {
-                  name: workspace?.name ?? "",
-                })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogClose render={<Button variant="outline" size="sm" />}>
-                {t("common:actions.cancel")}
-              </AlertDialogClose>
-              <AlertDialogClose
-                render={
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={isDeleting}
-                    onClick={handleDeleteWorkspace}
-                  />
-                }
-              >
-                {isDeleting
-                  ? t("common:actions.deleting")
-                  : t("settings:workspaceGeneral.deleteModalConfirm")}
               </AlertDialogClose>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -18,9 +18,11 @@ import { GithubIcon } from "@/components/icons/github-icon";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import useDeleteComment from "@/hooks/mutations/comment/use-delete-comment";
 import useUpdateComment from "@/hooks/mutations/comment/use-update-comment";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
 import { toast } from "@/lib/toast";
+import { CommentCardPresentation } from "./comment-card-presentation";
 
 type CommentCardProps = {
   commentId: string;
@@ -51,8 +53,9 @@ export default function CommentCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
   const { mutateAsync: updateComment, isPending } = useUpdateComment();
-  const { mutate: deleteComment, isPending: isDeleting } =
-    useDeleteComment(taskId);
+  const { mutateAsync: deleteComment, isPending: isDeleting } =
+    useDeleteComment();
+  const openPendingAction = useOpenPendingAction();
   const queryClient = useQueryClient();
 
   const canEdit = currentUser?.id === user?.id;
@@ -61,6 +64,19 @@ export default function CommentCard({
     isFromGitHub && user?.name ? `https://github.com/${user.name}` : null;
   const commentUrl = externalUrl || null;
   const fullTimestamp = formatDateTime(createdAt);
+
+  const requestDeletion = async () => {
+    try {
+      // Deletion is only requested; the comment stays until the requester approves it.
+      await openPendingAction(await deleteComment({ commentId }));
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("common:pendingDeletion.requestFailed"),
+      );
+    }
+  };
 
   const handleEdit = useCallback(() => {
     setEditedContent(content);
@@ -108,176 +124,184 @@ export default function CommentCard({
 
   return (
     <TooltipProvider>
-      <div className="group relative w-full rounded-xl border border-border/80 bg-card/60">
-        <div className="flex items-center gap-2 px-3 pt-2.5">
-          <HoverCard>
-            <HoverCardTrigger>
-              <div className="flex cursor-pointer items-center gap-2">
-                <Avatar className="h-6 w-6">
-                  <AvatarImage src={user?.image ?? ""} alt={user?.name || ""} />
-                  <AvatarFallback className="bg-muted text-xs font-medium">
-                    {getInitials(user?.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium text-foreground hover:text-foreground transition-colors">
-                  {user?.name}
-                </span>
-              </div>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-64 p-3">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={user?.image ?? ""} alt={user?.name || ""} />
-                  <AvatarFallback className="bg-muted text-xs font-medium">
-                    {getInitials(user?.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground leading-none">
+      <CommentCardPresentation
+        header={
+          <>
+            <HoverCard>
+              <HoverCardTrigger>
+                <div className="flex cursor-pointer items-center gap-2">
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage
+                      src={user?.image ?? ""}
+                      alt={user?.name || ""}
+                    />
+                    <AvatarFallback className="bg-muted text-xs font-medium">
+                      {getInitials(user?.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium text-foreground hover:text-foreground transition-colors">
                     {user?.name}
-                  </p>
-                  {user?.email && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {user.email}
-                    </p>
-                  )}
-                  {isFromGitHub && (
-                    <div className="mt-1.5 flex items-center gap-1">
-                      <GithubIcon className="size-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {t("activity:comment.github")}
-                      </span>
-                    </div>
-                  )}
+                  </span>
                 </div>
-              </div>
-              {githubProfileUrl && (
+              </HoverCardTrigger>
+              <HoverCardContent className="w-64 p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage
+                      src={user?.image ?? ""}
+                      alt={user?.name || ""}
+                    />
+                    <AvatarFallback className="bg-muted text-xs font-medium">
+                      {getInitials(user?.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground leading-none">
+                      {user?.name}
+                    </p>
+                    {user?.email && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {user.email}
+                      </p>
+                    )}
+                    {isFromGitHub && (
+                      <div className="mt-1.5 flex items-center gap-1">
+                        <GithubIcon className="size-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
+                          {t("activity:comment.github")}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {githubProfileUrl && (
+                  <a
+                    href={githubProfileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 flex items-center gap-1.5 border-t border-border pt-3 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <ExternalLink className="size-3" />
+                    {t("activity:comment.viewGithubProfile")}
+                  </a>
+                )}
+              </HoverCardContent>
+            </HoverCard>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  className="cursor-default text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  aria-label={fullTimestamp}
+                  title={fullTimestamp}
+                >
+                  <time dateTime={createdAt}>
+                    {formatRelativeTime(createdAt)}
+                  </time>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">{fullTimestamp}</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {commentUrl && (
+              <>
+                <span className="text-xs text-muted-foreground">·</span>
                 <a
-                  href={githubProfileUrl}
+                  href={commentUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-3 flex items-center gap-1.5 border-t border-border pt-3 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  <ExternalLink className="size-3" />
-                  {t("activity:comment.viewGithubProfile")}
+                  <GithubIcon className="size-3" />
+                  {t("activity:comment.commentedOnGithub")}
                 </a>
-              )}
-            </HoverCardContent>
-          </HoverCard>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                type="button"
-                className="cursor-default text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                aria-label={fullTimestamp}
-                title={fullTimestamp}
-              >
-                <time dateTime={createdAt}>
-                  {formatRelativeTime(createdAt)}
-                </time>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">{fullTimestamp}</p>
-            </TooltipContent>
-          </Tooltip>
-
-          {commentUrl && (
+              </>
+            )}
+          </>
+        }
+        actions={
+          canEdit && !isEditing ? (
             <>
-              <span className="text-xs text-muted-foreground">·</span>
-              <a
-                href={commentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <GithubIcon className="size-3" />
-                {t("activity:comment.commentedOnGithub")}
-              </a>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEdit}
+                    className="h-6 w-6 rounded-md p-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">{t("activity:comment.edit")}</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void requestDeletion()}
+                    disabled={isDeleting}
+                    className="h-6 w-6 rounded-md p-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">{t("common:actions.delete")}</p>
+                </TooltipContent>
+              </Tooltip>
             </>
-          )}
-        </div>
-
-        {canEdit && !isEditing && (
-          <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleEdit}
-                  className="h-6 w-6 rounded-md p-0 text-muted-foreground hover:text-foreground"
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">{t("activity:comment.edit")}</p>
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => deleteComment({ activityId: commentId })}
-                  disabled={isDeleting}
-                  className="h-6 w-6 rounded-md p-0 text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">{t("common:actions.delete")}</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-
-        <div className="pt-0.5">
-          <CommentEditor
-            value={isEditing ? editedContent : content}
-            onChange={isEditing ? setEditedContent : undefined}
-            placeholder={t("activity:comment.editPlaceholder")}
-            taskId={taskId}
-            uploadSurface="comment"
-            className={
-              isEditing
-                ? "[&_.taskdesk-comment-editor-content_.ProseMirror]:min-h-[3rem] [&_.taskdesk-comment-editor-content_.ProseMirror]:max-h-none [&_.taskdesk-comment-editor-content_.ProseMirror]:overflow-visible [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-2.5 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-2"
-                : "taskdesk-comment-viewer [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-2 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-3"
-            }
-            autoFocus={isEditing}
-            readOnly={!isEditing}
-            onSubmitShortcut={isEditing ? handleSave : undefined}
-            onCancelShortcut={isEditing ? handleCancel : undefined}
-          />
-        </div>
-
-        {isEditing && (
-          <div className="flex items-center justify-end gap-2 border-border/70 border-t bg-card/60 px-3 py-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleCancel}
-              disabled={isPending}
-              className="h-7 px-2.5 text-xs"
-            >
-              {t("common:actions.cancel")}
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleSave}
-              disabled={isPending || !editedContent.trim()}
-              className="h-7 px-2.5 text-xs"
-            >
-              {t("activity:comment.save")}
-            </Button>
-          </div>
-        )}
-      </div>
+          ) : undefined
+        }
+        footer={
+          isEditing ? (
+            <div className="flex items-center justify-end gap-2 border-border/70 border-t bg-card/60 px-3 py-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleCancel}
+                disabled={isPending}
+                className="h-7 px-2.5 text-xs"
+              >
+                {t("common:actions.cancel")}
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleSave}
+                disabled={isPending || !editedContent.trim()}
+                className="h-7 px-2.5 text-xs"
+              >
+                {t("activity:comment.save")}
+              </Button>
+            </div>
+          ) : undefined
+        }
+      >
+        <CommentEditor
+          value={isEditing ? editedContent : content}
+          onChange={isEditing ? setEditedContent : undefined}
+          placeholder={t("activity:comment.editPlaceholder")}
+          taskId={taskId}
+          uploadSurface="comment"
+          className={
+            isEditing
+              ? "[&_.taskdesk-comment-editor-content_.ProseMirror]:min-h-[3rem] [&_.taskdesk-comment-editor-content_.ProseMirror]:max-h-none [&_.taskdesk-comment-editor-content_.ProseMirror]:overflow-visible [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-2.5 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-2"
+              : "taskdesk-comment-viewer [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-2 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-3"
+          }
+          autoFocus={isEditing}
+          readOnly={!isEditing}
+          onSubmitShortcut={isEditing ? handleSave : undefined}
+          onCancelShortcut={isEditing ? handleCancel : undefined}
+        />
+      </CommentCardPresentation>
     </TooltipProvider>
   );
 }

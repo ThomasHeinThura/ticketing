@@ -1,4 +1,4 @@
-import { isSmtpConfigured, sendNotificationEmail } from "@taskdesk/email";
+import { sendNotificationEmail } from "@taskdesk/email";
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
@@ -7,6 +7,7 @@ import { loadLocalFactorState } from "../auth/local-factor-service";
 import { appendStepUpAudit } from "../auth/step-up-audit";
 import { consumeMfaResetProof } from "../auth/step-up-service";
 import db, { schema } from "../database";
+import { isRuntimeSmtpConfigured } from "../notification-provider/runtime";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { lockAndInvalidateUserCredentials } from "../pending-action/credential-invalidation";
 import {
@@ -86,7 +87,7 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
     setShadowLegacyAuthorization(c, "denied");
     throw new HTTPException(403, { message: "Forbidden" });
   }
-  if (!isSmtpConfigured())
+  if (!(await isRuntimeSmtpConfigured()))
     throw new HTTPException(503, {
       message: "Required notification service unavailable",
     });

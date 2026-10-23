@@ -20,6 +20,36 @@ import {
 import { projectViewRoutes } from "./project-view-routes";
 
 describe("project board URL state", () => {
+  it("round trips item-scoped hierarchy and relations through schedule URL parsing and encoding", () => {
+    const state = {
+      taskId: "HELP-1",
+      hierarchy: { itemKey: "HELP-1", collapsed: true },
+      relations: {
+        itemKey: "HELP-1",
+        picker: true,
+        type: "follows",
+        query: "SSO & access",
+      },
+    };
+    const query = new URLSearchParams();
+    appendProjectViewSearchParams(query, state);
+    expect(parseProjectViewSearchFromParams(query)).toEqual(state);
+    expect(
+      parseProjectBoardSearch({
+        ...state,
+        hierarchy: '{"broken":',
+        relations: { itemKey: "bad" },
+      }),
+    ).toEqual({ taskId: "HELP-1" });
+  });
+  it("accepts a permanent canonical item alias for schedule selection without coercing legacy identifiers", () => {
+    expect(parseProjectBoardSearch({ item: "HELP-1" })).toEqual({
+      taskId: "HELP-1",
+    });
+    expect(
+      parseProjectBoardSearch({ item: "f3d637ba-77bf-43e2-bd63-356da999a531" }),
+    ).toEqual({});
+  });
   it("preserves string search through the registered TanStack URL codec", () => {
     for (const query of [
       "?q=123",

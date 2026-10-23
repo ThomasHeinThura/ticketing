@@ -5,6 +5,18 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * additionally enforce named-approver, CAB-team and addressed-portal predicates.
  */
 export const approvalPolicies = {
+  "GET /api/work-items/{key}/approval-request-context": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/work-items/{key}/approval-candidates": {
+    capability: "approval:request",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
   "GET /api/work-items/{key}/approvals": {
     capability: "work_item:read",
     scope: "work_item",

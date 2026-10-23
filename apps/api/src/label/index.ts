@@ -8,6 +8,10 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { requireReachFilteredList } from "../utils/reach-filtered-list";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
@@ -33,12 +37,12 @@ async function requestIdentity(
 
 import assignLabelToTask from "./controllers/assign-label-to-task";
 import createLabel from "./controllers/create-label";
-import deleteLabel from "./controllers/delete-label";
 import getLabel from "./controllers/get-label";
 import getLabelsByTaskId from "./controllers/get-labels-by-task-id";
 import getLabelsByWorkspaceId from "./controllers/get-labels-by-workspace-id";
 import unassignLabelFromTask from "./controllers/unassign-label-from-task";
 import updateLabel from "./controllers/update-label";
+import { LABEL_DELETION_ROUTE } from "./label-deletion-target";
 import { projectLabelRoutes } from "./project-routes";
 import { labelListSchema, labelSchema } from "./response";
 import {
@@ -185,7 +189,8 @@ const detachLabelFromTaskRoute = createRoute({
   path: "/{id}/task",
   tags: ["Labels"],
   summary: "Detach label from task",
-  description: "Detach a label from its current task",
+  description:
+    "Detach a label from its current task. This is an unlink (P0 decision F24, like unassign/unwatch/unparent): it removes only the per-task link row; a workspace or project catalogue label (no task) is refused with 400 and is never deleted. Deleting a label itself goes through DELETE /api/label/{id}, a pending action.",
   middleware: [
     workspaceAccess.fromLabel(),
     requireLabelRowTaskReach(),
@@ -233,7 +238,8 @@ const deleteLabelRoute = createRoute({
   path: "/{id}",
   tags: ["Labels"],
   summary: "Delete label",
-  description: "Delete a label by ID",
+  description:
+    "Request deletion of a label by ID. Returns a durable pending action (202); the label and its task-level copies are unchanged until the requester approves the deletion.",
   middleware: [
     workspaceAccess.fromLabel(),
     requireLabelRowTaskReach(),
@@ -241,10 +247,14 @@ const deleteLabelRoute = createRoute({
   ] as const,
   request: { params: labelParam },
   responses: {
-    200: jsonResponse("Label deleted successfully", labelSchema),
+    202: jsonResponse(
+      "Pending deletion; label unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse("id must not contain a NUL (\\u0000) byte"),
     403: errorResponse("Missing label:delete permission"),
     404: errorResponse("Label not found, or its task no longer exists"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -310,8 +320,12 @@ const label = apiRouter()
   })
   .openapi(deleteLabelRoute, async (c) => {
     const { id } = c.req.valid("param");
-    const userId = c.get("userId");
-    return c.json(await deleteLabel(await requestIdentity(c), id, userId), 200);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: LABEL_DELETION_ROUTE,
+      targetType: "label",
+      id,
+    });
+    return c.json(pending, 202);
   });
 
 export default label;

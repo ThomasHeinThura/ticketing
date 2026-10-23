@@ -6,3 +6,5 @@
 *.swp
 *.tmp
 *.tgz
+# Local rendered-manifest regression tests are not release chart resources.
+tests/

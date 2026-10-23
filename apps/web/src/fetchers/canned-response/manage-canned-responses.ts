@@ -1,4 +1,5 @@
 import { client } from "@taskdesk/libs";
+import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 import { HttpError, readErrorDetail } from "@/lib/http-error";
 
 export type CannedResponseInput = {
@@ -33,10 +34,10 @@ export async function saveCannedResponse(
       });
   return (await checked(response)).json();
 }
+/** Requests deletion; the response is only removed once the requester approves it. */
 export async function removeCannedResponse(id: string) {
-  return (
-    await checked(
-      await client["canned-responses"][":id"].$delete({ param: { id } }),
-    )
-  ).json();
+  return readPendingDeletion(
+    await client["canned-responses"][":id"].$delete({ param: { id } }),
+    "Failed to request canned response deletion",
+  );
 }

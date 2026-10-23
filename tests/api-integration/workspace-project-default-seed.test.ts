@@ -15,6 +15,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { DEFAULT_STATE_TEMPLATES } from "../../apps/api/src/utils/default-state-templates";
 import { DEFAULT_WORK_ITEM_TYPES } from "../../apps/api/src/utils/default-work-item-types";
+import { defaultWorkflowId } from "../../apps/api/src/utils/seed-default-workflow";
 import { seedProjectStates } from "../../apps/api/src/utils/seed-project-states";
 import { seedWorkspaceDefaults } from "../../apps/api/src/utils/seed-workspace-defaults";
 import { csrfRequest } from "./helpers/csrf";
@@ -70,9 +71,7 @@ describe("API integration: workspace/project default seeding (#309)", () => {
         isEpic: expected.isEpic ?? false,
         isChange: expected.isChange ?? false,
       });
-      // Issue #309's own dependency question: no `workflow` table exists yet
-      // (P2/P5 scope) -- a seeded type carries no workflow to point at.
-      expect(row?.workflowId).toBeNull();
+      expect(row?.workflowId).toBe(defaultWorkflowId(workspace.id));
     }
 
     const templates = await db.query.stateTemplateTable.findMany({

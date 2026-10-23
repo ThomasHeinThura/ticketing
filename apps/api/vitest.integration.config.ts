@@ -26,11 +26,14 @@ export default defineConfig({
     target: "node18",
   },
   resolve: {
-    alias: {
-      "@taskdesk/email": resolve(
-        __dirname,
-        "../../tests/api-integration/mocks/email.ts",
-      ),
+    alias: [
+      {
+        find: /^@taskdesk\/email$/,
+        replacement: resolve(
+          __dirname,
+          "../../tests/api-integration/mocks/email.ts",
+        ),
+      },
       // `tests/api-integration/helpers/fixtures.ts` lives in `tests/`,
       // outside any package, same as `tests/permissions/` -- see that
       // suite's own `vitest.permissions.config.ts` alias for why this
@@ -38,18 +41,21 @@ export default defineConfig({
       // resolution (which would only work by accident of apps/api's own
       // dependency graph, not because anything in `tests/` actually
       // depends on this package).
-      "@taskdesk/permissions": resolve(
-        __dirname,
-        "../../packages/permissions/src/index.ts",
-      ),
+      {
+        find: "@taskdesk/permissions",
+        replacement: resolve(
+          __dirname,
+          "../../packages/permissions/src/index.ts",
+        ),
+      },
       // Same reasoning as `@taskdesk/permissions` above: `tests/api-integration/`
       // lives outside any package, so plain node_modules resolution only works by
       // accident of `apps/api`'s own dependency graph. `audit-log.test.ts` (issue #37)
       // imports `@taskdesk/domain` directly to independently recompute `row_hash`.
-      "@taskdesk/domain": resolve(
-        __dirname,
-        "../../packages/domain/src/index.ts",
-      ),
-    },
+      {
+        find: "@taskdesk/domain",
+        replacement: resolve(__dirname, "../../packages/domain/src/index.ts"),
+      },
+    ],
   },
 });

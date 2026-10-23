@@ -1,3 +1,4 @@
+import { canonicalPreferenceResponseSchema } from "../notification/canonical-preferences";
 import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
 
 // Secrets are never returned: each is a *Configured boolean plus a masked preview.
@@ -25,6 +26,7 @@ export const workspaceRuleSchema = z
 
 export const notificationPreferenceSchema = z
   .object({
+    canonicalPreferences: z.array(canonicalPreferenceResponseSchema).optional(),
     emailAddress: z.string().nullable(),
     emailEnabled: z.boolean(),
     ntfyEnabled: z.boolean(),

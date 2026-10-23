@@ -31,6 +31,7 @@ import {
   raceProjectSoftDelete,
   raceWorkItemSoftDelete,
 } from "./helpers/race-soft-delete";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 const PNG_BYTES = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
@@ -94,6 +95,11 @@ async function setupProject() {
   await grantWorkItemProjectAccess(creator.id, project.id);
   const type = await makeWorkItemType(workspace.id);
   await makeDefaultState(workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, workspace, project, type };
 }
 

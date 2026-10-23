@@ -1,5 +1,6 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import type { CanonicalMentionPreference } from "./canonical-mention-preference";
 
 export type NotificationPreferenceWorkspaceRule = {
   id: string;
@@ -17,6 +18,7 @@ export type NotificationPreferenceWorkspaceRule = {
 };
 
 export type NotificationPreferences = {
+  canonicalPreferences?: CanonicalMentionPreference[];
   emailAddress: string | null;
   emailEnabled: boolean;
   ntfyEnabled: boolean;

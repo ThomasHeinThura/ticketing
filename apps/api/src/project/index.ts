@@ -16,6 +16,10 @@ import {
   z,
 } from "../openapi";
 import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
+import {
   evaluateProjectRead,
   resolveCallerIdentity,
 } from "../utils/has-project-reach";
@@ -23,6 +27,7 @@ import {
   listReachOf,
   requireReachFilteredList,
 } from "../utils/reach-filtered-list";
+import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -35,10 +40,6 @@ import createProjectCtrl, {
   InvalidProjectOrganisationError,
   ProjectSlugTakenError,
 } from "./controllers/create-project";
-import deleteDocumentLinkCtrl from "./controllers/delete-document-link";
-import deleteMilestoneCtrl from "./controllers/delete-milestone";
-import deletePrerequisiteCtrl from "./controllers/delete-prerequisite";
-import deleteProjectCtrl from "./controllers/delete-project";
 import getProjectCtrl from "./controllers/get-project";
 import getProjectsCtrl from "./controllers/get-projects";
 import listDocumentLinksCtrl from "./controllers/list-document-links";
@@ -53,6 +54,12 @@ import updateMilestoneCtrl from "./controllers/update-milestone";
 import updatePrerequisiteCtrl from "./controllers/update-prerequisite";
 import updateProjectCtrl from "./controllers/update-project";
 import updateStakeholderCtrl from "./controllers/update-stakeholder";
+import {
+  DOCUMENT_LINK_DELETION_ROUTE,
+  MILESTONE_DELETION_ROUTE,
+  PREREQUISITE_DELETION_ROUTE,
+  PROJECT_DELETION_ROUTE,
+} from "./project-deletion-target";
 import {
   customerOrganisationListSchema,
   documentLinkSchema,
@@ -374,8 +381,11 @@ const deleteProjectRoute = createRoute({
     "Soft-delete a project: it disappears from ordinary use immediately and, along " +
     "with its work items, comments, attachments and time entries, is eligible for " +
     "purge 30 days later, once the purge job (#198) exists. Archive it instead if " +
-    "you just want it out of the way without starting that clock.",
+    "you just want it out of the way without starting that clock. Requests a durable " +
+    "pending deletion (202); nothing changes until the requester approves it in a current " +
+    "browser session by typing the exact project name and completing step-up.",
   middleware: [
+    requireSessionOnly(),
     workspaceAccess.fromProject("id", {
       requireProjectReach: true,
       deferApiKeyCapability: true,
@@ -384,10 +394,17 @@ const deleteProjectRoute = createRoute({
   ] as const,
   request: { params: projectParam },
   responses: {
-    200: jsonResponse("The deleted project", projectSchema),
+    202: jsonResponse(
+      "Pending deletion; project unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse("Malformed project ID (including a NUL byte)"),
-    403: errorResponse("Missing project:delete permission"),
+    401: errorResponse("No browser session"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), or missing project:delete permission",
+    ),
     404: errorResponse("Project not found"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -542,12 +559,16 @@ const deleteMilestoneRoute = createRoute({
   ] as const,
   request: { params: milestoneParam },
   responses: {
-    200: jsonResponse("The deleted milestone", milestoneSchema),
+    202: jsonResponse(
+      "Pending deletion; milestone unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse(
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project or milestone not found"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -646,12 +667,16 @@ const deletePrerequisiteRoute = createRoute({
   ] as const,
   request: { params: prerequisiteParam },
   responses: {
-    200: jsonResponse("The deleted prerequisite", prerequisiteSchema),
+    202: jsonResponse(
+      "Pending deletion; prerequisite unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse(
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project or prerequisite not found"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -820,12 +845,16 @@ const deleteDocumentLinkRoute = createRoute({
   ] as const,
   request: { params: documentLinkParam },
   responses: {
-    200: jsonResponse("The deleted document link", documentLinkSchema),
+    202: jsonResponse(
+      "Pending deletion; document link unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse(
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project or document link not found"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -1047,9 +1076,14 @@ const project = apiRouter<
   })
   .openapi(deleteProjectRoute, async (c) => {
     const { id } = c.req.valid("param");
-    const workspaceId = c.get("workspaceId");
-    const deletedProject = await deleteProjectCtrl(id, workspaceId);
-    return c.json(deletedProject, 200);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: PROJECT_DELETION_ROUTE,
+      targetType: "project",
+      id,
+      workspaceId: c.get("workspaceId"),
+      projectId: id,
+    });
+    return c.json(pending, 202);
   })
   .openapi(archiveProjectRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -1090,9 +1124,14 @@ const project = apiRouter<
   })
   .openapi(deleteMilestoneRoute, async (c) => {
     const { id, milestoneId } = c.req.valid("param");
-    const workspaceId = c.get("workspaceId");
-    const deleted = await deleteMilestoneCtrl(id, milestoneId, workspaceId);
-    return c.json(deleted, 200);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: MILESTONE_DELETION_ROUTE,
+      targetType: "milestone",
+      id: milestoneId,
+      workspaceId: c.get("workspaceId"),
+      projectId: id,
+    });
+    return c.json(pending, 202);
   })
   .openapi(listPrerequisitesRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -1121,13 +1160,14 @@ const project = apiRouter<
   })
   .openapi(deletePrerequisiteRoute, async (c) => {
     const { id, prerequisiteId } = c.req.valid("param");
-    const workspaceId = c.get("workspaceId");
-    const deleted = await deletePrerequisiteCtrl(
-      id,
-      prerequisiteId,
-      workspaceId,
-    );
-    return c.json(deleted, 200);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: PREREQUISITE_DELETION_ROUTE,
+      targetType: "prerequisite",
+      id: prerequisiteId,
+      workspaceId: c.get("workspaceId"),
+      projectId: id,
+    });
+    return c.json(pending, 202);
   })
   .openapi(listStakeholdersRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -1179,13 +1219,14 @@ const project = apiRouter<
   })
   .openapi(deleteDocumentLinkRoute, async (c) => {
     const { id, documentLinkId } = c.req.valid("param");
-    const workspaceId = c.get("workspaceId");
-    const deleted = await deleteDocumentLinkCtrl(
-      id,
-      documentLinkId,
-      workspaceId,
-    );
-    return c.json(deleted, 200);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: DOCUMENT_LINK_DELETION_ROUTE,
+      targetType: "document_link",
+      id: documentLinkId,
+      workspaceId: c.get("workspaceId"),
+      projectId: id,
+    });
+    return c.json(pending, 202);
   });
 
 export default project;

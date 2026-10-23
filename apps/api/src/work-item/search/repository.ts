@@ -343,11 +343,54 @@ export async function searchWorkItems(input: {
   const [rows, totals] = await Promise.all([rowQuery, totalQuery]);
   const hasMore = rows.length > limit;
   const pageRows = rows.slice(0, limit);
+  // Same page-bounded catalogue projection as the unfiltered list. Never expose a
+  // foreign/project/task-instance label through a malformed historical link.
+  const assignedLabels = pageRows.length
+    ? await db
+        .select({
+          workItemId: schema.workItemLabelTable.workItemId,
+          id: schema.labelTable.id,
+          name: schema.labelTable.name,
+          color: schema.labelTable.color,
+        })
+        .from(schema.workItemLabelTable)
+        .innerJoin(
+          schema.labelTable,
+          eq(schema.labelTable.id, schema.workItemLabelTable.labelId),
+        )
+        .innerJoin(w, eq(w.id, schema.workItemLabelTable.workItemId))
+        .where(
+          and(
+            inArray(
+              schema.workItemLabelTable.workItemId,
+              pageRows.map((row) => row.workItem.id),
+            ),
+            eq(w.workspaceId, workspaceId),
+            eq(schema.labelTable.workspaceId, workspaceId),
+            isNull(schema.labelTable.taskId),
+            or(
+              isNull(schema.labelTable.projectId),
+              eq(schema.labelTable.projectId, w.projectId),
+            ),
+          ),
+        )
+        .orderBy(schema.labelTable.name, schema.labelTable.id)
+    : [];
+  const labelsByItem = new Map<
+    string,
+    Array<{ id: string; name: string; color: string }>
+  >();
+  for (const { workItemId, ...label } of assignedLabels) {
+    const labels = labelsByItem.get(workItemId) ?? [];
+    labels.push(label);
+    labelsByItem.set(workItemId, labels);
+  }
   type MaterializedSearchPageRow = Omit<
     (typeof pageRows)[number]["workItem"],
     "description"
   > & {
     description: JsonValue | null;
+    labels: Array<{ id: string; name: string; color: string }>;
     stateName: (typeof pageRows)[number]["stateName"];
     stateCategory: (typeof pageRows)[number]["stateCategory"];
     assigneeName: (typeof pageRows)[number]["assigneeName"] | null;
@@ -387,6 +430,7 @@ export async function searchWorkItems(input: {
     data: pageRows.map(
       (row): MaterializedSearchPageRow => ({
         ...row.workItem,
+        labels: labelsByItem.get(row.workItem.id) ?? [],
         description: row.workItem.description as JsonValue | null,
         stateName: row.stateName,
         stateCategory: row.stateCategory,

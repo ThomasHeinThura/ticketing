@@ -10,13 +10,17 @@ import {
   jsonResponse,
 } from "../openapi";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
+import {
+  legacyDeletionGoneMessage,
+  legacyDeletionGoneMiddleware,
+  legacyDeletionGoneResponseHeaders,
+} from "../utils/legacy-deletion-gone";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createActivity, {
   recordTaskEventActivity,
 } from "./controllers/create-activity";
 import createComment from "./controllers/create-comment";
-import deleteComment from "./controllers/delete-comment";
 import getActivities from "./controllers/get-activities";
 import updateComment from "./controllers/update-comment";
 import { activityListSchema, activitySchema } from "./response";
@@ -27,6 +31,8 @@ import {
   taskIdParam,
   updateCommentBody,
 } from "./schema";
+
+const COMMENT_DELETION_SUCCESSOR = "/api/comments/{id}";
 
 async function requestIdentity(
   c: Context<{ Variables: BaseVariables }>,
@@ -153,9 +159,12 @@ const deleteCommentRoute = createRoute({
   operationId: "deleteComment",
   path: "/comment",
   tags: ["Activity"],
-  summary: "Delete comment",
-  description: "Delete a comment. Only the comment's author may do this.",
+  deprecated: true,
+  summary: "Delete comment (removed; 410)",
+  description:
+    "Removed. This route used to delete a comment immediately with no approval. It now answers 410 Gone (after the same reach checks). Request deletion through DELETE /api/comments/{id}, which records a pending action.",
   middleware: [
+    legacyDeletionGoneMiddleware(COMMENT_DELETION_SUCCESSOR),
     workspaceAccess.fromActivity("activityId", {
       requireProjectReach: true,
       // No `deferApiKeyCapability`: the legacy controller checks authorship only, so an API
@@ -169,10 +178,13 @@ const deleteCommentRoute = createRoute({
     },
   },
   responses: {
-    200: jsonResponse("The deleted comment", activitySchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Not the author"),
+    403: errorResponse("Caller lacks reach"),
     404: errorResponse("Comment not found"),
+    410: {
+      ...errorResponse("Removed: use DELETE /api/comments/{id}"),
+      headers: legacyDeletionGoneResponseHeaders(COMMENT_DELETION_SUCCESSOR),
+    },
   },
 });
 
@@ -224,15 +236,8 @@ const activity = apiRouter()
       200,
     );
   })
-  .openapi(deleteCommentRoute, async (c) =>
-    c.json(
-      await deleteComment(
-        await requestIdentity(c),
-        c.get("userId"),
-        c.req.valid("json").activityId,
-      ),
-      200,
-    ),
+  .openapi(deleteCommentRoute, (c) =>
+    c.text(legacyDeletionGoneMessage(COMMENT_DELETION_SUCCESSOR), 410),
   );
 
 subscribeToEvent<{

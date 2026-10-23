@@ -1,12 +1,148 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  parseProjectCalendarSearch,
+  parseProjectViewSearchFromParams,
+} from "./project-board-search";
+import {
   buildProjectViewSwitchUrl,
   createProjectViewShortcutHandlers,
+  normalizeCanonicalWorkItemSelection,
   type ProjectView,
 } from "./project-layout-navigation";
 import { projectViewRoutes } from "./project-view-routes";
+import { parseWorkItemListSearchFromQueryString } from "./routes";
 
 describe("project layout navigation", () => {
+  it("keeps canonical filter meaning when shortcuts return from calendar to work", () => {
+    const filter = "AND(priority:high,label:Customer)";
+    const url = buildProjectViewSwitchUrl(
+      "board",
+      { workspaceId: "ws", projectId: "project", projectKey: "service-team" },
+      `?filter=${encodeURIComponent(filter)}&month=2026-10`,
+    );
+    expect(
+      new URL(url, "https://agent.invalid").searchParams.get("filter"),
+    ).toBe(filter);
+    expect(url).toMatch(/^\/agent\/projects\/service-team\/work\?/);
+  });
+  const canonical = {
+    workspaceId: "workspace-1",
+    projectId: "project-1",
+    projectKey: "HELP",
+  };
+  it.each(["calendar", "gantt"] as const)(
+    "round trips permanent selection and scoped panels through %s",
+    (view) => {
+      const hierarchy = {
+        itemKey: "HELP-1",
+        collapsed: true,
+        expanded: ["HELP-2"],
+      };
+      const relations = {
+        itemKey: "HELP-1",
+        picker: true,
+        query: "SSO",
+        type: "blocked_by",
+      };
+      const query = new URLSearchParams({
+        item: "HELP-1",
+        hierarchy: JSON.stringify(hierarchy),
+        relations: JSON.stringify(relations),
+        filter: "priority:high",
+        month: "2026-10",
+      });
+      const schedule = new URL(
+        buildProjectViewSwitchUrl(view, canonical, `?${query}`),
+        "https://agent.invalid",
+      );
+      expect(schedule.searchParams.get("taskId")).toBe("HELP-1");
+      expect(schedule.searchParams.has("item")).toBe(false);
+      const validated = parseProjectViewSearchFromParams(
+        schedule.searchParams,
+        parseProjectCalendarSearch,
+      );
+      expect(validated).toMatchObject({
+        taskId: "HELP-1",
+        hierarchy,
+        relations,
+        filter: "priority:high",
+      });
+      for (const destination of ["board", "list", "backlog"] as const) {
+        const next = new URL(
+          buildProjectViewSwitchUrl(destination, canonical, schedule.search),
+          "https://agent.invalid",
+        );
+        expect(next.searchParams.get("item")).toBe("HELP-1");
+        expect(next.searchParams.has("taskId")).toBe(false);
+        expect(JSON.parse(next.searchParams.get("hierarchy") ?? "{}")).toEqual(
+          hierarchy,
+        );
+        expect(JSON.parse(next.searchParams.get("relations") ?? "{}")).toEqual(
+          relations,
+        );
+        if (destination !== "backlog")
+          expect(
+            parseWorkItemListSearchFromQueryString(next.search),
+          ).toMatchObject({
+            item: "HELP-1",
+            hierarchy,
+            relations,
+            layout: destination,
+          });
+      }
+    },
+  );
+  it("drops panels scoped to a different selected item without changing filters", () => {
+    const query = new URLSearchParams({
+      taskId: "HELP-1",
+      hierarchy: JSON.stringify({ itemKey: "OTHER-2", collapsed: true }),
+      relations: JSON.stringify({ itemKey: "OTHER-2", picker: true }),
+      filter: "priority:high",
+    });
+    const next = new URL(
+      buildProjectViewSwitchUrl("board", canonical, `?${query}`),
+      "https://agent.invalid",
+    );
+    expect(next.searchParams.get("item")).toBe("HELP-1");
+    expect(next.searchParams.get("filter")).toBe("priority:high");
+    expect(next.searchParams.has("hierarchy")).toBe(false);
+    expect(next.searchParams.has("relations")).toBe(false);
+  });
+  it("normalizes direct schedule-key aliases but never guesses a canonical key from a UUID", () => {
+    expect(
+      normalizeCanonicalWorkItemSelection({
+        taskId: "HELP-1",
+        filter: "priority:high",
+      }),
+    ).toMatchObject({ item: "HELP-1", filter: "priority:high" });
+    const legacyId = "f3d637ba-77bf-43e2-bd63-356da999a531";
+    expect(
+      normalizeCanonicalWorkItemSelection({ taskId: legacyId }),
+    ).not.toHaveProperty("item");
+    const next = new URL(
+      buildProjectViewSwitchUrl("board", canonical, `?taskId=${legacyId}`),
+      "https://agent.invalid",
+    );
+    expect(next.searchParams.has("item")).toBe(false);
+    expect(next.searchParams.get("taskId")).toBe(legacyId);
+  });
+
+  it("normalizes supported legacy priorities and sort on header navigation", () => {
+    const url = new URL(
+      buildProjectViewSwitchUrl(
+        "list",
+        canonical,
+        "?priority=high&sort=number&filter=state%3Astarted",
+      ),
+      "https://test.invalid",
+    );
+    expect(url.pathname).toBe("/agent/projects/HELP/work");
+    expect(url.searchParams.get("layout")).toBe("list");
+    expect(url.searchParams.get("sort")).toBe("key");
+    expect(url.searchParams.get("filter")).toBe(
+      "AND(state:started,priority:in(high))",
+    );
+  });
   const params = { workspaceId: "workspace-1", projectId: "project-1" };
 
   it.each([

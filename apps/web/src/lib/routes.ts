@@ -1,7 +1,19 @@
 import {
+  parseWorkItemApprovalRequestSearch,
+  type WorkItemApprovalRequestSearch,
+} from "./work-item-approval-request-search";
+import {
+  parseWorkItemDetailSectionsSearch,
+  type WorkItemDetailSectionsSearch,
+} from "./work-item-detail-sections-search";
+import {
   parseWorkItemHierarchySearch,
   type WorkItemHierarchySearch,
 } from "./work-item-hierarchy-search";
+import {
+  parseWorkItemRelationsSearch,
+  type WorkItemRelationsSearch,
+} from "./work-item-relations-search";
 
 // Canonical route helpers (AGENTS.md rule 4): every screen has a URL, and
 // any filter/sort state it carries lives in the query string so a reload reproduces it
@@ -101,9 +113,13 @@ export function parseGeneratedRouteUrl(
 }
 
 export type WorkItemActivityFilter = "everything" | "comments" | "public";
-export type WorkItemDetailSearch = WorkItemHierarchySearch & {
-  activity?: Exclude<WorkItemActivityFilter, "everything">;
-};
+export type WorkItemDetailSearch = WorkItemApprovalRequestSearch &
+  WorkItemHierarchySearch &
+  WorkItemRelationsSearch &
+  WorkItemDetailSectionsSearch & {
+    activity?: Exclude<WorkItemActivityFilter, "everything">;
+    comment?: string;
+  };
 export type ProjectRouteParams = { workspaceId: string; projectId: string };
 
 export const PROJECT_BACKLOG_PATH =
@@ -119,6 +135,13 @@ export function parseWorkItemDetailSearch(raw: unknown): WorkItemDetailSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
   return {
     ...parseWorkItemHierarchySearch(candidate),
+    ...parseWorkItemRelationsSearch(candidate),
+    ...parseWorkItemDetailSectionsSearch(candidate),
+    ...parseWorkItemApprovalRequestSearch(candidate),
+    ...(typeof candidate.comment === "string" &&
+    /^[A-Za-z0-9_-]{1,256}$/u.test(candidate.comment)
+      ? { comment: candidate.comment }
+      : {}),
     ...(candidate.activity === "comments" || candidate.activity === "public"
       ? { activity: candidate.activity }
       : {}),
@@ -294,22 +317,39 @@ export function parseSavedViewUrlSearchFromQueryString(queryString: string) {
     columns: params.get("columns") ?? undefined,
     item: params.get("item") ?? undefined,
     hierarchy: params.get("hierarchy") ?? undefined,
+    relations: params.get("relations") ?? undefined,
+    approvalRequest: params.get("approvalRequest") ?? undefined,
+    sections: params.get("sections") ?? undefined,
   });
 }
 
-export type ProjectBacklogSearch = WorkItemHierarchySearch & {
-  filter?: string;
-  filterMode?: "visual" | "text";
-  item?: string;
-};
+export type ProjectBacklogSearch = WorkItemApprovalRequestSearch &
+  WorkItemHierarchySearch &
+  WorkItemRelationsSearch &
+  WorkItemDetailSectionsSearch & {
+    filter?: string;
+    filterMode?: "visual" | "text";
+    item?: string;
+  };
 
 export function parseProjectBacklogSearch(raw: unknown): ProjectBacklogSearch {
-  const { filter, filterMode, item, hierarchy } = parseWorkItemQueryState(raw);
+  const {
+    filter,
+    filterMode,
+    item,
+    hierarchy,
+    relations,
+    approvalRequest,
+    sections,
+  } = parseWorkItemQueryState(raw);
   return {
     ...(filter ? { filter } : {}),
     ...(filterMode ? { filterMode } : {}),
     ...(item ? { item } : {}),
     ...(hierarchy ? { hierarchy } : {}),
+    ...(relations ? { relations } : {}),
+    ...(approvalRequest ? { approvalRequest } : {}),
+    ...(sections ? { sections } : {}),
   };
 }
 
@@ -322,6 +362,9 @@ export function parseProjectBacklogSearchFromQueryString(
     filterMode: params.get("filterMode") ?? undefined,
     item: params.get("item") ?? undefined,
     hierarchy: params.get("hierarchy") ?? undefined,
+    relations: params.get("relations") ?? undefined,
+    approvalRequest: params.get("approvalRequest") ?? undefined,
+    sections: params.get("sections") ?? undefined,
   });
 }
 
@@ -343,15 +386,19 @@ export function parseAgentInboxSearchFromQueryString(
 }
 
 export type AgentMyWorkLens = "assigned" | "watching" | "approvals";
-export type AgentMyWorkSearch = WorkItemHierarchySearch & {
-  lens?: Exclude<AgentMyWorkLens, "assigned">;
-  q?: string;
-  item?: string;
-};
+export type AgentMyWorkSearch = WorkItemApprovalRequestSearch &
+  WorkItemHierarchySearch &
+  WorkItemRelationsSearch &
+  WorkItemDetailSectionsSearch & {
+    lens?: Exclude<AgentMyWorkLens, "assigned">;
+    q?: string;
+    item?: string;
+  };
 
 export function parseAgentMyWorkSearch(raw: unknown): AgentMyWorkSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
-  const { item, hierarchy } = parseWorkItemQueryState(raw);
+  const { item, hierarchy, relations, approvalRequest, sections } =
+    parseWorkItemQueryState(raw);
   const q =
     typeof value.q === "string" && value.q.trim()
       ? value.q.trim().slice(0, 200)
@@ -363,6 +410,9 @@ export function parseAgentMyWorkSearch(raw: unknown): AgentMyWorkSearch {
     ...(q ? { q } : {}),
     ...(item ? { item } : {}),
     ...(hierarchy ? { hierarchy } : {}),
+    ...(relations ? { relations } : {}),
+    ...(approvalRequest ? { approvalRequest } : {}),
+    ...(sections ? { sections } : {}),
   };
 }
 
@@ -375,6 +425,9 @@ export function parseAgentMyWorkSearchFromQueryString(
     q: params.get("q") ?? undefined,
     item: params.get("item") ?? undefined,
     hierarchy: params.get("hierarchy") ?? undefined,
+    relations: params.get("relations") ?? undefined,
+    approvalRequest: params.get("approvalRequest") ?? undefined,
+    sections: params.get("sections") ?? undefined,
   });
 }
 
@@ -643,7 +696,7 @@ export const routes = {
       return `/agent/triage?${query.toString()}`;
     },
   },
-  /** Customer portal's P0 disabled landing page, rooted on its separate origin. */
+  /** Customer portal home, rooted on its separate origin. */
   portalHome: {
     path: "/" as const,
     build: () => "/",
@@ -670,6 +723,24 @@ export const routes = {
       return suffix ? `/catalogue?${suffix}` : "/catalogue";
     },
   },
+  portalRequests: {
+    path: "/requests" as const,
+    build: (search: { cursor?: string } = {}) => {
+      const { cursor } = parsePortalRequestsSearch(search);
+      return cursor
+        ? `/requests?${new URLSearchParams({ cursor })}`
+        : "/requests";
+    },
+  },
+  portalApprovals: {
+    path: "/approvals" as const,
+    build: (search: { approval?: string } = {}) => {
+      const { approval } = parsePortalApprovalsSearch(search);
+      return approval
+        ? `/approvals?${new URLSearchParams({ approval })}`
+        : "/approvals";
+    },
+  },
   portalSubmission: {
     path: "/submissions/$ref" as const,
     build: (params: { ref: string }) =>
@@ -694,6 +765,9 @@ export const routes = {
         columns: resolved.columns,
         item: resolved.item,
         hierarchy: resolved.hierarchy,
+        relations: resolved.relations,
+        approvalRequest: resolved.approvalRequest,
+        sections: resolved.sections,
       });
       return `/agent/projects/${encodeURIComponent(params.projectKey)}/work?${query.toString()}`;
     },
@@ -712,6 +786,12 @@ export const routes = {
       if (resolved.item) query.set("item", resolved.item);
       if (resolved.hierarchy)
         query.set("hierarchy", JSON.stringify(resolved.hierarchy));
+      if (resolved.relations)
+        query.set("relations", JSON.stringify(resolved.relations));
+      if (resolved.approvalRequest)
+        query.set("approvalRequest", JSON.stringify(resolved.approvalRequest));
+      if (resolved.sections)
+        query.set("sections", JSON.stringify(resolved.sections));
       const suffix = query.toString();
       const base = `/agent/projects/${encodeURIComponent(params.projectKey)}/backlog`;
       return suffix ? `${base}?${suffix}` : base;
@@ -733,8 +813,15 @@ export const routes = {
       const resolved = parseWorkItemDetailSearch(search);
       const query = new URLSearchParams();
       if (resolved.activity) query.set("activity", resolved.activity);
+      if (resolved.comment) query.set("comment", resolved.comment);
       if (resolved.hierarchy)
         query.set("hierarchy", JSON.stringify(resolved.hierarchy));
+      if (resolved.relations)
+        query.set("relations", JSON.stringify(resolved.relations));
+      if (resolved.approvalRequest)
+        query.set("approvalRequest", JSON.stringify(resolved.approvalRequest));
+      if (resolved.sections)
+        query.set("sections", JSON.stringify(resolved.sections));
       const suffix = query.toString();
       return `/agent/work-items/${encodeURIComponent(params.key)}${suffix ? `?${suffix}` : ""}`;
     },
@@ -770,6 +857,19 @@ export const routes = {
     },
   },
   /** God Mode Users directory and its query-string-backed selection/filters. */
+  notificationProvider: {
+    path: "/agent/god-mode/notifications" as const,
+    build: () => "/agent/god-mode/notifications",
+  },
+  godModeAudit: {
+    path: "/agent/god-mode/audit" as const,
+    build: (search: { action?: string; limit?: number } = {}) => {
+      const resolved = parseInstanceAuditSearch(search);
+      const params = new URLSearchParams({ limit: String(resolved.limit) });
+      if (resolved.action) params.set("action", resolved.action);
+      return `/agent/god-mode/audit?${params}`;
+    },
+  },
   godModeUsers: {
     path: "/agent/god-mode/users" as const,
     build: (search: Partial<GodModeUsersSearch> = {}) => {
@@ -854,6 +954,12 @@ export const routes = {
       if (resolved.item) query.set("item", resolved.item);
       if (resolved.hierarchy)
         query.set("hierarchy", JSON.stringify(resolved.hierarchy));
+      if (resolved.relations)
+        query.set("relations", JSON.stringify(resolved.relations));
+      if (resolved.approvalRequest)
+        query.set("approvalRequest", JSON.stringify(resolved.approvalRequest));
+      if (resolved.sections)
+        query.set("sections", JSON.stringify(resolved.sections));
       const suffix = query.toString();
       return suffix ? `/agent/my-work?${suffix}` : "/agent/my-work";
     },
@@ -877,6 +983,10 @@ export const routes = {
   profileSettings: {
     path: "/agent/settings/profile" as const,
     build: () => "/agent/settings/profile",
+  },
+  profileNotifications: {
+    path: "/agent/settings/profile/notifications" as const,
+    build: () => "/agent/settings/profile/notifications",
   },
   profileAppearance: {
     path: "/agent/settings/profile/appearance" as const,
@@ -965,5 +1075,46 @@ export function parseWorkItemListSearchFromQueryString(
     columns: params.get("columns") ?? undefined,
     item: params.get("item") ?? undefined,
     hierarchy: params.get("hierarchy") ?? undefined,
+    relations: params.get("relations") ?? undefined,
+    approvalRequest: params.get("approvalRequest") ?? undefined,
+    sections: params.get("sections") ?? undefined,
   });
+}
+
+/** Opaque portal request cursors remain URL state; malformed values are discarded. */
+export function parsePortalRequestsSearch(raw: unknown): { cursor?: string } {
+  if (!raw || typeof raw !== "object") return {};
+  const cursor = (raw as Record<string, unknown>).cursor;
+  return typeof cursor === "string" &&
+    cursor.length > 0 &&
+    cursor.length <= 2048 &&
+    /^[A-Za-z0-9_-]+$/u.test(cursor)
+    ? { cursor }
+    : {};
+}
+
+export function parsePortalApprovalsSearch(raw: unknown): {
+  approval?: string;
+} {
+  if (!raw || typeof raw !== "object") return {};
+  const approval = (raw as Record<string, unknown>).approval;
+  return typeof approval === "string" &&
+    approval.length > 0 &&
+    approval.length <= 256 &&
+    /^[A-Za-z0-9_-]+$/u.test(approval)
+    ? { approval }
+    : {};
+}
+
+export function parseInstanceAuditSearch(raw: unknown): {
+  action: string;
+  limit: number;
+} {
+  const value =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const limit = Number(value.limit);
+  return {
+    action: typeof value.action === "string" ? value.action.slice(0, 256) : "",
+    limit: [25, 50, 100, 200].includes(limit) ? limit : 50,
+  };
 }

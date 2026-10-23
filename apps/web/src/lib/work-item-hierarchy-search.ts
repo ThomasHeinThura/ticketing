@@ -6,14 +6,19 @@ export const HIERARCHY_AUTO_RESTORE_PAGES = 3;
 export type HierarchyUrlState = {
   itemKey: string;
   collapsed?: true;
+  mode?: "tree";
   expanded?: string[];
   pages?: Record<string, number>;
 };
 export type WorkItemHierarchySearch = { hierarchy?: HierarchyUrlState };
-const key = (value: unknown): value is string =>
+export const isWorkItemHierarchyKey = (value: unknown): value is string =>
   typeof value === "string" &&
-  value.length <= 64 &&
-  /^[A-Z][A-Z0-9]*-[1-9]\d*$/u.test(value);
+  value.length <= HIERARCHY_URL_MAX_LENGTH &&
+  Array.from(value).every((character) => {
+    const code = character.codePointAt(0) ?? 0;
+    return code >= 32 && code !== 127;
+  }) &&
+  /^.+-[1-9]\d*$/u.test(value);
 
 export function parseWorkItemHierarchySearch(
   raw: unknown,
@@ -41,7 +46,7 @@ export function parseWorkItemHierarchySearch(
     return {};
   const value = input as Record<string, unknown>;
   if (
-    !key(value.itemKey) ||
+    !isWorkItemHierarchyKey(value.itemKey) ||
     Object.keys(value).some((k) =>
       ["__proto__", "constructor", "prototype"].includes(k),
     )
@@ -65,7 +70,8 @@ export function parseWorkItemHierarchySearch(
       return {};
   }
   const expanded =
-    Array.isArray(value.expanded) && value.expanded.every(key)
+    Array.isArray(value.expanded) &&
+    value.expanded.every(isWorkItemHierarchyKey)
       ? [...new Set(value.expanded)]
       : undefined;
   const pages =
@@ -75,7 +81,7 @@ export function parseWorkItemHierarchySearch(
       ? Object.fromEntries(
           Object.entries(value.pages).filter(
             ([k, n]) =>
-              key(k) &&
+              isWorkItemHierarchyKey(k) &&
               typeof n === "number" &&
               Number.isSafeInteger(n) &&
               n > 1,
@@ -85,6 +91,7 @@ export function parseWorkItemHierarchySearch(
   return {
     hierarchy: {
       itemKey: value.itemKey,
+      ...(value.mode === "tree" ? { mode: "tree" as const } : {}),
       ...(value.collapsed === true ? { collapsed: true } : {}),
       ...(expanded ? { expanded } : {}),
       ...(pages && Object.keys(pages).length

@@ -1,7 +1,19 @@
 import {
+  parseWorkItemApprovalRequestSearch,
+  type WorkItemApprovalRequestSearch,
+} from "./work-item-approval-request-search";
+import {
+  parseWorkItemDetailSectionsSearch,
+  type WorkItemDetailSectionsSearch,
+} from "./work-item-detail-sections-search";
+import {
   parseWorkItemHierarchySearch,
   type WorkItemHierarchySearch,
 } from "./work-item-hierarchy-search";
+import {
+  parseWorkItemRelationsSearch,
+  type WorkItemRelationsSearch,
+} from "./work-item-relations-search";
 // URL state for the work-item list route (`/agent/projects/{key}/work`). Kept in its own
 // module so the saved-view screens reuse exactly the same parsing and bounds for the shared
 // query properties (filter text, editor mode, sort, columns) without importing route code.
@@ -57,26 +69,32 @@ export const WORK_ITEM_LIST_LAYOUTS = ["list", "board", "table"] as const;
 export type WorkItemListLayout = (typeof WORK_ITEM_LIST_LAYOUTS)[number];
 
 /** The query properties a work-item search shares with a saved view. Each is optional. */
-export type WorkItemQueryState = WorkItemHierarchySearch & {
-  sort?: WorkItemSortField;
-  dir?: WorkItemSortDirection;
-  filter?: string;
-  filterMode?: WorkItemFilterMode;
-  columns?: WorkItemSearchColumn[];
-  /** Addressable side-pane selection (`VW-4`, `?item={key}`). */
-  item?: string;
-};
+export type WorkItemQueryState = WorkItemApprovalRequestSearch &
+  WorkItemHierarchySearch &
+  WorkItemRelationsSearch &
+  WorkItemDetailSectionsSearch & {
+    sort?: WorkItemSortField;
+    dir?: WorkItemSortDirection;
+    filter?: string;
+    filterMode?: WorkItemFilterMode;
+    columns?: WorkItemSearchColumn[];
+    /** Addressable side-pane selection (`VW-4`, `?item={key}`). */
+    item?: string;
+  };
 
-export type WorkItemListSearch = WorkItemHierarchySearch & {
-  layout: WorkItemListLayout;
-  sort: WorkItemSortField;
-  dir: WorkItemSortDirection;
-  filter?: string;
-  filterMode?: WorkItemFilterMode;
-  columns?: WorkItemSearchColumn[];
-  /** Addressable side-pane selection (`VW-4`, `?item={key}`). */
-  item?: string;
-};
+export type WorkItemListSearch = WorkItemApprovalRequestSearch &
+  WorkItemHierarchySearch &
+  WorkItemRelationsSearch &
+  WorkItemDetailSectionsSearch & {
+    layout: WorkItemListLayout;
+    sort: WorkItemSortField;
+    dir: WorkItemSortDirection;
+    filter?: string;
+    filterMode?: WorkItemFilterMode;
+    columns?: WorkItemSearchColumn[];
+    /** Addressable side-pane selection (`VW-4`, `?item={key}`). */
+    item?: string;
+  };
 
 export const DEFAULT_WORK_ITEM_LIST_SEARCH: Pick<
   WorkItemListSearch,
@@ -171,7 +189,10 @@ export function parseWorkItemQueryState(raw: unknown): WorkItemQueryState {
   const candidate = (raw ?? {}) as Record<string, unknown>;
   const columns = parseColumns(candidate.columns);
   return {
+    ...parseWorkItemApprovalRequestSearch(candidate),
     ...parseWorkItemHierarchySearch(candidate),
+    ...parseWorkItemRelationsSearch(candidate),
+    ...parseWorkItemDetailSectionsSearch(candidate),
     ...(isWorkItemSortField(candidate.sort) ? { sort: candidate.sort } : {}),
     ...(isWorkItemSortDirection(candidate.dir) ? { dir: candidate.dir } : {}),
     ...(typeof candidate.filter === "string" &&
@@ -219,7 +240,11 @@ export function appendWorkItemQueryState(
   if (state.filterMode) query.set("filterMode", state.filterMode);
   if (state.columns) query.set("columns", JSON.stringify(state.columns));
   if (state.item) query.set("item", state.item);
+  if (state.sections) query.set("sections", JSON.stringify(state.sections));
   if (state.hierarchy) query.set("hierarchy", JSON.stringify(state.hierarchy));
+  if (state.relations) query.set("relations", JSON.stringify(state.relations));
+  if (state.approvalRequest)
+    query.set("approvalRequest", JSON.stringify(state.approvalRequest));
 }
 
 /** The inverse direction, for a column-header sort toggle. */

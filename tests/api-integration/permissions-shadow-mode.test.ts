@@ -37,6 +37,7 @@ import {
   grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 // This file resets the complete app module graph to test the import-time shadow
 // switch. Avoid the shared createApp mock here so each fresh graph retains its
@@ -784,6 +785,11 @@ describe("observer-only provenance for masked native read denials", () => {
       isDefault: true,
       createdAt: now,
       updatedAt: now,
+    });
+    await ensureCreationWorkflow({
+      workspaceId: owner.workspace.id,
+      projectId: project.id,
+      typeId: type.id,
     });
 
     const created = await fresh.app.request(

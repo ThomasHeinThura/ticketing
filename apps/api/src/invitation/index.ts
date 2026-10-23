@@ -5,6 +5,10 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
 import { requireInvitationWorkspaceAccess } from "../utils/require-invitation-workspace-access";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
@@ -12,7 +16,6 @@ import { requireWorkspacePermission } from "../utils/require-workspace-permissio
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
 import { WorkspaceRoleNotFoundError } from "../workspace/controllers/workspace-membership-errors";
 import acceptInvitationCtrl from "./controllers/accept-invitation";
-import cancelInvitationCtrl from "./controllers/cancel-invitation";
 import getUserPendingInvitations from "./controllers/get-user-pending-invitations";
 import {
   AlreadyWorkspaceMemberError,
@@ -22,9 +25,9 @@ import {
   NotInvitationRecipientError,
 } from "./controllers/invitation-action-errors";
 import rejectInvitationCtrl from "./controllers/reject-invitation";
+import { INVITATION_DELETION_ROUTE } from "./invitation-deletion-target";
 import {
   acceptedInvitationSchema,
-  canceledInvitationSchema,
   invitationDetailsSchema,
   pendingInvitationListSchema,
   rejectedInvitationSchema,
@@ -167,7 +170,7 @@ const cancelInvitationRoute = createRoute({
   tags: ["Invitations"],
   summary: "Cancel an invitation",
   description:
-    "Cancel a pending invitation. Native replacement for authClient.organization.cancelInvitation().",
+    "Request cancellation of a pending invitation. Native replacement for authClient.organization.cancelInvitation(). Returns a durable pending action (202); the invitation stays pending until the requester approves in a current browser session.",
   middleware: [
     requireSessionOnly(),
     requireInvitationWorkspaceAccess(),
@@ -177,13 +180,17 @@ const cancelInvitationRoute = createRoute({
   ] as const,
   request: { params: invitationParam },
   responses: {
-    200: jsonResponse("The canceled invitation", canceledInvitationSchema),
+    202: jsonResponse(
+      "Pending cancellation; invitation unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse("The invitation is no longer pending"),
     401: errorResponse("No credential at all"),
     403: errorResponse(
       "An API key or impersonation session (session_required), no workspace access, or missing invitation:cancel permission",
     ),
     404: errorResponse("No invitation with this id"),
+    409: errorResponse("An equivalent cancellation is already pending"),
   },
 });
 
@@ -258,21 +265,12 @@ const invitation = apiRouter()
     }
   })
   .openapi(cancelInvitationRoute, async (c) => {
-    try {
-      const canceled = await cancelInvitationCtrl(
-        c.req.valid("param").id,
-        c.get("userId"),
-      );
-      return c.json(canceled, 200);
-    } catch (error) {
-      if (error instanceof InvitationNotFoundError) {
-        throw new HTTPException(404, { message: error.message });
-      }
-      if (error instanceof InvitationNotPendingError) {
-        throw new HTTPException(400, { message: error.message });
-      }
-      throw error;
-    }
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: INVITATION_DELETION_ROUTE,
+      targetType: "invitation",
+      id: c.req.valid("param").id,
+    });
+    return c.json(pending, 202);
   });
 
 export default invitation;

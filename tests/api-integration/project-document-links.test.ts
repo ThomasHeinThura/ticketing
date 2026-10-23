@@ -12,6 +12,11 @@ import {
   grantProjectManageAccess,
   grantProjectRole,
 } from "./helpers/fixtures";
+import {
+  approvePendingDeletion,
+  ensureAgentSession,
+  type PendingDeletionBody,
+} from "./helpers/pending-deletion";
 
 async function listDocumentLinks(projectId: string) {
   const { app } = createApp();
@@ -127,6 +132,7 @@ describe("API integration: project document links", () => {
     await grantProjectManageAccess(member.user.id, project.id);
     await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
+    await ensureAgentSession(member.user.id);
 
     const addResponse = await addDocumentLink(project.id, {
       url: "https://example.com/sow.pdf",
@@ -144,8 +150,18 @@ describe("API integration: project document links", () => {
     const listed = (await listResponse.json()) as Array<{ id: string }>;
     expect(listed.map((l) => l.id)).toEqual([added.id]);
 
+    // DELETE only requests: 202, and the link is still listed until the requester approves.
     const deleteResponse = await deleteDocumentLink(project.id, added.id);
-    expect(deleteResponse.status).toBe(200);
+    expect(deleteResponse.status).toBe(202);
+    const pending = (await deleteResponse.json()) as PendingDeletionBody;
+    const stillListed = (await (
+      await listDocumentLinks(project.id)
+    ).json()) as Array<{ id: string }>;
+    expect(stillListed.map((l) => l.id)).toEqual([added.id]);
+
+    const { app } = createApp();
+    const approved = await approvePendingDeletion(app, member.user.id, pending);
+    expect(approved.status, await approved.clone().text()).toBe(200);
 
     const secondDelete = await deleteDocumentLink(project.id, added.id);
     expect(secondDelete.status).toBe(404);

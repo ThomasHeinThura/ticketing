@@ -1,7 +1,12 @@
 import { render } from "@react-email/components";
 import { config } from "dotenv-mono";
-import * as nodemailer from "nodemailer";
 import { getSmtpTransportOptions, isSmtpConfigured } from "./smtp-config";
+import {
+  executeSmtp,
+  resolveSmtpConfiguration,
+  SmtpAttemptError,
+  setBootstrapSmtpConfigurationResolver,
+} from "./smtp-execution";
 import type { MagicLinkEmailProps } from "./templates/magic-link";
 import MagicLinkEmail from "./templates/magic-link";
 import NotificationEmail, {
@@ -20,8 +25,33 @@ import WorkspaceInvitationEmail, {
 } from "./templates/workspace-invitation";
 
 config();
+setBootstrapSmtpConfigurationResolver(() => {
+  if (!isSmtpConfigured()) return null;
+  return {
+    options: getSmtpTransportOptions(),
+    from: process.env.SMTP_FROM ?? "",
+  };
+});
 
-const transporter = nodemailer.createTransport(getSmtpTransportOptions());
+async function sendRendered(
+  to: string,
+  subject: string,
+  html: string,
+  options: {
+    signal?: AbortSignal;
+    deadlineMs?: number;
+    idempotencyKey?: string;
+  } = {},
+) {
+  const smtp = await resolveSmtpConfiguration();
+  if (!smtp) return false;
+  await executeSmtp(
+    smtp,
+    { to, subject, html, idempotencyKey: options.idempotencyKey },
+    options,
+  );
+  return true;
+}
 
 export const sendMagicLinkEmail = async (
   to: string,
@@ -29,16 +59,8 @@ export const sendMagicLinkEmail = async (
   data: MagicLinkEmailProps,
 ) => {
   const emailTemplate = await render(MagicLinkEmail(data));
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to,
-      subject,
-      html: emailTemplate,
-    });
-  } catch (error) {
-    console.error("Error sending magic link email", error);
-  }
+  if (!(await sendRendered(to, subject, emailTemplate)))
+    throw new SmtpAttemptError("unavailable");
 };
 
 export const sendOtpEmail = async (
@@ -47,16 +69,8 @@ export const sendOtpEmail = async (
   data: OtpEmailProps,
 ) => {
   const emailTemplate = await render(OtpEmail(data));
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to,
-      subject,
-      html: emailTemplate,
-    });
-  } catch (error) {
-    console.error("Error sending OTP email", error);
-  }
+  if (!(await sendRendered(to, subject, emailTemplate)))
+    throw new SmtpAttemptError("unavailable");
 };
 
 export const sendPasswordResetEmail = async (
@@ -65,16 +79,8 @@ export const sendPasswordResetEmail = async (
   data: PasswordResetEmailProps,
 ) => {
   const emailTemplate = await render(PasswordResetEmail(data));
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to,
-      subject,
-      html: emailTemplate,
-    });
-  } catch (error) {
-    console.error("Error sending password reset email", error);
-  }
+  if (!(await sendRendered(to, subject, emailTemplate)))
+    throw new SmtpAttemptError("unavailable");
 };
 
 export type EmailResult = {
@@ -85,6 +91,9 @@ export type EmailResult = {
 export type NotificationEmailSendOptions = {
   /** Rechecked after rendering and immediately before handing the message to SMTP. */
   authorize?: () => Promise<boolean>;
+  signal?: AbortSignal;
+  deadlineMs?: number;
+  idempotencyKey?: string;
 };
 
 export const sendWorkspaceInvitationEmail = async (
@@ -92,25 +101,10 @@ export const sendWorkspaceInvitationEmail = async (
   subject: string,
   data: WorkspaceInvitationEmailProps,
 ): Promise<EmailResult> => {
-  if (!isSmtpConfigured()) {
+  const emailTemplate = await render(WorkspaceInvitationEmail({ ...data, to }));
+  if (!(await sendRendered(to, subject, emailTemplate)))
     return { success: false, reason: "SMTP_NOT_CONFIGURED" };
-  }
-
-  try {
-    const emailTemplate = await render(
-      WorkspaceInvitationEmail({ ...data, to }),
-    );
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to,
-      subject,
-      html: emailTemplate,
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Error sending workspace invitation email", error);
-    throw error;
-  }
+  return { success: true };
 };
 
 export const sendNotificationEmail = async (
@@ -119,26 +113,22 @@ export const sendNotificationEmail = async (
   data: NotificationEmailProps,
   options: NotificationEmailSendOptions = {},
 ): Promise<EmailResult> => {
-  if (!isSmtpConfigured()) {
-    return { success: false, reason: "SMTP_NOT_CONFIGURED" };
-  }
-
-  try {
-    const emailTemplate = await render(NotificationEmail(data));
-    if (options.authorize && !(await options.authorize())) {
-      return { success: false, reason: "NOT_AUTHORIZED" };
-    }
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
+  const emailTemplate = await render(NotificationEmail(data));
+  const smtp = await resolveSmtpConfiguration();
+  if (!smtp) return { success: false, reason: "SMTP_NOT_CONFIGURED" };
+  if (options.authorize && !(await options.authorize()))
+    return { success: false, reason: "NOT_AUTHORIZED" };
+  await executeSmtp(
+    smtp,
+    {
       to,
       subject,
       html: emailTemplate,
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Error sending notification email", error);
-    throw error;
-  }
+      idempotencyKey: options.idempotencyKey,
+    },
+    options,
+  );
+  return { success: true };
 };
 
 export const sendTrialReminderEmail = async (
@@ -147,14 +137,6 @@ export const sendTrialReminderEmail = async (
   data: TrialReminderEmailProps,
 ) => {
   const emailTemplate = await render(TrialReminderEmail(data));
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to,
-      subject,
-      html: emailTemplate,
-    });
-  } catch (error) {
-    console.error("Error sending trial reminder email", error);
-  }
+  if (!(await sendRendered(to, subject, emailTemplate)))
+    throw new SmtpAttemptError("unavailable");
 };

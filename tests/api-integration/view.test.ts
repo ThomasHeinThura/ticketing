@@ -19,6 +19,7 @@ import {
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 import {
   transferWorkspaceOwnershipNative,
   updateWorkspaceMemberRoleNative,
@@ -259,6 +260,11 @@ describe("API integration: saved views", () => {
         isDefault: true,
         createdAt: now,
         updatedAt: now,
+      });
+      await ensureCreationWorkflow({
+        workspaceId: member.workspace.id,
+        projectId,
+        typeId: type.id,
       });
       const response = await app.request(
         `/api/projects/${projectId}/work-items`,

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { CanonicalMentionPreference } from "@/components/account/canonical-mention-preference";
 import { NotificationPreferencesSettings } from "@/components/account/notification-preferences-settings";
 import PageTitle from "@/components/page-title";
 
@@ -25,6 +26,7 @@ function RouteComponent() {
           </p>
         </div>
 
+        <CanonicalMentionPreference />
         <NotificationPreferencesSettings />
       </div>
     </>

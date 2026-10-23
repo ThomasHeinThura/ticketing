@@ -36,8 +36,17 @@ vi.mock("@/lib/format", () => ({
   formatDateMedium: () => "Sep 1, 2026",
 }));
 
+const { cancelInvitation, openPendingAction } = vi.hoisted(() => ({
+  cancelInvitation: vi.fn(),
+  openPendingAction: vi.fn(),
+}));
+
 vi.mock("@/hooks/mutations/workspace-user/use-cancel-invitation", () => ({
-  default: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  default: () => ({ mutateAsync: cancelInvitation, isPending: false }),
+}));
+
+vi.mock("@/hooks/use-open-pending-action", () => ({
+  useOpenPendingAction: () => openPendingAction,
 }));
 
 const { deleteWorkspaceUser } = vi.hoisted(() => ({
@@ -181,7 +190,8 @@ describe("MembersTable pending invitation row menu", () => {
     );
   });
 
-  it("still opens the cancel confirmation dialog instead of cancelling directly", async () => {
+  it("requests the cancellation directly and opens the in-place approval as the only confirmation", async () => {
+    cancelInvitation.mockResolvedValue({ pendingActionId: "pa-invite" });
     render(
       <MembersTable
         workspaceId="workspace-1"
@@ -202,9 +212,20 @@ describe("MembersTable pending invitation row menu", () => {
       }),
     );
 
+    await waitFor(() =>
+      expect(cancelInvitation).toHaveBeenCalledWith({
+        invitationId: "invite-1",
+        workspaceId: "workspace-1",
+      }),
+    );
+    await waitFor(() =>
+      expect(openPendingAction).toHaveBeenCalledWith({
+        pendingActionId: "pa-invite",
+      }),
+    );
     expect(
-      await screen.findByText("team:membersTable.cancelDialogTitle"),
-    ).toBeVisible();
+      screen.queryByText("team:membersTable.cancelDialogTitle"),
+    ).toBeNull();
     expect(copyToClipboard).not.toHaveBeenCalled();
   });
 

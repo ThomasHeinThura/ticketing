@@ -4,12 +4,30 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemDetail, { type WorkItemDetailProps } from "./work-item-detail";
 
+const device = vi.hoisted(() => ({ mobile: false }));
+const locationState = vi.hoisted(() => ({
+  search: {} as Record<string, unknown>,
+  searchStr: "",
+  pathname: "/agent/work-items/PROJ-123",
+  hash: "",
+}));
+const navigate = vi.hoisted(() => vi.fn());
+vi.mock("@taskdesk/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@taskdesk/ui")>()),
+  useIsMobile: () => device.mobile,
+}));
+
 afterEach(() => {
+  device.mobile = false;
+  locationState.search = {};
+  locationState.searchStr = "";
   cleanup();
   vi.clearAllMocks();
 });
 
 vi.mock("@tanstack/react-router", () => ({
+  useLocation: () => locationState,
+  useNavigate: () => navigate,
   Link: ({
     children,
     ...props
@@ -50,10 +68,15 @@ vi.mock("@/hooks/mutations/approval/use-withdraw-approval", () => ({
   default: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
 }));
 
+vi.mock("./work-item-approval-request", () => ({ default: () => null }));
+
 vi.mock("./work-item-hierarchy", () => ({
   default: () => <div data-testid="work-item-hierarchy" />,
 }));
-vi.mock("./work-item-sla", () => ({ default: () => null }));
+vi.mock("./work-item-relations", () => ({ default: () => null }));
+vi.mock("./work-item-sla", () => ({
+  default: () => <div data-testid="sla-section" />,
+}));
 vi.mock("./work-item-attachments", () => ({ default: () => null }));
 vi.mock("./work-item-activity", () => ({
   default: () => <div data-testid="work-item-activity" />,
@@ -182,6 +205,45 @@ describe("WorkItemDetail", () => {
     expect(screen.getByTestId("work-item-metadata")).toHaveTextContent(
       "Platform",
     );
+  });
+
+  it("keeps an explicitly opened SLA disclosure below the title on narrow screens and mounts it once", () => {
+    device.mobile = true;
+    locationState.search = { sections: { itemKey: "PROJ-123", open: ["sla"] } };
+    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
+    const title = screen.getByTestId("work-item-title");
+    const sla = screen.getByTestId("sla-section");
+    expect(
+      title.compareDocumentPosition(sla) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByTestId("work-item-properties")).not.toContainElement(
+      sla,
+    );
+    expect(screen.getAllByTestId("sla-section")).toHaveLength(1);
+  });
+
+  it("keeps empty supporting panels collapsed and stores disclosure changes without losing URL state", () => {
+    locationState.searchStr = "?activity=comments&comment=comment-id";
+    locationState.hash = "activity";
+    render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
+    expect(screen.queryByTestId("sla-section")).toBeNull();
+    expect(screen.queryByTestId("work-item-approvals")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:detail.sla.heading" }),
+    );
+    const call = navigate.mock.calls.at(-1)?.[0] as {
+      href: string;
+      replace: boolean;
+    };
+    const url = new URL(call.href, "https://taskdesk.example");
+    expect(url.searchParams.get("activity")).toBe("comments");
+    expect(url.searchParams.get("comment")).toBe("comment-id");
+    expect(JSON.parse(url.searchParams.get("sections") ?? "null")).toEqual({
+      itemKey: "PROJ-123",
+      open: ["sla"],
+    });
+    expect(url.hash).toBe("#activity");
+    expect(call.replace).toBe(true);
   });
 
   it("uses kaneo's compact properties strip in the side pane", () => {

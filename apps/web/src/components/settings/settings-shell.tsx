@@ -13,7 +13,13 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
  * `/dashboard/settings/*` pages and the v2 settings pages under `/agent/settings/*`, so
  * every settings screen looks the same.
  */
-export function SettingsShell({ children }: { children: ReactNode }) {
+export function SettingsShell({
+  children,
+  instance = false,
+}: {
+  children: ReactNode;
+  instance?: boolean;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,6 +31,7 @@ export function SettingsShell({ children }: { children: ReactNode }) {
   });
 
   const getActiveTab = () => {
+    if (instance) return "instance";
     const pathname = location.pathname;
     if (
       pathname.includes("/dashboard/settings/account") ||
@@ -145,6 +152,14 @@ export function SettingsShell({ children }: { children: ReactNode }) {
                 >
                   {t("navigation:sidebar.projects")}
                 </TabsTrigger>
+                {instance && (
+                  <TabsTrigger
+                    value="instance"
+                    className="[&[data-state=active]]:rounded-md [&[data-state=active]]:border [&[data-state=active]]:border-border [&[data-state=active]]:bg-card"
+                  >
+                    {t("navigation:sidebar.godMode")}
+                  </TabsTrigger>
+                )}
               </TabsList>
             </Tabs>
           </div>

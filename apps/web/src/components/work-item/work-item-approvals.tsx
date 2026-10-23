@@ -18,6 +18,7 @@ import useGetMyApprovals from "@/hooks/queries/approval/use-get-my-approvals";
 import useGetWorkItemApprovals from "@/hooks/queries/approval/use-get-work-item-approvals";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
+import WorkItemApprovalRequest from "./work-item-approval-request";
 
 const STATE_BADGE_VARIANT = {
   pending: "warning",
@@ -116,6 +117,7 @@ function WorkItemApprovals({
         {t("workItems:detail.approvals.heading")}
       </h2>
 
+      <WorkItemApprovalRequest workItemKey={workItemKey} />
       <p
         role="status"
         className="sr-only"

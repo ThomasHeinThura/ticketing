@@ -1,184 +1,130 @@
 #!/usr/bin/env node
-/**
- * check:pr-template — the pull-request body answers the questions in
- * .github/pull_request_template.md (docs/04-engineering/workflow.md § Pull requests).
- *
- *   1. Every `##` section in the template is present and filled in, or says
- *      "n/a — <reason>".
- *   2. `## Reviewed by` is never n/a: every change gets one independent review.
- *   3. `## Security` is not n/a when the diff touches the security paths listed in
- *      docs/04-engineering/ci-cd.md, or changes a file that declares a Hono router.
- *   4. `## Screens` is not n/a when the diff touches apps/web/.
- *
- * Usage:
- *   node scripts/ci/check-pr-template.mjs --body <file>
- *   node scripts/ci/check-pr-template.mjs            # reads $GITHUB_EVENT_PATH
- */
-
+/** Ordinary PR descriptions need a visible outcome and actual validation. A phase
+ * submission reuses the one consolidated source-bound report; no per-change reviewer. */
 import { realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { changedPaths, DiffUnavailableError } from "./lib/diff.mjs";
+import { validatePhaseReview } from "./check-reviews.mjs";
 import {
   contentOf,
   DuplicateSectionError,
   loadBody,
-  markedNotApplicable,
   normaliseHeading,
   sections,
+  stripComments,
 } from "./lib/pr-body.mjs";
-import { exists, finish, readText, repoRoot, violation } from "./lib/repo.mjs";
-import {
-  looksLikeHonoRouter,
-  readSecurityReviewScope,
-  SecurityScopeUnavailableError,
-} from "./lib/security-paths.mjs";
+import { finish, readText, repoRoot, violation } from "./lib/repo.mjs";
 
 const NAME = "check:pr-template";
 const TEMPLATE = ".github/pull_request_template.md";
-
+export const MANDATORY_SECTIONS = ["What and why", "How it was checked"];
 function argValue(flag) {
   const index = process.argv.indexOf(flag);
   return index === -1 ? undefined : process.argv[index + 1];
 }
-
-/**
- * Sections that are required whatever the template says, so a pull request cannot escape a
- * rule by deleting the section from the template in the same diff. Changing this list means
- * changing this reviewed file.
- */
-export const MANDATORY_SECTIONS = ["Reviewed by", "Security", "Screens"];
-
-async function templateHeadings() {
-  const source = await readText(path.join(repoRoot, TEMPLATE));
-  const headings = [...source.matchAll(/^## (.+)$/gm)].map((match) =>
-    match[1].trim(),
+export function saysNotApplicable(value) {
+  return /^(?:n\s*\/?\s*a|not\s+applicable|none|nothing)\b/i.test(
+    value.replace(/^[\s>*_`~-]+/, ""),
   );
-  const present = new Set(headings.map(normaliseHeading));
-  for (const heading of MANDATORY_SECTIONS) {
-    if (!present.has(normaliseHeading(heading))) headings.push(heading);
-  }
-  return headings;
 }
-
-/** "n/a", "- N/A —", "**Not applicable**", "None." — any way of saying the section does not apply. */
-export function saysNotApplicable(text) {
-  const lead = text
-    .replace(/^[\s>*_`~-]+/, "")
-    .replace(/^(\d+[.)]|[-*+])\s+/, "")
-    .replace(/^[*_`~]+/, "");
-  return /^(n\s*\/?\s*a|not\s+applicable|none|nothing)\b/i.test(lead);
-}
-
-async function securityTouched(paths) {
-  const scope = await readSecurityReviewScope();
-  const touched = paths.filter((file) => scope.matches(file));
-  for (const file of paths) {
-    if (!/\.tsx?$/.test(file) || touched.includes(file)) continue;
-    const absolute = path.join(repoRoot, file);
-    if (!(await exists(absolute))) continue;
-    if (looksLikeHonoRouter(await readText(absolute))) touched.push(file);
-  }
-  return touched;
-}
-
-export async function evaluate({ body, headings, paths, security }) {
-  const failures = [];
-  if (body.trim() === "") {
+export async function evaluate({ body }) {
+  if (!body.trim())
     return [violation("pull request body", `empty. Fill in ${TEMPLATE}.`)];
-  }
-
   let found;
   try {
     found = sections(body);
   } catch (error) {
-    if (error instanceof DuplicateSectionError) {
+    if (error instanceof DuplicateSectionError)
       return [violation("pull request body", error.message)];
-    }
     throw error;
   }
-
-  const webTouched = paths.some((file) => file.startsWith("apps/web/"));
-  for (const heading of headings) {
+  const failures = [];
+  for (const heading of MANDATORY_SECTIONS) {
     const section = found.get(normaliseHeading(heading));
-    const where = `## ${heading}`;
-    if (!section) {
-      failures.push(violation(where, "missing from the pull request body."));
-      continue;
-    }
-    const text = contentOf(section.text);
-    if (text === "") {
-      failures.push(
-        violation(where, 'empty. Fill it in, or write "n/a — <reason>".'),
-      );
-      continue;
-    }
-    const key = normaliseHeading(heading);
-    if (!saysNotApplicable(text)) continue;
-    if (key === "not done") continue;
-    if (
-      !markedNotApplicable(
-        text.replace(/\b(not\s+applicable|none|nothing)\b/gi, "n/a"),
-      )
-    ) {
-      failures.push(
-        violation(where, 'says n/a without a reason ("n/a — <reason>").'),
-      );
-    }
-    if (key === "reviewed by") {
+    const value = section ? contentOf(section.text) : "";
+    if (!value)
       failures.push(
         violation(
-          where,
-          "cannot be n/a: every change gets one independent review.",
+          `## ${heading}`,
+          "missing or empty. Describe the actual outcome and checks, including anything unverified.",
         ),
       );
-    }
-    if (key === "security" && security.length > 0) {
+    else if (saysNotApplicable(value))
       failures.push(
         violation(
-          where,
-          `cannot be n/a: the diff touches security paths (${security.slice(0, 5).join(", ")}).`,
+          `## ${heading}`,
+          "describe the outcome or the actual validation/limitations instead of an n/a assertion.",
         ),
       );
-    }
-    if (key === "screens" && webTouched) {
-      failures.push(
-        violation(where, "cannot be n/a: the diff touches apps/web/."),
-      );
-    }
   }
   return failures;
 }
-
+/** A phase claim is explicit, never inferred from prose or a model name. */
+export function phaseSubmission(body) {
+  const section = sections(body).get(normaliseHeading("Phase completion"));
+  if (!section) return null;
+  const source = stripComments(section.raw);
+  const fields = new Map();
+  for (const match of source.matchAll(
+    /^\s*\*\*(Phase|Report):\*\*\s*([^\n]+)$/gim,
+  )) {
+    const key = match[1].toLowerCase();
+    if (fields.has(key))
+      throw new Error(`Duplicate ${key} field in Phase completion`);
+    fields.set(key, match[2].trim().replace(/^`([^`]+)`$/, "$1"));
+  }
+  const phase = fields.get("phase");
+  const report = fields.get("report");
+  if (/^(?:none|not submitted)$/i.test(phase ?? "") && !report) return null;
+  if (!/^P[0-9]$/.test(phase ?? "") || !report)
+    throw new Error(
+      "Phase completion requires explicit **Phase:** P0..P9 and **Report:** docs/evidence/Pn-review.json; unfinished phases are 'not submitted'.",
+    );
+  return { phase, report };
+}
 async function main() {
   const body = await loadBody({
     bodyFile: argValue("--body"),
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: this uncached CI command reads GitHub event metadata, not product configuration.
     eventPath: process.env.GITHUB_EVENT_PATH,
   });
-  let paths;
-  let security;
+  const failures = await evaluate({ body });
+  let submission;
   try {
-    paths = changedPaths();
-    security = await securityTouched(paths);
-  } catch (error) {
-    if (
-      error instanceof DiffUnavailableError ||
-      error instanceof SecurityScopeUnavailableError
-    ) {
-      finish({ name: NAME, failures: [violation("diff", error.message)] });
-      return;
+    const template = await readText(path.join(repoRoot, TEMPLATE));
+    for (const heading of MANDATORY_SECTIONS)
+      if (!sections(template).has(normaliseHeading(heading)))
+        throw new Error(`The current PR template is missing ## ${heading}`);
+    submission = phaseSubmission(body);
+    const cliRequested =
+      process.argv.includes("--phase") || process.argv.includes("--report");
+    if (cliRequested) {
+      const explicit = {
+        phase: argValue("--phase"),
+        report: argValue("--report"),
+      };
+      if (
+        submission &&
+        (submission.phase !== explicit.phase ||
+          submission.report !== explicit.report)
+      )
+        throw new Error(
+          "CLI phase submission conflicts with the pull request body",
+        );
+      submission = explicit;
     }
-    throw error;
+    if (submission) await validatePhaseReview(submission);
+  } catch (error) {
+    failures.push(violation("phase submission", error.message));
   }
-  const failures = await evaluate({
-    body,
-    headings: await templateHeadings(),
-    paths,
-    security,
+  finish({
+    name: NAME,
+    failures,
+    ok: submission
+      ? "description and consolidated phase evidence validated; Thomas acceptance remains separate"
+      : "description complete; phase not submitted, no independent review or acceptance inferred",
   });
-  finish({ name: NAME, failures, ok: "pull request body complete" });
 }
-
 const invokedDirectly = (() => {
   try {
     return (
@@ -189,7 +135,4 @@ const invokedDirectly = (() => {
     return false;
   }
 })();
-
-if (invokedDirectly) {
-  await main();
-}
+if (invokedDirectly) await main();

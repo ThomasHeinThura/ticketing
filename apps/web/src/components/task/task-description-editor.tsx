@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
+import { TASK_DESCRIPTION_EDITOR_CLASS } from "@/components/task/task-detail-presentation";
 
 type TaskDescriptionEditorProps = {
   value: string;
@@ -7,6 +8,10 @@ type TaskDescriptionEditorProps = {
   placeholder?: string;
   taskId?: string;
   ensureTaskId?: () => Promise<string | null>;
+  /** Create flows stage files in memory instead of uploading to a task that does not exist yet. */
+  onFilesSelected?: (files: File[]) => void;
+  /** The form that owns the editor is locked (for example while a create is running). */
+  disabled?: boolean;
 };
 
 export default function TaskDescriptionEditor({
@@ -15,6 +20,8 @@ export default function TaskDescriptionEditor({
   placeholder,
   taskId,
   ensureTaskId,
+  onFilesSelected,
+  disabled,
 }: TaskDescriptionEditorProps) {
   const { t } = useTranslation();
 
@@ -25,8 +32,10 @@ export default function TaskDescriptionEditor({
       placeholder={placeholder ?? t("tasks:detail.addDescription")}
       taskId={taskId}
       ensureTaskId={ensureTaskId}
+      onFilesSelected={onFilesSelected}
       uploadSurface="description"
-      className="[&_.taskdesk-comment-editor-content_.ProseMirror]:min-h-[11rem] [&_.taskdesk-comment-editor-content_.ProseMirror]:max-h-none [&_.taskdesk-comment-editor-content_.ProseMirror]:overflow-visible [&_.taskdesk-comment-editor-content_.ProseMirror]:px-0 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-1 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-2"
+      disabled={disabled}
+      className={TASK_DESCRIPTION_EDITOR_CLASS}
     />
   );
 }

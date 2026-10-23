@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   Button,
+  Checkbox,
   CircularProgress,
   Collapsible,
   CollapsibleContent,
@@ -10,8 +11,10 @@ import {
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback } from "@/components/avatar";
 import { useGetHierarchyChildren } from "@/hooks/queries/work-item/use-get-hierarchy-children";
 import { getColumnIcon } from "@/lib/column";
+import { getInitials } from "@/lib/get-initials";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import {
@@ -97,6 +100,7 @@ export default function WorkItemHierarchy({
     update,
   };
   const open = !state.collapsed;
+  const treeMode = state.mode === "tree";
   return (
     <Collapsible
       open={open}
@@ -122,7 +126,7 @@ export default function WorkItemHierarchy({
             ) : (
               <ChevronRight className="size-4" />
             )}
-            {t("workItems:hierarchy.title")}
+            {t("tasks:subtasks.title")}
           </CollapsibleTrigger>
           {first && first.progress.total > 0 ? (
             <span className="flex items-center gap-1.5 ml-0.5">
@@ -142,6 +146,16 @@ export default function WorkItemHierarchy({
             </span>
           ) : null}
         </div>
+        <Button
+          variant="ghost"
+          size="xs"
+          aria-pressed={treeMode}
+          onClick={() =>
+            update({ ...state, mode: treeMode ? undefined : "tree" })
+          }
+        >
+          {t("workItems:hierarchy.title")}
+        </Button>
       </div>
       <CollapsibleContent>
         {expanded.length >= HIERARCHY_URL_MAX_ENTRIES ? (
@@ -153,12 +167,20 @@ export default function WorkItemHierarchy({
           <Skeleton className="h-8 w-full" />
         ) : currentFatal ? (
           <HierarchyError onRetry={() => void currentQuery.refetch()} />
-        ) : path[0] ? (
+        ) : treeMode && path[0] ? (
           <HierarchyNode
-            key={`${workItemKey}:${path[0].key}`}
+            key={`${workItemKey}:${path[0].key}:tree`}
             node={path[0]}
             context={context}
             ancestors={[]}
+          />
+        ) : first ? (
+          <HierarchyNode
+            key={`${workItemKey}:subtasks`}
+            node={{ ...first.parent, hasChildren: true }}
+            context={context}
+            ancestors={[]}
+            hideRow
           />
         ) : null}
       </CollapsibleContent>
@@ -187,15 +209,18 @@ function HierarchyNode({
   node,
   context,
   ancestors,
+  hideRow = false,
 }: {
   node: Node;
   context: Context;
   ancestors: string[];
+  hideRow?: boolean;
 }) {
   const { t } = useTranslation();
   const { currentKey, currentQuery, path, state, expanded, update } = context;
   const isCurrent = node.key === currentKey;
-  const open = expanded.includes(node.key);
+  const treeMode = state.mode === "tree";
+  const open = hideRow || expanded.includes(node.key);
   const otherQuery = useGetHierarchyChildren(
     node.key,
     !isCurrent && open && node.hasChildren,
@@ -245,65 +270,158 @@ function HierarchyNode({
     });
   const complete =
     node.stateCategory === "completed" || node.stateCategory === "cancelled";
+  const assigneeLabel =
+    node.assigneeName ??
+    t(node.assigneeId ? "tasks:assignee.label" : "tasks:assignee.unassigned");
   const nextAncestors = [...ancestors, node.key];
   return (
     <div
       className="flex flex-col mt-1 bg-background"
       data-hierarchy-key={node.key}
     >
-      <div
-        className={`group flex items-center gap-2 py-1 px-2 rounded-md transition-colors ${isCurrent ? "bg-primary/10" : "hover:bg-accent/50"}`}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-6 shrink-0"
-          aria-label={t(
-            open
-              ? "workItems:hierarchy.collapse"
-              : "workItems:hierarchy.expand",
-            { key: node.key },
-          )}
-          aria-expanded={node.hasChildren ? open : undefined}
-          disabled={
-            !node.hasChildren ||
-            (!open && expanded.length >= HIERARCHY_URL_MAX_ENTRIES)
-          }
-          onClick={toggle}
+      {hideRow ? null : treeMode ? (
+        <div
+          className={`group flex items-center gap-2 py-1 px-2 rounded-md transition-colors ${isCurrent ? "bg-primary/10" : "hover:bg-accent/50"}`}
         >
-          {node.hasChildren ? (
-            open ? (
-              <ChevronDown className="size-4" />
-            ) : (
-              <ChevronRight className="size-4" />
-            )
-          ) : (
-            getColumnIcon(node.stateCategory, complete)
-          )}
-        </Button>
-        <Button
-          variant="ghost"
-          className="flex-1 min-w-0 justify-start text-left outline-none"
-          render={
-            <Link
-              to={routes.workItemDetail.path}
-              params={{ key: node.key }}
-              search={{}}
-              aria-current={isCurrent ? "page" : undefined}
-              activeOptions={{ exact: true, includeSearch: false }}
-            />
-          }
-        >
-          <span
-            className={`text-sm truncate block ${complete ? "line-through text-muted-foreground" : "text-foreground"}`}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6 shrink-0"
+            aria-label={t(
+              open
+                ? "workItems:hierarchy.collapse"
+                : "workItems:hierarchy.expand",
+              { key: node.key },
+            )}
+            aria-expanded={node.hasChildren ? open : undefined}
+            disabled={
+              !node.hasChildren ||
+              (!open && expanded.length >= HIERARCHY_URL_MAX_ENTRIES)
+            }
+            onClick={toggle}
           >
-            {node.key} · {node.title}
+            {node.hasChildren ? (
+              open ? (
+                <ChevronDown className="size-4" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )
+            ) : (
+              getColumnIcon(node.stateCategory, complete)
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            className="flex-1 min-w-0 justify-start text-left outline-none"
+            render={
+              <Link
+                to={routes.workItemDetail.path}
+                params={{ key: node.key }}
+                search={{}}
+                aria-current={isCurrent ? "page" : undefined}
+                activeOptions={{ exact: true, includeSearch: false }}
+              />
+            }
+          >
+            <span
+              className={`text-sm truncate block ${complete ? "line-through text-muted-foreground" : "text-foreground"}`}
+            >
+              {node.key} · {node.title}
+            </span>
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {node.stateName}
           </span>
-        </Button>
-        <span className="text-xs text-muted-foreground">{node.stateName}</span>
-      </div>
+        </div>
+      ) : (
+        <div className="group flex items-center gap-2 py-1 px-2 rounded-md transition-colors cursor-default hover:bg-accent/50">
+          <Checkbox
+            checked={complete}
+            readOnly
+            aria-label={`${node.key}: ${node.stateName}`}
+          />
+          <span
+            className="shrink-0 flex items-center justify-center rounded p-0.5 [&_svg]:text-muted-foreground"
+            title={node.stateName}
+            role="img"
+            aria-label={node.stateName}
+          >
+            {getColumnIcon(
+              (
+                {
+                  backlog: "planned",
+                  unstarted: "to-do",
+                  started: "in-progress",
+                  completed: "done",
+                  cancelled: "archived",
+                } as Record<string, string>
+              )[node.stateCategory] ?? node.stateCategory,
+              complete,
+            )}
+          </span>
+          <Button
+            variant="ghost"
+            className="flex-1 min-w-0 justify-start px-0 text-left outline-none"
+            render={
+              <Link
+                to={routes.workItemDetail.path}
+                params={{ key: node.key }}
+                search={{}}
+                aria-label={`${node.key} ${node.title}`}
+                activeOptions={{ exact: true, includeSearch: false }}
+              />
+            }
+          >
+            <span
+              className={`text-sm truncate block ${complete ? "line-through text-muted-foreground" : "text-foreground"}`}
+            >
+              {node.title}
+            </span>
+          </Button>
+          <span
+            className="shrink-0 flex items-center justify-center rounded p-0.5"
+            title={assigneeLabel}
+            role="img"
+            aria-label={assigneeLabel}
+          >
+            {node.assigneeId ? (
+              <Avatar className="h-5 w-5">
+                <AvatarFallback className="text-[9px] font-medium border border-border/30">
+                  {getInitials(node.assigneeName)}
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-border/70 text-[9px] font-medium text-muted-foreground">
+                ?
+              </span>
+            )}
+          </span>
+          {node.hasChildren ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6 shrink-0"
+              aria-label={t(
+                open
+                  ? "workItems:hierarchy.collapse"
+                  : "workItems:hierarchy.expand",
+                { key: node.key },
+              )}
+              aria-expanded={open}
+              disabled={!open && expanded.length >= HIERARCHY_URL_MAX_ENTRIES}
+              onClick={toggle}
+            >
+              {open ? (
+                <ChevronDown className="size-4" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
+            </Button>
+          ) : null}
+        </div>
+      )}
       {open && node.hasChildren ? (
-        <div className="ml-4">
+        <div className={hideRow ? undefined : "ml-4"}>
           {query.isPending ? (
             <Skeleton className="h-8 w-full" />
           ) : fatalError ? (

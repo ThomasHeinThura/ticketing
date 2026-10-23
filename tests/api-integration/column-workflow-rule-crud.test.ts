@@ -14,6 +14,10 @@ import {
   createWorkspaceMember,
   grantProjectManageAccess,
 } from "./helpers/fixtures";
+import {
+  deleteThroughApproval,
+  ensureAgentSession,
+} from "./helpers/pending-deletion";
 
 async function adminWithProject() {
   const member = await createWorkspaceMember({ role: "admin" });
@@ -22,6 +26,8 @@ async function adminWithProject() {
   });
   await grantProjectManageAccess(member.user.id, fixture.project.id);
   mockAuthenticatedSession(member.user);
+  // Column deletion is a pending action; approval re-validates a live session row.
+  await ensureAgentSession(member.user.id);
   return { member, ...fixture };
 }
 
@@ -89,7 +95,7 @@ describe("API integration: column CRUD through the repository", () => {
   });
 
   it("refuses to delete a column that holds tasks, deletes an empty one", async () => {
-    const { project, columns } = await adminWithProject();
+    const { member, project, columns } = await adminWithProject();
     await db.insert(schema.taskTable).values({
       projectId: project.id,
       title: "Keeps the column",
@@ -110,9 +116,23 @@ describe("API integration: column CRUD through the repository", () => {
         .where(eq(schema.columnTable.id, columns.todo.id)),
     ).toHaveLength(1);
 
-    const removed = await call("DELETE", `/api/column/${columns.done.id}`);
-    expect(removed.status).toBe(200);
-    await removed.text();
+    // The empty column's DELETE requests (202); it survives until the requester approves.
+    const { app } = createApp();
+    await deleteThroughApproval(
+      app,
+      member.user,
+      `/api/column/${columns.done.id}`,
+      {
+        afterRequest: async () => {
+          expect(
+            await db
+              .select()
+              .from(schema.columnTable)
+              .where(eq(schema.columnTable.id, columns.done.id)),
+          ).toHaveLength(1);
+        },
+      },
+    );
     expect(
       await db
         .select()

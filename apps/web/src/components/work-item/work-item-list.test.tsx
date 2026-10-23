@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemField } from "@/types/work-item";
@@ -548,7 +549,7 @@ describe("WorkItemList", () => {
   });
 });
 
-describe("WorkItemList: more pages of a filtered result", () => {
+describe("WorkItemList: canonical and filtered pagination", () => {
   it("offers Load more only when the search has more pages, and calls it", () => {
     const onLoadMore = vi.fn();
     const { rerender } = renderWithQueryClient(
@@ -580,6 +581,27 @@ describe("WorkItemList: more pages of a filtered result", () => {
     expect(screen.getByTestId("work-item-list-load-more")).toBeDisabled();
   });
 
+  it("retains rows and refetches after an unusable cursor instead of silently claiming completion", () => {
+    const onRetry = vi.fn();
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+        hasMore={false}
+        isLoadMoreError
+        onRetry={onRetry}
+      />,
+    );
+    expect(screen.getByTestId("work-item-list-populated")).toBeInTheDocument();
+    fireEvent.click(
+      within(screen.getByTestId("work-item-list-page-error")).getByRole(
+        "button",
+      ),
+    );
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
   it("shows nothing extra when there is no further page or no way to load one", () => {
     const { rerender } = renderWithQueryClient(
       <WorkItemList

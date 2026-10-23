@@ -19,6 +19,10 @@ import {
   grantProjectManageAccess,
   requireRow,
 } from "./helpers/fixtures";
+import {
+  deleteThroughApproval,
+  ensureAgentSession,
+} from "./helpers/pending-deletion";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 // Generous tolerance for the time the test itself takes to run between the
@@ -29,6 +33,28 @@ const PURGE_AFTER_TOLERANCE_MS = 5000;
 async function deleteRequest(projectId: string) {
   const { app } = createApp();
   return app.request(`/api/project/${projectId}`, { method: "DELETE" });
+}
+
+/**
+ * `DELETE /api/project/{id}` only requests (202). The soft delete runs when the requester
+ * approves with the exact project name plus step-up; `afterRequest` proves nothing
+ * changed before that.
+ */
+async function deleteProject(
+  member: { user: { id: string } },
+  project: { id: string; name: string },
+) {
+  await ensureAgentSession(member.user.id);
+  const { app } = createApp();
+  return deleteThroughApproval(app, member.user, `/api/project/${project.id}`, {
+    typedName: project.name,
+    afterRequest: async () => {
+      const untouched = await db.query.projectTable.findFirst({
+        where: eq(schema.projectTable.id, project.id),
+      });
+      expect(untouched?.deletedAt).toBeNull();
+    },
+  });
 }
 
 async function getRequest(projectId: string) {
@@ -149,8 +175,7 @@ describe("API integration: project soft delete", () => {
     await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
-    const response = await deleteRequest(project.id);
-    expect(response.status).toBe(200);
+    await deleteProject(member, project);
 
     const row = await db.query.projectTable.findFirst({
       where: eq(schema.projectTable.id, project.id),
@@ -170,8 +195,7 @@ describe("API integration: project soft delete", () => {
     mockAuthenticatedSession(member.user);
 
     const beforeDelete = Date.now();
-    const response = await deleteRequest(project.id);
-    expect(response.status).toBe(200);
+    await deleteProject(member, project);
 
     const row = await db.query.projectTable.findFirst({
       where: eq(schema.projectTable.id, project.id),
@@ -201,8 +225,7 @@ describe("API integration: project soft delete", () => {
     await grantProjectManageAccess(member.user.id, deleted.id);
     mockAuthenticatedSession(member.user);
 
-    const deleteResponse = await deleteRequest(deleted.id);
-    expect(deleteResponse.status).toBe(200);
+    await deleteProject(member, deleted);
 
     const listResponse = await listRequest(member.workspace.id);
     expect(listResponse.status).toBe(200);
@@ -219,8 +242,7 @@ describe("API integration: project soft delete", () => {
     await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
-    const deleteResponse = await deleteRequest(project.id);
-    expect(deleteResponse.status).toBe(200);
+    await deleteProject(member, project);
 
     const getResponse = await getRequest(project.id);
     expect(getResponse.status).toBe(404);
@@ -234,8 +256,7 @@ describe("API integration: project soft delete", () => {
     await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
-    const firstDelete = await deleteRequest(project.id);
-    expect(firstDelete.status).toBe(200);
+    await deleteProject(member, project);
 
     const rowAfterFirstDelete = await db.query.projectTable.findFirst({
       where: eq(schema.projectTable.id, project.id),
@@ -264,8 +285,7 @@ describe("API integration: project soft delete", () => {
     const workItem = await makeWorkItemUnder(member.workspace.id, project.id);
     mockAuthenticatedSession(member.user);
 
-    const response = await deleteRequest(project.id);
-    expect(response.status).toBe(200);
+    await deleteProject(member, project);
 
     // If the route had issued a real DELETE, the FK's ON DELETE CASCADE
     // (schema.ts's work_item.project_id) would have removed this row too.

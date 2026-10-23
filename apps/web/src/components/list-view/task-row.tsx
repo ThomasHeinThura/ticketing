@@ -42,6 +42,13 @@ type TaskRowProps = {
   };
   onOpenTask: (taskId: string) => void;
   t: TFunction;
+  taskHref?: string;
+  /** Route-owned sheet opening while modifier clicks retain the real href. */
+  openTaskOnLinkClick?: boolean;
+  disableDragDrop?: boolean;
+  selectionEnabled?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: () => void;
 };
 
 function TaskRow({
@@ -51,6 +58,12 @@ function TaskRow({
   assignee,
   displayPreferences,
   onOpenTask,
+  taskHref,
+  openTaskOnLinkClick = false,
+  disableDragDrop = false,
+  selectionEnabled = true,
+  isSelected,
+  onToggleSelection,
   t,
 }: TaskRowProps) {
   const {
@@ -60,15 +73,20 @@ function TaskRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id });
+  } = useSortable({ id: task.id, disabled: disableDragDrop });
 
-  const { toggleSelection, selected, focused } = useBulkSelectionStore(
+  const {
+    toggleSelection,
+    selected: storeSelected,
+    focused,
+  } = useBulkSelectionStore(
     useShallow((state) => ({
       toggleSelection: state.toggleSelection,
       selected: state.selectedTaskIds.has(task.id),
       focused: state.focusedTaskId === task.id,
     })),
   );
+  const selected = isSelected ?? storeSelected;
   const {
     showAssignees,
     showPriority,
@@ -122,7 +140,10 @@ function TaskRow({
 
     if (e.metaKey || e.ctrlKey) {
       e.preventDefault();
-      toggleSelection(task.id);
+      if (selectionEnabled) {
+        if (onToggleSelection) onToggleSelection();
+        else toggleSelection(task.id);
+      }
       return;
     }
 
@@ -133,6 +154,8 @@ function TaskRow({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Native anchors and controls own their keyboard activation.
+    if (e.target !== e.currentTarget) return;
     if (e.key === "Enter") {
       handleClick(e as unknown as React.MouseEvent);
     }
@@ -158,8 +181,8 @@ function TaskRow({
           "group relative flex items-center gap-3 px-4 py-1.5 transition-colors cursor-pointer",
           selected ? "bg-accent/45" : "hover:bg-accent/60",
         )}
-        {...attributes}
-        {...listeners}
+        {...(disableDragDrop ? { role: "button", tabIndex: 0 } : attributes)}
+        {...(disableDragDrop ? {} : listeners)}
       >
         {showPriority && (
           <div className="flex-shrink-0 first:[&_svg]:h-4 first:[&_svg]:w-4">
@@ -175,7 +198,30 @@ function TaskRow({
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <div className="flex items-center gap-2 justify-between w-full">
             <span className="text-sm text-foreground truncate">
-              {task.title}
+              {taskHref ? (
+                <a
+                  href={taskHref}
+                  aria-label={`${projectSlug}-${task.number} ${task.title}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (
+                      openTaskOnLinkClick &&
+                      event.button === 0 &&
+                      !event.metaKey &&
+                      !event.ctrlKey &&
+                      !event.shiftKey &&
+                      !event.altKey
+                    ) {
+                      event.preventDefault();
+                      onOpenTask(task.id);
+                    }
+                  }}
+                >
+                  {task.title}
+                </a>
+              ) : (
+                task.title
+              )}
             </span>
             <div className="flex items-center gap-1">
               {showLabels && <TaskLabels labels={task.labels ?? []} />}
@@ -313,14 +359,14 @@ function TaskRow({
 
         {showAssignees && (
           <div className="flex-shrink-0">
-            {task.userId ? (
+            {task.userId || task.assigneeId ? (
               <Avatar className="h-6 w-6">
                 <AvatarImage
                   src={assignee?.user?.image ?? ""}
-                  alt={assignee?.user?.name || ""}
+                  alt={assignee?.user?.name ?? task.assigneeName ?? ""}
                 />
                 <AvatarFallback className="text-xs font-medium border border-border/30">
-                  {getInitials(assignee?.user?.name)}
+                  {getInitials(assignee?.user?.name ?? task.assigneeName)}
                 </AvatarFallback>
               </Avatar>
             ) : (

@@ -189,24 +189,8 @@ subscribeToEvent<{
   }
 });
 
-subscribeToEvent<{
-  workspaceId: string;
-  workspaceName: string;
-  ownerEmail: string;
-  ownerId?: string;
-}>("workspace.created", async (data) => {
-  if (data.ownerId) {
-    await createNotification({
-      userId: data.ownerId,
-      type: "workspace_created",
-      eventData: {
-        workspaceName: data.workspaceName,
-      },
-      resourceId: data.workspaceId,
-      resourceType: "workspace",
-    });
-  }
-});
+// `workspace.created` is no longer handled here: the owner's notification is written in the
+// creation transaction by `enqueueNotificationEvent` (workspace/controllers/create-workspace.ts).
 
 subscribeToEvent<{
   taskId: string;

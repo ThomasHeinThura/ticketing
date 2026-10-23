@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -45,8 +46,12 @@ vi.mock("react-i18next", () => ({
 const PortalSignIn = (Route as unknown as { component: ComponentType })
   .component;
 
-function renderSignIn() {
-  return render(<PortalSignIn />);
+function renderSignIn(client = new QueryClient()) {
+  return render(
+    <QueryClientProvider client={client}>
+      <PortalSignIn />
+    </QueryClientProvider>,
+  );
 }
 
 describe("portal sign-in", () => {
@@ -279,4 +284,53 @@ describe("portal sign-in", () => {
     expect(await screen.findByText("auth:twoFactor.title")).toBeTruthy();
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/catalogue" });
   });
+  it.each(["password", "totp", "backup"] as const)(
+    "clears customer A's queries and pending results before customer B enters via %s",
+    async (method) => {
+      const client = new QueryClient();
+      client.setQueryData(["portal", "customer-a", "submissions"], {
+        privateTitle: "A private request",
+      });
+      client.setQueryData(["portal", "submission", "SUB-7"], {
+        privateTitle: "Old unscoped cache",
+      });
+      window.sessionStorage.setItem(
+        "taskdesk:portal-sign-in-email",
+        "customer-b@example.test",
+      );
+      mocks.search = {
+        stage: method === "password" ? "password" : "factor",
+        factor: method === "backup" ? "backup" : "totp",
+      };
+      mocks.signIn.mockResolvedValue({ data: { token: "customer-b-token" } });
+      mocks.verifyTotp.mockResolvedValue({ data: { success: true } });
+      mocks.verifyBackupCode.mockResolvedValue({ data: { success: true } });
+      mocks.getSession.mockResolvedValue({
+        data: {
+          session: { id: "customer-b-session" },
+          user: { id: "customer-b" },
+        },
+      });
+      mocks.navigate.mockImplementation(async ({ to }) => {
+        if (to === "/catalogue")
+          expect(client.getQueryCache().getAll()).toEqual([]);
+      });
+      renderSignIn(client);
+      const field = screen.getByLabelText(
+        method === "password"
+          ? "auth:forms.password"
+          : method === "backup"
+            ? "auth:twoFactor.backupCode"
+            : "auth:twoFactor.authenticatorCode",
+      );
+      fireEvent.change(field, {
+        target: { value: method === "password" ? "valid-password" : "123456" },
+      });
+      fireEvent.submit(field.closest("form") as HTMLFormElement);
+      await waitFor(() =>
+        expect(mocks.navigate).toHaveBeenCalledWith({ to: "/catalogue" }),
+      );
+      expect(client.getQueryCache().getAll()).toEqual([]);
+    },
+  );
 });

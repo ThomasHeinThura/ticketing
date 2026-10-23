@@ -9,6 +9,7 @@ import {
 } from "../utils/reach-mark";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { resolveCommentAuthors } from "./comment-access";
 
 /**
  * `PATCH|DELETE /api/comments/{id}` middleware -- resolves the addressed `comment` row
@@ -115,7 +116,12 @@ export function requireCommentReach(idKey = "id") {
     c.set("workspaceIdSource", "row");
     c.set("workItemId", comment.workItemId);
     c.set("policyScopeResource", "comment");
-    c.set("policyRowFacts", { personId: comment.authorId });
+    const authors = await resolveCommentAuthors(db, [comment.authorId]);
+    c.set("policyRowFacts", {
+      personId: comment.authorId
+        ? (authors.get(comment.authorId) ?? null)
+        : null,
+    });
 
     return next();
   };

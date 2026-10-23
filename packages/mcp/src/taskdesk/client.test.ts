@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TaskDeskClient } from "./client.js";
+import { TaskDeskApiError, TaskDeskClient } from "./client.js";
 
 describe("TaskDeskClient", () => {
   const originalFetch = globalThis.fetch;
@@ -84,8 +84,11 @@ describe("TaskDeskClient", () => {
       auth: auth as never,
     });
 
-    await expect(client.json("/api/task/missing")).rejects.toThrow(
-      "/api/task/missing: Task not found",
-    );
+    const error = await client.json("/api/task/missing").catch((e) => e);
+    expect(error).toBeInstanceOf(TaskDeskApiError);
+    // The trusted message carries no server text; the detail is kept separately so it
+    // can be wrapped as untrusted content.
+    expect(error.message).toBe("/api/task/missing: HTTP 404");
+    expect(error.detail).toBe("Task not found");
   });
 });

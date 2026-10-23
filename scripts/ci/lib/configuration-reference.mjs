@@ -1,15 +1,10 @@
 import path from "node:path";
 import { readText, repoRoot } from "./repo.mjs";
 
-/**
- * docs/05-operations/configuration-reference.md is the single authoritative home for
- * environment variables (AGENTS.md rule 2, CLAUDE.md's identifier-authority table).
- * check:env derives its approved set from that document rather than restating it, so the
- * document cannot drift away from the gate that enforces it.
- */
+/** Maintained bootstrap contract shared by check:env and its regression probes. */
 export const configurationReferencePath = path.join(
   repoRoot,
-  "docs/05-operations/configuration-reference.md",
+  "docs/technical/configuration.md",
 );
 
 const NAME = /^[A-Z][A-Z0-9_]+$/;
@@ -44,7 +39,12 @@ function namesIn(cell) {
  * }>}
  */
 export async function readConfigurationReference() {
-  const source = await readText(configurationReferencePath);
+  return parseConfigurationReference(
+    await readText(configurationReferencePath),
+  );
+}
+
+export function parseConfigurationReference(source) {
   const sections = {
     Required: new Set(),
     Optional: new Set(),

@@ -7,6 +7,10 @@ import {
   jsonResponse,
 } from "../openapi";
 import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
+import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
@@ -34,12 +38,6 @@ import createWorkspaceCtrl, {
   WorkspaceSlugTakenError,
 } from "./controllers/create-workspace";
 import createWorkspaceRoleCtrl from "./controllers/create-workspace-role";
-import deleteWorkspaceCtrl from "./controllers/delete-workspace";
-import deleteWorkspaceRoleCtrl from "./controllers/delete-workspace-role";
-import {
-  WorkspaceDeleteLockBusyError,
-  WorkspaceInUseByIdentityConnectionError,
-} from "./controllers/delete-workspace-role-dependents";
 import getUserWorkspacesCtrl from "./controllers/get-user-workspaces";
 import getWorkspaceDetailCtrl from "./controllers/get-workspace-detail";
 import getWorkspaceInvitationsCtrl from "./controllers/get-workspace-invitations";
@@ -73,15 +71,12 @@ import {
 import {
   InsufficientPermissionToGrantError,
   InvalidPermissionResourceError,
-  RoleAssignedToMembersError,
   RoleLimitReachedError,
   RoleNameReservedError,
   RoleNameTakenError,
 } from "./controllers/workspace-role-errors";
 import {
   activatedWorkspaceSchema,
-  deletedWorkspaceRoleSchema,
-  deletedWorkspaceSchema,
   leftWorkspaceSchema,
   removedWorkspaceMemberSchema,
   transferredWorkspaceOwnershipSchema,
@@ -109,6 +104,10 @@ import {
   workspaceMemberIdParam,
   workspaceRoleParam,
 } from "./schema";
+import {
+  WORKSPACE_DELETION_ROUTE,
+  WORKSPACE_ROLE_DELETION_ROUTE,
+} from "./workspace-deletion-target";
 
 const listWorkspacesRoute = createRoute({
   method: "get",
@@ -290,7 +289,7 @@ const deleteWorkspaceRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Delete a workspace",
   description:
-    "Delete a workspace and everything cascading off it. Native replacement for authClient.organization.delete().",
+    "Request deletion of a workspace and everything cascading off it. Native replacement for authClient.organization.delete(). Returns a durable pending action (202); nothing changes until the requester approves it in a current browser session by typing the exact workspace name and completing step-up.",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -302,14 +301,17 @@ const deleteWorkspaceRoute = createRoute({
   ] as const,
   request: { params: workspaceIdParam },
   responses: {
-    200: jsonResponse("The deleted workspace's id", deletedWorkspaceSchema),
+    202: jsonResponse(
+      "Pending deletion; workspace unchanged",
+      registeredDeletionRequestSchema,
+    ),
     401: errorResponse("No credential at all"),
     403: errorResponse(
       "An API key or impersonation session (session_required), no workspace access, or missing organization:delete permission",
     ),
     404: errorResponse("Workspace not found"),
     409: errorResponse(
-      "Workspace is still referenced as an identity connection default_workspace_id, or workspace access is currently locked",
+      "An equivalent deletion is already pending (execution-time refusals such as an identity connection default_workspace_id are returned by the approval)",
     ),
   },
 });
@@ -741,7 +743,7 @@ const deleteWorkspaceRoleRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Delete a workspace role",
   description:
-    "Delete a custom role. Refused for 'owner' and for a role still assigned to any member. Identified by the role's opaque id, not its name. Native replacement for authClient.organization.deleteRole().",
+    "Request deletion of a custom role (202 pending action, executed on the requester's click approval). Refused for 'owner' and for a role still assigned to any member, at request and again at approval. Identified by the role's opaque id, not its name. Native replacement for authClient.organization.deleteRole().",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -751,9 +753,9 @@ const deleteWorkspaceRoleRoute = createRoute({
   ] as const,
   request: { params: workspaceRoleParam },
   responses: {
-    200: jsonResponse(
-      "The deleted role's id and name",
-      deletedWorkspaceRoleSchema,
+    202: jsonResponse(
+      "Pending deletion; role unchanged",
+      registeredDeletionRequestSchema,
     ),
     400: errorResponse(
       "The role is 'owner', or is still assigned to one or more members",
@@ -763,6 +765,7 @@ const deleteWorkspaceRoleRoute = createRoute({
       "An API key or impersonation session (session_required), no workspace access, or missing ac:delete permission",
     ),
     404: errorResponse("The role does not exist"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -876,25 +879,14 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     }
   })
   .openapi(deleteWorkspaceRoute, async (c) => {
-    try {
-      const deleted = await deleteWorkspaceCtrl(
-        c.get("workspaceId"),
-        requireSessionId(c),
-      );
-      if (!deleted) {
-        throw new HTTPException(404, { message: "Workspace not found" });
-      }
-      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
-      return c.json(deleted, 200);
-    } catch (error) {
-      if (
-        error instanceof WorkspaceInUseByIdentityConnectionError ||
-        error instanceof WorkspaceDeleteLockBusyError
-      ) {
-        throw new HTTPException(409, { message: error.message });
-      }
-      throw error;
-    }
+    const workspaceId = c.get("workspaceId");
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: WORKSPACE_DELETION_ROUTE,
+      targetType: "workspace",
+      id: workspaceId,
+      workspaceId,
+    });
+    return c.json(pending, 202);
   })
   .openapi(activateWorkspaceRoute, async (c) => {
     const activated = await activateWorkspaceCtrl(
@@ -1130,25 +1122,13 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     }
   })
   .openapi(deleteWorkspaceRoleRoute, async (c) => {
-    try {
-      const deleted = await deleteWorkspaceRoleCtrl(
-        c.get("workspaceId"),
-        c.req.valid("param").roleId,
-      );
-      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
-      return c.json(deleted, 200);
-    } catch (error) {
-      if (error instanceof RoleNameReservedError) {
-        throw new HTTPException(400, { message: error.message });
-      }
-      if (error instanceof RoleAssignedToMembersError) {
-        throw new HTTPException(400, { message: error.message });
-      }
-      if (error instanceof WorkspaceRoleNotFoundError) {
-        throw new HTTPException(404, { message: error.message });
-      }
-      throw error;
-    }
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: WORKSPACE_ROLE_DELETION_ROUTE,
+      targetType: "workspace_role",
+      id: c.req.valid("param").roleId,
+      workspaceId: c.get("workspaceId"),
+    });
+    return c.json(pending, 202);
   });
 
 export default workspace;

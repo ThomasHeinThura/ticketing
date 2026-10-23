@@ -572,7 +572,6 @@ describe("API integration: task title activity", () => {
   );
 
   it.each([
-    { operation: "delete", name: "delete-present" },
     { operation: "addLabel", name: "add-missing" },
     { operation: "removeLabel", name: "remove-present" },
   ] as const)(

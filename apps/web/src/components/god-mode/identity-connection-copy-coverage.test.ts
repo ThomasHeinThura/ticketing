@@ -3,10 +3,10 @@ import path from "node:path";
 import en from "@i18n/en-US.json";
 import { describe, expect, it } from "vitest";
 
-const namespace = (en as Record<string, Record<string, unknown>>)
-  .identityConnections as Record<string, unknown>;
-
-function has(key: string): boolean {
+function has(key: string, namespaceName = "identityConnections"): boolean {
+  const namespace = (en as Record<string, Record<string, unknown>>)[
+    namespaceName
+  ];
   const value = key
     .split(".")
     .reduce<unknown>(
@@ -39,8 +39,11 @@ describe("identityConnections copy coverage", () => {
     const missing: string[] = [];
     for (const file of sources) {
       const source = readFileSync(file, "utf8");
+      const namespaceName =
+        source.match(/useTranslation\(\s*"([A-Za-z0-9_]+)"/u)?.[1] ??
+        "identityConnections";
       for (const match of source.matchAll(/\bt\(\s*"([A-Za-z0-9_.]+)"/gu)) {
-        if (!has(match[1] as string))
+        if (!has(match[1] as string, namespaceName))
           missing.push(`${path.basename(file)}: ${match[1]}`);
       }
     }

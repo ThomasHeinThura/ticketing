@@ -61,7 +61,9 @@ import {
 } from "./lib/repo.mjs";
 
 const NAME = "check:ui";
-export const KNOWN_RADIX_RELATIVE_PATH = "KNOWN-RADIX.md";
+// Read-only import registry retained with the documentation reset. This keeps the
+// existing zero-exception boundary without restoring archived agent guidance.
+export const KNOWN_RADIX_RELATIVE_PATH = "docs/technical/ui-boundaries.md";
 
 const EXPECTED_HEADER_CELLS = ["File", "Package", "Reason"];
 

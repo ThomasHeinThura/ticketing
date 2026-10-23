@@ -36,9 +36,6 @@ const scopedExecutor =
 const deleteTaskLabelByName = scopedExecutor(
   taskRepository.deleteTaskLabelByName,
 );
-const deleteTaskReturningId = scopedExecutor(
-  taskRepository.deleteTaskReturningId,
-);
 const findLabelInWorkspaceScope = scopedExecutor(
   taskRepository.findLabelInWorkspaceScope,
 );
@@ -358,7 +355,6 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
         title: "must not cross project reach",
       }),
     ).toBeUndefined();
-    expect(await deleteTaskReturningId(db, tb.id)).toBeUndefined();
     const [foreignAfterDeniedWrites] = await db
       .select()
       .from(schema.taskTable)
@@ -409,9 +405,6 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
         })
       )?.id,
     ).toBe(label?.id);
-
-    expect(await deleteTaskReturningId(db, t2.id)).toEqual({ id: t2.id });
-    expect(await deleteTaskReturningId(db, t2.id)).toBeUndefined();
   });
 
   it("position lookups are per project and column/status", async () => {

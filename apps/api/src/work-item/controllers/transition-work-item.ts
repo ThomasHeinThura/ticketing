@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import {
   asStateTemplateId,
   type BlockReason,
@@ -23,17 +24,26 @@ import {
   scheduledTransitionTable,
   stateTable,
   stateTemplateTable,
+  workItemSlaCacheTable,
   workItemTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { enqueueOutboxEvent } from "../../events/outbox";
+import { evaluateStoredWorkItemSla } from "../../sla-policy/evaluation";
 import { dbClockUtc } from "../../utils/db-time";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import {
+  emitUnblockedAfterClosing,
+  hasOpenBlockers,
+  lockRelationGraph,
+} from "../../work-item-relation/blockers";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import {
   assertProjectStillLive,
   projectNotDeletedClause,
 } from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
+import { requireCommentPerson } from "../comment-access";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import {
   loadWorkflowTransitionContext,
@@ -363,6 +373,8 @@ export async function transitionWorkItem(
     }
   }
 
+  const unblockedEvents: Awaited<ReturnType<typeof emitUnblockedAfterClosing>> =
+    [];
   const realtimeEvents: {
     kind: string;
     event: Awaited<ReturnType<typeof recordWorkItemEvent>>;
@@ -370,6 +382,7 @@ export async function transitionWorkItem(
   }[] = [];
   const result = await runTransactionCatchingSlaPauseConflict(fromStateId, () =>
     db.transaction(async (tx) => {
+      await lockRelationGraph(tx, ctx.workItem.workspaceId);
       // B1: lock the row FIRST, before deciding anything guard-shaped. Every fact below is
       // read from THIS locked row, never from `ctx`'s earlier, unlocked read.
       const [locked] = await tx
@@ -451,14 +464,14 @@ export async function transitionWorkItem(
 
       const offerContext: TransitionOfferContext = {
         allChildrenClosed,
-        // `no_open_blockers`/`field_required`/`change_risk_at_most` fail closed
+        // `field_required`/`change_risk_at_most` fail closed
         // unconditionally -- no schema exists yet to resolve them for real. See
         // `buildGuardContext`'s own doc comment (`../workflow-transition-context.ts`),
-        // which the read-only `GET /transitions` feed still uses for these same three
+        // which the read-only `GET /transitions` feed still uses for these same two
         // constants; kept static here too rather than pulled from a helper that would
         // also re-run its OWN unlocked, redundant children query this function already
         // did correctly, under lock, above.
-        hasOpenBlockers: true,
+        hasOpenBlockers: await hasOpenBlockers(ctx.workItem.id, tx),
         fieldValues: {},
         changeRiskLevel: null,
         assigneePresent: locked.assigneeId !== null,
@@ -555,6 +568,14 @@ export async function transitionWorkItem(
         updateValues.assigneeId = assigneeIdPatch;
       }
       if (resolvedAtPatch !== undefined) {
+        if (resolvedAtPatch !== null) {
+          const clock = await tx.execute<{ now: string }>(
+            sql`SELECT clock_timestamp()::text AS now`,
+          );
+          const row = clock.rows[0];
+          if (!row) throw new Error("Database clock unavailable");
+          resolvedAtPatch = new Date(row.now);
+        }
         updateValues.resolvedAt = resolvedAtPatch;
       }
 
@@ -627,6 +648,80 @@ export async function transitionWorkItem(
                 isNull(slaPauseTable.endedAt),
               ),
             );
+        }
+      }
+
+      // SLA-15a: only entry into completed settles outcomes; cache and events commit
+      // with the transition while the work-item lock excludes every scanner.
+      if (
+        ctx.currentGroup !== "completed" &&
+        toGroup === "completed" &&
+        updated.resolvedAt
+      ) {
+        const { item: slaItem, metrics } = await evaluateStoredWorkItemSla(
+          tx,
+          ctx.workItem.id,
+          updated.resolvedAt,
+        );
+        for (const metric of metrics) {
+          await tx
+            .insert(workItemSlaCacheTable)
+            .values({
+              workItemId: slaItem.id,
+              metric: metric.metric,
+              state: metric.state,
+              dueAt: metric.dueAt,
+              computedAt: updated.resolvedAt,
+            })
+            .onConflictDoUpdate({
+              target: [
+                workItemSlaCacheTable.workItemId,
+                workItemSlaCacheTable.metric,
+              ],
+              set: {
+                state: metric.state,
+                dueAt: metric.dueAt,
+                computedAt: updated.resolvedAt,
+              },
+            });
+          if (metric.state !== "met" && metric.state !== "missed") continue;
+          const stoppedAt =
+            metric.metric === "first_response"
+              ? slaItem.firstResponseAt
+              : slaItem.resolvedAt;
+          await enqueueOutboxEvent(tx, {
+            id: createId(),
+            kind: metric.state === "met" ? "sla.met" : "sla.missed",
+            occurredAt: updated.resolvedAt.toISOString(),
+            actor: { type: actorType, id: actorId, name: "TaskDesk actor" },
+            scope: {
+              workspaceId: slaItem.workspaceId,
+              projectId: slaItem.projectId,
+            },
+            payload: {
+              workItemId: slaItem.id,
+              key: slaItem.key,
+              metric: metric.metric,
+              ...(metric.state === "met"
+                ? {
+                    metAt: stoppedAt?.toISOString() ?? null,
+                    marginMinutes: Math.max(
+                      0,
+                      (metric.targetMinutes ?? 0) - metric.consumedMinutes,
+                    ),
+                  }
+                : {
+                    dueAt: metric.dueAt?.toISOString() ?? null,
+                    missedByMinutes: Math.max(
+                      0,
+                      metric.consumedMinutes - (metric.targetMinutes ?? 0),
+                    ),
+                  }),
+            },
+            causationId: null,
+            depth: 0,
+            originAutomationId: null,
+          });
         }
       }
 
@@ -755,7 +850,9 @@ export async function transitionWorkItem(
         await tx.insert(commentTable).values({
           workspaceId: ctx.workItem.workspaceId,
           workItemId: ctx.workItem.id,
-          authorId: actorId,
+          authorId: requireCommentPerson(
+            identity.personId ? { personId: identity.personId } : null,
+          ),
           actorType,
           body: input.note,
           visibility: match.noteVisibility,
@@ -834,6 +931,20 @@ export async function transitionWorkItem(
         realtimeEvents.push({ kind, event, customerVisible: true });
       }
 
+      if (
+        ctx.currentGroup !== "completed" &&
+        ctx.currentGroup !== "cancelled" &&
+        (toGroup === "completed" || toGroup === "cancelled")
+      ) {
+        unblockedEvents.push(
+          ...(await emitUnblockedAfterClosing(tx, {
+            blockerId: ctx.workItem.id,
+            actorId,
+            actorType,
+          })),
+        );
+      }
+
       return {
         key: updated.key,
         stateId: toStateId,
@@ -879,6 +990,15 @@ export async function transitionWorkItem(
       previousAssigneeId: result.previousAssigneeId,
       actorId,
       actorType,
+    });
+  }
+
+  for (const { item, event } of unblockedEvents) {
+    await publishWorkItemHint(event, {
+      kind: "work_item.unblocked",
+      key: item.key,
+      projectId: item.projectId,
+      customerVisible: false,
     });
   }
 

@@ -29,10 +29,8 @@ import deleteAccountData from "../../apps/api/src/user/controllers/delete-accoun
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
-import {
-  createWorkspaceNative,
-  deleteWorkspaceNative,
-} from "./helpers/workspace-write-http";
+import { deleteThroughApprovalAsCookie } from "./helpers/pending-deletion";
+import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 type App = ReturnType<typeof createApp>["app"];
 type Actor = Awaited<ReturnType<typeof signUpUser>>;
@@ -663,13 +661,14 @@ describe("a project's creator holds a project-lead membership", () => {
       ),
     ).toBe(0);
     expect((await creatorGrants(personId, doomed.id))[0]?.revokedAt).toBeNull();
-    const deleted = await call(
+    // DELETE only requests; the creator grant is revoked when the owner approves.
+    expect((await creatorGrants(personId, doomed.id))[0]?.revokedAt).toBeNull();
+    await deleteThroughApprovalAsCookie(
       world.app,
       world.owner.cookie,
-      "DELETE",
       `/api/project/${doomed.id}`,
+      { typedName: "P" },
     );
-    expect(deleted.status).toBe(200);
     const doomedRows = await creatorGrants(personId, doomed.id);
     expect(doomedRows).toHaveLength(1);
     expect(doomedRows[0]?.revokedAt).toEqual(expect.any(Date));
@@ -727,12 +726,12 @@ describe("a project's creator holds a project-lead membership", () => {
     const otherManager = await addManager(other);
     const mine = await createProject(world, manager);
     const theirs = await createProject(other, otherManager);
-    const deleted = await deleteWorkspaceNative(
+    await deleteThroughApprovalAsCookie(
       world.app,
       world.owner.cookie,
-      world.workspaceId,
+      `/api/workspace/${world.workspaceId}`,
+      { typedName: "Acme" },
     );
-    expect(deleted.status).toBe(200);
     const personId = await personIdOf(manager.user.id);
     expect(await creatorGrants(personId, mine.id)).toEqual([]);
     expect(await projectMemberships(personId, mine.id)).toEqual([]);

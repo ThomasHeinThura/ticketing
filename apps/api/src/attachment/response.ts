@@ -16,6 +16,7 @@ export const attachmentSchema = z
       .openapi({ description: "One of: pending, ready, deleted." }),
     customerVisible: z.boolean(),
     uploadedBy: z.string().nullable(),
+    canDelete: z.boolean(),
     createdAt: responseTimestamp,
     deletedAt: nullableResponseTimestamp,
   })

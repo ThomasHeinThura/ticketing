@@ -9,6 +9,11 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { pendingDeletionRequestSchema } from "../pending-action/response";
+import {
+  createPendingAction,
+  requirePendingActionRequesterIdentity,
+} from "../pending-action/service";
 import { createAttachmentDownloadUrl } from "../storage";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { requirePublicAppOrigin } from "../utils/request-origin";
@@ -18,7 +23,6 @@ import { requireWorkspacePermission } from "../utils/require-workspace-permissio
 import { requireWorkItemReach } from "../work-item/require-work-item-reach";
 import completeAttachment from "./controllers/complete-attachment";
 import { completeSubmissionAttachment } from "./controllers/complete-submission-attachment";
-import deleteAttachment from "./controllers/delete-attachment";
 import downloadAttachment from "./controllers/download-attachment";
 import listWorkItemAttachments from "./controllers/list-work-item-attachments";
 import presignAttachment from "./controllers/presign-attachment";
@@ -54,6 +58,7 @@ function toAttachmentResponse(row: {
   uploadedBy: string | null;
   createdAt: Date;
   deletedAt: Date | null;
+  canDelete?: boolean;
 }) {
   return {
     id: row.id,
@@ -66,6 +71,7 @@ function toAttachmentResponse(row: {
     uploadedBy: row.uploadedBy,
     createdAt: row.createdAt,
     deletedAt: row.deletedAt,
+    canDelete: row.canDelete ?? false,
   };
 }
 
@@ -171,17 +177,18 @@ const deleteAttachmentRoute = createRoute({
   tags: ["Attachments"],
   summary: "Delete an attachment",
   description:
-    "AT-7: soft delete. Only the attachment's own uploader may do this.",
+    "AT-7: request soft deletion; requester click confirmation is required before any change. Existing delete-own or delete-any authority is revalidated at execution.",
   middleware: [
     requireAttachmentReach("id", { deferApiKeyCapability: true }),
-    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: { params: attachmentIdParam },
   responses: {
-    200: jsonResponse("The deleted attachment", attachmentSchema),
-    403: errorResponse(
-      "Not the uploader, or missing work_item:update permission",
+    202: jsonResponse(
+      "Deletion awaits explicit requester confirmation",
+      pendingDeletionRequestSchema,
     ),
+    409: errorResponse("A deletion approval is already pending"),
+    403: errorResponse("Missing attachment delete authority"),
     404: errorResponse("Attachment not found"),
   },
 });
@@ -222,7 +229,7 @@ const portalSubmissionCompleteRoute = createRoute({
   responses: {
     200: jsonResponse(
       "Completed submission attachment",
-      attachmentSchema.extend({
+      attachmentSchema.omit({ canDelete: true }).extend({
         workItemId: attachmentSchema.shape.workItemId.nullable(),
         submissionId: z.string().nullable(),
       }),
@@ -403,21 +410,29 @@ const attachment = apiRouter<
   })
   .openapi(deleteAttachmentRoute, async (c) => {
     const { id } = c.req.valid("param");
-    const workItemId = c.get("workItemId") as string;
     const workspaceId = c.get("workspaceId") as string;
     const userId = c.get("userId");
-    const { actorId, actorType } = resolveActor(userId, c.get("apiKey"));
-
-    const result = await deleteAttachment({
-      attachmentId: id,
-      workspaceId,
-      workItemId,
+    const apiKey = c.get("apiKey");
+    const requesterPersonId = await requirePendingActionRequesterIdentity(
       userId,
-      actorId,
-      actorType,
-      identity: await resolveCallerIdentity(c, userId),
+      apiKey,
+    );
+    const pending = await createPendingAction({
+      requesterPersonId,
+      credentialType: apiKey ? "api_key" : "session",
+      credentialId: apiKey?.id ?? c.get("session")?.id ?? null,
+      origin: apiKey ? "api" : "web",
+      action: "delete",
+      targetType: "attachment",
+      routeKey: "DELETE /api/attachments/{id}",
+      targetIds: [id],
+      workspaceId,
+      actorId: userId,
+      actorType: apiKey ? "api_key" : "person",
+      actorIp: c.req.header("x-forwarded-for") ?? null,
+      userAgent: c.req.header("user-agent") ?? null,
     });
-    return c.json(toAttachmentResponse(result), 200);
+    return c.json(pendingDeletionRequestSchema.parse(pending), 202);
   })
   .openapi(portalSubmissionPresignRoute, async (c) =>
     c.json(
@@ -443,10 +458,13 @@ const attachment = apiRouter<
       workspaceId: c.get("workspaceId"),
       identity: await resolveCallerIdentity(c, c.get("userId")),
     });
-    // Customer-facing: the declared shape only, so no storage key reaches the wire.
+    // Customer-facing: the declared shape only, so no storage key reaches the wire and the
+    // staff-only deletion hint (`canDelete`) never does either.
+    const { canDelete: _staffDeletionHint, ...customerShape } =
+      toAttachmentResponse(completed);
     return c.json(
       {
-        ...toAttachmentResponse(completed),
+        ...customerShape,
         workItemId: completed.workItemId ?? null,
         submissionId: completed.submissionId ?? null,
       },

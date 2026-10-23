@@ -12,11 +12,17 @@ import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { resolvePendingActionApprovalContract } from "./approval-contract";
+import { approveAttachmentDeletion } from "./attachment-deletion-target";
+import { approveBulkWorkItemDeletion } from "./bulk-work-item-deletion-target";
+import { approveCommentDeletion } from "./comment-deletion-target";
 import {
+  approveRegisteredDeletion,
   approveSavedViewDeletion,
   approveServiceCalendarDeletion,
   getPendingActionExecutionTarget,
 } from "./deletion-targets";
+import { withPendingActionFailureOutcome } from "./execution-failure";
+import { approveRelationDeletion } from "./relation-deletion-target";
 import {
   pendingActionApprovalSchema,
   pendingActionDecisionSchema,
@@ -34,6 +40,7 @@ import {
   getOwnPendingActions,
   requirePendingActionRequesterIdentity,
 } from "./service";
+import { approveWorkItemDeletion } from "./work-item-deletion-target";
 
 function readAuditContext(c: Context) {
   return {
@@ -120,7 +127,10 @@ const approvePendingActionRoute = createRoute({
       content: {
         "application/json": {
           schema: z
-            .object({ typedName: z.string().max(320).optional() })
+            .object({
+              typedName: z.string().max(320).optional(),
+              typedCount: z.string().max(3).optional(),
+            })
             .strict(),
         },
       },
@@ -226,20 +236,50 @@ const pendingAction = apiRouter()
       sessionId: session.id,
       traceId: normaliseTraceId(c.req.header("x-request-id")),
     };
-    const result =
-      contract.executor === "user_deactivation"
-        ? await approveUserDeactivation({
-            ...executionInput,
-            typedName: c.req.valid("json").typedName ?? "",
-            stepUpToken:
-              c.req.valid("header")["x-taskdesk-step-up-token"] ?? "",
-          })
-        : contract.executor === "service_calendar_deletion"
-          ? await approveServiceCalendarDeletion(executionInput)
-          : await approveSavedViewDeletion(executionInput);
+    // PA-6 step 5: an executor that throws leaves a terminal `failed` action, not a pending one.
+    const result = await withPendingActionFailureOutcome(executionInput, () =>
+      contract.executor === "attachment_deletion"
+        ? approveAttachmentDeletion(executionInput)
+        : contract.executor === "comment_deletion"
+          ? approveCommentDeletion(executionInput)
+          : contract.executor === "user_deactivation"
+            ? approveUserDeactivation({
+                ...executionInput,
+                typedName: c.req.valid("json").typedName ?? "",
+                stepUpToken:
+                  c.req.valid("header")["x-taskdesk-step-up-token"] ?? "",
+              })
+            : contract.executor === "service_calendar_deletion"
+              ? approveServiceCalendarDeletion(executionInput)
+              : contract.executor === "relation_deletion"
+                ? approveRelationDeletion(executionInput)
+                : contract.executor === "bulk_work_item_deletion"
+                  ? approveBulkWorkItemDeletion({
+                      ...executionInput,
+                      typedCount: c.req.valid("json").typedCount,
+                      stepUpToken:
+                        c.req.valid("header")["x-taskdesk-step-up-token"],
+                    })
+                  : contract.executor === "work_item_deletion"
+                    ? approveWorkItemDeletion(executionInput)
+                    : contract.executor === "registered_deletion"
+                      ? approveRegisteredDeletion({
+                          ...executionInput,
+                          typedName: c.req.valid("json").typedName,
+                          stepUpToken:
+                            c.req.valid("header")["x-taskdesk-step-up-token"],
+                        })
+                      : approveSavedViewDeletion(executionInput),
+    );
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
-      { id: result.id, state: result.state as "executed" | "expired" },
+      {
+        id: result.id,
+        state: result.state as "executed" | "expired",
+        ...("result" in result && result.result
+          ? { result: result.result }
+          : {}),
+      },
       200,
     );
   })

@@ -211,6 +211,17 @@ export function WorkspaceSwitcher() {
                         defaultValue: "Instance users",
                       })}
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate({
+                          to: routes.notificationProvider.build() as never,
+                        });
+                      }}
+                      className="h-7 text-sm data-highlighted:bg-sidebar-accent data-highlighted:text-sidebar-accent-foreground"
+                    >
+                      {t("notificationProvider:title")}
+                    </DropdownMenuItem>
                   </>
                 )}
               </DropdownMenuContent>

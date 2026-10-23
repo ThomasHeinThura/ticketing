@@ -1,5 +1,6 @@
 import { client } from "@taskdesk/libs";
 import type { InferRequestType, InferResponseType } from "hono/client";
+import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 import { HttpError } from "@/lib/http-error";
 
 export type ServiceCalendar = InferResponseType<
@@ -23,10 +24,8 @@ export type ServiceCalendarUsage = InferResponseType<
   (typeof client)["service-calendars"][":id"]["usage"]["$get"],
   200
 >;
-export type ServiceCalendarDeletionRequest = InferResponseType<
-  (typeof client)["service-calendars"][":id"]["$delete"],
-  202
->;
+/** The pending action the requester approves in place; see `readPendingDeletion`. */
+export type ServiceCalendarDeletionRequest = { pendingActionId: string };
 export type ServiceCalendarInput = Omit<
   ServiceCalendar,
   "id" | "workspaceId" | "createdAt" | "updatedAt" | "version"
@@ -128,21 +127,7 @@ export async function requestServiceCalendarDeletion(
     param: { id },
   });
 
-  if (response.status === 202) {
-    return (await response.json()) as ServiceCalendarDeletionRequest;
-  }
-  const detail = await response.text();
-  let message = detail;
-  try {
-    const problem = JSON.parse(detail) as { message?: unknown };
-    if (typeof problem.message === "string") message = problem.message;
-  } catch {
-    // Keep a plain-text response when the server did not return JSON.
-  }
-  throw new HttpError(
-    response.status,
-    message || "Failed to request calendar deletion",
-  );
+  return readPendingDeletion(response, "Failed to request calendar deletion");
 }
 
 export async function createServiceCalendar(

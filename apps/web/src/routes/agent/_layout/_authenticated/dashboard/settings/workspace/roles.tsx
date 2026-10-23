@@ -5,13 +5,6 @@ import {
   AccordionItem,
   AccordionPanel,
   AccordionTrigger,
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
   Empty,
   EmptyDescription,
@@ -33,6 +26,7 @@ import useUpdateWorkspaceRole from "@/hooks/mutations/workspace/use-update-works
 import useWorkspaceRoles, {
   type WorkspaceRole,
 } from "@/hooks/queries/workspace/use-workspace-roles";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
 
@@ -199,8 +193,26 @@ function RouteComponent() {
     error: customRolesErrorValue,
   } = useWorkspaceRoles(workspaceId);
   const [draftActive, setDraftActive] = useState(false);
-  const [roleToDelete, setRoleToDelete] = useState<WorkspaceRole | null>(null);
   const [openCustom, setOpenCustom] = useState<string[]>([]);
+  const { mutateAsync: deleteRole, isPending: isDeleting } =
+    useDeleteWorkspaceRole();
+  const openPendingAction = useOpenPendingAction();
+
+  // The role is removed only once the requester approves the pending action. The in-place
+  // approval dialog is the single confirmation (PA-3): there is no pre-confirm.
+  async function requestRoleDeletion(role: WorkspaceRole) {
+    try {
+      const pendingAction = await deleteRole({ workspaceId, roleId: role.id });
+      setOpenCustom((prev) => prev.filter((v) => v !== role.role));
+      await openPendingAction(pendingAction);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("settings:workspaceRoles.toast.deleteError"),
+      );
+    }
+  }
 
   // Defaults (viewer/member/admin) first so they anchor the list, then
   // user-created roles in their natural order.
@@ -409,7 +421,8 @@ function RouteComponent() {
                           workspaceId={workspaceId}
                           role={role}
                           isDefault={isDefault}
-                          onDelete={() => setRoleToDelete(role)}
+                          onDelete={() => void requestRoleDeletion(role)}
+                          deleting={isDeleting}
                         />
                       </AccordionPanel>
                     </AccordionItem>
@@ -420,23 +433,6 @@ function RouteComponent() {
           </div>
         </div>
       </div>
-
-      <AlertDialog
-        open={!!roleToDelete}
-        onOpenChange={(open) => !open && setRoleToDelete(null)}
-      >
-        <DeleteRoleConfirm
-          role={roleToDelete}
-          workspaceId={workspaceId}
-          onDeleted={() => {
-            setOpenCustom((prev) =>
-              prev.filter((v) => v !== roleToDelete?.role),
-            );
-            setRoleToDelete(null);
-          }}
-          onCancel={() => setRoleToDelete(null)}
-        />
-      </AlertDialog>
     </>
   );
 }
@@ -649,11 +645,13 @@ function CustomRoleEditor({
   role,
   isDefault,
   onDelete,
+  deleting,
 }: {
   workspaceId: string;
   role: WorkspaceRole;
   isDefault?: boolean;
   onDelete: () => void;
+  deleting?: boolean;
 }) {
   const { t } = useTranslation();
   const [permissions, setPermissions] = useState<Record<string, Set<string>>>(
@@ -736,7 +734,7 @@ function CustomRoleEditor({
             size="sm"
             onClick={onDelete}
             className="text-destructive hover:text-destructive"
-            disabled={isPending}
+            disabled={isPending || deleting}
           >
             <Trash2 className="w-4 h-4" />
             {t("settings:workspaceRoles.deleteRole")}
@@ -754,75 +752,5 @@ function CustomRoleEditor({
         </div>
       </div>
     </div>
-  );
-}
-
-function DeleteRoleConfirm({
-  role,
-  workspaceId,
-  onDeleted,
-  onCancel,
-}: {
-  role: WorkspaceRole | null;
-  workspaceId: string;
-  onDeleted: () => void;
-  onCancel: () => void;
-}) {
-  const { t } = useTranslation();
-  const { mutateAsync: deleteRole, isPending } = useDeleteWorkspaceRole();
-
-  return (
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>
-          {t("settings:workspaceRoles.deleteDialog.title")}
-        </AlertDialogTitle>
-        <AlertDialogDescription>
-          {role
-            ? t("settings:workspaceRoles.deleteDialog.description", {
-                role: role.role,
-              })
-            : ""}
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogClose
-          render={
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isPending}
-              onClick={onCancel}
-            />
-          }
-        >
-          {t("common:actions.cancel")}
-        </AlertDialogClose>
-        <Button
-          variant="destructive"
-          size="sm"
-          disabled={isPending || !role}
-          onClick={async () => {
-            if (!role) return;
-            try {
-              await deleteRole({ workspaceId, roleId: role.id });
-              toast.success(t("settings:workspaceRoles.toast.deleted"));
-              // Caller closes the dialog after the mutation succeeds so a
-              // failed delete leaves the confirmation visible.
-              onDeleted();
-            } catch (error) {
-              toast.error(
-                error instanceof Error
-                  ? error.message
-                  : t("settings:workspaceRoles.toast.deleteError"),
-              );
-            }
-          }}
-        >
-          <Trash2 className="w-4 h-4 mr-2" />
-          {t("common:actions.delete")}
-        </Button>
-      </AlertDialogFooter>
-    </AlertDialogContent>
   );
 }

@@ -1,9 +1,11 @@
+import { canonicalPreferenceWriteSchema } from "../notification/canonical-preferences";
 import { z } from "../openapi";
 
 export const workspaceIdParam = z.object({ workspaceId: z.string() });
 
 // Secrets are write-only: a value sets it, null clears it, omitting leaves it.
 export const updatePreferencesBody = z.object({
+  canonicalPreference: canonicalPreferenceWriteSchema.optional(),
   emailEnabled: z.boolean().optional(),
   ntfyEnabled: z.boolean().optional(),
   ntfyServerUrl: z.string().nullable().optional(),

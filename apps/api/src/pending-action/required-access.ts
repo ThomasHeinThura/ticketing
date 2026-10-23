@@ -4,23 +4,18 @@ import {
   evaluatePolicy,
   instanceScope,
   NO_SINGLE_RESOURCE,
-  reaches,
-  workItemScopeFromRow,
   workspaceScopeFromRow,
 } from "@taskdesk/permissions";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import type db from "../database";
 import {
   apikeyTable,
   personTable,
-  projectTable,
   savedViewTable,
   serviceCalendarTable,
   sessionTable,
   teamTable,
   userTable,
-  workItemTable,
-  workspaceTable,
 } from "../database/schema";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
@@ -28,10 +23,19 @@ import {
   apiKeyCapabilitySubset,
   apiKeyScopeFromStoredPermissions,
 } from "../utils/require-api-key-permission-scope";
+import { evaluateAttachmentDeletionAccess } from "./attachment-deletion-target";
+import { evaluateBulkWorkItemDeletionAccess } from "./bulk-work-item-deletion-target";
+import { evaluateCommentDeletionAccess } from "./comment-deletion-target";
+import {
+  evaluateRegisteredDeletionAccess,
+  isRegisteredDeletion,
+} from "./deletion-targets";
 import {
   canonicalPendingActionPayload,
   hashPendingActionPayload,
 } from "./payload";
+import { evaluateRelationDeletionAccess } from "./relation-deletion-target";
+import { evaluateWorkItemDeletionAccess } from "./work-item-deletion-target";
 
 type PendingActionTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
@@ -69,7 +73,7 @@ export type RequiredAccessDecision = {
 };
 
 /**
- * Evaluate only the two PA-9 target shapes that createPendingAction currently accepts.
+ * Evaluate registered pending-action targets against the original credential and current scope.
  * All identity, credential, target, reach and policy facts are read through this transaction.
  */
 export async function evaluateActionRequiredAccess(
@@ -121,6 +125,113 @@ export async function evaluateActionRequiredAccess(
     }
   }
 
+  const resolved = await resolvePendingActionCredentialIdentity(
+    tx,
+    input,
+    options,
+  );
+  if (!("authority" in resolved)) return resolved;
+  const identity = resolved;
+  if (input.targetType === "attachment")
+    return evaluateAttachmentDeletionAccess(tx, input, identity);
+  if (input.targetType === "comment")
+    return evaluateCommentDeletionAccess(tx, input, identity);
+  if (input.targetType === "relation")
+    return evaluateRelationDeletionAccess(tx, input, identity);
+
+  if (input.targetType === "work_item" && input.action === "bulk_delete")
+    return evaluateBulkWorkItemDeletionAccess(tx, input, identity);
+  if (input.targetType === "work_item")
+    return evaluateWorkItemDeletionAccess(tx, input, identity);
+  if (isRegisteredDeletion(input))
+    return evaluateRegisteredDeletionAccess(tx, input, identity);
+  if (
+    input.action === "delete" &&
+    input.targetType === "user" &&
+    input.routeKey === "POST /api/instance/users/{id}/deactivate" &&
+    input.targetIds.length === 1 &&
+    input.credentialType === "session" &&
+    input.workspaceId === null &&
+    input.projectId === null &&
+    input.organisationId === null &&
+    route.policy.scope === "instance" &&
+    "capability" in route.policy &&
+    route.policy.capability === "instance:admin"
+  ) {
+    const [target] = await tx
+      .select({ id: personTable.id })
+      .from(personTable)
+      .innerJoin(userTable, eq(userTable.id, personTable.userId))
+      .where(
+        and(
+          eq(userTable.id, input.targetIds[0] ?? ""),
+          eq(personTable.active, true),
+          eq(userTable.isAnonymous, false),
+        ),
+      )
+      .limit(1);
+    if (!target) return { allowed: false, failure: "unsupported", status: 404 };
+    const decision = evaluatePolicy(route.policy, {
+      identity,
+      target: {},
+      scope: instanceScope(),
+      inReach: NO_SINGLE_RESOURCE,
+    });
+    if (decision.allowed) return { allowed: true };
+    return {
+      allowed: false,
+      failure: decision.status === 403 ? "capability" : "unsupported",
+      status: decision.status,
+    };
+  }
+
+  if (
+    input.action === "delete" &&
+    input.targetIds.length === 1 &&
+    input.workspaceId !== null &&
+    input.projectId === null &&
+    input.organisationId === null &&
+    ((input.targetType === "service_calendar" &&
+      input.routeKey === "DELETE /api/service-calendars/{id}" &&
+      input.confirmationRequired === "click" &&
+      route.policy.scope === "workspace" &&
+      route.policy.scopeSource === "row" &&
+      route.policy.reach === "required" &&
+      "capability" in route.policy &&
+      route.policy.capability === "sla_policy:manage") ||
+      (input.targetType === "saved_view" &&
+        input.routeKey === "DELETE /api/views/{id}" &&
+        input.confirmationRequired === "click" &&
+        route.policy.scope === "workspace" &&
+        route.policy.scopeSource === "row" &&
+        route.policy.reach === "required" &&
+        "capability" in route.policy &&
+        route.policy.capability === "workspace:manage_settings" &&
+        "orOwner" in route.policy &&
+        route.policy.orOwner?.predicate ===
+          "row.created_by === identity.personId" &&
+        route.policy.orOwner.capability === "saved_view:create"))
+  ) {
+    return evaluateWorkspaceDeletionAccess(tx, route.policy, identity, input);
+  }
+
+  return { allowed: false, failure: "unsupported", status: 403 };
+}
+
+/** Shared persisted credential validation; callers still apply their registered route and item policies. */
+export async function resolvePendingActionCredentialIdentity(
+  tx: PendingActionTransaction,
+  input: Pick<
+    ActionRequiredAccessInput,
+    "requestedByPersonId" | "credentialType" | "credentialId"
+  >,
+  options: {
+    apiKeyPermissions?: string | null;
+    existingPendingAction?: boolean;
+  } = {},
+): Promise<ResolvedIdentity | RequiredAccessDecision> {
+  if (input.credentialType !== "session" && input.credentialType !== "api_key")
+    return { allowed: false, failure: "credential", status: 403 };
   const [requester] = await tx
     .select({
       userId: personTable.userId,
@@ -219,158 +330,7 @@ export async function evaluateActionRequiredAccess(
     },
     tx,
   );
-  if (!identity) return { allowed: false, failure: "credential", status: 403 };
-
-  if (
-    input.action === "delete" &&
-    input.targetType === "work_item" &&
-    input.routeKey === "DELETE /api/work-items/{key}" &&
-    input.targetIds.length === 1 &&
-    route.policy.scope === "work_item" &&
-    route.policy.scopeSource === "row" &&
-    route.policy.reach === "required" &&
-    "capability" in route.policy &&
-    route.policy.capability === "work_item:delete"
-  ) {
-    const [target] = await tx
-      .select({
-        workItemId: workItemTable.id,
-        key: workItemTable.key,
-        projectId: projectTable.id,
-        workspaceId: projectTable.workspaceId,
-        organisationId: workspaceTable.organisationId,
-      })
-      .from(workItemTable)
-      .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
-      .innerJoin(
-        workspaceTable,
-        eq(workspaceTable.id, projectTable.workspaceId),
-      )
-      .where(
-        and(
-          eq(workItemTable.key, input.targetIds[0] ?? ""),
-          isNull(workItemTable.deletedAt),
-          isNull(workItemTable.archivedAt),
-          isNull(projectTable.deletedAt),
-          isNull(projectTable.archivedAt),
-        ),
-      )
-      .for("update")
-      .limit(1);
-    if (
-      !target ||
-      target.workspaceId !== input.workspaceId ||
-      target.projectId !== input.projectId ||
-      target.organisationId !== input.organisationId
-    ) {
-      return { allowed: false, failure: "unsupported", status: 404 };
-    }
-    const inReach = reaches(identity, {
-      projectId: target.projectId,
-      workspaceId: target.workspaceId,
-      organisationId: target.organisationId,
-      ancestorProjectIds: [],
-      ownerTeamId: null,
-    });
-    const decision = evaluatePolicy(route.policy, {
-      identity,
-      target: {
-        workItemId: target.workItemId,
-        projectId: target.projectId,
-        workspaceId: target.workspaceId,
-      },
-      scope: workItemScopeFromRow({
-        workItemId: target.workItemId,
-        projectId: target.projectId,
-        workspaceId: target.workspaceId,
-      }),
-      inReach,
-    });
-    if (decision.allowed) return { allowed: true };
-    if (decision.status === 404) {
-      return { allowed: false, failure: "reach", status: decision.status };
-    }
-    if (decision.status === 403) {
-      return {
-        allowed: false,
-        failure: "capability",
-        status: decision.status,
-      };
-    }
-    return { allowed: false, failure: "unsupported", status: 403 };
-  }
-
-  if (
-    input.action === "delete" &&
-    input.targetType === "user" &&
-    input.routeKey === "POST /api/instance/users/{id}/deactivate" &&
-    input.targetIds.length === 1 &&
-    input.credentialType === "session" &&
-    input.workspaceId === null &&
-    input.projectId === null &&
-    input.organisationId === null &&
-    route.policy.scope === "instance" &&
-    "capability" in route.policy &&
-    route.policy.capability === "instance:admin"
-  ) {
-    const [target] = await tx
-      .select({ id: personTable.id })
-      .from(personTable)
-      .innerJoin(userTable, eq(userTable.id, personTable.userId))
-      .where(
-        and(
-          eq(userTable.id, input.targetIds[0] ?? ""),
-          eq(personTable.active, true),
-          eq(userTable.isAnonymous, false),
-        ),
-      )
-      .limit(1);
-    if (!target) return { allowed: false, failure: "unsupported", status: 404 };
-    const decision = evaluatePolicy(route.policy, {
-      identity,
-      target: {},
-      scope: instanceScope(),
-      inReach: NO_SINGLE_RESOURCE,
-    });
-    if (decision.allowed) return { allowed: true };
-    return {
-      allowed: false,
-      failure: decision.status === 403 ? "capability" : "unsupported",
-      status: decision.status,
-    };
-  }
-
-  if (
-    input.action === "delete" &&
-    input.targetIds.length === 1 &&
-    input.workspaceId !== null &&
-    input.projectId === null &&
-    input.organisationId === null &&
-    ((input.targetType === "service_calendar" &&
-      input.routeKey === "DELETE /api/service-calendars/{id}" &&
-      input.confirmationRequired === "click" &&
-      route.policy.scope === "workspace" &&
-      route.policy.scopeSource === "row" &&
-      route.policy.reach === "required" &&
-      "capability" in route.policy &&
-      route.policy.capability === "sla_policy:manage") ||
-      (input.targetType === "saved_view" &&
-        input.routeKey === "DELETE /api/views/{id}" &&
-        input.confirmationRequired === "click" &&
-        route.policy.scope === "workspace" &&
-        route.policy.scopeSource === "row" &&
-        route.policy.reach === "required" &&
-        "capability" in route.policy &&
-        route.policy.capability === "workspace:manage_settings" &&
-        "orOwner" in route.policy &&
-        route.policy.orOwner?.predicate ===
-          "row.created_by === identity.personId" &&
-        route.policy.orOwner.capability === "saved_view:create"))
-  ) {
-    return evaluateWorkspaceDeletionAccess(tx, route.policy, identity, input);
-  }
-
-  return { allowed: false, failure: "unsupported", status: 403 };
+  return identity ?? { allowed: false, failure: "credential", status: 403 };
 }
 
 async function evaluateWorkspaceDeletionAccess(

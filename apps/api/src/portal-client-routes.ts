@@ -13,6 +13,7 @@
 export const PORTAL_CLIENT_ROUTE_PATTERNS: readonly string[] = [
   "/",
   "/catalogue",
+  "/approvals",
   // Redirects to /requests on the client; kept because customers bookmark it.
   "/portal/requests",
   // Redirects to /sign-in on the client; kept because customers already have the link.

@@ -660,19 +660,6 @@ export async function listTaskRelations(
 
 // ---- writes ----------------------------------------------------------------------------
 
-export async function deleteTaskById(
-  executor: Executor,
-  identity: ResolvedIdentity,
-  taskId: string,
-) {
-  const [deletedTask] = await executor
-    .delete(taskTable)
-    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
-    .returning()
-    .execute();
-  return deletedTask;
-}
-
 /** Update a task row by id and bump its version; the caller holds the row lock. */
 export async function updateTaskRow(
   executor: Executor,
@@ -1023,18 +1010,6 @@ export async function updateTaskRowReturningId(
     .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
     .returning({ id: taskTable.id });
   return updated;
-}
-
-export async function deleteTaskReturningId(
-  executor: Executor,
-  identity: ResolvedIdentity,
-  taskId: string,
-) {
-  const [deleted] = await executor
-    .delete(taskTable)
-    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
-    .returning({ id: taskTable.id });
-  return deleted;
 }
 
 export type TaskLabelWriteResult<T = undefined> =

@@ -183,6 +183,13 @@ const ROUTES: LegacyRoute[] = [
   },
 ];
 
+const GONE_DELETE_KEYS = new Set([
+  "DELETE /api/task/{id}",
+  "DELETE /api/comment/{id}",
+  "DELETE /api/activity/comment",
+  "DELETE /api/task-relation/{id}",
+]);
+
 describe("API integration: project reach on the legacy task-keyed write routes", () => {
   beforeEach(async () => {
     await resetTestDatabase();
@@ -284,6 +291,11 @@ describe("API integration: project reach on the legacy task-keyed write routes",
         const response = await route.call(app, s);
         const text = await response.text();
         expect([403, 404], text).not.toContain(response.status);
+        // Retired immediate deletes: reach and permission pass, then 410 with no write.
+        if (GONE_DELETE_KEYS.has(route.matrixKey)) {
+          expect(response.status, text).toBe(410);
+          expect(response.headers.get("Deprecation")).toBeTruthy();
+        }
       });
     });
   }

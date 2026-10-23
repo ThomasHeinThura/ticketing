@@ -6,24 +6,29 @@ import WorkItemSelectionToggle from "./work-item-selection-toggle";
 const perms = vi.hoisted(() => ({
   assign: false,
   checking: false,
-  update: true,
+  update: false,
+  scope: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: translate }),
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
-  useWorkspacePermission: () => ({
-    canAssignTasks: () => perms.assign,
-    canUpdateTasks: () => perms.update,
-    isCheckingPermissions: perms.checking,
-  }),
+  useWorkspacePermission: (...args: unknown[]) => {
+    perms.scope(...args);
+    return {
+      canAssignTasks: () => perms.assign,
+      canUpdateTasks: () => perms.update,
+      isCheckingPermissions: perms.checking,
+    };
+  },
 }));
 
 afterEach(() => {
   cleanup();
   perms.assign = false;
   perms.checking = false;
+  perms.update = false;
 });
 
 function mount(selectionMode = false) {
@@ -31,6 +36,8 @@ function mount(selectionMode = false) {
   const onCapabilityChange = vi.fn();
   const view = render(
     <WorkItemSelectionToggle
+      workspaceId="ws"
+      projectId="project"
       selectionMode={selectionMode}
       onToggle={onToggle}
       onCapabilityChange={onCapabilityChange}
@@ -40,12 +47,21 @@ function mount(selectionMode = false) {
 }
 
 describe("WorkItemSelectionToggle", () => {
-  it("renders nothing and reports false without assignTasks (updateTasks is not enough)", () => {
+  it("renders nothing and reports false without any bulk capability", () => {
     const { onCapabilityChange } = mount();
     expect(screen.queryByRole("button")).toBeNull();
     expect(onCapabilityChange).toHaveBeenLastCalledWith(false);
   });
 
+  it("allows update-only actors to select archive, label and date operations using target scope", () => {
+    perms.update = true;
+    const { onCapabilityChange } = mount();
+    expect(
+      screen.getByRole("button", { name: "Select items" }),
+    ).toBeInTheDocument();
+    expect(onCapabilityChange).toHaveBeenLastCalledWith(true);
+    expect(perms.scope).toHaveBeenCalledWith("ws", "project");
+  });
   it("renders nothing and reports false while capabilities load", () => {
     perms.assign = true;
     perms.checking = true;

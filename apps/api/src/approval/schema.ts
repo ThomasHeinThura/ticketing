@@ -40,3 +40,43 @@ export const approvalResponseSchema = z.object({
 export const approvalListResponseSchema = z.object({
   approvals: z.array(approvalResponseSchema),
 });
+
+export const approvalRequestContextSchema = z.object({
+  enabled: z.boolean(),
+  canRequestCustomer: z.boolean(),
+  canRequestCab: z.boolean(),
+  defaultExpiryDays: z.number().int(),
+  maxExpiryDays: z.number().int(),
+  transitions: z.array(
+    z.object({
+      id: z.string(),
+      fromStateName: z.string().nullable(),
+      toStateName: z.string(),
+      requiresApproval: z.boolean(),
+      requiresCab: z.boolean(),
+    }),
+  ),
+});
+export const approvalCandidatesQuery = z.object({
+  kind: z.enum(["customer", "cab"]),
+  q: z
+    .string()
+    .max(200)
+    .refine(
+      (value) =>
+        Array.from(value).every(
+          (character) =>
+            character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127,
+        ),
+      "Search contains control characters",
+    )
+    .default(""),
+  cursor: z.string().max(2048).optional(),
+  limit: z.coerce.number().int().min(1).max(25).default(25),
+});
+export const approvalCandidatesSchema = z.object({
+  data: z.array(
+    z.object({ id: z.string(), displayName: z.string().nullable() }),
+  ),
+  page: z.object({ hasMore: z.boolean(), nextCursor: z.string().nullable() }),
+});

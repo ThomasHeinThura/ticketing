@@ -27,7 +27,7 @@ import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
 import {
   createWorkspaceNative,
-  deleteWorkspaceNative,
+  deleteWorkspaceThroughApproval,
 } from "./helpers/workspace-write-http";
 
 type App = ReturnType<typeof createApp>["app"];
@@ -516,12 +516,16 @@ describe("workspace owner/admin explicit sees_all grant", () => {
   it("deleting a workspace with owner/admin grants succeeds and leaves no reach rows behind", async () => {
     const world = await newWorld();
     await addMember(world, "admin");
-    const deleted = await deleteWorkspaceNative(
+    const deleted = await deleteWorkspaceThroughApproval(
       world.app,
       world.owner.cookie,
       world.workspaceId,
     );
-    expect(deleted.status).toBe(200);
+    expect(deleted.requested.status).toBe(202);
+    expect(
+      deleted.approved?.status,
+      await deleted.approved?.clone().text(),
+    ).toBe(200);
     const left = await db
       .select({ id: schema.membershipTable.id })
       .from(schema.membershipTable)

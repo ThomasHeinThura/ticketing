@@ -27,6 +27,7 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 const publishEventMock = vi.hoisted(() => vi.fn());
 
@@ -202,6 +203,11 @@ async function setupProject() {
   await grantWorkItemProjectAccess(creator.id, project.id);
   const type = await makeWorkItemType(workspace.id);
   await makeDefaultState(workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, workspace, project, type };
 }
 

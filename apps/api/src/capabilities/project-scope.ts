@@ -15,6 +15,7 @@ import { findCapabilityProject } from "./repository";
 const PROJECT_WORK_FLAGS = {
   updateTasks: "work_item:update",
   createTasks: "work_item:create",
+  createAttachments: "attachment:create",
   deleteTasks: "work_item:delete",
   assignTasks: "work_item:assign",
   transitionTasks: "work_item:transition",

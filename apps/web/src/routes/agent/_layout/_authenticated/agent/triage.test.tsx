@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -165,14 +166,30 @@ describe("intake triage route", () => {
     mocks.getDuplicateSuggestions.mockResolvedValue({ suggestions: [] });
     renderTriage();
 
+    const filter = screen.getByRole("button", {
+      name: "Submission status filter",
+    });
+    expect(filter).toHaveTextContent("Status: new");
+    fireEvent.click(filter);
     expect(
-      await screen.findByRole("button", { name: "new", pressed: true }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("button", { name: "accepted", pressed: false }),
-    ).toBeVisible();
+      await screen.findByRole("menuitemcheckbox", { name: "new" }),
+    ).toHaveAttribute("aria-checked", "true");
+    const accepted = screen.getByRole("menuitemcheckbox", { name: "accepted" });
+    expect(accepted).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(accepted);
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      search: { state: "accepted", ref: "SUB-7", cursor: undefined },
+    });
     const row = await screen.findByRole("button", { name: /SUB-7/u });
     expect(row).toHaveAttribute("aria-current", "true");
+    expect(row.closest("tr")).toHaveAttribute("data-state", "selected");
+    const table = screen.getByRole("table", { name: "title" });
+    expect(
+      within(table).getByRole("columnheader", { name: "Summary" }),
+    ).toBeVisible();
+    expect(
+      within(table).getByRole("cell", { name: "A new request" }),
+    ).toBeVisible();
   });
 
   it("shows the work item type name instead of its id, and claim feedback with focus", async () => {

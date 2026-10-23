@@ -9,6 +9,7 @@
 		"ignoreUnknown": false,
 		"includes": [
 			"**",
+			"!archive",
 			"!**/coverage",
 			"!**/tsconfig*.json",
 			"!**/routeTree.gen.ts",

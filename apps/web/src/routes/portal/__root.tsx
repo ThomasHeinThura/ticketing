@@ -1,10 +1,43 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  Outlet,
+  redirect,
+  useLocation,
+} from "@tanstack/react-router";
 import { Alert, AlertDescription, AlertTitle, Button } from "@taskdesk/ui";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import PortalLayout from "@/components/portal/portal-layout";
+import { portalAuthClient } from "@/lib/portal-auth-client";
+
+const isSignIn = (pathname: string) =>
+  pathname === "/sign-in" || pathname === "/portal/sign-in";
+
+function PortalRoot() {
+  const location = useLocation();
+  const { portalUserId } = Route.useRouteContext();
+  return isSignIn(location.pathname) ? (
+    <Outlet />
+  ) : (
+    <PortalLayout key={portalUserId}>
+      <Outlet />
+    </PortalLayout>
+  );
+}
+
 export const Route = createRootRoute({
-  component: () => <Outlet />,
+  beforeLoad: async ({ location }) => {
+    if (isSignIn(location.pathname)) return;
+    const result = await portalAuthClient.getSession();
+    if (result.error || !result.data?.session)
+      throw redirect({
+        to: "/sign-in",
+        search: { stage: "email", factor: "totp" },
+      });
+    return { portalUserId: result.data.user.id };
+  },
+  component: PortalRoot,
   notFoundComponent: PortalNotFound,
   errorComponent: PortalError,
 });

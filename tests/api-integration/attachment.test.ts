@@ -13,6 +13,7 @@ import {
   findWorkItemAttachment,
   listWorkItemAttachments,
 } from "../../apps/api/src/attachment/repository";
+import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
@@ -30,6 +31,7 @@ import {
 } from "./helpers/fixtures";
 import { raceProjectArchive } from "./helpers/race-soft-delete";
 import { makeApiKey, setAmbientHeaders } from "./helpers/reach-world";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 const originalAgentUrl = process.env.TASKDESK_AGENT_URL;
 
@@ -132,9 +134,48 @@ async function setupProject() {
   await grantWorkItemProjectAccess(creator.id, project.id);
   const type = await makeWorkItemType(workspace.id);
   await makeDefaultState(workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, workspace, project, type };
 }
 
+/** Existing deletion cases traverse real request202 + explicit approval before inspecting tombstones. */
+async function requestAndApproveAttachmentDeletion(
+  app: ReturnType<typeof createApp>["app"],
+  id: string,
+) {
+  const current = await auth.api.getSession({ headers: new Headers() });
+  if (current)
+    await db
+      .insert(schema.sessionTable)
+      .values({ ...current.session, portal: "agent" })
+      .onConflictDoNothing();
+  const request = await app.request(`/api/attachments/${id}`, {
+    method: "DELETE",
+  });
+  if (request.status !== 202) return request;
+  const action = (await request.json()) as { pendingActionId: string };
+  const approval = await app.request(
+    `/api/me/pending-actions/${action.pendingActionId}/approve`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    },
+  );
+  if (approval.status !== 200) return approval;
+  const row = requireRow(
+    await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, id)),
+    "confirmed attachment",
+  );
+  return Response.json(row);
+}
 async function createWorkItem(
   app: ReturnType<typeof createApp>["app"],
   projectId: string,
@@ -206,6 +247,12 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       workspaceId: workspace.id,
     });
     await makeDefaultState(workspace.id, sameWorkspaceProject.project.id);
+    const hiddenType = await makeWorkItemType(workspace.id);
+    await ensureCreationWorkflow({
+      workspaceId: workspace.id,
+      projectId: sameWorkspaceProject.project.id,
+      typeId: hiddenType.id,
+    });
     await grantWorkItemProjectAccess(
       creator.id,
       sameWorkspaceProject.project.id,
@@ -213,7 +260,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     const { key: hiddenKey } = await createWorkItem(
       app,
       sameWorkspaceProject.project.id,
-      type.id,
+      hiddenType.id,
     );
     const [hiddenItem] = await db
       .select()
@@ -670,9 +717,9 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(auditRows).toHaveLength(1);
     expect(auditRows[0]?.workspaceId).toBe(workspace.id);
 
-    const deleteResponse = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const deleteResponse = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(deleteResponse.status).toBe(200);
     const deleted = (await deleteResponse.json()) as { state: string };
@@ -728,9 +775,9 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     // didn't accept `pending` as a state its own UPDATE could match, despite the
     // pre-transaction check a few lines above it explicitly allowing both `pending` and
     // `ready` through (Opus security review, first pass: B1).
-    const deleteResponse = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const deleteResponse = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(deleteResponse.status).toBe(200);
     const deleted = (await deleteResponse.json()) as { state: string };
@@ -1062,7 +1109,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(listResponse.status).toBe(403);
   });
 
-  it("only the uploader may delete their own attachment (structural ownership check)", async () => {
+  it("own-only colleagues cannot delete another uploader’s attachment, including its tombstone", async () => {
     const { creator, workspace, project, type } = await setupProject();
     await addPersonForUser(creator.id);
     mockAuthenticatedSession(creator);
@@ -1093,7 +1140,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
           id: `user-${randomUUID()}`,
           email: `other-${randomUUID()}@example.com`,
           emailVerified: true,
-          name: "Other Admin",
+          name: "Other Member",
         })
         .returning(),
       "other user",
@@ -1101,7 +1148,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: workspace.id,
       userId: otherUser.id,
-      role: "admin",
+      role: "member",
       joinedAt: new Date(),
     });
     await addPersonForUser(otherUser.id);
@@ -1109,24 +1156,24 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     await grantWorkItemProjectAccess(otherUser.id, project.id);
 
     mockAuthenticatedSession(otherUser);
-    const deleteResponse = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const deleteResponse = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(deleteResponse.status).toBe(403);
 
     mockAuthenticatedSession(creator);
-    const ownerDelete = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const ownerDelete = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(ownerDelete.status).toBe(200);
     await ownerDelete.text();
 
     mockAuthenticatedSession(otherUser);
-    const tombstoneDelete = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const tombstoneDelete = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(tombstoneDelete.status).toBe(403);
     await tombstoneDelete.text();
@@ -1176,9 +1223,9 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     );
     expect(downloadResponse.status).toBe(404);
 
-    const deleteResponse = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const deleteResponse = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(deleteResponse.status).toBe(404);
 
@@ -1233,9 +1280,9 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     );
     expect(downloadResponse.status).toBe(404);
 
-    const deleteResponse = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const deleteResponse = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(deleteResponse.status).toBe(404);
 

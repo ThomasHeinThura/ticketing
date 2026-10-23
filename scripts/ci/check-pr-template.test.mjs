@@ -3,125 +3,91 @@ import { test } from "node:test";
 import {
   evaluate,
   MANDATORY_SECTIONS,
-  saysNotApplicable,
+  phaseSubmission,
 } from "./check-pr-template.mjs";
 
-const headings = [
-  "What and why",
-  "How it was checked",
-  "Reviewed by",
-  "Security",
-  "Screens",
-  "Not done",
-];
-
-function body(overrides = {}) {
-  const values = {
-    "What and why": "Fixes the portal sign-in route.",
-    "How it was checked": "pnpm test, opened /sign-in on SIT.",
-    "Reviewed by": "Independent Claude session, comment link.",
-    Security: "n/a — no auth, permission or route change.",
-    Screens: "n/a — no web change in this pull request.",
-    "Not done": "Nothing.",
-    ...overrides,
-  };
-  return headings.map((h) => `## ${h}\n\n${values[h]}\n`).join("\n");
-}
-
-test("a complete body passes", async () => {
+const body =
+  "## What and why\n\nVisible integrated result.\n\n## How it was checked\n\nLocal tests passed; portal journey remains unverified.\n";
+test("ordinary descriptions require only result and actual validation, not another reviewer", async () => {
+  assert.deepEqual(MANDATORY_SECTIONS, ["What and why", "How it was checked"]);
+  assert.deepEqual(await evaluate({ body }), []);
+  assert.equal(phaseSubmission(body), null);
+});
+test("an empty description fails", async () => {
+  assert.equal((await evaluate({ body: "" })).length, 1);
+});
+test("a missing validation section fails", async () => {
+  assert.match(
+    (await evaluate({ body: "## What and why\n\nChange.\n" })).join("\n"),
+    /How it was checked/,
+  );
+});
+test("an honest unverified limitation is allowed without claiming a review", async () => {
   assert.deepEqual(
     await evaluate({
-      body: body(),
-      headings,
-      paths: ["docs/x.md"],
-      security: [],
+      body: body.replace(
+        "Local tests passed; portal journey remains unverified.",
+        "Not run yet: local server is unavailable. No verification claimed.",
+      ),
     }),
     [],
   );
 });
-
-test("an empty body fails", async () => {
-  assert.equal(
-    (await evaluate({ body: "", headings, paths: [], security: [] })).length,
-    1,
+test("an n/a assertion is not a validation report", async () => {
+  assert.match(
+    (
+      await evaluate({
+        body: body.replace(
+          "Local tests passed; portal journey remains unverified.",
+          "n/a — small change",
+        ),
+      })
+    ).join("\n"),
+    /actual validation/,
   );
 });
-
-test("a missing section fails", async () => {
-  const text = body().replace(/## Not done[\s\S]*$/, "");
-  const failures = await evaluate({
-    body: text,
-    headings,
-    paths: [],
-    security: [],
+test("duplicate description headings fail closed", async () => {
+  assert.match(
+    (
+      await evaluate({ body: `${body}\n## WHAT AND WHY\n\nOther result.\n` })
+    ).join("\n"),
+    /appears more than once/,
+  );
+});
+test("unfinished optional phase does not imply acceptance", () => {
+  assert.equal(
+    phaseSubmission(
+      `${body}\n## Phase completion\n\n**Phase:** not submitted\n`,
+    ),
+    null,
+  );
+});
+test("explicit phase claims return the exact report for source-bound validation", () => {
+  assert.deepEqual(
+    phaseSubmission(
+      body +
+        "\n## Phase completion\n\n**Phase:** P1\n**Report:** `docs/evidence/P1-review.json`\n",
+    ),
+    { phase: "P1", report: "docs/evidence/P1-review.json" },
+  );
+});
+for (const claim of [
+  "**Phase:** P1",
+  "**Report:** docs/evidence/P1-review.json",
+  "**Phase:** not submitted\n**Report:** docs/evidence/P1-review.json",
+  "**Phase:** P1\n**Phase:** P2\n**Report:** docs/evidence/P1-review.json",
+])
+  test(`incomplete or contradictory phase fields fail: ${claim}`, () => {
+    assert.throws(() =>
+      phaseSubmission(`${body}\n## Phase completion\n\n${claim}`),
+    );
   });
-  assert.match(failures.join("\n"), /Not done/);
-});
-
-test("n/a without a reason fails", async () => {
-  const failures = await evaluate({
-    body: body({ Security: "n/a" }),
-    headings,
-    paths: [],
-    security: [],
-  });
-  assert.match(failures.join("\n"), /without a reason/);
-});
-
-test("review is never n/a", async () => {
-  const failures = await evaluate({
-    body: body({ "Reviewed by": "n/a — small docs change only" }),
-    headings,
-    paths: [],
-    security: [],
-  });
-  assert.match(failures.join("\n"), /independent review/);
-});
-
-test("security cannot be n/a when security paths change", async () => {
-  const failures = await evaluate({
-    body: body(),
-    headings,
-    paths: ["apps/api/src/auth/x.ts"],
-    security: ["apps/api/src/auth/x.ts"],
-  });
-  assert.match(failures.join("\n"), /security paths/);
-});
-
-test("screens cannot be n/a when apps/web changes", async () => {
-  const failures = await evaluate({
-    body: body(),
-    headings,
-    paths: ["apps/web/src/a.tsx"],
-    security: [],
-  });
-  assert.match(failures.join("\n"), /apps\/web/);
-});
-
-test("disguised n/a forms are recognised", () => {
-  for (const text of [
-    "n/a — x",
-    "- n/a — no change",
-    "**N/A** — x",
-    "Not applicable here",
-    "None.",
-    "> n/a",
-  ]) {
-    assert.ok(saysNotApplicable(text), text);
-  }
-  assert.ok(!saysNotApplicable("Narrow change to the auth guard."));
-});
-
-test("a list-item n/a still cannot dodge the security rule", async () => {
-  const failures = await evaluate({
-    body: body({ Security: "- N/A — no change" }),
-    headings,
-    paths: ["apps/api/src/auth/x.ts"],
-    security: ["apps/api/src/auth/x.ts"],
-  });
-  assert.match(failures.join("\n"), /security paths/);
-});
-
-test("Reviewed by, Security and Screens are mandatory regardless of the template", () => {
-  assert.deepEqual(MANDATORY_SECTIONS, ["Reviewed by", "Security", "Screens"]);
+test("commented phase fields cannot submit or override the actual phase state", () => {
+  assert.equal(
+    phaseSubmission(
+      body +
+        "\n## Phase completion\n\n<!-- **Phase:** P1\n**Report:** docs/evidence/P1-review.json -->\n**Phase:** not submitted\n",
+    ),
+    null,
+  );
 });

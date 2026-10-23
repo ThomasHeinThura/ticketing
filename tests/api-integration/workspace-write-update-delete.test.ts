@@ -14,9 +14,10 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
+import { deleteThroughApprovalAsCookie } from "./helpers/pending-deletion";
 import {
   createWorkspaceNative,
-  deleteWorkspaceNative,
+  deleteWorkspaceThroughApproval,
   updateWorkspaceNative,
 } from "./helpers/workspace-write-http";
 
@@ -156,8 +157,23 @@ describe("S4 native delete (A2-P20..A2-P21)", () => {
     });
     const { id } = (await created.json()) as { id: string };
 
-    const removed = await deleteWorkspaceNative(app, owner.cookie, id);
-    expect(removed.status).toBe(200);
+    // The route only requests (202): the workspace survives until the owner approves.
+    await deleteThroughApprovalAsCookie(
+      app,
+      owner.cookie,
+      `/api/workspace/${id}`,
+      {
+        typedName: "Doomed",
+        afterRequest: async () => {
+          expect(
+            await db
+              .select()
+              .from(schema.workspaceTable)
+              .where(eq(schema.workspaceTable.id, id)),
+          ).toHaveLength(1);
+        },
+      },
+    );
 
     expect(
       await db
@@ -201,9 +217,12 @@ describe("S4 native delete (A2-P20..A2-P21)", () => {
     expect(sessionBefore?.activeOrganizationId).toBe(id);
     expect(sessionBefore?.activeTeamId).not.toBeNull();
 
-    expect((await deleteWorkspaceNative(app, owner.cookie, id)).status).toBe(
-      200,
+    const { approved } = await deleteWorkspaceThroughApproval(
+      app,
+      owner.cookie,
+      id,
     );
+    expect(approved?.status, await approved?.clone().text()).toBe(200);
 
     const [sessionAfter] = await db
       .select()

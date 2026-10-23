@@ -21,12 +21,16 @@ import type {
 const WorkItemListRealtime = lazy(
   () => import("@/components/work-item/work-item-list-realtime"),
 );
+const WorkItemKaneoList = lazy(
+  () => import("@/components/work-item/work-item-kaneo-list"),
+);
 const WorkItemList = lazy(
   () => import("@/components/work-item/work-item-list"),
 );
 
 type WorkItemsPanelProps = {
-  project: { id: string; name: string } | undefined;
+  layout?: "list" | "table";
+  project: { id: string; name: string; workspaceId?: string } | undefined;
   workItemsResult: WorkItemsResult | undefined;
   isLoading: boolean;
   isError: boolean;
@@ -47,13 +51,17 @@ type WorkItemsPanelProps = {
   hasMore?: boolean;
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
+  isLoadMoreError?: boolean;
+  isPlaceholderData?: boolean;
   selectedKeys?: string[];
   canBulkAssign?: boolean;
   onSelectionChange?: (key: string, checked: boolean) => void;
   onSelectAll?: (checked: boolean) => void;
+  onOpenItem?: (key: string) => void;
 };
 
 function WorkItemsPanel({
+  layout = "table",
   project,
   workItemsResult,
   isLoading,
@@ -70,10 +78,13 @@ function WorkItemsPanel({
   hasMore,
   onLoadMore,
   isLoadingMore,
+  isLoadMoreError,
+  isPlaceholderData,
   selectedKeys,
   canBulkAssign,
   onSelectionChange,
   onSelectAll,
+  onOpenItem,
 }: WorkItemsPanelProps) {
   const { t } = useTranslation();
   const workItems = workItemsResult?.items;
@@ -171,8 +182,33 @@ function WorkItemsPanel({
     projectLifecycle.projectId,
   ]);
 
+  const listProps = {
+    projectId: project?.id,
+    workspaceId: project?.workspaceId,
+    workItems: workItems,
+    hasPartialFailure: workItemsResult?.hasPartialFailure ?? false,
+    isLoading: isLoading,
+    isError: isError,
+    sort: sort,
+    dir: dir,
+    onSortChange: onSortChange,
+    onRetry: onRetry,
+    columns: columns,
+    isFiltered: isFiltered,
+    hasMore: hasMore,
+    onLoadMore: onLoadMore,
+    isLoadingMore: isLoadingMore,
+    isLoadMoreError,
+    isPlaceholderData,
+    selectedKeys: selectedKeys,
+    canBulkAssign: canBulkAssign,
+    onSelectionChange: onSelectionChange,
+    onSelectAll: onSelectAll,
+    onOpenItem,
+  };
+
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col bg-background">
       {project &&
       realtimeStatus?.projectId === project.id &&
       realtimeStatus?.status === "unavailable" ? (
@@ -189,25 +225,11 @@ function WorkItemsPanel({
         </div>
       ) : null}
       <Suspense fallback={<WorkItemListLoading />}>
-        <WorkItemList
-          workItems={workItems}
-          hasPartialFailure={workItemsResult?.hasPartialFailure ?? false}
-          isLoading={isLoading}
-          isError={isError}
-          sort={sort}
-          dir={dir}
-          onSortChange={onSortChange}
-          onRetry={onRetry}
-          columns={columns}
-          isFiltered={isFiltered}
-          hasMore={hasMore}
-          onLoadMore={onLoadMore}
-          isLoadingMore={isLoadingMore}
-          selectedKeys={selectedKeys}
-          canBulkAssign={canBulkAssign}
-          onSelectionChange={onSelectionChange}
-          onSelectAll={onSelectAll}
-        />
+        {layout === "list" ? (
+          <WorkItemKaneoList {...listProps} />
+        ) : (
+          <WorkItemList {...listProps} />
+        )}
       </Suspense>
       {project &&
       !isLoading &&
@@ -223,7 +245,7 @@ function WorkItemsPanel({
           />
         </Suspense>
       ) : null}
-    </>
+    </div>
   );
 }
 

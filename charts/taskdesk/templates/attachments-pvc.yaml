@@ -1,0 +1,18 @@
+{{- if and .Values.taskdesk.persistence.enabled (not .Values.taskdesk.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "taskdesk.attachmentsClaimName" . }}
+  labels:
+    {{- include "taskdesk.labels" . | nindent 4 }}
+    app.kubernetes.io/component: taskdesk-attachments
+spec:
+  accessModes:
+    - {{ .Values.taskdesk.persistence.accessMode }}
+  {{- if .Values.taskdesk.persistence.storageClass }}
+  storageClassName: {{ if eq .Values.taskdesk.persistence.storageClass "-" }}""{{ else }}{{ .Values.taskdesk.persistence.storageClass | quote }}{{ end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.taskdesk.persistence.size }}
+{{- end }}

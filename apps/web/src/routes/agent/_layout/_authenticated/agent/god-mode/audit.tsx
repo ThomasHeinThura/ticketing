@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -25,22 +25,22 @@ import {
   TableHeader,
   TableRow,
 } from "@taskdesk/ui";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
 import PageTitle from "@/components/page-title";
 import { useInstanceAudit } from "@/hooks/queries/god-mode/use-instance-audit";
 import { useInstanceAdminSignal } from "@/hooks/use-instance-admin-signal";
+import { parseInstanceAuditSearch } from "@/lib/routes";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/god-mode/audit",
-)({ component: GodModeAuditRoute });
+)({ validateSearch: parseInstanceAuditSearch, component: GodModeAuditRoute });
 
 function GodModeAuditRoute() {
   const { t } = useTranslation();
   const isAdmin = useInstanceAdminSignal();
-  const [actionFilter, setActionFilter] = useState("");
-  const [limit, setLimit] = useState(50);
+  const { action: actionFilter, limit } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
 
   const query = useInstanceAudit(isAdmin, {
     limit,
@@ -90,7 +90,12 @@ function GodModeAuditRoute() {
                 defaultValue: "Filter by action…",
               })}
               value={actionFilter}
-              onChange={(e) => setActionFilter(e.target.value)}
+              onChange={(e) =>
+                void navigate({
+                  search: { action: e.target.value, limit },
+                  replace: true,
+                })
+              }
               aria-label={t("common:audit.filterAction", {
                 defaultValue: "Filter by action…",
               })}
@@ -99,7 +104,11 @@ function GodModeAuditRoute() {
           <div className="w-32">
             <Select
               value={String(limit)}
-              onValueChange={(val) => setLimit(Number(val) || 50)}
+              onValueChange={(val) =>
+                void navigate({
+                  search: { action: actionFilter, limit: Number(val) || 50 },
+                })
+              }
             >
               <SelectTrigger
                 aria-label={t("common:audit.limit", {

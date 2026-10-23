@@ -1,5 +1,6 @@
 import { client } from "@taskdesk/libs";
 import type { InferResponseType } from "hono/client";
+import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 import {
   parseFilterTextOrThrow,
   postWorkItemSearch,
@@ -137,12 +138,7 @@ export async function updateSavedView(input: {
  */
 export async function requestSavedViewDeletion(id: string) {
   const response = await views[":id"].$delete({ param: { id } });
-  if (!response.ok)
-    throw new HttpError(
-      response.status,
-      "Unable to request saved view deletion",
-    );
-  return (await response.json()) as { pendingActionId: string };
+  return readPendingDeletion(response, "Unable to request saved view deletion");
 }
 
 /**

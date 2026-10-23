@@ -1,18 +1,14 @@
 import { client } from "@taskdesk/libs";
+import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 
-async function deleteTaskRelation(id: string) {
-  const response = await client["task-relation"][":id"].$delete({
-    param: { id },
+export type DeleteTaskRelationRequest = { key: string; id: string };
+
+/** Requests removal (`202` pending action); the relation stays until the requester approves. */
+async function deleteTaskRelation({ key, id }: DeleteTaskRelationRequest) {
+  const response = await client["work-items"][":key"].relations[":id"].$delete({
+    param: { key, id },
   });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error);
-  }
-
-  const data = await response.json();
-
-  return data;
+  return readPendingDeletion(response, "Failed to request relation removal");
 }
 
 export default deleteTaskRelation;

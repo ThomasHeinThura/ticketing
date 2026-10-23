@@ -25,6 +25,7 @@ import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../assert-work-item-live";
+import { loadCommentCaller, requireCommentPerson } from "../comment-access";
 import {
   classifyWorkItemMentionPeople,
   findWorkItemMentionContext,
@@ -101,12 +102,19 @@ export async function createComment(
         tx,
       );
 
+      const authorPersonId = requireCommentPerson(
+        await loadCommentCaller(
+          tx,
+          { userId: actorId, apiKey },
+          { workspaceId, projectId: locked.projectId, workItemId },
+        ),
+      );
       const [row] = await tx
         .insert(commentTable)
         .values({
           workspaceId,
           workItemId,
-          authorId: actorId,
+          authorId: authorPersonId,
           actorType,
           body: input.body,
           visibility: input.visibility,

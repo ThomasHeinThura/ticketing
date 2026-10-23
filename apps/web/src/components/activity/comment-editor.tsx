@@ -97,6 +97,8 @@ type CommentEditorProps = {
   ensureTaskId?: () => Promise<string | null>;
   showQuickAttachButton?: boolean;
   onAttachActionChange?: (attach: (() => void) | null) => void;
+  /** A create controller may stage local files without creating a shadow task. */
+  onFilesSelected?: (files: File[]) => void;
   /** Native work-item comments store the editor's Tiptap document, not Markdown. */
   documentValue?: unknown;
   onDocumentChange?: (value: unknown) => void;
@@ -212,6 +214,7 @@ export default function CommentEditor({
   ensureTaskId,
   showQuickAttachButton = true,
   onAttachActionChange,
+  onFilesSelected,
   documentValue,
   onDocumentChange,
   onContentChange,
@@ -252,6 +255,8 @@ export default function CommentEditor({
   const taskIdRef = useRef(taskId);
   const ensureTaskIdRef = useRef(ensureTaskId);
   const uploadSurfaceRef = useRef(uploadSurface);
+  const filesSelectedRef = useRef(onFilesSelected);
+  filesSelectedRef.current = onFilesSelected;
   const onSubmitShortcutRef = useRef(onSubmitShortcut);
   const onCancelShortcutRef = useRef(onCancelShortcut);
   onSubmitShortcutRef.current = onSubmitShortcut;
@@ -377,6 +382,10 @@ export default function CommentEditor({
 
   const handleAssetFileUpload = useCallback(
     async (file: File, targetEditor?: Editor | null, range?: SlashRange) => {
+      if (filesSelectedRef.current) {
+        filesSelectedRef.current([file]);
+        return;
+      }
       const activeEditor = targetEditor || lastEditorRef.current;
       const resolvedTaskId =
         taskIdRef.current ?? (await ensureTaskIdRef.current?.());
@@ -416,7 +425,7 @@ export default function CommentEditor({
     [insertUploadedAsset, t],
   );
 
-  const canUploadFiles = Boolean(taskId || ensureTaskId);
+  const canUploadFiles = Boolean(taskId || ensureTaskId || onFilesSelected);
 
   const openImagePicker = useCallback(
     (activeEditor?: Editor | null, range?: SlashRange) => {
@@ -478,6 +487,14 @@ export default function CommentEditor({
     (event: React.DragEvent<HTMLElement>) => {
       if (readOnly || disabled || !canUploadFiles || !hasFileDrag(event)) {
         return;
+      }
+      if (filesSelectedRef.current) {
+        const files = Array.from(event.dataTransfer?.files ?? []);
+        if (files.length) {
+          event.preventDefault();
+          event.stopPropagation();
+          filesSelectedRef.current(files);
+        }
       }
       dragDepthRef.current = 0;
       setIsDragActive(false);
@@ -700,7 +717,8 @@ export default function CommentEditor({
           if (pastedFile) {
             if (!canUploadFiles) return false;
             event.preventDefault();
-            void handleAssetFileUpload(pastedFile, editor);
+            if (filesSelectedRef.current) filesSelectedRef.current(pastedFiles);
+            else void handleAssetFileUpload(pastedFile, editor);
             return true;
           }
 
@@ -795,7 +813,8 @@ export default function CommentEditor({
             ? { from: coordinates.pos, to: coordinates.pos }
             : undefined;
 
-          void handleAssetFileUpload(droppedFile, editor, dropRange);
+          if (filesSelectedRef.current) filesSelectedRef.current(droppedFiles);
+          else void handleAssetFileUpload(droppedFile, editor, dropRange);
           return true;
         },
         handleTextInput: (view, _from, _to, text) => {
@@ -1566,20 +1585,28 @@ export default function CommentEditor({
       onDragEnter={handleShellDragEnter}
       onDragOver={handleShellDragOver}
       onDragLeave={handleShellDragLeave}
+      onDropCapture={onFilesSelected ? handleShellDrop : undefined}
       onDrop={handleShellDrop}
     >
       {!readOnly && !disabled && (
         <Input
           ref={imageInputRef}
           type="file"
+          multiple={Boolean(onFilesSelected)}
           className="sr-only"
           // Opened only programmatically (slash menu / paste); an unlabelled,
           // invisible Tab stop in front of the editor is a keyboard defect.
           tabIndex={-1}
           aria-hidden="true"
           onChange={(event) => {
-            const file = event.target.files?.[0];
+            const files = Array.from(event.target.files ?? []);
+            const file = files[0];
             if (!file) return;
+            if (filesSelectedRef.current) {
+              filesSelectedRef.current(files);
+              event.target.value = "";
+              return;
+            }
 
             const pendingInsert = pendingImageInsertRef.current;
             pendingImageInsertRef.current = null;

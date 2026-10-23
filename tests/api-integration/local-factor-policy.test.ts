@@ -79,6 +79,17 @@ function gate<T>() {
   return { promise, resolve };
 }
 
+vi.mock(
+  "../../apps/api/src/notification-provider/runtime",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("../../apps/api/src/notification-provider/runtime")
+      >();
+    return { ...actual, isRuntimeSmtpConfigured: vi.fn(async () => true) };
+  },
+);
+
 vi.mock("@taskdesk/email", () => ({
   isSmtpConfigured: () => true,
   sendNotificationEmail: vi.fn(async () => ({ success: true })),

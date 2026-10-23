@@ -678,7 +678,7 @@ test("workspace aliases and tsconfig paths resolve to package targets and matrix
 
 test("the monorepo boundary definition is pinned to the enforced edge matrix", async () => {
   const doc = await readFile(
-    new URL("../../docs/01-architecture/monorepo-layout.md", import.meta.url),
+    new URL("../../docs/technical/workspace-boundaries.md", import.meta.url),
     "utf8",
   );
   assert.match(doc, /complete permitted workspace-package edges/);

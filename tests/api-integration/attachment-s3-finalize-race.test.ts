@@ -39,6 +39,7 @@ import {
   grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 // A `vi.mock` factory (and its first-argument path expression) is evaluated at its
 // HOISTED position -- above every other top-level statement in this file, including plain
@@ -253,6 +254,11 @@ async function setupProject() {
   await grantWorkItemProjectAccess(creator.id, project.id);
   const type = await makeWorkItemType(workspace.id);
   await makeDefaultState(workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, workspace, project, type };
 }
 

@@ -9,7 +9,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `elevated` — `project:manage_members` is the only Projects-group capability in
  * `AUTHORITY_GRANTING` (`elevated.ts`), and no route below declares it.
  *
- * **No `sessionOnly`, deliberately, on any route in this file.** That restriction was added
+ * **No `sessionOnly`, deliberately, on any route in this file except `DELETE /api/project/{id}`**
+ * (P0 deletion audit; see that entry). That restriction was added
  * to the *native* `/api/workspace/*` routes (`workspace/policy.ts`) to preserve a specific
  * inherited restriction the better-auth `organization()` plugin had (`enableSessionForAPIKeys:
  * false`). Nothing analogous ever existed for the *inherited* `/api/project/*` router — kaneo
@@ -156,12 +157,20 @@ export const projectPolicies = {
   },
 
   // Soft-delete a project. Same middleware shape as update, with `project: ["delete"]` --
-  // an exact match for `project:delete`.
+  // an exact match for `project:delete`. P0 deletion audit: this route no longer deletes; it
+  // records a durable pending action (202) that its requester approves in a current browser
+  // session with the typed exact project name plus step-up (permissions.md "Deleting a ...
+  // project — typed exact name/key + step-up, through a pending action"). `sessionOnly` is the
+  // one deliberate exception to the file comment's no-sessionOnly rule below: an API key can no
+  // longer request (or approve) a project deletion. Elevation is the approval-time step-up, not
+  // a request-time `elevated: true` (permissions.md's elevated table names the target route
+  // `DELETE /api/projects/{projectId}`, not this legacy key).
   "DELETE /api/project/{id}": {
     capability: "project:delete",
     scope: "project",
     scopeSource: "row",
     reach: "required",
+    sessionOnly: true,
   },
 
   // Archive a project. `requireWorkspacePermission({ project: ["update"] })` runs -- the

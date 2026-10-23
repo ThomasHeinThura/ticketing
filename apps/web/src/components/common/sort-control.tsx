@@ -15,6 +15,7 @@ import type { SortConfig, SortDirection, SortField } from "@/lib/sort-tasks";
 type SortControlProps = {
   sort: SortConfig;
   onSortChange: (sort: SortConfig) => void;
+  fields?: readonly SortField[];
 };
 
 function CheckSlot({ checked }: { checked: boolean }) {
@@ -31,7 +32,11 @@ function CheckSlot({ checked }: { checked: boolean }) {
   );
 }
 
-export default function SortControl({ sort, onSortChange }: SortControlProps) {
+export default function SortControl({
+  sort,
+  onSortChange,
+  fields,
+}: SortControlProps) {
   const { t } = useTranslation();
   const sortFields: { field: SortField; label: string }[] = [
     { field: "position", label: t("tasks:sort.fields.position") },
@@ -41,12 +46,21 @@ export default function SortControl({ sort, onSortChange }: SortControlProps) {
     { field: "title", label: t("tasks:sort.fields.title") },
     { field: "number", label: t("tasks:sort.fields.number") },
   ];
+  const availableFields = fields
+    ? sortFields.filter(({ field }) => fields.includes(field))
+    : sortFields;
   const isActive = sort.field !== "position";
   const activeLabel = sortFields.find((f) => f.field === sort.field)?.label;
 
   const handleFieldChange = (field: SortField) => {
     if (field === "position" || field === sort.field) {
-      onSortChange({ field: "position", direction: "asc" });
+      const resetField = availableFields.some(
+        (entry) => entry.field === "position",
+      )
+        ? "position"
+        : (availableFields.find((entry) => entry.field === "number")?.field ??
+          sort.field);
+      onSortChange({ field: resetField, direction: "asc" });
     } else {
       const defaultDirection: SortDirection =
         field === "priority" ? "desc" : "asc";
@@ -91,7 +105,7 @@ export default function SortControl({ sort, onSortChange }: SortControlProps) {
             </DropdownMenuLabel>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          {sortFields.map(({ field, label }) => (
+          {availableFields.map(({ field, label }) => (
             <DropdownMenuItem
               key={field}
               onClick={() => handleFieldChange(field)}

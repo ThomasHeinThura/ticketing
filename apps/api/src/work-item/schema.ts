@@ -48,24 +48,6 @@ const workItemDescription = z
   .unknown()
   .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE);
 
-// `WI-3`: title is required, 1-500 characters. Everything else this slice accepts is
-// optional -- custom fields (`custom-fields.md`), labels, checklists, dates, assignment
-// and priority-escalation rules are all separate, later slices (see this PR's own body /
-// the work-item.md "Out of scope" section for what #23's FIRST slice deliberately excludes).
-export const createWorkItemBody = z.object({
-  // `WI-1`: every work item has exactly one type, required on create. T4 (independent
-  // Opus security review of PR #271, delta round): a NUL in `typeId` reached
-  // `createWorkItem`'s type lookup and 500'd, the same class S4 already closed for
-  // `title`/`description` -- same fix, same message.
-  typeId: z
-    .string()
-    .min(1)
-    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
-  title: workItemTitle,
-  description: workItemDescription.optional(),
-  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
-});
-
 // T4 (independent Opus security review of PR #271, delta round): a NUL in `projectId` or
 // `key` reaches a raw `c.req.param()` read in this route's reach middleware
 // (`require-work-item-reach.ts`, `workspaceAccess.fromProject` in the shared
@@ -210,6 +192,38 @@ const workItemDateTime = z
     },
   )
   .transform((value) => new Date(value));
+
+// Initial optional fields share the canonical edit validators; creation is atomic.
+export const createWorkItemBody = z.object({
+  // `WI-1`: every work item has exactly one type, required on create. T4 (independent
+  // Opus security review of PR #271, delta round): a NUL in `typeId` reached
+  // `createWorkItem`'s type lookup and 500'd, the same class S4 already closed for
+  // `title`/`description` -- same fix, same message.
+  typeId: z
+    .string()
+    .min(1)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+  title: workItemTitle,
+  description: workItemDescription.optional(),
+  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+  startDate: workItemDateTime.nullable().optional(),
+  dueDate: workItemDateTime.nullable().optional(),
+  labelIds: z
+    .array(
+      z
+        .string()
+        .min(1)
+        .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+    )
+    .max(100)
+    .refine((ids) => new Set(ids).size === ids.length, "Duplicate labels")
+    .optional(),
+  assigneeId: z
+    .string()
+    .min(1)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+    .optional(),
+});
 
 export const updateWorkItemBody = z
   .object({
@@ -461,8 +475,7 @@ export const rankWorkItemBody = z
   });
 
 // `POST /api/work-items/bulk` -- see `controllers/bulk-work-items.ts`'s own doc comment
-// for which of `WI-24`'s operations this slice actually implements (`delete`, `assign`)
-// and why the rest are deferred. `workspaceId` scopes the whole batch to one workspace
+// for per-item authorization and durable deletion semantics. `workspaceId` scopes the whole batch to one workspace
 // (the spec's own route table: "work_item:read (workspace)") -- there is no path
 // parameter for this flat, non-project-scoped route to carry it in instead.
 const bulkWorkItemKey = z
@@ -485,7 +498,34 @@ export const bulkWorkItemsBody = z
       "set_priority",
       "archive",
       "transition",
+      "add_label",
+      "remove_label",
+      "set_due_date",
     ]),
+    expectedCurrentAssigneeIds: z
+      .preprocess(
+        (raw: Record<string, string | null>, ctx) => {
+          // Zod record intentionally skips __proto__; reject it before that normalization.
+          if (
+            raw &&
+            typeof raw === "object" &&
+            Object.keys(raw).some((key) =>
+              ["__proto__", "prototype", "constructor"].includes(key),
+            )
+          ) {
+            ctx.addIssue({
+              code: "custom",
+              message: "Unsafe expected-holder key",
+            });
+            return z.NEVER;
+          }
+          return raw;
+        },
+        z.record(bulkWorkItemKey, bulkWorkItemKey.nullable()),
+      )
+      .optional(),
+    labelId: bulkWorkItemKey.optional(),
+    dueDate: workItemDateTime.nullable().optional(),
     // Required by `.refine` below only when `operation === "assign"`.
     assigneeId: z
       .string()
@@ -500,6 +540,39 @@ export const bulkWorkItemsBody = z
       .min(1)
       .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
       .optional(),
+  })
+  .superRefine((body, ctx) => {
+    const holders = body.expectedCurrentAssigneeIds;
+    if (
+      holders !== undefined &&
+      (body.operation !== "assign" ||
+        Object.keys(holders).some(
+          (key) =>
+            ["__proto__", "prototype", "constructor"].includes(key) ||
+            !body.workItemKeys.includes(key),
+        ) ||
+        body.workItemKeys.some((key) => !Object.hasOwn(holders, key)))
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["expectedCurrentAssigneeIds"],
+        message: "Expected holders must match every selected work item exactly",
+      });
+    if (
+      (body.operation === "add_label" || body.operation === "remove_label") &&
+      !body.labelId
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["labelId"],
+        message: "labelId is required for label operations",
+      });
+    if (body.operation === "set_due_date" && body.dueDate === undefined)
+      ctx.addIssue({
+        code: "custom",
+        path: ["dueDate"],
+        message: "dueDate is required when setting due date",
+      });
   })
   .refine(
     (body) =>
@@ -526,6 +599,12 @@ export const listWorkItemActivityQuery = z.object({
     .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
     .optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
+  comment: z
+    .string()
+    .min(1)
+    .max(256)
+    .regex(/^[A-Za-z0-9_-]+$/u)
+    .optional(),
 });
 
 export const commentMentionPreflightBody = z.object({

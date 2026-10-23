@@ -38,6 +38,7 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
+import { normalizeCanonicalWorkItemSelection } from "@/lib/project-layout-navigation";
 import {
   parseWorkItemListSearch,
   routes,
@@ -74,7 +75,8 @@ const WorkItemSidePane = lazy(
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/projects/$projectKey/backlog",
 )({
-  validateSearch: parseWorkItemListSearch,
+  validateSearch: (raw) =>
+    parseWorkItemListSearch(normalizeCanonicalWorkItemSelection(raw)),
   component: BacklogRouteComponent,
 });
 
@@ -88,6 +90,18 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
   const queryClient = useQueryClient();
   const { filter, filterMode, item } = Route.useSearch();
   const navigate = Route.useNavigate();
+  const hasOpenedSidePane = useRef(false);
+  if (item) hasOpenedSidePane.current = true;
+  const openSidePane = useCallback(
+    (key: string) => {
+      void navigate({
+        search: (prev: WorkItemListSearch) => ({ ...prev, item: key }),
+        replace: true,
+        resetScroll: false,
+      });
+    },
+    [navigate],
+  );
   const isFiltered = !!filter?.trim();
   const [isFilterOpen, setIsFilterOpen] = useState(isFiltered);
   const [focusFilterEditor, setFocusFilterEditor] = useState(false);
@@ -504,14 +518,7 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
                             variant="ghost"
                             size="xs"
                             data-testid={`backlog-open-pane-${row.key}`}
-                            onClick={() =>
-                              navigate({
-                                search: (prev: WorkItemListSearch) => ({
-                                  ...prev,
-                                  item: row.key,
-                                }),
-                              })
-                            }
+                            onClick={() => openSidePane(row.key)}
                           >
                             {row.key}
                           </Button>
@@ -520,6 +527,18 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
                           <Link
                             to={routes.workItemDetail.path}
                             params={{ key: row.key }}
+                            onClick={(event) => {
+                              if (
+                                event.button === 0 &&
+                                !event.metaKey &&
+                                !event.ctrlKey &&
+                                !event.shiftKey &&
+                                !event.altKey
+                              ) {
+                                event.preventDefault();
+                                openSidePane(row.key);
+                              }
+                            }}
                             className="font-medium text-sm hover:underline"
                           >
                             {row.title}
@@ -589,7 +608,7 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
           </div>
         )}
 
-        {item ? (
+        {hasOpenedSidePane.current ? (
           <Suspense fallback={null}>
             <WorkItemSidePane
               itemKey={item}
@@ -600,6 +619,7 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
                     item: undefined,
                   }),
                   replace: true,
+                  resetScroll: false,
                 })
               }
             />

@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   createSavedView: vi.fn(),
   toggleSavedViewPin: vi.fn(),
   requestSavedViewDeletion: vi.fn(),
+  openPending: vi.fn(),
   canShare: false,
   canManage: false,
   audienceProps: undefined as Record<string, unknown> | undefined,
@@ -72,6 +73,9 @@ vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "ws-1" }, isLoading: false }),
+}));
+vi.mock("@/hooks/use-open-pending-action", () => ({
+  useOpenPendingAction: () => mocks.openPending,
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
@@ -169,6 +173,7 @@ beforeEach(() => {
   mocks.canManage = false;
   mocks.audienceProps = undefined;
   mocks.navigate.mockReset();
+  mocks.openPending.mockReset();
   mocks.getSavedViews.mockResolvedValue(views);
   mocks.getShareableViewTeams.mockResolvedValue([]);
   mocks.countSavedView.mockImplementation(async (id: string) =>
@@ -397,12 +402,12 @@ describe("deletion is a request (pending action)", () => {
         name: "Request deletion of Escalations",
       }),
     );
-    await waitFor(() => expect(mocks.navigate).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.openPending).toHaveBeenCalled());
     expect(mocks.requestSavedViewDeletion.mock.calls[0]?.[0]).toBe("v-pinned");
-    expect(mocks.navigate.mock.calls[0]?.[0]).toEqual({
-      to: "/agent/settings/profile/pending-actions/$id",
-      params: { id: "pa-1" },
+    expect(mocks.openPending.mock.calls[0]?.[0]).toEqual({
+      pendingActionId: "pa-1",
     });
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -424,7 +429,7 @@ describe("deletion is a request (pending action)", () => {
       expect(
         await screen.findByText(translate(`savedViews:${key}`)),
       ).toBeInTheDocument();
-      expect(mocks.navigate).not.toHaveBeenCalled();
+      expect(mocks.openPending).not.toHaveBeenCalled();
       const list = screen.getByRole("region", { name: "Saved views" });
       expect(
         within(list).getByRole("heading", { name: "Escalations" }),

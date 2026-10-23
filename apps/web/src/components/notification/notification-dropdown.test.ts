@@ -3,6 +3,7 @@ import type { Notification } from "@/types/notification";
 import {
   getNotificationContent,
   getNotificationTitle,
+  getPendingActionNotificationHref,
 } from "./notification-dropdown";
 
 const t = (key: string, options?: Record<string, unknown>) => {
@@ -64,5 +65,31 @@ describe("notification display content", () => {
     expect(getNotificationContent(item, t)).toBe(
       "New comment on Launch website: Ready for review",
     );
+  });
+});
+
+describe("pending action notification deep link", () => {
+  it("opens the approval page for pending_action resources", () => {
+    expect(
+      getPendingActionNotificationHref({
+        resourceType: "pending_action",
+        resourceId: "pa/1",
+      }),
+    ).toBe("/agent/settings/profile/pending-actions/pa%2F1");
+  });
+
+  it("ignores other resources and missing ids", () => {
+    expect(
+      getPendingActionNotificationHref({
+        resourceType: "task",
+        resourceId: "t1",
+      }),
+    ).toBeNull();
+    expect(
+      getPendingActionNotificationHref({
+        resourceType: "pending_action",
+        resourceId: null,
+      }),
+    ).toBeNull();
   });
 });

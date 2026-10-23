@@ -1,12 +1,19 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import {
   getConfiguredAgentOrigin,
   getConfiguredCustomerOrigin,
+  portalForHost,
   signCsrfPayload,
 } from "../auth";
+
+import db, { schema } from "../database";
+import { resolveIdentity } from "../permissions/resolve-identity";
+import { resolveOptionalCookieSession } from "./authenticate-api-request";
+import { dbNowUtc } from "./db-time";
 
 const TOKEN_LIFETIME_MS = 10 * 60 * 1000;
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -208,12 +215,119 @@ export function issueCsrfToken(
   };
 }
 
-export function requireSameOriginIssuer(context: Context): string {
-  const source = sourceOrigin(context, true);
-  if (!source.ok || context.get("appOrigin") !== "agent") {
+export function requireSameOriginIssuer(
+  context: Context,
+  audience: "agent" | "customer" = "agent",
+): string {
+  const expected =
+    audience === "agent"
+      ? getConfiguredAgentOrigin()
+      : getConfiguredCustomerOrigin();
+  const source = sourceOrigin(context, true, expected);
+  if (
+    !source.ok ||
+    context.get("appOrigin") !== (audience === "agent" ? "agent" : "portal")
+  )
     throw new HTTPException(403, { message: "csrf_origin_invalid" });
-  }
   return source.origin;
+}
+
+type CsrfSession = {
+  id?: string;
+  userId?: string;
+  portal?: string;
+  impersonatedBy?: string | null;
+};
+function doubleSubmitFailure(
+  context: Context,
+  session: CsrfSession,
+  userId: string,
+  origin: string,
+) {
+  const cookie = cookieValues(
+    context.req.header("cookie"),
+    csrfCookieName(origin),
+  );
+  const header = context.req.header("x-taskdesk-csrf");
+  if (cookie.length !== 1 || !header) return "csrf_token_missing";
+  if (!constantTimeEqual(cookie[0] ?? "", header)) return "csrf_token_mismatch";
+  if (
+    !session.id ||
+    !session.userId ||
+    session.userId !== userId ||
+    !parseToken(header, session.id, origin)
+  )
+    return "csrf_token_invalid";
+  return null;
+}
+
+/** Public signed-body exchange remains anonymous only when no ambient session cookie exists. */
+export function requirePublicCookieSessionCsrf(audience: "agent" | "customer") {
+  return async (context: Context, next: Next) => {
+    const expectedOrigin =
+      audience === "agent"
+        ? getConfiguredAgentOrigin()
+        : getConfiguredCustomerOrigin();
+    const expectedSurface = audience === "agent" ? "agent" : "portal";
+    // NO-2 requires an exact Origin header even for anonymous exchanges; no Referer fallback here.
+    if (
+      context.req.header("origin") !== expectedOrigin ||
+      portalForHost(context.req.header("host")) !== audience ||
+      (context.get("appOrigin") !== undefined &&
+        context.get("appOrigin") !== expectedSurface)
+    )
+      throw new HTTPException(403, { message: "csrf_origin_invalid" });
+    const header = context.req.header("cookie");
+    const agentCookies = cookieValues(header, SESSION_COOKIE_NAMES[0]);
+    const portalCookies = cookieValues(header, PORTAL_SESSION_COOKIE_NAME);
+    if (agentCookies.length === 0 && portalCookies.length === 0) return next();
+    const own = audience === "agent" ? agentCookies : portalCookies;
+    const other = audience === "agent" ? portalCookies : agentCookies;
+    if (own.length !== 1 || !own[0] || other.length !== 0)
+      throw new HTTPException(401, { message: "Unauthorized" });
+    const resolved = await resolveOptionalCookieSession(
+      context.req.raw.headers,
+    );
+    const session = resolved?.session as CsrfSession | undefined;
+    const userId = resolved?.user?.id;
+    if (
+      !userId ||
+      !session?.id ||
+      session.userId !== userId ||
+      session.portal !== audience ||
+      session.impersonatedBy
+    )
+      throw new HTTPException(401, { message: "Unauthorized" });
+    const [active] = await db
+      .select({ id: schema.sessionTable.id })
+      .from(schema.sessionTable)
+      .where(
+        and(
+          eq(schema.sessionTable.id, session.id),
+          eq(schema.sessionTable.userId, userId),
+          eq(schema.sessionTable.portal, audience),
+          gt(schema.sessionTable.expiresAt, dbNowUtc()),
+          isNull(schema.sessionTable.impersonatedBy),
+        ),
+      )
+      .limit(1);
+    const identity = active
+      ? await resolveIdentity({ userId, credential: "session" })
+      : null;
+    if (
+      !identity ||
+      identity.side !== (audience === "agent" ? "staff" : "customer")
+    )
+      throw new HTTPException(401, { message: "Unauthorized" });
+    const failure = doubleSubmitFailure(
+      context,
+      session,
+      userId,
+      expectedOrigin,
+    );
+    if (failure) throw new HTTPException(403, { message: failure });
+    return next();
+  };
 }
 
 export function csrfProtectionMiddleware() {
@@ -260,23 +374,13 @@ export function csrfProtectionMiddleware() {
     ) {
       return context.json({ message: "csrf_origin_invalid" as const }, 403);
     }
-    const cookieName = csrfCookieName(source.origin);
-    const cookie = cookieValues(cookieHeader, cookieName);
-    const header = context.req.header("x-taskdesk-csrf");
-    if (cookie.length !== 1 || !header) {
-      return context.json({ message: "csrf_token_missing" as const }, 403);
-    }
-    if (!constantTimeEqual(cookie[0]!, header)) {
-      return context.json({ message: "csrf_token_mismatch" as const }, 403);
-    }
-    if (
-      !session.id ||
-      !session.userId ||
-      session.userId !== context.get("userId") ||
-      !parseToken(header, session.id, source.origin)
-    ) {
-      return context.json({ message: "csrf_token_invalid" as const }, 403);
-    }
+    const failure = doubleSubmitFailure(
+      context,
+      session,
+      context.get("userId"),
+      source.origin,
+    );
+    if (failure) return context.json({ message: failure }, 403);
     return next();
   };
 }

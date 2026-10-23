@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   refetch: vi.fn(),
 }));
 
+vi.mock("./work-item-approval-request", () => ({ default: () => null }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>

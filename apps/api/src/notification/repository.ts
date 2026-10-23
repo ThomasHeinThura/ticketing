@@ -225,7 +225,7 @@ export async function findCurrentNotificationResources(
         peopleByWorkItem.get(row.workItemId) ?? [],
       ),
       customerVisible: row.visibility === "public",
-      staffUrl: null,
+      staffUrl: `/agent/work-items/${encodeURIComponent(row.key)}?comment=${encodeURIComponent(row.id)}`,
     });
   }
   return facts;
@@ -349,7 +349,9 @@ export async function findCurrentNotificationResource(
       ? {
           ...resource,
           customerVisible: row.visibility === "public",
-          staffUrl: null,
+          staffUrl: resource.staffUrl
+            ? `${resource.staffUrl}?comment=${encodeURIComponent(input.resourceId)}`
+            : null,
         }
       : null;
   }

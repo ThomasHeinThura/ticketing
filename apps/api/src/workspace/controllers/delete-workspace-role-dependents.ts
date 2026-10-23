@@ -2,6 +2,7 @@ import { and, eq, inArray, isNotNull, or, type SQL, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { type DatabaseInstance, schema } from "../../database";
 import { customFieldTable } from "../../database/migration-schema";
+import { queueAttachmentObjectsForWorkspaces } from "../../utils/attachment-object-queue";
 import { isLockNotAvailable } from "../../utils/is-lock-not-available";
 
 type WorkspaceDeletionTransaction = Parameters<
@@ -180,6 +181,10 @@ export async function deleteWorkspaceRoleDependents(
     throw new WorkspaceInUseByIdentityConnectionError(referencedWorkspaceIds);
   }
 
+  // PA-12: attachment rows cascade away with the work items below. Queue their stored objects
+  // for `attachment-gc` in this same transaction so the files are collected, not orphaned.
+  await queueAttachmentObjectsForWorkspaces(tx, ids);
+
   const { oidcMappingIds, scimMappingIds, membershipWhere, grantWhere } =
     workspaceDependentPredicates(tx, ids);
   const grantIds = tx
@@ -239,6 +244,18 @@ export async function deleteWorkspaceRoleDependents(
     .where(inArray(schema.approvalTable.workspaceId, ids));
 
   // 6. Workflows (`workflow_transition` restricts `state_template` and `role`).
+  // `work_item_type.workflow_id` is ON DELETE RESTRICT, and every seeded default type is
+  // bound to its workspace's default workflow, so release that binding first; the type rows
+  // themselves go with the workspace (or are removed below).
+  await tx
+    .update(schema.workItemTypeTable)
+    .set({ workflowId: null })
+    .where(
+      and(
+        inArray(schema.workItemTypeTable.workspaceId, ids),
+        isNotNull(schema.workItemTypeTable.workflowId),
+      ),
+    );
   await tx
     .delete(schema.workflowTable)
     .where(inArray(schema.workflowTable.workspaceId, ids));

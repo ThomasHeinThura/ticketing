@@ -27,3 +27,17 @@ export async function sendWorkspaceInvitationEmail(
 export function isSmtpConfigured(): boolean {
   return false;
 }
+
+export type {
+  RuntimeSmtpResolver,
+  SmtpConfiguration,
+  SmtpSocket,
+} from "../../../packages/email/dist/smtp-runtime";
+export {
+  bootstrapSmtpConfiguration,
+  executeSmtp,
+  openSmtpSocket,
+  resolveSmtpConfiguration,
+  SmtpAttemptError,
+  setRuntimeSmtpResolver,
+} from "../../../packages/email/dist/smtp-runtime";

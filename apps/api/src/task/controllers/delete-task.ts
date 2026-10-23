@@ -1,58 +1,14 @@
-import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { publishEvent } from "../../events";
-import { deleteS3Keys, getTaskAssetKeys } from "../../storage/cleanup-assets";
-import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
-import { deleteTaskById, listTaskRelations } from "../repository";
-
-async function deleteTask(
-  identity: ResolvedIdentity,
-  taskId: string,
-  currentUserId: string,
-) {
-  const { relations, assetKeys, deletedTask } = await db.transaction(
-    async (tx) => {
-      await lockTaskAndAssertProjectLiveForIdentity(tx, taskId, identity);
-      const relations = await listTaskRelations(tx, identity, taskId);
-      const assetKeys = await getTaskAssetKeys(tx, identity, taskId);
-      const deletedTask = await deleteTaskById(tx, identity, taskId);
-      return { relations, assetKeys, deletedTask };
-    },
-  );
-
-  if (!deletedTask) {
-    throw new HTTPException(404, {
-      message: "Task not found",
-    });
-  }
-
-  // The returned deleted row is the authoritative locked snapshot for both
-  // response and event attribution; no unlocked preflight data is reused.
-
-  await publishEvent("task.deleted", {
-    taskId: deletedTask.id,
-    projectId: deletedTask.projectId,
-    userId: currentUserId,
-    title: deletedTask.title,
-  });
-
-  for (const relation of relations) {
-    await publishEvent("task-relation.deleted", {
-      projectId: deletedTask.projectId,
-      userId: currentUserId,
-      taskId: taskId,
-      sourceTaskId: relation.sourceTaskId,
-      targetTaskId: relation.targetTaskId,
-    });
-  }
-
-  // Fire-and-forget S3 cleanup after successful DB delete
-  if (assetKeys.length > 0) {
-    deleteS3Keys(assetKeys).catch(() => {});
-  }
-
-  return deletedTask;
-}
-
-export default deleteTask;
+/**
+ * `DELETE /api/task/{id}` is gone (P0 deletion audit). It used to hard-delete the legacy `task`
+ * row and fire-and-forget its S3 assets with no pending action, approval or recovery window.
+ *
+ * It is not re-routed to the work-item deletion pending action because that flow is keyed by a
+ * `work_item.key` and operates on the `work_item` table; a legacy `task.id` addresses the
+ * separate inherited `task` table and there is no task→work-item mapping to resolve it through.
+ * The route keeps its reach/permission middleware (an unknown or unreachable id still answers
+ * 404/403 exactly as before) and then answers 410 (built from the route context, not thrown, so
+ * the middleware's `Deprecation`/`Sunset`/`Link` headers survive — the app's `onError` rebuilds
+ * a thrown HTTPException's response without them). Successor: `DELETE /api/work-items/{key}`.
+ */
+export const LEGACY_TASK_DELETION_GONE_MESSAGE =
+  "task_delete_gone: DELETE /api/task/{id} no longer deletes. Request deletion through DELETE /api/work-items/{key}, which records a pending action for approval.";

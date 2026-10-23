@@ -1,64 +1,28 @@
-# TaskDesk v2 — Documentation
+# TaskDesk: current direction
 
-> Working product name: **TaskDesk**. Repository: `Ticketing.v2`.
-> This is a **greenfield build**, not a migration of v1. Importing data from other
-> systems is one feature among many, not the purpose of the project.
+**Reset: 22 October 2026.** Document and deliver the whole product using the original Kaneo interface: P0–P7, with later candidates visible in proposed P8/P9 groups. Integrate the code already present. Show working journeys on the laptop before asking Thomas to review.
 
-## Read this first
-
-| If you are… | Start here |
+| Read | Purpose |
 | --- | --- |
-| New to the project | [Vision](00-overview/vision.md) → [Architecture overview](01-architecture/overview.md) |
-| About to write code | [SDLC](04-engineering/sdlc.md) → [Coding standards](04-engineering/coding-standards.md) → [Definition of Done](04-engineering/definition-of-done.md) |
-| An AI agent picking up a task | [Agent workflow](04-engineering/agent-workflow.md) — **required reading** |
-| Checking what agents are authorized to do now | [Active mission](07-planning/active-mission.md) |
-| Building UI | [Design system](02-design/design-system.md) → [UX quality gates](02-design/ux-quality-gates.md) |
-| Adding a feature | [Feature index](03-features/README.md) |
-| Deploying | [Deployment](05-operations/deployment.md) → [One-line install](05-operations/one-line-install.md) → [Configuration reference](05-operations/configuration-reference.md) |
-| Wondering "why is it like this?" | [ADR index](01-architecture/adr/README.md) and [Decision log](07-planning/decision-log.md) |
-| Releasing | [Release plan](07-planning/release-plan.md) → [CI/CD](04-engineering/ci-cd.md) → [CHANGELOG](../CHANGELOG.md) |
+| [Feature catalogue](features.md) | Whole-product features, subfeatures and Kaneo placement |
+| [Full roadmap](roadmap.md) | P0–P7 delivery and proposed P8/P9 extension groups |
+| [Original alignment](alignment.md) | Source mapping, preserved decisions and scope questions |
+| [Agent coordination](agent-work.md) | Bounded assignments, file/runtime ownership and handoffs |
+| [Requirements](requirements.md) | Preserved scope and exact original requirement references |
+| [Audit](audit.md) | Source findings, gaps and limits of the evidence |
+| [Testing](testing.md) | Laptop setup, tests, browser checks and phase review |
+| [Integration contracts](contracts.md) | Distilled semantics for current code integration |
+| [Screen coverage](screens.md) | Maintained route coverage; no acceptance inferred |
+| [Status](status.md) | What changed, what was verified and what remains blocked |
 
-## The one-paragraph summary
+The workflow is in [AGENTS.md](../AGENTS.md). No separate lifecycle or review ceremony.
 
-TaskDesk is a self-hostable, multi-tenant **service desk and work management platform**.
-It merges the ticketing depth of Jira Service Management (request catalogues, SLAs,
-approvals, customer portal) with the project-management depth of Plane and OpenProject
-(cycles, custom fields, time & cost, hierarchies) — delivered with the UI/UX quality of
-[kaneo](https://github.com/usekaneo/kaneo), whose codebase is our foundation.
+## Maintained contracts and archive
 
-It ships as **one image**. Every tenant-specific behaviour — identity providers, branding,
-feature toggles, roles, workflows, SLAs, notification channels, storage backends — is
-**configured at runtime through God Mode**, never compiled in. See
-[Plugin architecture](01-architecture/plugin-architecture.md).
+Active checker inputs now live in [technical](technical/ci-gates.md): [configuration](technical/configuration.md), [permissions](technical/permissions.md), [features](technical/features.md), [schema](technical/data-model.md), [jobs](technical/background-jobs.md), [events](technical/events.md), [UI boundaries](technical/ui-boundaries.md) and [workspace boundaries](technical/workspace-boundaries.md). Readers and fail-closed tests move together. The [foundation details](technical/foundation-details.md) preserve the non-table constraints alongside those registries. The full retained clauses are in [architecture/experience](technical/architecture-and-experience.md), [safety/runtime](technical/safety-and-runtime.md), [import/cutover](technical/import-and-cutover.md), [operations/distribution](technical/operations-and-distribution.md), [design/decisions](technical/design-and-decisions.md), [retained constraints](technical/retained-constraints.md) and the phase feature references linked from requirements. These contracts describe required behavior; they do not prove implementation or acceptance.
 
-## Documentation map
+Thomas chose to keep `archive/` ignored on 22 October. The original files remain unchanged on this laptop as historical provenance; a fresh checkout must not need them to run checks or understand retained requirements. All numbered rules and their feature, safety, event and import clauses now link to maintained references in [requirements](requirements.md). All 72 indexed source contracts now have maintained destinations. Linked design, migration, licensing and owner-decision clauses also resolve to maintained references. Combined link and reader checks run without the archive; source names and lines remain provenance, not active instructions. Semantic curation is not an implementation or acceptance claim.
 
-```
-docs/
-├── 00-overview/        Why this exists, what it is, what we may legally reuse
-├── 01-architecture/    How it is built  (+ adr/ — why it is built that way)
-├── 02-design/          Design system, tokens, motion, IA, UX gates
-├── 03-features/        One spec per feature — the product surface
-├── 04-engineering/     SDLC, agent workflow, testing, CI/CD, standards
-├── 05-operations/      Deploy, configure, run, back up, scale
-├── 06-data-import/     Importing from Azure DevOps, Plane, Jira, CSV
-├── 07-planning/        Roadmap, stages, risks, decisions, live status
-└── 08-docs-site/       The public documentation website
-```
+Historical guidance and acceptance claims are inactive. Git-history comparisons may still read prior committed contracts to detect protection shrinkage; that is not a filesystem dependency on the ignored archive. Existing remote branch protection remains in place. PR descriptions now require an outcome and actual checks. Only an explicit phase-completion submission requires the single consolidated, source-bound independent review; Thomas acceptance remains separate. Explicit releases validate that evidence before building.
 
-## Non-negotiables
-
-These are the rules that, if broken, mean v2 repeats v1's failure. They are enforced in
-CI where possible and by review where not. Full list in
-[Product principles](00-overview/product-principles.md) and
-[UX quality gates](02-design/ux-quality-gates.md).
-
-1. **UI/UX is kaneo's.** No bespoke primitives. Everything comes from `packages/ui`.
-2. **Nothing is hardcoded per customer.** If it varies by deployment, it lives in God Mode.
-3. **Every route declares its permission.** A route without a declared policy fails the build.
-4. **Every screen has a URL.** No state reachable only by clicking.
-5. **Ship narrow and finished, not wide and half-built.** v1 died of breadth.
-
-## Status
-
-Live status, current stage and open work: [07-planning/status.md](07-planning/status.md).
+Legal notices, release history and product help retain operational copies where required. They are not agent instructions.

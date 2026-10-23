@@ -13,6 +13,10 @@ import { markReach } from "../utils/reach-mark";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkItemReach } from "../work-item/require-work-item-reach";
 import {
+  approvalCandidates,
+  approvalRequestContext,
+} from "./authoring-service";
+import {
   approvalIdEvidence,
   approvalWorkItemEvidence,
   portalListEvidence,
@@ -31,8 +35,11 @@ import {
   resolveApprovalIdentityIfActive,
 } from "./repository";
 import {
+  approvalCandidatesQuery,
+  approvalCandidatesSchema,
   approvalIdParam,
   approvalListResponseSchema,
+  approvalRequestContextSchema,
   createApprovalBody,
   decideApprovalBody,
   workItemKeyParam,
@@ -216,6 +223,38 @@ const listWorkItemApprovalsRoute = createRoute({
     ),
     401: errorResponse("Authentication required"),
     404: errorResponse("Work item not found or outside caller reach"),
+  },
+});
+
+const approvalRequestContextRoute = createRoute({
+  method: "get",
+  operationId: "getApprovalRequestContext",
+  path: "/work-items/{key}/approval-request-context",
+  middleware: [approvalRequestReach, approvalWorkItemEvidence()] as const,
+  tags: ["Approvals"],
+  summary: "Load current approval authoring options",
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse("Current request options", approvalRequestContextSchema),
+    401: errorResponse("Authentication required"),
+    403: errorResponse("Staff read authority required"),
+    404: errorResponse("Work item not found"),
+  },
+});
+const approvalCandidatesRoute = createRoute({
+  method: "get",
+  operationId: "listApprovalCandidates",
+  path: "/work-items/{key}/approval-candidates",
+  middleware: [approvalRequestReach, approvalWorkItemEvidence()] as const,
+  tags: ["Approvals"],
+  summary: "List eligible approvers with current work item reach",
+  request: { params: workItemKeyParam, query: approvalCandidatesQuery },
+  responses: {
+    200: jsonResponse("Eligible approvers", approvalCandidatesSchema),
+    400: errorResponse("Invalid candidate query"),
+    401: errorResponse("Authentication required"),
+    403: errorResponse("Approval request authority required"),
+    404: errorResponse("Work item or enabled requests unavailable"),
   },
 });
 
@@ -406,6 +445,27 @@ function approvalRouter() {
       );
       return c.json({ approvals }, 200);
     })
+    .openapi(approvalRequestContextRoute, async (c) =>
+      c.json(
+        (
+          await approvalRequestContext(
+            await requestApprovalIdentity(c),
+            c.req.valid("param").key,
+          )
+        ).context,
+        200,
+      ),
+    )
+    .openapi(approvalCandidatesRoute, async (c) =>
+      c.json(
+        await approvalCandidates(
+          await requestApprovalIdentity(c),
+          c.req.valid("param").key,
+          c.req.valid("query"),
+        ),
+        200,
+      ),
+    )
     .openapi(createWorkItemApprovalRoute, async (c) => {
       const identity = await requestApprovalIdentity(c);
       if (identity.side !== "staff")

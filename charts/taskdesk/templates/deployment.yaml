@@ -14,6 +14,12 @@ metadata:
   labels:
     {{- include "taskdesk.labels" . | nindent 4 }}
 spec:
+  {{- if and .Values.taskdesk.persistence.enabled (ne .Values.taskdesk.persistence.accessMode "ReadWriteMany") }}
+  # A single-writer attachment claim cannot safely overlap old and new pods
+  # across nodes during a rolling update.
+  strategy:
+    type: Recreate
+  {{- end }}
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
@@ -104,6 +110,9 @@ spec:
             {{- include "taskdesk.migrationDatabaseUrlEnv" . | nindent 12 }}
           resources:
             {{- toYaml .Values.migrate.resources | nindent 12 }}
+          volumeMounts:
+            - name: migrate-tmp
+              mountPath: /tmp
       {{- end }}
       containers:
         - name: taskdesk
@@ -199,6 +208,25 @@ spec:
             {{- toYaml .Values.taskdesk.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.taskdesk.resources | nindent 12 }}
+          volumeMounts:
+            - name: taskdesk-tmp
+              mountPath: /tmp
+            - name: taskdesk-attachments
+              mountPath: /app/data/attachments
+      volumes:
+        - name: taskdesk-tmp
+          emptyDir: {}
+        {{- if .Values.migrate.enabled }}
+        - name: migrate-tmp
+          emptyDir: {}
+        {{- end }}
+        - name: taskdesk-attachments
+          {{- if .Values.taskdesk.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "taskdesk.attachmentsClaimName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
 
       {{- with .Values.nodeSelector }}
       nodeSelector:

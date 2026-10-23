@@ -21,6 +21,10 @@ import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
 import {
+  approvePendingDeletionAsCookie,
+  type PendingDeletionBody,
+} from "./helpers/pending-deletion";
+import {
   acceptInvitationNative,
   cancelInvitationNative,
   inviteAndAcceptAsNewMemberNative,
@@ -28,8 +32,9 @@ import {
   rejectInvitationNative,
 } from "./helpers/workspace-invitation-write-http";
 import {
+  approveWorkspaceRoleDeletion,
   createWorkspaceRoleNative,
-  deleteWorkspaceRoleNative,
+  requestWorkspaceRoleDeletion,
 } from "./helpers/workspace-role-write-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
@@ -493,12 +498,203 @@ describe("S6a invite (POST /api/workspace/{id}/invitations)", () => {
     expect(blocked.status).toBe(400);
 
     // Canceling the expired row frees the slot it was occupying.
-    const canceled = await cancelInvitationNative(
+    const requested = await cancelInvitationNative(
       app,
       owner.cookie,
       expiredRow.id,
     );
-    expect(canceled.status).toBe(200);
+    expect(requested.status).toBe(202);
+    // Still occupying its slot until the requester approves.
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+    const approved = await approvePendingDeletionAsCookie(
+      app,
+      owner.cookie,
+      (await requested.json()) as PendingDeletionBody,
+    );
+    expect(approved.status, await approved.clone().text()).toBe(200);
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE - 1,
+    );
+
+    // The real route takes the LAST available slot.
+    const atCeiling = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "the-hundredth@example.com", role: "member" },
+    );
+    expect(atCeiling.status).toBe(200);
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+
+    // The real route refuses the next one, and writes no row.
+    const overCeiling = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "one-too-many@example.com", role: "member" },
+    );
+    expect(overCeiling.status).toBe(400);
+    // `HTTPException#getResponse()` renders `message` as a plain-text body,
+    // not JSON -- same convention every other error-path assertion in this
+    // suite relies on (e.g. `workspace-invite-abuse-guards.test.ts`).
+    await expect(overCeiling.text()).resolves.toContain(
+      `maximum of ${MAX_PENDING_INVITATIONS_PER_WORKSPACE} pending invitations`,
+    );
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+  }, 30_000);
+
+  it("the ceiling is workspace-scoped -- a workspace at capacity does not block invitations in a different workspace", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const fullWorkspaceId = await createWorkspace(app, owner.cookie, "Full");
+    const otherWorkspaceId = await createWorkspace(app, owner.cookie, "Other");
+
+    await seedPendingInvitations(
+      fullWorkspaceId,
+      owner.user.id,
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+
+    const blockedInFull = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      fullWorkspaceId,
+      { email: "blocked@example.com", role: "member" },
+    );
+    expect(blockedInFull.status).toBe(400);
+
+    const okInOther = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      otherWorkspaceId,
+      { email: "fine-elsewhere@example.com", role: "member" },
+    );
+    expect(okInOther.status).toBe(200);
+  });
+
+  it("resend: true succeeds even when the workspace is AT the ceiling, since it updates the existing row rather than inserting a new one", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "ResendAtCeiling",
+    );
+
+    // 99 filler rows plus one real, unexpired pending invitation for the
+    // email we are about to resend to -- 100 pending rows total, exactly at
+    // the ceiling.
+    await seedPendingInvitations(
+      workspaceId,
+      owner.user.id,
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE - 1,
+    );
+    const first = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "resend-target@example.com", role: "member" },
+    );
+    expect(first.status).toBe(200);
+    const firstBody = (await first.json()) as { id: string };
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+
+    // A brand-new invitation is refused here, confirming the workspace is
+    // genuinely at the ceiling before the resend assertion below.
+    const newInviteBlocked = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "genuinely-new@example.com", role: "member" },
+    );
+    expect(newInviteBlocked.status).toBe(400);
+
+    // But resending the existing invitation succeeds, because it updates
+    // the same row instead of inserting a new one.
+    const resent = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "resend-target@example.com", role: "member", resend: true },
+    );
+    expect(resent.status).toBe(200);
+    const resentBody = (await resent.json()) as { id: string };
+    expect(resentBody.id).toBe(firstBody.id);
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+  }, 30_000);
+
+  it("an expired-but-still-pending row still occupies a ceiling slot until it is canceled (deliberate design choice, see invite-workspace-member.ts)", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "ExpiredCounts",
+    );
+
+    // 99 live rows plus ONE expired-but-status-"pending" row -- 100 rows
+    // that all still read `status = 'pending'`, even though one of them can
+    // no longer be resent or accepted.
+    await seedPendingInvitations(
+      workspaceId,
+      owner.user.id,
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE - 1,
+    );
+    const now = new Date();
+    const [expiredRow] = await db
+      .insert(schema.invitationTable)
+      .values({
+        workspaceId,
+        email: "stale-expired@example.com",
+        role: "member",
+        status: "pending",
+        expiresAt: new Date(now.getTime() - 60_000),
+        createdAt: now,
+        inviterId: owner.user.id,
+      })
+      .returning();
+    if (!expiredRow) throw new Error("seed insert returned no row");
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+
+    // The expired row counts against the ceiling -- a new invite is refused
+    // even though the expired row itself could never be resent or accepted.
+    const blocked = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "blocked-by-stale@example.com", role: "member" },
+    );
+    expect(blocked.status).toBe(400);
+
+    // Canceling the expired row frees the slot it was occupying.
+    const requested = await cancelInvitationNative(
+      app,
+      owner.cookie,
+      expiredRow.id,
+    );
+    expect(requested.status).toBe(202);
+    // Still occupying its slot until the requester approves.
+    expect(await pendingInvitationRowCount(workspaceId)).toBe(
+      MAX_PENDING_INVITATIONS_PER_WORKSPACE,
+    );
+    const approved = await approvePendingDeletionAsCookie(
+      app,
+      owner.cookie,
+      (await requested.json()) as PendingDeletionBody,
+    );
+    expect(approved.status, await approved.clone().text()).toBe(200);
     expect(await pendingInvitationRowCount(workspaceId)).toBe(
       MAX_PENDING_INVITATIONS_PER_WORKSPACE - 1,
     );
@@ -571,13 +767,18 @@ describe("S6a accept (POST /api/invitation/{id}/accept)", () => {
     );
     expect(invited.status).toBe(200);
     const invitationId = ((await invited.json()) as { id: string }).id;
-    const deleted = await deleteWorkspaceRoleNative(
+    const pendingDelete = await requestWorkspaceRoleDeletion(
       app,
       owner.cookie,
       workspaceId,
       roleId,
     );
-    expect(deleted.status).toBe(200);
+    const deleted = await approveWorkspaceRoleDeletion(
+      app,
+      owner.cookie,
+      pendingDelete,
+    );
+    expect(deleted.status, await deleted.clone().text()).toBe(200);
 
     const invitee = await signUpUser(app, {
       email: "future-member@example.com",
@@ -957,7 +1158,14 @@ describe("S6a cancel (DELETE /api/invitation/{id})", () => {
       owner.cookie,
       invitation.id,
     );
-    expect(canceled.status).toBe(200);
+    expect(canceled.status).toBe(202);
+    expect((await invitationRow(invitation.id))?.status).toBe("pending");
+    const approved = await approvePendingDeletionAsCookie(
+      app,
+      owner.cookie,
+      (await canceled.json()) as PendingDeletionBody,
+    );
+    expect(approved.status, await approved.clone().text()).toBe(200);
     expect((await invitationRow(invitation.id))?.status).toBe("canceled");
   });
 

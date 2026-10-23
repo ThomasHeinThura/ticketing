@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@taskdesk/ui";
-import { ExternalLink, X } from "lucide-react";
+import { Maximize2, X } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { TaskDetailsSheetFrame } from "@/components/task/task-details-sheet";
 import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
 import type { ActivityFilter } from "@/components/work-item/work-item-activity";
 import WorkItemDetailLoading from "@/components/work-item/work-item-detail-loading";
@@ -11,6 +12,7 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
+import WorkItemActions from "./work-item-actions";
 
 const WorkItemDetail = lazy(loadWorkItemDetail);
 
@@ -20,6 +22,31 @@ const WorkItemDetail = lazy(loadWorkItemDetail);
  * side pane without leaving the surrounding view.
  */
 export default function WorkItemSidePane({
+  itemKey,
+  onClose,
+}: {
+  itemKey?: string;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <TaskDetailsSheetFrame
+      itemId={itemKey}
+      onClose={onClose}
+      ariaLabel={t("workItems:sidePane.ariaLabel", { key: itemKey ?? "" })}
+    >
+      {(visibleItemKey) => (
+        <WorkItemSidePaneBody
+          key={visibleItemKey}
+          itemKey={visibleItemKey}
+          onClose={onClose}
+        />
+      )}
+    </TaskDetailsSheetFrame>
+  );
+}
+
+function WorkItemSidePaneBody({
   itemKey,
   onClose,
 }: {
@@ -57,33 +84,41 @@ export default function WorkItemSidePane({
   const item = isNotFound ? undefined : cachedItem;
 
   return (
-    <aside
-      aria-label={t("workItems:sidePane.ariaLabel", {
-        defaultValue: `Work item ${itemKey}`,
-        key: itemKey,
-      })}
+    <div
       data-testid="work-item-side-pane"
-      className="flex h-full w-full max-w-2xl shrink-0 flex-col overflow-hidden border-border border-l bg-background"
+      className="flex flex-1 min-h-0 flex-col overflow-hidden"
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-border border-b bg-background px-4 py-2.5">
         <span className="font-medium text-muted-foreground text-sm">
           {itemKey}
         </span>
-        <div className="flex items-center gap-2">
-          <Link
-            to={routes.workItemDetail.path}
-            params={{ key: itemKey }}
-            className="inline-flex items-center gap-1 rounded-sm px-2 py-1 text-xs underline-offset-4 hover:underline"
+        <div className="flex items-center gap-1">
+          {item ? (
+            <WorkItemActions
+              item={item}
+              onAccessLost={onAccessLost}
+              variant="delete"
+            />
+          ) : null}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-foreground"
+            render={
+              <Link
+                to={routes.workItemDetail.path}
+                params={{ key: itemKey }}
+                aria-label={t("workItems:sidePane.openFullPage")}
+              />
+            }
           >
-            <ExternalLink className="size-3.5" aria-hidden="true" />
-            {t("workItems:sidePane.openFullPage", {
-              defaultValue: "Full page",
-            })}
-          </Link>
+            <Maximize2 className="size-4" aria-hidden="true" />
+          </Button>
           <Button
             size="sm"
             variant="ghost"
             onClick={onClose}
+            className="text-foreground"
             aria-label={t("workItems:sidePane.close", {
               defaultValue: "Close side pane",
             })}
@@ -92,7 +127,7 @@ export default function WorkItemSidePane({
           </Button>
         </div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Suspense fallback={<WorkItemDetailLoading />}>
           {item ? (
             <SidePaneDetailWithProject
@@ -123,7 +158,7 @@ export default function WorkItemSidePane({
           )}
         </Suspense>
       </div>
-    </aside>
+    </div>
   );
 }
 

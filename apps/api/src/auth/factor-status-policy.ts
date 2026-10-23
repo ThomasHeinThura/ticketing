@@ -11,6 +11,16 @@ export const factorStatusPolicies = {
         "returns a short-lived CSRF token bound to the current agent session",
     },
   },
+  "GET /api/portal/csrf-token": {
+    authenticated: true,
+    self: true,
+    sessionOnly: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "returns only a short-lived CSRF token bound to the current customer session and portal origin",
+    },
+  },
   "GET /api/me/security/factors": {
     authenticated: true,
     self: true,

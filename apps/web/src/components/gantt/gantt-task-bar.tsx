@@ -26,6 +26,8 @@ type GanttTaskBarProps = {
   pixelsPerDay: number;
   isMobile?: boolean;
   onOpenTask: () => void;
+  canEditDates?: boolean;
+  onDatesChange?: (start: Date, end: Date) => Promise<void>;
 };
 
 function getBarGridColumns(
@@ -58,6 +60,8 @@ export function GanttTaskBar({
   pixelsPerDay,
   isMobile = false,
   onOpenTask,
+  canEditDates = true,
+  onDatesChange,
 }: GanttTaskBarProps) {
   const { t } = useTranslation();
   const { mutateAsync: updateTask } = useUpdateTask();
@@ -91,12 +95,15 @@ export function GanttTaskBar({
 
   const persistDates = useCallback(
     async (nextStart: Date, nextEnd: Date): Promise<boolean> => {
+      if (!canEditDates) return false;
       try {
-        await updateTask({
-          ...task,
-          startDate: toIsoDay(nextStart),
-          dueDate: toIsoDay(nextEnd),
-        });
+        if (onDatesChange) await onDatesChange(nextStart, nextEnd);
+        else
+          await updateTask({
+            ...task,
+            startDate: toIsoDay(nextStart),
+            dueDate: toIsoDay(nextEnd),
+          });
         return true;
       } catch (error) {
         if (!(error instanceof TaskUpdateError)) {
@@ -109,7 +116,7 @@ export function GanttTaskBar({
         return false;
       }
     },
-    [task, updateTask, t],
+    [task, updateTask, t, canEditDates, onDatesChange],
   );
 
   const pxPerDay = Math.max(pixelsPerDay, 1e-6);
@@ -299,6 +306,7 @@ export function GanttTaskBar({
           variant="ghost"
           type="button"
           aria-label={t("tasks:gantt.resizeStart")}
+          disabled={!canEditDates}
           onPointerDown={handleResizeLeftPointerDown}
           className={cn(
             "relative z-20 shrink-0 cursor-ew-resize touch-none border-r border-primary/15 bg-primary/8 hover:bg-primary/18",
@@ -311,7 +319,8 @@ export function GanttTaskBar({
           type="button"
           aria-label={t("tasks:gantt.taskAriaLabel", { title: task.title })}
           className="relative z-10 min-h-[44px] min-w-0 flex-1 cursor-grab touch-manipulation overflow-hidden px-2 text-left active:cursor-grabbing sm:min-h-0 sm:px-2.5"
-          onPointerDown={handleMovePointerDown}
+          onPointerDown={canEditDates ? handleMovePointerDown : undefined}
+          onClick={canEditDates ? undefined : onOpenTask}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
@@ -326,6 +335,7 @@ export function GanttTaskBar({
           variant="ghost"
           type="button"
           aria-label={t("tasks:gantt.resizeDue")}
+          disabled={!canEditDates}
           onPointerDown={handleResizeRightPointerDown}
           className={cn(
             "relative z-20 shrink-0 cursor-ew-resize touch-none border-l border-primary/15 bg-primary/8 hover:bg-primary/18",

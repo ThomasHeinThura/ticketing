@@ -4,11 +4,13 @@ import { Paperclip, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  deleteAttachment,
   listWorkItemAttachments,
+  requestAttachmentDeletion,
   uploadWorkItemAttachment,
 } from "@/fetchers/attachment/work-item-attachments";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { formatDateMedium } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
 
@@ -20,7 +22,7 @@ function formatBytes(size: number) {
 
 /**
  * Work-item attachments (`attachments.md`): list, upload through presign → PUT → complete,
- * download through the API's short-lived redirect, and delete by the uploader.
+ * download through the API's short-lived redirect, and request confirmed deletion when authorized.
  */
 export default function WorkItemAttachments({
   workItemKey,
@@ -29,6 +31,9 @@ export default function WorkItemAttachments({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const openPendingAction = useOpenPendingAction();
+  const removalBusy = useRef(false);
+  const lifecycle = useIntentLifecycle(workItemKey, () => setError(null));
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const queryKey = ["work-items", "attachments", workItemKey];
@@ -47,16 +52,34 @@ export default function WorkItemAttachments({
       ),
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
-  const remove = useMutation({
-    mutationFn: deleteAttachment,
-    onError: (cause) =>
-      setError(
-        cause instanceof HttpError && cause.status < 500 && cause.message
-          ? cause.message
-          : t("workItems:detail.attachments.deleteFailed"),
-      ),
-    onSettled: () => queryClient.invalidateQueries({ queryKey }),
-  });
+  const remove = useMutation({ mutationFn: requestAttachmentDeletion });
+  const currentDeletable = useRef(new Set<string>());
+  currentDeletable.current = new Set(
+    (Array.isArray(list.data) ? list.data : [])
+      .filter((row) => row.canDelete === true && row.state === "ready")
+      .map((row) => row.id),
+  );
+  async function requestRemoval(id: string) {
+    if (removalBusy.current || !currentDeletable.current.has(id)) return;
+    removalBusy.current = true;
+    const intent = lifecycle.capture();
+    setError(null);
+    try {
+      const pending = await remove.mutateAsync(id);
+      if (!lifecycle.isCurrent(intent) || !currentDeletable.current.has(id))
+        return;
+      await openPendingAction(pending);
+    } catch (cause) {
+      if (lifecycle.isCurrent(intent))
+        setError(
+          cause instanceof HttpError && cause.status < 500 && cause.message
+            ? cause.message
+            : t("workItems:detail.attachments.deleteFailed"),
+        );
+    } finally {
+      removalBusy.current = false;
+    }
+  }
 
   const ready = (Array.isArray(list.data) ? list.data : []).filter(
     (attachment) => attachment.state === "ready",
@@ -135,17 +158,19 @@ export default function WorkItemAttachments({
                 {formatBytes(attachment.size)} ·{" "}
                 {formatDateMedium(attachment.createdAt)}
               </span>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={t("workItems:detail.attachments.delete", {
-                  name: attachment.filename,
-                })}
-                disabled={remove.isPending}
-                onClick={() => remove.mutate(attachment.id)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
+              {attachment.canDelete === true && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t("workItems:detail.attachments.delete", {
+                    name: attachment.filename,
+                  })}
+                  disabled={remove.isPending}
+                  onClick={() => void requestRemoval(attachment.id)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              )}
             </li>
           ))}
         </ul>

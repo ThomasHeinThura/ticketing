@@ -974,11 +974,11 @@ test("production S3 profile and an explicit --files-host still require the files
   );
 });
 
-test("published source installer hash in the runbook matches install.sh byte-for-byte", async () => {
+test("maintained source installer hash matches install.sh byte-for-byte", async () => {
   const source = await readFile(installer);
   const digest = createHash("sha256").update(source).digest("hex");
   const guide = await readFile(
-    path.join(root, "docs/05-operations/one-line-install.md"),
+    path.join(root, "docs/technical/configuration.md"),
     "utf8",
   );
   assert.ok(

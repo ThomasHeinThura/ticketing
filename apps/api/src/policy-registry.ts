@@ -48,7 +48,9 @@ import { intakePolicies } from "./intake/policy";
 import { invitationPolicies } from "./invitation/policy";
 import { labelPolicies } from "./label/policy";
 import { notificationPolicies } from "./notification/policy";
+import { preferenceHandoffPolicies } from "./notification/preference-handoff-policy";
 import { notificationPreferencesPolicies } from "./notification-preferences/policy";
+import { notificationProviderPolicies } from "./notification-provider/policy";
 import { oauthPolicies } from "./oauth/policy";
 import { pendingActionPolicies } from "./pending-action/policy";
 import { projectPolicies } from "./project/policy";
@@ -62,6 +64,7 @@ import { userPolicies } from "./user/policy";
 import { userPreferencePolicies } from "./user-preference/policy";
 import { viewPolicies } from "./view/policy";
 import { workItemPolicies } from "./work-item/policy";
+import { workItemRelationPolicies } from "./work-item-relation/policy";
 import { workflowPolicies } from "./workflow/policy";
 import { workflowRulePolicies } from "./workflow-rule/policy";
 import { workspacePolicies } from "./workspace/policy";
@@ -321,6 +324,10 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/workspace/policy.ts", policies: workspacePolicies },
   { name: "apps/api/src/invitation/policy.ts", policies: invitationPolicies },
   { name: "apps/api/src/work-item/policy.ts", policies: workItemPolicies },
+  {
+    name: "apps/api/src/work-item-relation/policy.ts",
+    policies: workItemRelationPolicies,
+  },
   { name: "apps/api/src/time-entry/policy.ts", policies: timeEntryPolicies },
   {
     name: "apps/api/src/capabilities/policy.ts",
@@ -353,8 +360,16 @@ export const POLICY_SOURCES = [
     policies: notificationPolicies,
   },
   {
+    name: "apps/api/src/notification-provider/policy.ts",
+    policies: notificationProviderPolicies,
+  },
+  {
     name: "apps/api/src/notification-preferences/policy.ts",
     policies: notificationPreferencesPolicies,
+  },
+  {
+    name: "apps/api/src/notification/preference-handoff-policy.ts",
+    policies: preferenceHandoffPolicies,
   },
   { name: "apps/api/src/search/policy.ts", policies: searchPolicies },
   { name: "apps/api/src/user/policy.ts", policies: userPolicies },

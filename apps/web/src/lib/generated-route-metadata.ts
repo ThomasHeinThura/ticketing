@@ -5,9 +5,11 @@ export const generatedRouteMetadata = {
     // Canonical full paths for this surface.
     "/",
     "/agent",
+    "/agent/god-mode",
     "/agent/god-mode/audit",
     "/agent/god-mode/authentication",
     "/agent/god-mode/authentication/$id",
+    "/agent/god-mode/notifications",
     "/agent/god-mode/users",
     "/agent/inbox",
     "/agent/my-work",
@@ -29,6 +31,7 @@ export const generatedRouteMetadata = {
     "/agent/settings/members",
     "/agent/settings/profile",
     "/agent/settings/profile/appearance",
+    "/agent/settings/profile/notifications",
     "/agent/settings/profile/pending-actions",
     "/agent/settings/profile/pending-actions/$id",
     "/agent/settings/request-types",
@@ -84,6 +87,7 @@ export const generatedRouteMetadata = {
   portal: [
     // Canonical full paths for this surface.
     "/",
+    "/approvals",
     "/catalogue",
     "/portal/requests",
     "/portal/sign-in",

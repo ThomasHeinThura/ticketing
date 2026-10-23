@@ -2,6 +2,11 @@ import { can, type ProjectReachFacts, reaches } from "@taskdesk/permissions";
 import type { DbTransaction, DomainEventEnvelope } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import type { NotificationRecipientCandidate } from "./fanout";
+import { configuredMentionChannels } from "./fanout.repository";
+import {
+  findPendingActionNotificationContext,
+  type PendingActionNotificationContext,
+} from "./pending-action-recipient.repository";
 import {
   findApprovalNotificationContext,
   findCurrentNotificationResource,
@@ -82,7 +87,7 @@ export async function resolveMentionEventRecipient(
       resourceId: commentId,
       title: "You were mentioned",
       body: `You were mentioned in a comment on ${key}.`,
-      channels: [],
+      channels: await configuredMentionChannels(tx),
     },
   ];
 }
@@ -249,5 +254,123 @@ export async function resolveWorkspaceCreatedRecipient(
         eventKind: event.kind,
       }),
     },
+  ];
+}
+
+const MAX_KEY_NAME_LENGTH = 80;
+
+function pendingActionTargetLabel(
+  context: PendingActionNotificationContext,
+): string {
+  const summary =
+    context.payloadSummary &&
+    typeof context.payloadSummary === "object" &&
+    !Array.isArray(context.payloadSummary)
+      ? (context.payloadSummary as Record<string, unknown>)
+      : {};
+  const count = context.targetIds.length;
+  // Only the work item's own key is named; no titles, bodies or comment text.
+  if (
+    context.targetType === "work_item" &&
+    count === 1 &&
+    typeof summary.key === "string" &&
+    summary.key
+  )
+    return summary.key;
+  const noun = context.targetType.replaceAll("_", " ");
+  return count === 1 ? `a ${noun}` : `${count} ${noun}s`;
+}
+
+export type PendingActionRecipientDependencies = {
+  findContext: typeof findPendingActionNotificationContext;
+  resolveRequesterIdentity: (
+    tx: DbTransaction,
+    userId: string,
+  ) => Promise<{ personId: string } | null>;
+};
+
+const defaultPendingActionRecipientDependencies: PendingActionRecipientDependencies =
+  {
+    findContext: findPendingActionNotificationContext,
+    resolveRequesterIdentity: (tx, userId) =>
+      resolveIdentity({ userId, credential: "session" }, tx),
+  };
+
+/**
+ * NO-21 `pending_action` recipients (feature-contracts-p4.md): the requester only.
+ * `pending_action.requested` notifies only for an `api`/`mcp` origin made with the
+ * requester's own key ("An agent using your key … asked to delete …"), never for `web`;
+ * `pending_action.executed` notifies only on `outcome: failed`. An unresolved requester,
+ * key or row fails closed; no administrator or event actor is ever substituted.
+ */
+export async function resolvePendingActionEventRecipients(
+  tx: DbTransaction,
+  event: DomainEventEnvelope<Record<string, unknown>>,
+  dependencies: PendingActionRecipientDependencies = defaultPendingActionRecipientDependencies,
+): Promise<readonly NotificationRecipientCandidate[]> {
+  const pendingActionId = event.payload.pendingActionId;
+  if (typeof pendingActionId !== "string" || !pendingActionId) return [];
+  if (event.kind === "pending_action.requested") {
+    if (event.payload.origin !== "api" && event.payload.origin !== "mcp")
+      return [];
+  } else if (event.kind === "pending_action.executed") {
+    if (event.payload.outcome !== "failed") return [];
+  } else {
+    return [];
+  }
+
+  const context = await dependencies.findContext(tx, pendingActionId);
+  if (!context) return [];
+  const eventWorkspaceId =
+    "workspaceId" in event.scope ? (event.scope.workspaceId ?? null) : null;
+  if ((context.workspaceId ?? null) !== eventWorkspaceId) return [];
+  if (
+    !context.requesterActive ||
+    !context.requesterUserId ||
+    context.requesterSide !== "staff"
+  )
+    return [];
+
+  let keyName: string | null = null;
+  if (event.kind === "pending_action.requested") {
+    if (
+      context.origin !== event.payload.origin ||
+      context.credentialType !== "api_key" ||
+      !context.credentialId ||
+      context.keyOwnerUserId !== context.requesterUserId
+    )
+      return [];
+    keyName = context.keyName?.trim().slice(0, MAX_KEY_NAME_LENGTH) || null;
+  } else if (context.state !== "failed") {
+    return [];
+  }
+
+  const identity = await dependencies.resolveRequesterIdentity(
+    tx,
+    context.requesterUserId,
+  );
+  if (!identity || identity.personId !== context.requestedByPersonId) return [];
+
+  const target = pendingActionTargetLabel(context);
+  return [
+    event.kind === "pending_action.requested"
+      ? {
+          personId: context.requestedByPersonId,
+          resourceType: "pending_action",
+          resourceId: context.id,
+          title: "Deletion awaiting your approval",
+          body: keyName
+            ? `An agent using your key ${keyName} asked to delete ${target}.`
+            : `An agent using one of your API keys asked to delete ${target}.`,
+          channels: [],
+        }
+      : {
+          personId: context.requestedByPersonId,
+          resourceType: "pending_action",
+          resourceId: context.id,
+          title: "Approved deletion failed",
+          body: `The deletion of ${target} you approved could not be completed. Nothing was deleted.`,
+          channels: [],
+        },
   ];
 }

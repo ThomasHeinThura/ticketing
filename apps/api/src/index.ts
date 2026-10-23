@@ -27,7 +27,7 @@ import {
   startAuthConfigRuntime,
   stopAuthConfigRuntime,
 } from "./auth";
-import csrfToken from "./auth/csrf-token-api";
+import csrfToken, { portalCsrfToken } from "./auth/csrf-token-api";
 import factorStatus from "./auth/factor-status-api";
 import {
   InactiveFactorIdentityError,
@@ -80,9 +80,17 @@ import users from "./instance/users";
 import intake from "./intake";
 import invitation from "./invitation";
 import label from "./label";
+import { idempotencyKeyMiddleware } from "./middleware/idempotency";
+import { createPostgresIdempotencyStore } from "./middleware/idempotency.repository";
 import { migrateColumns } from "./migrations/column-migration";
 import notification from "./notification";
+import {
+  authenticatedPreferenceHandoff,
+  publicPreferenceHandoff,
+} from "./notification/preference-handoff";
 import notificationPreferences from "./notification-preferences";
+import notificationProvider from "./notification-provider";
+import { installRuntimeSmtpResolver } from "./notification-provider/runtime";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import pendingAction from "./pending-action";
@@ -115,6 +123,7 @@ import { policyRegistry } from "./policy-registry";
 import { isPortalClientRoute } from "./portal-client-routes";
 import project, { projectStates } from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
+import { recoverDensePositionPartitions } from "./scheduler/position-rebalance";
 import search from "./search";
 import serviceCalendar from "./service-calendar";
 import slaPolicy from "./sla-policy";
@@ -163,6 +172,7 @@ import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-o
 import view from "./view";
 import workItem from "./work-item";
 import workItemCommentVersions from "./work-item/comment-versions";
+import workItemRelation from "./work-item-relation";
 import workflow from "./workflow";
 import workflowRule from "./workflow-rule";
 import workspace from "./workspace";
@@ -633,6 +643,7 @@ export function createApp(
     registerAdditionalRoutes?: (app: Hono<AppVariables>) => void;
   } = {},
 ) {
+  installRuntimeSmtpResolver();
   assertCookieDomainIsNotConfiguredForHostIsolation();
   const app = new Hono<AppVariables>();
 
@@ -726,6 +737,13 @@ export function createApp(
       const portalAllowed =
         isCustomerAuthEndpoint(c.req.method, c.req.path) ||
         matchesPortalPolicyRoute(c.req.method, c.req.path) ||
+        (c.req.method === "POST" &&
+          c.req.path ===
+            "/api/public/portal/notification-preference-handoffs") ||
+        (c.req.method === "GET" &&
+          (c.req.path === "/api/portal/csrf-token" ||
+            c.req.path ===
+              "/api/portal/notification-preferences/email-link-handoff")) ||
         isPortalSubmissionStorageRequest(
           c.req.method,
           c.req.path,
@@ -1343,6 +1361,18 @@ export function createApp(
   // `assertRouteIsClassified` runs FROM INSIDE this very function, so `c.req.matchedRoutes`
   // always includes this guard's own entry, and it must be exempted from its own check the
   // same identity-based way CORS/compress/static-serving are.
+  const publicAgentPreferenceHandoffApi = api.route(
+    "/public/agent/notification-preference-handoffs",
+    publicPreferenceHandoff("agent"),
+  );
+  const publicPortalPreferenceHandoffApi = api.route(
+    "/public/portal/notification-preference-handoffs",
+    publicPreferenceHandoff("customer"),
+  );
+
+  const deleteIdempotency = idempotencyKeyMiddleware({
+    store: createPostgresIdempotencyStore(),
+  });
   const authGuard = async (c: Context<ApiVariables>, next: Next) => {
     // No prefix exemptions. kaneo exempted /api/mcp, /api/.well-known/ and
     // /api/billing/webhook; all three surfaces are removed in issue #6, so
@@ -1384,8 +1414,14 @@ export function createApp(
       // specifically so the registration count at this key never changes — see that
       // function's own doc comment (`apps/api/src/permissions/shadow-middleware.ts`) for
       // why a second registration is not safe here.
+      // `Idempotency-Key` on every unsafe request (PA-4, api-design.md) also runs from inside this guard,
+      // for the same registration-count reason: it scopes a key to the authenticated
+      // caller and sits before every route's pending-action layer, so a keyed retry
+      // replays the stored 202 instead of creating a second pending action.
       return await eventContext.run({ initiatorId }, () =>
-        runNextWithPolicyShadow(c, next),
+        !["GET", "HEAD", "OPTIONS"].includes(c.req.method)
+          ? deleteIdempotency(c, () => runNextWithPolicyShadow(c, next))
+          : runNextWithPolicyShadow(c, next),
       );
     } catch (error) {
       if (!(error instanceof HTTPException)) {
@@ -1528,6 +1564,7 @@ export function createApp(
   // `/work-items/{key}`), which `workItem`'s own routes already declare in full. See
   // `work-item/index.ts`'s file comment.
   const workItemApi = api.route("/", workItem);
+  const workItemRelationApi = api.route("/", workItemRelation);
   const workItemCommentVersionsApi = api.route("/", workItemCommentVersions);
   const approvalApi = api.route("/", approval);
   const intakeApi = api.route("/", intake);
@@ -1536,7 +1573,17 @@ export function createApp(
   const viewApi = api.route("/views", view);
   const factorStatusApi = api.route("/me", factorStatus);
   const csrfTokenApi = api.route("/me", csrfToken);
+  const portalCsrfTokenApi = api.route("/portal", portalCsrfToken);
+  const agentPreferenceHandoffApi = api.route(
+    "/notification-preferences",
+    authenticatedPreferenceHandoff("agent"),
+  );
+  const portalPreferenceHandoffApi = api.route(
+    "/portal/notification-preferences",
+    authenticatedPreferenceHandoff("customer"),
+  );
   const stepUpApi = api.route("/me", stepUp);
+  const notificationProviderApi = api.route("/instance", notificationProvider);
   const observabilityApi = api.route("/instance", observability);
   const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
@@ -1855,7 +1902,13 @@ export function createApp(
     externalLinkApi,
     factorStatusApi,
     csrfTokenApi,
+    portalCsrfTokenApi,
+    publicAgentPreferenceHandoffApi,
+    publicPortalPreferenceHandoffApi,
+    agentPreferenceHandoffApi,
+    portalPreferenceHandoffApi,
     stepUpApi,
+    notificationProviderApi,
     observabilityApi,
     metricsTokenRotationApi,
     localFactorPolicyApi,
@@ -1888,6 +1941,7 @@ export function createApp(
     workflowApi,
     workflowRuleApi,
     workItemApi,
+    workItemRelationApi,
     workItemCommentVersionsApi,
     workspaceApi,
   };
@@ -1975,6 +2029,44 @@ export async function runMigrationStep(): Promise<void> {
   await closeMigrationPool();
 }
 
+/** Bounded best-effort recovery; failures never masquerade as a completed scan. */
+export async function runPositionRecoveryBootTask(): Promise<void> {
+  try {
+    const outcomes = await recoverDensePositionPartitions(10, {
+      scanRows: 2000,
+      maxPartitionRows: 1000,
+    });
+    const deferred = outcomes.filter(
+      ({ outcome }) => !["healthy", "rebalanced"].includes(outcome.status),
+    ).length;
+    if (deferred) {
+      logTaskDesk({
+        module: "jobs",
+        message: "jobs.failure",
+        level: "warn",
+        result: "degraded",
+      });
+      console.warn(
+        `Position recovery deferred ${deferred} partition(s); bounded startup scan is incomplete`,
+      );
+    } else {
+      console.log(
+        `Position recovery: ${outcomes.length} partition(s) examined within startup bounds; this is not a full scan`,
+      );
+    }
+  } catch {
+    logTaskDesk({
+      module: "jobs",
+      message: "jobs.failure",
+      level: "error",
+      result: "degraded",
+    });
+    console.warn(
+      "Position recovery failed; deferred work remains persisted for retry",
+    );
+  }
+}
+
 /**
  * The serving process's own boot sequence — application connection only. See
  * `runMigrationStep`'s doc comment above for why these are two separate functions,
@@ -2011,6 +2103,7 @@ export async function runApiBootTasks(
   // that #309/#313 only seed on NEW workspace/project creation -- see that file's own
   // doc comment for the mechanism and why it is a boot step, not a migration.
   await backfillWorkspaceAndProjectDefaults();
+  await runPositionRecoveryBootTask();
 
   // #18: print a fresh setup token (and invalidate the previous one) on
   // every boot while the instance is unclaimed. A no-op once
@@ -2262,7 +2355,13 @@ const {
   externalLinkApi,
   factorStatusApi,
   csrfTokenApi,
+  portalCsrfTokenApi,
+  publicAgentPreferenceHandoffApi,
+  publicPortalPreferenceHandoffApi,
+  agentPreferenceHandoffApi,
+  portalPreferenceHandoffApi,
   stepUpApi,
+  notificationProviderApi,
   observabilityApi,
   metricsTokenRotationApi,
   localFactorPolicyApi,
@@ -2295,6 +2394,7 @@ const {
   workflowApi,
   workflowRuleApi,
   workItemApi,
+  workItemRelationApi,
   workItemCommentVersionsApi,
   workspaceApi,
 } = createdApp;
@@ -2360,7 +2460,13 @@ export type AppType =
   | typeof externalLinkApi
   | typeof factorStatusApi
   | typeof csrfTokenApi
+  | typeof portalCsrfTokenApi
+  | typeof publicAgentPreferenceHandoffApi
+  | typeof publicPortalPreferenceHandoffApi
+  | typeof agentPreferenceHandoffApi
+  | typeof portalPreferenceHandoffApi
   | typeof stepUpApi
+  | typeof notificationProviderApi
   | typeof observabilityApi
   | typeof metricsTokenRotationApi
   | typeof localFactorPolicyApi
@@ -2372,6 +2478,7 @@ export type AppType =
   | typeof scimProtocolApi
   | typeof workflowApi
   | typeof workflowRuleApi
+  | typeof workItemRelationApi
   | typeof workItemApi
   | typeof workItemCommentVersionsApi
   | typeof invitationApi

@@ -20,8 +20,13 @@ spec:
         {{- include "taskdesk.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: postgresql
     spec:
+      securityContext:
+        {{- toYaml .Values.postgresql.podSecurityContext | nindent 8 }}
+      enableServiceLinks: false
       containers:
         - name: postgresql
+          securityContext:
+            {{- toYaml .Values.postgresql.securityContext | nindent 12 }}
           image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
           imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
           ports:
@@ -68,15 +73,23 @@ spec:
             failureThreshold: 6
           resources:
             {{- toYaml .Values.postgresql.resources | nindent 12 }}
-          {{- if .Values.postgresql.persistence.enabled }}
           volumeMounts:
             - name: postgresql-data
               mountPath: /var/lib/postgresql/data
-          {{- end }}
-      {{- if .Values.postgresql.persistence.enabled }}
+            - name: postgresql-run
+              mountPath: /var/run/postgresql
+            - name: postgresql-tmp
+              mountPath: /tmp
       volumes:
         - name: postgresql-data
+          {{- if .Values.postgresql.persistence.enabled }}
           persistentVolumeClaim:
             claimName: {{ include "taskdesk.fullname" . }}-postgresql-data
-      {{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: postgresql-run
+          emptyDir: {}
+        - name: postgresql-tmp
+          emptyDir: {}
 {{- end }}

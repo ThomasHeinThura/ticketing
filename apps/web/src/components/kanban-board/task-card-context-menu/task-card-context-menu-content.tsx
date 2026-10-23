@@ -1,17 +1,6 @@
-import {
-  Calendar,
-  ContextMenuCheckboxItem,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-} from "@taskdesk/ui";
-import { X } from "lucide-react";
+import { ContextMenuItem } from "@taskdesk/ui";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
 import { useUpdateTaskDescription } from "@/hooks/mutations/task/use-update-task-description";
@@ -22,16 +11,13 @@ import { useUpdateTaskTitle } from "@/hooks/mutations/task/use-update-task-title
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { getColumnIcon } from "@/lib/column";
 import { generateLink } from "@/lib/generate-link";
-import { getInitials } from "@/lib/get-initials";
-import { getPriorityLabel } from "@/lib/i18n/domain";
-import { getPriorityIcon } from "@/lib/priority";
 import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type Task from "@/types/task";
+import TaskContextMenuPresentation from "./task-context-menu-presentation";
 
 type TaskCardContext = {
   worskpaceId: string;
@@ -138,209 +124,89 @@ export default function TaskCardContextMenuContent({
   };
 
   return (
-    <ContextMenuContent className="w-46">
-      <ContextMenuItem onClick={handleCopyTaskLink}>
-        <span>{t("tasks:contextMenu.copyLink")}</span>
-      </ContextMenuItem>
-
-      {(canEdit || canAssign) && <ContextMenuSeparator />}
-
-      {canEdit && (
-        <ContextMenuSub>
-          <ContextMenuSubTrigger className="gap-2">
-            <span>{t("tasks:priority.label")}</span>
-          </ContextMenuSubTrigger>
-          <ContextMenuSubContent className="w-48">
-            <ContextMenuCheckboxItem
-              key="no-priority"
-              checked={task.priority === "no-priority"}
-              onCheckedChange={() => handleChange("priority", "no-priority")}
-              closeOnClick
-              className="[&_svg]:text-muted-foreground"
-            >
-              {getPriorityIcon("no-priority")}
-              <span>{getPriorityLabel("no-priority")}</span>
-            </ContextMenuCheckboxItem>
-            {["low", "medium", "high", "urgent"].map((priority) => (
-              <ContextMenuCheckboxItem
-                key={priority}
-                checked={task.priority === priority}
-                onCheckedChange={() => handleChange("priority", priority)}
-                closeOnClick
-                className="[&_svg]:text-muted-foreground"
-              >
-                {getPriorityIcon(priority)}
-                <span className="capitalize">{getPriorityLabel(priority)}</span>
-              </ContextMenuCheckboxItem>
-            ))}
-          </ContextMenuSubContent>
-        </ContextMenuSub>
-      )}
-
-      {canEdit && (
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>
-            <span>{t("tasks:status.label")}</span>
-          </ContextMenuSubTrigger>
-          <ContextMenuSubContent className="w-48">
-            {columns.map((col) => (
-              <ContextMenuCheckboxItem
-                key={col.slug}
-                checked={task.status === col.slug}
-                onCheckedChange={() => handleChange("status", col.slug)}
-                closeOnClick
-                className="[&_svg]:text-muted-foreground"
-              >
-                {getColumnIcon(col.slug, col.isFinal, col.icon)}
-                <span>{col.name}</span>
-              </ContextMenuCheckboxItem>
-            ))}
-          </ContextMenuSubContent>
-        </ContextMenuSub>
-      )}
-
-      {canEdit && (
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>
-            <span>{t("tasks:dueDate.label")}</span>
-          </ContextMenuSubTrigger>
-          <ContextMenuSubContent className="w-fit min-w-0 p-0">
-            <div className="p-2">
-              <Calendar
-                mode="single"
-                selected={task.dueDate ? new Date(task.dueDate) : undefined}
-                onSelect={async (date) => {
-                  try {
-                    await updateTaskDueDate({
-                      ...task,
-                      dueDate: date?.toISOString() || null,
-                    });
-                    toast.success(t("tasks:dueDate.updateSuccess"));
-                  } catch (error) {
-                    toast.error(
-                      error instanceof Error
-                        ? error.message
-                        : t("tasks:dueDate.updateError"),
-                    );
-                  }
-                }}
-                className="w-full bg-popover!"
-                weekStartsOn={weekStartsOn}
-              />
-            </div>
-            {task.dueDate && (
-              <>
-                <ContextMenuSeparator />
-                <ContextMenuItem
-                  className="gap-2 text-muted-foreground"
-                  onClick={async () => {
-                    try {
-                      await updateTaskDueDate({
-                        ...task,
-                        dueDate: null,
-                      });
-                      toast.success(t("tasks:dueDate.clearSuccess"));
-                    } catch (error) {
-                      toast.error(
-                        error instanceof Error
-                          ? error.message
-                          : t("tasks:dueDate.clearError"),
-                      );
-                    }
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                  <span>{t("tasks:dueDate.clear")}</span>
-                </ContextMenuItem>
-              </>
-            )}
-          </ContextMenuSubContent>
-        </ContextMenuSub>
-      )}
-
-      {canAssign && usersOptions && (
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>
-            <span>{t("tasks:assignee.label")}</span>
-          </ContextMenuSubTrigger>
-          <ContextMenuSubContent className="w-48">
-            <ContextMenuCheckboxItem
-              checked={!task.userId}
-              onCheckedChange={() => handleChange("userId", "")}
-              closeOnClick
-            >
-              <div
-                className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
-                title={t("tasks:assignee.unassigned")}
-              >
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  ?
-                </span>{" "}
-              </div>
-              {t("tasks:assignee.unassigned")}
-            </ContextMenuCheckboxItem>
-            {usersOptions.map((user) => (
-              <ContextMenuCheckboxItem
-                key={user.value}
-                checked={task.userId === user.value}
-                onCheckedChange={() => handleChange("userId", user.value ?? "")}
-                closeOnClick
-              >
-                <Avatar className="h-6 w-6">
-                  <AvatarImage src={user.image ?? ""} alt={user.name || ""} />
-                  <AvatarFallback className="text-xs font-medium border border-border/30">
-                    {getInitials(user.name)}
-                  </AvatarFallback>
-                </Avatar>
-
-                {user.label}
-              </ContextMenuCheckboxItem>
-            ))}
-          </ContextMenuSubContent>
-        </ContextMenuSub>
-      )}
-
-      {(canEdit || canDelete) && (
-        <>
-          {canEdit && (
-            <>
-              <ContextMenuSeparator />
-
-              <ContextMenuItem
-                onClick={() => handleChange("status", "archived")}
-              >
-                <span>{t("tasks:actions.archive")}</span>
-              </ContextMenuItem>
-
-              {task.status !== "planned" && (
-                <ContextMenuItem
-                  onClick={() => handleChange("status", "planned")}
-                >
-                  <span>{t("tasks:actions.markAsPlanned")}</span>
-                </ContextMenuItem>
-              )}
-            </>
-          )}
-
-          {canDelete && (
-            <>
-              <ContextMenuSeparator />
-
-              <ContextMenuItem
-                className="text-destructive"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setTimeout(() => {
-                    onDeleteClick();
-                  }, 0);
-                }}
-              >
-                <span>{t("tasks:actions.delete")}</span>
-              </ContextMenuItem>
-            </>
-          )}
-        </>
-      )}
-    </ContextMenuContent>
+    <TaskContextMenuPresentation
+      onCopyLink={handleCopyTaskLink}
+      priority={
+        canEdit
+          ? {
+              value: task.priority,
+              onChange: (value) => void handleChange("priority", value),
+            }
+          : undefined
+      }
+      states={
+        canEdit
+          ? {
+              value: task.status,
+              options: columns.map((col) => ({
+                value: col.slug,
+                name: col.name,
+                icon: col.icon,
+                isFinal: col.isFinal,
+              })),
+              onChange: (value) => void handleChange("status", value),
+            }
+          : undefined
+      }
+      dueDate={
+        canEdit
+          ? {
+              value: task.dueDate ? new Date(task.dueDate) : undefined,
+              weekStartsOn,
+              onChange: async (date) => {
+                try {
+                  await updateTaskDueDate({
+                    ...task,
+                    dueDate: date?.toISOString() || null,
+                  });
+                  toast.success(
+                    t(
+                      date
+                        ? "tasks:dueDate.updateSuccess"
+                        : "tasks:dueDate.clearSuccess",
+                    ),
+                  );
+                } catch (error) {
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : t(
+                          date
+                            ? "tasks:dueDate.updateError"
+                            : "tasks:dueDate.clearError",
+                        ),
+                  );
+                }
+              },
+            }
+          : undefined
+      }
+      assignee={
+        canAssign && usersOptions
+          ? {
+              value: task.userId,
+              options: usersOptions,
+              onChange: (value) => void handleChange("userId", value),
+            }
+          : undefined
+      }
+      onArchive={
+        canEdit ? () => void handleChange("status", "archived") : undefined
+      }
+      extraArchiveAction={
+        task.status !== "planned" ? (
+          <ContextMenuItem onClick={() => handleChange("status", "planned")}>
+            <span>{t("tasks:actions.markAsPlanned")}</span>
+          </ContextMenuItem>
+        ) : undefined
+      }
+      onDelete={
+        canDelete
+          ? () => {
+              setTimeout(onDeleteClick, 0);
+            }
+          : undefined
+      }
+    />
   );
 }

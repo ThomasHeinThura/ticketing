@@ -10,6 +10,7 @@ import {
   LEGACY_WRITE_ROUTE_KEYS,
   OTHER_COVERED_ROUTE_KEYS,
   READ_ROUTE_KEYS,
+  RELATION_REACH_ROUTE_KEYS,
 } from "../api-integration/helpers/reach-route-keys";
 import { loadApiApp, loadPolicyRegistry } from "./api-app";
 
@@ -263,6 +264,7 @@ describe("work-item reach guard: the real router", () => {
           ...LEGACY_WRITE_ROUTE_KEYS,
           ...READ_ROUTE_KEYS,
           ...OTHER_COVERED_ROUTE_KEYS,
+          ...RELATION_REACH_ROUTE_KEYS,
         ]),
         OTHER_REACH_MECHANISM,
       ),

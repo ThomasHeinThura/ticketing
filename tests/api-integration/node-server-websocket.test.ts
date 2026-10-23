@@ -36,6 +36,7 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 import { signUpUser } from "./helpers/organization-http";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import { removeWorkspaceMemberNative } from "./helpers/workspace-membership-write-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
@@ -537,6 +538,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       stateTemplateId: template.id,
       isDefault: true,
     });
+    await ensureCreationWorkflow({
+      workspaceId: member.workspace.id,
+      projectId: project.project.id,
+      typeId: type.id,
+    });
     const item = await createWorkItem({
       projectId: project.project.id,
       workspaceId: member.workspace.id,
@@ -600,6 +606,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       projectId: project.project.id,
       stateTemplateId: template.id,
       isDefault: true,
+    });
+    await ensureCreationWorkflow({
+      workspaceId: owner.workspace.id,
+      projectId: project.project.id,
+      typeId: type.id,
     });
     const item = await createWorkItem({
       projectId: project.project.id,
@@ -1050,6 +1061,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       projectId: project.project.id,
       stateTemplateId: stateTemplate.id,
       isDefault: true,
+    });
+    await ensureCreationWorkflow({
+      workspaceId: first.workspace.id,
+      projectId: project.project.id,
+      typeId: type.id,
     });
 
     const { app } = createApp();

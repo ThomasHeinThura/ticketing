@@ -1,0 +1,444 @@
+{
+	"verdict": "fail",
+	"summary": "Fail: one new high is unresolved. PATCH /api/task/bulk operation=delete still hard-deletes legacy tasks with any work_item:delete credential (N1); the DELETE-only route guard missed it.\nThe 0132 audit purge hardening is sound: the function writes its own anchor, enforces a 12-month floor on max(created_at), uses a safe search_path, and the app role has SELECT only on anchors. F2, F4, F5, F14, F15, F16 and F17 are fixed.\nF3 is only partial: the workspace hold fence is narrower than the purge fence, and stored objects are orphaned.\nNew medium: idempotency on every unsafe method stores plaintext one-time secrets (step-up nonce, SCIM and metrics tokens) for 24h (N3).\nWeb: the in-place dialog exists, but native /agent deletes still navigate away, the double confirm remains, and the create-task staging fix has several edge defects. F12, F13, F19 and F22 are not fixed.",
+	"round1_status": [
+		{
+			"id": "F1",
+			"status": "partial",
+			"evidence": "Fixed for 3 routes: comment/index.ts:138-156,202-203; activity/index.ts:167,186,240; task-relation/index.ts:252,266,305 all answer 410 after reach and permission checks. DELETE /api/workflow-rule/{id} is now requireSessionOnly() (workflow-rule/index.ts:81-91; policy.ts:66-72) but still hard-deletes immediately, with no pending action (N6). The new route-table guard (tests/api-integration/delete-routes-never-immediate.test.ts:74-76) checks only HTTP DELETE methods, so the bulk legacy-task hard delete via PATCH /api/task/bulk still bypasses approval (N1)."
+		},
+		{
+			"id": "F2",
+			"status": "fixed",
+			"evidence": "0132_audit_purge_hardening.sql:62-125: the caller supplies only p_through_seq. There is a hard-coded 12-month floor on max(created_at) (:71, :87-95). The anchor is derived and inserted inside the function (:107-115). search_path = pg_catalog, public, pg_temp, with schema-qualified tables (:69). EXECUTE is revoked from PUBLIC (:127). append-only-tables.ts:29 READ_ONLY_TABLES; ensure-application-role.ts:191-201 does REVOKE ALL and then GRANT SELECT on audit_chain_anchor; :231-238 grants EXECUTE only. The app role has SELECT and INSERT only on audit_log (:202-207), so it cannot use the GUC carve-out. Residuals: N14, N15."
+		},
+		{
+			"id": "F3",
+			"status": "partial",
+			"evidence": "workspace-deletion-target.ts:75-78,98-99 calls assertWorkspaceNotUnderLegalHold, which runs LOCK TABLE legal_hold IN SHARE MODE (utils/workspace-legal-hold.ts:27-29,80-87) and refuses with 409 legal_hold. The approval stays pending because an HTTPException passes through execution-failure.ts:107-112. Gaps: the person set (workspace-legal-hold.ts:39-57) is narrower than the purge fence (N4). Attachment rows cascade with no attachment-gc handoff, so stored objects are orphaned (N5). It is still an immediate hard delete with no soft-delete window."
+		},
+		{
+			"id": "F4",
+			"status": "fixed",
+			"evidence": "The app role holds only SELECT on audit_chain_anchor (append-only-tables.ts:29; ensure-application-role.ts:199-201), and the 0132 function is the sole writer (:112-115). Residual (low, N14): verify-audit-chain.ts:67-70 still trusts the newest anchor without walking the anchor chain, and anchors written by 0131 before the migration are not re-validated."
+		},
+		{
+			"id": "F5",
+			"status": "fixed",
+			"evidence": "0132:87-89 sets purged_through_at = max(created_at) and first = min(created_at) over the range, and the trigger checks first <= OLD.created_at <= through (0132:18-19). Covered by audit-purge.test.ts:77-105,159-171 [sub-review; not run, needs a database]."
+		},
+		{
+			"id": "F6",
+			"status": "fixed",
+			"evidence": "[sub-review] create-task-modal.tsx:631 sends files to a staging callback; ensureDraftTask, deleteTask and updateTask are removed. The task is created first (:375-401) and staged files are uploaded afterwards (:405-423). Object URLs are revoked (use-create-work-item-attachments.ts:16-18,32-51,72). I verified comment-editor.tsx:384-387,717-721: in create mode, paste goes to filesSelectedRef. The fix introduced N10 and N11."
+		},
+		{
+			"id": "F7",
+			"status": "partial",
+			"evidence": "[sub-review, partially re-read] An in-place Dialog is mounted (routes/agent/_layout.tsx:18-29; use-open-pending-action.ts; store/pending-action-dialog.ts) and renders from the server (pending-action-approval.tsx:157-160). I verified that native /agent deletes still navigate the whole page to /agent/settings/profile/pending-actions/$id: work-item/use-work-item-deletion.ts:38, work-item-attachments.tsx:72, work-item-comment-delete.tsx:47, bulk-assign-toolbar.tsx:315 (N7). A double confirm remains (N8)."
+		},
+		{
+			"id": "F8",
+			"status": "partial",
+			"evidence": "soft-delete-purge.repository.ts:28-52 (workItemPeople) and :60-76 (projectOwnPeople) are much wider now, and LOCK TABLE legal_hold IN SHARE MODE fences them (:264-266). Remaining gap: comment.deleted_by (:37) and comment_version.edited_by (:41-42) hold user ids (work-item/controllers/delete-comment.ts:91 sets deletedBy: actorId, the user id), but they are compared with person-scope hold ids without going through person.user_id (N12)."
+		},
+		{
+			"id": "F9",
+			"status": "partial",
+			"evidence": "[sub-review] Paging with exclusion of rows already tried (soft-delete-purge.ts:138-168), a budget of 3 minutes and 2,000 rows (:33-37), sorting of rows awaiting attachments (repository:209-239), and permanently retained rows marked degraded (:184-191). The cross-run attachment-gc limits remain (N13): 100 rows a day, shared objects stuck."
+		},
+		{
+			"id": "F10",
+			"status": "fixed",
+			"evidence": "[sub-review] create-workspace.ts writes the outbox and inbox through enqueueNotificationEvent(tx, ...) inside the transaction. The legacy subscriber is removed (notification/index.ts:192-193). The resolver re-checks workspace:read (recipient-resolvers.ts:209-258), and the inbox filters accept the rows (inbox.repository.ts:257-260,340-353). The behavioural test is workspace-write-create-atomicity.test.ts:221-229 (not run)."
+		},
+		{
+			"id": "F11",
+			"status": "fixed",
+			"evidence": "[sub-review] pending-action-approval.tsx:488-499: on executed, the active project is cleared and the user navigates to /dashboard (workspace) or /dashboard/workspace/$id (project), and the API clears the session's active organisation (workspace-deletion-target.ts:83-91). Tested at $id.test.tsx:836-885. The analogous work-item case is not handled (N9)."
+		},
+		{
+			"id": "F12",
+			"status": "not_fixed",
+			"evidence": "Known and not claimed: approve and deny are sessionOnly (pending-action/policy.ts:22-41), but POST /api/approvals/{id}/decide is not, and there is no mcp_destructive mechanism."
+		},
+		{
+			"id": "F13",
+			"status": "not_fixed",
+			"evidence": "pending-action/deletion-targets.ts:1533 still sets origin: apiKey ? 'api' : 'web'. Known and not claimed."
+		},
+		{
+			"id": "F14",
+			"status": "fixed",
+			"evidence": "index.ts:1421-1424 applies the idempotency middleware to every method except GET, HEAD and OPTIONS, inside authGuard, before runNextWithPolicyShadow. The keys are scoped per actor (idempotency.ts:143-151). This introduced N3 and N17."
+		},
+		{
+			"id": "F15",
+			"status": "fixed",
+			"evidence": "workspace-deletion-target.ts:49-55 loads the workspace .for('update')."
+		},
+		{
+			"id": "F16",
+			"status": "fixed",
+			"evidence": "execution-failure.ts:54-82 maps 40001 and 40P01 to 409 pending_action_retry and 55P03 to 503; failOnExecutorError (:113-115) rethrows these, so the action stays pending."
+		},
+		{
+			"id": "F17",
+			"status": "fixed",
+			"evidence": "untrusted.ts:150-200 wraps every string by default and exempts only structural keys whose values are also token- or timestamp-shaped. mcp-result.ts:26-38 wraps the error detail, and register.ts:49-62 wraps bare-string bodies. Residual (low, not raised): object keys themselves are never wrapped."
+		},
+		{
+			"id": "F18",
+			"status": "partial",
+			"evidence": "[sub-review] No ctx.skip() remains, and audit-purge.test.ts:47-52 asserts that 0131 and 0132 are present. Negative tests exist for app-role INSERT on anchors (audit-purge-app-role.test.ts:69-78), DELETE on audit_log (:80-84), the floor (:86-109; audit-purge.test.ts:145-157), out-of-order rows (:159-171) and the head (:173-181). Gaps: no database-level test calls audit_log_purge_prefix with a held row in range. The app-role test title claims INSERT, UPDATE and DELETE are refused but asserts only INSERT. Two rejections use a bare .rejects.toThrow()."
+		},
+		{
+			"id": "F19",
+			"status": "not_fixed",
+			"evidence": "[sub-review] label-workspace-cascade-task-delete-race.test.ts and project-archive-freeze-legacy.test.ts (~1589-1627) still delete the task with raw SQL. The new justifying comment ('no HTTP route removes a task row any more') is false: PATCH /api/task/bulk operation=delete still does (N1)."
+		},
+		{
+			"id": "F20",
+			"status": "partial",
+			"evidence": "[sub-review] session-cleanup.ts:103-108 deletes idempotency_key rows WHERE expires_at <= now(). No test covers it, the header comment still lists idempotency keys as 'Still absent' (:24-31), and the soft-deleted comment, organisation and parent-envelope purges remain named gaps (:34)."
+		},
+		{
+			"id": "F21",
+			"status": "partial",
+			"evidence": "[sub-review] approvalErrorKey (pending-action-approval.tsx:101-117) maps 429, 403 step_up_unavailable, 409 and 400 to specific messages. read-pending-deletion.ts:17-20 reopens the action on 409 pending_approval. Not used by request-work-item-deletion.ts:11-15, request-comment-deletion.ts:11-12, work-item-attachments.ts:107-108 or relations.ts:89-93, so the raw 'pending_approval: <id>' text or a generic error still shows (N7)."
+		},
+		{
+			"id": "F22",
+			"status": "not_fixed",
+			"evidence": "[sub-review] Known: 228 of the 232 new or changed en-US keys are still English in every other locale. No key is missing from any locale."
+		},
+		{
+			"id": "F23",
+			"status": "fixed",
+			"evidence": "[sub-review] The Move up/down buttons were removed from work-item-board.tsx (Kaneo dnd-kit keyboard sensor), and the selection tests were restored (work-item-board.test.tsx:657-692), along with focus restore (:611-631) and the keyboard sensor (:308-325)."
+		},
+		{
+			"id": "F24",
+			"status": "partial",
+			"evidence": "DELETE /api/label/{id}/task is allow-listed as an 'unlink', with the reason given only in the test (delete-routes-never-immediate.test.ts:23-24). The MCP detach tool is still removed (packages/mcp/src/tools/register.ts:805-810 comment; no detach tool is registered). There is no decision-log entry (N6)."
+		},
+		{
+			"id": "F25",
+			"status": "fixed",
+			"evidence": "[sub-review] $id.test.tsx:778-834 parameterises all 9 click-confirmed targets and checks 12 cache refreshes plus the pending-actions refresh. Gap: pending-action-approval-dialog.test.tsx:48 stubs invalidateQueries but never asserts it, and covers only a label."
+		},
+		{
+			"id": "F26",
+			"status": "fixed",
+			"evidence": "[sub-review] docs/technical/events.md EV-2 (~170-175) and events/outbox-consumer.ts:33-41 record that claimed parents are marked delivered and are not replayed to consumers added later."
+		}
+	],
+	"findings": [
+		{
+			"id": "N1",
+			"severity": "high",
+			"category": "security",
+			"requirement": "PA-1, PA-2, PA-10",
+			"file": "apps/api/src/task/controllers/bulk-update-tasks.ts:366-367; apps/api/src/task/repository.ts:1028-1037; apps/api/src/task/schema.ts:39; apps/api/src/task/policy.ts:335; apps/api/src/task/index.ts:130-144,792-823",
+			"problem": "PATCH /api/task/bulk still accepts operation 'delete'. Its handler calls deleteTaskReturningId, which runs a hard DELETE FROM task; the related comments, time entries, activity and assets cascade. No pending action is created and there is no 410 gate; the route is not session-only. The only gate is the per-row work_item:delete capability check (bulk-update-tasks.ts:174). The legacy web bulk toolbars still call it and toast 'deleteSuccess' (apps/web/src/components/bulk-selection/bulk-toolbar.tsx:97-107, backlog-bulk-toolbar.tsx:173-183; possibly unreachable). The new route-table guard misses it because it enumerates only HTTP DELETE routes.",
+			"impact": "Any session or API key whose scope includes work_item:delete can permanently delete legacy tasks and their history with no human approval. This is exactly what retiring DELETE /api/task/{id} was meant to stop. PA-1 names 'bulk action' explicitly.",
+			"recommended_fix": "Refuse operation 'delete' on PATCH /api/task/bulk with 410, or route it through a registered bulk pending action. Remove or convert the legacy web bulk-delete toolbars. Add an integration test that a keyed and a session bulk delete leave the task rows in place."
+		},
+		{
+			"id": "N2",
+			"severity": "medium",
+			"category": "test",
+			"requirement": "PA-1",
+			"file": "tests/api-integration/delete-routes-never-immediate.test.ts:74-76,90-117",
+			"problem": "The 'no immediate delete' guard filters router routes to method DELETE only, and judges each route by the statuses declared in OpenAPI, not by runtime behaviour. A deletion reachable through POST, PATCH or PUT (N1), or a route that declares 202 but deletes inline, passes.",
+			"impact": "It gives false assurance that every deletion path is gated. It already missed N1.",
+			"recommended_fix": "Also scan non-DELETE operations whose request schema exposes a delete operation (enum 'delete'), or controllers that call hard-delete repository functions. Add a runtime probe that each allow-listed or 202 route leaves the row in place."
+		},
+		{
+			"id": "N3",
+			"severity": "medium",
+			"category": "security",
+			"requirement": "PA-15, PA-4",
+			"file": "apps/api/src/index.ts:1373-1375,1421-1424; apps/api/src/middleware/idempotency.ts:225-253; apps/api/src/middleware/idempotency.repository.ts:75-88; apps/api/src/auth/step-up-api.ts:700-702,754-756,804-806,846-848; apps/api/src/instance/observability/metrics-token-rotation.ts:172-179; apps/api/src/identity/scim-admin.ts:~846-849",
+			"problem": "The idempotency middleware now applies to every unsafe method under authGuard. It stores any 2xx JSON response body in plaintext in idempotency_key.response_body for 24 hours, and replays it on demand. Several responses carry one-time secrets: POST /api/me/step-up/challenges returns the step-up nonce (PA-15: 'only its SHA-256 digest is stored'); metrics-token rotation and SCIM token rotation return plaintext bearer tokens. better-auth /api/auth/* is mounted before the guard (index.ts:1337 vs 1440), so API-key creation is not affected.",
+			"impact": "Any client that sends Idempotency-Key, which some HTTP libraries do automatically, leaves plaintext tokens and nonces at rest in a table the application role can read: SQL injection, backups and replicas expose them. The same actor can re-read a rotated secret by replaying within 24 hours. This contradicts PA-15's digest-only storage.",
+			"recommended_fix": "Make idempotency opt-in per route (pending-action producers, bulk, create endpoints), or deny-list secret-returning routes (step-up challenges, every token rotate or create, invitation tokens), or store only status plus a non-secret body. Add a test that a keyed rotate leaves no token in idempotency_key."
+		},
+		{
+			"id": "N4",
+			"severity": "medium",
+			"category": "data-loss",
+			"requirement": "PA-12",
+			"file": "apps/api/src/utils/workspace-legal-hold.ts:36-57 (vs apps/api/src/scheduler/soft-delete-purge.repository.ts:28-76)",
+			"problem": "The hold fence on workspace hard delete covers members, work-item requester and assignee, activity actors, comment authors, direct work-item attachment uploaders, watchers and approvals. It omits people the 30-day purge already fences, whose rows cascade away with the workspace: request_participant.person_id and added_by; comment_version.edited_by and comment.deleted_by; attachments on comments (comment_id); project.created_by and stakeholders; the legacy Kaneo task subtree (task assignee, time entries, task_activity, task comments, asset creators). The organisation set has the same gaps.",
+			"impact": "An approved workspace deletion can hard-delete history authored by a held person that the purge would have retained, so the legal-hold guarantee depends on the code path.",
+			"recommended_fix": "Share one 'people and organisations touched by this scope' predicate between workspace deletion, project purge and work-item purge (resolving user ids through person.user_id). Add an integration test with a held request participant or legacy task assignee."
+		},
+		{
+			"id": "N5",
+			"severity": "medium",
+			"category": "data-loss",
+			"requirement": "PA-12",
+			"file": "apps/api/src/workspace/workspace-deletion-target.ts:92-96; apps/api/src/database/schema.ts attachmentTable (work_item FK onDelete cascade, ~:82-88 of that table); apps/api/src/scheduler/attachment-cleanup.ts:145-162",
+			"problem": "An approved workspace deletion is still an immediate hard DELETE. Attachment rows cascade away with the work items, and nothing hands their object_key to attachment-gc. Round-1 F3 asked for this handoff; it was not done. attachment-gc works from attachment rows, so once the rows are gone the objects can never be collected.",
+			"impact": "The files of a deleted workspace stay in object storage with no record pointing at them: a storage leak, and an erasure or privacy failure. There is also no soft-delete window to recover from a mistaken approval.",
+			"recommended_fix": "Before the delete, mark the workspace's attachments 'deleted' with their object keys retained (or copy the keys into a gc queue table) so attachment-gc removes the objects under the hold rules. Better still, convert workspace deletion to a soft delete with purge_after."
+		},
+		{
+			"id": "N6",
+			"severity": "medium",
+			"category": "gap",
+			"requirement": "PA-1, PA-2, PA-3",
+			"file": "apps/api/src/workflow-rule/index.ts:73-99,128-135; apps/api/src/workflow-rule/policy.ts:64-72; tests/api-integration/delete-routes-never-immediate.test.ts:21-52",
+			"problem": "DELETE /api/workflow-rule/{id} is session-only but still deletes immediately and returns 200, with no pending action and no approval dialog. PA-2 says 'Nothing is deleted at this point, whatever the client', and PA-3 routes web deletes through the dialog. The allow-list also exempts label detach, member removal and others as 'unlinks'. The only record of those decisions is a comment in a test file, not a decision-log entry or a contract change.",
+			"impact": "A workflow rule is a low-value setting, so the risk is limited. The real problem is that the contract and the implementation disagree with no recorded decision, and the allow-list can grow quietly.",
+			"recommended_fix": "Register workflow-rule as a click-confirmed deletion target, or record a decision-log entry and amend safety-and-runtime.md PA-1/PA-4 to define the unlink and setting exemption (covering label detach, member removal and own-preference resets). Reference that entry from the allow-list."
+		},
+		{
+			"id": "N7",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "PA-3",
+			"file": "apps/web/src/components/work-item/use-work-item-deletion.ts:38; work-item-attachments.tsx:72; work-item-comment-delete.tsx:47; bulk-assign-toolbar.tsx:315; [sub-review] fetchers request-work-item-deletion.ts:11-15, request-comment-deletion.ts:11-12, work-item-attachments.ts:107-108, relations.ts:89-93",
+			"problem": "The canonical /agent work-item, attachment, comment and bulk deletes still navigate the whole page to /agent/settings/profile/pending-actions/$id, instead of opening the new in-place dialog. Their fetchers do not use readPendingDeletion, so a repeat request shows the raw 'pending_approval: <id>' text or a generic error instead of reopening the existing action.",
+			"impact": "PA-3 is not met on the most-used deletion surfaces. The user loses board context and cannot get back to an action that is already pending.",
+			"recommended_fix": "Switch these call sites to useOpenPendingAction and readPendingDeletion, and add a test for each."
+		},
+		{
+			"id": "N8",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "PA-3",
+			"file": "[sub-review] apps/web/src/components/nav-projects.tsx:253; routes/.../dashboard/settings/workspace/general.tsx:598; roles.tsx (DeleteRoleConfirm); members-table.tsx:476; canned-responses.tsx:393; components/task/task-delete-button.tsx",
+			"problem": "Most targets still show Kaneo's AlertDialog and then the approval Dialog, so the person confirms twice. PA-3 says 'to the person it is a confirm dialog'.",
+			"impact": "Extra friction and a divergence from Kaneo's single-confirm interaction.",
+			"recommended_fix": "Replace the Kaneo confirm with the server-summary approval dialog (keeping Kaneo's layout), or render the server summary inside the existing AlertDialog."
+		},
+		{
+			"id": "N9",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "PA-3",
+			"file": "[sub-review] apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_.tsx:53-60; apps/web/src/components/pending-action/pending-action-approval.tsx:514-516",
+			"problem": "The old handleDeleted navigation was removed. When a work_item deletion is approved and executed from the legacy task page, only the ['work-items'] cache is refreshed: ['task', id] and ['tasks', projectId] are not, the project store is not updated, and the user is not navigated away.",
+			"impact": "The user stays on a deleted task with stale data, and later actions on it fail. This regresses Kaneo, whose delete returned to the board.",
+			"recommended_fix": "When a work_item or bulk deletion reaches executed, remove the ['task', id] cache, refresh ['tasks'], update the store and navigate to the project board. Add a test."
+		},
+		{
+			"id": "N10",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "",
+			"file": "apps/web/src/components/activity/comment-editor.tsx:384-387,717-721 (create mode with filesSelectedRef)",
+			"problem": "In the create-task modal, pasted or dropped images no longer appear inline in the description, as they did in Kaneo. They become staged attachment cards below the editor and are uploaded through a different path (resumeWorkItemAttachment instead of uploadTaskImage). AGENTS.md asks to preserve Kaneo interactions.",
+			"impact": "This is a visible Kaneo UX regression with no recorded decision.",
+			"recommended_fix": "Insert the uploaded image into the description after creation, or record an accepted deviation in the decision log and screens.md."
+		},
+		{
+			"id": "N11",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "",
+			"file": "[sub-review] apps/web/src/components/shared/modals/create-task-modal.tsx:374-402,1075-1096; use-create-work-item-attachments.ts:38-43,71,94",
+			"problem": "New create-flow defects. There is no busy guard, so a double submit creates two tasks, and a second submit during upload shows a false 'partial' error. After a partial upload failure, a retry reuses createdTask and silently drops edits, the button still says Create, and Discard says the task will be lost. A staged file that fails cannot be removed. Changing the project silently drops staged files. Only empty files are rejected on the client.",
+			"impact": "Duplicate tasks, lost edits and dead-end states in the most common create flow.",
+			"recommended_fix": "Pass a pending state to the footer and block submit and close while running. Once createdTask is set, lock the fields and use the existing afterCreate, createdClose and retry wording. Allow removing failed rows, and warn before dropping staged files on a project change. Add client-side size and type checks."
+		},
+		{
+			"id": "N12",
+			"severity": "low",
+			"category": "data-loss",
+			"requirement": "PA-12",
+			"file": "apps/api/src/scheduler/soft-delete-purge.repository.ts:37,41-42; apps/api/src/work-item/controllers/delete-comment.ts:91",
+			"problem": "comment.deleted_by and comment_version.edited_by store user ids (deletedBy: actorId), but the purge fence compares them directly with person-scope hold ids, without resolving through person.user_id as it does for author_id and actor_id.",
+			"impact": "A hold on a person whose only link to an item is deleting or editing a comment does not block the purge.",
+			"recommended_fix": "Union the person.user_id resolution for both columns, and add tests."
+		},
+		{
+			"id": "N13",
+			"severity": "medium",
+			"category": "data-loss",
+			"requirement": "PA-12",
+			"file": "[sub-review] apps/api/src/scheduler/attachment-cleanup.ts:120-155; soft-delete-purge.repository.ts:299-317",
+			"problem": "The purge marks attachments 'deleted' after its wide hold check. attachment-gc deletes the objects 24 hours or more later, and re-checks only the uploader, the requester and the attachment's organisation. The gc also refuses any object that another attachment row names, whatever that row's state, so two soft-deleted items sharing an object are never collected, and the run reports degraded every night.",
+			"impact": "A hold placed in that window on a watcher, approver or comment author does not stop the files being destroyed. Shared objects leak permanently.",
+			"recommended_fix": "Reuse the purge's people and organisation predicate in the gc for purge-released rows. Treat an object as shared only by rows that are not themselves deleted, and collect it with the last one."
+		},
+		{
+			"id": "N14",
+			"severity": "low",
+			"category": "security",
+			"requirement": "PA-12",
+			"file": "apps/api/src/database/ensure-application-role.ts:228-238,245-252; apps/api/src/audit/purge.repository.ts:168-181; apps/api/src/audit/verify-audit-chain.ts:67-70; apps/api/drizzle/0132_audit_purge_hardening.sql:111-115",
+			"problem": "(a) The INSERT revoke on audit_chain_anchor happens only in ensureApplicationRole, after migrate(). Running replicas keep INSERT through the migrate-to-grant window, and indefinitely if ensureApplicationRole fails. ALTER DEFAULT PRIVILEGES also gives the app role SELECT, INSERT, UPDATE and DELETE on every table a future migration creates until the next grant run. (b) The verifier trusts the newest anchor and does not walk the anchor chain or compare next_row_hash with the first surviving row, so any anchor forged under 0131 stays trusted. (c) The app role may call the function twice in one transaction. Both anchors then share created_at = now(), and when the second range's max(created_at) is not greater, the tie is broken by a random uuid. findNewestAuditChainAnchor can then pick the older anchor, and verification breaks permanently.",
+			"impact": "These are narrow windows that need a compromised app role. Because anchors are append-only, the result is a persistent false break in AU-15 evidence.",
+			"recommended_fix": "In 0132, revoke INSERT on audit_chain_anchor from every non-owner grantee (a DO block over information_schema.role_table_grants). In the function, refuse a second anchor in the same transaction, or order anchors by a sequence column. Make the verifier walk all anchors (each next_row_hash must equal the following surviving row) and check that pre-0132 anchors are consistent."
+		},
+		{
+			"id": "N15",
+			"severity": "low",
+			"category": "security",
+			"requirement": "PA-12",
+			"file": "apps/api/drizzle/0132_audit_purge_hardening.sql:96-106; apps/api/src/database/append-only-tables.ts:19,29",
+			"problem": "The function's hold refusal reads legal_hold without locking it; only the TypeScript caller runs LOCK TABLE legal_hold IN SHARE MODE. legal_hold is an ordinary table on which the app role has SELECT, INSERT, UPDATE and DELETE, with no trigger. It also does not consider the organisation of an audit row's project.",
+			"impact": "A compromised app role can lift or delete a hold and then purge held audit rows older than 12 months. The 12-month floor still holds, so this only weakens the legal-hold guarantee.",
+			"recommended_fix": "Lock legal_hold inside the function. Make lifting a hold an UPDATE-only, audited operation (a trigger that forbids DELETE and requires lifted_by), or move hold writes behind a SECURITY DEFINER function."
+		},
+		{
+			"id": "N16",
+			"severity": "low",
+			"category": "security",
+			"requirement": "",
+			"file": "apps/api/drizzle/0132_audit_purge_hardening.sql:8-60",
+			"problem": "audit_log_reject_mutation is redefined without SET search_path, and it references audit_chain_anchor and organisation unqualified. It runs with the caller's search_path, where pg_temp is searched first for relations. This is not exploitable today, because the app role has no DELETE or UPDATE on audit_log, and the only FK action (organisation SET NULL) can only be made to refuse. It is a latent spoofing surface if grants change.",
+			"impact": "Hardening only.",
+			"recommended_fix": "Add SET search_path = pg_catalog, public, pg_temp to the trigger function and schema-qualify public.audit_chain_anchor and public.organisation."
+		},
+		{
+			"id": "N17",
+			"severity": "low",
+			"category": "correctness",
+			"requirement": "PA-4",
+			"file": "apps/api/src/middleware/idempotency.ts:29,190-191,226-245",
+			"problem": "With idempotency on every unsafe method: a 2xx that is not JSON, or is larger than 256 KB, releases the key, so a keyed retry runs the side effect again. The in-flight lease is 60 seconds and is never renewed, so a slower request can be taken over and executed twice. The whole request body is cloned into memory to hash it, which is costly on upload routes.",
+			"impact": "Duplicate side effects on retries of long-running or non-JSON mutations, and memory pressure on large keyed uploads.",
+			"recommended_fix": "Store a status-only record for 2xx responses that are not stored. Extend the lease while the request runs, or set it to the request timeout. Skip or stream-hash multipart and large bodies."
+		},
+		{
+			"id": "N18",
+			"severity": "low",
+			"category": "ui-ux",
+			"requirement": "PA-3",
+			"file": "[sub-review] apps/web/src/components/pending-action/pending-action-approval-dialog.tsx:18-20",
+			"problem": "Closing the approval dialog (X or Escape) leaves the action pending with no notice. This matches the contract, but nothing tells the person where to find it.",
+			"impact": "The user may think nothing happened, and a retry hits 409 (for task deletes, a generic error).",
+			"recommended_fix": "On dismiss, show 'still pending; approve or cancel in Profile → Pending actions', or offer Cancel request."
+		},
+		{
+			"id": "N19",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "EV-1",
+			"file": "[sub-review] apps/api/src/view/controllers/create-view.ts:141; update-view.ts:129; pin-view.ts:36; apps/api/src/notification/fanout.ts:97-100",
+			"problem": "saved_view.created, updated and pinned are still fire-and-forget publishEvent calls with no outbox row. Event actor.id is a user id for work-item and workspace.created events but a person id for approval events, so the fan-out's actor skip at fanout.ts:97-100 never matches for user-id producers. requirements-index.json lines for EV-3, EV-4 and EV-5 are stale after the events.md edit.",
+			"impact": "EV-1 is still partial beyond the known legacy task.* kinds, and actor suppression is inconsistent.",
+			"recommended_fix": "Track saved_view.* in the EV-1 migration list, define actor.id as a person id in events.md, and regenerate the requirements index."
+		}
+	],
+	"requirements": [
+		{
+			"id": "EV-1",
+			"state": "partial",
+			"note": "workspace.created now goes through the outbox and inbox in-transaction (F10 fixed). Legacy task.* kinds and saved_view.* are still fire-and-forget (N19)."
+		},
+		{
+			"id": "EV-2",
+			"state": "met",
+			"note": "[sub-review] Idempotent on (event_id, person_id) and (event_id, recipient, channel) (fanout.repository.ts:56,83); the no-backfill decision is recorded (F26)."
+		},
+		{
+			"id": "EV-3",
+			"state": "blocked",
+			"note": "Needs the P4 automation runtime; depth and originAutomationId are carried, not enforced."
+		},
+		{
+			"id": "EV-4",
+			"state": "met",
+			"note": "No event key was added (event-keys.ts unchanged per sub-review; check:events passes per the coordinator). The decision-log rule was not exercised."
+		},
+		{
+			"id": "EV-5",
+			"state": "partial",
+			"note": "[sub-review] Customer recipients are gated at read and send time (customer-event-audience.ts, current-eligibility.ts:192-226). The legacy kinds' projection was not fully verified, so this stays partial pending a full producer sweep."
+		},
+		{
+			"id": "PA-1",
+			"state": "partial",
+			"note": "The DELETE routes are gated or retired, but the bulk action PATCH /api/task/bulk delete bypasses approval (N1), and workflow-rule deletes immediately for sessions (N6)."
+		},
+		{
+			"id": "PA-2",
+			"state": "partial",
+			"note": "Registered targets answer 202 with the full envelope. N1 and N6 delete without a pending action."
+		},
+		{
+			"id": "PA-3",
+			"state": "partial",
+			"note": "The in-place server-summary dialog exists, but native /agent surfaces navigate away (N7), the double confirm remains (N8), and the task page is not handled after deletion (N9)."
+		},
+		{
+			"id": "PA-4",
+			"state": "partial",
+			"note": "202, notification and the 409 unique index are in place, and idempotency now covers all unsafe methods. Origin 'mcp' is never set (F13), and N1 is open."
+		},
+		{
+			"id": "PA-5",
+			"state": "partial",
+			"note": "Project, workspace and role deletes are sessionOnly. API-key, webhook, identity-connection and auth.* plugin deletes were not re-verified this round."
+		},
+		{
+			"id": "PA-5a",
+			"state": "not_met",
+			"note": "No 'no_approver' refusal exists anywhere in apps/api/src (known)."
+		},
+		{
+			"id": "PA-6",
+			"state": "met",
+			"note": "click-deletion-executor.ts:134-330 re-checks state and expiry, a live agent session, the original credential plus current session access, version and scope, then confirmation, inside one transaction. Transient errors now keep the action pending (F16). The approve route is sessionOnly and elevated (pending-action/policy.ts:32-41)."
+		},
+		{
+			"id": "PA-7",
+			"state": "met",
+			"note": "Conditional state='pending' transitions plus the payload hash and fingerprint; unchanged since round 1."
+		},
+		{
+			"id": "PA-8",
+			"state": "met",
+			"note": "Not re-verified this round; no regression seen in the changed files."
+		},
+		{
+			"id": "PA-9",
+			"state": "partial",
+			"note": "Approval-time invalidation mapping is present. Proactive invalidation for the new target types is still unverified."
+		},
+		{
+			"id": "PA-10",
+			"state": "partial",
+			"note": "MCP tools only request deletion and approval is session-only, but a raw API key can still hard-delete legacy tasks via N1."
+		},
+		{
+			"id": "PA-11",
+			"state": "met",
+			"note": "requested, decided, executed and failed rows each write an audit row and an event, including the separate-transaction failed path (execution-failure.ts:161-306)."
+		},
+		{
+			"id": "PA-12",
+			"state": "partial",
+			"note": "The audit-purge floor and anchors are now enforced in the database, and the purge hold fence is much wider. Remaining: workspace delete fence gaps and orphaned objects (N4, N5), user-id columns (N12), attachment-gc hold re-check (N13)."
+		},
+		{
+			"id": "PA-13",
+			"state": "partial",
+			"note": "No MCP purge tool exists. POST /api/instance/purge is still not mounted (known)."
+		},
+		{
+			"id": "PA-14",
+			"state": "not_met",
+			"note": "There is no mcp_destructive mechanism, and approvals decide is not session-only (F12, known)."
+		},
+		{
+			"id": "PA-15",
+			"state": "partial",
+			"note": "Step-up binding is unchanged and sound, but a keyed POST /api/me/step-up/challenges now persists the plaintext nonce in idempotency_key (N3)."
+		}
+	],
+	"unverified": [
+		"No database, server or browser was run (read-only review). Behaviour of 0132 SQL, the triggers and the integration tests is inferred from source; the coordinator's suite results were not reproduced.",
+		"N1 is confirmed from source only: route, schema, controller and repository. No test shows a successful bulk delete at runtime, and I did not check whether the legacy web bulk toolbars are reachable.",
+		"Items marked [sub-review] came from two parallel read-only sub-reviews (web; scheduler/events/tests). The lead reviewer re-read N7's four navigation call sites, comment-editor.tsx paste handling, soft-delete-purge.repository.ts:28-52 and delete-comment.ts:91, but not every cited line.",
+		"Exact location of the SCIM token response (scim-admin.ts ~846-849 from grep context), and whether identity-connection create responses carry client secrets that idempotency would store.",
+		"Whether /api/auth/* handlers short-circuit before authGuard in every case (inferred from registration order at index.ts:1337 vs 1440).",
+		"Visual parity of the new approval dialog and create-task staging with Kaneo; focus return after dialog close.",
+		"PA-5 session-only coverage for API-key, webhook, identity-connection and auth.* plugin deletion; proactive PA-9 invalidation for new target types."
+	]
+}

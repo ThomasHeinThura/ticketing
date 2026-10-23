@@ -320,6 +320,7 @@ describe("pending-action service persistence", () => {
     } as Parameters<typeof createPendingAction>[0]);
 
     expect(response.summary).toEqual({
+      childrenAffected: 0,
       key: "SUP-1",
       title: "Test request",
       projectName: "Integration Project",
@@ -366,7 +367,7 @@ describe("pending-action service persistence", () => {
     } as Parameters<typeof createPendingAction>[0];
 
     await expect(createPendingAction(input)).rejects.toThrow(
-      /Pending-action route must be DELETE \/api\/work-items\/\{key\}/,
+      /Pending action target\/action\/route is unsupported/,
     );
     const rows = await db.select().from(schema.pendingActionTable);
     expect(rows).toHaveLength(0);
@@ -686,6 +687,7 @@ describe("pending-action service persistence", () => {
       confirmationRequired: pending.confirmationRequired,
       payload: pending.payload,
       payloadHash: pending.payloadHash,
+      targetVersions: pending.targetVersions,
     } satisfies ActionRequiredAccessInput;
     const creationCredentialCheck = await db.transaction((tx) =>
       evaluateActionRequiredAccess(tx, input),

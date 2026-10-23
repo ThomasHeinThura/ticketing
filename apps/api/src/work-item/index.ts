@@ -19,6 +19,15 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { requestBulkWorkItemDeletion } from "../pending-action/bulk-work-item-deletion-target";
+import {
+  pendingBulkDeletionRequestSchema,
+  pendingDeletionRequestSchema,
+} from "../pending-action/response";
+import {
+  createPendingAction,
+  requirePendingActionRequesterIdentity,
+} from "../pending-action/service";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import {
   hasProjectReadCapability,
@@ -48,8 +57,6 @@ import assignWorkItem, {
 import bulkWorkItems from "./controllers/bulk-work-items";
 import createComment from "./controllers/create-comment";
 import createWorkItem from "./controllers/create-work-item";
-import deleteComment from "./controllers/delete-comment";
-import deleteWorkItem from "./controllers/delete-work-item";
 import detachWorkItemParent from "./controllers/detach-work-item-parent";
 import getWorkItemByKey from "./controllers/get-work-item";
 import { getWorkItemSla } from "./controllers/get-work-item-sla";
@@ -87,7 +94,6 @@ import {
   bulkWorkItemsResponseSchema,
   commentMentionCandidatesSchema,
   commentMentionPreflightResponseSchema,
-  deletedWorkItemSchema,
   hierarchyChildrenResponseSchema,
   rankWorkItemResponseSchema,
   transitionedWorkItemSchema,
@@ -709,18 +715,18 @@ const deleteWorkItemRoute = createRoute({
   tags: ["Work items"],
   summary: "Delete work item",
   description:
-    "Soft-deletes a work item (`WI-21`). KNOWN DEVIATION from `pending-actions.md`'s " +
-    "`WI-23` (this route deletes immediately rather than returning a `202` pending " +
-    "action awaiting browser approval) -- matches every OTHER existing delete route in " +
-    "this codebase today (e.g. `DELETE /api/projects/{id}`), none of which implement " +
-    "that mechanism yet. Tracked on issue #428.",
+    "Requests durable click-confirmed deletion. The item remains intact until its requester approves in a current browser session; execution revalidates credential, version, scope and permissions.",
   middleware: [
     requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:delete"),
   ] as const,
   request: { params: workItemKeyParam },
   responses: {
-    200: jsonResponse("The deleted work item", deletedWorkItemSchema),
+    202: jsonResponse(
+      "Pending deletion; item unchanged",
+      pendingDeletionRequestSchema,
+    ),
+    409: errorResponse("An equivalent deletion is already pending"),
     403: errorResponse(
       "No workspace access, or missing work_item:delete permission",
     ),
@@ -759,6 +765,9 @@ const rankWorkItemRoute = createRoute({
       "No workspace access, or missing work_item:rank permission",
     ),
     404: errorResponse("Work item not found"),
+    409: errorResponse(
+      "Rank precision exhausted or item state changed while awaiting partition lock",
+    ),
   },
 });
 
@@ -950,7 +959,7 @@ const bulkWorkItemsRoute = createRoute({
   tags: ["Work items"],
   summary: "Bulk work item operation",
   description:
-    "Runs one operation (`delete`, `assign`, `set_priority`, `archive`, or `transition`) " +
+    "Bulk delete returns durable approval with typed count and step-up above 50 affected targets. Nothing is deleted until browser approval. Other operations (`assign`, `set_priority`, `set_due_date`, `add_label`, `remove_label`, `archive`, or `transition`) run " +
     "over multiple work items, transactional PER ITEM (`WI-25`): a partial failure reports " +
     "per-item reasons rather than rolling back the whole batch. `workspaceId` scopes the " +
     "batch; every id is re-checked for reach and capability the same way a single-item call " +
@@ -963,8 +972,16 @@ const bulkWorkItemsRoute = createRoute({
     },
   },
   responses: {
-    200: jsonResponse("Per-item results", bulkWorkItemsResponseSchema),
+    200: jsonResponse(
+      "Per-item results (or deletion with no eligible targets)",
+      bulkWorkItemsResponseSchema,
+    ),
+    202: jsonResponse(
+      "Pending bulk deletion; items unchanged",
+      pendingBulkDeletionRequestSchema,
+    ),
     400: errorResponse("Invalid body"),
+    409: errorResponse("An equivalent deletion is already pending"),
     403: errorResponse(
       "No workspace access, or missing the operation's own capability " +
         "(work_item:delete, work_item:assign, work_item:set_priority, work_item:update, or work_item:transition)",
@@ -983,21 +1000,21 @@ const listWorkItemActivityRoute = createRoute({
     'activity.md`\'s "one stream showing everything"), newest first, cursor-' +
     'paginated. Each row in `data` carries `kind`: `"activity"` for an `activity` ' +
     'table row (issue #292) or `"comment"` for a posted `comment` row (issue #452) -- ' +
-    "merged and sorted together, not two separate lists. Every row is returned " +
+    "merged and sorted together, not two separate lists. Optional comment anchors the first page at that scoped comment, including a deleted comment's tombstone; subsequent requests retain comment and its bound cursor. Every row is returned " +
     "regardless of `visibility` -- see the controller's own doc comment for why no " +
     "caller-type filtering is applied yet. A tombstone includes its `deletedBy` actor id.",
   middleware: [requireWorkItemReach()] as const,
   request: { params: workItemKeyParam, query: listWorkItemActivityQuery },
   responses: {
     200: jsonResponse(
-      "A page of the work item's activity",
+      "A page of activity, optionally starting at the scoped comment anchor",
       workItemActivityListResponseSchema,
     ),
     400: errorResponse("Invalid query, e.g. a malformed cursor"),
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
     ),
-    404: errorResponse("Work item not found"),
+    404: errorResponse("Work item or scoped comment not found"),
   },
 });
 
@@ -1054,8 +1071,8 @@ const transitionWorkItemRoute = createRoute({
     "Move a work item to a new state through its type's active workflow version " +
     "(`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see " +
     "`GET .../transitions`). Approval and CAB gates use persisted matching approval " +
-    "rows. Guard resolution is " +
-    "also partial today: `no_open_blockers` (no `work_item_relation` table yet), " +
+    "rows. `no_open_blockers` reads live canonical relation edges. Guard resolution " +
+    "remains partial for " +
     "`field_required` (no custom-field/satellite value store yet) and " +
     "`change_risk_at_most` (no change-risk column yet) always fail closed (blocked), " +
     "never fabricated as satisfied. `pause_sla`/`resume_sla` apply the automatic " +
@@ -1242,13 +1259,17 @@ const deleteCommentRoute = createRoute({
   tags: ["Comments"],
   summary: "Delete comment",
   description:
-    "Delete a comment (`CA-18`): sets a tombstone, clears the body, keeps the row. " +
+    "Request comment deletion (`CA-18`). Explicit pending-action confirmation tombstones the comment; the request preserves its body. " +
     "`comment:delete_own` deletes the author's own; `comment:delete_any` deletes " +
     "anyone's. Idempotent on an already-deleted comment.",
   middleware: [requireCommentReach()] as const,
   request: { params: commentIdParam },
   responses: {
-    200: jsonResponse("The deleted (tombstoned) comment", commentSchema),
+    202: jsonResponse(
+      "Deletion awaits explicit requester confirmation",
+      pendingDeletionRequestSchema,
+    ),
+    409: errorResponse("A deletion approval is already pending"),
     403: errorResponse(
       "Not the author, or missing comment:delete_own/comment:delete_any",
     ),
@@ -1262,7 +1283,16 @@ const workItem = apiRouter<
   .openapi(createWorkItemRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const { typeId, title, description, priority } = c.req.valid("json");
+    const {
+      typeId,
+      title,
+      description,
+      priority,
+      startDate,
+      dueDate,
+      labelIds,
+      assigneeId,
+    } = c.req.valid("json");
     const { actorId, actorType } = resolveActor(
       c.get("userId"),
       c.get("apiKey"),
@@ -1274,6 +1304,17 @@ const workItem = apiRouter<
       title,
       description,
       priority,
+      startDate,
+      dueDate,
+      labelIds,
+      assigneeId,
+      authorization: {
+        userId: c.get("userId"),
+        apiKey: c.get("apiKey"),
+        impersonatedBy: (
+          c.get("session") as { impersonatedBy?: string | null } | null
+        )?.impersonatedBy,
+      },
       actorId,
       actorType,
     });
@@ -1822,12 +1863,29 @@ const workItem = apiRouter<
   .openapi(deleteWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const { actorId, actorType } = resolveActor(
-      c.get("userId"),
-      c.get("apiKey"),
+    const userId = c.get("userId");
+    const apiKey = c.get("apiKey");
+    const session = c.get("session");
+    const requesterPersonId = await requirePendingActionRequesterIdentity(
+      userId,
+      apiKey,
     );
-    const deleted = await deleteWorkItem(key, workspaceId, actorId, actorType);
-    return c.json(deleted, 200);
+    const pending = await createPendingAction({
+      requesterPersonId,
+      credentialType: apiKey ? "api_key" : "session",
+      credentialId: apiKey?.id ?? session?.id ?? null,
+      origin: apiKey ? "api" : "web",
+      action: "delete",
+      routeKey: "DELETE /api/work-items/{key}",
+      targetType: "work_item",
+      targetIds: [key],
+      workspaceId,
+      actorId: userId,
+      actorType: apiKey ? "api_key" : "person",
+      actorIp: c.req.header("x-forwarded-for") ?? null,
+      userAgent: c.req.header("user-agent") ?? null,
+    });
+    return c.json(pendingDeletionRequestSchema.parse(pending), 202);
   })
   .openapi(rankWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
@@ -1867,6 +1925,9 @@ const workItem = apiRouter<
       assigneeId,
       priority,
       toStateTemplateId,
+      expectedCurrentAssigneeIds,
+      labelId,
+      dueDate,
     } = c.req.valid("json");
     const userId = c.get("userId");
 
@@ -1887,7 +1948,9 @@ const workItem = apiRouter<
           ? "work_item:assign"
           : operation === "set_priority"
             ? "work_item:set_priority"
-            : operation === "archive"
+            : ["archive", "add_label", "remove_label", "set_due_date"].includes(
+                  operation,
+                )
               ? "work_item:update"
               : "work_item:transition";
 
@@ -1907,16 +1970,47 @@ const workItem = apiRouter<
       c.get("apiKey"),
     );
 
-    let bulkOp: Parameters<typeof bulkWorkItems>[4];
     if (operation === "delete") {
-      bulkOp = { operation: "delete" };
-    } else if (operation === "assign") {
-      bulkOp = { operation: "assign", assigneeId: assigneeId as string };
+      const apiKey = c.get("apiKey");
+      const requesterPersonId = await requirePendingActionRequesterIdentity(
+        userId,
+        apiKey,
+      );
+      const result = await requestBulkWorkItemDeletion({
+        requesterPersonId,
+        credentialType: apiKey ? "api_key" : "session",
+        credentialId: apiKey?.id ?? c.get("session")?.id ?? null,
+        origin: apiKey ? "api" : "web",
+        action: "bulk_delete",
+        routeKey: "POST /api/work-items/bulk",
+        targetType: "work_item",
+        targetIds: workItemKeys,
+        workspaceId,
+        actorId,
+        actorType: apiKey ? "api_key" : "person",
+        actorIp: c.req.header("x-forwarded-for") ?? null,
+        userAgent: c.req.header("user-agent") ?? null,
+      });
+      if (result.kind === "empty") return c.json(result.data, 200);
+      return c.json(pendingBulkDeletionRequestSchema.parse(result.data), 202);
+    }
+
+    let bulkOp: Parameters<typeof bulkWorkItems>[4];
+    if (operation === "assign") {
+      bulkOp = {
+        operation: "assign",
+        assigneeId: assigneeId as string,
+        expectedCurrentAssigneeIds,
+      };
     } else if (operation === "set_priority") {
       bulkOp = {
         operation: "set_priority",
         priority: priority ?? null,
       };
+    } else if (operation === "add_label" || operation === "remove_label") {
+      bulkOp = { operation, labelId: labelId as string };
+    } else if (operation === "set_due_date") {
+      bulkOp = { operation, dueDate: dueDate ?? null };
     } else if (operation === "archive") {
       bulkOp = { operation: "archive" };
     } else {
@@ -1951,10 +2045,19 @@ const workItem = apiRouter<
   .openapi(listWorkItemActivityRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const { cursor, limit } = c.req.valid("query");
+    const { cursor, limit, comment } = c.req.valid("query");
     const activity = await listWorkItemActivity(key, workspaceId, {
       cursor,
       limit,
+      comment,
+      viewer: {
+        userId: c.get("userId"),
+        apiKey: c.get("apiKey"),
+        impersonated: Boolean(
+          (c.get("session") as { impersonatedBy?: string | null } | null)
+            ?.impersonatedBy,
+        ),
+      },
     });
     return c.json(activity, 200);
   })
@@ -2196,19 +2299,38 @@ const workItem = apiRouter<
       c.get("userId"),
       body,
       c.get("apiKey"),
+      Boolean(
+        (c.get("session") as { impersonatedBy?: string | null } | null)
+          ?.impersonatedBy,
+      ),
     );
     return c.json(updated, 200);
   })
   .openapi(deleteCommentRoute, async (c) => {
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const deleted = await deleteComment(
-      id,
-      workspaceId,
-      c.get("userId"),
-      c.get("apiKey"),
+    const userId = c.get("userId");
+    const apiKey = c.get("apiKey");
+    const requesterPersonId = await requirePendingActionRequesterIdentity(
+      userId,
+      apiKey,
     );
-    return c.json(deleted, 200);
+    const pending = await createPendingAction({
+      requesterPersonId,
+      credentialType: apiKey ? "api_key" : "session",
+      credentialId: apiKey?.id ?? c.get("session")?.id ?? null,
+      origin: apiKey ? "api" : "web",
+      action: "delete",
+      routeKey: "DELETE /api/comments/{id}",
+      targetType: "comment",
+      targetIds: [id],
+      workspaceId,
+      actorId: userId,
+      actorType: apiKey ? "api_key" : "person",
+      actorIp: c.req.header("x-forwarded-for") ?? null,
+      userAgent: c.req.header("user-agent") ?? null,
+    });
+    return c.json(pendingDeletionRequestSchema.parse(pending), 202);
   });
 
 export default workItem;

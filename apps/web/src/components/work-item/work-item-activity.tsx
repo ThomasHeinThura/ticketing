@@ -3,15 +3,40 @@ import {
   Alert,
   AlertDescription,
   Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
   Skeleton,
+  Timeline,
+  TimelineContent,
+  TimelineItem,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@taskdesk/ui";
+import {
+  ArrowUp,
+  Calendar,
+  ChevronDown,
+  CircleAlert,
+  History,
+  Pencil,
+  UserRound,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  ActivityActorPresentation,
+  ActivityAvatarPresentation,
+  ActivityEventPresentation,
+  CommentCardPresentation,
+} from "@/components/activity/comment-card-presentation";
 import CommentEditor, {
   type CommentContentSnapshot,
 } from "@/components/activity/comment-editor";
@@ -27,6 +52,7 @@ import useGetWorkItemActivity from "@/hooks/queries/work-item/use-get-work-item-
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
+import { WorkItemCommentDelete } from "./work-item-comment-delete";
 
 export type ActivityFilter = "everything" | "comments" | "public";
 const EMPTY_COMMENT_DOCUMENT = {
@@ -116,6 +142,52 @@ function jsonText(value: unknown) {
   }
 }
 
+/** Relation activity carries type/direction only; never render arbitrary endpoint data. */
+export function activityChangeDescription(
+  row: Pick<WorkItemActivityRow, "field" | "verb" | "oldValue" | "newValue">,
+  t: (key: string) => string,
+  includeVerb = false,
+): string {
+  if (row.field === "description")
+    return t("activity:timeline.descriptionUpdated");
+  if (row.field === "label") return t("activity:timeline.labelsUpdated");
+  if (
+    !row.field &&
+    (row.verb === "attachment.added" || row.verb === "attachment.deleted")
+  )
+    return t(
+      row.verb === "attachment.added"
+        ? "activity:timeline.attachmentAdded"
+        : "activity:timeline.attachmentDeleted",
+    );
+  if (row.field !== "relation") {
+    const label = row.field ?? (includeVerb ? row.verb : undefined);
+    return `${label ? `${label}: ` : ""}${jsonText(row.oldValue)} → ${jsonText(row.newValue)}`;
+  }
+  const relationLabel = (value: unknown): string => {
+    if (value === null || value === undefined) return "—";
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      return t("workItems:detail.unavailable");
+    const record = value as Record<string, unknown>;
+    if (record.direction !== "outgoing" && record.direction !== "incoming")
+      return t("workItems:detail.unavailable");
+    const inverse = {
+      relates: "relates",
+      blocks: "blocked_by",
+      duplicates: "duplicated_by",
+      precedes: "follows",
+      requires: "required_by",
+    } as const;
+    if (typeof record.type !== "string" || !Object.hasOwn(inverse, record.type))
+      return t("workItems:detail.unavailable");
+    const type = record.type as keyof typeof inverse;
+    return t(
+      `workItems:relations.types.${record.direction === "incoming" ? inverse[type] : type}`,
+    );
+  };
+  return `${t("tasks:relations.title")}: ${relationLabel(row.oldValue)} → ${relationLabel(row.newValue)}`;
+}
+
 function isComment(row: WorkItemActivityRow) {
   return row.kind === "comment";
 }
@@ -134,12 +206,14 @@ function WorkItemActivity({
   workspaceId,
   defaultVisibility,
   filter,
+  focusedComment,
   onFilterChange,
 }: {
   workItemKey: string;
   workspaceId: string;
   defaultVisibility: "public" | "internal";
   filter: ActivityFilter;
+  focusedComment?: string;
   onFilterChange: (filter: ActivityFilter) => void;
 }) {
   const { t } = useTranslation();
@@ -150,7 +224,10 @@ function WorkItemActivity({
     isCheckingPermissions,
   } = useWorkspacePermission(workspaceId);
   const { data: people } = useGetActiveWorkspaceUsers(workspaceId);
-  const activity = useGetWorkItemActivity({ key: workItemKey });
+  const activity = useGetWorkItemActivity({
+    key: workItemKey,
+    comment: focusedComment,
+  });
   const cannedResponses = useQuery({
     queryKey: ["canned-responses", workItemKey],
     queryFn: () => listCannedResponses(workItemKey),
@@ -237,10 +314,21 @@ function WorkItemActivity({
       allowedCommentVisibilities.length > 0 &&
       mentionPersonIds.length > 0,
   });
+  const focusedCommentRef = useRef<HTMLDivElement>(null);
   const rows = activity.data?.pages.flatMap((page) => page.data) ?? [];
   // The API returns newest first; grouping reverses once so the rendered list
   // reads chronologically with the newest entry at the bottom.
   const visibleRows = filterActivityRows(rows, filter);
+  const hasFocusedComment = Boolean(
+    focusedComment &&
+      visibleRows.some((row) => isComment(row) && row.id === focusedComment),
+  );
+  useEffect(() => {
+    if (!hasFocusedComment || !focusedComment) return;
+    const target = focusedCommentRef.current;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView?.({ block: "center" });
+  }, [focusedComment, hasFocusedComment]);
   const users = people?.members ?? [];
   function displayName(id: string | null, actorType: string) {
     if (actorType !== "person")
@@ -260,6 +348,23 @@ function WorkItemActivity({
     return (
       member?.user?.name ?? member?.user?.email ?? t("common:people.unknown")
     );
+  }
+  function actorProfile(id: string | null, actorType: string) {
+    const candidate =
+      actorType === "person"
+        ? mentionCandidates.data?.find(
+            (entry) => entry.personId === id && entry.reachable,
+          )
+        : undefined;
+    const member =
+      actorType === "person"
+        ? users.find((entry) => entry.userId === id)
+        : undefined;
+    return {
+      name: displayName(id, actorType),
+      image: candidate?.image ?? member?.user?.image,
+      email: member?.user?.email,
+    };
   }
   const activityKey = ["work-items", "activity", workItemKey] as const;
   const draftStorageKey = `taskdesk:comment-draft:${user?.id ?? ""}:${workItemKey}`;
@@ -425,239 +530,12 @@ function WorkItemActivity({
         </Select>
       </div>
 
-      {activity.isError && (
-        <Alert variant="error" role="alert">
-          <AlertDescription>
-            {t("activity:timeline.loadFailed")}{" "}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void activity.refetch()}
-            >
-              {t("activity:timeline.retry")}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-      {activity.isLoading && (
-        // Row-shaped placeholders so the arriving timeline does not push the
-        // composer down (G13); the status text stays available to assistive tech.
-        <div
-          role="status"
-          aria-busy="true"
-          className="flex flex-col gap-3"
-          data-testid="work-item-activity-loading"
-        >
-          <span className="sr-only">{t("activity:timeline.loading")}</span>
-          {[0, 1, 2, 3].map((index) => (
-            <div
-              key={index}
-              aria-hidden="true"
-              className="flex flex-col gap-2 rounded-lg border p-3"
-            >
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
-            </div>
-          ))}
-        </div>
-      )}
-      {!activity.isLoading && !activity.isError && visibleRows.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          {t("activity:timeline.empty")}
-        </p>
-      )}
-      <ol
-        className="flex flex-col gap-3"
-        aria-label={t("activity:timeline.heading")}
-      >
-        {groupConsecutiveActivity(visibleRows).map((group) => {
-          const row = group[0];
-          const actor = displayName(row.actorId, row.actorType);
-          if (isComment(row)) {
-            const isDeleted = Boolean(row.deletedAt);
-            const body = row.body;
-            return (
-              <li
-                key={row.id}
-                className="rounded-lg border bg-card p-3"
-                data-visibility={effectiveVisibility(row)}
-              >
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <strong>{actor}</strong>
-                  <time
-                    dateTime={row.createdAt}
-                    title={formatDateTime(row.createdAt)}
-                  >
-                    {formatRelativeTime(row.createdAt)}
-                  </time>
-                  <span className="text-muted-foreground">
-                    {effectiveVisibility(row) === "public"
-                      ? t("activity:timeline.public")
-                      : t("activity:timeline.internal")}
-                  </span>
-                  {row.editedAt && !row.deletedAt ? (
-                    <CommentVersionHistory
-                      workItemKey={workItemKey}
-                      commentId={row.id}
-                      label={t("activity:timeline.edited")}
-                      editorName={displayPersonName}
-                    />
-                  ) : null}
-                  {!isDeleted && editing !== row.id && (
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      ref={(node: HTMLButtonElement | null) => {
-                        editTriggers.current.set(row.id, node);
-                      }}
-                      onClick={() => {
-                        setEditing(row.id);
-                        setEditDraft({
-                          text: typeof body === "string" ? body : "",
-                          document: isTiptapDocument(body) ? body : undefined,
-                        });
-                      }}
-                    >
-                      {t("activity:timeline.edit")}
-                    </Button>
-                  )}
-                </div>
-                {isDeleted ? (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {t("activity:timeline.deleted", {
-                      actor: row.deletedBy
-                        ? displayName(row.deletedBy, "person")
-                        : t("common:people.unknown"),
-                      date: formatDateTime(row.deletedAt ?? row.createdAt),
-                    })}
-                  </p>
-                ) : editing === row.id ? (
-                  <div className="mt-3 flex flex-col gap-2">
-                    {/* Native comments do not yet have mention notification or attachment-linkage endpoints. */}
-                    <CommentEditor
-                      value={editText}
-                      documentValue={editDocument}
-                      onContentChange={setEditDraft}
-                      uploadSurface="comment"
-                      showQuickAttachButton={false}
-                      enableMentions={false}
-                      autoFocus="end"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setRestoreFocusId(row.id);
-                          setEditing(null);
-                        }}
-                      >
-                        {t("activity:timeline.cancel")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={!editText.trim() || updateComment.isPending}
-                        onClick={() => void saveEdit()}
-                      >
-                        {t("activity:timeline.save")}
-                      </Button>
-                    </div>
-                    {updateComment.isError && (
-                      <p role="alert" className="text-sm text-destructive">
-                        {t("activity:timeline.mutationFailed")}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-2">
-                    {isTiptapDocument(body) ? (
-                      <CommentEditor
-                        value=""
-                        documentValue={body}
-                        readOnly
-                        showBubbleMenu={false}
-                      />
-                    ) : typeof body === "string" ? (
-                      <CommentEditor
-                        value={body}
-                        readOnly
-                        showBubbleMenu={false}
-                      />
-                    ) : (
-                      <p className="whitespace-pre-wrap text-sm">
-                        {jsonText(body)}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </li>
-            );
-          }
-          const description = `${row.field ? `${row.field}: ` : ""}${jsonText(row.oldValue)} → ${jsonText(row.newValue)}`;
-          return (
-            <li
-              key={row.id}
-              className="rounded-lg border px-3 py-2 text-sm"
-              data-visibility={effectiveVisibility(row)}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <strong>{actor}</strong>
-                <span>{row.verb}</span>
-                <time
-                  className="text-muted-foreground"
-                  dateTime={row.createdAt}
-                  title={formatDateTime(row.createdAt)}
-                >
-                  {formatRelativeTime(row.createdAt)}
-                </time>
-              </div>
-              {row.field && (
-                <p className="mt-1 text-muted-foreground">{description}</p>
-              )}
-              {group.length > 1 && (
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-muted-foreground">
-                    {t("activity:timeline.groupedChanges", {
-                      count: group.length,
-                    })}
-                  </summary>
-                  <ul className="mt-2 list-inside list-disc">
-                    {group.map((entry) => (
-                      <li key={entry.id}>
-                        {entry.field ?? entry.verb}: {jsonText(entry.oldValue)}{" "}
-                        → {jsonText(entry.newValue)}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-      {activity.hasNextPage && (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={activity.isFetchingNextPage}
-          onClick={() => void activity.fetchNextPage()}
-        >
-          {activity.isFetchingNextPage
-            ? t("activity:timeline.loading")
-            : t("activity:timeline.loadMore")}
-        </Button>
-      )}
-
       <div
         hidden={
           isCheckingPermissions || allowedCommentVisibilities.length === 0
         }
-        className={
-          selectedCommentVisibility === "internal"
-            ? "rounded-xl border border-warning/50 bg-warning/5 p-3"
-            : "rounded-xl border bg-card p-3"
-        }
+        className="w-full"
+        data-testid="work-item-comment-composer"
       >
         <label
           className="mb-2 block text-sm font-medium"
@@ -790,35 +668,44 @@ function WorkItemActivity({
             </AlertDescription>
           </Alert>
         ) : null}
-        <CommentEditor
-          value={draftText}
-          documentValue={draftDocument}
-          onContentChange={(snapshot) => {
-            setDraft(snapshot);
-            persistDraft(snapshot);
-          }}
-          uploadSurface="comment"
-          showQuickAttachButton={false}
-          enableMentions
-          disabled={composerBusy}
-          mentionMembers={(mentionCandidates.data ?? []).map((candidate) => ({
-            id: candidate.personId,
-            label: candidate.name,
-            image: candidate.image,
-          }))}
-          placeholder={t("activity:comment.leavePlaceholder")}
-        />
-        <div className="mt-2 flex justify-end">
-          <Button
-            disabled={
-              !draftText.trim() || createComment.isPending || composerBusy
-            }
-            onClick={() => void submit()}
-          >
-            {createComment.isPending
-              ? t("activity:timeline.sending")
-              : t("activity:timeline.send")}
-          </Button>
+        <div className="rounded-xl border border-border/80 bg-card/70 transition-colors focus-within:border-ring/60 focus-within:shadow-[0_0_0_2px_color-mix(in_srgb,var(--ring)_20%,transparent)]">
+          <CommentEditor
+            value={draftText}
+            documentValue={draftDocument}
+            onContentChange={(snapshot) => {
+              setDraft(snapshot);
+              persistDraft(snapshot);
+            }}
+            uploadSurface="comment"
+            showQuickAttachButton={false}
+            enableMentions
+            disabled={composerBusy}
+            mentionMembers={(mentionCandidates.data ?? []).map((candidate) => ({
+              id: candidate.personId,
+              label: candidate.name,
+              image: candidate.image,
+            }))}
+            placeholder={t("activity:comment.leavePlaceholder")}
+            className="[&_.taskdesk-comment-editor-content_.ProseMirror]:min-h-[3rem] [&_.taskdesk-comment-editor-content_.ProseMirror]:max-h-none [&_.taskdesk-comment-editor-content_.ProseMirror]:overflow-visible [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-2"
+            onSubmitShortcut={() => void submit()}
+          />
+          <div className="flex items-center justify-end gap-2 border-border/70 border-t px-2 py-2">
+            <Button
+              size="xs"
+              aria-label={
+                createComment.isPending
+                  ? t("activity:timeline.sending")
+                  : t("activity:timeline.send")
+              }
+              aria-busy={createComment.isPending}
+              disabled={
+                !draftText.trim() || createComment.isPending || composerBusy
+              }
+              onClick={() => void submit()}
+            >
+              <ArrowUp className="size-3.5" />
+            </Button>
+          </div>
         </div>
         {(createComment.isError || updateComment.isError) && (
           <p role="alert" className="mt-2 text-sm text-destructive">
@@ -826,6 +713,323 @@ function WorkItemActivity({
           </p>
         )}
       </div>
+
+      {activity.isError && (
+        <Alert variant="error" role="alert">
+          <AlertDescription>
+            {t("activity:timeline.loadFailed")}{" "}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void activity.refetch()}
+            >
+              {t("activity:timeline.retry")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {activity.isLoading && (
+        // Timeline placeholders remain below the composer; status stays accessible.
+        <div
+          role="status"
+          aria-busy="true"
+          className="flex flex-col gap-3"
+          data-testid="work-item-activity-loading"
+        >
+          <span className="sr-only">{t("activity:timeline.loading")}</span>
+          {[0, 1, 2, 3].map((index) => (
+            <div
+              key={index}
+              aria-hidden="true"
+              className="flex flex-col gap-2 rounded-lg border p-3"
+            >
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          ))}
+        </div>
+      )}
+      {!activity.isLoading && !activity.isError && visibleRows.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          {t("activity:timeline.empty")}
+        </p>
+      )}
+      <Timeline role="list" aria-label={t("activity:timeline.heading")}>
+        {groupConsecutiveActivity(visibleRows).map((group, index, groups) => {
+          const row = group[0];
+          const profile =
+            isComment(row) && Object.hasOwn(row, "actorPersonId")
+              ? {
+                  name:
+                    row.actorPersonId && row.actorDisplayName
+                      ? row.actorDisplayName
+                      : t("common:people.unknown"),
+                  image: undefined,
+                  email: undefined,
+                }
+              : actorProfile(row.actorId, row.actorType);
+          const timestamp = (
+            <time
+              className="whitespace-nowrap text-xs text-muted-foreground"
+              dateTime={row.createdAt}
+              title={formatDateTime(row.createdAt)}
+            >
+              {formatRelativeTime(row.createdAt)}
+            </time>
+          );
+          if (isComment(row)) {
+            const isDeleted = Boolean(row.deletedAt);
+            const body = row.body;
+            const isEditing = editing === row.id;
+            return (
+              <TimelineItem
+                key={row.id}
+                step={index + 1}
+                role="listitem"
+                className="m-0! flex-row items-start py-2!"
+              >
+                <TimelineContent className="min-w-0 flex-1">
+                  <CommentCardPresentation
+                    id={`comment-${row.id}`}
+                    ref={
+                      row.id === focusedComment ? focusedCommentRef : undefined
+                    }
+                    tabIndex={-1}
+                    data-focused-comment={
+                      row.id === focusedComment ? "true" : undefined
+                    }
+                    className={
+                      row.id === focusedComment ? "ring-2 ring-ring" : undefined
+                    }
+                    data-visibility={effectiveVisibility(row)}
+                    header={
+                      <>
+                        <ActivityActorPresentation {...profile} />
+                        {timestamp}
+                        <span className="text-xs text-muted-foreground">
+                          {effectiveVisibility(row) === "public"
+                            ? t("activity:timeline.public")
+                            : t("activity:timeline.internal")}
+                        </span>
+                        {row.editedAt && !isDeleted ? (
+                          <CommentVersionHistory
+                            workItemKey={workItemKey}
+                            commentId={row.id}
+                            label={t("activity:timeline.edited")}
+                            editorName={displayPersonName}
+                          />
+                        ) : null}
+                      </>
+                    }
+                    actions={
+                      !isDeleted &&
+                      !isEditing &&
+                      (row.canEdit === true || row.canDelete === true) ? (
+                        <>
+                          {row.canEdit === true && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 rounded-md p-0 text-muted-foreground hover:text-foreground"
+                                    aria-label={t("activity:timeline.edit")}
+                                    ref={(node: HTMLButtonElement | null) => {
+                                      editTriggers.current.set(row.id, node);
+                                    }}
+                                    onClick={() => {
+                                      setEditing(row.id);
+                                      setEditDraft({
+                                        text:
+                                          typeof body === "string" ? body : "",
+                                        document: isTiptapDocument(body)
+                                          ? body
+                                          : undefined,
+                                      });
+                                    }}
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {t("activity:timeline.edit")}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          <WorkItemCommentDelete
+                            workItemKey={workItemKey}
+                            commentId={row.id}
+                            canDelete={row.canDelete === true}
+                          />
+                        </>
+                      ) : undefined
+                    }
+                    footer={
+                      !isDeleted && isEditing ? (
+                        <div className="flex items-center justify-end gap-2 border-border/70 border-t bg-card/60 px-3 py-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-7 px-2.5 text-xs"
+                            onClick={() => {
+                              setRestoreFocusId(row.id);
+                              setEditing(null);
+                            }}
+                          >
+                            {t("activity:timeline.cancel")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-7 px-2.5 text-xs"
+                            disabled={
+                              !editText.trim() || updateComment.isPending
+                            }
+                            onClick={() => void saveEdit()}
+                          >
+                            {t("activity:timeline.save")}
+                          </Button>
+                          {updateComment.isError ? (
+                            <p
+                              role="alert"
+                              className="text-sm text-destructive"
+                            >
+                              {t("activity:timeline.mutationFailed")}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : undefined
+                    }
+                  >
+                    {isDeleted ? (
+                      <p className="px-3 py-3 text-sm text-muted-foreground">
+                        {t("activity:timeline.deleted", {
+                          actor: row.deletedBy
+                            ? displayName(row.deletedBy, "person")
+                            : t("common:people.unknown"),
+                          date: formatDateTime(row.deletedAt ?? row.createdAt),
+                        })}
+                      </p>
+                    ) : isEditing ? (
+                      <CommentEditor
+                        value={editText}
+                        documentValue={editDocument}
+                        onContentChange={setEditDraft}
+                        uploadSurface="comment"
+                        showQuickAttachButton={false}
+                        enableMentions={false}
+                        autoFocus="end"
+                        className="[&_.taskdesk-comment-editor-content_.ProseMirror]:min-h-[3rem] [&_.taskdesk-comment-editor-content_.ProseMirror]:max-h-none [&_.taskdesk-comment-editor-content_.ProseMirror]:overflow-visible [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-2.5 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-2"
+                      />
+                    ) : isTiptapDocument(body) || typeof body === "string" ? (
+                      <CommentEditor
+                        value={typeof body === "string" ? body : ""}
+                        documentValue={
+                          isTiptapDocument(body) ? body : undefined
+                        }
+                        readOnly
+                        showBubbleMenu={false}
+                        showQuickAttachButton={false}
+                        className="taskdesk-comment-viewer [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-2 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-3"
+                      />
+                    ) : (
+                      <p className="whitespace-pre-wrap px-3 py-3 text-sm">
+                        {jsonText(body)}
+                      </p>
+                    )}
+                  </CommentCardPresentation>
+                </TimelineContent>
+              </TimelineItem>
+            );
+          }
+          const description = activityChangeDescription(row, t);
+          const icon =
+            row.field === "priority" ? (
+              <CircleAlert className="size-4" />
+            ) : row.field === "assignee" ? (
+              <UserRound className="size-4" />
+            ) : row.field === "dueDate" ? (
+              <Calendar className="size-4" />
+            ) : (
+              <History className="size-4" />
+            );
+          return (
+            <ActivityEventPresentation
+              key={row.id}
+              step={index + 1}
+              icon={icon}
+              avatar={
+                <ActivityAvatarPresentation
+                  name={profile.name}
+                  image={profile.image}
+                />
+              }
+              actor={
+                <ActivityActorPresentation {...profile} showAvatar={false} />
+              }
+              timestamp={timestamp}
+              showConnector={Boolean(
+                groups[index + 1] && !isComment(groups[index + 1][0]),
+              )}
+            >
+              {row.field ? (
+                <span className="text-sm text-muted-foreground">
+                  {description}
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  {row.verb === "attachment.added" ||
+                  row.verb === "attachment.deleted"
+                    ? activityChangeDescription(row, t)
+                    : row.verb}
+                </span>
+              )}
+              {group.length > 1 ? (
+                <Collapsible className="mt-2">
+                  <CollapsibleTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto justify-start gap-1 px-0 py-0 text-xs text-muted-foreground"
+                      />
+                    }
+                  >
+                    <ChevronDown className="size-3" />
+                    {t("activity:timeline.groupedChanges", {
+                      count: group.length,
+                    })}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <ul className="mt-2 list-inside list-disc text-xs">
+                      {group.map((entry) => (
+                        <li key={entry.id}>
+                          {activityChangeDescription(entry, t, true)}
+                        </li>
+                      ))}
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : null}
+            </ActivityEventPresentation>
+          );
+        })}
+      </Timeline>
+
+      {activity.hasNextPage && (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={activity.isFetchingNextPage}
+          onClick={() => void activity.fetchNextPage()}
+        >
+          {activity.isFetchingNextPage
+            ? t("activity:timeline.loading")
+            : t("activity:timeline.loadMore")}
+        </Button>
+      )}
     </section>
   );
 }

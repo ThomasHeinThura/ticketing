@@ -9,7 +9,11 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { after, describe, it } from "node:test";
-import { headAgreesWithPayload, headParents } from "./head-binding.mjs";
+import {
+  HeadBindingUnavailableError,
+  headAgreesWithPayload,
+  headParents,
+} from "./head-binding.mjs";
 import {
   cleanUpScratchRepos,
   commit,
@@ -18,7 +22,6 @@ import {
   scratchDir,
   write,
 } from "./scratch-repo.mjs";
-import { ReviewBindingUnavailableError } from "./security-review-note.mjs";
 
 after(cleanUpScratchRepos);
 
@@ -74,7 +77,7 @@ describe("headParents", () => {
     const dir = scratchDir("head-binding-not-a-repo");
     assert.throws(
       () => headParents(dir),
-      ReviewBindingUnavailableError,
+      HeadBindingUnavailableError,
       "a git failure must be refused, not read as an empty parent list",
     );
 

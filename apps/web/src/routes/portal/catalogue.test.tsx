@@ -22,6 +22,7 @@ vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
     useSearch: () => mocks.search,
+    useRouteContext: () => ({ portalUserId: "customer-a" }),
   }),
   useNavigate: () => mocks.navigate,
 }));
@@ -131,7 +132,7 @@ describe("portal catalogue route", () => {
       query === "does-not-match" ? emptyCatalogue : catalogue,
     );
     localStorage.setItem(
-      "taskdesk:intake-draft:access:3",
+      "taskdesk:intake-draft:customer-a:access:3",
       JSON.stringify({ title: "Draft answer" }),
     );
     const view = renderCatalogue();

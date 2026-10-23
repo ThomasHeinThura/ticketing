@@ -164,8 +164,13 @@
 					"terracotta": "Теракота",
 					"rose": "Роза",
 					"crimson": "Гримизна"
-				}
+				},
+				"discardWithFilesDescription": "Your unsaved task details and the files you added will be lost."
 			}
+		},
+		"pendingDeletion": {
+			"requested": "Deletion requested. Approve it to complete.",
+			"requestFailed": "Deletion could not be requested."
 		}
 	},
 	"auth": {
@@ -1390,6 +1395,12 @@
 		}
 	},
 	"navigation": {
+		"projectViews": {
+			"workItems": "Задачи",
+			"calendar": "Calendar",
+			"selectProject": "Избери проект",
+			"noProjects": "Нема проекти"
+		},
 		"commandPalette": {
 			"suggestions": "Предлози",
 			"commands": "Команди",
@@ -1741,7 +1752,11 @@
 			"mentionWarning": "{{people}} немаат пристап до оваа работна ставка и нема да добијат известување.",
 			"mentionUnavailable": "Избрано лице",
 			"mentionCheckFailed": "Пристапот за спомнувањата не можеше да се провери. Серверот ќе го провери повторно при испраќањето.",
-			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry.",
+			"descriptionUpdated": "updated the description",
+			"labelsUpdated": "updated labels",
+			"attachmentAdded": "added an attachment",
+			"attachmentDeleted": "removed an attachment"
 		}
 	},
 	"tasks": {
@@ -2142,7 +2157,8 @@
 			"actions": "Акции",
 			"searchActions": "Пребарај акции...",
 			"noActionsFound": "Не се пронајдени акции.",
-			"changeStatus": "Промени статус"
+			"changeStatus": "Промени статус",
+			"removeLabel": "Remove label"
 		},
 		"editor": {
 			"table": {
@@ -2443,7 +2459,32 @@
 				"decideFailed": "The decision could not be recorded.",
 				"reject": "Reject",
 				"rejectNote": "Why are you rejecting this?",
-				"decideConflict": "This approval was already decided, withdrawn or expired. The list now shows its current state."
+				"decideConflict": "This approval was already decided, withdrawn or expired. The list now shows its current state.",
+				"request": {
+					"action": "Request approval",
+					"anyState": "Any state",
+					"approver": "Approver",
+					"candidatesError": "Eligible approvers could not be loaded.",
+					"chooseApprover": "Choose an approver",
+					"chooseTransition": "Choose a transition",
+					"description": "Choose a workflow gate and a person who can approve this work item.",
+					"error": "The approval could not be requested. Refresh the options and try again.",
+					"expiryDays": "Expires in (days)",
+					"expiryHint": "Choose between 1 and {{max}} days. Instance default: {{days}} days.",
+					"invalidExpiry": "Expiry must be a whole number from 1 to {{max}} days.",
+					"kind": "Approval kind",
+					"more": "Load more approvers",
+					"noCandidates": "No eligible approvers found.",
+					"optionsError": "Approval request options could not be loaded.",
+					"search": "Search eligible approvers",
+					"submit": "Request approval",
+					"submitting": "Requesting…",
+					"success": "Approval requested.",
+					"title": "Request approval",
+					"transition": "Workflow transition",
+					"unavailable": "Approval requests are no longer available for this work item.",
+					"noTransitions": "This work item’s workflow has no approval gates."
+				}
 			},
 			"attachments": {
 				"add": "Add file",
@@ -2548,7 +2589,24 @@
 			"typesRetry": "Retry",
 			"close": "Close",
 			"loadFailed": "The create form could not be loaded.",
-			"reload": "Reload page"
+			"reload": "Reload page",
+			"attachments": {
+				"staged": "Ready to attach",
+				"heading": "Attachments",
+				"remove": "Remove {{name}}",
+				"retry": "Retry failed uploads",
+				"partial": "Work item {{key}} was created. Some files still need uploading.",
+				"createdClose": "Close created work item",
+				"failed": "Could not attach this file. Retry the upload.",
+				"uploading": "Attaching files…",
+				"uploaded": "Attached",
+				"complete": "Work item {{key}} was created and files attached.",
+				"createUnknown": "The create request did not return a confirmed result. Check the project before creating again.",
+				"unknown": "Upload outcome could not be confirmed. Retry to check it.",
+				"empty": "Only non-empty files can be attached.",
+				"afterCreate": "The work item already exists. Closing keeps it and all completed attachments.",
+				"retryPermission": "Upload permission is no longer available."
+			}
 		},
 		"journey": {
 			"editHeading": "Edit",
@@ -2673,7 +2731,21 @@
 			"unnamedPerson": "Unnamed person",
 			"selectMode": "Select items",
 			"modeOff": "Selection mode off. Selection cleared.",
-			"modeOn": "Selection mode on. Use the checkboxes to choose work items."
+			"modeOn": "Selection mode on. Use the checkboxes to choose work items.",
+			"operationResult": "{{succeeded}} updated, {{failed}} failed.",
+			"preparing": "Checking selected work items…",
+			"confirmReassignTitle": "Reassign selected work items?",
+			"confirmReassignDescription": "These items are already assigned. Confirm replacing the holders shown below with {{name}}.",
+			"previousHolder": "{{key}} — {{name}}",
+			"selectionUnavailable": "Some selected items are no longer available. Refresh and select them again.",
+			"operationFailure": {
+				"gone": "The selected work items are no longer available to you.",
+				"conflict": "The selected work items changed. Refresh and try again.",
+				"rejected": "This action is not available for the selected work items.",
+				"invalid": "The request was not valid. No updates were applied.",
+				"forbidden": "You do not have permission for this action.",
+				"unknown": "Could not update the selected work items. Try again."
+			}
 		},
 		"filter": {
 			"addCondition": "Add condition",
@@ -2750,9 +2822,116 @@
 			"transitionNote": "Add a note for this move",
 			"reloadLatest": "Reload latest",
 			"unsaved": "Not saved yet. It will be tried again when you leave the field."
+		},
+		"relations": {
+			"add": "Add relation",
+			"cycle": "Blocking cycle",
+			"error": "Relations could not be loaded. Try again.",
+			"hidden_one": "{{count}} related item you cannot see",
+			"hidden_other": "{{count}} related items you cannot see",
+			"linkError": "The relation could not be added. Check access and try again.",
+			"pending": "Relation removal requested. The relation remains until approved.",
+			"removeError": "The removal request could not be created. Try again.",
+			"reviewPending": "View removal request",
+			"searchError": "Work items could not be searched. Try again.",
+			"type": "Relation type",
+			"types": {
+				"blocked_by": "blocked by",
+				"blocks": "blocks",
+				"duplicated_by": "duplicated by",
+				"duplicates": "duplicates",
+				"follows": "follows",
+				"precedes": "precedes",
+				"relates": "relates to",
+				"required_by": "required by",
+				"requires": "requires"
+			}
+		},
+		"deletion": {
+			"actions": "Work item actions",
+			"childrenAffected_one": "This item has {{count}} child item. Deleting the parent keeps its children.",
+			"childrenAffected_other": "This item has {{count}} child items. Deleting the parent keeps its children.",
+			"hidden": "Work item details are no longer available.",
+			"requestFailed": "The deletion request could not be created. Check access and try again."
+		},
+		"legacyView": {
+			"continue": "Open without unsupported controls",
+			"controls": {
+				"assignee": "Assignee",
+				"dueDate": "Due date",
+				"filter": "Filter",
+				"labels": "Labels",
+				"priority": "Priority",
+				"q": "Search",
+				"sort": "Sort",
+				"status": "Status"
+			},
+			"opening": "Opening project…",
+			"unavailable": "This project or task is unavailable.",
+			"unsupportedDescription": "These controls cannot be applied to the current project view: {{controls}}.",
+			"unsupportedTitle": "Some saved controls need attention"
+		},
+		"sidePane": {
+			"ariaLabel": "Work item {{key}}",
+			"close": "Close task",
+			"openFullPage": "Open full page"
 		}
 	},
 	"portal": {
+		"navigation": {
+			"title": "Customer portal",
+			"description": "Navigate your requests and approvals.",
+			"home": "Home",
+			"catalogue": "Request catalogue",
+			"requests": "My requests",
+			"approvals": "Approvals",
+			"signOut": "Sign out",
+			"signOutFailed": "Could not sign out. Try again.",
+			"breadcrumb": "Breadcrumb",
+			"request": "Request"
+		},
+		"home": {
+			"title": "How can we help?",
+			"description": "Raise a request, track progress or review an approval.",
+			"recent": "Recent requests",
+			"allRequests": "View all requests"
+		},
+		"requests": {
+			"title": "My requests",
+			"description": "Track requests you submitted or can view across your organisation.",
+			"newRequest": "New request",
+			"emptyTitle": "No requests yet",
+			"emptyDescription": "You have no visible requests. Choose a request type to get started.",
+			"browseCatalogue": "Browse request catalogue",
+			"loadFailed": "Could not load your requests. Try again.",
+			"reference": "Reference",
+			"type": "Request type",
+			"status": "Status",
+			"visibility": "Visibility",
+			"submitted": "Submitted",
+			"pagination": "Request pages",
+			"latest": "Back to latest",
+			"older": "Older requests"
+		},
+		"approvals": {
+			"title": "Approvals",
+			"description": "Review customer approvals addressed to you.",
+			"recorded": "Decision recorded.",
+			"conflict": "This approval was decided, withdrawn or expired. Its current state has been refreshed.",
+			"forbidden": "This approval is no longer available to you.",
+			"failed": "Could not record your decision. Try again.",
+			"loadFailed": "Could not load approvals. Try again.",
+			"empty": "No approvals are waiting for you.",
+			"request": "Request",
+			"expires": "Expires",
+			"decision": "Decision",
+			"review": "Review approval",
+			"loading": "Loading approval…",
+			"unavailable": "This approval is no longer awaiting your decision or is unavailable to you.",
+			"note": "Decision note (required when rejecting)",
+			"approve": "Approve",
+			"reject": "Reject"
+		},
 		"unavailable": {
 			"title": "Порталот за клиенти не е достапен",
 			"description": "Пристапот за клиенти сè уште не е достапен. Обратете се кај администраторот на сервисниот центар."
@@ -2980,6 +3159,65 @@
 			"authenticatorCode": "Код од апликацијата за автентикација",
 			"backupCode": "Резервен код",
 			"accountPassword": "Лозинка на сметката"
+		},
+		"bulk": {
+			"confirmCount": "Type {{count}} to confirm this exact batch",
+			"count_one": "Delete {{count}} work item",
+			"count_other": "Delete {{count}} work items",
+			"excluded": "{{count}} selected items were excluded from this request.",
+			"recovery": "Deletion is recoverable for 30 days. Children remain unless explicitly included in this batch.",
+			"result": "{{succeeded}} deleted; {{failed}} could not be deleted.",
+			"succeeded_one": "{{count}} work item deleted",
+			"succeeded_other": "{{count}} work items deleted",
+			"targets": "Exact work items selected for deletion",
+			"action": "Delete work items"
+		},
+		"comment": {
+			"action": "Delete comment",
+			"alreadyDeleted": "This comment is already deleted.",
+			"confirmation": "Confirm deletion of this comment on the work item shown above. The activity history will retain a deletion record.",
+			"empty": "This comment has no text preview.",
+			"hidden": "This comment is no longer available to you.",
+			"internal": "Internal comment",
+			"open": "Open the exact comment",
+			"preview": "Comment preview",
+			"public": "Public comment"
+		},
+		"attachment": {
+			"action": "Delete attachment",
+			"hidden": "This attachment is no longer available for confirmation.",
+			"preview": "Attachment to delete",
+			"bytes": "{{count}} bytes",
+			"alreadyDeleted": "This attachment has already been deleted.",
+			"confirmation": "This removes the file from the work item shown above. The file is retained for at least {{hours}} hours.",
+			"open": "Open attachments on this work item"
+		},
+		"registered": {
+			"actions": {
+				"canned_response": "Delete canned response",
+				"column": "Delete column",
+				"document_link": "Delete document link",
+				"invitation": "Cancel invitation",
+				"label": "Delete label",
+				"milestone": "Delete milestone",
+				"prerequisite": "Delete prerequisite",
+				"project": "Delete project",
+				"project_label": "Delete project label",
+				"workspace": "Delete workspace",
+				"workspace_role": "Delete workspace role"
+			},
+			"confirmName": "Type the exact name to confirm",
+			"hidden": "This request is no longer available for confirmation.",
+			"nameMismatch": "The name you typed does not match."
+		},
+		"dialog": {
+			"cancelled": "Deletion request cancelled.",
+			"executed": "Deletion approved."
+		},
+		"stepUp": {
+			"attemptLimit": "Too many fresh-authentication attempts. Wait a few minutes, then try again.",
+			"forbidden": "You are not allowed to approve this request. The request remains pending.",
+			"proofRejected": "That password or code was not accepted. The request remains pending."
 		}
 	},
 	"intake": {
@@ -3699,6 +3937,50 @@
 			"method": "Verification method",
 			"password": "Password",
 			"title": "Fresh verification"
+		}
+	},
+	"notificationProvider": {
+		"clearPassword": "Remove the saved password",
+		"conflict": "The configuration changed. Reload this page before saving again.",
+		"description": "Configure the SMTP connection used for email across this instance.",
+		"email": "Email provider",
+		"enabled": "Enable email delivery",
+		"fromAddress": "From address",
+		"host": "SMTP host",
+		"loadFailed": "Your access or the provider configuration could not be verified.",
+		"operationFailed": "The request failed. Check the connection details and try again.",
+		"password": "Password",
+		"passwordHelp": "Leave blank to keep the saved password. Saved passwords are never returned.",
+		"port": "Port",
+		"rateLimited": "Too many connection tests. Wait before trying again.",
+		"replyTo": "Reply-to address (optional)",
+		"requireTLS": "Require TLS before authentication",
+		"retry": "Try again",
+		"save": "Save configuration",
+		"saved": "Email configuration saved.",
+		"secure": "Use TLS from connection start",
+		"sources": {
+			"bootstrap": "Using initial server configuration. Saving here creates instance configuration.",
+			"runtime": "Using saved instance configuration.",
+			"unconfigured": "No email provider is configured."
+		},
+		"test": "Test connection",
+		"testHelp": "Checks connection and authentication without sending an email.",
+		"title": "Notification delivery",
+		"unavailable": "Email configuration unavailable",
+		"username": "Username (optional)",
+		"verified": "Connection verified. No email was sent.",
+		"mention": {
+			"description": "Email me when someone mentions me in a work item comment.",
+			"enabled": "Email for mentions",
+			"linkUnavailable": "The email preference link could not be verified. Sign in as its recipient and try again.",
+			"providerRequired": "Email delivery also requires an enabled instance email provider.",
+			"save": "Save mention preference",
+			"saved": "Mention preference saved.",
+			"saveFailed": "The preference could not be saved. Try again.",
+			"title": "Work item mention emails",
+			"unavailable": "Your mention preference could not be loaded.",
+			"unsupported": "This email refers to a preference that this page cannot edit yet. No preference has been changed."
 		}
 	}
 }

@@ -1,100 +1,63 @@
-# AGENTS.md
+# Working on TaskDesk
 
-The entry point for anyone, human or AI, working here. **Read this file and
-[`docs/07-planning/status.md`](docs/07-planning/status.md). That is the whole startup.** The
-workflow is in [`docs/04-engineering/workflow.md`](docs/04-engineering/workflow.md). Read other
-docs only when the task touches them.
+This file is the only rulebook (CLAUDE.md was removed). Rules live here, not in memory or cache. Read this and [docs/README.md](docs/README.md) first; read a feature's requirements only when working on it. Thomas's current instructions take precedence. `archive/` is read-only history, not policy.
 
-## What this is
+## Product rules
 
-**TaskDesk v2** is a self-hostable, multi-tenant service desk and work-management platform.
-It is built on [kaneo](https://github.com/usekaneo/kaneo) (MIT), which we forked once and now
-own. The licence is **AGPL-3.0**. Only Thomas sets direction. His decisions live in
-[`decision-log.md`](docs/07-planning/decision-log.md), newest first.
+- **Original Kaneo is the interface.** Keep its shell, sidebar, headers, settings, board, list, cards, task detail, typography and spacing. Extend and modify those surfaces; never build a parallel TaskDesk interface. Pinned baseline: upstream `42bb8011`.
+- **Library UI only. No native interactive HTML.** Build every control, card, editor, table, dialog, sheet, menu, drag-and-drop and animation from Kaneo components and `packages/ui` (tokens for colour, spacing, type). Semantic HTML for structure inside those components is fine; native `<button>/<input>/<select>/<textarea>`, hand-built screens, text-button workarounds and matching colours alone are not. Enforced by `pnpm check:ui:raw-elements` (`scripts/ci/check-ui.mjs`) and `pnpm check:tokens`; a new gate failure is fixed, never exempted. New dependency needs a concrete reason and Thomas's approval.
+- Preserve working Kaneo interactions (drag/drop, inline edit, keyboard, focus, motion) while wiring real APIs. Never drop a feature to get a cleaner screenshot.
+- Every reachable feature uses real persisted APIs. No mock data in the app; demo data is a repeatable, realistic seed.
+- Keep permission checks, tenant isolation, agent/portal separation, pending-action deletion, audit history and concurrency protection. Every API route declares a policy; URL state is registered in `apps/web/src/lib/routes.ts`. IdP data never grants instance admin or unrestricted reach. MCP uses existing capabilities only.
+- Customer configuration lives in runtime administration; one shipping image, no customer-specific source edits.
+- Preserve URL state and old links. Keep Kaneo's MIT attribution and TaskDesk's AGPL licence; take application source only from Kaneo or TaskDesk v1; log third-party code in `THIRD-PARTY-NOTICES.md`. Do not restore removed integration routers.
 
-## The rules
+## Phase loop (P0 → P4 first, then P5–P7)
 
-1. **Kaneo is the design.** Keep kaneo's existing screens, layout, sidebar, settings shell,
-   tables, cards, spacing and type. A new capability goes into an existing kaneo surface: a
-   tab, a section, a panel, a column, a menu item or a settings page. Don't build a parallel
-   screen for something kaneo already has, and don't restyle what works. Build only from
-   `packages/ui` and kaneo's own components (`components/common/*-layout.tsx`,
-   `settings-layout.tsx`, the board, list and task components). Full rules:
-   [design-principles.md](docs/02-design/design-principles.md).
-2. **No mock data.** Every screen a user can reach reads and writes the real API. A screen
-   with no API is kept out of navigation.
-3. **Nothing is hardcoded per customer.** We ship one image. Customer-specific behaviour is
-   runtime configuration in God Mode. Environment variables are bootstrap-only and registered in
-   [configuration-reference.md](docs/05-operations/configuration-reference.md), and `check:env`
-   enforces this.
-4. **Every route declares its permission.** A route without a policy entry fails
-   `check:route-policy`. v1 shipped authorization holes past green tests, so this one is not
-   negotiable.
-5. **Every screen has a URL.** Filters, tabs, selections and open panels are URL state,
-   registered in `apps/web/src/lib/routes.ts`.
-6. **Ship narrow and finished.** Fewer screens at 100% beat many at 60%; v1 died of the
-   second. A stage is ✅ only when its exit criteria in [phases.md](docs/07-planning/phases.md)
-   hold **and** Thomas has walked through it on SIT. No stage is ✅ yet.
+Implementation and design come first; review happens **once, at the end of each phase**. No per-change review, no tiny-PR rules, no waiting on GitHub CI.
 
-## Layout
+1. Build visible, integrated slices (API + UI + persistence) with subagents where bounded and disjoint.
+2. Verify locally after each slice: targeted tests, then the affected screens in a real browser on persisted data.
+3. At phase end run the full local gates in [testing.md](docs/testing.md), fix failures, and regenerate the phase report data.
+4. **Phase review:** spawn one fresh **Opus 5.5 high-effort** subagent (`Agent`, `model: "opus"`, `effort: "high"`, not a fork) given a neutral packet: requirements, actual diff, test output, browser evidence. It covers design, integration and security. Fix its findings once and re-verify.
+5. **Pass →** commit, push the feature branch, regenerate `docs/report/report.html`, start the next phase. **Fail or unresolved findings →** write `report.html` only, stop, wait for Thomas's decision.
+   Thomas approved (22 Oct) up to **three review rounds per phase**: review → fix all high+medium → 2nd review → fix → 3rd review → then `report.html` and wait if still failing. Target: P0–P4 done by 24 Oct.
+6. Never call a phase done without the review. No excuses: blocked items are reported as blocked, not marked done.
 
-```text
-apps/api      Hono + Drizzle + better-auth. The only backend.
-apps/web      React 19 + TanStack Router. Two entries: agent (/agent/*) and portal (own host).
-packages/ui   The design system. packages/domain, permissions, plugins-contracts, libs, email, mcp.
-tests/        api · api-integration · permissions · e2e · visual
-```
+"Git update" means commit and push the current feature branch. Never push to main, never force-push, never `git add -A` blindly: stage by path, confirm `.env`, `backups/`, `archive*`, `.qodo/` stay ignored, run Gitleaks on what is staged, obey commitlint/husky. Commit trailers per the session attribution.
 
-The single authoritative documents for identifiers are:
+## Models and effort
 
-- tables: [data-model.md](docs/01-architecture/data-model.md)
-- capabilities: [rbac.md](docs/01-architecture/rbac.md)
-- flags and plugins: [plugin-architecture.md](docs/01-architecture/plugin-architecture.md)
-- events: [events.md](docs/01-architecture/events.md)
-- jobs: [background-jobs.md](docs/01-architecture/background-jobs.md)
-- environment variables: [configuration-reference.md](docs/05-operations/configuration-reference.md)
+- **Implementation:** Sonnet 5.5 coding subagents (or custom agents). Do not use Opus for implementers.
+- **Advisor:** Opus 5.5, medium effort.
+- **Phase reviewer / audits:** Opus 5.5, high effort. Pass `model: "opus"` and `effort: "high"` on the review `Agent` call.
 
-## Commands
+## Phase report (`docs/report/report.html`)
 
-```bash
-pnpm install && pnpm dev
-pnpm lint && pnpm typecheck && pnpm test
-pnpm test:integration          # API changed
-pnpm test:permissions          # a route changed
-scripts/deploy.sh local        # SIT: https://ticketing.localhost:8443, https://portal.localhost:8443
-```
+Self-contained HTML (inline SVG, no external assets), generated by script from `docs/report/data.json`, never hand-edited. Always shows: per-phase bar charts of requirement states (implemented / tested / browser-verified / open / externally blocked), gate pass/fail, review verdict and findings, overall status and next action. Counts come from `docs/requirements-index.json` plus audit evidence; never invent percentages. Updated at every phase end and whenever status changes materially.
 
-## Do not
+## Environments
 
-The numbers are referenced by CI messages, so keep them stable.
+- **Local SIT first:** native/OrbStack stack on the laptop. Agent `http://localhost:1337`, portal `http://portal.localhost:1337`. Build web with `VITE_API_URL=''` for both entries; do not run two web builds at once.
+- **Public SIT after local passes:** Technexus (`tickting.technexus.info`, `portal.technexus.info`) reached through the SSH proxy. Hosts, keys and credentials are never written to docs or logs.
+- GitHub Actions is **not** a gate and is not used in the loop. Do not edit workflows or branch protection. **Image path (decided 22 Oct):** only after local SIT passes, push the branch, open the PR, let CI scan and build the image, and deploy that image to Technexus.
+- Portal URLs are host-root (portal host), never `/portal/*` (2026-10-20 decision); fix stale `/portal/*` listings in `docs/screens.md` rather than adding such routes.
 
-1. Invent a UI primitive outside `packages/ui`.
-2. Write a literal colour or arbitrary spacing value.
-3. Add a route without a policy.
-4. Add a dependency without asking.
-5. Disable, skip or focus a test to make CI pass.
-6. Waive a gate. Only Thomas can, in the decision log, and a waiver is "deferred", never "approved".
-7. Review your own work, or fake review evidence.
-8. Refactor beyond the task.
-9. Paste code from an unlicensed source (see Licensing below).
-10. Retry a failing approach a fourth time without diagnosing the whole path.
-11. Name a table, column, capability, flag, event or job that is not in its authoritative document.
-12. Delete user data without a pending action where the architecture requires one.
-13. Invent an MCP permission or a SCIM-only tenancy rule, or let identity-provider data grant `instance:admin` or `sees_all`.
-14. Restore a kaneo integration router that was removed at fork.
-15. Merge a feature whose findings in `docs/07-planning/reviews/` are still open.
-16. Push to `main`, force-push shared history, use `[skip ci]`, or bypass branch protection.
-17. Guess at behaviour the spec doesn't define. Ask, then write the answer into the spec.
-18. Claim something works without running it. Open every screen you touched.
-19. Spawn a subagent without a concrete, bounded deliverable.
-20. Let two sessions edit the same file at once.
-21. Use `pal-mcp`, `pal-reviewer`, `clink` or 9Router.
-22. Treat a status snapshot or PR body as policy.
-23. Call a stage, screen or feature done when it isn't. Source review, offline tests or an image boot are not runtime acceptance.
+## UI/UX is the top quality bar
 
-## Licensing
+Version 1 was stopped because its UI was ugly and broke Kaneo's UX. Every screen must look and behave like original Kaneo (`42bb8011`), only extended or modified. Before touching a screen, find the original Kaneo component and reuse it; if the work item/portal needs something new, compose it from existing Kaneo/`packages/ui` pieces. Never replace Kaneo components with native HTML, hand-built layouts or a different design language. If a Kaneo component can't do it, stop and report instead of improvising. Compare each touched screen against the Kaneo original in a browser; ugliness or broken UX is a failed phase.
 
-We take **code** only from kaneo (MIT: keep its copyright headers) and TaskDesk v1 (ours).
-Plane, OpenProject and JSM are sources of ideas, never of source code. Record any
-third-party code in `THIRD-PARTY-NOTICES.md`. Details are in
-[licensing-and-attribution.md](docs/00-overview/licensing-and-attribution.md).
+## Safety (copied here because handover.md is overwritten)
+
+- `taskdesk_browser_journey_1022_test` is the **live** browser database with Thomas's work despite its `_test` suffix. `env-wrapper.py app|owner|migrate` targets it: never run resetting fixtures through it. Use a separate dedicated `_test` database for integration resets.
+- Never rerun the SIT account seeder; it changes fixed accounts and sessions. Never overwrite Thomas's moved/created records (e.g. HELP-12).
+- Docker: remove only your own containers by exact id. No prune, no wildcard removal.
+- One coordinator, one shared worktree. Preserve all uncommitted work: no reset, clean, stash, second checkout. Subagents edit only explicitly disjoint paths with one owner per file ([agent-work.md](docs/agent-work.md)); they never commit, push, deploy, add dependencies or delete data.
+- Never print credentials, cookies, database URLs or signed URLs.
+- Run Trivy, Gitleaks and dependency scans locally; triage findings, never hide them. Do not disable tests; keep performance budgets and report misses rather than changing thresholds.
+- Diagnose a repeated failure across the whole path before another patch. No `pal-mcp`, `pal-reviewer`, `clink` or 9Router.
+- "Implemented", "locally verified", "AI reviewed" and "Thomas accepted" are different states. A subagent's "passed" is evidence to inspect, not acceptance; the implementer never reviews its own phase.
+- Retained contracts and owner decisions define intended behavior; code may contain defects. Do not invent identifier names. Bootstrap env names stay registered.
+- Keep docs short: update the relevant row in status/roadmap/requirements; no new process documents.
+
+Code: `apps/api`, `apps/web`, `packages/ui`, `packages/domain`, `packages/permissions`, `tests`. Technical contracts: [docs/technical](docs/technical).

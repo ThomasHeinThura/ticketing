@@ -430,19 +430,34 @@ describe("current notification reach and preference", () => {
     });
   });
 
-  it("passes the current private requester/participant allowlist to canonical reach", async () => {
-    mocks.findCurrentNotificationResource.mockResolvedValue({
-      ...resource,
-      visibleToPersonIds: ["person-1", "participant-2"],
-    });
-    await evaluateCurrentNotificationReachAndPreference(tx, delivery);
-    expect(mocks.reaches).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
+  it.each(["staff", "customer"] as const)(
+    "applies the private requester/participant allowlist only to customers (%s)",
+    async (side) => {
+      mocks.resolveIdentity.mockResolvedValue({ personId: "person-1", side });
+      mocks.findCurrentNotificationResource.mockResolvedValue({
+        ...resource,
         visibleToPersonIds: ["person-1", "participant-2"],
-      }),
-    );
-  });
+      });
+      await evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        eventKind: "work_item.commented",
+        resourceType: "comment",
+        resourceId: "comment-1",
+        payload: {
+          ...delivery.payload,
+          kind: "work_item.commented",
+          payload: { commentId: "comment-1", workItemId: "item-1" },
+        },
+      });
+      expect(mocks.reaches).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          visibleToPersonIds:
+            side === "customer" ? ["person-1", "participant-2"] : null,
+        }),
+      );
+    },
+  );
 
   it("does not project an internal comment to a customer", async () => {
     mocks.resolveIdentity.mockResolvedValue({
