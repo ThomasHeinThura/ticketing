@@ -16,6 +16,10 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  PortalKbSuggestions,
+  usePortalKbDeflection,
+} from "@/components/kb/portal/portal-kb-deflection";
+import {
   getPortalCatalogue,
   getPortalRequestType,
   submitPortalRequest,
@@ -121,6 +125,8 @@ function PortalCatalogue() {
       defaultValue: "People in my organisation",
     },
   );
+  // KB-10: articles opened from this form are deflections only if the form is then abandoned.
+  const kbDeflection = usePortalKbDeflection(selected?.key);
   const submit = useMutation({
     mutationFn: () =>
       submitPortalRequest({
@@ -131,6 +137,7 @@ function PortalCatalogue() {
           : effectiveVisibility,
       }),
     onSuccess: async (result) => {
+      kbDeflection.markSubmitted();
       if (storageKey) localStorage.removeItem(storageKey);
       await navigate({
         to: routes.portalSubmission.path,
@@ -445,6 +452,13 @@ function PortalCatalogue() {
                     {fieldErrors[field.key]}
                   </p>
                 )}
+                {field.mapsTo?.field === "title" ? (
+                  <PortalKbSuggestions
+                    query={String(answers[field.key] ?? "")}
+                    scope={portalUserId}
+                    onOpen={kbDeflection.recordOpened}
+                  />
+                ) : null}
               </div>
             ))}
             {!selected.forcePrivate && (

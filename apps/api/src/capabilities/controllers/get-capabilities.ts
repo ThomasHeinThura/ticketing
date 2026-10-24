@@ -26,6 +26,11 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   manageRoles: boolean;
   manageWebhooks: boolean;
   manageCustomFields: boolean;
+  // P5: time_entry:manage_rates (Rates), workflow:manage (Workflows, CAB template) and
+  // budget:read (project Budget), exactly what those APIs enforce.
+  manageRates: boolean;
+  manageWorkflows: boolean;
+  readBudgets: boolean;
   bindProjectOrganisation: boolean;
   manageLabels: boolean;
   createAttachments: boolean;
@@ -57,6 +62,9 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     manageRoles,
     manageWebhooks,
     manageCustomFields,
+    manageRates,
+    manageWorkflows,
+    readBudgets,
   ] = await Promise.all([
     Promise.all(
       entries.map(async ([name, permissions]) => {
@@ -97,6 +105,9 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasCanonicalCapability(c, "workspace:manage_roles"),
     hasCanonicalCapability(c, "webhook:manage"),
     hasCanonicalCapability(c, "custom_field:manage"),
+    hasCanonicalCapability(c, "time_entry:manage_rates"),
+    hasCanonicalCapability(c, "workflow:manage"),
+    hasCanonicalCapability(c, "budget:read"),
   ]);
   // The agent API refuses customer principals on item-scoped routes (403), so the UI must not
   // be told it may rank or comment publicly there. Same predicate the routes use
@@ -123,6 +134,9 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     manageRoles,
     manageWebhooks,
     manageCustomFields,
+    manageRates,
+    manageWorkflows,
+    readBudgets,
     bindProjectOrganisation,
     manageLabels,
     createAttachments: agentOnly(createAttachments),
@@ -144,7 +158,10 @@ async function hasCanonicalCapability(
     | "attachment:create"
     | "workspace:manage_roles"
     | "webhook:manage"
-    | "custom_field:manage",
+    | "custom_field:manage"
+    | "time_entry:manage_rates"
+    | "workflow:manage"
+    | "budget:read",
 ): Promise<boolean> {
   const workspaceId = c.get("workspaceId");
   const userId = c.get("userId");

@@ -12,6 +12,9 @@ import {
 import {
   CalendarDays,
   CalendarRange,
+  FileText,
+  Layers,
+  Repeat,
   SquareKanban,
   SquircleDashed,
 } from "lucide-react";
@@ -30,6 +33,8 @@ const MobileProjectNav = lazy(
 );
 
 import { shortcuts } from "@/constants/shortcuts";
+import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
+import useProjectPagesFeature from "@/hooks/queries/feature-flag/use-project-pages-feature";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
@@ -45,7 +50,14 @@ type ProjectLayoutProps = {
   headerActions?: ReactNode;
   children: ReactNode;
   showViewSwitcher?: boolean;
-  activeView?: "backlog" | "board" | "calendar" | "gantt";
+  activeView?:
+    | "backlog"
+    | "board"
+    | "calendar"
+    | "gantt"
+    | "cycles"
+    | "modules"
+    | "pages";
   realtimeMode?: "legacy" | "canonical" | "page";
 };
 
@@ -74,15 +86,23 @@ export default function ProjectLayout({
     realtimeMode === "legacy" ? projectId : "",
   );
 
+  const { features: agileFeatures } = useAgileFeatures(projectId);
+  const pagesOn = useProjectPagesFeature(projectId);
   const resolvedView =
     activeView ??
     (location.pathname.includes("/backlog")
       ? "backlog"
-      : location.pathname.includes("/calendar")
-        ? "calendar"
-        : location.pathname.includes("/gantt")
-          ? "gantt"
-          : "board");
+      : location.pathname.includes("/cycles")
+        ? "cycles"
+        : location.pathname.includes("/modules")
+          ? "modules"
+          : location.pathname.includes("/pages")
+            ? "pages"
+            : location.pathname.includes("/calendar")
+              ? "calendar"
+              : location.pathname.includes("/gantt")
+                ? "gantt"
+                : "board");
   const handleNavigateToBacklog = () => {
     if (project)
       void navigate({
@@ -101,6 +121,25 @@ export default function ProjectLayout({
           { workspaceId, projectId, projectKey: project.slug },
           location.searchStr,
         ),
+      });
+  };
+
+  const handleNavigateToCycles = () => {
+    if (project)
+      void navigate({
+        href: routes.projectCycles.build({ projectKey: project.slug }),
+      });
+  };
+  const handleNavigateToPages = () => {
+    if (project)
+      void navigate({
+        href: routes.projectPages.build({ projectKey: project.slug }),
+      });
+  };
+  const handleNavigateToModules = () => {
+    if (project)
+      void navigate({
+        href: routes.projectModules.build({ projectKey: project.slug }),
       });
   };
 
@@ -129,15 +168,29 @@ export default function ProjectLayout({
       (candidate) => candidate.id === nextProjectId,
     );
     if (!nextProject) return;
-    if (resolvedView === "board" || resolvedView === "backlog") {
+    if (
+      resolvedView === "board" ||
+      resolvedView === "backlog" ||
+      resolvedView === "cycles" ||
+      resolvedView === "modules" ||
+      resolvedView === "pages"
+    ) {
       void navigate({
         href:
           resolvedView === "backlog"
             ? routes.projectBacklog.build({ projectKey: nextProject.slug })
-            : routes.workItemList.build(
-                { projectKey: nextProject.slug },
-                { layout: "board" },
-              ),
+            : resolvedView === "cycles"
+              ? routes.projectCycles.build({ projectKey: nextProject.slug })
+              : resolvedView === "pages"
+                ? routes.projectPages.build({ projectKey: nextProject.slug })
+                : resolvedView === "modules"
+                  ? routes.projectModules.build({
+                      projectKey: nextProject.slug,
+                    })
+                  : routes.workItemList.build(
+                      { projectKey: nextProject.slug },
+                      { layout: "board" },
+                    ),
       });
       return;
     }
@@ -206,6 +259,15 @@ export default function ProjectLayout({
                     onSelectBoard={handleNavigateToBoard}
                     onSelectCalendar={handleNavigateToCalendar}
                     onSelectGantt={handleNavigateToGantt}
+                    onSelectCycles={
+                      agileFeatures.cycles ? handleNavigateToCycles : undefined
+                    }
+                    onSelectModules={
+                      agileFeatures.modules
+                        ? handleNavigateToModules
+                        : undefined
+                    }
+                    onSelectPages={pagesOn ? handleNavigateToPages : undefined}
                     onSelectProject={handleProjectSwitch}
                     onAddProject={
                       canCreateProject
@@ -267,6 +329,48 @@ export default function ProjectLayout({
                   <CalendarDays className="size-3.5" />
                   Gantt
                 </Button>
+                {agileFeatures.cycles ? (
+                  <Button
+                    variant={resolvedView === "cycles" ? "secondary" : "ghost"}
+                    size="xs"
+                    onClick={handleNavigateToCycles}
+                    className={cn(
+                      "h-6 gap-1.5 rounded-md px-2 text-xs",
+                      resolvedView !== "cycles" && "text-muted-foreground",
+                    )}
+                  >
+                    <Repeat className="size-3.5" />
+                    {t("navigation:projectViews.cycles")}
+                  </Button>
+                ) : null}
+                {agileFeatures.modules ? (
+                  <Button
+                    variant={resolvedView === "modules" ? "secondary" : "ghost"}
+                    size="xs"
+                    onClick={handleNavigateToModules}
+                    className={cn(
+                      "h-6 gap-1.5 rounded-md px-2 text-xs",
+                      resolvedView !== "modules" && "text-muted-foreground",
+                    )}
+                  >
+                    <Layers className="size-3.5" />
+                    {t("navigation:projectViews.modules")}
+                  </Button>
+                ) : null}
+                {pagesOn ? (
+                  <Button
+                    variant={resolvedView === "pages" ? "secondary" : "ghost"}
+                    size="xs"
+                    onClick={handleNavigateToPages}
+                    className={cn(
+                      "h-6 gap-1.5 rounded-md px-2 text-xs",
+                      resolvedView !== "pages" && "text-muted-foreground",
+                    )}
+                  >
+                    <FileText className="size-3.5" />
+                    {t("navigation:projectViews.pages")}
+                  </Button>
+                ) : null}
               </div>
             )}
           </div>

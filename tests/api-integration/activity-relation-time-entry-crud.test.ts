@@ -476,7 +476,7 @@ describe("API integration: time entry list ordering", () => {
       ["first", 8],
       ["second", 10],
     ] as const) {
-      await db.insert(schema.timeEntryTable).values({
+      await db.insert(schema.taskTimeEntryTable).values({
         taskId: task.id,
         userId: member.user.id,
         description,

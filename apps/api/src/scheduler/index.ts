@@ -11,6 +11,7 @@ import { checkDueDateReminders } from "./due-date-reminders";
 import { runNotificationDigest } from "./notification-digest";
 import { runQuietHoursRelease } from "./notification-digest-release";
 import { drainOutbox } from "./outbox-drain";
+import { runPagePurgeJob } from "./page-purge";
 import { expirePendingActions } from "./pending-action-expire";
 import { runPositionRebalanceJob } from "./position-rebalance-job";
 import { runReminderScan } from "./reminder-scan";
@@ -18,6 +19,7 @@ import { scanScheduledTransitions } from "./scheduled-transition";
 import { runSecretsRekeyJob, SECRETS_REKEY_JOB } from "./secrets-rekey";
 import { runSessionCleanup } from "./session-cleanup";
 import { scanSla } from "./sla-scan";
+import { runTimerSweeper, TIMER_SWEEPER_JOB } from "./timer-sweeper";
 
 const jobs: Cron[] = [];
 
@@ -116,6 +118,12 @@ export function initializeScheduler(): void {
       handler: runCustomFieldPurgeJob,
     },
     {
+      // PG-7: hard-deletes project pages deleted more than 30 days ago (legal-hold aware).
+      name: "page-purge",
+      pattern: "50 3 * * *",
+      handler: runPagePurgeJob,
+    },
+    {
       name: "pending-action-expire",
       pattern: "* * * * *",
       handler: expirePendingActions,
@@ -141,6 +149,12 @@ export function initializeScheduler(): void {
       name: "impersonation-cap",
       pattern: "* * * * *",
       handler: () => sweepExpiredImpersonations(),
+    },
+    {
+      // TC-6: stops timers left running past the 12 h cap into capped, review-flagged entries.
+      name: TIMER_SWEEPER_JOB,
+      pattern: "*/15 * * * *",
+      handler: runTimerSweeper,
     },
     {
       // IP-25: pings each enabled identity connection's OIDC discovery document.

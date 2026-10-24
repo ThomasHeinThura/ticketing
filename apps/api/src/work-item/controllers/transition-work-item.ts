@@ -3,6 +3,7 @@ import {
   asStateTemplateId,
   type BlockReason,
   filterOfferableForType,
+  isChangeApprovalEdge,
   isGateSatisfied,
   legalTransitions,
   offerTransition,
@@ -38,6 +39,12 @@ import { publishEvent } from "../../events";
 import { enqueueOutboxEvent } from "../../events/outbox";
 import { resolveWorkItemEventRecipients } from "../../notification/work-item-recipients";
 import { resolveProjectDefaultAssignee } from "../../project/default-assignee";
+import {
+  type ChangeGateBlock,
+  changeGateBlocks,
+  loadChangeTransitionFacts,
+} from "../../service-management/change-repository";
+import { serviceCatalogueEnabled } from "../../service-management/common";
 import { evaluateStoredWorkItemSla } from "../../sla-policy/evaluation";
 import { dbClockUtc } from "../../utils/db-time";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
@@ -94,6 +101,8 @@ export type PendingApprovalBlockDetail = {
 
 export type TransitionBlockReason =
   | (BlockReason & { pendingApprovals?: PendingApprovalBlockDetail[] })
+  // CH-4 / CH-6: a change's CAB-gated approval needs a rollback plan and no active freeze.
+  | ChangeGateBlock
   | {
       kind: "assignee";
       reasonCode: `assignee.${"not_on_roster" | "not_active"}`;
@@ -515,6 +524,12 @@ export async function transitionWorkItem(
     event: Awaited<ReturnType<typeof recordWorkItemEvent>>;
     customerVisible: boolean;
   }[] = [];
+  // CH-4 / CH-6 apply to an approving edge of a change (CAB, or a risk-guarded pre-approval)
+  // while the service catalogue is on. The flag is read here, before the row locks are taken.
+  const changeGatesApply =
+    ctx.isChangeType &&
+    isChangeApprovalEdge(match) &&
+    (await serviceCatalogueEnabled(ctx.workItem.workspaceId));
   const result = await runTransactionCatchingSlaPauseConflict(fromStateId, () =>
     db.transaction(async (tx) => {
       await lockRelationGraph(tx, ctx.workItem.workspaceId);
@@ -612,6 +627,11 @@ export async function transitionWorkItem(
         return group === "completed" || group === "cancelled";
       });
 
+      // Change detail is read under a share lock so a concurrent edit cannot slip between the
+      // guard decision and the state write.
+      const changeFacts = await loadChangeTransitionFacts(tx, ctx.workItem.id, {
+        lock: true,
+      });
       const offerContext: TransitionOfferContext = {
         allChildrenClosed,
         // `field_required`/`change_risk_at_most` fail closed
@@ -622,9 +642,13 @@ export async function transitionWorkItem(
         // also re-run its OWN unlocked, redundant children query this function already
         // did correctly, under lock, above.
         hasOpenBlockers: await hasOpenBlockers(ctx.workItem.id, tx),
-        // WF-15: `field_required` guards read the real custom field values (`cf.<key>`).
-        fieldValues: await guardFieldValues(tx, ctx.workItem.id),
-        changeRiskLevel: null,
+        // WF-15: `field_required` guards read the real custom field values (`cf.<key>`) and, for a
+        // change, the satellite key `change.rollback_plan`; `change_risk_at_most` reads its risk.
+        fieldValues: {
+          ...(await guardFieldValues(tx, ctx.workItem.id)),
+          ...changeFacts.fieldValues,
+        },
+        changeRiskLevel: changeFacts.risk,
         assigneePresent: locked.assigneeId !== null,
         approvalSatisfied: false,
         cabSatisfied: false,
@@ -675,27 +699,34 @@ export async function transitionWorkItem(
               .find((candidate) => !candidate.available) ??
             offerTransition(match, offerContext))
           : offerTransition(match, offerContext);
-      if (!offer.available) {
-        const blockedBy = offer.blockedBy.map((reason) => {
-          if (reason.kind !== "approval" && reason.kind !== "cab")
-            return reason;
-          const pendingApprovals = approvalRows
-            .filter(
-              (row) =>
-                row.transitionId === match.id &&
-                row.state === "pending" &&
-                (reason.kind !== "cab" || row.kind === "cab"),
-            )
-            .map((row) => ({
-              approverName: row.approverName,
-              requestedAt: row.createdAt.toISOString(),
-              expiresAt: row.expiresAt.toISOString(),
-            }));
-          return pendingApprovals.length > 0
-            ? { ...reason, pendingApprovals }
-            : reason;
-        });
-        throw new TransitionBlockedError(blockedBy);
+      // CH-4 / CH-6 hold on the CAB-gated approval of a change even when the workflow carries no
+      // matching guard. Off unless the service catalogue is enabled for the workspace.
+      const changeBlocks: ChangeGateBlock[] = changeGatesApply
+        ? await changeGateBlocks(tx, ctx.workItem.workspaceId, changeFacts)
+        : [];
+      if (!offer.available || changeBlocks.length > 0) {
+        const blockedBy: TransitionBlockReason[] = offer.blockedBy.map(
+          (reason) => {
+            if (reason.kind !== "approval" && reason.kind !== "cab")
+              return reason;
+            const pendingApprovals = approvalRows
+              .filter(
+                (row) =>
+                  row.transitionId === match.id &&
+                  row.state === "pending" &&
+                  (reason.kind !== "cab" || row.kind === "cab"),
+              )
+              .map((row) => ({
+                approverName: row.approverName,
+                requestedAt: row.createdAt.toISOString(),
+                expiresAt: row.expiresAt.toISOString(),
+              }));
+            return pendingApprovals.length > 0
+              ? { ...reason, pendingApprovals }
+              : reason;
+          },
+        );
+        throw new TransitionBlockedError([...blockedBy, ...changeBlocks]);
       }
 
       // CF-4: a required custom field blocks entry to a started/completed state group;

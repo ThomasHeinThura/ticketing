@@ -43,6 +43,7 @@ export * from "./intake/duplicate.js";
 export * from "./intake/request-type.js";
 export * from "./intake/submission.js";
 export * from "./intake/types.js";
+export * from "./service-management/index.js";
 export * from "./sla/escalation.js";
 export * from "./sla/policy.js";
 export * from "./sla/scan.js";

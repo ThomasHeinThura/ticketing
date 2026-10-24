@@ -9,6 +9,7 @@ export const searchQuery = z.object({
       "work_items",
       "people",
       "views",
+      "pages",
       "projects",
       "workspaces",
       "comments",

@@ -28,4 +28,8 @@ export const DEFERRED_NAMESPACE_ALLOWLIST: Readonly<
   // Renders nothing until `useTranslation(..).ready` reports the namespace loaded, and only
   // after an impersonation status request resolves, so it can never paint raw keys.
   "/components/god-mode/impersonation-banner.tsx": ["instanceUsers"],
+  // The bulk cycle/module/estimate actions are part of the bulk toolbar, which appears only after
+  // the user selects work items, long after the deferred group has landed.
+  "/components/agile/bulk-agile-actions.tsx": ["agile"],
+  "/components/agile/bulk-agile-dialog.tsx": ["agile"],
 };

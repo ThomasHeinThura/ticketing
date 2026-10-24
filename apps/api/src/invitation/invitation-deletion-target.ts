@@ -1,5 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../audit/audit-writer";
+import { callerReachesOrganisation } from "../customer-invitation/repository";
 import { schema } from "../database";
 import {
   type RegisteredDeletionTarget,
@@ -32,27 +34,39 @@ export const invitationDeletionTarget: RegisteredDeletionTarget = {
       id: row.id,
       workspaceId: row.workspaceId,
       projectId: null,
-      organisationId: null,
+      organisationId: row.organisationId,
       name: row.email,
       summary: {
         invitationId: row.id,
         email: row.email,
         role: row.role,
         status: row.status,
+        scope: row.scope,
       },
       version: registeredDeletionFingerprint(row),
     };
   },
+  // CP-20: a customer invitation is revoked only by a caller who reaches its organisation.
+  callerReaches: async (tx, loaded, identity) =>
+    loaded.summary.scope !== "customer" ||
+    (loaded.organisationId !== null &&
+      (await callerReachesOrganisation(
+        tx,
+        loaded.workspaceId,
+        loaded.organisationId,
+        identity,
+      ))),
   assertDeletable: async (_tx, loaded) => {
     if (loaded.summary.status !== "pending")
       throw new HTTPException(400, {
         message: new InvitationNotPendingError().message,
       });
   },
-  execute: async (tx, { loaded }) => {
+  execute: async (tx, { loaded, identity }) => {
     const [updated] = await tx
       .update(schema.invitationTable)
-      .set({ status: "canceled" })
+      // CP-22: revoking a customer invitation also invalidates its accept credential.
+      .set({ status: "canceled", credentialHash: null })
       .where(
         and(
           eq(schema.invitationTable.id, loaded.id),
@@ -64,6 +78,18 @@ export const invitationDeletionTarget: RegisteredDeletionTarget = {
     if (!updated)
       throw new HTTPException(409, {
         message: "pending_action_target_changed",
+      });
+    if (loaded.summary.scope === "customer")
+      await appendAuditLog(tx, {
+        actorId: identity.userId,
+        actorType: "person",
+        workspaceId: loaded.workspaceId,
+        organisationId: loaded.organisationId,
+        action: "invitation.revoked",
+        entityType: "invitation",
+        entityId: loaded.id,
+        before: null,
+        after: { scope: "customer" },
       });
     return {};
   },

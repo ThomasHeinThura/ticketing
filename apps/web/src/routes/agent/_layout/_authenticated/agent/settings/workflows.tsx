@@ -32,6 +32,7 @@ import { ChevronLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import { CabTemplatePanel } from "@/components/workflow/cab-template-panel";
 import {
   type NamedOption,
   WorkflowAddTransitionDialog,
@@ -124,6 +125,7 @@ function WorkflowSettingsRoute() {
           <WorkflowListView
             workspaceId={workspace?.id}
             canManage={canManage}
+            projects={projectOptions}
             onOpen={(id) =>
               void navigate({
                 to: routes.workflowSettings.path,
@@ -140,10 +142,12 @@ function WorkflowSettingsRoute() {
 function WorkflowListView({
   workspaceId,
   canManage,
+  projects,
   onOpen,
 }: {
   workspaceId: string | undefined;
   canManage: boolean;
+  projects: NamedOption[];
   onOpen: (id: string) => void;
 }) {
   const { t } = useTranslation();
@@ -171,6 +175,11 @@ function WorkflowListView({
           </Button>
         ) : null}
       </div>
+      <CabTemplatePanel
+        workspaceId={workspaceId}
+        canManage={canManage}
+        projects={projects}
+      />
       {!canManage ? (
         <Alert variant="info">
           <AlertTitle>{t("settings:workflows.readOnlyTitle")}</AlertTitle>

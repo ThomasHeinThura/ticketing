@@ -46,7 +46,9 @@ export function ProjectSettingsRedirect({
     | "labels"
     | "members"
     | "features"
-    | "automations";
+    | "automations"
+    | "estimates"
+    | "budget";
   search?: LabelCatalogueSearch;
 }) {
   const { data: workspace, isLoading: isWorkspaceLoading } =
@@ -83,6 +85,22 @@ export function ProjectSettingsRedirect({
     return (
       <Navigate
         to="/dashboard/settings/projects/$projectId/automations"
+        params={{ projectId: project.id }}
+        replace
+      />
+    );
+  if (section === "estimates")
+    return (
+      <Navigate
+        to="/dashboard/settings/projects/$projectId/estimates"
+        params={{ projectId: project.id }}
+        replace
+      />
+    );
+  if (section === "budget")
+    return (
+      <Navigate
+        to="/dashboard/settings/projects/$projectId/budget"
         params={{ projectId: project.id }}
         replace
       />

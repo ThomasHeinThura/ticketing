@@ -51,6 +51,7 @@ const SECTION_TITLE_KEYS: Record<string, string> = {
   search: "navigation:sidebar.search",
   settings: "navigation:sidebar.settings",
   "god-mode": "navigation:sidebar.godMode",
+  "service-management": "navigation:sidebar.serviceManagement",
   "work-items": "navigation:sidebar.workItem",
 };
 
@@ -93,11 +94,13 @@ function AgentSectionTitle({ pathname }: { pathname: string }) {
 
 function CanonicalProjectFrame({
   projectKey,
-  backlog,
+  view,
 }: {
   projectKey: string;
-  backlog: boolean;
+  view: "work" | "backlog" | "cycles" | "modules" | "pages";
 }) {
+  const backlog = view === "backlog";
+  const agile = view === "cycles" || view === "modules" || view === "pages";
   const { data: workspace } = useActiveWorkspace();
   const { data: projects } = useGetProjects({
     workspaceId: workspace?.id ?? "",
@@ -115,10 +118,22 @@ function CanonicalProjectFrame({
         projectId={project?.id ?? ""}
         workspaceId={project?.workspaceId ?? workspace?.id ?? ""}
         showViewSwitcher={Boolean(project)}
-        activeView={backlog ? "backlog" : "board"}
+        activeView={
+          backlog
+            ? "backlog"
+            : view === "cycles" || view === "modules" || view === "pages"
+              ? view
+              : "board"
+        }
         realtimeMode={backlog ? "canonical" : "page"}
       >
-        <Outlet />
+        {agile ? (
+          <div className="h-full overflow-y-auto">
+            <Outlet />
+          </div>
+        ) : (
+          <Outlet />
+        )}
       </ProjectLayout>
     </Suspense>
   );
@@ -139,9 +154,11 @@ function AgentRootRoute() {
   ) {
     return <Outlet />;
   }
-  const projectPath = /^\/agent\/projects\/([^/]+)\/(work|backlog)\/?$/u.exec(
-    location.pathname,
-  );
+  // P5 agile and pages: the cycles, modules and pages screens (list and one level of detail) share the frame.
+  const projectPath =
+    /^\/agent\/projects\/([^/]+)\/(?:(work|backlog)|(cycles|modules|pages)(?:\/[^/]+)?)\/?$/u.exec(
+      location.pathname,
+    );
   if (projectPath) {
     let projectKey = projectPath[1] ?? "";
     try {
@@ -152,7 +169,14 @@ function AgentRootRoute() {
     return (
       <CanonicalProjectFrame
         projectKey={projectKey}
-        backlog={projectPath[2] === "backlog"}
+        view={
+          (projectPath[2] ?? projectPath[3]) as
+            | "work"
+            | "backlog"
+            | "cycles"
+            | "modules"
+            | "pages"
+        }
       />
     );
   }

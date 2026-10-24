@@ -1,5 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import getWorkItems from "@/fetchers/work-item/get-work-items";
+import getWorkItems, {
+  type WorkItemAgileScope,
+} from "@/fetchers/work-item/get-work-items";
 import searchWorkItems from "@/fetchers/work-item/search-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
@@ -15,6 +17,7 @@ export default function useGetBoardWorkItems({
   dir = "asc",
   realtimeStatus,
   enabled = true,
+  scope,
 }: {
   projectId: string | undefined;
   projectSlug?: string;
@@ -24,6 +27,8 @@ export default function useGetBoardWorkItems({
   dir?: WorkItemSortDirection;
   realtimeStatus: WorkItemRealtimeStatus;
   enabled?: boolean;
+  /** P5 agile: only the members of this cycle or module (plain list read, no structured filter). */
+  scope?: WorkItemAgileScope;
 }) {
   const structuredFilter = filter?.trim() ? filter : undefined;
   // Search has no rank sort; never pretend its partial key-sorted pages are rank order.
@@ -44,7 +49,18 @@ export default function useGetBoardWorkItems({
           effectiveSort,
           effectiveDir,
         ]
-      : ["work-items", projectId, "board", effectiveSort, effectiveDir],
+      : scope?.cycleId || scope?.moduleId
+        ? [
+            "work-items",
+            projectId,
+            "board",
+            effectiveSort,
+            effectiveDir,
+            "scope",
+            scope.cycleId ?? "",
+            scope.moduleId ?? "",
+          ]
+        : ["work-items", projectId, "board", effectiveSort, effectiveDir],
     queryFn: ({ pageParam }) =>
       structuredFilter
         ? searchWorkItems({
@@ -58,6 +74,7 @@ export default function useGetBoardWorkItems({
         : getWorkItems(projectId as string, effectiveSort, effectiveDir, {
             cursor: pageParam,
             limit: BOARD_PAGE_SIZE,
+            scope,
           }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) =>

@@ -1,4 +1,4 @@
-# Screen test cases (P0–P4)
+# Screen test cases (P0–P5)
 
 Manual and browser test cases per screen. Run on local SIT (agent `http://localhost:1337`, portal `http://portal.localhost:1337`) with seeded data, never on the live `taskdesk_browser_journey_1022_test` database with resetting fixtures. Every screen also gets the **common checks** below. Result column: P pass, F fail, B blocked, blank = not run. Route inventory: [screens.md](screens.md).
 
@@ -92,6 +92,32 @@ Manual and browser test cases per screen. Run on local SIT (agent `http://localh
 | Notifications | `/agent/inbox` | Quiet hours, digest, mark unread | Quiet hours defer except SLA breach; read state persists | |
 | Users | `/agent/god-mode/users` | Deactivate user | Removed from rosters; sessions revoked | |
 
+## P5 — Planning, time, knowledge, service management (implemented, browser verification pending)
+
+Not browser-verified: scripted sign-in is blocked, so Thomas signs in first. Routes are registered in `apps/web/src/lib/routes.ts`; screen rows are in [screens.md](screens.md). Cost types and cost entries, available hours and typed-domain SSO are not built, so they have no cases here.
+
+| Screen | Route | Test | Expected | Result |
+| --- | --- | --- | --- | :-: |
+| Cycles / detail | `/agent/projects/{key}/cycles`, `…/{id}` | Create cycle, drag from backlog, complete with carry-over | Scope persists after reload; completion dialog moves unfinished work; burndown honest | |
+| Modules / detail | `/agent/projects/{key}/modules`, `…/{id}` | Create module, add and remove items | Membership persists; list shown only while `feature.modules` is on | |
+| Estimates | `/agent/projects/{key}/settings/estimates` | Change system and scale, preview, save | Preview shows effect before save; existing values handled as previewed | |
+| Timesheet | `/agent/timesheet` | Weekly grid by keyboard, start and stop timer, reload, edit past week | Entries persist; locked period refuses edit | |
+| Time entries | work item section | Add manual entry, edit, delete | Totals update; delete follows pending action where required | |
+| Rates / time activities | `/agent/settings/rates`, `/agent/settings/time-activities` | Set rate, add activity; open as user without rate capability | Rates hidden and 403 for restricted user | |
+| Budget | `/agent/projects/{key}/settings/budget` | Set budget, log time, reload | Actuals are time-only; thresholds shown; no cost entries yet | |
+| Knowledge base (agent) | `/agent/kb`, `/agent/kb/{id}`, `/agent/kb/{id}/edit` | Create, publish, version, set visibility | Version history kept; draft invisible to customers | |
+| Knowledge base (portal) | `/kb`, `/kb/{id}` and request form | Search; type request title in form | Only customer-visible articles; deflection suggestions appear | |
+| Services / detail | `/agent/service-management/services`, `…/{id}` | Create service with owner team, dependency, link | Persisted; dependency impact shown | |
+| Changes | `/agent/service-management/changes` | View windows and freezes; schedule two changes on one service; override a freeze | Overlap flagged; override recorded and audited | |
+| CAB template | Workflows editor, CAB panel | Apply template, move change to Approved | CAB approval required; bypass edges removed | |
+| Releases | `/agent/service-management/releases`, `…/{id}` | Create release, attach changes, publish notes | Persisted; customer release page not built | |
+| Reports | `/agent/reports`, `…/{key}` | Open each tier, filter, export CSV | Known-answer aggregates; scoped to reach; customer denied | |
+| Report builder | `/agent/reports/new` | Build custom chart, save | Saved table reloads with same result | |
+| Dashboards / editor | `/agent/dashboard`, `/agent/dashboard/edit` | Add, drag and resize widgets, save, reload | Layout persists | |
+| Customer invitations | `/agent/settings/customer-invitations` | Invite, resend, revoke; open invalid and expired link | Lifetime and limits as shipped; revoked link refused | |
+| Portal accept / sign-up | `/invite/{id}` (portal host) | Accept as new and existing customer | Account linked to organisation; needs customer password provider on | |
+| Pages / editor | `/agent/projects/{key}/pages`, `…/{id}` | Create nested page, edit, move, restore | Tree persists; move respects permission | |
+
 ## Not testable yet
 
-P5–P7 screens (cycles, modules, pages, KB, reports, dashboards, timesheet, import) and these P4 items: impersonation, plugins, jobs, branding, storage, deliveries and MCP usage pages, terminology.
+P6–P7 screens (import, readiness), and these P4 items: impersonation, plugins, jobs, branding, storage, deliveries and MCP usage pages, terminology. P5 not built: cost types and entries, available hours, typed-domain SSO routing.

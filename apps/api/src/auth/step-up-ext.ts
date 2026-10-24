@@ -58,6 +58,13 @@ export const WORKSPACE_OWNERSHIP_TRANSFER_OPERATION =
   "workspace_ownership_transfer" as const;
 export const WORKSPACE_OWNERSHIP_TRANSFER_ROUTE =
   "POST /api/workspace/{workspaceId}/transfer-ownership" as const;
+/** CH-4: overriding a change freeze (feature-contracts-p5.md), bound to the change and the reason. */
+export const CHANGE_FREEZE_OVERRIDE_OPERATION =
+  "change_freeze_override" as const;
+export const CHANGE_FREEZE_OVERRIDE_ROUTE =
+  "POST /api/work-items/{key}/change/override-freeze" as const;
+export const CHANGE_FREEZE_OVERRIDE_REASON_MIN = 12;
+export const CHANGE_FREEZE_OVERRIDE_REASON_MAX = 500;
 
 const id = z.string().min(1).max(128);
 const url = z.string().trim().min(1).max(2048);
@@ -110,6 +117,15 @@ const shapes = {
   [WORKSPACE_OWNERSHIP_TRANSFER_OPERATION]: {
     workspaceId: id,
     ...transferWorkspaceOwnershipBody.shape,
+  },
+  [CHANGE_FREEZE_OVERRIDE_OPERATION]: {
+    workspaceId: id,
+    workItemKey: z.string().trim().min(1).max(64),
+    reason: z
+      .string()
+      .trim()
+      .min(CHANGE_FREEZE_OVERRIDE_REASON_MIN)
+      .max(CHANGE_FREEZE_OVERRIDE_REASON_MAX),
   },
 } as const;
 
@@ -164,6 +180,12 @@ export type ExtInput =
       operation: typeof WORKSPACE_OWNERSHIP_TRANSFER_OPERATION;
       workspaceId: string;
       newOwnerUserId: string;
+    }
+  | {
+      operation: typeof CHANGE_FREEZE_OVERRIDE_OPERATION;
+      workspaceId: string;
+      workItemKey: string;
+      reason: string;
     };
 
 const sortedUnique = (values: readonly string[]) => [...new Set(values)].sort();
@@ -398,6 +420,21 @@ function binding(input: ExtInput): {
           },
         ),
       };
+    case CHANGE_FREEZE_OVERRIDE_OPERATION:
+      return {
+        operation: input.operation,
+        route: CHANGE_FREEZE_OVERRIDE_ROUTE,
+        body: canonicalOperationBody(
+          input.operation,
+          CHANGE_FREEZE_OVERRIDE_ROUTE,
+          1,
+          {
+            workspaceId: input.workspaceId,
+            workItemKey: input.workItemKey,
+            reason: input.reason,
+          },
+        ),
+      };
   }
 }
 
@@ -466,6 +503,7 @@ const EXT_OPERATION_CAPABILITY = {
   [WORKSPACE_ROLE_UPDATE_OPERATION]: "workspace:manage_roles",
   [SERVICE_KEY_CREATE_OPERATION]: "api_key:manage",
   [WORKSPACE_OWNERSHIP_TRANSFER_OPERATION]: "workspace:transfer_ownership",
+  [CHANGE_FREEZE_OVERRIDE_OPERATION]: "change:manage",
 } as const;
 
 /**

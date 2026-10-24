@@ -46,6 +46,18 @@ export const capabilitiesResponseSchema = z
       description:
         "Strict custom_field:manage; gates the Custom fields settings entry. Absent means denied.",
     }),
+    manageRates: z.boolean().optional().openapi({
+      description:
+        "Strict time_entry:manage_rates; gates the Rates settings entry. Absent means denied.",
+    }),
+    manageWorkflows: z.boolean().optional().openapi({
+      description:
+        "Strict workflow:manage; gates the Workflows settings entry. Absent means denied.",
+    }),
+    readBudgets: z.boolean().optional().openapi({
+      description:
+        "Strict budget:read; gates the project Budget settings entry. Absent means denied.",
+    }),
     bindProjectOrganisation: z.boolean().openapi({
       description:
         "Strict project:create (owner/admin/manager): may list customer organisations and bind a new project to one.",

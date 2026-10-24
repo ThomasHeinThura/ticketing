@@ -1,59 +1,39 @@
-# Current status — 22 October 2026
+# Current status — 24 October 2026
 
-P0–P4 integration is paused at Thomas’s request for a handover to the next Claude coding agent. No phase is complete, independently reviewed or accepted by Thomas. Laptop SIT comes first; Technexus cloud SIT follows local verification. No commit, push, merge or cloud deployment has been performed.
+Nothing below is Thomas-accepted. "Reviewed" means an Opus 5.5 code review plus tests; **nothing from P4 or P5 is browser-verified** (scripted sign-in is blocked by the permission classifier, so Thomas must sign in). P0–P5 are only half finished: partials, missing items and external blockers remain per phase. Counts and carries are in [report data](report/data.json) and `docs/report/audit/audit-P*.json`. Branch `feat/batch1-hierarchy-and-parent-editing`, last pushed commit `1de552577`.
 
-## Running locally
+## Phases
 
-Build **M** serves the agent at `http://localhost:1337` and customer portal at `http://portal.localhost:1337`, using persisted PostgreSQL data and a restricted application role. Agent and portal use same-origin `/api`. The application-input manifest matched before and after compilation: `54c03e694ce048447fad10123c9bf2c784980e2e3fdda5473a49dea2a6c42848` (2,607 application/build-input files). This scope excludes documentation and tooling changes; it is not a frozen whole-tree or signed shipping-image claim. Private provenance and credentials remain outside the checkout.
+| Phase | Git state | Opus review | Implemented and tested | Partial or missing | Browser |
+| --- | --- | --- | --- | --- | --- |
+| P0 Foundation | Committed, pushed | 4 rounds, pass with conditions | 12 of 21 | 6 partial, 3 externally blocked | Not verified |
+| P1 Core work | Committed, pushed | 2 rounds, pass with conditions | 140 of 181 | 28 partial, 8 missing, 5 blocked | Board, sheet, calendar, members, templates, states, approval dialog checked earlier |
+| P2 Service desk | Committed, pushed | 2 rounds, pass with conditions | 117 of 137 | 15 partial, 5 blocked | Not verified |
+| P3 Portal and identity | Committed, pushed | 1 round, pass with conditions | 34 of 53 | 9 partial, 10 blocked (real Entra) | Not verified |
+| P4 Governance | `c02a0892b`, pushed | 5 rounds, round 5 pass | 112 of 152 (5 untested) | 30 partial, 4 missing, 1 blocked | None: step-up flows need Thomas to sign in |
+| P5 Planning, insight, knowledge | WIP commit (not review-passed) | Rounds 1-6 failed on different mediums (all but round 6's fixed); WIP commit | 62 of 91 (3 untested) | 22 partial, 4 missing | None |
 
-| Area | Implemented and locally verified | Still open |
-| --- | --- | --- |
-| Kaneo shell and task layout | Original shell/components; full-page wrapper now fills desktop width. Chrome checks at 1800px, 1024px and 390px found no document overflow. Original centered task content and Properties retained. | Complete responsive, light/dark and motion parity across every touched journey. |
-| Board/list | Real APIs, original cards, shared drag controller and compact list. Chrome moved/reordered disposable items with pointer and keyboard; reload retained state/rank. Additional Move up/down/Change state buttons removed. Real labels, persisted display preferences and genuine rich-text checklist count restored; Chrome shows HELP-17’s 1/2 badge. | Full filtered/search/preferences and all permission/failure journeys; original column-add semantics remain unresolved against required default creation state. |
-| Creation/detail | Original title-first creation, dates, priority, assignee, labels, create-more and discard confirmation. Chrome created disposable HELP-14–17; reloaded values persist. New-label search/create/colour, task-switching breadcrumb and priority shortcut verified. | Pre-create attachment staging, remaining shortcuts/actions and complete composition parity. |
-| Bulk actions | Shared original floating Toolbar/Command/Calendar. Real state, priority, assign, label add/remove, due date, archive and pending deletion APIs; scoped checks, partial outcomes and observed-holder concurrency. Chrome changed HELP-16/17 priority, labels, state, date and assignee; named replacement confirmation/cancel and reload/API persistence verified. Existing labels preserved. | Chrome M: ⌘A selected all 14 loaded items and Escape cleared selection without mutation. Partial failures, deletion and restricted actors still need browser checks. |
-| Workflow protections | Ten PostgreSQL tests cover all twenty default directed moves, concurrency/idempotence and custom-workflow preservation. Narrow repair attached nine missing default workflows; repeat changed zero. Protected data hashes unchanged. Chrome retained HELP-11’s state when CAB approval prevented completion. | Complete configured workflow, approval and automation requirement coverage. |
-| Comments/attachments | Durable pending deletion, exact-target preview and real execution. Chrome verified comment tombstone and attachment still visible before confirmation, absent after execution/reload. Deleted-comment preview is scrubbed and cannot expose former body. Activity now renders readable description/attachment summaries; verified on M. | Attachment recovery API/UI and complete retention/reconciliation; upload control blocked by Chrome extension file-URL access. The disposable attachment used genuine presign/PUT/complete API calls, not browser upload acceptance. Explicit comment restore is not a retained requirement. |
-| Customer portal | Home/My requests/SUB-1 opened against real APIs on L; Home rechecked on M. Agent-cookie→portal404 and portal-cookie→agent401; authoritative agent/portal requests succeed in their own sessions. | Complete portal journeys, isolation assertions, accessibility and responsive design checks. |
-| Email | Runtime encrypted provider settings and authoritative resolver; both public cold-entry paths share inherited bootstrap delivery. Persisted disable/provider errors prevent fallback. Local provider and synthetic SMTP tests pass; no external email sent. Mailpit is optional local capture infrastructure, not a requirement for invitations. | Portal preferences/delivery, quiet hours, digest and complete producer coverage. Local Compose Mailpit destination remains subject to private-destination policy; starting it alone does not prove delivery. |
-| Scheduled work | SLA scanner/cache, position recovery and attachment cleanup/GC run locally with protected recovery windows. | Complete retained job requirements, orphan reconciliation and retention proof. |
+P5 not built: cost entries (TC-12/13/14) and so budget actuals are time-only, available hours (TC-20), typed-domain SSO (CP-17/18/27-29, IP-9/29). P5 also has partial reports (no snapshots, drill-down on 12 reports), KB editor gaps, CAB opt-in only, no customer release page. The full carry lists are the `carry` fields for P4 and P5 in data.json.
 
-Other opened journeys include project statistics, Sub-tasks/Relations and pending relation removal, Calendar/Gantt, Triage, single/bulk work-item deletion, CAB authoring and SMTP administration. Opening a screen is not design acceptance. User-created HELP-12 has not been modified by this work.
+## Gates
 
-## Local checks and security
+- **P4 (committed):** full integration 314 files / 4241 tests, API unit 1656, permissions 115, packages/permissions 277. Failing: `check:tokens`/contrast (also fails at HEAD) and 3 stale ci-script tests. Not run: browser, Trivy.
+- **P5 (final tree):** API unit 1822, web unit 2611, permissions 115, typechecks clean, `check:policy`, `check:events`, `check:ui:raw-elements`, inventory, env, i18n and drizzle drift pass. Lane integration suites pass. Full integration on the P5 tree: 348 files, 4893 of 4894 passed; the one failure (OpenAPI step-up operation list) is fixed and re-run green. Same two known failures; Trivy and browser not run.
+- Port-bound MFA fixture tests fail while a local stack holds the ports. Details in [testing](testing.md).
 
-- Full local suite on L passed all 12 tasks, including web **1,861 tests / 277 files** and API **975 / 133**. M’s API rerun passed **975 / 133**. Focused changes additionally passed activity37, mail44, provider PostgreSQL13, bulk frontend86, bulk PostgreSQL24/schema16, structured-search PostgreSQL3 and projection96 tests. Earlier pagination checks passed client76, route39 and PostgreSQL38, including 500 real items across ten pages. These are scoped results, not a claim that every phase requirement has a passing test.
-- M gzip bundle gates pass unchanged: agent **248.0/350 KB**, direct work route **349.6/350 KB**, portal **190.1/200 KB**. The work-route allowance is nearly exhausted.
-- Contrast tracing passes 72 tests; its last source run left **28 unresolved occurrences**. Computed measurement/manifest reconciliation remains incomplete; G3 does not pass. No budget or threshold was waived.
-- G11 remains unmet. Existing intercepted legacy benchmarks are synthetic. Canonical cursor pagination initially paints 50 rows; having 500 database records does not satisfy a 500-row paint workload. Persisted agent/portal measurements and valid calibration are required.
-- Five rendered Helm profiles now have no HIGH/CRITICAL Trivy findings. Default: **0 HIGH / 2 MEDIUM / 16 LOW**, previously8/11/32; no ignores. Ten render tests, strict Helm lint and package inspection pass. Writable data/temp mounts remain; filesystem attachments need migration before upgrading existing installations. Shipping-image scan and cluster boot are not verified.
-- Maintained-document Gitleaks scan after migration reports zero findings; this is the docs directory, not a full source/history claim. Last source dependency scan retained transitive KaTeX 0.16.47 low severity. Last Gitleaks snapshot found 19 examples/fixtures, with no operational secret confirmed; this is not a full history/environment scan. Shipping-image and broader security verification remain open. A Trivy config attempt on `.github` detected zero supported files and supplies no workflow-security coverage.
+## Environments
 
-## Documentation and archive migration
+- **Local SIT first.** Agent `http://localhost:1337`, portal `http://portal.localhost:1337`. Technexus public SIT follows only after local passes.
+- **Scratch Postgres 62871** for every test run, with a fresh database per run (edited-in-place migrations need it).
+- **Native Postgres 62870** holds Thomas's live database `taskdesk_browser_journey_1022_test`: backup taken 24 Oct, 130 migrations applied, **no P4 or P5 migrations applied yet**. The running local build predates P4 and P5. Migrate only after P5 passes, dry run on a restored copy first, and only with Thomas's explicit go. Check `__drizzle_migrations` order and `local_factor_policy` first (P4 carry).
+- Never rerun the SIT account seeder. Preserve Thomas's records (HELP-12).
 
-Thomas chose **keep archive ignored; migrate all readers first**. Historical files remain unchanged locally. Maintained configuration, permission, schema, feature, job, event, UI and CI readers have archive-free scratch checks. Configuration 202 tests pass; permission 108, feature 2 and vocabulary 14 pass. Latest CI scripts: **1,343 passed, zero failed, 20 existing opt-in engine skips**. SMTP_FROM wiring was repaired; the environment check passes without a baseline exemption.
+## Next actions
 
-All **647 numbered definitions**, phase ownership, summaries, verification states and evidence slots match the original index. All **72 indexed contracts** resolve to maintained references, including unnumbered safety, import, foundation, architecture and operational clauses. Original paths/lines remain provenance. Linked design/decision/licensing clauses are retained, with proposed and conflicting decisions distinguished. The combined check passes **1,519 local Markdown links across 33 contract/documentation files**, with no broken links or operative archive pointers. Semantic curation of historical prose is not exact-text equality or implementation acceptance.
+1. Fix the open round-6 findings (satisfaction report double count; time-tracking nav for viewers; lows), build the agreed carries (cost entries and available hours, P4 carries, reports gaps), then Opus rounds until no high/medium (up to 8).
+2. Thomas signs in so P4 and P5 screens can be browser-verified ([cases](screen-test-cases.md)); until then screens stay marked built, not verified.
+3. Decide the open P5 items: build cost entries and available hours, or record deferrals; typed-domain SSO needs a contract.
+4. Dry-run migrations on a restored copy of the live backup, then migrate the live database with Thomas's go.
+5. Close P4 carries (migration journal order 0147 before 0145, missing 0158 snapshot, `automation:manage` enforcement), fix `check:tokens` on `packages/ui` pairs.json, then start P6.
 
-An archive-absent source export passes environment, event, vocabulary and UI gates using actual Git history for unchanged ratchets. Another **19 feature/permission reader tests** pass; filesystem witnesses prove the maintained document reads stay inside the export. The initial export without history correctly failed the baseline ratchets; no baseline was fabricated or weakened.
-
-PR/release callers now use the single consolidated phase-review contract: 61 focused regressions and the full local CI-script suite pass. A further repair rejects external/archive source symlinks and binds internal target bytes; **43 phase/release regressions** pass after correcting dependency setup in the disposable fixture. No phase report has been submitted; explicit release correctly refuses missing evidence. Required remote protections remain intact.
-
-The archive remains ignored in Git and is now excluded from Docker build contexts. This is source/context verification, not a built-image proof. The screen inventory also retains 15 non-route overlays/dialogs/sections alongside 125 route entries; G5 still validates 85 canonical generated routes and 45 active inventory routes, with 73 planned URLs unimplemented. Counts do not imply visual verification.
-
-## Next work and acceptance
-
-Archive-reader migration is verified locally. The next active P1 slice is original-editor attachment staging, strict existing-capability projection and checkpointed post-create upload/retry; these source changes are not yet built or browser verified. G11 persisted-workload discovery also continues without changing budgets. Continue the incomplete P0–P4 integrated journeys and their laptop tests. Complete identity/portal cases, notification/governance work, recovery, backups and isolated restore, original UX parity and performance/security evidence. Preserve permissions, tenancy, concurrency, approval and deletion guarantees.
-
-Real Entra, one consolidated independent review per completed phase, a source-identified signed digest-pinned Technexus image and Thomas’s selected walkthrough remain outstanding. P5–P7 and proposed P8/P9 features remain in the catalogue and roadmap; their completion is not claimed.
-
-Browser captures: `/tmp/taskdesk-visual-evidence-1022`, including `task-full-width-fixed`, `create-new-label-persisted-k`, `original-bulk-toolbar-l`, `bulk-reassignment-confirmation-l`, `bulk-persisted-reloaded-l`, `attachment-delete-confirmation-k` and `readable-activity-m`. Actual evidence has scope and does not imply phase acceptance.
-
-
-## Stop and handover
-
-Thomas requested a stop after the current slice. All coding agents released their files. See [handover](handover.md) for exact source ownership, private runtime safety, checks and resume instructions. Existing laptop build M remains running; the newest source was not built or browser verified. No publication or deployment occurred.
-
-The bounded creation-attachment source passes 56 focused tests; strict capability projection passes 12 API and 28 hook tests; focused formatting, API types and web app/node types pass. It restores memory-only staging and checkpointed post-create uploads, while inline embedding, navigation continuation, byte progress, expired upload URLs and ambiguous-create reconciliation remain open. Four helper tests and targeted types pass for the read-only persisted list/board benchmark source; no fixtures or real performance runs occurred. Full latest-source units, bundle budgets, browser journeys and phase acceptance remain due.
-
-Final integration changed two native test-double hosts to shared Input/Textarea. The affected 26 creation tests and raw-element gate pass; the prior 56-test focused result precedes only this test-host change. Final web types are in `/tmp/taskdesk-handover-web-types-final.log`. No new runtime build or browser acceptance.
+Externally blocked, never marked done: real Entra tenant, external penetration test, signed digest-pinned image. Older handover detail is in [handover](handover.md).

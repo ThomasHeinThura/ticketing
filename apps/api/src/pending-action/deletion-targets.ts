@@ -11,6 +11,10 @@ import {
 import { and, eq, gt } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import {
+  cycleDeletionTarget,
+  moduleDeletionTarget,
+} from "../agile/deletion-target";
 import { serviceKeyDeletionTarget } from "../api-key/service-key-deletion-target";
 import { appendAuditLog } from "../audit/audit-writer";
 import { appendPendingActionStepUpAudit } from "../auth/step-up-audit";
@@ -32,11 +36,13 @@ import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { invitationDeletionTarget } from "../invitation/invitation-deletion-target";
+import { kbCategoryDeletionTarget } from "../kb/deletion-target";
 import {
   labelDeletionTarget,
   projectLabelDeletionTarget,
 } from "../label/label-deletion-target";
 import { type ApiKey, z } from "../openapi";
+import { pageDeletionTarget } from "../pages/deletion-target";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
 import {
@@ -45,8 +51,11 @@ import {
   prerequisiteDeletionTarget,
   projectDeletionTarget,
 } from "../project/project-deletion-target";
+import { dashboardDeletionTarget } from "../report/deletion-target";
 import { assertCalendarUnused } from "../service-calendar/repository";
+import { serviceDeletionTarget } from "../service-management/deletion-target";
 import { teamDeletionTarget } from "../team/deletion-target";
+import { timeEntryDeletionTarget } from "../time-tracking/deletion-target";
 import { dbNowUtc } from "../utils/db-time";
 import {
   projectAncestryFor,
@@ -1147,8 +1156,15 @@ export function registeredDeletionTargets(): readonly RegisteredDeletionTarget[]
     serviceKeyDeletionTarget,
     customFieldDeletionTarget,
     teamDeletionTarget,
+    serviceDeletionTarget,
+    kbCategoryDeletionTarget,
+    timeEntryDeletionTarget,
     webhookDeletionTarget,
     automationDeletionTarget,
+    cycleDeletionTarget,
+    moduleDeletionTarget,
+    pageDeletionTarget,
+    dashboardDeletionTarget,
   ];
   return registeredDeletionTargetCache;
 }
@@ -1264,6 +1280,7 @@ export async function evaluateRegisteredDeletionAccess(
       workspaceId: loaded.workspaceId,
       ...(loaded.projectId ? { projectId: loaded.projectId } : {}),
     },
+    ...(loaded.rowFacts ? { row: loaded.rowFacts } : {}),
     scope: projectScoped
       ? projectScopeFromRow({
           projectId: loaded.projectId ?? "",
@@ -1288,6 +1305,11 @@ export async function evaluateRegisteredDeletionAccess(
       failure: decision.status === 404 ? "reach" : "capability",
       status: decision.status === 404 ? 404 : 403,
     };
+  if (
+    target.callerReaches &&
+    !(await target.callerReaches(tx, loaded, identity))
+  )
+    return { allowed: false, failure: "reach", status: 404 };
   if (input.payload !== undefined || input.targetVersions != null) {
     const versions =
       input.targetVersions &&

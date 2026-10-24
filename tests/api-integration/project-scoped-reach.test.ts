@@ -23,6 +23,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
+import { setTimeFlags } from "./helpers/p5-time";
 import { ensureAgentSession } from "./helpers/pending-deletion";
 import { projectKey } from "./helpers/project-key";
 import {
@@ -325,6 +326,21 @@ const WRITES: Case[] = [
     },
   },
   {
+    matrixKey: "POST /api/projects/{projectId}/budgets",
+    prepare: async (w) => {
+      await setTimeFlags(w.workspaceId);
+    },
+    successStatus: 201,
+    call: (app, _w, i) =>
+      json(app, "POST", `/api/projects/${i.projectId}/budgets`, {
+        name: "Q4",
+        plannedAmountMinor: 100000,
+        currency: "EUR",
+        periodStart: "2026-01-01",
+        periodEnd: "2026-12-31",
+      }),
+  },
+  {
     matrixKey: "POST /api/task/{projectId}",
     call: (app, _w, i) =>
       json(app, "POST", `/api/task/${i.projectId}`, {
@@ -456,6 +472,14 @@ const READS: Case[] = [
     matrixKey: "GET /api/projects/{key}/automations",
     call: (a, _w, i) =>
       json(a, "GET", `/api/projects/${i.projectId}/automations`),
+  },
+  {
+    // P5 time and cost (`TC-15`): budgets need feature.cost_tracking, so the success path turns it on.
+    matrixKey: "GET /api/projects/{projectId}/budget",
+    prepare: async (w) => {
+      await setTimeFlags(w.workspaceId);
+    },
+    call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/budget`),
   },
   {
     matrixKey: "GET /api/features/resolved",

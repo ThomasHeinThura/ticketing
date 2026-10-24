@@ -32,6 +32,7 @@ const ORDINARY_WRITE = [
   /^POST \/api\/attachments\/\{[^/]+\}\/complete$/u,
   /^POST \/api\/time-entry(\/|$)/u,
   /^PUT \/api\/time-entry\/\{[^/]+\}$/u,
+  /^(POST|PATCH) \/api\/time-entries(\/|$)/u,
   /^PUT \/api\/label\/\{[^/]+\}\/task$/u,
   /^PATCH \/api\/notification\/(read-all|\{[^/]+\}\/(read|unread))$/u,
   /^POST \/api\/views\/\{[^/]+\}\/run$/u,

@@ -9,14 +9,17 @@ import {
 } from "@taskdesk/ui";
 import {
   CalendarDays,
+  Clock,
   Inbox,
   LayoutTemplate,
   MessageSquareText,
+  PiggyBank,
   Settings,
   Shield,
   SlidersHorizontal,
   Tag,
   Timer,
+  UserPlus,
   Users,
   Webhook,
   Workflow,
@@ -40,6 +43,9 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
     canManageRoles,
     canManageWebhooks,
     canManageCustomFields,
+    canInviteUsers,
+    canManageRates,
+    canManageWorkflows,
   } = useWorkspacePermission();
   const location = useLocation();
   const canSettings = canManageWorkspaceSettings();
@@ -47,9 +53,13 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
   const canRoles = canManageRoles();
   const canWebhooks = canManageWebhooks();
   const canFields = canManageCustomFields();
+  const canInvite = canInviteUsers();
+  const canRates = canManageRates();
+  const canWorkflows = canManageWorkflows();
   // Every entry is shown only to people the server would let into it, using the capability the
   // API of that area enforces: `workspace:manage_roles`, `webhook:manage`, `custom_field:manage`,
-  // `sla_policy:manage` (service calendars) and otherwise `workspace:manage_settings`. A direct
+  // `sla_policy:manage` (service calendars), `time_entry:manage_rates` (rates), `workflow:manage`
+  // (workflows and the CAB template) and otherwise `workspace:manage_settings`. A direct
   // URL still reaches the page, which shows the API's access-denied error.
   const allMenuItems = [
     {
@@ -104,7 +114,7 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       title: t("settings:workflows.title"),
       url: "/agent/settings/workflows",
       icon: Workflow,
-      visible: canSettings,
+      visible: canWorkflows,
     },
     {
       title: t("teams:list.title"),
@@ -113,10 +123,28 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       visible: canSettings,
     },
     {
+      title: t("timeTracking:activities.title"),
+      url: "/agent/settings/time-activities",
+      icon: Clock,
+      visible: canSettings,
+    },
+    {
+      title: t("timeTracking:rates.title"),
+      url: "/agent/settings/rates",
+      icon: PiggyBank,
+      visible: canRates,
+    },
+    {
       title: t("customFields:list.title"),
       url: "/agent/settings/custom-fields",
       icon: SlidersHorizontal,
       visible: canFields,
+    },
+    {
+      title: t("customerInvitations:title"),
+      url: "/agent/settings/customer-invitations",
+      icon: UserPlus,
+      visible: canInvite,
     },
     {
       title: t("automations:workspace.title"),

@@ -51,6 +51,7 @@ export default function BulkToolbarPresentation({
   isDatePickerOpen,
   onDatePickerOpenChange,
   busy = false,
+  extraActions,
   children,
 }: {
   selectedCount: number;
@@ -63,6 +64,8 @@ export default function BulkToolbarPresentation({
   isDatePickerOpen: boolean;
   onDatePickerOpenChange: (open: boolean) => void;
   busy?: boolean;
+  /** Extra toolbar entries (e.g. bulk add to a cycle), shown before the clear button. */
+  extraActions?: ReactNode;
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -148,6 +151,12 @@ export default function BulkToolbarPresentation({
                 {t("tasks:bulk.actions")}
               </Button>
             </ToolbarGroup>
+          </>
+        ) : null}
+        {extraActions ? (
+          <>
+            <ToolbarSeparator orientation="vertical" className="my-1 h-5" />
+            <ToolbarGroup>{extraActions}</ToolbarGroup>
           </>
         ) : null}
         <ToolbarSeparator orientation="vertical" className="my-1 h-5" />

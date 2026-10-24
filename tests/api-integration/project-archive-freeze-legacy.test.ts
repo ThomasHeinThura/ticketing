@@ -123,7 +123,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     );
     const timeEntry = requireRow(
       await db
-        .insert(schema.timeEntryTable)
+        .insert(schema.taskTimeEntryTable)
         .values({
           taskId: task.id,
           userId: member.user.id,
@@ -548,8 +548,8 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     expect(
       await db
         .select()
-        .from(schema.timeEntryTable)
-        .where(eq(schema.timeEntryTable.id, timeEntry.id)),
+        .from(schema.taskTimeEntryTable)
+        .where(eq(schema.taskTimeEntryTable.id, timeEntry.id)),
     ).toHaveLength(1);
     expect(
       await db
@@ -1284,7 +1284,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     const timeEntry = requireRow(
       await db
-        .insert(schema.timeEntryTable)
+        .insert(schema.taskTimeEntryTable)
         .values({
           taskId: task.id,
           userId: member.user.id,

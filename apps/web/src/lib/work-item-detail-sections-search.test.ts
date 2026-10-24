@@ -13,6 +13,21 @@ describe("canonical task supporting section URL state", () => {
       }),
     ).toEqual({ sections: { itemKey: "HELP-5", open: ["attachments"] } });
   });
+  it("accepts the Time section alongside the others", () => {
+    expect(
+      parseWorkItemDetailSectionsSearch({
+        sections: {
+          itemKey: "HELP-6",
+          open: ["attachments", "sla", "approvals", "time"],
+        },
+      }),
+    ).toEqual({
+      sections: {
+        itemKey: "HELP-6",
+        open: ["attachments", "sla", "approvals", "time"],
+      },
+    });
+  });
   it.each([
     null,
     "bad",
@@ -20,7 +35,10 @@ describe("canonical task supporting section URL state", () => {
     {},
     { itemKey: "HELP-4", open: [] },
     { itemKey: "HELP-4", open: ["bad"] },
-    { itemKey: "HELP-4", open: ["sla", "sla", "sla", "sla"] },
+    {
+      itemKey: "HELP-4",
+      open: ["sla", "sla", "sla", "sla", "sla", "sla"],
+    },
     { itemKey: "invalid", open: ["sla"] },
   ])("discards malformed, empty or oversized state %#", (sections) => {
     expect(parseWorkItemDetailSectionsSearch({ sections })).toEqual({});

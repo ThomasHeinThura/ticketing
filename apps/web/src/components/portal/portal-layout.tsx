@@ -13,12 +13,17 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
   const titles = [
     [routes.portalHome.path, "navigation.home"],
     [routes.portalCatalogue.path, "navigation.catalogue"],
+    [routes.portalKb.path, "navigation.knowledgeBase"],
     [routes.portalRequests.path, "navigation.requests"],
     [routes.portalApprovals.path, "navigation.approvals"],
   ];
   const current =
-    titles.find(([path]) => path === location.pathname)?.[1] ??
-    "navigation.request";
+    titles.find(
+      ([path]) =>
+        path === location.pathname ||
+        (path === routes.portalKb.path &&
+          location.pathname.startsWith(`${path}/`)),
+    )?.[1] ?? "navigation.request";
   return (
     <div className="flex w-full bg-background">
       <SidebarProvider

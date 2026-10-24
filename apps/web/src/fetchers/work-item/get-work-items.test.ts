@@ -158,4 +158,22 @@ describe("getWorkItems", () => {
       query: { sort: "position", dir: "asc" },
     });
   });
+  it("sends the cycle and module scope as the list filters and nothing when unscoped", async () => {
+    mocks.get.mockResolvedValue({
+      ok: true,
+      json: async () => makeEnvelope([]),
+    });
+    await getWorkItems("proj_1", "key", "asc", {
+      scope: { cycleId: "cyc_1", moduleId: "mod_1" },
+    });
+    expect(mocks.get).toHaveBeenLastCalledWith({
+      param: { projectId: "proj_1" },
+      query: { sort: "key", dir: "asc", cycle: "cyc_1", module: "mod_1" },
+    });
+    await getWorkItems("proj_1", "key", "asc");
+    expect(mocks.get).toHaveBeenLastCalledWith({
+      param: { projectId: "proj_1" },
+      query: { sort: "key", dir: "asc" },
+    });
+  });
 });

@@ -8,6 +8,7 @@ export const searchResultSchema = z
       "work_item",
       "person",
       "saved_view",
+      "page",
       "project",
       "workspace",
       "comment",

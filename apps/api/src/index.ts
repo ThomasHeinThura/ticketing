@@ -15,6 +15,7 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { WebSocketServer } from "ws";
 import activity from "./activity";
+import agile from "./agile";
 import apiKey from "./api-key";
 import approval from "./approval";
 import attachment from "./attachment";
@@ -23,6 +24,7 @@ import {
   assertCookieDomainIsNotConfiguredForHostIsolation,
   authForHost,
   hasCustomerPortalIdentity,
+  isCustomerInviteSignUpEndpoint,
   isCustomerLocalAuthEndpoint,
   portalForHost,
   startAuthConfigRuntime,
@@ -44,6 +46,7 @@ import comment from "./comment";
 import config from "./config";
 import customField from "./custom-field";
 import customFieldSections from "./custom-field/sections";
+import customerInvitation from "./customer-invitation";
 import {
   closeMigrationPool,
   getDatabase,
@@ -93,6 +96,7 @@ import { ensureSetupToken } from "./instance/setup-token";
 import users from "./instance/users";
 import intake from "./intake";
 import invitation from "./invitation";
+import kb from "./kb";
 import label from "./label";
 import { idempotencyKeyMiddleware } from "./middleware/idempotency";
 import { createPostgresIdempotencyStore } from "./middleware/idempotency.repository";
@@ -107,6 +111,7 @@ import notificationProvider from "./notification-provider";
 import { installRuntimeSmtpResolver } from "./notification-provider/runtime";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
+import pages from "./pages";
 import pendingAction from "./pending-action";
 import {
   type ExplicitCredentialMutation,
@@ -136,10 +141,12 @@ import { initializePlugins } from "./plugins";
 import { policyRegistry } from "./policy-registry";
 import { isPortalClientRoute } from "./portal-client-routes";
 import project, { projectStates } from "./project";
+import report from "./report";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import { recoverDensePositionPartitions } from "./scheduler/position-rebalance";
 import search from "./search";
 import serviceCalendar from "./service-calendar";
+import serviceManagement from "./service-management";
 import slaPolicy from "./sla-policy";
 import { getPrivateObject, getStorageDriver } from "./storage";
 import {
@@ -152,6 +159,7 @@ import task, { taskV2 } from "./task";
 import taskRelation from "./task-relation";
 import team from "./team";
 import timeEntry from "./time-entry";
+import timeTracking from "./time-tracking";
 import user from "./user";
 import getAvatar from "./user/controllers/get-avatar";
 import userPreference from "./user-preference";
@@ -422,6 +430,7 @@ function isPortalSubmissionStorageRequest(
 function isCustomerAuthEndpoint(method: string, path: string): boolean {
   if (CUSTOMER_AUTH_ENDPOINTS.has(`${method} ${path}`)) return true;
   if (isCustomerLocalAuthEndpoint(method, path)) return true;
+  if (isCustomerInviteSignUpEndpoint(method, path)) return true;
   if (method !== "GET") return false;
   const parts = path.split("/");
   return (
@@ -1582,6 +1591,8 @@ export function createApp(
   const cannedResponseApi = api.route("/canned-responses", cannedResponse);
   const commentApi = api.route("/comment", comment);
   const timeEntryApi = api.route("/time-entry", timeEntry);
+  // P5 time and cost: /time-entries, /time-activities, /rates and /projects/{projectId}/budget(s).
+  const timeTrackingApi = api.route("/", timeTracking);
   const labelApi = api.route("/label", label);
   // Audit-read routes mount FLAT (paths carried in full) so they match audit-trail.md's
   // API table verbatim: /api/instance/audit and /api/workspaces/{workspaceId}/audit.
@@ -1608,6 +1619,8 @@ export function createApp(
   // `work-item/index.ts`'s file comment.
   const workItemApi = api.route("/", workItem);
   const workItemRelationApi = api.route("/", workItemRelation);
+  // P5 service catalogue, changes, freezes and releases: mounted at the root like work items.
+  api.route("/", serviceManagement);
   const workItemCommentVersionsApi = api.route("/", workItemCommentVersions);
   const approvalApi = api.route("/", approval);
   const intakeApi = api.route("/", intake);
@@ -1650,6 +1663,9 @@ export function createApp(
   // mount at the api root like `workItem`.
   const featureFlagApi = api.route("/", featureFlag);
   const automationApi = api.route("/", automation);
+  const agileApi = api.route("/", agile);
+  const pagesApi = api.route("/", pages);
+  const customerInvitationApi = api.route("/", customerInvitation);
   const apiKeyApi = api.route("/", apiKey);
   const webhookApi = api.route("/webhooks", webhook);
   const customFieldApi = api.route("/custom-fields", customField);
@@ -1658,6 +1674,9 @@ export function createApp(
     customFieldSections,
   );
   const teamApi = api.route("/teams", team);
+  const kbApi = api.route("/", kb);
+  // P5 reports and dashboards: /reports and /dashboards, staff only (customers receive 403).
+  const reportApi = api.route("/", report);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -1983,11 +2002,16 @@ export function createApp(
     instanceSettingsApi,
     featureFlagApi,
     automationApi,
+    agileApi,
+    pagesApi,
+    customerInvitationApi,
     apiKeyApi,
     webhookApi,
     customFieldApi,
     customFieldSectionApi,
     teamApi,
+    kbApi,
+    reportApi,
     scimProtocolApi,
     invitationApi,
     invitationPublicApi,
@@ -2007,6 +2031,7 @@ export function createApp(
     taskV2Api,
     taskRelationApi,
     timeEntryApi,
+    timeTrackingApi,
     userApi,
     viewApi,
     workflowApi,
@@ -2448,11 +2473,16 @@ const {
   instanceSettingsApi,
   featureFlagApi,
   automationApi,
+  agileApi,
+  pagesApi,
+  customerInvitationApi,
   apiKeyApi,
   webhookApi,
   customFieldApi,
   customFieldSectionApi,
   teamApi,
+  kbApi,
+  reportApi,
   scimProtocolApi,
   invitationApi,
   invitationPublicApi,
@@ -2472,6 +2502,7 @@ const {
   taskV2Api,
   taskRelationApi,
   timeEntryApi,
+  timeTrackingApi,
   userApi,
   viewApi,
   workflowApi,
@@ -2531,6 +2562,7 @@ export type AppType =
   | typeof cannedResponseApi
   | typeof commentApi
   | typeof timeEntryApi
+  | typeof timeTrackingApi
   | typeof labelApi
   | typeof notificationApi
   | typeof notificationPreferencesApi
@@ -2564,11 +2596,16 @@ export type AppType =
   | typeof instanceSettingsApi
   | typeof featureFlagApi
   | typeof automationApi
+  | typeof agileApi
+  | typeof pagesApi
+  | typeof customerInvitationApi
   | typeof apiKeyApi
   | typeof webhookApi
   | typeof customFieldApi
   | typeof customFieldSectionApi
   | typeof teamApi
+  | typeof kbApi
+  | typeof reportApi
   | typeof scimProtocolApi
   | typeof workflowApi
   | typeof workflowRuleApi

@@ -11,6 +11,7 @@ import {
   parseProjectBoardSearch,
   parseProjectRouterSearch,
   parseProjectViewSearchFromParams,
+  parseWorkItemGroup,
 } from "./project-board-search";
 import {
   resolveProjectBoardLayout,
@@ -322,9 +323,13 @@ describe("view grouping URL state (VW-13, VW-27, VW-1)", () => {
     expect(parseProjectBoardSearch({ group: "assignee" }).group).toBe(
       "assignee",
     );
-    expect(parseProjectBoardSearch({ group: "module" })).not.toHaveProperty(
+    expect(parseProjectBoardSearch({ group: "epic" })).not.toHaveProperty(
       "group",
     );
+    // VW-27: the timeline's module grouping is a valid project view group.
+    expect(parseProjectBoardSearch({ group: "module" }).group).toBe("module");
+    // VW-12/13: the board's own grouping stays state, assignee and priority.
+    expect(parseWorkItemGroup("module")).toBeUndefined();
     const routed = parseProjectRouterSearch("group=priority&layout=board");
     expect(parseProjectBoardSearch(routed)).toMatchObject({
       group: "priority",
@@ -336,5 +341,22 @@ describe("view grouping URL state (VW-13, VW-27, VW-1)", () => {
       layout: "board",
     });
     expect(params.get("group")).toBe("assignee");
+  });
+});
+
+describe("timeline dependency arrows URL state (VW-28)", () => {
+  it("accepts only deps=1, so a link cannot switch arrows on by accident", () => {
+    expect(parseProjectBoardSearch({ deps: "1" }).deps).toBe("1");
+    expect(parseProjectBoardSearch({ deps: "0" })).not.toHaveProperty("deps");
+    expect(parseProjectBoardSearch({ deps: "yes" })).not.toHaveProperty("deps");
+    expect(parseProjectBoardSearch({})).not.toHaveProperty("deps");
+  });
+
+  it("round-trips through the router codec", () => {
+    const routed = parseProjectRouterSearch("deps=1&group=module");
+    expect(parseProjectBoardSearch(routed)).toMatchObject({
+      deps: "1",
+      group: "module",
+    });
   });
 });

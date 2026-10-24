@@ -18,7 +18,12 @@ import { ChevronDown, ChevronRight, Info, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { TaskPageFrame } from "@/components/common/task-layout";
+import WorkItemChangeSection, {
+  useChangeSectionVisible,
+} from "@/components/service-management/change-section";
 import { TaskDetailContentPresentation } from "@/components/task/task-detail-presentation";
+import WorkItemTime from "@/components/time-tracking/work-item-time";
+import { useTimeTrackingFeatures } from "@/hooks/queries/time-tracking/use-time-tracking";
 import { formatDateTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { parseWorkItemApprovalRequestSearch } from "@/lib/work-item-approval-request-search";
@@ -86,6 +91,10 @@ function WorkItemDetail({
 }: WorkItemDetailProps) {
   const { t } = useTranslation();
   const isCompactPage = useIsMobile(1024);
+  // TC-6: the Time section exists only where feature.time_tracking is on for the item's project.
+  const timeTracking = useTimeTrackingFeatures(item?.projectId);
+  // P5: the service and change section exists only while the service catalogue is on.
+  const changeVisible = useChangeSectionVisible();
 
   if (isNotFound) {
     return (
@@ -168,11 +177,19 @@ function WorkItemDetail({
   // conflict notice carries over to the next one.
 
   const extensions = (
-    <WorkItemDetailSections workItemKey={workItemKey}>
+    <WorkItemDetailSections
+      workItemKey={workItemKey}
+      hidden={[
+        ...(timeTracking.time ? [] : (["time"] as const)),
+        ...(changeVisible ? [] : (["change"] as const)),
+      ]}
+    >
       {{
         attachments: <WorkItemAttachments workItemKey={workItemKey} />,
         sla: <WorkItemSla workItemKey={workItemKey} compact />,
         approvals: <WorkItemApprovals workItemKey={workItemKey} compact />,
+        time: <WorkItemTime item={item} />,
+        change: <WorkItemChangeSection workItemKey={workItemKey} />,
       }}
     </WorkItemDetailSections>
   );
@@ -344,9 +361,12 @@ function WorkItemDetail({
 function WorkItemDetailSections({
   workItemKey,
   children,
+  hidden = [],
 }: {
   workItemKey: string;
   children: Record<WorkItemDetailSection, ReactNode>;
+  /** Sections whose feature is off: neither the heading nor the content is offered. */
+  hidden?: readonly WorkItemDetailSection[];
 }) {
   const { t } = useTranslation();
   const location = useLocation();
@@ -377,38 +397,40 @@ function WorkItemDetailSections({
       className="flex flex-col gap-1"
       data-testid="work-item-detail-sections"
     >
-      {(["attachments", "sla", "approvals"] as const).map((section) => {
-        const expanded =
-          open.includes(section) ||
-          (section === "approvals" && hasApprovalRequest);
-        return (
-          <Collapsible
-            key={section}
-            open={expanded}
-            onOpenChange={(next) => setOpen(section, next)}
-          >
-            <CollapsibleTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-full justify-start gap-1.5 px-1 text-xs font-medium text-muted-foreground"
-                />
-              }
+      {(["attachments", "sla", "approvals", "time", "change"] as const)
+        .filter((section) => !hidden.includes(section))
+        .map((section) => {
+          const expanded =
+            open.includes(section) ||
+            (section === "approvals" && hasApprovalRequest);
+          return (
+            <Collapsible
+              key={section}
+              open={expanded}
+              onOpenChange={(next) => setOpen(section, next)}
             >
-              {expanded ? (
-                <ChevronDown className="size-3" />
-              ) : (
-                <ChevronRight className="size-3" />
-              )}
-              {t(`workItems:detail.${section}.heading`)}
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="py-2">{children[section]}</div>
-            </CollapsibleContent>
-          </Collapsible>
-        );
-      })}
+              <CollapsibleTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-full justify-start gap-1.5 px-1 text-xs font-medium text-muted-foreground"
+                  />
+                }
+              >
+                {expanded ? (
+                  <ChevronDown className="size-3" />
+                ) : (
+                  <ChevronRight className="size-3" />
+                )}
+                {t(`workItems:detail.${section}.heading`)}
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="py-2">{children[section]}</div>
+              </CollapsibleContent>
+            </Collapsible>
+          );
+        })}
     </div>
   );
 }

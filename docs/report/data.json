@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-24T02:08:53.514Z",
+	"generated": "2026-10-24T14:55:38.786882Z",
 	"source": "docs/requirements-index.json + Opus source audit (no browser verification implied)",
 	"phases": [
 		{
@@ -240,44 +240,56 @@
 			"name": "Planning & knowledge",
 			"total": 91,
 			"states": {
-				"implemented_tested": 0,
-				"implemented_untested": 0,
-				"partial": 13,
-				"missing": 78,
+				"implemented_tested": 62,
+				"implemented_untested": 3,
+				"partial": 22,
+				"missing": 4,
 				"external_blocked": 0
 			},
 			"unaudited": 0,
 			"gaps": [
-				"No P5 tables exist: none of cycle, cycle_snapshot, module, estimate, estimate_point, time_activity, running_timer, hourly_rate, cost_type, cost_entry, budget, available_hours, metric_snapshot, dashboard, dashboard_widget, kb_*, deflection_event, service, service_dependency, change_detail, change_service, change_freeze, release in apps/api/drizzle (latest 0147)",
-				"Only scaffolding exists: P5 capabilities (packages/permissions/src/capabilities.ts) and default-off feature flags (packages/permissions/src/features.ts) plus nullable work_item.cycle_id/module_id/estimate_point_id/service_id and checklist_item.release_id columns; none lifts a requirement above partial",
-				"Time tracking is legacy Kaneo time_entry (task_id/user_id, seconds) with no own/any policy, activity, billable, timer table or UI; name collides with data-model §9 time_entry (TC-1..7)",
-				"No reporting engine: no metrics-snapshot job, report routes, export job, chart component or dashboards; RP-18 rests on role grants only (RP-1..18)",
-				"No knowledge base or deflection on agent, portal request form or triage (KB-1..17)",
-				"Change management: CAB gating and risk/rollback guards exist in the domain and are tested, but runtime passes changeRiskLevel null, has no change satellite store, seeded workflow has no CAB transition, and there are no freezes, services or releases (CH-1..6, SVC-1..5, REL-1..5)",
-				"No P5 web screens: apps/web/src/routes and apps/web/src/lib/routes.ts have no cycles, modules, timesheet, budget, rates, reports, dashboard, kb or service-management paths (docs/screens.md P5 rows all open)",
-				"Pages has no requirement ids and no behavior spec (docs/features.md); feature.pages flag exists only"
+				"Evidence: nothing in P5 is browser-verified (scripted sign-in blocked) and none of the 25 P5 integration suites was run by this audit; 69 implemented_tested items rest on unrun integration tests plus green unit runs. All P5 code is uncommitted.",
+				"Cost tracking: no cost types or cost entries (TC-12, TC-13, TC-14 missing), so budget actuals are time-only (TC-16), committed is always null (TC-17) and 75/90% thresholds raise no notification (TC-18).",
+				"Capacity: no available_hours (TC-20 missing); utilisation and the capacity report use team capacity_days_per_week instead (TC-21, TC-22).",
+				"Reports: no metric_snapshot or hourly job, every period is live (RP-9); no export for tier 3 custom reports or widgets and no queued large-export job (RP-10); drill-down exists on only 12 of 24 tier 1 reports (RP-12).",
+				"Knowledge base authoring: callouts and work item references cannot be inserted in the editor (KB-5, KB-6); owner not settable in the editor (KB-7); matching is a LIKE scan, not a full-text index (KB-9); related and most-viewed/recent ordering untested (KB-15, KB-16).",
+				"Change and release: CAB gating is an opt-in template, not the default (CH-2); low-risk pre-approval edge is not generated (CH-3); releases flagged for the portal have no portal surface (REL-5).",
+				"Velocity counts only cycles closed with the completion action; cycles that end by date have no snapshot and no daily snapshot job exists (CY-9).",
+				"Unindexed requirements: PG-1..8, CP-20..29 and IP-35 have contract ids but no row in docs/requirements-index.json, so no phase counts them; PG-7 undelete has no UI and CP-22/CP-26 invitation limits are hard-coded rather than instance configuration."
 			],
 			"actions": [
-				"Now (only lane allowed before the P4 review passes): write the missing contracts — Pages behavior; customer invitations CP-11/12/13; typed-domain SSO CP-17/18, IP-9/IP-29 — for Thomas's approval",
-				"After P4 review passes: coordinator lands P5 schema wave 0 in reserved migrations 0148-0152 on the scratch database only, renaming drizzle-kit's generated prefix (next idx is 146) to the reserved number",
-				"Pending Thomas: rename legacy Kaneo time_entry to task_time_entry (0066 task_activity precedent) and create canonical work-item time_entry (integer minutes, activity, billable, person, date)",
-				"After P4 review passes: cycles/modules/estimates API with overlap refusal, date-derived status, completion policy and estimate-change preview, plus the contract's unit tests",
-				"After P4 review passes: time entries v2 — orOwner(person_id) policy, backdate window, running_timer start/stop with 12 h cap and timer-sweeper, task Time section and Kaneo table-based weekly timesheet",
-				"After P4 review passes: report core envelope (scope, window, as-of, null-with-sample, buckets, empty explanation), reach filter, customer-403 tests on every /api/reports route, then tier-1 reports over existing SLA/throughput/ageing/workload/CSAT/escalation data",
-				"After P4 review passes: KB article/version/category/feedback API with customer_visible+published double gate and portal isolation tests; deflection on portal request form and triage",
-				"After P4 review passes: service catalogue + change_detail satellite feeding changeRiskLevel and change.rollback_plan into transition guards; change_freeze with audited elevated override; change calendar on Kaneo calendar"
+				"Run the 25 tests/api-integration/p5-*.test.ts on a dedicated scratch _test database (never taskdesk_browser_journey_1022_test) and cite the run here before the P5 phase review.",
+				"Browser-verify P5 screens on persisted data once scripted sign-in is unblocked: cycles (drag from backlog, completion dialog), modules, estimates preview, timesheet/timer reload, budget, rates, reports and dashboards (drag/resize), KB editor and portal deflection, services, changes, freeze override, calendar, releases.",
+				"Build cost types and cost entries (TC-12..14) and then committed (TC-17) and the 75/90% notification (TC-18), or record an owner deferral.",
+				"Decide available_hours (TC-20..22): build per-person capacity or record team capacity as the accepted substitute.",
+				"Reports: decide metric_snapshot (RP-9) or record live-only as an owner decision; add drillItems to the 12 reports without it (RP-12); add export for custom reports and widgets (RP-10).",
+				"KB: add callout and work-item-reference insertion and an owner picker to the editor using Kaneo/packages/ui Tiptap pieces (KB-5..7); add tests for related selection and popular/recent ordering (KB-15, KB-16).",
+				"Service management: add a portal release-notes surface (REL-5); decide whether CAB becomes default and how the low-risk pre-approval edge is authored (CH-2, CH-3); snapshot cycles that end by date for velocity (CY-9)."
 			],
 			"review": {
-				"verdict": "not run",
-				"findings": 0,
-				"note": "Opus review runs at phase end"
+				"verdict": "in progress",
+				"findings": 33,
+				"note": "Opus rounds 1-4 each failed (R1: 2 medium + 5 low; R2: 1 medium + 6 low; R3: 2 medium + 7 low; R4: 5 medium + 7 low); every medium found has been fixed and re-tested. Round 5 (owner-approved extra round) is running. Counts are code audit + tests; no screen is browser-verified. Not committed yet."
 			},
 			"gates": {
-				"pass": 0,
-				"fail": 0,
-				"not_run": 0,
-				"note": "no gates run yet"
-			}
+				"pass": 11,
+				"fail": 2,
+				"not_run": 2,
+				"note": "pass: API unit 1822, web unit 2609, permissions 115, typecheck api+web, web build, check:policy/events/ui:raw-elements/inventory/env, i18n, drizzle drift. Lane integration suites pass (agile 214, time/holds 166, invite 78, pages/features 157, service 58, kb 33, reports 51). fail: check:tokens (fails at HEAD), 3 stale ci-script tests. not run: full integration on final tree (running), browser checks, Trivy"
+			},
+			"carry": [
+				"Cost entries and budget notifications (TC-12/13/14/18), per-person available hours (TC-20..22)",
+				"Report snapshots RP-9; async CSV for large exports RP-10; drill-down on 12 reports RP-12",
+				"KB editor callouts, work-item references, owner change; full-text index (KB-5/6/7/9)",
+				"CAB opt-in only (CH-2/3), portal release page (REL-5), service calendar not used by SLA",
+				"Typed-domain SSO (CP-17/18/27-29, IP-9/29) not built; invitation lifetime/limits hard-coded (CP-22/26)",
+				"Invitation sign-up needs the customer password provider enabled",
+				"PG-1..8, CP-20..29, IP-35 not in requirements-index.json",
+				"Scope-event timestamp ordering under racing cycle adds (low)",
+				"Same-person page move vs approval of its delete can deadlock (500)",
+				"webhook/automation created_by FKs block person deletion (P4)",
+				"Edited-in-place migrations 0148-0154: check any DB that ran earlier versions"
+			]
 		}
 	],
 	"decisions": [
@@ -286,5 +298,5 @@
 		"Pending: migration 0145 rewrites role data and 0138 un-flags duplicate CAB teams when applied to your live database — tell me when to migrate it.",
 		"Pending: restart native Postgres on 62870 (all checks use scratch 62871)."
 	],
-	"next": "P4 committed (c02a0892b) and pushed. P5 wave 0 and lanes A-F are next; browser verification of P4 still needs a sign-in."
+	"next": "P4 committed and pushed. P5 built; Opus round 5 and the full integration run are in flight; commit and push P5 only if both pass. Browser verification of all P4 and P5 screens still needs a sign-in."
 }

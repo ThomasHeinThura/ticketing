@@ -103,7 +103,7 @@ async function seed(world: ProjectWorld): Promise<Ids> {
   );
   const timeEntry = requireRow(
     await db
-      .insert(schema.timeEntryTable)
+      .insert(schema.taskTimeEntryTable)
       .values({
         taskId: seeded.taskId,
         userId: world.projectAdmin.user.id,

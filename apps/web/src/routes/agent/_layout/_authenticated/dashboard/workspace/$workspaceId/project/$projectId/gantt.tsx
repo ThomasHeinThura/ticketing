@@ -1,7 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Button, useIsMobile } from "@taskdesk/ui";
+import { Button, Toggle, useIsMobile } from "@taskdesk/ui";
 import {
   addDays,
+  differenceInCalendarDays,
   eachDayOfInterval,
   endOfWeek,
   format,
@@ -12,7 +14,7 @@ import {
   startOfWeek,
   subDays,
 } from "date-fns";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Workflow } from "lucide-react";
 import {
   lazy,
   Suspense,
@@ -34,6 +36,12 @@ import GroupControl from "@/components/common/group-control";
 import ProjectLayout from "@/components/common/project-layout";
 import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
 import { CanonicalGanttTaskBar } from "@/components/gantt/canonical-gantt-task-bar";
+import {
+  type ArrowPath,
+  type BarBox,
+  buildArrowPaths,
+  GanttDependencyArrows,
+} from "@/components/gantt/gantt-dependency-arrows";
 import { buildGanttRows } from "@/components/gantt/gantt-groups";
 import PageTitle from "@/components/page-title";
 import {
@@ -42,6 +50,8 @@ import {
   useScheduleSelection,
 } from "@/components/work-item/work-item-calendar-selection";
 import WorkItemSidePane from "@/components/work-item/work-item-side-pane";
+import { getDependencies, getModules } from "@/fetchers/agile";
+import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
 import { useScheduleProject } from "@/hooks/queries/work-item/use-schedule-project";
 import { cn } from "@/lib/cn";
 import { filterProjectTasks } from "@/lib/filter-project-tasks";
@@ -169,12 +179,39 @@ function RouteComponent() {
     [filters, parsedTasks, project?.slug, searchQuery, weekStartsOn],
   );
 
-  // `VW-27`: group the bars by assignee (module and epic need P5 data). It lives in the URL.
-  const group = search.group === "assignee" ? "assignee" : "none";
-  const ganttRows = useMemo(
-    () => buildGanttRows(scheduledTasks, group),
-    [scheduledTasks, group],
+  // `VW-27`: group the bars by assignee, or by module when `feature.modules` is on. It lives in
+  // the URL; a `group=module` link on a project without modules shows no grouping.
+  const { features } = useAgileFeatures(projectId);
+  const group =
+    search.group === "assignee"
+      ? "assignee"
+      : search.group === "module" && features.modules
+        ? "module"
+        : "none";
+  const modulesQuery = useQuery({
+    queryKey: ["agile", "modules", project?.slug],
+    queryFn: () => getModules(project?.slug as string),
+    enabled: group === "module" && Boolean(project?.slug),
+    retry: false,
+  });
+  const moduleNames = useMemo(
+    () =>
+      new Map((modulesQuery.data?.data ?? []).map((mod) => [mod.id, mod.name])),
+    [modulesQuery.data],
   );
+  const ganttRows = useMemo(
+    () => buildGanttRows(scheduledTasks, group, moduleNames),
+    [scheduledTasks, group, moduleNames],
+  );
+
+  // `VW-28`: dependency arrows are toggleable and off by default (`deps=1` in the URL).
+  const showDependencies = search.deps === "1";
+  const dependencies = useQuery({
+    queryKey: ["agile", "dependencies", project?.slug],
+    queryFn: () => getDependencies(project?.slug as string),
+    enabled: showDependencies && Boolean(project?.slug),
+    retry: false,
+  });
 
   const hasFilterChips = buildScheduleFilterChips(search).length > 0;
   const loadStatus = scheduleViewStatus({
@@ -304,6 +341,93 @@ function RouteComponent() {
     return () => observer.disconnect();
   }, [timeline]);
 
+  // `VW-28`: arrows are measured from the rendered rows (rows vary in height) and the day grid, so
+  // they stay attached to the bars after a resize, a regroup or a filter.
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const [arrowLayout, setArrowLayout] = useState<{
+    paths: ArrowPath[];
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const dependencyEdges = dependencies.data;
+  // `scheduledTasks` is a new array on most renders, so the effect reads it through a ref and
+  // re-measures on a signature of the visible rows instead: depending on the array itself would
+  // set state on every render.
+  const scheduledTasksRef = useRef(scheduledTasks);
+  scheduledTasksRef.current = scheduledTasks;
+  const rowsSignature = ganttRows
+    .map((row) => (row.kind === "task" ? row.task.id : row.id))
+    .join("|");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: rowsSignature, showTaskRail and isMobile change the row layout the measurement reads.
+  useLayoutEffect(() => {
+    const container = rowsRef.current;
+    const track = timelineTrackRef.current;
+    if (
+      !showDependencies ||
+      !timeline ||
+      !dependencyEdges ||
+      !container ||
+      !track
+    ) {
+      setArrowLayout(null);
+      return;
+    }
+    const dates = new Map(
+      scheduledTasksRef.current.map((task) => [
+        task.id,
+        { start: task.scheduleStart, end: task.scheduleEnd },
+      ]),
+    );
+    const measure = () => {
+      const bars = new Map<string, BarBox>();
+      for (const row of container.querySelectorAll<HTMLElement>(
+        "[data-gantt-row]",
+      )) {
+        const key = row.dataset.ganttRow;
+        const range = key ? dates.get(key) : undefined;
+        if (!key || !range) continue;
+        const startIndex = differenceInCalendarDays(
+          range.start,
+          timeline.rangeStart,
+        );
+        const endIndex = differenceInCalendarDays(
+          range.end,
+          timeline.rangeStart,
+        );
+        bars.set(key, {
+          left: startIndex * pixelsPerDay + 4,
+          right: (endIndex + 1) * pixelsPerDay - 4,
+          top: row.offsetTop,
+          bottom: row.offsetTop + row.offsetHeight,
+        });
+      }
+      const next = {
+        paths: buildArrowPaths(dependencyEdges, bars),
+        left: track.offsetLeft,
+        width: track.offsetWidth,
+        height: container.offsetHeight,
+      };
+      setArrowLayout((previous) =>
+        previous && JSON.stringify(previous) === JSON.stringify(next)
+          ? previous
+          : next,
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [
+    showDependencies,
+    timeline,
+    dependencyEdges,
+    rowsSignature,
+    pixelsPerDay,
+    showTaskRail,
+    isMobile,
+  ]);
+
   // Center the view on today the first time it becomes available, so opening
   // the Gantt chart on a long-running project doesn't drop you at the start
   // of the timeline with today scrolled off-screen. `projectId` is listed as
@@ -355,15 +479,32 @@ function RouteComponent() {
             />
 
             <GroupControl
-              group={group === "assignee" ? "assignee" : "state"}
-              groups={["state", "assignee"]}
+              group={group === "none" ? "state" : group}
+              groups={
+                features.modules
+                  ? (["state", "assignee", "module"] as const)
+                  : (["state", "assignee"] as const)
+              }
               defaultLabel={t("tasks:group.none")}
               onGroupChange={(next) =>
                 updateViewState({
-                  group: next === "assignee" ? next : undefined,
+                  group: next === "state" ? undefined : next,
                 })
               }
             />
+
+            <Toggle
+              size="sm"
+              variant="outline"
+              pressed={showDependencies}
+              onPressedChange={(pressed) =>
+                updateViewState({ deps: pressed ? "1" : undefined })
+              }
+              aria-label={t("tasks:gantt.dependencies.toggle")}
+            >
+              <Workflow className="size-3.5" aria-hidden="true" />
+              {t("tasks:gantt.dependencies.toggle")}
+            </Toggle>
 
             <ScheduleSelectionToggle
               workspaceId={workspaceId}
@@ -522,7 +663,20 @@ function RouteComponent() {
                   ))}
                 </div>
 
-                <div className="relative z-10 flex flex-col">
+                <div ref={rowsRef} className="relative z-10 flex flex-col">
+                  {arrowLayout ? (
+                    <div
+                      className="pointer-events-none absolute top-0"
+                      style={{ left: arrowLayout.left }}
+                    >
+                      <GanttDependencyArrows
+                        paths={arrowLayout.paths}
+                        width={arrowLayout.width}
+                        height={arrowLayout.height}
+                        label={t("tasks:gantt.dependencies.label")}
+                      />
+                    </div>
+                  ) : null}
                   {ganttRows.map((row) => {
                     if (row.kind === "group") {
                       return (
@@ -541,7 +695,12 @@ function RouteComponent() {
                           {showTaskRail ? (
                             <div className="sticky left-0 z-[11] flex items-center gap-2 border-r border-border bg-muted px-2 py-1.5 sm:px-3">
                               <h2 className="truncate text-[11px] font-medium uppercase tracking-wide text-foreground">
-                                {row.name ?? t("tasks:gantt.unassigned")}
+                                {row.name ??
+                                  t(
+                                    row.by === "module"
+                                      ? "tasks:gantt.noModule"
+                                      : "tasks:gantt.unassigned",
+                                  )}
                               </h2>
                               <span className="rounded-md bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                                 {row.count}
@@ -561,6 +720,7 @@ function RouteComponent() {
                     return (
                       <div
                         key={task.id}
+                        data-gantt-row={task.id}
                         className="grid items-stretch border-b border-border/70"
                         style={{
                           gridTemplateColumns: showTaskRail

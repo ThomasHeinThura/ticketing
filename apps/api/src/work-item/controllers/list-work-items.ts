@@ -109,6 +109,9 @@ async function buildFilterConditions(
     );
   }
 
+  if (query.cycle) conditions.push(eq(workItemTable.cycleId, query.cycle));
+  if (query.module) conditions.push(eq(workItemTable.moduleId, query.module));
+
   if (query.assignee) {
     if (query.assignee === "none") {
       conditions.push(isNull(workItemTable.assigneeId));

@@ -38,6 +38,7 @@ import {
 } from "@/lib/work-item-kaneo-view";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { WorkItemRow } from "@/types/work-item";
+import ColumnCountBadge from "./column-count-badge";
 import useWorkItemDragDrop from "./use-work-item-drag-drop";
 import { WorkItemBlockedBadge } from "./work-item-blocked-badge";
 import WorkItemContextMenu from "./work-item-context-menu";
@@ -76,8 +77,11 @@ export default function WorkItemBoard({
   onOpenItem,
   sort = "position",
   dir = "asc",
+  wipLimits,
 }: {
   projectId: string;
+  /** `VW-12`: optional work-in-progress limit per state id. */
+  wipLimits?: ReadonlyMap<string, number>;
   /** Must match the server query: non-rank sorts retain its cursor order. */
   sort?: WorkItemSortField;
   dir?: WorkItemSortDirection;
@@ -227,16 +231,11 @@ export default function WorkItemBoard({
                           >
                             {state.name}
                           </h2>
-                          <span
-                            role="img"
-                            className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
-                            aria-label={t("workItems:board.columnCount", {
-                              total: stateItems.length,
-                              state: state.name,
-                            })}
-                          >
-                            {stateItems.length}
-                          </span>
+                          <ColumnCountBadge
+                            total={stateItems.length}
+                            limit={wipLimits?.get(state.id)}
+                            state={state.name}
+                          />
                         </div>
                         {canSelect && selectable.length > 0 && (
                           <Checkbox

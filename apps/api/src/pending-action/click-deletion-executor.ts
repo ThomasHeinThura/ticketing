@@ -41,6 +41,8 @@ export type RegisteredDeletionLoaded = {
   name: string;
   /** Request-time summary for the approval screen (names only; no secrets). */
   summary: Record<string, unknown>;
+  /** Row facts for the route policy's `orOwner` branch (a delete-own capability needs the row's person). */
+  rowFacts?: { personId?: string | null; createdBy?: string | null };
   version: string;
 };
 
@@ -72,6 +74,16 @@ export type RegisteredDeletionTarget = {
     tx: PendingActionTransaction,
     id: string,
   ) => Promise<RegisteredDeletionLoaded | undefined>;
+  /**
+   * Extra reach a target needs beyond its route policy (customer invitations: the caller must
+   * reach the organisation). False answers like a missing target (404), at request and at
+   * execution.
+   */
+  callerReaches?: (
+    tx: PendingActionTransaction,
+    loaded: RegisteredDeletionLoaded,
+    identity: ResolvedIdentity,
+  ) => Promise<boolean>;
   /** Domain refusals (e.g. a non-empty column) raised at request time and again at execution. */
   assertDeletable?: (
     tx: PendingActionTransaction,

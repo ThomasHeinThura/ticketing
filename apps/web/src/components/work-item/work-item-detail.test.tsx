@@ -12,12 +12,24 @@ const locationState = vi.hoisted(() => ({
   hash: "",
 }));
 const navigate = vi.hoisted(() => vi.fn());
+const timeFeature = vi.hoisted(() => ({ on: false }));
+vi.mock("@/hooks/queries/time-tracking/use-time-tracking", () => ({
+  useTimeTrackingFeatures: () => ({
+    time: timeFeature.on,
+    cost: false,
+    isLoading: false,
+  }),
+}));
+vi.mock("@/components/time-tracking/work-item-time", () => ({
+  default: () => <div data-testid="time-section" />,
+}));
 vi.mock("@taskdesk/ui", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@taskdesk/ui")>()),
   useIsMobile: () => device.mobile,
 }));
 
 afterEach(() => {
+  timeFeature.on = false;
   device.mobile = false;
   locationState.search = {};
   locationState.searchStr = "";
@@ -78,6 +90,10 @@ vi.mock("./work-item-sla", () => ({
   default: () => <div data-testid="sla-section" />,
 }));
 vi.mock("./work-item-attachments", () => ({ default: () => null }));
+vi.mock("@/components/service-management/change-section", () => ({
+  default: () => null,
+  useChangeSectionVisible: () => false,
+}));
 vi.mock("./work-item-audit-history", () => ({ default: () => null }));
 vi.mock("./work-item-activity", () => ({
   default: () => <div data-testid="work-item-activity" />,
@@ -245,6 +261,26 @@ describe("WorkItemDetail", () => {
     });
     expect(url.hash).toBe("#activity");
     expect(call.replace).toBe(true);
+  });
+
+  it("offers the Time section only where feature.time_tracking is on, collapsed until opened", () => {
+    render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
+    expect(
+      screen.queryByRole("button", { name: "workItems:detail.time.heading" }),
+    ).toBeNull();
+    cleanup();
+    timeFeature.on = true;
+    render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
+    expect(screen.queryByTestId("time-section")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:detail.time.heading" }),
+    );
+    const call = navigate.mock.calls.at(-1)?.[0] as { href: string };
+    const url = new URL(call.href, "https://taskdesk.example");
+    expect(JSON.parse(url.searchParams.get("sections") ?? "null")).toEqual({
+      itemKey: "PROJ-123",
+      open: ["time"],
+    });
   });
 
   it("uses kaneo's compact properties strip in the side pane", () => {

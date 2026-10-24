@@ -38,6 +38,10 @@ vi.mock("./work-item-relations", () => ({ default: () => null }));
 vi.mock("./work-item-sla", () => ({ default: () => null }));
 vi.mock("./work-item-approvals", () => ({ default: () => null }));
 vi.mock("./work-item-attachments", () => ({ default: () => null }));
+vi.mock("@/components/service-management/change-section", () => ({
+  default: () => null,
+  useChangeSectionVisible: () => false,
+}));
 vi.mock("./work-item-activity", () => ({ default: () => null }));
 vi.mock("./work-item-properties", () => ({ default: () => null }));
 /** The editor double reports typing through `onDocumentChange`, as kaneo's editor does. */

@@ -32,6 +32,7 @@ import {
   type PolicyRegistry,
 } from "@taskdesk/permissions";
 import { activityPolicies } from "./activity/policy";
+import { agilePolicies } from "./agile/policy";
 import { apiKeyPolicies } from "./api-key/policy";
 import { approvalPolicies } from "./approval/policy";
 import { assetPolicies } from "./asset/policy";
@@ -45,26 +46,32 @@ import { columnPolicies } from "./column/policy";
 import { commentPolicies } from "./comment/policy";
 import { configPolicies } from "./config/policy";
 import { customFieldPolicies } from "./custom-field/policy";
+import { customerInvitationPolicies } from "./customer-invitation/policy";
 import { externalLinkPolicies } from "./external-link/policy";
 import { featureFlagPolicies } from "./feature-flag/policy";
 import { instancePolicies } from "./instance/policy";
 import { intakePolicies } from "./intake/policy";
 import { invitationPolicies } from "./invitation/policy";
+import { kbPolicies } from "./kb/policy";
 import { labelPolicies } from "./label/policy";
 import { notificationPolicies } from "./notification/policy";
 import { preferenceHandoffPolicies } from "./notification/preference-handoff-policy";
 import { notificationPreferencesPolicies } from "./notification-preferences/policy";
 import { notificationProviderPolicies } from "./notification-provider/policy";
 import { oauthPolicies } from "./oauth/policy";
+import { pagesPolicies } from "./pages/policy";
 import { pendingActionPolicies } from "./pending-action/policy";
 import { projectPolicies } from "./project/policy";
+import { reportPolicies } from "./report/policy";
 import { searchPolicies } from "./search/policy";
 import { serviceCalendarPolicies } from "./service-calendar/policy";
+import { serviceManagementPolicies } from "./service-management/policy";
 import { slaPolicyPolicies } from "./sla-policy/policy";
 import { taskPolicies } from "./task/policy";
 import { taskRelationPolicies } from "./task-relation/policy";
 import { teamPolicies } from "./team/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
+import { timeTrackingPolicies } from "./time-tracking/policy";
 import { userPolicies } from "./user/policy";
 import { userPreferencePolicies } from "./user-preference/policy";
 import { viewPolicies } from "./view/policy";
@@ -334,7 +341,15 @@ export const POLICY_SOURCES = [
     name: "apps/api/src/work-item-relation/policy.ts",
     policies: workItemRelationPolicies,
   },
+  {
+    name: "apps/api/src/service-management/policy.ts",
+    policies: serviceManagementPolicies,
+  },
   { name: "apps/api/src/time-entry/policy.ts", policies: timeEntryPolicies },
+  {
+    name: "apps/api/src/time-tracking/policy.ts",
+    policies: timeTrackingPolicies,
+  },
   {
     name: "apps/api/src/capabilities/policy.ts",
     policies: capabilitiesPolicies,
@@ -413,7 +428,15 @@ export const POLICY_SOURCES = [
     policies: customFieldPolicies,
   },
   { name: "apps/api/src/team/policy.ts", policies: teamPolicies },
+  { name: "apps/api/src/kb/policy.ts", policies: kbPolicies },
+  { name: "apps/api/src/report/policy.ts", policies: reportPolicies },
   { name: "apps/api/src/webhook/policy.ts", policies: webhookPolicies },
+  { name: "apps/api/src/agile/policy.ts", policies: agilePolicies },
+  { name: "apps/api/src/pages/policy.ts", policies: pagesPolicies },
+  {
+    name: "apps/api/src/customer-invitation/policy.ts",
+    policies: customerInvitationPolicies,
+  },
   { name: "apps/api/src/automation/policy.ts", policies: automationPolicies },
   {
     name: "apps/api/src/feature-flag/policy.ts",

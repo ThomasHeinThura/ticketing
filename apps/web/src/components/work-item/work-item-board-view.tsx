@@ -2,6 +2,8 @@ import { Alert, AlertDescription } from "@taskdesk/ui";
 import { lazy, Suspense, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
+import type { WorkItemAgileScope } from "@/fetchers/work-item/get-work-items";
+import useWipLimits from "@/hooks/queries/agile/use-wip-limits";
 import useGetProjectStates from "@/hooks/queries/project/use-get-project-states";
 import useGetBoardWorkItems from "@/hooks/queries/work-item/use-get-board-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
@@ -39,8 +41,11 @@ export default function WorkItemBoardView({
   onSelectionChange,
   onPruneSelection,
   onOpenItem,
+  scope,
 }: {
   project: { id: string; slug?: string };
+  /** P5 agile: show only the members of one cycle or module. */
+  scope?: WorkItemAgileScope;
   workspaceId?: string;
   filter?: string;
   sort?: WorkItemSortField;
@@ -85,8 +90,10 @@ export default function WorkItemBoardView({
     sort: effectiveSort,
     dir: effectiveDir,
     realtimeStatus: status,
+    scope,
   });
   const states = useGetProjectStates(project.id);
+  const wipLimits = useWipLimits(project.slug);
   const grouped = group === "assignee" || group === "priority";
   const workItems = useMemo(
     () => items.data?.pages.flatMap((page) => page.items),
@@ -158,6 +165,7 @@ export default function WorkItemBoardView({
           projectId={project.id}
           sort={effectiveSort}
           dir={effectiveDir}
+          wipLimits={wipLimits.limits}
           states={states.data}
           statesError={states.isError}
           workItems={workItems}

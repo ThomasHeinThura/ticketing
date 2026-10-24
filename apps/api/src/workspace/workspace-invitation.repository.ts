@@ -58,6 +58,7 @@ export async function findPendingWorkspaceInvitation(
     .where(
       and(
         eq(schema.invitationTable.workspaceId, workspaceId),
+        eq(schema.invitationTable.scope, "staff"),
         eq(schema.invitationTable.email, email),
         eq(schema.invitationTable.status, "pending"),
         gt(schema.invitationTable.expiresAt, now),
@@ -77,6 +78,7 @@ export async function countPendingWorkspaceInvitations(
     .where(
       and(
         eq(schema.invitationTable.workspaceId, workspaceId),
+        eq(schema.invitationTable.scope, "staff"),
         eq(schema.invitationTable.status, "pending"),
       ),
     );

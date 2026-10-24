@@ -12,8 +12,11 @@ import { Route as rootRouteImport } from './routes/portal/__root'
 import { Route as IndexRouteImport } from './routes/portal/index'
 import { Route as ApprovalsRouteImport } from './routes/portal/approvals'
 import { Route as CatalogueRouteImport } from './routes/portal/catalogue'
+import { Route as KbRouteImport } from './routes/portal/kb'
 import { Route as RequestsRouteImport } from './routes/portal/requests'
 import { Route as SignInRouteImport } from './routes/portal/sign-in'
+import { Route as InviteIdRouteImport } from './routes/portal/invite/$id'
+import { Route as KbIdRouteImport } from './routes/portal/kb_.$id'
 import { Route as PortalRequestsRouteImport } from './routes/portal/portal/requests'
 import { Route as PortalSignInRouteImport } from './routes/portal/portal/sign-in'
 import { Route as SubmissionsRefRouteImport } from './routes/portal/submissions/$ref'
@@ -33,6 +36,11 @@ const CatalogueRoute = CatalogueRouteImport.update({
   path: '/catalogue',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KbRoute = KbRouteImport.update({
+  id: '/kb',
+  path: '/kb',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RequestsRoute = RequestsRouteImport.update({
   id: '/requests',
   path: '/requests',
@@ -41,6 +49,16 @@ const RequestsRoute = RequestsRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteIdRoute = InviteIdRouteImport.update({
+  id: '/invite/$id',
+  path: '/invite/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KbIdRoute = KbIdRouteImport.update({
+  id: '/kb_/$id',
+  path: '/kb/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalRequestsRoute = PortalRequestsRouteImport.update({
@@ -63,8 +81,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
+  '/kb': typeof KbRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/invite/$id': typeof InviteIdRoute
+  '/kb/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
@@ -73,8 +94,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
+  '/kb': typeof KbRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/invite/$id': typeof InviteIdRoute
+  '/kb/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
@@ -84,8 +108,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
+  '/kb': typeof KbRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/invite/$id': typeof InviteIdRoute
+  '/kb_/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
@@ -96,8 +123,11 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/catalogue'
+    | '/kb'
     | '/requests'
     | '/sign-in'
+    | '/invite/$id'
+    | '/kb/$id'
     | '/portal/requests'
     | '/portal/sign-in'
     | '/submissions/$ref'
@@ -106,8 +136,11 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/catalogue'
+    | '/kb'
     | '/requests'
     | '/sign-in'
+    | '/invite/$id'
+    | '/kb/$id'
     | '/portal/requests'
     | '/portal/sign-in'
     | '/submissions/$ref'
@@ -116,8 +149,11 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/catalogue'
+    | '/kb'
     | '/requests'
     | '/sign-in'
+    | '/invite/$id'
+    | '/kb_/$id'
     | '/portal/requests'
     | '/portal/sign-in'
     | '/submissions/$ref'
@@ -127,8 +163,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApprovalsRoute: typeof ApprovalsRoute
   CatalogueRoute: typeof CatalogueRoute
+  KbRoute: typeof KbRoute
   RequestsRoute: typeof RequestsRoute
   SignInRoute: typeof SignInRoute
+  InviteIdRoute: typeof InviteIdRoute
+  KbIdRoute: typeof KbIdRoute
   PortalRequestsRoute: typeof PortalRequestsRoute
   PortalSignInRoute: typeof PortalSignInRoute
   SubmissionsRefRoute: typeof SubmissionsRefRoute
@@ -157,6 +196,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatalogueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/kb': {
+      id: '/kb'
+      path: '/kb'
+      fullPath: '/kb'
+      preLoaderRoute: typeof KbRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/requests': {
       id: '/requests'
       path: '/requests'
@@ -169,6 +215,20 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite/$id': {
+      id: '/invite/$id'
+      path: '/invite/$id'
+      fullPath: '/invite/$id'
+      preLoaderRoute: typeof InviteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kb_/$id': {
+      id: '/kb_/$id'
+      path: '/kb/$id'
+      fullPath: '/kb/$id'
+      preLoaderRoute: typeof KbIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal/requests': {
@@ -199,8 +259,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApprovalsRoute: ApprovalsRoute,
   CatalogueRoute: CatalogueRoute,
+  KbRoute: KbRoute,
   RequestsRoute: RequestsRoute,
   SignInRoute: SignInRoute,
+  InviteIdRoute: InviteIdRoute,
+  KbIdRoute: KbIdRoute,
   PortalRequestsRoute: PortalRequestsRoute,
   PortalSignInRoute: PortalSignInRoute,
   SubmissionsRefRoute: SubmissionsRefRoute,

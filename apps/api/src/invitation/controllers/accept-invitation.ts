@@ -1,3 +1,4 @@
+import { auditWrongPortalAccept } from "../../customer-invitation/service";
 import db from "../../database";
 import { resolveIdentity } from "../../permissions/resolve-identity";
 import { WorkspaceRoleNotFoundError } from "../../workspace/controllers/workspace-membership-errors";
@@ -78,6 +79,8 @@ async function acceptInvitation(
 
   const pre = await findInvitationWorkspaceId(identity, invitationId);
   if (!pre) {
+    // CP-25: a customer-scope id on the staff route is a wrong-portal refusal; record it.
+    await auditWrongPortalAccept(callerId, invitationId);
     const recipientMatch = await findInvitationRecipientMatch(
       identity,
       invitationId,

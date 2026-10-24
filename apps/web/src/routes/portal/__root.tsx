@@ -11,8 +11,12 @@ import { useTranslation } from "react-i18next";
 import PortalLayout from "@/components/portal/portal-layout";
 import { portalAuthClient } from "@/lib/portal-auth-client";
 
+// The sign-in and accept-invitation pages are their own frame and are reachable without a session
+// (the invitee signs in from the accept page).
 const isSignIn = (pathname: string) =>
-  pathname === "/sign-in" || pathname === "/portal/sign-in";
+  pathname === "/sign-in" ||
+  pathname === "/portal/sign-in" ||
+  pathname.startsWith("/invite/");
 
 function PortalRoot() {
   const location = useLocation();

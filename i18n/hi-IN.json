@@ -1501,7 +1501,15 @@
 			"makeDefault": "Make default",
 			"pickTemplate": "Add a state from a template",
 			"templateNoTransition": "{{name}} (no workflow transition out of it)",
-			"reorder": "Reorder {{name}}"
+			"reorder": "Reorder {{name}}",
+			"wip": {
+				"clear": "Clear limit",
+				"failed": "The limit could not be saved.",
+				"label": "Work-in-progress limit for {{name}}",
+				"none": "No limit",
+				"save": "Save limit",
+				"saved": "Limit for {{name}} saved."
+			}
 		},
 		"workItemTemplates": {
 			"archived": "Archived. Work items already created from it are unchanged.",
@@ -1709,6 +1717,23 @@
 				"title": "Versions",
 				"transitions": "Transitions",
 				"validate": "Validate"
+			},
+			"cabTemplate": {
+				"action": "Add CAB approval",
+				"actionMore": "Add projects",
+				"applied": "CAB approval applied",
+				"appliedDescription": "Changes need CAB approval before work starts. Projects below have the Approved state.",
+				"appliedTitle": "CAB approval is on for changes",
+				"confirm": "Apply",
+				"description": "Adds an Approved state and requires CAB approval before a change can move into work. It binds the Change type to a new workflow and is never applied on its own. Choose the projects that adopt the Approved state; a project that has not adopted it cannot approve changes.",
+				"failed": "The template could not be applied.",
+				"loadFailed": "The CAB template status could not be loaded.",
+				"noneSelected": "Choose at least one project.",
+				"projects": "Projects that adopt the Approved state",
+				"stranded": "These projects have open changes and have not adopted Approved: {{names}}. Add them to the selection, then apply again.",
+				"strandedTitle": "Some projects still have open changes",
+				"title": "CAB approval for changes",
+				"unadopted": "These projects have not adopted Approved yet: {{names}}."
 			}
 		},
 		"projectFeatures": {
@@ -1722,7 +1747,10 @@
 			"workItems": "कार्य",
 			"calendar": "Calendar",
 			"selectProject": "प्रोजेक्ट चुनें",
-			"noProjects": "कोई प्रोजेक्ट नहीं"
+			"noProjects": "कोई प्रोजेक्ट नहीं",
+			"cycles": "Cycles",
+			"modules": "Modules",
+			"pages": "Pages"
 		},
 		"commandPalette": {
 			"suggestions": "सुझाव",
@@ -1761,7 +1789,12 @@
 			"settings": "Settings",
 			"triage": "Triage",
 			"workItem": "Work item",
-			"pendingActions": "Pending actions"
+			"pendingActions": "Pending actions",
+			"knowledgeBase": "Knowledge base",
+			"serviceManagement": "Service management",
+			"timesheet": "Timesheet",
+			"dashboard": "Dashboard",
+			"reports": "Reports"
 		},
 		"projectList": {
 			"viewProject": "प्रोजेक्ट देखें",
@@ -1787,7 +1820,8 @@
 				"person": "People",
 				"recent": "Recent",
 				"savedView": "Saved views",
-				"workItem": "Work items"
+				"workItem": "Work items",
+				"page": "Pages"
 			}
 		},
 		"settingsLayout": {
@@ -2416,7 +2450,12 @@
 			"resizeDue": "नियत तारीख बदलें",
 			"taskAriaLabel": "{{title}}: खोलें या ले जाने के लिए खींचें",
 			"jumpToToday": "Jump to today",
-			"unassigned": "Unassigned"
+			"unassigned": "Unassigned",
+			"dependencies": {
+				"label": "Dependency arrows between work items",
+				"toggle": "Dependencies"
+			},
+			"noModule": "No module"
 		},
 		"delete": {
 			"title": "कार्य हटाएँ?",
@@ -2546,7 +2585,8 @@
 			"fields": {
 				"assignee": "Assignee",
 				"priority": "Priority",
-				"state": "Status"
+				"state": "Status",
+				"module": "Module"
 			},
 			"label": "Group",
 			"none": "None"
@@ -2901,6 +2941,12 @@
 				},
 				"atRiskMarkerAt": "At-risk mark at {{pct}}% of the target",
 				"calendar": "Working calendar: {{name}}"
+			},
+			"change": {
+				"heading": "Service and change"
+			},
+			"time": {
+				"heading": "Time"
 			}
 		},
 		"list": {
@@ -3102,7 +3148,9 @@
 			"groupNoPriority": "No priority",
 			"groupNotDroppable": "{{key}} can't be moved to {{group}}.",
 			"groupSaved": "{{key}} moved to {{group}}.",
-			"groupUnassigned": "Unassigned"
+			"groupUnassigned": "Unassigned",
+			"columnCountOverLimit": "{{total}} of {{limit}} work items in {{state}}: over the limit",
+			"columnCountWithLimit": "{{total}} of {{limit}} work items in {{state}}"
 		},
 		"bulk": {
 			"assign": "Assign selected",
@@ -3221,7 +3269,15 @@
 			"titlePlaceholder": "Work item title",
 			"transitionNote": "Add a note for this move",
 			"reloadLatest": "Reload latest",
-			"unsaved": "Not saved yet. It will be tried again when you leave the field."
+			"unsaved": "Not saved yet. It will be tried again when you leave the field.",
+			"agile": {
+				"noCycle": "No cycle",
+				"noEstimate": "No estimate",
+				"noModule": "No module",
+				"rollupBeside": "Σ {{value}} from children",
+				"rollupOnly": "Σ {{value}} from children",
+				"saveFailed": "The change could not be saved."
+			}
 		},
 		"relations": {
 			"add": "Add relation",
@@ -3388,7 +3444,8 @@
 			"signOut": "Sign out",
 			"signOutFailed": "Could not sign out. Try again.",
 			"breadcrumb": "Breadcrumb",
-			"request": "Request"
+			"request": "Request",
+			"knowledgeBase": "Knowledge base"
 		},
 		"home": {
 			"title": "How can we help?",
@@ -5674,6 +5731,1721 @@
 		},
 		"stepUp": {
 			"failedTitle": "Fresh verification failed. Nothing was changed."
+		}
+	},
+	"agile": {
+		"backlog": {
+			"added_one": "{{count}} work item added",
+			"added_other": "{{count}} work items added",
+			"addFailed": "The work items could not be added.",
+			"addNamed": "Add {{key}}",
+			"dragHandle": "Drag {{key}}",
+			"empty": "No open work items without one.",
+			"hint": "Drag a work item into the cycle, or use its add button.",
+			"loadFailed": "The work items could not be loaded.",
+			"moduleHint": "Drag a work item into the module, or use its add button.",
+			"moduleTitle": "Not in a module",
+			"readOnly": "You can see this list but not change membership.",
+			"refused_one": "{{count}} work item was not added: {{reason}}",
+			"refused_other": "{{count}} work items were not added: {{reason}}",
+			"title": "Backlog"
+		},
+		"burndown": {
+			"chartDescription": "Burndown from {{start}} to {{end}}, in {{unit}}: remaining work, scope and the ideal line.",
+			"columns": {
+				"completed": "Completed",
+				"date": "Date",
+				"ideal": "Ideal",
+				"remaining": "Remaining",
+				"scope": "Scope"
+			},
+			"discontinuity": "On {{date}} the estimate system changed from {{from}} to {{to}}, so the numbers before and after that day are not directly comparable.",
+			"legend": {
+				"ideal": "Ideal",
+				"remaining": "Remaining",
+				"scope": "Scope"
+			},
+			"loadFailed": "The burndown could not be loaded.",
+			"noScopeDescription": "This cycle has no work items, so there is nothing to burn down.",
+			"noScopeTitle": "No scope",
+			"title": "Burndown",
+			"unestimated_one": "{{count}} item has no estimate and is not counted in the scope ({{percent}}% of the cycle).",
+			"unestimated_other": "{{count}} items have no estimate and are not counted in the scope ({{percent}}% of the cycle)."
+		},
+		"common": {
+			"cancel": "Cancel",
+			"delete": "Delete",
+			"edit": "Edit",
+			"loading": "Loading",
+			"save": "Save",
+			"close": "Close"
+		},
+		"complete": {
+			"action": "Complete cycle",
+			"confirm": "Complete cycle",
+			"default": "(project default)",
+			"description_one": "{{count}} work item is not done. Choose what happens to it.",
+			"description_other": "{{count}} work items are not done. Choose what happens to them.",
+			"done": "{{name}} completed",
+			"failed": "The cycle could not be completed.",
+			"noNextCycle": "There is no later cycle to move them to.",
+			"policy": {
+				"backlog": {
+					"description": "Incomplete items leave the cycle and return to the backlog.",
+					"label": "Move to the backlog"
+				},
+				"leave": {
+					"description": "Incomplete items stay in this cycle as a record.",
+					"label": "Leave in place"
+				},
+				"next_cycle": {
+					"description": "Incomplete items move into the next upcoming cycle.",
+					"label": "Move to the next cycle",
+					"withName": "Incomplete items move into {{name}}."
+				}
+			},
+			"policyLabel": "Incomplete items",
+			"summary": {
+				"backlog_one": "{{count}} incomplete item returns to the backlog.",
+				"backlog_other": "{{count}} incomplete items return to the backlog.",
+				"leave_one": "{{count}} incomplete item stays in this cycle.",
+				"leave_other": "{{count}} incomplete items stay in this cycle.",
+				"nextCycle_one": "{{count}} incomplete item moves to {{name}}.",
+				"nextCycle_other": "{{count}} incomplete items move to {{name}}."
+			},
+			"title": "Complete {{name}}"
+		},
+		"cycles": {
+			"create": "Create cycle",
+			"deleteFailed": "The cycle deletion could not be requested.",
+			"emptyDescription": "A cycle is a time-boxed period of work. Create one to plan what the team will deliver next.",
+			"emptyTitle": "No cycles yet",
+			"form": {
+				"create": "Create",
+				"created": "Cycle created",
+				"createTitle": "Create cycle",
+				"description": "Cycles in a project may not overlap. The status follows from the dates and the completion action.",
+				"editTitle": "Edit cycle",
+				"end": "End date",
+				"endBeforeStart": "The end date must be on or after the start date.",
+				"name": "Name",
+				"overlap": "The dates collide with {{name}} ({{start}} to {{end}}). Move the dates so cycles do not overlap.",
+				"overlapTitle": "These dates overlap another cycle",
+				"saved": "Cycle saved",
+				"saveFailed": "The cycle could not be saved.",
+				"start": "Start date",
+				"versionConflict": "Someone else changed this cycle. Close the dialog and try again."
+			},
+			"loadFailed": "The cycles could not be loaded.",
+			"noScope": "No work items in this cycle yet.",
+			"notFound": "This cycle does not exist or you cannot reach it.",
+			"pageTitle": "Cycles",
+			"status": {
+				"active": "Active",
+				"completed": "Completed",
+				"upcoming": "Upcoming"
+			},
+			"title": "Cycles",
+			"velocity": {
+				"insufficient": "Insufficient data (needs three completed cycles)",
+				"label": "Velocity",
+				"value": "{{value}} {{unit}} per cycle (last three completed)"
+			}
+		},
+		"estimates": {
+			"addPoint": "Add point",
+			"description": "A project uses one estimate system. Work items refer to a point of the scale, so renaming a point keeps every estimate.",
+			"failed": "The estimate settings could not be saved.",
+			"loadFailed": "The estimate settings could not be loaded.",
+			"navTitle": "Estimates",
+			"notFoundDescription": "This project does not exist or you cannot reach it.",
+			"notFoundTitle": "Project not found",
+			"pageTitle": "Estimates",
+			"pointLabel": "Point {{index}}",
+			"policy": {
+				"description": "The choice for incomplete items that is pre-selected when a cycle is completed.",
+				"failed": "The cycle completion default could not be saved.",
+				"saved": "Cycle completion default saved",
+				"title": "When a cycle is completed"
+			},
+			"preview": {
+				"cleared": "Cleared",
+				"clearWarning_one": "{{count}} estimate has no equivalent in the new scale and will be cleared.",
+				"clearWarning_other": "{{count}} estimates have no equivalent in the new scale and will be cleared.",
+				"confirm": "Apply change",
+				"description": "Changing to {{system}} affects the estimates already set on work items.",
+				"from": "Current",
+				"items": "Work items",
+				"midCycle": "Active cycles ({{names}}) will note the change in their burndown; numbers before and after it are not directly comparable.",
+				"nothingUsed": "No work item has an estimate yet, so nothing is lost.",
+				"title": "Review the estimate change",
+				"to": "New",
+				"totals": "{{mapped}} estimates carry over and {{cleared}} are cleared."
+			},
+			"readOnly": "Only project admins can change the estimate system.",
+			"removePoint": "Remove {{value}}",
+			"review": "Review change",
+			"saved": "Estimate settings saved",
+			"scale": "Scale",
+			"scaleHint": {
+				"categories": "Named sizes such as XS, S, M, L, XL.",
+				"points": "Numbers such as 1, 2, 3, 5, 8, 13, 21.",
+				"time": "Durations such as 1h, 4h, 1d, 1w (a day is eight hours)."
+			},
+			"system": "System",
+			"title": "Estimate system"
+		},
+		"featureOff": {
+			"cycles": {
+				"description": "A project admin can switch on Cycles in the project's feature settings. Existing cycles are kept and come back when it is switched on.",
+				"title": "Cycles are off for this project"
+			},
+			"estimates": {
+				"description": "A project admin can switch on Estimates in the project's feature settings. Existing estimates are kept and come back when it is switched on.",
+				"title": "Estimates are off for this project"
+			},
+			"modules": {
+				"description": "A project admin can switch on Modules in the project's feature settings. Existing modules are kept and come back when it is switched on.",
+				"title": "Modules are off for this project"
+			}
+		},
+		"modules": {
+			"create": "Create module",
+			"deleteFailed": "The module deletion could not be requested.",
+			"emptyDescription": "A module groups work by feature or theme, independent of time.",
+			"emptyTitle": "No modules yet",
+			"forecast": {
+				"at_risk": "At risk",
+				"complete": "Nothing remaining.",
+				"insufficient_data": "Not enough recent completions to forecast ({{completed}} in the last four weeks).",
+				"late": "Likely late",
+				"no_target": "No target date, so no forecast.",
+				"on_track": "On track",
+				"range": "At the current rate, between {{earliest}} and {{latest}} (target {{target}})"
+			},
+			"form": {
+				"create": "Create",
+				"created": "Module created",
+				"createTitle": "Create module",
+				"description": "A module belongs to this project and may span several cycles.",
+				"descriptionLabel": "Description",
+				"editTitle": "Edit module",
+				"lead": "Lead",
+				"name": "Name",
+				"noLead": "No lead",
+				"saved": "Module saved",
+				"saveFailed": "The module could not be saved.",
+				"state": "Status",
+				"target": "Target date (optional)",
+				"versionConflict": "Someone else changed this module. Close the dialog and try again."
+			},
+			"lead": "Lead: {{name}}",
+			"loadFailed": "The modules could not be loaded.",
+			"noLead": "No lead",
+			"notFound": "This module does not exist or you cannot reach it.",
+			"pageTitle": "Modules",
+			"progress": {
+				"label": "Module progress",
+				"line": "{{completed}} of {{total}} done, {{remaining}} remaining"
+			},
+			"state": {
+				"backlog": "Backlog",
+				"cancelled": "Cancelled",
+				"completed": "Completed",
+				"in_progress": "In progress",
+				"paused": "Paused",
+				"planned": "Planned"
+			},
+			"target": "Target {{date}}",
+			"title": "Modules"
+		},
+		"scope": {
+			"change": "Change",
+			"empty": "Nothing was added or removed after the cycle started.",
+			"item": "Work item",
+			"kind": {
+				"added": "Added after start",
+				"removed": "Removed after start"
+			},
+			"retrospective": "Retrospective",
+			"title": "Scope changes",
+			"when": "When"
+		},
+		"summary": {
+			"amountLine": "{{done}} of {{total}} {{unit}} done",
+			"completed": "Completed",
+			"countLine": "{{done}} of {{total}} items done",
+			"inProgress": "In progress",
+			"notStarted": "Not started",
+			"progress": "Progress",
+			"scope": "Scope",
+			"unestimated_one": "{{count}} item is unestimated ({{percent}}% of the scope)",
+			"unestimated_other": "{{count}} items are unestimated ({{percent}}% of the scope)"
+		},
+		"systems": {
+			"categories": "Categories",
+			"none": "none",
+			"points": "Points",
+			"time": "Time"
+		},
+		"units": {
+			"count": "items",
+			"points": "points",
+			"time": "of time"
+		},
+		"work": {
+			"board": "Board",
+			"layout": "Layout",
+			"list": "List",
+			"title": "Work"
+		},
+		"bulk": {
+			"action": "Cycle or module",
+			"confirm": "Add",
+			"cycleNote": "A work item is in at most one cycle: items already in another cycle move here.",
+			"description": "{{count}} selected work items.",
+			"failed": "The work items could not be added.",
+			"kind": {
+				"cycle": "Cycle",
+				"module": "Module"
+			},
+			"kindLabel": "Add to",
+			"none": {
+				"cycle": "There is no open cycle to add to.",
+				"module": "This project has no modules yet."
+			},
+			"outcome": {
+				"added": "{{count}} added.",
+				"already": {
+					"cycle": "{{count}} already in this cycle.",
+					"module": "{{count}} already in this module."
+				},
+				"moved": {
+					"cycle": "{{count}} moved from another cycle.",
+					"module": "{{count}} moved from another module."
+				},
+				"refused": "{{count}} refused:"
+			},
+			"targetLabel": {
+				"cycle": "Choose a cycle",
+				"module": "Choose a module"
+			},
+			"title": "Add to a cycle or module"
+		},
+		"remove": {
+			"action": {
+				"cycle": "Remove from cycle",
+				"module": "Remove from module"
+			},
+			"done": {
+				"cycle": "{{key}} removed from the cycle.",
+				"module": "{{key}} removed from the module."
+			},
+			"failed": "The work item could not be removed."
+		}
+	},
+	"kb": {
+		"article": {
+			"archive": "Archive",
+			"breadcrumb": "Breadcrumb",
+			"conflict": "Someone else changed this article. Reload and try again.",
+			"edit": "Edit",
+			"loadErrorDescription": "The article could not be loaded. Try again.",
+			"loadErrorTitle": "Could not load the article",
+			"notFoundDescription": "The article does not exist, or you cannot reach it.",
+			"notFoundTitle": "Article not found",
+			"publish": "Publish",
+			"publishChanges": "Publish changes",
+			"related": "Related articles",
+			"removedReference": "(removed)",
+			"restore": "Restore to draft",
+			"submit": "Submit for review",
+			"tabs": {
+				"article": "Article",
+				"feedback": "Feedback",
+				"versions": "Version history"
+			},
+			"toc": "On this page",
+			"unpublish": "Unpublish",
+			"unpublishedChanges": "Unpublished changes"
+		},
+		"categories": {
+			"add": "Add category",
+			"addDescription": "Categories group articles and appear in the customer knowledge base once they hold a published article.",
+			"addTitle": "Add a category",
+			"articles_one": "{{count}} article",
+			"articles_other": "{{count}} articles",
+			"emptyDescription": "Add a category to group articles.",
+			"emptyTitle": "No categories yet",
+			"loadError": "The categories could not be loaded.",
+			"parent": "Parent category",
+			"rename": "Rename",
+			"renameDescription": "Change the category name.",
+			"renameTitle": "Rename category",
+			"topLevel": "Top level"
+		},
+		"conflict": {
+			"description": "The article changed while you were editing. Compare the two versions and choose which to keep.",
+			"keepMine": "Keep mine",
+			"mine": "Your version",
+			"theirs": "Saved version",
+			"title": "Someone else saved first",
+			"useTheirs": "Use the saved version"
+		},
+		"create": {
+			"description": "Start a draft. You can write the article next.",
+			"submit": "Create draft",
+			"title": "New article"
+		},
+		"editor": {
+			"allSaved": "All changes saved",
+			"bodyLabel": "Article body",
+			"bodyPlaceholder": "Write the article. Use / for headings, lists, tables and code.",
+			"crumb": "Edit",
+			"customerPreview": "Customer preview",
+			"customerVisibleHelp": "Customers see the article once it is published and this is on.",
+			"done": "Done",
+			"pageTitle": "Edit {{title}}",
+			"previewDescription": "This is what a customer sees.",
+			"previewHiddenDescription": "Internal notes and work item references are removed from the customer view.",
+			"previewHiddenTitle": "Hidden from customers",
+			"previewNotVisible": "Customers cannot see this article until it is published and visible to customers.",
+			"projectHelp": "A project article is seen only by people who reach that project, and by customers of the organisation bound to it.",
+			"readOnlyDescription": "You may not edit it, or it is archived. Restore it to draft first.",
+			"readOnlyTitle": "This article cannot be edited",
+			"reviewDueHelp": "Overdue reviews are reported.",
+			"saved": "Article saved",
+			"settingsTitle": "Article settings",
+			"title": "Edit article",
+			"unsaved": "Unsaved changes",
+			"untitled": "Untitled article",
+			"workspaceWide": "Whole workspace",
+			"removedDescription": "Articles cannot hold these items, so they were removed on save: {{types}}.",
+			"removedTitle": "Some content was not kept"
+		},
+		"feedback": {
+			"answerHelpful": "Helpful",
+			"answerNotHelpful": "Not helpful",
+			"helpful_one": "{{count}} found it helpful",
+			"helpful_other": "{{count}} found it helpful",
+			"loadError": "The feedback could not be loaded.",
+			"noComments": "No comments yet.",
+			"notHelpful_one": "{{count}} found it not helpful",
+			"notHelpful_other": "{{count}} found it not helpful"
+		},
+		"fields": {
+			"author": "Author",
+			"category": "Category",
+			"customerVisible": "Visible to customers",
+			"liveVersion": "Live version",
+			"name": "Name",
+			"none": "None",
+			"owner": "Owner",
+			"project": "Project scope",
+			"reviewDue": "Review due",
+			"status": "Status",
+			"title": "Title",
+			"updated": "Updated",
+			"views": "Views",
+			"visibility": "Visibility"
+		},
+		"list": {
+			"allCategories": "All categories",
+			"allStates": "All statuses",
+			"description": "Articles that answer questions before they become requests. Customers see an article only when it is published and visible to customers.",
+			"emptyDescription": "No article matches. Create one, or clear the filters.",
+			"emptyTitle": "No articles",
+			"loadErrorDescription": "The articles could not be loaded. Try again.",
+			"loadErrorTitle": "Could not load the articles",
+			"loading": "Loading articles",
+			"new": "New article",
+			"overdue": "Overdue",
+			"overdueOnly": "Review overdue",
+			"page": "Page {{page}} of {{pages}}",
+			"search": "Search articles",
+			"searchPlaceholder": "Search titles and text",
+			"title": "Knowledge base"
+		},
+		"portal": {
+			"allCategories": "All articles",
+			"backToKb": "Back to the knowledge base",
+			"categories": "Categories",
+			"commentLabel": "Comment (optional)",
+			"commentPlaceholder": "What was missing? (optional)",
+			"description": "Find answers before you raise a request.",
+			"emptyDescription": "There are no articles for you to read at the moment.",
+			"emptyTitle": "No articles yet",
+			"feedbackError": "Your answer could not be sent. Try again.",
+			"helpfulPrompt": "Tell us whether this answered your question.",
+			"helpfulThanks": "Thank you for your answer.",
+			"helpfulTitle": "Was this helpful?",
+			"loadError": "The articles could not be loaded.",
+			"loadErrorTitle": "Could not load the article",
+			"loading": "Loading articles",
+			"no": "No",
+			"noMatchDescription": "Try different words, or choose another category.",
+			"noMatchTitle": "No articles match",
+			"notFoundDescription": "This article is not available. It may have been removed or changed.",
+			"notFoundTitle": "Article not found",
+			"popular": "Most viewed",
+			"recent": "Recently published",
+			"related": "Related articles",
+			"search": "Search the knowledge base",
+			"searchPlaceholder": "Search articles",
+			"sendComment": "Send comment",
+			"suggestionsDescription": "Articles that match what you wrote. They open in a new tab and your request stays as it is.",
+			"suggestionsTitle": "This might help",
+			"title": "Knowledge base",
+			"toc": "On this page",
+			"yes": "Yes"
+		},
+		"report": {
+			"deflectedOf": "{{deflected}} of {{candidates}}",
+			"deflectionDescription": "Customers who opened an article from a request form and then left without raising the request (last {{days}} days).",
+			"deflectionEmpty": "No article has been opened from a request form yet.",
+			"deflectionTitle": "Deflection",
+			"deflectionTotals": "{{deflected}} of {{candidates}} opened articles ended without a request.",
+			"helpfulCounts": "{{helpful}} helpful, {{notHelpful}} not helpful, {{views}} views",
+			"loadError": "The report could not be loaded.",
+			"overdueDescription": "Articles whose review date has passed.",
+			"overdueEmpty": "No review is overdue.",
+			"overdueTitle": "Overdue reviews",
+			"reviewStepDescription": "When on, an author submits an article and a reviewer publishes it. Off by default.",
+			"reviewStepLabel": "Require review before publishing",
+			"reviewStepTitle": "Review step",
+			"unhelpfulDescription": "Articles customers marked as not helpful.",
+			"unhelpfulEmpty": "No article has been marked as not helpful.",
+			"unhelpfulTitle": "Read but not helpful"
+		},
+		"state": {
+			"archived": "Archived",
+			"draft": "Draft",
+			"in_review": "In review",
+			"published": "Published"
+		},
+		"triage": {
+			"description": "The same suggestions the customer was offered. Link one in your reply instead of retyping it.",
+			"insert": "Add link to reply",
+			"title": "Articles that may answer this"
+		},
+		"versions": {
+			"choose": "Choose a version to read it.",
+			"empty": "This article has not been published yet.",
+			"live": "Live",
+			"loadError": "The version could not be loaded.",
+			"number": "Version {{number}}",
+			"restore": "Restore to the working copy",
+			"restored": "Version restored to the working copy. Publish to make it live."
+		},
+		"views": {
+			"articles": "Articles",
+			"categories": "Categories",
+			"report": "Report"
+		},
+		"visibility": {
+			"customers": "Customers",
+			"staff": "Staff only"
+		}
+	},
+	"serviceManagement": {
+		"calendar": {
+			"conflicts": {
+				"item": "{{first}} and {{second}} change the same service in overlapping windows.",
+				"title": "Conflicting changes"
+			},
+			"empty": "No changes are planned in this period.",
+			"flags": {
+				"conflict": "Conflict",
+				"frozen": "Frozen",
+				"overridden": "Freeze overridden",
+				"past": "After the fact"
+			},
+			"gridLabel": "Planned changes and freezes",
+			"legend": {
+				"change": "Planned change",
+				"conflict": "Same-service conflict",
+				"freeze": "Freeze",
+				"frozen": "Inside a freeze",
+				"past": "Recorded after the fact",
+				"title": "Legend"
+			},
+			"table": {
+				"change": "Change",
+				"flags": "Flags",
+				"label": "Planned changes",
+				"noServices": "No service recorded",
+				"risk": "Risk",
+				"services": "Services",
+				"window": "Window"
+			}
+		},
+		"change": {
+			"affected": "Affected services",
+			"cabRequired": "CAB approval required",
+			"conflictTitle": "Another change touches the same service at the same time",
+			"frozenDescription": "The deployment window overlaps {{names}}. Move the window, or override the freeze.",
+			"frozenTitle": "Inside a change freeze",
+			"loadError": "The service and change detail could not be loaded.",
+			"noService": "No service",
+			"noServicesDefined": "No services are defined yet.",
+			"overriddenDescription": "{{by}} overrode the freeze on {{when}}: {{reason}}",
+			"overriddenTitle": "Freeze overridden",
+			"override": "Override freeze",
+			"preApproved": "Pre-approved by risk",
+			"release": "Release: {{name}}",
+			"retrospective": "Recorded after the fact",
+			"risk": "Risk",
+			"rollback": "Rollback plan",
+			"rollbackMissingDescription": "A rollback plan is required before this change can be approved.",
+			"rollbackMissingTitle": "No rollback plan",
+			"service": "Service affected",
+			"title": "Service and change",
+			"unknownPerson": "Someone",
+			"windowEnd": "Deployment window ends",
+			"windowInvalid": "The window must end after it starts.",
+			"windowStart": "Deployment window starts",
+			"impact": "Affects {{services}} services and {{customers}} customers"
+		},
+		"changes": {
+			"description": "Planned change windows, freezes and conflicts on one calendar.",
+			"tab": {
+				"calendar": "Calendar",
+				"freezes": "Freezes",
+				"overrides": "Overrides"
+			},
+			"tabs": "Change calendar sections",
+			"title": "Change calendar"
+		},
+		"common": {
+			"cancel": "Cancel",
+			"close": "Close",
+			"edit": "Edit",
+			"loadErrorDescription": "Something went wrong while loading. Try again.",
+			"loadErrorTitle": "Could not load this",
+			"loading": "Loading",
+			"retry": "Retry",
+			"save": "Save",
+			"requestFailed": "The request failed"
+		},
+		"disabled": {
+			"description": "An administrator can turn on the service catalogue in the workspace feature switches.",
+			"title": "Service management is off"
+		},
+		"freezes": {
+			"affected_one": "{{count}} planned change now falls inside this freeze and cannot be approved without an override.",
+			"affected_other": "{{count}} planned changes now fall inside this freeze and cannot be approved without an override.",
+			"cancel": "Cancel freeze",
+			"cancelled": "Cancelled",
+			"create": {
+				"description": "No change may be approved while its deployment window overlaps a freeze, unless an authorised person overrides it.",
+				"submit": "Declare freeze",
+				"title": "Declare a change freeze"
+			},
+			"edit": {
+				"title": "Edit change freeze"
+			},
+			"emptyDescription": "A freeze stops changes from being approved for the dates it covers.",
+			"emptyTitle": "No change freezes",
+			"fields": {
+				"endsAt": "Ends",
+				"name": "Name",
+				"reason": "Reason",
+				"startsAt": "Starts"
+			},
+			"new": "Declare a freeze",
+			"rangeInvalid": "The freeze must end after it starts.",
+			"showCancelled": "Show cancelled freezes"
+		},
+		"nav": {
+			"changes": "Change calendar",
+			"releases": "Releases",
+			"services": "Services",
+			"title": "Service management"
+		},
+		"override": {
+			"description": "Approving {{key}} during a freeze needs a reason and a fresh verification. The override is audited prominently.",
+			"frozenBy": "Frozen by {{names}}.",
+			"reason": "Reason",
+			"reasonHelp": "At least {{min}} characters. Recorded in the audit report.",
+			"stepUpFailed": "The verification failed",
+			"submit": "Override freeze",
+			"title": "Override change freeze"
+		},
+		"overrides": {
+			"change": "Change",
+			"denied": "Only people who manage changes can see the override report.",
+			"description": "Every time a change was approved inside a freeze: who, when, why.",
+			"empty": "No freeze has been overridden.",
+			"freezes": "Freezes",
+			"reason": "Reason",
+			"title": "Freeze overrides",
+			"unknown": "Unknown",
+			"when": "When",
+			"who": "Who"
+		},
+		"presets": {
+			"applied": "{{imported}} added, {{duplicates}} already present.",
+			"appliedTitle": "Holidays added",
+			"choose": "Choose a country",
+			"confirm_one": "Add {{count}} holiday",
+			"confirm_other": "Add {{count}} holidays",
+			"country": "Country",
+			"dataset": "Dataset version {{version}}",
+			"description": "Generate a country's public holidays for one year from the dataset shipped with this release.",
+			"existing": "Already on this calendar",
+			"notIncluded": "Not included: {{text}}",
+			"preview": "Preview",
+			"retroactive_one": "{{count}} open work item has a deadline that moves later because of these holidays.",
+			"retroactive_other": "{{count}} open work items have deadlines that move later because of these holidays.",
+			"startingPoint": "Check these dates against the holidays your support actually observes before you add them.",
+			"startingPointTitle": "A starting point, not authority",
+			"title": "Country holiday presets",
+			"year": "Year"
+		},
+		"releases": {
+			"create": {
+				"description": "The target service's release checklist is copied onto the release.",
+				"submit": "Create release",
+				"title": "New release"
+			},
+			"detail": {
+				"allReleases": "All releases",
+				"changes": {
+					"description": "The changes deployed in this release.",
+					"empty": "No changes are associated with this release.",
+					"hidden_one": "{{count}} change in a project you cannot see is part of this release.",
+					"hidden_other": "{{count}} changes in projects you cannot see are part of this release.",
+					"title": "Changes"
+				},
+				"checklist": {
+					"description": "Copied from the service when the release was created.",
+					"empty": "This release has no checklist.",
+					"title": "Checklist"
+				},
+				"details": {
+					"description": "Name, date, status and the changes in the release.",
+					"title": "Details"
+				},
+				"notes": {
+					"description": "Generated from the changes. Edit them before the release is published.",
+					"edited": "Edited {{when}}.",
+					"empty": "No notes yet. Generate them from the changes, or write your own.",
+					"generated": "Generated {{when}}.",
+					"lockedDescription": "The release is published to the portal, so its notes can no longer be edited.",
+					"lockedTitle": "Notes are published",
+					"regenerate": "Regenerate from changes",
+					"save": "Save notes",
+					"title": "Release notes"
+				},
+				"pageTitle": "Release",
+				"publish": {
+					"help": "Off by default. Once the release is marked released it appears on the portal.",
+					"label": "Show on the customer portal",
+					"published": "Published {{when}}."
+				}
+			},
+			"fields": {
+				"changes": "Changes",
+				"changesHelp": "Work item keys of the changes in this release, separated by commas or spaces.",
+				"chooseService": "Choose a service",
+				"name": "Name",
+				"plannedDate": "Planned date",
+				"service": "Target service",
+				"status": "Status"
+			},
+			"list": {
+				"allServices": "All services",
+				"changes_one": "{{count}} change",
+				"changes_other": "{{count}} changes",
+				"checklist": "{{done}} of {{total}} checked",
+				"description": "Changes deployed together, with a checklist and release notes.",
+				"emptyDescription": "A release groups the changes you deploy together.",
+				"emptyTitle": "No releases yet",
+				"filterService": "Service",
+				"new": "New release",
+				"title": "Releases"
+			},
+			"status": {
+				"cancelled": "Cancelled",
+				"in_progress": "In progress",
+				"planned": "Planned",
+				"released": "Released"
+			}
+		},
+		"risk": {
+			"high": "High risk",
+			"low": "Low risk",
+			"medium": "Medium risk",
+			"unset": "No risk set"
+		},
+		"services": {
+			"create": {
+				"description": "A service has an owner, a support level and a status that a person sets.",
+				"submit": "Create service",
+				"title": "New service"
+			},
+			"detail": {
+				"allServices": "All services",
+				"checklist": {
+					"description": "Copied onto every release of this service.",
+					"edit": "Edit checklist",
+					"editLabel": "One item per line",
+					"empty": "No checklist items.",
+					"title": "Release checklist"
+				},
+				"counts": "Work",
+				"delete": {
+					"action": "Delete service",
+					"blockedTitle": "This service cannot be deleted yet",
+					"description": "Deleting a service asks for your confirmation first and is refused while it has open changes, releases or dependents.",
+					"title": "Delete service"
+				},
+				"dependencies": {
+					"dependsOn": "Depends on",
+					"description": "A service that this one needs to work, and the services that need this one.",
+					"edit": "Edit dependencies",
+					"editDescription": "Choose the services this one depends on.",
+					"editTitle": "Dependencies",
+					"none": "None",
+					"noOthers": "There are no other services yet.",
+					"title": "Dependencies",
+					"usedBy": "Used by"
+				},
+				"edit": {
+					"action": "Edit",
+					"description": "Name, owner, support level and calendar. Links, dependencies and the checklist are edited below.",
+					"title": "Edit service"
+				},
+				"impact": {
+					"customers": "Customers served",
+					"cycleDescription": "These services depend on each other in a loop. The impact list stops where the loop closes.",
+					"cycleTitle": "Circular dependency",
+					"description": "Services that depend on this one, and the customers they serve.",
+					"none": "No other service depends on this one.",
+					"summary": "A change here affects {{services}} services and {{customers}} customers.",
+					"title": "Impact",
+					"via": "through {{name}}"
+				},
+				"links": {
+					"add": "Add link",
+					"choose": "Choose",
+					"description": "Documentation, projects and knowledge base articles for this service.",
+					"empty": "No links yet.",
+					"kind": {
+						"documentation": "Documentation",
+						"kb_article": "Knowledge base article",
+						"project": "Project"
+					},
+					"kindLabel": "Type",
+					"labelField": "Label",
+					"remove": "Remove",
+					"target": "Item",
+					"title": "Links",
+					"url": "Address"
+				},
+				"noDescription": "No description yet.",
+				"none": "None",
+				"pageTitle": "Service",
+				"status": {
+					"changedAt": "Set {{when}}",
+					"description": "Set by a person, never computed from open incidents.",
+					"label": "Status",
+					"note": "Note",
+					"submit": "Set status",
+					"title": "Status"
+				}
+			},
+			"fields": {
+				"calendar": "Service calendar",
+				"category": "Category",
+				"description": "Description",
+				"name": "Name",
+				"noCalendar": "No service calendar",
+				"noOwnerTeam": "No owning team",
+				"ownerTeam": "Owning team",
+				"supportLevel": "Support level"
+			},
+			"list": {
+				"description": "What we run on behalf of customers: who owns each service, how it is doing and what depends on it.",
+				"emptyDescription": "Create the first service to start recording changes and releases against it.",
+				"emptyTitle": "No services yet",
+				"incidents_one": "{{count}} incident",
+				"incidents_other": "{{count}} incidents",
+				"new": "New service",
+				"noMatch": "No service matches your search",
+				"noOwner": "No owning team",
+				"openChanges_one": "{{count}} open change",
+				"openChanges_other": "{{count}} open changes",
+				"search": "Search",
+				"searchLabel": "Search services",
+				"searchPlaceholder": "Search by name or category",
+				"title": "Services"
+			}
+		},
+		"status": {
+			"degraded": "Degraded",
+			"operational": "Operational",
+			"outage": "Outage"
+		},
+		"support": {
+			"L1": "L1 support",
+			"L2": "L2 support",
+			"L3": "L3 support"
+		}
+	},
+	"timeTracking": {
+		"actions": {
+			"save": "Save"
+		},
+		"activities": {
+			"active": "Active",
+			"add": "Add activity",
+			"archived": "Archived",
+			"description": "The kinds of work a time entry must be filed under. Archiving a type hides it from new entries; time already logged keeps it.",
+			"loadError": "Could not load the activity types",
+			"nameLabel": "Name of {{name}}",
+			"newLabel": "New activity",
+			"status": "Status",
+			"title": "Time activities"
+		},
+		"budget": {
+			"actual": "Actual",
+			"by": {
+				"activity": "By activity",
+				"person": "By person"
+			},
+			"committed": "Committed",
+			"committedUnavailable": "Not available yet",
+			"create": "Create budget",
+			"created": "Budget created",
+			"description": "Planned against actual for each budget period. Actuals are time valued at the rate captured on each entry; other currencies are shown separately and never converted.",
+			"disabledDescription": "Turn on cost tracking for this project to use budgets.",
+			"disabledTitle": "Budgets are off",
+			"empty": "No budget yet.",
+			"forbiddenDescription": "You do not have access to this project's budget.",
+			"forbiddenTitle": "Budget unavailable",
+			"loadError": "Could not load the budget",
+			"name": "Name",
+			"navTitle": "Budget",
+			"otherCurrencies": "Also spent in other currencies, not converted: {{amounts}}",
+			"periodEnd": "Period end",
+			"periodStart": "Period start",
+			"planned": "Planned",
+			"remaining": "Remaining",
+			"spent": "Spent",
+			"threshold": "{{percent}}% reached",
+			"title": "Budget",
+			"unpriced": "{{time}} logged without a rate is not counted.",
+			"figuresHidden": "Hidden: time cost needs permission to see rates"
+		},
+		"edit": {
+			"title": "Edit time entry"
+		},
+		"entry": {
+			"actions": "Actions",
+			"delete": "Delete entry",
+			"edit": "Edit entry",
+			"nonBillable": "Not billable",
+			"noWorkItem": "Work item removed"
+		},
+		"errors": {
+			"activity_unavailable": "That activity is not available.",
+			"date_in_future": "You cannot log time in the future.",
+			"date_too_old": "That date is further back than you may log time.",
+			"generic": "Something went wrong. Try again.",
+			"person_not_loggable": "Time cannot be logged for that person.",
+			"timer_already_running": "A timer is already running. Stop it first."
+		},
+		"fields": {
+			"activity": "Activity",
+			"billable": "Billable",
+			"date": "Date",
+			"description": "What was done",
+			"duration": "Time",
+			"durationHelp": "Type 90, 1:30, 1h30 or 1.5h.",
+			"durationPlaceholder": "1h30",
+			"person": "Person"
+		},
+		"rates": {
+			"add": "Add rate",
+			"added": "Rate added",
+			"amount": "Hourly rate",
+			"choosePerson": "Choose a person",
+			"currency": "Currency",
+			"defaultRate": "Default (all projects)",
+			"description": "Hourly rates by person, optionally per project, from a date. The rate in force on an entry's date is captured on the entry when it is logged or the timer stops.",
+			"disabledDescription": "Turn on cost tracking to manage rates.",
+			"disabledTitle": "Cost tracking is off",
+			"duplicate": "A rate already starts on that date for this person and project.",
+			"effectiveFrom": "Effective from",
+			"empty": "No rates yet. Time is logged without a cost until one applies.",
+			"forbiddenDescription": "Rates are visible only to people who manage them.",
+			"forbiddenTitle": "Rates are restricted",
+			"hourly": "Hourly rate",
+			"loadError": "Could not load the rates",
+			"project": "Project",
+			"snapshotNote": "A new rate prices time logged from now on. Entries already logged keep the rate they were captured with.",
+			"title": "Rates"
+		},
+		"review": {
+			"badge": "Check this",
+			"dialogHint": "This timer ran past 12 hours and was stopped for you. Correct the time to what actually happened.",
+			"notice_one": "{{count}} timer ran past 12 hours and was stopped for you. Check what actually happened.",
+			"notice_other": "{{count}} timers ran past 12 hours and were stopped for you. Check what actually happened."
+		},
+		"section": {
+			"add": "Log time",
+			"empty": "No time logged on this item.",
+			"everyone": "Everyone",
+			"loadError": "Could not load the time on this item.",
+			"total": "Total"
+		},
+		"timer": {
+			"cappedNotice": "The timer ran past 12 hours, so only 12 hours were recorded. Edit the entry to what actually happened.",
+			"runningElsewhere": "A timer is running on another item.",
+			"runningOn": "running on",
+			"start": "Start timer",
+			"stop": "Stop",
+			"stopped": "Timer stopped"
+		},
+		"timesheet": {
+			"addKey": "Work item key",
+			"addKeyPlaceholder": "HELP-12",
+			"addRow": "Add row",
+			"cellLabel": "{{item}} on {{day}}",
+			"copyLastWeek": "Copy last week's rows",
+			"description": "Your week, by work item and activity. Type minutes straight into a day, or use the arrow keys to move between days.",
+			"disabledDescription": "Turn on time tracking to log time and use the timesheet.",
+			"disabledTitle": "Time tracking is off",
+			"empty": "No rows yet. Add a work item by its key, or copy last week's rows.",
+			"emptyEveryone": "Nobody logged time this week.",
+			"invalid": "That is not a duration. Type 90, 1:30 or 1h30.",
+			"keyboardHelp": "Arrow keys move between cells, Enter saves and moves down. Clearing a logged cell asks you to confirm the deletion.",
+			"loadErrorDescription": "The timesheet could not be loaded. Try again.",
+			"loadErrorTitle": "Could not load the timesheet",
+			"loading": "Loading the timesheet",
+			"nextWeek": "Next week",
+			"nothingToCopy": "Last week has no rows to copy.",
+			"previousWeek": "Previous week",
+			"scopeEveryone": "Everyone",
+			"scopeMine": "Mine",
+			"thisWeek": "This week",
+			"timeZone": "Days follow your time zone: {{zone}}.",
+			"title": "Timesheet",
+			"total": "Total",
+			"workItem": "Work item",
+			"workItemNotFound": "No work item with that key that you can reach."
+		},
+		"settings": {
+			"backdateHelp": "People can log time this many days back; further back needs the backdating permission. 0 means today only.",
+			"backdateLimit": "Backdating limit (days)",
+			"defaultBillable": "New time is billable by default",
+			"defaultBillableHelp": "The starting value of Billable when time is logged on this project. Each entry can still override it.",
+			"saved": "Saved"
+		}
+	},
+	"pages": {
+		"common": {
+			"cancel": "Cancel",
+			"close": "Close",
+			"loading": "Loading pages",
+			"unknownPerson": "Unknown person"
+		},
+		"conflict": {
+			"description": "{{name}} saved version {{version}} on {{date}}. Nothing of yours was written.",
+			"keepEditing": "Keep editing",
+			"loadLatest": "Load latest and discard mine",
+			"overwrite": "Save over the latest",
+			"title": "This page changed while you were editing"
+		},
+		"create": {
+			"description": "Pages are staff-only documents that live next to this project's work.",
+			"failed": "The page could not be created.",
+			"submit": "Create page",
+			"title": "New page"
+		},
+		"delete": {
+			"action": "Delete",
+			"confirm": "Request deletion",
+			"description": "“{{title}}” will be deleted after you approve the request. You can review it before it takes effect.",
+			"failed": "The deletion could not be requested.",
+			"hasChildren": "Move or delete this page's sub-pages first.",
+			"title": "Delete this page?"
+		},
+		"detail": {
+			"breadcrumb": "Page location",
+			"edit": "Edit",
+			"loadFailedDescription": "Try again in a moment.",
+			"loadFailedTitle": "Page could not be loaded",
+			"notFoundDescription": "This page does not exist, was deleted, or is not available to you.",
+			"notFoundTitle": "Page not found",
+			"pageTitle": "{{title}} · Pages"
+		},
+		"editor": {
+			"allSaved": "No changes",
+			"bodyLabel": "Page content",
+			"bodyPlaceholder": "Write the page here",
+			"save": "Save",
+			"saved": "Page saved",
+			"saveFailed": "The page could not be saved.",
+			"unsaved": "Unsaved changes",
+			"untitled": "Untitled"
+		},
+		"fields": {
+			"parent": "Parent page",
+			"title": "Title",
+			"topLevel": "Top level"
+		},
+		"history": {
+			"current": "Current",
+			"kind": {
+				"create": "Created",
+				"edit": "Edited",
+				"restore": "Restored from version {{from}}"
+			},
+			"loadFailed": "The history could not be loaded.",
+			"previewDescription": "Restoring adds a new version; the history is never rewritten.",
+			"previewTitle": "Version {{number}}",
+			"restore": "Restore this version",
+			"restoreConflict": "The page changed while you were looking. Reload and try again.",
+			"restored": "Version restored as a new version",
+			"restoreFailed": "The version could not be restored.",
+			"title": "History",
+			"version": "Version {{number}}",
+			"view": "View"
+		},
+		"list": {
+			"create": "New page",
+			"description": "Long-form project documents: plans, runbooks and meeting notes. Only staff can see them.",
+			"emptyDescription": "Create a page for a plan, a runbook or meeting notes.",
+			"emptyTitle": "No pages yet",
+			"loadFailed": "Pages could not be loaded.",
+			"notFound": "This project was not found.",
+			"pageTitle": "Pages",
+			"title": "Pages",
+			"updated": "Updated {{date}} by {{name}}"
+		}
+	},
+	"customerInvitations": {
+		"accept": {
+			"acceptedDescription": "You now have access to the portal.",
+			"acceptedTitle": "Invitation accepted",
+			"action": "Accept invitation",
+			"continue": "Continue to the portal",
+			"description": "You have been invited to the customer portal.",
+			"invalidDescription": "The link may have expired, been used already, or been withdrawn. Ask the person who invited you to send a new one.",
+			"invalidTitle": "This invitation is no longer valid",
+			"ready": "Select accept to join the organisation that invited you.",
+			"signIn": "Sign in",
+			"nameLabel": "Name",
+			"emailLabel": "Email address",
+			"passwordLabel": "Password",
+			"signUpHint": "Create your account with the email address that was invited. If you already have an account, sign in instead.",
+			"createAccount": "Create account and accept",
+			"creatingAccount": "Creating your account",
+			"haveAccount": "I already have an account",
+			"accountExistsTitle": "An account already exists for this address",
+			"accountExistsDescription": "Sign in with that account, then open the link from your email again.",
+			"signInFirst": "Sign in with the email address that was invited, then open the link from your email again.",
+			"title": "Accept your invitation"
+		},
+		"actions": {
+			"resend": "Resend",
+			"revoke": "Revoke"
+		},
+		"columns": {
+			"actions": "Actions",
+			"email": "Email",
+			"expires": "Expires",
+			"sent": "Last sent",
+			"status": "Status"
+		},
+		"create": {
+			"description": "The person receives an email with a link to accept on the customer portal. The link works once and expires.",
+			"email": "Email address",
+			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
+			"submit": "Send invitation",
+			"title": "Invite to this organisation"
+		},
+		"denied": {
+			"description": "Inviting people needs the member:invite permission in this workspace.",
+			"title": "You cannot invite customers"
+		},
+		"description": "Invite people into a customer organisation. An invitation always grants the customer role, expires, and can be used once.",
+		"emptyDescription": "Invite an email address to give a person access to this organisation's portal.",
+		"emptyTitle": "No invitations yet",
+		"invite": "Invite someone",
+		"loadErrorDescription": "The customer invitations could not be loaded. Try again.",
+		"loadErrorTitle": "Could not load the invitations",
+		"loading": "Loading customer invitations",
+		"organisation": {
+			"choose": "Choose an organisation",
+			"emptyDescription": "Invitations are managed one customer organisation at a time.",
+			"emptyTitle": "Choose an organisation",
+			"label": "Customer organisation"
+		},
+		"status": {
+			"accepted": "Accepted",
+			"expired": "Expired",
+			"pending": "Pending",
+			"revoked": "Revoked"
+		},
+		"title": "Customer invitations",
+		"toasts": {
+			"notDelivered": "The invitation was saved but the email could not be sent. Try resending it.",
+			"resent": "Invitation sent again. The previous link no longer works.",
+			"sent": "Invitation sent"
+		}
+	},
+	"reports": {
+		"badges": {
+			"featureOff": "Feature off",
+			"live": "Live"
+		},
+		"builder": {
+			"chartType": "Chart",
+			"chartTypes": {
+				"bar": "Bar",
+				"line": "Line",
+				"number": "Number",
+				"table": "Table"
+			},
+			"description": "Pick what to count, how to group it and how to draw it. The preview is live. A saved report is a saved view with the chart layout.",
+			"entities": {
+				"time_entry": "Time entries",
+				"work_item": "Work items"
+			},
+			"entity": "Report on",
+			"groupBy": "Group by",
+			"groups": {
+				"activity": "Activity",
+				"assignee": "Assignee",
+				"none": "No grouping",
+				"person": "Person",
+				"priority": "Priority",
+				"project": "Project",
+				"state": "State",
+				"type": "Type",
+				"week": "Week"
+			},
+			"measure": "Measure",
+			"measures": {
+				"count": "Number of entries",
+				"sum": "Hours"
+			},
+			"name": "Name",
+			"save": "Save report",
+			"saved": "Report saved",
+			"team": "Team",
+			"title": "Report builder",
+			"update": "Save changes",
+			"visibilities": {
+				"private": "Only me",
+				"team": "A team",
+				"workspace": "The workspace"
+			},
+			"visibility": "Who can see it"
+		},
+		"catalogue": {
+			"ageing": {
+				"description": "Open items by age.",
+				"title": "Ageing"
+			},
+			"at_risk_now": {
+				"description": "What is about to breach, or already has, live.",
+				"title": "At-risk now"
+			},
+			"breach_analysis": {
+				"description": "Which types, priorities and customers breach most.",
+				"title": "Breach analysis"
+			},
+			"capacity": {
+				"description": "Team capacity against logged time and open work.",
+				"title": "Capacity"
+			},
+			"cost_to_deliver": {
+				"description": "Actual cost against budget by project. Amounts need permission to see rates.",
+				"title": "Cost to deliver"
+			},
+			"customer_performance": {
+				"description": "Volume, attainment and resolution speed per customer, worst first.",
+				"title": "Performance by customer"
+			},
+			"customer_volume_trend": {
+				"description": "Whether one customer's demand is growing.",
+				"title": "Customer volume trend"
+			},
+			"cycle_burndown": {
+				"description": "Remaining scope in a cycle against the ideal line.",
+				"title": "Cycle burndown"
+			},
+			"cycle_time": {
+				"description": "How long items took from created to resolved, in ranges.",
+				"title": "Cycle time"
+			},
+			"cycle_velocity": {
+				"description": "How much each project completes per cycle.",
+				"title": "Cycle velocity"
+			},
+			"escalations": {
+				"description": "Volume and outcome of SLA escalations.",
+				"title": "Escalations"
+			},
+			"flow": {
+				"description": "Where open items have sat longest.",
+				"title": "Flow"
+			},
+			"kb_deflection": {
+				"description": "Articles opened from a request and requests that were not raised.",
+				"title": "Knowledge base deflection"
+			},
+			"portfolio_health": {
+				"description": "Red, amber or green for every project you reach.",
+				"title": "Portfolio health"
+			},
+			"predictability": {
+				"description": "Committed against delivered work for each completed cycle.",
+				"title": "Predictability"
+			},
+			"satisfaction": {
+				"description": "Customer satisfaction by customer and by request type.",
+				"title": "Satisfaction"
+			},
+			"sla_attainment": {
+				"description": "What proportion of items met their SLA, and how that compares with the previous period.",
+				"title": "SLA attainment"
+			},
+			"sla_trend": {
+				"description": "Whether attainment is improving or degrading, week by week.",
+				"title": "SLA trend"
+			},
+			"stale_work": {
+				"description": "Open items untouched for a number of days, by person.",
+				"title": "Stale work"
+			},
+			"throughput": {
+				"description": "Items completed per week.",
+				"title": "Throughput"
+			},
+			"time_logged": {
+				"description": "Hours by project, person or activity. Cost shows only with permission to see rates.",
+				"title": "Time logged"
+			},
+			"utilisation": {
+				"description": "Time logged against available hours.",
+				"title": "Utilisation"
+			},
+			"work_mix": {
+				"description": "The distribution of new work by type and priority.",
+				"title": "Work mix"
+			},
+			"workload": {
+				"description": "Open items per person.",
+				"title": "Workload"
+			}
+		},
+		"categories": {
+			"agile": "Cycles",
+			"all": "All",
+			"customers": "Customers",
+			"delivery": "Delivery",
+			"knowledge": "Knowledge base",
+			"leadership": "Leadership",
+			"people": "People",
+			"promises": "Promises",
+			"time": "Time and cost"
+		},
+		"chartLabel": "{{title}}: chart. The same numbers are in the table view.",
+		"columns": {
+			"activity": "Activity",
+			"actual": "Actual",
+			"archived": "Archived",
+			"article": "Article",
+			"assignee": "Assignee",
+			"attainment": "Attainment",
+			"available": "Available (hours)",
+			"billable": "Billable hours",
+			"billable_share": "Billable share",
+			"breached": "Breached",
+			"bucket": "Range",
+			"budget": "Budget",
+			"capacity": "Capacity (hours)",
+			"change": "Change",
+			"committed": "Committed",
+			"completed": "Completed",
+			"cost": "Cost",
+			"currency": "Currency",
+			"customer": "Customer",
+			"cycle": "Cycle",
+			"cycles": "Completed cycles",
+			"date": "Day",
+			"deflected": "Deflected",
+			"deflection": "Deflection rate",
+			"delivered": "Delivered",
+			"delivery": "Delivered of committed",
+			"due": "Due",
+			"entries": "Entries",
+			"escalating": "Escalating",
+			"escalations": "Escalations",
+			"fast": "Resolved in under 3 days",
+			"group": "Group",
+			"helpful": "Found helpful",
+			"high": "High",
+			"hours": "Hours",
+			"ideal": "Ideal",
+			"items": "Items",
+			"journeys": "Journeys",
+			"key": "Key",
+			"logged": "Logged (hours)",
+			"low": "Low",
+			"m1": "8-30 days",
+			"medium": "Medium",
+			"members": "Members",
+			"met": "Met",
+			"metric": "Clock",
+			"missed": "Missed",
+			"none": "None",
+			"oldest": "Oldest (days)",
+			"open": "Open items",
+			"opened": "Opened",
+			"outcome": "Outcome",
+			"over": "Over 30 days",
+			"overdue": "Overdue",
+			"person": "Person",
+			"planned": "Planned",
+			"previous": "Previous period",
+			"priority": "Priority",
+			"project": "Project",
+			"rag": "Health",
+			"rate": "Rate",
+			"ratings": "Ratings",
+			"remaining": "Remaining",
+			"request_type": "Request type",
+			"resolved": "Resolved",
+			"s1": "1",
+			"s2": "2",
+			"s3": "3",
+			"s4": "4",
+			"s5": "5",
+			"satisfied": "Satisfied (4 or 5)",
+			"scope": "Scope",
+			"settled": "Settled",
+			"slow": "Resolved after 14 days or more",
+			"stale": "Stale items",
+			"state": "State",
+			"team": "Team",
+			"title": "Title",
+			"total": "Total",
+			"type": "Type",
+			"unestimated": "Unestimated items",
+			"unit": "Unit",
+			"unpriced": "Unpriced hours",
+			"urgent": "Urgent",
+			"used": "Used",
+			"utilisation": "Utilisation",
+			"velocity": "Velocity",
+			"volume": "Raised",
+			"w1": "7 days or less",
+			"week": "Week starting"
+		},
+		"context": {
+			"asOf": "As of {{time}}",
+			"live": "Computed live, no snapshot",
+			"scopeAll_one": "All projects ({{count}} project)",
+			"scopeAll_other": "All projects ({{count}} projects)",
+			"scopeReach_one": "Your projects ({{count}} project)",
+			"scopeReach_other": "Your projects ({{count}} projects)",
+			"window": "{{from}} to {{to}} ({{days}} days)",
+			"windowLive": "Live: as of now, no window"
+		},
+		"dashboard": {
+			"choose": "Choose a dashboard",
+			"description": "Your dashboards and the workspace's. Each widget runs for you, over your own reach.",
+			"edit": "Edit dashboard",
+			"emptyGrid": "This dashboard has no widgets yet. Edit it to add one.",
+			"manage": "Open editor",
+			"noMetric": "This report has no single number.",
+			"noneDescription": "You have no dashboards yet.",
+			"noneTitle": "No dashboards",
+			"personalScope": "Personal",
+			"savedView": "Saved report",
+			"title": "Dashboard",
+			"widgetView": "View of {{title}}",
+			"workspaceScope": "Workspace"
+		},
+		"detail": {
+			"back": "All reports",
+			"export": "Export CSV",
+			"refresh": "Refresh"
+		},
+		"drill": {
+			"column": "Items",
+			"description": "The same window, filters and reach as the report.",
+			"empty": "No items match.",
+			"itemTitle": "Title",
+			"key": "Key",
+			"loadError": "The items could not be loaded.",
+			"open": "View items",
+			"priority": "Priority",
+			"state": "State",
+			"title": "Items behind this number"
+		},
+		"editor": {
+			"add": "Add",
+			"addDescription": "Pick a report and how to show it.",
+			"addTitle": "Add a widget",
+			"addWidget": "Add widget",
+			"back": "Back to the dashboard",
+			"copy": "Copy to my dashboards",
+			"copyName": "Copy of {{name}}",
+			"create": "Create",
+			"delete": "Delete dashboard",
+			"description": "Drag a widget by its handle (arrow keys work too), resize it with the steppers, then save the whole layout.",
+			"limits_one": "{{count}} of {{max}} widgets",
+			"limits_other": "{{count}} of {{max}} widgets",
+			"move": "Move {{title}}",
+			"name": "Name",
+			"narrower": "Make {{title}} narrower",
+			"new": "New dashboard",
+			"newDescription": "A personal dashboard is yours alone. A workspace dashboard is seen by everyone and needs permission to manage settings.",
+			"newTitle": "New dashboard",
+			"position": "Column {{x}}, row {{y}}, {{w}} wide, {{h}} high",
+			"readOnly": "You cannot change this dashboard. You can copy it to your own.",
+			"refused": {
+				"outside": "That would leave the grid.",
+				"overlap": "That would overlap another widget."
+			},
+			"remove": "Remove {{title}}",
+			"save": "Save layout",
+			"saved": "Dashboard saved",
+			"scope": "Who sees it",
+			"shorter": "Make {{title}} shorter",
+			"source": "Report",
+			"taller": "Make {{title}} taller",
+			"title": "Dashboard editor",
+			"unsaved": "saved with the layout",
+			"wider": "Make {{title}} wider"
+		},
+		"empty": {
+			"excluded_one": "{{count}} item was left out: {{reason}}.",
+			"excluded_other": "{{count}} items were left out: {{reason}}.",
+			"noData": "Nothing to show for these filters.",
+			"noDataInWindow_one": "No data in this period. {{count}} item falls outside it.",
+			"noDataInWindow_other": "No data in this period. {{count}} items fall outside it."
+		},
+		"errors": {
+			"disabled": {
+				"description": "An administrator can turn this feature on in the workspace feature settings.",
+				"title": "Reports are off"
+			},
+			"failed": {
+				"description": "Try again in a moment.",
+				"title": "The report could not be loaded"
+			},
+			"forbidden": {
+				"description": "You do not have permission to see reports.",
+				"title": "Not available to you"
+			},
+			"notFound": {
+				"description": "This report does not exist, or the link is out of date.",
+				"title": "Report not found"
+			},
+			"rule": {
+				"dashboard_limit": "You have reached the limit of dashboards.",
+				"invalid_window": "That window is not valid.",
+				"name_taken": "You already have a dashboard with that name.",
+				"saved_view_not_chart": "Only saved views with the chart layout can be widgets.",
+				"saved_view_not_runnable": "That saved view cannot be run as a report.",
+				"unknown_report": "One of the widgets names a report that does not exist.",
+				"unsupported_aggregate": "That aggregate is not supported here.",
+				"unsupported_filter": "That filter is not supported in a custom report.",
+				"unsupported_group": "That grouping is not supported here.",
+				"version_conflict": "This dashboard was changed elsewhere. Reload it and make your changes again.",
+				"widgets_overlap": "Widgets cannot overlap.",
+				"window_order": "The window ends before it starts.",
+				"window_too_long": "A custom window is at most a year."
+			},
+			"window": {
+				"description": "Choose 7, 30, 60 or 90 days, or a custom window of at most a year.",
+				"title": "That window is not valid"
+			}
+		},
+		"excluded": {
+			"no_estimate": "no estimate",
+			"no_sla": "no SLA",
+			"unpriced": "no rate"
+		},
+		"filters": {
+			"allOrganisations": "All organisations",
+			"allPriorities": "All priorities",
+			"allProjects": "All projects",
+			"allTeams": "All teams",
+			"allTypes": "All types",
+			"clear": "Clear filters",
+			"custom": "Custom",
+			"days_one": "{{count}} day",
+			"days_other": "{{count}} days",
+			"from": "From",
+			"organisation": "Organisation",
+			"priority": "Priority",
+			"project": "Project",
+			"team": "Team",
+			"to": "To",
+			"type": "Type",
+			"window": "Window"
+		},
+		"index": {
+			"categories": "Report categories",
+			"dashboards": "Dashboards",
+			"description": "Find the right report in one click. Fixed reports answer the questions asked most often; saved table and chart reports are yours and your team's.",
+			"kpis": "Headline numbers",
+			"newCustom": "New custom report",
+			"saved": "Saved reports",
+			"savedDescription": "Table views and custom charts you or your team saved.",
+			"savedEmpty": "No saved table or chart reports yet. Save a view with the table layout, or build a custom report.",
+			"title": "Reports"
+		},
+		"metrics": {
+			"active": "Still active",
+			"amber": "Amber",
+			"at_risk": "At risk",
+			"attainment": "Attainment",
+			"billable": "Billable share",
+			"breached": "Already breached",
+			"breaches": "Breaches",
+			"completed": "Items completed",
+			"created": "Items raised",
+			"csat": "Satisfied (4 or 5)",
+			"customers": "Customers",
+			"cycles": "Cycles completed",
+			"deflected": "Requests not raised",
+			"green": "Green",
+			"hours": "Hours logged",
+			"logged": "Hours logged",
+			"met": "Met",
+			"missed": "Missed",
+			"on_target": "Delivered at least 80% of commitment",
+			"open": "Open items",
+			"opened": "Articles opened from a request",
+			"over_30": "Older than 30 days",
+			"projects": "Projects with completed cycles",
+			"rate": "Deflection rate",
+			"ratings": "Ratings",
+			"red": "Red",
+			"remaining": "Remaining",
+			"resolved": "Items resolved",
+			"scope": "Opening scope",
+			"stale": "Stale items",
+			"started": "Escalations started",
+			"stopped": "Stopped early",
+			"teams": "Teams",
+			"total": "Total",
+			"unestimated": "Items without an estimate",
+			"unset": "No health set",
+			"volume": "Requests raised",
+			"walked_through": "Walked to the end",
+			"within_week": "Resolved within 7 days"
+		},
+		"notEnoughData": "Not enough data ({{n}} of {{needed}} needed)",
+		"notes": {
+			"archived_projects_included": "Archived projects in your reach are included.",
+			"assumes_eight_hour_day": "Available hours assume an eight hour working day.",
+			"committed_work_in_items": "Committed work is not in time units; open items are counted instead.",
+			"costs_hidden": "Costs are hidden: you do not have permission to see rates.",
+			"estimate_system_changed": "The estimate system changed during this cycle; the line may jump where it did.",
+			"mixed_units": "Cycles use different estimate units, so they are not added together.",
+			"no_capacity_set": "Some people or teams have no capacity set, so their utilisation cannot be shown.",
+			"own_time_only": "You can see your own logged time only.",
+			"sla_policy_changed": "An SLA policy changed inside this window. Each item is judged against the policy in force when it was created.",
+			"time_on_deleted_items": "Some time was logged against work items that have since been deleted; it stays on its project.",
+			"time_tracking_off": "Time tracking is off for this workspace.",
+			"unit_count": "Scope is measured in item counts.",
+			"unit_points": "Scope is measured in points.",
+			"unit_time": "Scope is measured in time."
+		},
+		"options": {
+			"by": {
+				"activity": "Activity",
+				"customer": "Customer",
+				"label": "Group by",
+				"person": "Person",
+				"priority": "Priority",
+				"project": "Project",
+				"request_type": "Request type",
+				"type": "Type"
+			},
+			"cycle": {
+				"label": "Cycle"
+			},
+			"days": {
+				"7": "7 days",
+				"14": "14 days",
+				"30": "30 days",
+				"60": "60 days",
+				"90": "90 days",
+				"label": "Untouched for"
+			},
+			"metric": {
+				"first_response": "First response",
+				"label": "Clock",
+				"resolution": "Resolution"
+			}
+		},
+		"priorities": {
+			"high": "High",
+			"low": "Low",
+			"medium": "Medium",
+			"none": "None",
+			"urgent": "Urgent"
+		},
+		"tableLabel": "{{title}}: table",
+		"tiers": {
+			"chart": "Custom report",
+			"table": "Table report"
+		},
+		"trend": {
+			"down": "Down {{delta}} from {{previous}}",
+			"flat": "Level with {{previous}}",
+			"insufficient": "A trend needs two comparable periods; there is not enough data yet.",
+			"up": "Up {{delta}} from {{previous}}"
+		},
+		"truncated": "Only the first rows are shown.",
+		"views": {
+			"chart": "Chart",
+			"table": "Table"
+		},
+		"series": {
+			"7_days_or_less": "7 days or less",
+			"8_30_days": "8-30 days",
+			"attainment": "Attainment",
+			"available": "Available",
+			"billable": "Billable",
+			"breached": "Breached",
+			"capacity": "Capacity",
+			"committed": "Committed",
+			"completed": "Completed",
+			"count": "Count",
+			"deflected": "Deflected",
+			"delivered": "Delivered",
+			"hours": "Hours",
+			"ideal": "Ideal",
+			"items": "Items",
+			"logged": "Logged",
+			"met": "Met",
+			"missed": "Missed",
+			"open": "Open",
+			"open_items": "Open items",
+			"opened": "Opened",
+			"over_30_days": "Over 30 days",
+			"overdue": "Overdue",
+			"projects": "Projects",
+			"ratings": "Ratings",
+			"remaining": "Remaining",
+			"requests_raised": "Requests raised",
+			"scope": "Scope",
+			"stale_items": "Stale items",
+			"started": "Started",
+			"velocity_last_three_cycles": "Velocity (last three cycles)"
 		}
 	}
 }

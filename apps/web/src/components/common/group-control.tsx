@@ -10,13 +10,13 @@ import {
 } from "@taskdesk/ui";
 import { Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { WorkItemGroup } from "@/lib/project-board-search";
+import type { ProjectViewGroup } from "@/lib/project-board-search";
 
-type GroupControlProps = {
-  group: WorkItemGroup;
-  onGroupChange: (group: WorkItemGroup) => void;
+type GroupControlProps<G extends ProjectViewGroup> = {
+  group: G;
+  onGroupChange: (group: G) => void;
   /** The groupings this view supports, in menu order. */
-  groups: readonly WorkItemGroup[];
+  groups: readonly G[];
   /**
    * What the default grouping (`state`) is called. The board names it "Status"; a view with no
    * state grouping, such as the timeline, shows it as "None".
@@ -42,12 +42,12 @@ function CheckSlot({ checked }: { checked: boolean }) {
  * `VW-13` / `VW-27`: the toolbar's "Group" menu. Same menu, trigger and check slot as the
  * Sort control beside it; the default grouping (state) reads as "no grouping chosen".
  */
-export default function GroupControl({
+export default function GroupControl<G extends ProjectViewGroup>({
   group,
   onGroupChange,
   groups,
   defaultLabel,
-}: GroupControlProps) {
+}: GroupControlProps<G>) {
   const { t } = useTranslation();
   const isActive = group !== "state";
   return (

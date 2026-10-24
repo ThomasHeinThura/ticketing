@@ -2858,7 +2858,7 @@ The MCP server exposes no HTTP API of its own. The tool → route table below is
 | `create_relation` | `POST /api/work-items/{key}/relations` | `work_item:update` |
 | `create_submission` | `POST /api/submissions` | `intake:triage` (staff-side creation on a customer's behalf) |
 | `decide_approval` | `POST /api/approvals/{id}/decide` → `202` pending action (`MC-7`, `PA-14`) | `approval:decide`; approved by the owner in the UI |
-| `log_time` | `POST /api/time-entries` | `time_entry:create` |
+| `log_time` / `list_time_activities` | `POST /api/time-entries`, `GET /api/time-activities` | `time_entry:create` |
 | `delete_work_item` | `DELETE /api/work-items/{key}` → `202` pending action | `work_item:delete`; approved by the owner in the UI (`PA-1`–`PA-6`) |
 | `bulk_create_work_items` | `POST /api/imports/{id}/records` | `instance:admin` — opens an `import_run` with `plugin_id = 'import.mcp'` |
 | `create_import_link` / `get_import_link` | `POST/GET /api/imports/{id}/links` | `instance:admin` |

@@ -419,6 +419,18 @@ describe("GET /api/capabilities", () => {
       viewer.manageWebhooks,
       viewer.manageCustomFields,
     ]).toEqual([false, false, false]);
+    // P5 entries follow their own API capability: manage_rates (finance/admin), workflow:manage
+    // and budget:read (a viewer reads budgets, but never manages rates or workflows).
+    expect([
+      owner.manageRates,
+      owner.manageWorkflows,
+      owner.readBudgets,
+    ]).toEqual([true, true, true]);
+    expect([
+      viewer.manageRates,
+      viewer.manageWorkflows,
+      typeof viewer.readBudgets,
+    ]).toEqual([false, false, "boolean"]);
   });
 
   it("scopes to the requested workspace -- same user, different roles in two workspaces, different answers (A1-P4)", async () => {

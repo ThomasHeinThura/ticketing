@@ -10,9 +10,18 @@ import {
   vi,
 } from "vitest";
 
-const priorEnforcementSetting = vi.hoisted(() => {
+const priorEnforcementSetting = await vi.hoisted(async () => {
   const previous = process.env.TASKDESK_POLICY_ENFORCE;
-  process.env.TASKDESK_POLICY_ENFORCE = [
+  // P5 modules enforced here. Lanes C (reports, dashboards) and F (customer invitations, Pages) are
+  // added by the coordinator when their policy files are registered; until then any registered
+  // source not named below is appended automatically (the boot parser rejects a set that omits a
+  // registered source once `task/policy.ts` is enforced, which must be last).
+  const P5_POLICY_SOURCES = [
+    "apps/api/src/agile/policy.ts",
+    "apps/api/src/kb/policy.ts",
+    "apps/api/src/service-management/policy.ts",
+  ];
+  const listed = [
     "apps/api/src/policy-registry.ts (platform)",
     "apps/api/src/instance/policy.ts",
     "apps/api/src/project/policy.ts",
@@ -21,6 +30,8 @@ const priorEnforcementSetting = vi.hoisted(() => {
     "apps/api/src/work-item/policy.ts",
     "apps/api/src/work-item-relation/policy.ts",
     "apps/api/src/time-entry/policy.ts",
+    "apps/api/src/time-tracking/policy.ts",
+    ...P5_POLICY_SOURCES,
     "apps/api/src/capabilities/policy.ts",
     "apps/api/src/column/policy.ts",
     "apps/api/src/task-relation/policy.ts",
@@ -57,12 +68,26 @@ const priorEnforcementSetting = vi.hoisted(() => {
     "apps/api/src/automation/policy.ts",
     "apps/api/src/feature-flag/policy.ts",
     "apps/api/src/task/policy.ts",
+  ];
+  const { policyRegistry } = await import("../../apps/api/src/policy-registry");
+  const registered = [
+    ...new Set(policyRegistry.entries.map((entry) => entry.source)),
+  ];
+  const taskSource = "apps/api/src/task/policy.ts";
+  const unlisted = registered.filter(
+    (source) => !listed.includes(source) && source !== taskSource,
+  );
+  process.env.TASKDESK_POLICY_ENFORCE = [
+    ...listed.filter((source) => source !== taskSource),
+    ...unlisted,
+    taskSource,
   ].join(",");
   return previous;
 });
 
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { enforcedPolicySources } from "../../apps/api/src/permissions/enforcement-config";
 import * as storage from "../../apps/api/src/storage";
 import { validateWorkspaceAccess } from "../../apps/api/src/utils/validate-workspace-access";
 import { verifyApiKey } from "../../apps/api/src/utils/verify-api-key";
@@ -75,6 +100,9 @@ import {
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
+import { agileWorld } from "./helpers/p5-agile";
+import { kbWorld } from "./helpers/p5-kb";
+import { serviceWorld } from "./helpers/p5-service";
 import {
   deleteThroughApproval,
   ensureAgentSession,
@@ -1039,5 +1067,90 @@ describe("strict policy runtime enforcement against the production API graph", (
         await missingAsNonmember.clone().text(),
       ).toBe(403);
     });
+  });
+});
+
+describe("strict enforcement of the P5 module policy sources", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  it("enforces the agile, knowledge base and service management sources", () => {
+    for (const source of [
+      "apps/api/src/agile/policy.ts",
+      "apps/api/src/kb/policy.ts",
+      "apps/api/src/service-management/policy.ts",
+    ])
+      expect(enforcedPolicySources.has(source), source).toBe(true);
+  });
+
+  it("dispatches service management routes: workspace request scope, row scope, and the denied member", async () => {
+    const w = await serviceWorld();
+    const list = await w.ownerCall(
+      `/api/services?workspaceId=${w.workspaceId}`,
+    );
+    expect(list.status, await list.clone().text()).toBe(200);
+    const service = await w.makeService();
+    const row = await w.ownerCall(`/api/services/${service.id}`);
+    expect(row.status, await row.clone().text()).toBe(200);
+    // A plain member lacks service:manage; a stranger's own workspace row scope is a masked 404.
+    const denied = await w.as(w.member.user, "/api/services", {
+      method: "POST",
+      body: { workspaceId: w.workspaceId, name: "Nope" },
+    });
+    expect(denied.status).toBe(403);
+    const foreign = await w.as(w.stranger.user, `/api/services/${service.id}`);
+    expect(foreign.status).toBe(404);
+    const foreignList = await w.as(
+      w.stranger.user,
+      `/api/services?workspaceId=${w.workspaceId}`,
+    );
+    expect(foreignList.status).toBe(403);
+    const template = await w.as(w.member.user, "/api/change-cab-template", {
+      method: "POST",
+      body: { workspaceId: w.workspaceId, projectIds: [w.project.id] },
+    });
+    expect(template.status).toBe(403);
+  });
+
+  it("dispatches agile routes: project-scoped create and read, row-scoped cycle, and foreign masking", async () => {
+    const a = await agileWorld();
+    const created = await a.call(
+      a.manager.user,
+      `/api/projects/${a.project.slug}/cycles`,
+      {
+        method: "POST",
+        body: {
+          name: "Strict cycle",
+          startDate: "2031-01-01",
+          endDate: "2031-01-14",
+        },
+      },
+    );
+    expect(created.status, await created.clone().text()).toBe(201);
+    const cycle = (await created.json()) as { id: string };
+    const read = await a.call(a.reader.user, `/api/cycles/${cycle.id}`);
+    expect(read.status, await read.clone().text()).toBe(200);
+    const write = await a.call(a.reader.user, `/api/cycles/${cycle.id}`, {
+      method: "PATCH",
+      body: { name: "Renamed", version: 1 },
+    });
+    expect(write.status).toBe(403);
+    const foreign = await a.call(a.foreign.user, `/api/cycles/${cycle.id}`);
+    expect(foreign.status).toBe(404);
+  });
+
+  it("dispatches knowledge base routes: workspace-scoped list and the denied viewer write", async () => {
+    const k = await kbWorld();
+    const list = await k.agent(
+      k.owner.user,
+      `/api/kb/articles?workspaceId=${k.workspaceId}`,
+    );
+    expect(list.status, await list.clone().text()).toBe(200);
+    const denied = await k.agent(k.viewer.user, "/api/kb/articles", {
+      method: "POST",
+      body: { workspaceId: k.workspaceId, title: "Nope" },
+    });
+    expect([403, 404]).toContain(denied.status);
   });
 });

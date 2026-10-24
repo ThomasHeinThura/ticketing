@@ -86,3 +86,11 @@ export const updateCalendarBody = calendarDataSchema
 export const importHolidayBody = z.object({
   ics: z.string().min(1),
 });
+
+/** CAL-10 / CAL-11: a country preset for one year. Preview first; the administrator confirms. */
+export const holidayPresetBody = z.object({
+  country: z.string().trim().min(2).max(8),
+  year: z.number().int().min(1900).max(2200),
+  /** Default true: return the proposed dates without saving. Send false to confirm and append. */
+  preview: z.boolean().default(true),
+});

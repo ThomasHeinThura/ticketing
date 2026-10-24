@@ -214,6 +214,8 @@ async function resolveProjectFromKeyParam(c: Context, next: Next) {
   c.set("workspaceId", project.workspaceId);
   c.set("workspaceIdSource", "row");
   c.set("projectId", project.id);
+  // The project was resolved from its persisted row, which is what strict project scope needs.
+  c.set("policyScopeResource", "project");
   await next();
 }
 

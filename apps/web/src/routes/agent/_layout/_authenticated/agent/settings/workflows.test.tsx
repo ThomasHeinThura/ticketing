@@ -53,6 +53,16 @@ vi.mock("@/fetchers/workflow", async (importOriginal) => ({
   validateWorkflowVersion: mocks.validateWorkflowVersion,
   publishWorkflowVersion: mocks.publishWorkflowVersion,
 }));
+vi.mock("@/fetchers/service-management", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/fetchers/service-management")>()),
+  getCabTemplateStatus: vi.fn().mockResolvedValue({
+    applied: false,
+    workflowId: null,
+    approvedStateTemplateId: null,
+    adoptedProjectIds: [],
+    changeTypeCount: 1,
+  }),
+}));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "ws-1" } }),
 }));

@@ -15,7 +15,9 @@ import { ChevronRight } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
+import { useCatalogueStatus } from "@/hooks/queries/service-management";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { routes } from "@/lib/routes";
@@ -64,6 +66,20 @@ export function NavMain() {
     },
     enabled: Boolean(workspace?.id && user?.id && shellPainted),
   });
+  // `feature.knowledge_base` off: the entry is gone (P5, `docs/technical/architecture-and-experience.md`).
+  // The resolved read is open to every workspace member; the admin switch list is not.
+  const features = useWorkspaceFeatures(workspace?.id, shellPainted);
+  const knowledgeBaseOn = features.isOn("feature.knowledge_base");
+  // `feature.time_tracking` off: the Timesheet entry is gone (P5 time and cost).
+  const timeTrackingOn = features.isOn("feature.time_tracking");
+  // `feature.reports` off: the Reports and Dashboard entries are gone (P5 reports).
+  const reportsOn = features.isOn("feature.reports");
+  // `feature.service_catalogue` off: the service management entry is gone (P5). The status read
+  // is open to everyone who can read projects, unlike the switch list.
+  const catalogue = useCatalogueStatus(
+    shellPainted ? (workspace?.id ?? "") : "",
+  );
+  const serviceManagementOn = catalogue.data?.enabled === true;
   const pinnedViews = (savedViews.data ?? []).filter((view) => view.isPinned);
   const pinnedCounts = useQueries({
     queries: pinnedViews.map((view) => ({
@@ -116,6 +132,52 @@ export function NavMain() {
       isActive: path === routes.savedViews.path,
       badge: null,
     },
+    ...(knowledgeBaseOn
+      ? [
+          {
+            title: t("navigation:sidebar.knowledgeBase"),
+            url: routes.kb.path,
+            isActive: path.startsWith(routes.kb.path),
+            badge: null,
+          },
+        ]
+      : []),
+    ...(timeTrackingOn
+      ? [
+          {
+            title: t("navigation:sidebar.timesheet"),
+            url: routes.timesheet.path,
+            isActive: path.startsWith(routes.timesheet.path),
+            badge: null,
+          },
+        ]
+      : []),
+    ...(reportsOn
+      ? [
+          {
+            title: t("navigation:sidebar.reports"),
+            url: routes.reports.path,
+            isActive: path.startsWith(routes.reports.path),
+            badge: null,
+          },
+          {
+            title: t("navigation:sidebar.dashboard"),
+            url: routes.agentDashboard.path,
+            isActive: path.startsWith(routes.agentDashboard.path),
+            badge: null,
+          },
+        ]
+      : []),
+    ...(serviceManagementOn
+      ? [
+          {
+            title: t("navigation:sidebar.serviceManagement"),
+            url: routes.serviceManagementServices.path,
+            isActive: path.startsWith("/agent/service-management"),
+            badge: null,
+          },
+        ]
+      : []),
     {
       title: t("navigation:sidebar.members"),
       url: `/dashboard/workspace/${workspace.id}/members`,

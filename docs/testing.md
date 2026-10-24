@@ -40,6 +40,13 @@ Also run affected integration suites, persisted end-to-end journeys, design/pari
 
 Open every affected screen in a real browser. Check both agent and portal journeys against persisted data, reload, denial cases, and Kaneo reference images. Cover desktop/tablet/mobile and light/dark for parity; inspect every captured pair before calling it reviewed. Record URLs, screenshots, source and test results in the phase report.
 
+## Integration databases and known baseline failures
+
+- **Fresh scratch database per run.** P4/P5 migrations were edited in place before their first real apply, so the integration suite needs a freshly created `_test` database. A reused database keeps old foreign-key rules and gives false failures. Use scratch Postgres 62871 (never the native 62870 that holds the live database), create a new database per agent or run, and drop it at the end.
+- **Full integration on the final tree** is required before a phase review (P4: 314 files / 4241 tests). Lane suites are not a substitute.
+- **Known failures at HEAD, not caused by phase work:** `pnpm check:tokens` fails on the `packages/ui` `pairs.json` contrast pairs (G3); three ci-script tests are stale; port-bound MFA fixture tests fail while a local stack holds the ports (pause the task-owned stack, do not kill other processes). Report them, do not exempt them.
+- **Generators are coordinator-only:** `openapi:write`, matrix `REGEN_MATRIX`, `generate:route-metadata`, and any `vite build` (regenerates route trees). Lanes do not run them.
+
 ## Review and honest evidence
 
 One fresh independent AI phase review includes functional integration, original Kaneo composition and security. The reviewer did not implement the phase; provide a neutral requirements/diff/evidence packet rather than a fork of the implementation conversation. Give it the actual diff, test output and browser evidence. Repair findings and verify those fixes within the same review. Thomas gets one consolidated report and selected walkthrough, then makes the acceptance decision.

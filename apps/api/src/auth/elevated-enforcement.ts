@@ -98,6 +98,13 @@ export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
     handler: "webhook/deletion-target.ts",
     confirmation: "typed_name_step_up",
   },
+  // Service management
+  "POST /api/work-items/{key}/change/override-freeze": {
+    kind: "operation",
+    operation: "change_freeze_override",
+    handler: "service-management/index.ts",
+    consumer: "runWithStepUp",
+  },
   // Pending actions
   "POST /api/me/pending-actions/{id}/approve": {
     kind: "pending_action_approval",

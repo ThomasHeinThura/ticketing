@@ -1,571 +1,662 @@
 {
 	"phase": "P5",
+	"note": "Fresh code audit of the uncommitted working tree on 24 Oct, replacing the pre-implementation audit (kept at superseded/audit-P5-pre.json). All P5 code (apps/api/src/{agile,time-tracking,kb,service-management,report,pages,customer-invitation}, migrations 0148-0154, 25 tests/api-integration/p5-*.test.ts, web components) is untracked/uncommitted and every P5 feature flag is default-off. implemented_tested = behaviour present in code AND a test asserts it; it does NOT mean an executed integration run: this audit ran no database, so the 25 P5 integration suites are cited as present, not run (no P5 integration run result was found in docs/report). Unit runs executed by this audit, 24 Oct 16:59, all green: U1 = API unit tests/api/{agile,kb,report,time-tracking} 5 files 110/110; U2 = web P5 components (agile, time-tracking, reports, kb, service-management, workflow/cab-template-panel) plus lib/report-search and lib/dashboard-layout, 31 files 158/158; U3 = packages/domain service-management 2 files 29/29. browser_verified is false for every item: scripted sign-in is blocked and no P5 screen was exercised in a browser. Not counted here: the requirements index assigns no CP, IP, VW or PG row to P5, and build-data counts only the 91 P5 ids. Unindexed ids (no row in docs/requirements-index.json in any phase, so they cannot be counted anywhere until rows are added): Pages PG-1..PG-8 (feature-contracts-p5.md) and the invitation ids CP-20..CP-29 and IP-35. Of these, PG-7 undelete is API-only (POST /projects/{projectId}/pages/{id}/undelete has no web caller), and CP-22/CP-26 limits are hard-coded in apps/api/src/customer-invitation/logic.ts CUSTOMER_INVITATION_LIMITS rather than instance configuration; lane claims about CP-24 and CP-27..29 were not re-verified. Indexed elsewhere and not re-verified here: CP-12, CP-17, CP-18, IP-9, IP-29 (P3) and VW-20 (P1).",
 	"items": [
 		{
 			"id": "CY-1",
-			"state": "missing",
-			"evidence": "apps/api/src/database/schema.ts work_item.cycle_id (plain nullable column, comment: cycle is P5 scope); no table in apps/api/drizzle/*.sql or schema.ts 'cycle'",
-			"gap": "No cycle entity, API (/api/projects/{key}/cycles) or Cycles tab; gated by feature.cycles (packages/permissions/src/features.ts, default off)"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema-p5-agile.ts cycle (migration 0148_p5_agile_planning.sql); apps/api/src/agile/cycle.repository.ts; apps/web/src/components/agile/cycles-list.tsx, cycle-form-dialog.tsx; tests/api-integration/p5-agile-cycles.test.ts 'creates by project key or id, derives status, lists newest first' [integration test present, not run by this audit]; cycle-form-dialog.test.tsx, cycles-list.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "CY-2",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cycle'",
-			"gap": "No overlap refusal (naming the conflicting cycle) and no unit test"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/agile/logic.ts overlap check + cycle.repository.ts; p5-agile-cycles.test.ts 'refuses an overlapping cycle and names the conflicting one (CY-2)', 'refuses two concurrent overlapping creates (one wins)' [integration test present, not run by this audit]; tests/api/agile/logic.test.ts [U1 API unit green]; cycle-form-dialog.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "CY-3",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cycle'",
-			"gap": "No date-derived upcoming/active/completed status"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/agile/logic.ts derived status (upcoming/active/completed), not stored; p5-agile-cycles.test.ts 'cannot set status by hand and refuses invalid dates' [integration test present, not run by this audit]; tests/api/agile/logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "CY-4",
-			"state": "partial",
-			"evidence": "apps/api/src/database/schema.ts work_item.cycle_id single nullable column (structurally one cycle); apps/api/src/work-item/controllers/move-work-item.ts:445 clears cycle_id on cross-project move",
-			"gap": "Column only: no FK, no cycle table/API; move clears silently (contract requires warning first); no test"
+			"state": "implemented_tested",
+			"evidence": "work_item.cycle_id single reference; apps/api/src/agile/cycle.repository.ts; p5-agile-cycles.test.ts 'adds in bulk, moves an item out of another cycle, refuses foreign keys', 'sets and clears an item's cycle from the work item (PUT)' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "CY-5",
-			"state": "missing",
-			"evidence": "apps/web/src/components/work-item/use-work-item-drag-drop.ts and bulk-assign-toolbar.tsx exist (reusable), no cycle target",
-			"gap": "No drag from backlog into a cycle, no bulk add-to-cycle, no POST /api/cycles/{id}/work-items"
+			"state": "partial",
+			"evidence": "apps/web/src/components/agile/cycle-backlog-panel.tsx (dnd-kit useDraggable) dropped on cycle-detail.tsx DndContext; bulk-agile-dialog.tsx/bulk-agile-actions.tsx; p5-agile-cycles.test.ts 'adds in bulk...' [integration test present, not run by this audit]; bulk-agile-dialog.test.tsx [U2 web unit green]",
+			"gap": "No test drives the drag path (only the bulk add API and dialog are asserted). Not browser-verified. [Corrected after Opus P5 review round 2: the untested clause keeps this row from implemented_tested.]",
+			"browser_verified": false
 		},
 		{
 			"id": "CY-6",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cycle'",
-			"gap": "No completion action or per-project incomplete-item policy"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/agile/logic.ts + cycle.repository.ts completion with incompletePolicy and dry run; apps/web/src/components/agile/complete-cycle-dialog.tsx (project default pre-selected); p5-agile-cycles.test.ts 'previews with a dry run...', 'uses the project default when no policy is chosen...', 'refuses next_cycle without a next cycle' [integration test present, not run by this audit]; complete-cycle-dialog.test.tsx [U2 web unit green]; tests/api/agile/logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "CY-7",
-			"state": "missing",
-			"evidence": "no metrics-snapshot job in apps/api/src/scheduler; no cycle_snapshot table; no chart component in packages/ui/src/components",
-			"gap": "No cycle summary, burndown or scope-change display"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/agile/logic.ts summary/burndown; apps/web/src/components/agile/burndown-chart.tsx, cycle-summary-line.tsx, cycle-detail.tsx; p5-agile-cycles.test.ts 'reports no scope for an empty cycle', 'replays scope with scope added after the start...' [integration test present, not run by this audit]; burndown-chart.test.tsx [U2 web unit green]; logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "CY-8",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cycle'",
-			"gap": "No scope-change tracking/marking of items added after start"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/agile/logic.ts + response.ts scope-change marking; cycle-detail.tsx scope-change log; p5-agile-cycles.test.ts 'marks items added after the start as scope change and after the end as retrospective' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "CY-9",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cycle_snapshot'",
-			"gap": "No velocity or three-cycle insufficient-data rule"
+			"state": "partial",
+			"evidence": "apps/api/src/agile/logic.ts computeVelocity (insufficient_data below three, no mixed units); cycle.repository.ts velocityFor inner-joins cycle_snapshot, which is written only by the completion action (cycle.repository.ts ~648); p5-agile-cycles.test.ts 'shows insufficient data until three completed cycles, then the mean of the last three' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
+			"gap": "A cycle that becomes completed by its end date without the completion action has no cycle_snapshot row and is left out of velocity; the daily cycle snapshot job is not built (schema-p5-agile.ts comment). Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "MO-1",
-			"state": "missing",
-			"evidence": "apps/api/src/database/schema.ts work_item.module_id (plain column); no table in apps/api/drizzle/*.sql or schema.ts 'module'",
-			"gap": "No module entity (name/lead/target/status), API or Modules tab; feature.modules default off"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema-p5-agile.ts module; apps/api/src/agile/module.repository.ts; apps/web/src/components/agile/modules-list.tsx, module-form-dialog.tsx, module-detail.tsx; tests/api-integration/p5-agile-modules.test.ts 'creates with a lead, state and target date, edits with a version, lists', 'refuses a lead who is not staff of this workspace' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "MO-2",
-			"state": "partial",
-			"evidence": "apps/api/src/database/schema.ts work_item.module_id single nullable column; move-work-item.ts:445 clears module_id",
-			"gap": "Column only: no FK, module table, assignment API or UI"
+			"state": "implemented_tested",
+			"evidence": "work_item.module_id; apps/api/src/agile/index.ts; p5-agile-modules.test.ts 'holds at most one module per item and is independent of cycles' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "MO-3",
-			"state": "partial",
-			"evidence": "apps/api/src/database/schema.ts work_item.cycle_id and work_item.module_id are independent columns",
-			"gap": "Orthogonality exists only structurally; no cycle or module behavior to exercise it; no test"
+			"state": "implemented_tested",
+			"evidence": "p5-agile-modules.test.ts 'holds at most one module per item and is independent of cycles', 'hides modules while feature.modules is off (independent of cycles)' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "MO-4",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'module'",
-			"gap": "No progress/remaining/target-date range forecast"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/agile/logic.ts forecast range; apps/web/src/components/agile/module-forecast.tsx; p5-agile-modules.test.ts 'counts progress... never extrapolates from little data', 'forecasts a range when the recent completion rate is known', 'has no forecast without a target date' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "ES-1",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'estimate'/'estimate_point'",
-			"gap": "No per-project estimate system (points/categories/time), API or settings screen; feature.estimates default off"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema-p5-agile.ts estimate/estimate_point; apps/api/src/agile/estimate.repository.ts; apps/web/src/components/agile/estimate-settings.tsx (settings/projects/$projectId/estimates route); tests/api-integration/p5-agile-estimates.test.ts 'starts with none, then adopts the default Fibonacci scale', 'offers categories and time scales', 'allows at most one active system (database guard)' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "ES-2",
-			"state": "partial",
-			"evidence": "apps/api/src/database/schema.ts work_item.estimate_point_id (plain column, no FK); move-work-item.ts:445 clears it",
-			"gap": "Column only: no estimate_point table, no estimate control on the work item"
+			"state": "implemented_tested",
+			"evidence": "work_item.estimate_point_id reference; p5-agile-estimates.test.ts 'stores a reference to a point row and refuses points outside the scale', 'renaming a point keeps every estimate on it' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "ES-3",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'estimate'",
-			"gap": "No system-change mapping or loss preview"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/agile/estimate.repository.ts dry-run preview + confirmation; apps/web/src/components/agile/estimate-preview-dialog.tsx; p5-agile-estimates.test.ts 'the dry-run preview matches what the applied change does, and clearing needs confirmation' [integration test present, not run by this audit]; estimate-preview-dialog.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "ES-4",
-			"state": "missing",
-			"evidence": "apps/api/src/work-item/hierarchy.ts (hierarchy exists, no estimate roll-up)",
-			"gap": "No parent roll-up or own-vs-roll-up display"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/agile/logic.ts roll-up; apps/web/src/components/work-item/work-item-agile-rows.tsx; p5-agile-estimates.test.ts 'rolls a parent up from its children only when it has no estimate; the discrepancy is shown' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "ES-5",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'estimate'",
-			"gap": "No estimates, so no unestimated share in reports"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/agile/logic.ts unestimated share; p5-agile-estimates.test.ts 'reports unestimated work instead of counting it as zero (cycle summary)' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-1",
-			"state": "partial",
-			"evidence": "apps/api/src/time-entry/{index.ts,duration.ts,policy.ts}; apps/api/src/database/schema.ts timeEntryTable (legacy Kaneo: task_id, user_id, start_time, end_time, duration seconds); tests/api-integration/time-entry-duration.test.ts, tests/api-integration/activity-relation-time-entry-crud.test.ts",
-			"gap": "Legacy row is keyed to legacy task (not work_item), user (not person), stores integer seconds from start/end (not date + minutes); data-model §9 time_entry absent"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema-p5-time.ts time_entry integer minutes (migration 0149_p5_time_and_cost.sql); apps/api/src/time-tracking/index.ts; apps/web/src/components/time-tracking/work-item-time.tsx, timesheet.tsx; tests/api-integration/p5-time-entries.test.ts 'records integer minutes against the caller...', 'rejects fractional, zero and over-a-day minutes...' [integration test present, not run by this audit]; work-item-time.test.tsx, timesheet.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-2",
-			"state": "missing",
-			"evidence": "apps/api/src/time-entry/{index.ts,duration.ts,policy.ts}; apps/api/src/database/schema.ts timeEntryTable (legacy Kaneo: task_id, user_id, start_time, end_time, duration seconds)",
-			"gap": "No time_activity table or required activity type"
+			"state": "implemented_tested",
+			"evidence": "time_activity table and required activityId; apps/web/src/components/time-tracking/time-activities-settings.tsx; p5-time-entries.test.ts '...a missing activity and a foreign activity'; p5-time-rates-budget.test.ts 'lists the four defaults...', 'lets a settings manager add, rename and archive...' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-3",
-			"state": "missing",
-			"evidence": "apps/api/src/time-entry/{index.ts,duration.ts,policy.ts}; apps/api/src/database/schema.ts timeEntryTable (legacy Kaneo: task_id, user_id, start_time, end_time, duration seconds)",
-			"gap": "No billable flag or project default"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/time-tracking/repository.ts project billable default; time-settings.tsx; p5-time-entries.test.ts 'defaults billable from the project and lets the caller override it' [integration test present, not run by this audit]; time-settings.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-4",
-			"state": "missing",
-			"evidence": "packages/permissions/src/capabilities.ts time_entry:log_backdated (capability defined only); apps/api/src/time-entry/{index.ts,duration.ts,policy.ts}; apps/api/src/database/schema.ts timeEntryTable (legacy Kaneo: task_id, user_id, start_time, end_time, duration seconds)",
-			"gap": "No backdating window (default 30 days) enforcement"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/time-tracking/logic.ts backdating window (default 30, per workspace) + time_entry:log_backdated; p5-time-entries.test.ts 'the backdating window (TC-4)' block (4 cases) [integration test present, not run by this audit]; tests/api/time-tracking/logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-5",
-			"state": "partial",
-			"evidence": "apps/api/src/time-entry/policy.ts (documents that no own/any split exists; create/update gated on work_item:update, reads on time_entry:read_any)",
-			"gap": "Any member with work_item:update can edit any entry; no orOwner(person_id) policy, no update_own/update_any enforcement, no DELETE (contract: 202 pending action)"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/time-tracking/policy.ts own/any; p5-time-entries.test.ts 'lets a person edit their own entry and not anyone else's', 'refuses to delete someone else's entry without delete_any' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-6",
-			"state": "partial",
-			"evidence": "apps/api/src/time-entry/index.ts createTimeEntryRoute (omit endTime = running entry, server-persisted); apps/web/src/hooks/mutations/time-entry/*, hooks/queries/time-entry/* (zero importers)",
-			"gap": "No running_timer table, no /timer/start|stop, no 12 h cap or timer-sweeper job, no timer or manual-entry UI anywhere in apps/web"
+			"state": "implemented_tested",
+			"evidence": "running_timer table; apps/api/src/scheduler/index.ts timer sweeper; timer in apps/web/src/components/work-item/work-item-detail.tsx; tests/api-integration/p5-time-timer.test.ts 'survives a reload: the timer is read back from the server...', 'stops into one entry of whole minutes', 12 h cap and sweeper cases [integration test present, not run by this audit]",
+			"gap": "Reload survival asserted at API level only. Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-7",
-			"state": "missing",
-			"evidence": "apps/api/src/time-entry/{index.ts,duration.ts,policy.ts}; apps/api/src/database/schema.ts timeEntryTable (legacy Kaneo: task_id, user_id, start_time, end_time, duration seconds)",
-			"gap": "No roll-up to work item/parent chain/cycle/module/project"
+			"state": "partial",
+			"evidence": "apps/api/src/time-tracking/repository.ts summarise (work item with descendants, projectId, cycleId, moduleId); p5-time-rates-budget.test.ts 'includes descendants of a work item...', 'rolls a cycle's time up from the work items assigned to it' [integration test present, not run by this audit]",
+			"gap": "Module roll-up has no test; cycle and module detail screens do not show logged time (work item Time section and timesheet only). Not browser-verified. [Corrected after Opus P5 review round 2: the untested clause keeps this row from implemented_tested.]",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-8",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'hourly_rate'",
-			"gap": "No person/project rate with effective_from"
+			"state": "implemented_tested",
+			"evidence": "hourly_rate (person, optional project, effective_from) in schema-p5-time.ts; apps/web/src/components/time-tracking/rates-settings.tsx; p5-time-rates-budget.test.ts 'creates, lists and audits rates, refusing a duplicate effective date and a bad currency' [integration test present, not run by this audit]; time-tracking/logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-9",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'hourly_rate'",
-			"gap": "No effective-date rate selection or snapshot at entry/timer stop (20 Oct owner decision)"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/time-tracking/logic.ts effective-rate selection, rate captured on the entry (owner decision D4); p5-time-rates-budget.test.ts 'prices an entry at the rate effective on its date and keeps it when rates change later', 'captures the rate again when an entry moves to another date' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-10",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'hourly_rate'",
-			"gap": "No default per-person rate fallback"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/time-tracking/logic.ts default vs project rate; p5-time-rates-budget.test.ts 'lets a project-specific rate win over the person's default on that project' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-11",
-			"state": "missing",
-			"evidence": "packages/permissions/src/capabilities.ts time_entry:manage_rates (capability defined only)",
-			"gap": "No rates, so no rate-visibility enforcement or negative tests across reports/exports"
+			"state": "partial",
+			"evidence": "time_entry:manage_rates gate in time-tracking/policy.ts, response stripping, report/present.ts stripRates; p5-time-rates-budget.test.ts 'strips rate and cost from create, patch, list and summary responses', 'refuses the rates API to everyone without the capability'; p5-reports-data.test.ts 'removes every rate-derived field for everyone else', 'keeps cost out of the CSV, the export audit row and the widget data' [integration test present, not run by this audit]; tests/api/report/logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified. [Round 3: budget actuals now stripped without manage_rates; row kept partial until a clean review pass.]",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-12",
 			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cost_type'",
-			"gap": "No cost types or workspace settings screen"
+			"evidence": "No cost_type table, schema or route: no match for cost_type/costType in apps/api/src or apps/api/drizzle/0149_p5_time_and_cost.sql",
+			"gap": "Cost types (name, unit, default rate) not built.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-13",
 			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cost_entry'",
-			"gap": "No cost entries with captured rate"
+			"evidence": "No cost_entry table, schema or route in apps/api/src",
+			"gap": "Cost entries with captured rate not built.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-14",
 			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cost_entry'",
-			"gap": "No work-item-or-project cost attachment (CHECK exactly one)"
+			"evidence": "No cost_entry attachment to work item or project",
+			"gap": "Not built (depends on TC-13).",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-15",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'budget'; packages/permissions/src/capabilities.ts budget:read/budget:manage (defined only)",
-			"gap": "No budget entity, API or project budget screen"
+			"state": "implemented_tested",
+			"evidence": "budget table in schema-p5-time.ts; apps/web/src/components/time-tracking/project-budget.tsx (settings/projects/$projectId/budget); p5-time-rates-budget.test.ts 'project budgets (TC-15..TC-19)' block [integration test present, not run by this audit]; project-budget.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-16",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'budget'",
-			"gap": "No actuals computation"
+			"state": "partial",
+			"evidence": "apps/api/src/time-tracking/repository.ts actuals from captured time-entry rates inside the period, per currency; p5-time-rates-budget.test.ts 'computes actuals from captured rates inside the period, per currency, and reports thresholds' [integration test present, not run by this audit]",
+			"gap": "Actuals are time-only: cost entries (TC-12..TC-14) do not exist, so the '+ cost entries' half is absent.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-17",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'budget'",
-			"gap": "No planned vs actual vs committed view"
+			"state": "partial",
+			"evidence": "apps/api/src/time-tracking/response.ts committedMinor 'remaining-work estimates do not exist yet, so committed is null rather than guessed'; project-budget.tsx shows planned and actual",
+			"gap": "Committed (estimated remaining work at current rates) is always null.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-18",
-			"state": "missing",
-			"evidence": "apps/api/src/events/event-keys.ts:38 declares budget.threshold_reached (key only, no emitter or fanout resolver)",
-			"gap": "No 75%/90% threshold notifications"
+			"state": "partial",
+			"evidence": "apps/api/src/time-tracking/logic.ts budgetThreshold (75/90) returned as thresholdReached; p5-time-rates-budget.test.ts '...reports thresholds' [integration test present, not run by this audit]; tests/api/time-tracking/logic.test.ts [U1 API unit green]",
+			"gap": "Thresholds are computed and shown but raise no notification to the project manager.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-19",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts rate/cost/budget",
-			"gap": "No per-row currency or grouped-by-currency reporting"
+			"state": "implemented_tested",
+			"evidence": "currency per row on hourly_rate/budget; time-tracking/repository.ts and report/reports/time.ts group by currency; p5-time-rates-budget.test.ts 'shows cost per currency, never summed, to a rate manager' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-20",
 			"state": "missing",
-			"evidence": "apps/api/src/database/schema.ts team.capacity_days_per_week (team-level only, P4); no table in apps/api/drizzle/*.sql or schema.ts 'available_hours'",
-			"gap": "No per-person available_hours per period"
+			"evidence": "No available_hours table or route; capacity exists only as P4 team.capacity_days_per_week x team_member allocation (read by apps/api/src/report/reports/people.ts)",
+			"gap": "Per-person available hours for a period not built.",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-21",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'available_hours'",
-			"gap": "No utilisation computation"
+			"state": "partial",
+			"evidence": "apps/api/src/report/reports/people.ts utilisation = logged hours / team capacity_days_per_week x allocation, notes no_capacity_set; p5-reports-data.test.ts 'measures utilisation against team capacity and says when none is set' [integration test present, not run by this audit]",
+			"gap": "Denominator is team capacity, not available_hours (TC-20 missing).",
+			"browser_verified": false
 		},
 		{
 			"id": "TC-22",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'available_hours'",
-			"gap": "No capacity data; the reporting-only constraint has nothing to apply to yet"
+			"state": "partial",
+			"evidence": "apps/api/src/report/reports/people.ts 'capacity' report; no assignment path reads capacity",
+			"gap": "No available_hours entity; no test asserts capacity stays out of assignment.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-1",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
-			"gap": "No null/'Not enough data (n of m)' rendering helper"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/report/logic.ts sampled null; apps/web/src/components/reports/report-format.ts, report-view.tsx; p5-reports-core.test.ts 'returns null with its sample, never 0% or 100%, below the minimum (RP-1)' [integration test present, not run by this audit]; tests/api/report/logic.test.ts [U1 API unit green]; report-view.test.tsx, dashboard-widget.test.tsx, report-chart.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-2",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
-			"gap": "No age/duration bucket aggregation"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/report/logic.ts buckets; p5-reports-core.test.ts 'shows age as buckets and no mean (RP-2)'; p5-reports-data.test.ts 'buckets created-to-resolved durations' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-3",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
-			"gap": "No scope line (your projects vs all projects)"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/report/present.ts, run.ts scope kind; report-view.tsx; p5-reports-core.test.ts 'states scope, window and as-of time (RP-3, RP-4)' [integration test present, not run by this audit]; report-view.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-4",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
-			"gap": "No window/as-of statement"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/report/present.ts window/asOf; p5-reports-core.test.ts 'states scope, window and as-of time (RP-3, RP-4)' [integration test present, not run by this audit]; report-view.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-5",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
-			"gap": "No empty-result '—' with excluded count"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/report/present.ts, reports/shared.ts empty explanation; p5-reports-core.test.ts 'shows an empty population as empty with the total outside the window (RP-5)' [integration test present, not run by this audit]; report-view.test.tsx, dashboard-widget.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-6",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
-			"gap": "No trend arrows / comparable-period rule"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/report/logic.ts trend; p5-reports-core.test.ts 'draws no trend arrow without two comparable periods...'; p5-reports-data.test.ts 'shows volume change only against a previous period large enough to compare' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]; report-view.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-7",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route; apps/api/src/view/schema.ts (filter envelope reusable)",
-			"gap": "No report filters by window/project/organisation/team/type/priority"
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/report/types.ts FILTER_KEYS (projectId, organisationId, teamId, typeId, priority), context.ts, schema.ts windows 7/30/60/90/custom; apps/web/src/components/reports/report-filters.tsx; p5-reports-core.test.ts 'filters by project and keeps the filter in the response', 'rejects an invalid or oversized custom window' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
+			"gap": "Only the project filter is exercised end to end; organisation, team, type and priority filters have no integration assertion. Not browser-verified. [Corrected after Opus P5 review round 2: the untested clause keeps this row from implemented_tested.]",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-8",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route; apps/web/src/lib/routes.ts has no report routes",
-			"gap": "No URL-held report filter state"
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/lib/report-search.ts, lib/routes.ts, routes/agent/_layout/_authenticated/agent/reports_.$key.tsx; lib/report-search.test.ts 'keeps the whole filter state', 'builds the same query for the URL and... the API' [U2 web unit green]; p5-reports-core.test.ts (RP-7, RP-8) [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-9",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
-			"gap": "No hourly metric_snapshot, closed/live boundary"
+			"state": "partial",
+			"evidence": "apps/api/src/report/present.ts 'RP-9: every period is computed live; no snapshot is read'; report-view.test.tsx 'states ... that it is computed live (RP-3, RP-4, RP-9)' [U2 web unit green]",
+			"gap": "No metric_snapshot table or hourly job; closed periods are computed live. The live state is stated, but the snapshot/live boundary in the contract does not exist.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-10",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route; no report-export job; apps/api/src/audit/actions.ts:82 catalogues report.exported (no writer)",
-			"gap": "No CSV export, reach-filtered or audited"
+			"state": "partial",
+			"evidence": "POST /api/reports/{key}/export (apps/api/src/report/index.ts) with report:export, reach, formula neutralising and audit report.exported; present.ts reportToCsv; report-detail.tsx export button; p5-reports-data.test.ts 'writes the report as CSV, neutralises formulas, states scope and window, and audits it', 'exports only what the caller reaches' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
+			"gap": "Tier 3 custom reports (/reports/custom/preview) and dashboard widgets have no export, and large exports are synchronous: no queued job or emailed link as the contract's load table requires.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-11",
-			"state": "missing",
-			"evidence": "packages/ui/src/components/table.tsx exists (reusable); no chart component",
-			"gap": "No chart + accessible table equivalent"
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/reports/report-view.tsx chart/table tabs, report-table.tsx, dashboard-widget.tsx; report-view.test.tsx 'a chart always has its table (RP-11)'; dashboard-widget.test.tsx 'gives a chart widget its table equivalent (RP-11)' [U2 web unit green]",
+			"gap": "Keyboard reachability not checked in a browser. Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-12",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
-			"gap": "No drill-down to identically filtered list"
+			"state": "partial",
+			"evidence": "GET /api/reports/{key}/items (apps/api/src/report/index.ts) via def.drillItems; report-drill.tsx, report-table.tsx; p5-reports-core.test.ts 'drills from a number to the same filtered list (RP-12)' [integration test present, not run by this audit]; report-view.test.tsx 'drill-down (RP-12)' [U2 web unit green]",
+			"gap": "Only 12 of 24 tier 1 reports define drillItems; agile (2), kb (1), leadership (4) and time (1) reports, and part of customers/people/promises, return an empty list, so not every number can be interrogated.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-13",
-			"state": "missing",
-			"evidence": "no dashboard/dashboard_widget tables; apps/web/src/routes/agent/_layout/_authenticated/dashboard/* is Kaneo's legacy workspace shell, not a widget dashboard",
-			"gap": "No widget dashboard"
+			"state": "implemented_tested",
+			"evidence": "dashboard and dashboard_widget in apps/api/src/database/schema-p5-reports.ts (0152_p5_reports_dashboards.sql); apps/web/src/components/reports/dashboard-view.tsx, dashboard-widget.tsx; p5-reports-dashboards.test.ts 'widget data' and tier 3 widget cases [integration test present, not run by this audit]; dashboard-widget.test.tsx 'a dashboard widget (RP-13)' [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-14",
-			"state": "missing",
-			"evidence": "no dashboard tables or /api/dashboards routes",
-			"gap": "No personal/workspace dashboards or workspace:manage_settings gate"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/report/policy.ts; p5-reports-dashboards.test.ts 'keeps a personal dashboard to its owner', 'lets only workspace:manage_settings create and change a workspace dashboard' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-15",
-			"state": "missing",
-			"evidence": "@dnd-kit/* in apps/web/package.json (reusable for drag); no resize/grid",
-			"gap": "No draggable/resizable persisted widgets"
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/reports/dashboard-editor.tsx (dnd-kit drag with keyboard sensor, step resize controls), lib/dashboard-layout.ts; report/dashboard.repository.ts atomic versioned save; p5-reports-dashboards.test.ts 'saves a drag and a resize atomically, keeps widget ids and bumps the version', 'refuses a stale version, overlapping widgets...' [integration test present, not run by this audit]; dashboard-editor.test.tsx, dashboard-layout.test.ts [U2 web unit green]",
+			"gap": "Resize is by step buttons in a separate edit route (dashboard_.edit.tsx), not a drag handle. Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-16",
-			"state": "missing",
-			"evidence": "no dashboard tables or seed",
-			"gap": "No default dashboard"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/report/dashboard.logic.ts default dashboard; p5-reports-dashboards.test.ts 'gives a new person a useful dashboard on first use, once', 'does not create a personal default when the workspace already has a dashboard' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-17",
-			"state": "missing",
-			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
-			"gap": "No reach-filtered report queries"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/report/context.ts, policy.ts reach filter and report:read_all; p5-reports-core.test.ts 'shows two people different numbers and says why', 'widens to the whole workspace with report:read_all and never past it', 'refuses a workspace the caller is not in'; p5-reports-data.test.ts 'never counts another workspace's items' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "RP-18",
-			"state": "partial",
-			"evidence": "packages/permissions/src/roles.ts CUSTOMER_CAPABILITIES excludes report:*; packages/permissions/src/roles.test.ts:57-60 asserts customer lacks report:read",
-			"gap": "No report routes exist, so contract's route-level negative tests (customer 403 on every report route, customer-cannot-read-reports.spec.ts) cannot exist yet"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/report/http.ts, policy.ts staff-only; p5-reports-core.test.ts 'answers 403 on every report and dashboard route, with the feature on and off' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-1",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No article entity with workspace/optional project scope"
+			"state": "implemented_tested",
+			"evidence": "kb_article.project_id in apps/api/src/database/schema-p5-kb.ts (0150_p5_knowledge_base.sql); p5-kb-articles.test.ts 'KB-1 project scope and reach' block [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-2",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No customer_visible + published double condition"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/kb/visibility.ts, portal-repository.ts; p5-kb-portal.test.ts 'KB-2 the double gate' block (4 cases) [integration test present, not run by this audit]; tests/api/kb/kb-logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-3",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No immutable publish versions, history or restore"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/kb/repository.ts immutable versions, /kb/articles/{id}/versions and /versions/{number}/restore; p5-kb-articles.test.ts 'lets a writer draft, a publisher publish, and keeps versions immutable' (incl. version restore, kb_article.version_restored audit) [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-4",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No optional review step (workspace setting, off by default)"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/kb/logic.ts submit/publish; /kb/settings; p5-kb-articles.test.ts 'requires submit then publish when switched on, and only a manager may switch it' [integration test present, not run by this audit]; kb-logic.test.ts [U1 API unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-5",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "Tiptap editor exists for work items (apps/web package.json @tiptap/*) but no article editor with callouts/customer preview"
+			"state": "partial",
+			"evidence": "apps/web/src/components/kb/agent/kb-article-editor.tsx reuses Kaneo CommentEditor (StarterKit headings/lists, Table, ShikiCodeBlock, Image); apps/api/src/kb/sanitise.ts; kb-article-content.tsx renders callouts; tests/api/kb/kb-sanitise.test.ts [U1 API unit green]; kb-article-content.test.tsx [U2 web unit green]; p5-kb-articles.test.ts 'sanitises a hostile body on write' [integration test present, not run by this audit]",
+			"gap": "Callouts cannot be authored: apps/web/src/components/activity/comment-editor.tsx has no callout extension (only the renderer and sanitiser know them).",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-6",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No live work-item reference embed"
+			"state": "partial",
+			"evidence": "apps/web/src/components/kb/agent/kb-work-item-reference.tsx renders key, title and state live on the staff view; kb-article-content.test.tsx 'renders a work item reference only through the staff renderer' [U2 web unit green]; p5-kb-portal.test.ts 'strips internal callouts and work item references' [integration test present, not run by this audit]",
+			"gap": "No editor control inserts a work item reference, so articles cannot embed one through the UI.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-7",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No owner/review date; reminder-scan (apps/api/src/scheduler/reminder-scan.ts) does not flag overdue KB reviews"
+			"state": "partial",
+			"evidence": "kb_article.owner_id and review_due_at (schema-p5-kb.ts); kb/logic.ts overdue; kb-report.tsx overdue list; editor has the review date; p5-kb-articles.test.ts 'weights titles above bodies and reports overdue reviews' [integration test present, not run by this audit]; kb-logic.test.ts [U1 API unit green]",
+			"gap": "Owner is accepted by the API and shown on the article view but cannot be set in the article editor.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-8",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No inline suggestions in portal request form (apps/web/src/routes/portal/catalogue.tsx)"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/kb/portal-repository.ts suggestions; apps/web/src/components/kb/portal/portal-kb-deflection.tsx on routes/portal/catalogue.tsx; p5-kb-portal.test.ts 'suggests inline, records a candidate, and counts an abandoned form as a deflection' [integration test present, not run by this audit]; portal-kb-deflection.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-9",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No KB full-text index weighted to titles"
+			"state": "partial",
+			"evidence": "apps/api/src/kb/repository.ts 'Relevance (KB-9): the canonical search's lower-cased LIKE matching, weighted to titles'; p5-kb-articles.test.ts 'weights titles above bodies' [integration test present, not run by this audit]",
+			"gap": "Matching mirrors canonical search's LIKE scan with title weighting; there is no full-text index behind it.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-10",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No deflection_event table or candidate/abandon recording"
+			"state": "implemented_tested",
+			"evidence": "kb deflection_event (schema-p5-kb.ts), /portal/kb/deflection and /abandon; report/reports/kb.ts; p5-kb-portal.test.ts 'suggests inline, records a candidate, and counts an abandoned form as a deflection'; p5-reports-data.test.ts 'counts opened and abandoned...' [integration test present, not run by this audit]; portal-kb-deflection.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-11",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No deflection UI to check non-coercion"
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/kb/portal/portal-kb-deflection.tsx offers inline with no confirmation step; portal-kb-deflection.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-12",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No staff suggestions in triage (apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx)"
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/kb/agent/kb-triage-suggestions.tsx on routes/agent/_layout/_authenticated/agent/triage.tsx; p5-kb-portal.test.ts 'offers staff the same suggestions while triaging, including internal articles' [integration test present, not run by this audit]; kb-triage-suggestions.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-13",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No reach-scoped KB search"
+			"state": "partial",
+			"evidence": "/kb/search and /portal/kb?q (apps/api/src/kb/repository.ts, portal-repository.ts) scoped by reach/visibility; portal-kb-browse.tsx; p5-kb-articles.test.ts 'weights titles above bodies...', 'hides a project-scoped article from staff who do not reach the project' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified. [Corrected after Opus P5 review round 2: the untested clause keeps this row from implemented_tested.]",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-14",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No categories"
+			"state": "implemented_tested",
+			"evidence": "kb categories (schema-p5-kb.ts); kb-categories.tsx, portal-kb-browse.tsx; p5-kb-portal.test.ts 'lists only categories that hold visible articles'; p5-kb-articles.test.ts categories block [integration test present, not run by this audit]; kb-categories.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-15",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No related articles"
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/kb/repository.ts relatedArticles, portal-repository.ts portalRelated; portal-kb-article.tsx related section; portal-kb-article.test.tsx renders supplied related articles [U2 web unit green]",
+			"gap": "No test asserts the related selection (shared category plus text similarity).",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-16",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No most-viewed/recently-updated lists or view_count"
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/kb/portal-repository.ts list sort 'recent' | 'popular'; portal-kb-browse.tsx; p5-kb-portal.test.ts 'counts a portal read as a view but never changes updated_at' [integration test present, not run by this audit]",
+			"gap": "No test asserts the most-viewed or recently-updated ordering.",
+			"browser_verified": false
 		},
 		{
 			"id": "KB-17",
-			"state": "missing",
-			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
-			"gap": "No helpfulness feedback or report"
+			"state": "implemented_tested",
+			"evidence": "kb feedback (schema-p5-kb.ts), /portal/kb/{id}/feedback; kb-report.tsx unhelpful list; p5-kb-portal.test.ts 'records one answer per customer, replaces it, and feeds the agent report' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "SVC-1",
-			"state": "missing",
-			"evidence": "no service/service_dependency tables, no apps/api/src/service module, no /agent/service-management routes; feature.service_catalogue default off; apps/api/src/service-calendar (P2, reusable) and team table exist",
-			"gap": "No service entity (category, owner team, L1-L3, calendar)"
+			"state": "implemented_tested",
+			"evidence": "service (name, description, category, owning team, support_level, service_calendar_id) in apps/api/src/database/schema-p5-service.ts (0151_p5_service_management.sql); services-list.tsx; p5-service-catalogue.test.ts 'creates a service with owner team, support level, links, dependencies and a release checklist (SVC-1, SVC-2)' [integration test present, not run by this audit]; services-list.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "SVC-2",
-			"state": "missing",
-			"evidence": "no service/service_dependency tables, no apps/api/src/service module, no /agent/service-management routes; feature.service_catalogue default off",
-			"gap": "No links to documentation/projects/KB articles"
+			"state": "implemented_tested",
+			"evidence": "service_link (documentation | project | kb_article) in schema-p5-service.ts; service-detail.tsx; p5-service-catalogue.test.ts (SVC-1, SVC-2), 'refuses a dependency or link that points into another workspace' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "SVC-3",
-			"state": "partial",
-			"evidence": "apps/api/src/database/schema.ts work_item.service_id (plain nullable column, no FK, comment: service is P5 scope)",
-			"gap": "Column only: no service table, no API/UI to set it, no 'incidents per service' query"
+			"state": "implemented_tested",
+			"evidence": "work_item.service_id; POST /api/work-items/{key}/service; change-section.tsx service picker for every work item type; p5-service-catalogue.test.ts 'counts incidents per service from work item references (SVC-3)' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "SVC-4",
-			"state": "missing",
-			"evidence": "no service/service_dependency tables, no apps/api/src/service module, no /agent/service-management routes; feature.service_catalogue default off",
-			"gap": "No person-set operational/degraded/outage status"
+			"state": "implemented_tested",
+			"evidence": "/api/services/{id}/status (apps/api/src/service-management/index.ts); p5-service-catalogue.test.ts 'status is set by a person and audited, never computed (SVC-4)' [integration test present, not run by this audit]; services-list.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "SVC-5",
-			"state": "missing",
-			"evidence": "no service/service_dependency tables, no apps/api/src/service module, no /agent/service-management routes; feature.service_catalogue default off",
-			"gap": "No dependency graph, cycle flagging or impact traversal"
+			"state": "implemented_tested",
+			"evidence": "service_dependency; /api/services/{id}/impact; packages/domain/src/service-management/service-management.ts impact walk; p5-service-catalogue.test.ts 'walks the impact list level by level with the customers served', 'permits a circular dependency but flags it' [integration test present, not run by this audit]; service-management.test.ts [U3 domain unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "CH-1",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'change_detail'/'change_service'; apps/api/src/utils/default-work-item-types.ts (Change type, isChange: true); packages/domain/src/workflow/workflow.ts",
-			"gap": "No change detail (risk, window, rollback plan, affected services, freeze override) or task section"
+			"state": "implemented_tested",
+			"evidence": "change_detail and change_service in schema-p5-service.ts; apps/api/src/service-management/change-repository.ts; change-section.tsx; p5-service-changes.test.ts 'only a change type has change detail', 'reports how many services and customers a change affects (CH-1, SVC-5)' [integration test present, not run by this audit]; change-section.test.tsx [U2 web unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "CH-2",
 			"state": "partial",
-			"evidence": "apps/api/src/utils/default-work-item-types.ts (Change type, isChange: true); packages/domain/src/workflow/workflow.ts filterOfferableForType (requiresCab transitions offered only to change types); apps/api/src/approval/authoring-service.ts CAB candidates/decide_cab; packages/domain/src/workflow/workflow.test.ts:381-395, tests/api-integration/approval-lifecycle.test.ts, tests/api-integration/approval-gate-semantics.test.ts",
-			"gap": "CAB mechanism implemented and tested, but apps/api/src/utils/seed-default-workflow.ts:121 seeds requiresCab:false — no shipped change workflow requires CAB into Approved"
+			"evidence": "apps/api/src/service-management/cab-template.ts opt-in CAB workflow (requires_cab edges into Approved, bypass edges removed); apps/web/src/components/workflow/cab-template-panel.tsx; p5-service-cab-template.test.ts 'gates change approval on CAB, leaves other types alone and cannot be bypassed', 'is not applied to a fresh workspace' [integration test present, not run by this audit]; cab-template-panel.test.tsx [U2 web unit green]",
+			"gap": "Opt-in only: a fresh workspace's change workflow has no CAB edge until an administrator applies the template.",
+			"browser_verified": false
 		},
 		{
 			"id": "CH-3",
 			"state": "partial",
-			"evidence": "packages/domain/src/workflow/workflow.ts evaluateGuard change_risk_at_most + workflow.test.ts:626 (3x3 matrix); apps/api/src/work-item/controllers/transition-work-item.ts:612-613 and workflow-transition-context.ts:329 pass changeRiskLevel: null",
-			"gap": "Domain guard tested, runtime has no risk value (fails closed); no low-risk pre-approval configuration"
+			"evidence": "packages/domain/src/service-management/service-management.ts CAB-required from risk [U3 domain unit green]; change-repository.ts preApprovalCeiling reads change_risk_at_most; p5-service-changes.test.ts 'derives whether CAB is required from risk (CH-3)', 'applies the rollback and freeze gates to a risk-guarded pre-approval edge too' [integration test present, not run by this audit]",
+			"gap": "The low-risk pre-approval edge is not generated by the CAB template (cab-template.ts:45); it must be hand-authored in the workflow editor with a role split.",
+			"browser_verified": false
 		},
 		{
 			"id": "CH-4",
-			"state": "missing",
-			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'change_freeze'",
-			"gap": "No freeze ranges, override flag/reason/elevation or prominent audit"
+			"state": "partial",
+			"evidence": "change_freeze in schema-p5-service.ts; freeze-dialog.tsx, override-freeze-dialog.tsx; override needs flag, reason, change:manage and a step-up proof; p5-service-changes.test.ts 'blocks approval while the window overlaps an active freeze...', 'creates, edits and cancels a freeze, audited (CH-4)', 'freeze override (CH-4)' block (step-up refusal, one-proof spend, prominent audit) [integration test present, not run by this audit]; override-freeze-dialog.test.tsx [U2 web unit green]; service-management.test.ts [U3 domain unit green]",
+			"gap": "Round 4: approval with no window is now blocked while a freeze covers now (step-up override, audited); an approved change cannot be planned into an active freeze without an override (409 change.frozen). Gate still fires only on CAB or risk-guarded edges (opt-in CAB template, CH-2 partial); a freeze declared after approval only flags the change. Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "CH-5",
-			"state": "missing",
-			"evidence": "apps/web/src/components/calendar/* (Kaneo calendar, reusable); no change windows",
-			"gap": "No change calendar, freeze overlay or same-service conflict flag"
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/service-management/change-calendar.tsx; p5-service-changes.test.ts 'shows windows and freezes and flags two changes to the same service in the same window (CH-5)', 'limits the range to 400 days' [integration test present, not run by this audit]; change-calendar.test.ts [U2 web unit green]; service-management.test.ts [U3 domain unit green]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "CH-6",
 			"state": "partial",
-			"evidence": "packages/domain/src/workflow/workflow.test.ts:573 field_required satisfied by dotted satellite key change.rollback_plan; apps/api/src/work-item/workflow-transition-context.ts guardFieldValues reads custom-field values only",
-			"gap": "No change satellite store, so rollback_plan can never be present at runtime; not enforced as a mandatory approval precondition"
+			"evidence": "apps/api/src/work-item/workflow-transition-context.ts + change-repository.ts rollback guard; p5-service-changes.test.ts 'requires a rollback plan before the CAB-gated approval even without a guard (CH-6)' [integration test present, not run by this audit]; service-management.test.ts [U3 domain unit green]",
+			"gap": "Not browser-verified. [Round 3: same edge dependency as CH-4.]",
+			"browser_verified": false
 		},
 		{
 			"id": "REL-1",
-			"state": "missing",
-			"evidence": "no release table, no /api/releases routes, no releases screen",
-			"gap": "No release entity"
+			"state": "implemented_tested",
+			"evidence": "release in schema-p5-service.ts; releases-list.tsx, release-detail.tsx; p5-service-releases.test.ts 'creates a release for a service, groups changes and instantiates the checklist (REL-1, REL-2, REL-3)' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "REL-2",
-			"state": "missing",
-			"evidence": "no release table, no /api/releases routes, no releases screen; change_detail.release_id absent",
-			"gap": "No change-release association"
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/service-management/release-repository.ts change association; p5-service-releases.test.ts (REL-1..3), 'refuses ... a non-change work item and a change in a project the caller cannot reach' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "REL-3",
-			"state": "partial",
-			"evidence": "apps/api/src/database/schema.ts checklist_item.release_id + CHECK num_nonnulls(work_item_id, template_id, release_id)=1",
-			"gap": "Schema hook only: no release table/FK, no per-service checklist definition or instantiation"
+			"state": "implemented_tested",
+			"evidence": "service_release_checklist_item per service instantiated per release; p5-service-releases.test.ts (REL-1..3), 'ticks checklist items and refuses a stale version' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "REL-4",
-			"state": "missing",
-			"evidence": "no release table, no /api/releases routes, no releases screen",
-			"gap": "No generated, editable release notes"
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/service-management/service-management.ts notes generation [U3 domain unit green]; /api/releases/{id}/notes; release-detail.tsx; p5-service-releases.test.ts 'generates notes from the changes, keeps an edit, and regenerates on demand (REL-4)' [integration test present, not run by this audit]",
+			"gap": "Not browser-verified.",
+			"browser_verified": false
 		},
 		{
 			"id": "REL-5",
-			"state": "missing",
-			"evidence": "no release table, no /api/releases routes, no releases screen",
-			"gap": "No portal publication (off by default)"
+			"state": "partial",
+			"evidence": "release.publish_to_portal, published only when released (release-repository.ts:383), notes locked after; p5-service-releases.test.ts 'publishes to the portal only when switched on and released, and then locks the notes (REL-5)' [integration test present, not run by this audit]",
+			"gap": "No portal route or screen lists published releases (nothing in apps/api/src/portal-client-routes.ts or apps/web/src/routes/portal), so customers cannot see what changed.",
+			"browser_verified": false
 		}
 	],
 	"top_gaps": [
-		"No P5 tables exist: none of cycle, cycle_snapshot, module, estimate, estimate_point, time_activity, running_timer, hourly_rate, cost_type, cost_entry, budget, available_hours, metric_snapshot, dashboard, dashboard_widget, kb_*, deflection_event, service, service_dependency, change_detail, change_service, change_freeze, release in apps/api/drizzle (latest 0147)",
-		"Only scaffolding exists: P5 capabilities (packages/permissions/src/capabilities.ts) and default-off feature flags (packages/permissions/src/features.ts) plus nullable work_item.cycle_id/module_id/estimate_point_id/service_id and checklist_item.release_id columns; none lifts a requirement above partial",
-		"Time tracking is legacy Kaneo time_entry (task_id/user_id, seconds) with no own/any policy, activity, billable, timer table or UI; name collides with data-model §9 time_entry (TC-1..7)",
-		"No reporting engine: no metrics-snapshot job, report routes, export job, chart component or dashboards; RP-18 rests on role grants only (RP-1..18)",
-		"No knowledge base or deflection on agent, portal request form or triage (KB-1..17)",
-		"Change management: CAB gating and risk/rollback guards exist in the domain and are tested, but runtime passes changeRiskLevel null, has no change satellite store, seeded workflow has no CAB transition, and there are no freezes, services or releases (CH-1..6, SVC-1..5, REL-1..5)",
-		"No P5 web screens: apps/web/src/routes and apps/web/src/lib/routes.ts have no cycles, modules, timesheet, budget, rates, reports, dashboard, kb or service-management paths (docs/screens.md P5 rows all open)",
-		"Pages has no requirement ids and no behavior spec (docs/features.md); feature.pages flag exists only"
+		"Evidence: nothing in P5 is browser-verified (scripted sign-in blocked) and none of the 25 P5 integration suites was run by this audit; 69 implemented_tested items rest on unrun integration tests plus green unit runs. All P5 code is uncommitted.",
+		"Cost tracking: no cost types or cost entries (TC-12, TC-13, TC-14 missing), so budget actuals are time-only (TC-16), committed is always null (TC-17) and 75/90% thresholds raise no notification (TC-18).",
+		"Capacity: no available_hours (TC-20 missing); utilisation and the capacity report use team capacity_days_per_week instead (TC-21, TC-22).",
+		"Reports: no metric_snapshot or hourly job, every period is live (RP-9); no export for tier 3 custom reports or widgets and no queued large-export job (RP-10); drill-down exists on only 12 of 24 tier 1 reports (RP-12).",
+		"Knowledge base authoring: callouts and work item references cannot be inserted in the editor (KB-5, KB-6); owner not settable in the editor (KB-7); matching is a LIKE scan, not a full-text index (KB-9); related and most-viewed/recent ordering untested (KB-15, KB-16).",
+		"Change and release: CAB gating is an opt-in template, not the default (CH-2); low-risk pre-approval edge is not generated (CH-3); releases flagged for the portal have no portal surface (REL-5).",
+		"Velocity counts only cycles closed with the completion action; cycles that end by date have no snapshot and no daily snapshot job exists (CY-9).",
+		"Unindexed requirements: PG-1..8, CP-20..29 and IP-35 have contract ids but no row in docs/requirements-index.json, so no phase counts them; PG-7 undelete has no UI and CP-22/CP-26 invitation limits are hard-coded rather than instance configuration."
 	],
 	"tonight_actions": [
-		"Now (only lane allowed before the P4 review passes): write the missing contracts — Pages behavior; customer invitations CP-11/12/13; typed-domain SSO CP-17/18, IP-9/IP-29 — for Thomas's approval",
-		"After P4 review passes: coordinator lands P5 schema wave 0 in reserved migrations 0148-0152 on the scratch database only, renaming drizzle-kit's generated prefix (next idx is 146) to the reserved number",
-		"Pending Thomas: rename legacy Kaneo time_entry to task_time_entry (0066 task_activity precedent) and create canonical work-item time_entry (integer minutes, activity, billable, person, date)",
-		"After P4 review passes: cycles/modules/estimates API with overlap refusal, date-derived status, completion policy and estimate-change preview, plus the contract's unit tests",
-		"After P4 review passes: time entries v2 — orOwner(person_id) policy, backdate window, running_timer start/stop with 12 h cap and timer-sweeper, task Time section and Kaneo table-based weekly timesheet",
-		"After P4 review passes: report core envelope (scope, window, as-of, null-with-sample, buckets, empty explanation), reach filter, customer-403 tests on every /api/reports route, then tier-1 reports over existing SLA/throughput/ageing/workload/CSAT/escalation data",
-		"After P4 review passes: KB article/version/category/feedback API with customer_visible+published double gate and portal isolation tests; deflection on portal request form and triage",
-		"After P4 review passes: service catalogue + change_detail satellite feeding changeRiskLevel and change.rollback_plan into transition guards; change_freeze with audited elevated override; change calendar on Kaneo calendar"
+		"Run the 25 tests/api-integration/p5-*.test.ts on a dedicated scratch _test database (never taskdesk_browser_journey_1022_test) and cite the run here before the P5 phase review.",
+		"Browser-verify P5 screens on persisted data once scripted sign-in is unblocked: cycles (drag from backlog, completion dialog), modules, estimates preview, timesheet/timer reload, budget, rates, reports and dashboards (drag/resize), KB editor and portal deflection, services, changes, freeze override, calendar, releases.",
+		"Build cost types and cost entries (TC-12..14) and then committed (TC-17) and the 75/90% notification (TC-18), or record an owner deferral.",
+		"Decide available_hours (TC-20..22): build per-person capacity or record team capacity as the accepted substitute.",
+		"Reports: decide metric_snapshot (RP-9) or record live-only as an owner decision; add drillItems to the 12 reports without it (RP-12); add export for custom reports and widgets (RP-10).",
+		"KB: add callout and work-item-reference insertion and an owner picker to the editor using Kaneo/packages/ui Tiptap pieces (KB-5..7); add tests for related selection and popular/recent ordering (KB-15, KB-16).",
+		"Service management: add a portal release-notes surface (REL-5); decide whether CAB becomes default and how the low-risk pre-approval edge is authored (CH-2, CH-3); snapshot cycles that end by date for velocity (CY-9)."
 	]
 }

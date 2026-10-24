@@ -897,10 +897,10 @@ async function lookupWorkspaceId(
             workItemId: schema.taskTable.id,
             organisationId: schema.workspaceTable.organisationId,
           })
-          .from(schema.timeEntryTable)
+          .from(schema.taskTimeEntryTable)
           .innerJoin(
             schema.taskTable,
-            eq(schema.timeEntryTable.taskId, schema.taskTable.id),
+            eq(schema.taskTimeEntryTable.taskId, schema.taskTable.id),
           )
           .innerJoin(
             schema.projectTable,
@@ -912,7 +912,7 @@ async function lookupWorkspaceId(
           )
           .where(
             and(
-              eq(schema.timeEntryTable.id, id),
+              eq(schema.taskTimeEntryTable.id, id),
               reach(schema.projectTable.workspaceId),
               isNull(schema.projectTable.deletedAt),
             ),

@@ -45,9 +45,9 @@ import {
   taskRelationTable,
   taskReminderSentTable,
   taskTable,
+  taskTimeEntryTable,
   teamMemberTable,
   teamTable,
-  timeEntryTable,
   twoFactorTable,
   userNotificationPreferenceTable,
   userNotificationWorkspaceProjectTable,
@@ -79,7 +79,7 @@ export const userTableRelations = relations(userTable, ({ many, one }) => ({
   teamMembers: many(teamMemberTable),
   workspaceMemberships: many(workspaceUserTable),
   assignedTasks: many(taskTable),
-  timeEntries: many(timeEntryTable),
+  timeEntries: many(taskTimeEntryTable),
   activities: many(taskActivityTable),
   comments: many(taskCommentTable),
   assets: many(assetTable),
@@ -269,7 +269,7 @@ export const taskTableRelations = relations(taskTable, ({ one, many }) => ({
     fields: [taskTable.columnId],
     references: [columnTable.id],
   }),
-  timeEntries: many(timeEntryTable),
+  timeEntries: many(taskTimeEntryTable),
   activities: many(taskActivityTable),
   comments: many(taskCommentTable),
   assets: many(assetTable),
@@ -280,16 +280,19 @@ export const taskTableRelations = relations(taskTable, ({ one, many }) => ({
   remindersSent: many(taskReminderSentTable),
 }));
 
-export const timeEntryTableRelations = relations(timeEntryTable, ({ one }) => ({
-  task: one(taskTable, {
-    fields: [timeEntryTable.taskId],
-    references: [taskTable.id],
+export const taskTimeEntryTableRelations = relations(
+  taskTimeEntryTable,
+  ({ one }) => ({
+    task: one(taskTable, {
+      fields: [taskTimeEntryTable.taskId],
+      references: [taskTable.id],
+    }),
+    user: one(userTable, {
+      fields: [taskTimeEntryTable.userId],
+      references: [userTable.id],
+    }),
   }),
-  user: one(userTable, {
-    fields: [timeEntryTable.userId],
-    references: [userTable.id],
-  }),
-}));
+);
 
 export const taskActivityTableRelations = relations(
   taskActivityTable,

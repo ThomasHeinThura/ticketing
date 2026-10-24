@@ -37,6 +37,13 @@ import {
   updateSessionActiveOrganizationId,
   updateSessionPortal,
 } from "./auth/repository";
+import { acceptCustomerInvitation } from "./customer-invitation/service";
+import {
+  auditSignUpRefusal,
+  INVITE_SIGN_UP_REFUSED,
+  readInviteSignUpBody,
+  verifyInviteSignUp,
+} from "./customer-invitation/signup";
 import db from "./database";
 import {
   bindTwoFactorOidcSession,
@@ -410,7 +417,10 @@ function createAuth(
     },
     emailAndPassword: {
       enabled: localAuthProviders.password,
-      disableSignUp: portal === "customer",
+      // The portal's sign-up door is open only to an invitation-gated request: the `before` hook
+      // and the user-create guard below refuse every customer sign-up that does not carry a live
+      // customer invitation credential for the same address (CP-12, CP-24).
+      disableSignUp: false,
       autoSignIn: true,
       password: {
         hash: async (password) => {
@@ -676,6 +686,18 @@ function createAuth(
             }
 
             if (portal === "customer") {
+              // Only the invitation-gated password sign-up creates a customer account here; the
+              // request-level check ran already, this re-verifies it at the write (defence in
+              // depth). Address possession is proven by the emailed credential, so the address
+              // is marked verified. Every other creation path stays refused.
+              if (ctx?.path === "/sign-up/email") {
+                const verdict = await verifyInviteSignUp({
+                  body: ctx?.body,
+                  email: user.email,
+                });
+                if (verdict.ok)
+                  return { data: { ...user, emailVerified: true } };
+              }
               throw new APIError("FORBIDDEN", {
                 message: "Customer accounts must be invited or provisioned.",
               });
@@ -891,6 +913,27 @@ function createAuth(
           });
         }
 
+        if (portal === "customer" && ctx.path === "/sign-up/email") {
+          // CP-12: the one open door on the portal host. The request must carry a live customer
+          // invitation credential for the sign-up address; nothing else registers a customer.
+          // The staff registration switches below do not govern it (a customer invitation never
+          // opens agent-side registration, and an agent invitation never opens this).
+          const verdict = await verifyInviteSignUp({
+            body: ctx.body,
+            email: ctx.body?.email,
+          });
+          if (!verdict.ok) {
+            await auditSignUpRefusal(
+              verdict,
+              readInviteSignUpBody(ctx.body)?.invitationId ?? null,
+            );
+            throw new APIError("FORBIDDEN", {
+              message: INVITE_SIGN_UP_REFUSED,
+            });
+          }
+          return;
+        }
+
         const isSignUpPath =
           ctx.path === "/sign-up/email" ||
           ctx.path.startsWith("/callback/") ||
@@ -984,6 +1027,36 @@ function createAuth(
           }
         }
         if (!newSession) return;
+
+        if (portal === "customer" && ctx.path === "/sign-up/email") {
+          // Accept in the same request, through the existing locked transaction: it consumes the
+          // credential and creates the customer person and membership. A sign-up that does not
+          // complete accept leaves no session and no orphan account (a retry stays possible).
+          const presented = readInviteSignUpBody(ctx.body);
+          let accepted = false;
+          if (presented) {
+            try {
+              await acceptCustomerInvitation({
+                userId: newSession.user.id,
+                invitationId: presented.invitationId,
+                credential: presented.credential,
+                via: "sign_up",
+              });
+              accepted = true;
+            } catch {
+              accepted = false;
+            }
+          }
+          if (!accepted) {
+            if (!(await hasCustomerPortalIdentity(newSession.user.id)))
+              await ctx.context.internalAdapter.deleteUser(newSession.user.id);
+            deleteSessionCookie(ctx, true);
+            ctx.context.setNewSession(null);
+            throw new APIError("FORBIDDEN", {
+              message: INVITE_SIGN_UP_REFUSED,
+            });
+          }
+        }
 
         if (
           portal === "customer" &&
@@ -1245,6 +1318,23 @@ export function isCustomerLocalAuthEndpoint(
     method === "POST" &&
     (path === "/api/auth/sign-in/email-otp" ||
       path === "/api/auth/email-otp/send-verification-otp")
+  );
+}
+
+/**
+ * The portal's invitation-gated sign-up (CP-12): admitted at the host only while the customer
+ * password provider is enabled. The Better Auth hooks then require a live customer invitation
+ * credential for the sign-up address, so this does not open general registration.
+ */
+export function isCustomerInviteSignUpEndpoint(
+  method: string,
+  path: string,
+  providers: LocalAuthProviders = customerLocalAuthProviders,
+): boolean {
+  return (
+    providers.password &&
+    method === "POST" &&
+    path === "/api/auth/sign-up/email"
   );
 }
 

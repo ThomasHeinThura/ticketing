@@ -30,6 +30,12 @@ export const featureFlagPolicies = {
     scopeSource: "request",
     reach: "required",
   },
+  "GET /api/workspaces/{workspaceId}/features/resolved": {
+    capability: "project:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
   "PATCH /api/workspaces/{workspaceId}/features": {
     capability: "workspace:manage_settings",
     scope: "workspace",

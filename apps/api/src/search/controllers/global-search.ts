@@ -1,4 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { projectsWithFeature } from "../../feature-flag/repository";
+import { searchProjectPages } from "../../pages/search";
 import { isCustomerPrincipal } from "../../utils/is-customer-principal";
 import {
   type CanonicalWorkItemRow,
@@ -27,6 +29,7 @@ type SearchParams = {
     | "work_items"
     | "people"
     | "views"
+    | "pages"
     | "projects"
     | "workspaces"
     | "comments"
@@ -57,6 +60,7 @@ type SearchResult = {
     | "work_item"
     | "person"
     | "saved_view"
+    | "page"
     | "project"
     | "workspace"
     | "comment"
@@ -265,7 +269,8 @@ async function globalSearch(params: SearchParams): Promise<{
     type === "all" ||
     type === "work_items" ||
     type === "people" ||
-    type === "views";
+    type === "views" ||
+    type === "pages";
   const searchWorkspaceId =
     workspaceId ??
     (accessibleWorkspaceIds.length === 1
@@ -343,6 +348,35 @@ async function globalSearch(params: SearchParams): Promise<{
           workspaceId: searchWorkspaceId,
           createdAt: person.createdAt,
           relevanceScore: person.relevanceScore,
+        });
+      }
+    }
+
+    // PG-6: pages of the projects the caller reaches (staff only: this branch is closed to a
+    // customer principal above).
+    if ((type === "all" || type === "pages") && term) {
+      for (const page of await searchProjectPages({
+        workspaceId: searchWorkspaceId,
+        reachableProjectIds: await projectsWithFeature(
+          "feature.pages",
+          searchWorkspaceId,
+          reachable,
+        ),
+        projectId,
+        term,
+        limit,
+      })) {
+        results.push({
+          id: page.id,
+          type: "page",
+          title: page.title,
+          description: page.snippet || undefined,
+          projectId: page.projectId,
+          projectName: page.projectName,
+          projectSlug: page.projectSlug,
+          workspaceId: page.workspaceId,
+          createdAt: page.createdAt,
+          relevanceScore: page.relevanceScore,
         });
       }
     }

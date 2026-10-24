@@ -36,7 +36,7 @@ import {
  * - `MC-15`: output is wrapped as untrusted content at the output boundary (`run`).
  *
  * Not offered, because the API route they would call does not exist yet: `list_my_work`,
- * `create_submission`, `log_time`, `bulk_create_work_items`, `create_import_link`,
+ * `create_submission`, `bulk_create_work_items`, `create_import_link`,
  * `get_import_link`. Not offered because the API refuses keys on the route they would call
  * (`403 session_required`): `list_workspaces` (`GET /api/workspace` and
  * `GET /api/workspace/{id}/members` are browser-session only) and `decide_approval`
@@ -348,6 +348,22 @@ export function registerTools(
         client.json(`/api/projects/${enc(args.projectId)}/states`, {
           method: "GET",
         }),
+      ),
+  );
+
+  registerTool(
+    "list_time_activities",
+    {
+      description:
+        "List a workspace's time activity types (GET /api/time-activities; needs time_entry:create). Read-only. Each id is the activityId log_time needs.",
+      inputSchema: z.object({ workspaceId: nonEmptyString }),
+    },
+    async (args) =>
+      run(() =>
+        client.json(
+          `/api/time-activities?workspaceId=${enc(args.workspaceId)}`,
+          { method: "GET" },
+        ),
       ),
   );
 
@@ -672,6 +688,37 @@ export function registerTools(
           }),
         ),
       ),
+  );
+
+  registerTool(
+    "log_time",
+    {
+      description: `Log time against a work item for the key's owner (POST /api/time-entries; needs time_entry:create). ${WRITE_NOTICE} Whole minutes only (1 to 1440), a calendar date that is not in the future and inside the workspace's backdating limit, and an activityId from list_time_activities. The hourly rate in force on that date is captured on the entry; the reply shows it only if the key's owner may see rates.`,
+      inputSchema: z.object({
+        idempotencyKey: idempotencyKeySchema,
+        workspaceId: nonEmptyString,
+        workItemId: nonEmptyString.describe(
+          "The work item's id (from get_work_item), not its key",
+        ),
+        date: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/u, "YYYY-MM-DD")
+          .describe("The day the work was done, YYYY-MM-DD"),
+        minutes: z.number().int().min(1).max(1440),
+        activityId: nonEmptyString,
+        description: nonEmptyString.max(2000).optional(),
+        billable: z.boolean().optional(),
+      }),
+    },
+    async (args) => {
+      const { idempotencyKey, ...body } = args;
+      return run(() =>
+        client.json(
+          "/api/time-entries",
+          writeInit("POST", idempotencyKey, body),
+        ),
+      );
+    },
   );
 
   registerTool(

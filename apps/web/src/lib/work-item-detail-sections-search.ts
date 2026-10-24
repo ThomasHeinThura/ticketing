@@ -1,10 +1,15 @@
 import { isWorkItemHierarchyKey } from "./work-item-hierarchy-search";
 
-export type WorkItemDetailSection = "sla" | "approvals" | "attachments";
+export type WorkItemDetailSection =
+  | "sla"
+  | "approvals"
+  | "attachments"
+  | "time"
+  | "change";
 export type WorkItemDetailSectionsSearch = {
   sections?: { itemKey: string; open: WorkItemDetailSection[] };
 };
-const SECTIONS = ["sla", "approvals", "attachments"] as const;
+const SECTIONS = ["sla", "approvals", "attachments", "time", "change"] as const;
 
 /** Item-scoped, bounded disclosure state for canonical Kaneo task extensions. */
 export function parseWorkItemDetailSectionsSearch(
@@ -25,7 +30,7 @@ export function parseWorkItemDetailSectionsSearch(
   if (
     !isWorkItemHierarchyKey(input.itemKey) ||
     !Array.isArray(input.open) ||
-    input.open.length > 3 ||
+    input.open.length > 5 ||
     input.open.some(
       (section) => !SECTIONS.includes(section as WorkItemDetailSection),
     )

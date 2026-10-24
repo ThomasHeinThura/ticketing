@@ -8,7 +8,7 @@ import { currentProjectReachPredicate } from "../database/repositories/identity-
 import {
   projectTable,
   taskTable,
-  timeEntryTable,
+  taskTimeEntryTable,
   userTable,
 } from "../database/schema";
 
@@ -93,7 +93,7 @@ export async function lockTaskAndAssertProjectLive(
 }
 
 export type NewTimeEntry = Pick<
-  typeof timeEntryTable.$inferInsert,
+  typeof taskTimeEntryTable.$inferInsert,
   | "id"
   | "taskId"
   | "userId"
@@ -103,7 +103,7 @@ export type NewTimeEntry = Pick<
   | "duration"
 >;
 export type TimeEntryChanges = Pick<
-  typeof timeEntryTable.$inferInsert,
+  typeof taskTimeEntryTable.$inferInsert,
   "startTime" | "endTime" | "duration" | "description"
 >;
 
@@ -114,27 +114,27 @@ export async function insertTimeEntry(
 ) {
   const statement = executor
     .select({
-      id: sql`${sql.param(values.id === undefined ? createId() : values.id, timeEntryTable.id)}`.as(
+      id: sql`${sql.param(values.id === undefined ? createId() : values.id, taskTimeEntryTable.id)}`.as(
         "id",
       ),
       taskId: taskTable.id,
-      userId: sql`${sql.param(values.userId, timeEntryTable.userId)}`.as(
+      userId: sql`${sql.param(values.userId, taskTimeEntryTable.userId)}`.as(
         "userId",
       ),
       description:
-        sql`${sql.param(values.description, timeEntryTable.description)}`.as(
+        sql`${sql.param(values.description, taskTimeEntryTable.description)}`.as(
           "description",
         ),
       startTime:
-        sql`${sql.param(values.startTime, timeEntryTable.startTime)}`.as(
+        sql`${sql.param(values.startTime, taskTimeEntryTable.startTime)}`.as(
           "startTime",
         ),
       endTime:
-        sql`${sql.param(values.endTime ?? null, timeEntryTable.endTime)}`.as(
+        sql`${sql.param(values.endTime ?? null, taskTimeEntryTable.endTime)}`.as(
           "endTime",
         ),
       duration:
-        sql`${sql.param(values.duration === undefined ? 0 : values.duration, timeEntryTable.duration)}`.as(
+        sql`${sql.param(values.duration === undefined ? 0 : values.duration, taskTimeEntryTable.duration)}`.as(
           "duration",
         ),
       createdAt: sql`now()`.as("createdAt"),
@@ -157,7 +157,7 @@ export async function insertTimeEntry(
       ),
     );
   const [created] = await executor
-    .insert(timeEntryTable)
+    .insert(taskTimeEntryTable)
     .select(statement)
     .returning();
   return created;
@@ -170,12 +170,12 @@ export async function updateTimeEntryById(
   changes: Partial<TimeEntryChanges>,
 ) {
   const [updated] = await executor
-    .update(timeEntryTable)
+    .update(taskTimeEntryTable)
     .set(changes)
     .where(
       and(
-        eq(timeEntryTable.id, id),
-        taskReach(identity, timeEntryTable.taskId, executor, true),
+        eq(taskTimeEntryTable.id, id),
+        taskReach(identity, taskTimeEntryTable.taskId, executor, true),
       ),
     )
     .returning();
@@ -189,11 +189,11 @@ export async function findTimeEntryById(
 ) {
   const [timeEntry] = await executor
     .select()
-    .from(timeEntryTable)
+    .from(taskTimeEntryTable)
     .where(
       and(
-        eq(timeEntryTable.id, id),
-        taskReach(identity, timeEntryTable.taskId, executor),
+        eq(taskTimeEntryTable.id, id),
+        taskReach(identity, taskTimeEntryTable.taskId, executor),
       ),
     );
   return timeEntry;
@@ -206,11 +206,11 @@ export async function findTimeEntryMutationTarget(
   executor: Executor = db,
 ) {
   const [target] = await executor
-    .select({ id: timeEntryTable.id, taskId: timeEntryTable.taskId })
-    .from(timeEntryTable)
+    .select({ id: taskTimeEntryTable.id, taskId: taskTimeEntryTable.taskId })
+    .from(taskTimeEntryTable)
     .where(
       and(
-        eq(timeEntryTable.id, id),
+        eq(taskTimeEntryTable.id, id),
         exists(
           executor
             .select({ one: sql`1` })
@@ -218,7 +218,7 @@ export async function findTimeEntryMutationTarget(
             .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
             .where(
               and(
-                eq(taskTable.id, timeEntryTable.taskId),
+                eq(taskTable.id, taskTimeEntryTable.taskId),
                 isNull(projectTable.deletedAt),
                 currentProjectReachPredicate(
                   identity,
@@ -242,24 +242,24 @@ export async function listTimeEntriesWithUserByTask(
 ) {
   return executor
     .select({
-      id: timeEntryTable.id,
-      taskId: timeEntryTable.taskId,
-      userId: timeEntryTable.userId,
+      id: taskTimeEntryTable.id,
+      taskId: taskTimeEntryTable.taskId,
+      userId: taskTimeEntryTable.userId,
       userName: userTable.name,
-      description: timeEntryTable.description,
-      startTime: timeEntryTable.startTime,
-      endTime: timeEntryTable.endTime,
-      duration: timeEntryTable.duration,
-      createdAt: timeEntryTable.createdAt,
-      updatedAt: timeEntryTable.updatedAt,
+      description: taskTimeEntryTable.description,
+      startTime: taskTimeEntryTable.startTime,
+      endTime: taskTimeEntryTable.endTime,
+      duration: taskTimeEntryTable.duration,
+      createdAt: taskTimeEntryTable.createdAt,
+      updatedAt: taskTimeEntryTable.updatedAt,
     })
-    .from(timeEntryTable)
-    .leftJoin(userTable, eq(timeEntryTable.userId, userTable.id))
+    .from(taskTimeEntryTable)
+    .leftJoin(userTable, eq(taskTimeEntryTable.userId, userTable.id))
     .where(
       and(
-        eq(timeEntryTable.taskId, taskId),
-        taskReach(identity, timeEntryTable.taskId, executor),
+        eq(taskTimeEntryTable.taskId, taskId),
+        taskReach(identity, taskTimeEntryTable.taskId, executor),
       ),
     )
-    .orderBy(timeEntryTable.startTime);
+    .orderBy(taskTimeEntryTable.startTime);
 }

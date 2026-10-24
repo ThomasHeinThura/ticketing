@@ -8,6 +8,9 @@ const permissions = vi.hoisted(() => ({
   roles: false,
   webhooks: false,
   fields: false,
+  invite: false,
+  rates: false,
+  workflows: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -36,6 +39,9 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     canManageRoles: () => permissions.roles,
     canManageWebhooks: () => permissions.webhooks,
     canManageCustomFields: () => permissions.fields,
+    canInviteUsers: () => permissions.invite,
+    canManageRates: () => permissions.rates,
+    canManageWorkflows: () => permissions.workflows,
   }),
 }));
 
@@ -47,6 +53,9 @@ afterEach(() => {
     roles: false,
     webhooks: false,
     fields: false,
+    invite: false,
+    rates: false,
+    workflows: false,
   });
 });
 
@@ -70,15 +79,24 @@ describe("WorkspaceSettingsFrame", () => {
     permissions.roles = true;
     permissions.webhooks = true;
     permissions.fields = true;
+    permissions.invite = true;
+    permissions.rates = true;
+    permissions.workflows = true;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
     const hrefs = screen
       .getAllByRole("link")
       .map((a) => a.getAttribute("href"));
     expect(hrefs).toContain("/agent/settings/automations");
+    expect(hrefs).toContain("/agent/settings/customer-invitations");
     expect(hrefs).toContain("/agent/settings/webhooks");
     expect(hrefs).toContain("/agent/settings/roles");
     expect(hrefs).toContain("/agent/settings/sla-policies");
-    expect(hrefs).toHaveLength(13);
+    expect(hrefs).toContain("/agent/settings/time-activities");
+    expect(hrefs).toContain("/agent/settings/rates");
+    // General, labels and the 14 gated entries: roles, canned responses, templates, calendars,
+    // SLA policies, request types, workflows, teams, time activities, rates, custom fields,
+    // customer invitations, automations and webhooks.
+    expect(hrefs).toHaveLength(16);
   });
 
   it("gates Roles, Webhooks and Custom fields on the capability their API enforces (M9)", () => {
@@ -89,6 +107,8 @@ describe("WorkspaceSettingsFrame", () => {
     expect(hrefs).not.toContain("/agent/settings/roles");
     expect(hrefs).not.toContain("/agent/settings/webhooks");
     expect(hrefs).not.toContain("/agent/settings/custom-fields");
+    // Customer invitations follow member:invite, not workspace settings.
+    expect(hrefs).not.toContain("/agent/settings/customer-invitations");
     cleanup();
 
     // A webhook:manage holder without workspace settings still gets the entry.
@@ -98,5 +118,43 @@ describe("WorkspaceSettingsFrame", () => {
     hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
     expect(hrefs).toContain("/agent/settings/webhooks");
     expect(hrefs).not.toContain("/agent/settings/custom-fields");
+    cleanup();
+
+    // A member:invite holder without workspace settings gets only the invitations entry.
+    permissions.webhooks = false;
+    permissions.invite = true;
+    render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
+    hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(hrefs).toContain("/agent/settings/customer-invitations");
+    expect(hrefs).not.toContain("/agent/settings/webhooks");
+  });
+
+  it("shows each P5 entry exactly to the holder of the capability its API enforces (R5-03)", () => {
+    const hrefsFor = () =>
+      screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    // Settings rights alone open neither Rates nor Workflows.
+    permissions.settings = true;
+    render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
+    expect(hrefsFor()).toContain("/agent/settings/time-activities");
+    expect(hrefsFor()).not.toContain("/agent/settings/rates");
+    expect(hrefsFor()).not.toContain("/agent/settings/workflows");
+    cleanup();
+
+    // A finance role with manage_rates but no settings rights reaches Rates only.
+    permissions.settings = false;
+    permissions.rates = true;
+    render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
+    expect(hrefsFor()).toContain("/agent/settings/rates");
+    expect(hrefsFor()).not.toContain("/agent/settings/time-activities");
+    expect(hrefsFor()).not.toContain("/agent/settings/workflows");
+    cleanup();
+
+    // workflow:manage alone opens Workflows (and the CAB template on it) only.
+    permissions.rates = false;
+    permissions.workflows = true;
+    render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
+    expect(hrefsFor()).toContain("/agent/settings/workflows");
+    expect(hrefsFor()).not.toContain("/agent/settings/rates");
+    expect(hrefsFor()).not.toContain("/agent/settings/time-activities");
   });
 });

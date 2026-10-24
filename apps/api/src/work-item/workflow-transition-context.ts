@@ -22,6 +22,7 @@ import {
   workItemTable,
   workItemTypeTable,
 } from "../database/schema";
+import { loadChangeTransitionFacts } from "../service-management/change-repository";
 import { hasOpenBlockers } from "../work-item-relation/blockers";
 
 /**
@@ -320,12 +321,20 @@ export async function buildGuardContext(
     return group === "completed" || group === "cancelled";
   });
 
+  const change = ctx.isChangeType
+    ? await loadChangeTransitionFacts(db, ctx.workItem.id)
+    : null;
+
   return {
     allChildrenClosed,
     hasOpenBlockers: await hasOpenBlockers(ctx.workItem.id),
     assigneePresent: ctx.workItem.assigneeId !== null,
-    // WF-15: `cf.<key>` guards resolve from the real custom field values.
-    fieldValues: await guardFieldValues(db, ctx.workItem.id),
-    changeRiskLevel: null,
+    // WF-15: `cf.<key>` guards resolve from the real custom field values; a change also supplies
+    // its satellite key `change.rollback_plan` and its risk (feature-contracts-p5.md CH-1, CH-6).
+    fieldValues: {
+      ...(await guardFieldValues(db, ctx.workItem.id)),
+      ...change?.fieldValues,
+    },
+    changeRiskLevel: change?.risk ?? null,
   };
 }

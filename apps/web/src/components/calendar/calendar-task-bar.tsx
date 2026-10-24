@@ -26,6 +26,13 @@ const STATUS_CLASSES: Record<string, string> = {
   "in-review":
     "border-amber-500/40 bg-amber-500/15 hover:border-amber-500/55 hover:bg-amber-500/20",
   done: "border-emerald-500/35 bg-emerald-500/15 hover:border-emerald-500/50 hover:bg-emerald-500/20",
+  // Change calendar (P5 `CH-4`, `CH-5`): a window inside a freeze, a same-service conflict, a freeze.
+  frozen:
+    "border-red-500/45 bg-red-500/15 hover:border-red-500/60 hover:bg-red-500/20",
+  conflict:
+    "border-amber-500/40 bg-amber-500/15 hover:border-amber-500/55 hover:bg-amber-500/20",
+  freeze:
+    "border-slate-500/45 bg-slate-500/20 hover:border-slate-500/60 hover:bg-slate-500/25",
 };
 
 export function getCalendarTaskStatusClass(status: string): string {

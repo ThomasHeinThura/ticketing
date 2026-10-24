@@ -1,4 +1,15 @@
 import {
+  type DashboardSearch,
+  parseDashboardSearch,
+  parseReportBuilderSearch,
+  parseReportsIndexSearch,
+  type ReportBuilderSearch,
+  type ReportSearch,
+  type ReportsIndexSearch,
+  reportQuery,
+} from "./report-search";
+import { isCalendarDate, weekStart } from "./time-minutes";
+import {
   parseWorkItemApprovalRequestSearch,
   type WorkItemApprovalRequestSearch,
 } from "./work-item-approval-request-search";
@@ -51,6 +62,21 @@ export function parseWorkItemWorkSearch(raw: unknown): WorkItemWorkSearch {
     ...parseWorkItemListSearch(raw),
     ...(group ? { group } : {}),
   };
+}
+
+/**
+ * Cycle and module detail search (P5 agile): the work surface under the burndown or progress
+ * panel is the project's board or list. `board` is the default and is never written.
+ */
+export type AgileDetailSearch = { layout?: "list" };
+
+export function parseAgileDetailSearch(raw: unknown): AgileDetailSearch {
+  const layout = (raw as { layout?: unknown } | null)?.layout;
+  return layout === "list" ? { layout: "list" } : {};
+}
+
+function agileDetailQuery(search: AgileDetailSearch) {
+  return search.layout === "list" ? "?layout=list" : "";
 }
 
 export type LabelCatalogueSearch = {
@@ -250,6 +276,8 @@ export function parseIdentityConnectionEditorSearchFromQueryString(
 }
 
 export type PendingActionsSearch = { cursor?: string };
+/** Workspace customer invitations: which customer organisation is selected (CP-20). */
+export type CustomerInvitationsSearch = { organisation?: string };
 export type SavedViewsSearch = { query?: string };
 /**
  * The URL form of a saved view (`SV-19`): the view's context (`workspaceId`, `scope`,
@@ -281,6 +309,17 @@ export function parsePendingActionsSearch(raw: unknown): PendingActionsSearch {
       ? value.cursor
       : undefined;
   return { cursor };
+}
+
+export function parseCustomerInvitationsSearch(
+  raw: unknown,
+): CustomerInvitationsSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return typeof value.organisation === "string" &&
+    value.organisation.length > 0 &&
+    value.organisation.length <= 128
+    ? { organisation: value.organisation }
+    : {};
 }
 
 export function parseSavedViewsSearch(raw: unknown): SavedViewsSearch {
@@ -692,6 +731,152 @@ export type IntakeAgeFilter = (typeof INTAKE_AGE_FILTERS)[number];
 export type RequestTypeEditorSearch = { requestTypeId?: string };
 export type WorkflowSettingsSearch = { workflowId?: string };
 export type PortalCatalogueSearch = { q?: string; key?: string };
+/**
+ * Timesheet (`TC-*`): the week is a Monday (`YYYY-MM-DD`); the current week is never written.
+ * `scope=everyone` is the read-only people-by-day view for `time_entry:read_any` holders.
+ */
+export type TimesheetSearch = { week?: string; scope?: "everyone" };
+export function parseTimesheetSearch(raw: unknown): TimesheetSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const week = isCalendarDate(value.week) ? weekStart(value.week) : undefined;
+  return {
+    ...(week ? { week } : {}),
+    ...(value.scope === "everyone" ? { scope: "everyone" as const } : {}),
+  };
+}
+/** Knowledge base list (`KB-13`/`KB-14`/`KB-16`): one screen, three views, all in the URL. */
+export const KB_LIST_VIEWS = ["articles", "categories", "report"] as const;
+export const KB_STATES = [
+  "draft",
+  "in_review",
+  "published",
+  "archived",
+] as const;
+export type KbListSearch = {
+  view?: (typeof KB_LIST_VIEWS)[number];
+  q?: string;
+  state?: (typeof KB_STATES)[number];
+  category?: string;
+  overdue?: boolean;
+};
+export const KB_ARTICLE_TABS = ["article", "versions", "feedback"] as const;
+export type KbArticleSearch = {
+  tab?: (typeof KB_ARTICLE_TABS)[number];
+  /** Version number shown in the history tab. */
+  version?: number;
+};
+export type KbEditorSearch = { preview?: boolean };
+export type PortalKbSearch = { q?: string; category?: string };
+
+function kbText(value: unknown, max = 200) {
+  return typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= max &&
+    !value.includes("\u0000")
+    ? value
+    : undefined;
+}
+export function parseKbListSearch(raw: unknown): KbListSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const view = KB_LIST_VIEWS.find((candidate) => candidate === value.view);
+  const state = KB_STATES.find((candidate) => candidate === value.state);
+  const q = kbText(value.q);
+  const category = kbText(value.category);
+  return {
+    ...(view && view !== "articles" ? { view } : {}),
+    ...(q ? { q } : {}),
+    ...(state ? { state } : {}),
+    ...(category ? { category } : {}),
+    ...(value.overdue === true || value.overdue === "1"
+      ? { overdue: true }
+      : {}),
+  };
+}
+export function parseKbArticleSearch(raw: unknown): KbArticleSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const tab = KB_ARTICLE_TABS.find((candidate) => candidate === value.tab);
+  const version = Number(value.version);
+  return {
+    ...(tab && tab !== "article" ? { tab } : {}),
+    ...(Number.isInteger(version) && version >= 1 && version <= 100000
+      ? { version }
+      : {}),
+  };
+}
+export function parseKbEditorSearch(raw: unknown): KbEditorSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return value.preview === true || value.preview === "1"
+    ? { preview: true }
+    : {};
+}
+export function parsePortalKbSearch(raw: unknown): PortalKbSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const q = kbText(value.q);
+  const category = kbText(value.category);
+  return { ...(q ? { q } : {}), ...(category ? { category } : {}) };
+}
+function kbQuery(entries: Record<string, string | undefined>) {
+  const query = new URLSearchParams();
+  for (const [key, entry] of Object.entries(entries))
+    if (entry) query.set(key, entry);
+  const suffix = query.toString();
+  return suffix ? `?${suffix}` : "";
+}
+
+/** Service management (P5 `SVC-*`, `CH-*`, `REL-*`): every filter lives in the URL. */
+export type ServiceListSearch = { q?: string };
+export const CHANGE_CALENDAR_TABS = [
+  "calendar",
+  "freezes",
+  "overrides",
+] as const;
+export type ChangeCalendarSearch = {
+  /** First day of the visible month, `YYYY-MM`; the current month when absent. */
+  month?: string;
+  tab?: (typeof CHANGE_CALENDAR_TABS)[number];
+};
+export type ReleaseListSearch = { serviceId?: string };
+
+function serviceManagementText(value: unknown, max = 200) {
+  return typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= max &&
+    !value.includes("\u0000")
+    ? value
+    : undefined;
+}
+export function parseServiceListSearch(raw: unknown): ServiceListSearch {
+  const q = serviceManagementText((raw as { q?: unknown } | null)?.q, 120);
+  return q ? { q } : {};
+}
+export function parseChangeCalendarSearch(raw: unknown): ChangeCalendarSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const month =
+    typeof value.month === "string" &&
+    /^\d{4}-(0[1-9]|1[0-2])$/u.test(value.month)
+      ? value.month
+      : undefined;
+  const tab = CHANGE_CALENDAR_TABS.find((candidate) => candidate === value.tab);
+  return {
+    ...(month ? { month } : {}),
+    ...(tab && tab !== "calendar" ? { tab } : {}),
+  };
+}
+export function parseReleaseListSearch(raw: unknown): ReleaseListSearch {
+  const serviceId = serviceManagementText(
+    (raw as { serviceId?: unknown } | null)?.serviceId,
+    128,
+  );
+  return serviceId ? { serviceId } : {};
+}
+function serviceManagementQuery(entries: Record<string, string | undefined>) {
+  const query = new URLSearchParams();
+  for (const [key, entry] of Object.entries(entries))
+    if (entry) query.set(key, entry);
+  const suffix = query.toString();
+  return suffix ? `?${suffix}` : "";
+}
+
 export type PortalSignInStage = "email" | "password" | "factor";
 export type PortalSignInSearch = {
   stage: PortalSignInStage;
@@ -798,6 +983,16 @@ export const routes = {
   },
   /** `docs/screens.md` "Workspace — automations". */
   automations: { path: "/agent/settings/automations" as const },
+  /** `docs/screens.md` "Workspace — customer invitations" (CP-20..CP-23). */
+  customerInvitations: {
+    path: "/agent/settings/customer-invitations" as const,
+    build: (search: CustomerInvitationsSearch = {}) => {
+      const resolved = parseCustomerInvitationsSearch(search);
+      return resolved.organisation
+        ? `/agent/settings/customer-invitations?organisation=${encodeURIComponent(resolved.organisation)}`
+        : "/agent/settings/customer-invitations";
+    },
+  },
   /** `docs/screens.md` "Project — automations" (redirects into the Kaneo project settings). */
   projectAutomations: {
     path: "/agent/projects/$projectKey/settings/automations" as const,
@@ -876,6 +1071,67 @@ export const routes = {
       return `/agent/triage?${query.toString()}`;
     },
   },
+  /** `docs/screens.md` "Knowledge base", "Article view" and "Article editor" (P5, `KB-*`). */
+  kb: {
+    path: "/agent/kb" as const,
+    build: (search: KbListSearch = {}) => {
+      const resolved = parseKbListSearch(search);
+      return `/agent/kb${kbQuery({
+        view: resolved.view,
+        q: resolved.q,
+        state: resolved.state,
+        category: resolved.category,
+        overdue: resolved.overdue ? "1" : undefined,
+      })}`;
+    },
+  },
+  kbArticle: {
+    path: "/agent/kb/$id" as const,
+    build: (params: { id: string }, search: KbArticleSearch = {}) => {
+      const resolved = parseKbArticleSearch(search);
+      return `/agent/kb/${encodeURIComponent(params.id)}${kbQuery({
+        tab: resolved.tab,
+        version: resolved.version ? String(resolved.version) : undefined,
+      })}`;
+    },
+  },
+  kbArticleEdit: {
+    path: "/agent/kb/$id/edit" as const,
+    build: (params: { id: string }, search: KbEditorSearch = {}) =>
+      `/agent/kb/${encodeURIComponent(params.id)}/edit${kbQuery({
+        preview: parseKbEditorSearch(search).preview ? "1" : undefined,
+      })}`,
+  },
+  /** `docs/screens.md` "Services list" and "Service detail" (P5, `SVC-*`). */
+  serviceManagementServices: {
+    path: "/agent/service-management/services" as const,
+    build: (search: ServiceListSearch = {}) =>
+      `/agent/service-management/services${serviceManagementQuery({ q: parseServiceListSearch(search).q })}`,
+  },
+  serviceManagementServiceDetail: {
+    path: "/agent/service-management/services/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/service-management/services/${encodeURIComponent(params.id)}`,
+  },
+  /** `docs/screens.md` "Change calendar" (P5, `CH-4`, `CH-5`): calendar, freezes and the override report. */
+  serviceManagementChanges: {
+    path: "/agent/service-management/changes" as const,
+    build: (search: ChangeCalendarSearch = {}) => {
+      const resolved = parseChangeCalendarSearch(search);
+      return `/agent/service-management/changes${serviceManagementQuery({ month: resolved.month, tab: resolved.tab })}`;
+    },
+  },
+  /** `docs/screens.md` "Releases" (P5, `REL-*`). */
+  serviceManagementReleases: {
+    path: "/agent/service-management/releases" as const,
+    build: (search: ReleaseListSearch = {}) =>
+      `/agent/service-management/releases${serviceManagementQuery({ serviceId: parseReleaseListSearch(search).serviceId })}`,
+  },
+  serviceManagementReleaseDetail: {
+    path: "/agent/service-management/releases/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/service-management/releases/${encodeURIComponent(params.id)}`,
+  },
   /** Customer portal home, rooted on its separate origin. */
   portalHome: {
     path: "/" as const,
@@ -891,6 +1147,18 @@ export const routes = {
         query.set("factor", "backup");
       return `/sign-in?${query.toString()}`;
     },
+  },
+  /** Portal knowledge base, host-root like every portal route. */
+  portalKb: {
+    path: "/kb" as const,
+    build: (search: PortalKbSearch = {}) => {
+      const resolved = parsePortalKbSearch(search);
+      return `/kb${kbQuery({ q: resolved.q, category: resolved.category })}`;
+    },
+  },
+  portalKbArticle: {
+    path: "/kb/$id" as const,
+    build: (params: { id: string }) => `/kb/${encodeURIComponent(params.id)}`,
   },
   portalCatalogue: {
     path: "/catalogue" as const,
@@ -920,6 +1188,15 @@ export const routes = {
         ? `/approvals?${new URLSearchParams({ approval })}`
         : "/approvals";
     },
+  },
+  /**
+   * `docs/screens.md` "Accept invitation" (CP-24). Host root on the portal origin. The accept
+   * credential travels in the URL fragment (`#t=`), never in the path or query string.
+   */
+  portalInvite: {
+    path: "/invite/$id" as const,
+    build: (params: { id: string }) =>
+      `/invite/${encodeURIComponent(params.id)}`,
   },
   portalSubmission: {
     path: "/submissions/$ref" as const,
@@ -1245,6 +1522,71 @@ export const routes = {
       return `/agent/settings/work-item-templates${query ? `?${query}` : ""}`;
     },
   },
+  /** `docs/screens.md` "Timesheet": the week grid (P5 time and cost). */
+  timesheet: {
+    path: "/agent/timesheet" as const,
+    build: (search: TimesheetSearch = {}) => {
+      const resolved = parseTimesheetSearch(search);
+      const query = new URLSearchParams(resolved as Record<string, string>);
+      return `/agent/timesheet${query.size ? `?${query}` : ""}`;
+    },
+  },
+  /** `docs/screens.md` "Reports index" (P5 reports, `RP-*`): the directory of reports. */
+  reports: {
+    path: "/agent/reports" as const,
+    build: (search: ReportsIndexSearch = {}) => {
+      const resolved = parseReportsIndexSearch(search);
+      return resolved.category
+        ? `/agent/reports?category=${resolved.category}`
+        : "/agent/reports";
+    },
+  },
+  /** "Report detail": the whole filter state is in the query string (`RP-8`). */
+  reportDetail: {
+    path: "/agent/reports/$key" as const,
+    build: (params: { key: string }, search: ReportSearch = {}) => {
+      const query = reportQuery(search).toString();
+      return `/agent/reports/${encodeURIComponent(params.key)}${query ? `?${query}` : ""}`;
+    },
+  },
+  /** "Report builder" (tier 3); `view` opens a saved report. */
+  reportBuilder: {
+    path: "/agent/reports/new" as const,
+    build: (search: ReportBuilderSearch = {}) => {
+      const resolved = parseReportBuilderSearch(search);
+      return resolved.view
+        ? `/agent/reports/new?view=${encodeURIComponent(resolved.view)}`
+        : "/agent/reports/new";
+    },
+  },
+  /** "Dashboard" and "Dashboard editor": `id` names a dashboard, the default otherwise. */
+  agentDashboard: {
+    path: "/agent/dashboard" as const,
+    build: (search: DashboardSearch = {}) => {
+      const resolved = parseDashboardSearch(search);
+      return resolved.id
+        ? `/agent/dashboard?id=${encodeURIComponent(resolved.id)}`
+        : "/agent/dashboard";
+    },
+  },
+  agentDashboardEdit: {
+    path: "/agent/dashboard/edit" as const,
+    build: (search: DashboardSearch = {}) => {
+      const resolved = parseDashboardSearch(search);
+      return resolved.id
+        ? `/agent/dashboard/edit?id=${encodeURIComponent(resolved.id)}`
+        : "/agent/dashboard/edit";
+    },
+  },
+  /** `docs/screens.md` "Workspace — rates" and "Workspace — time activities". */
+  workspaceRates: {
+    path: "/agent/settings/rates" as const,
+    build: () => "/agent/settings/rates",
+  },
+  workspaceTimeActivities: {
+    path: "/agent/settings/time-activities" as const,
+    build: () => "/agent/settings/time-activities",
+  },
   /** `docs/screens.md` "Workspace — teams" and "Team detail". */
   workspaceTeams: {
     path: "/agent/settings/teams" as const,
@@ -1320,6 +1662,59 @@ export const routes = {
     path: "/agent/projects/$projectKey/settings/features" as const,
     build: (params: { projectKey: string }) =>
       `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/features`,
+  },
+  /** `CY-1`..`CY-9` (P5): cycles list, shown only while `feature.cycles` resolves on. */
+  projectCycles: {
+    path: "/agent/projects/$projectKey/cycles" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/cycles`,
+  },
+  /** Cycle detail: burndown above the project's board or list, filtered to the cycle. */
+  projectCycleDetail: {
+    path: "/agent/projects/$projectKey/cycles/$cycleId" as const,
+    build: (
+      params: { projectKey: string; cycleId: string },
+      search: AgileDetailSearch = {},
+    ) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/cycles/${encodeURIComponent(params.cycleId)}${agileDetailQuery(search)}`,
+  },
+  /** `MO-1`..`MO-4` (P5): modules list, shown only while `feature.modules` resolves on. */
+  projectModules: {
+    path: "/agent/projects/$projectKey/modules" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/modules`,
+  },
+  projectModuleDetail: {
+    path: "/agent/projects/$projectKey/modules/$moduleId" as const,
+    build: (
+      params: { projectKey: string; moduleId: string },
+      search: AgileDetailSearch = {},
+    ) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/modules/${encodeURIComponent(params.moduleId)}${agileDetailQuery(search)}`,
+  },
+  /** `PG-1`..`PG-8` (P5): staff-only project pages, a tree of long-form documents. */
+  projectPages: {
+    path: "/agent/projects/$projectKey/pages" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/pages`,
+  },
+  /** One page: view or edit, with the version history in a side panel. */
+  projectPage: {
+    path: "/agent/projects/$projectKey/pages/$pageId" as const,
+    build: (params: { projectKey: string; pageId: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/pages/${encodeURIComponent(params.pageId)}`,
+  },
+  /** `ES-1`..`ES-3`: estimate system and cycle completion default (redirects to Kaneo's project settings). */
+  projectEstimates: {
+    path: "/agent/projects/$projectKey/settings/estimates" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/estimates`,
+  },
+  /** `TC-15`..`TC-19`: project budgets (redirects to Kaneo's project settings). */
+  projectBudget: {
+    path: "/agent/projects/$projectKey/settings/budget" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/budget`,
   },
   projectDangerZone: {
     path: "/agent/projects/$projectKey/settings/danger" as const,

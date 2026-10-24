@@ -10,9 +10,11 @@ import {
   requireLabelRowTaskReach,
 } from "../../apps/api/src/utils/task-target-reach";
 import {
+  PROJECT_AGILE_ROUTE_KEYS,
   PROJECT_BODY_TARGET_ROUTE_KEYS,
   PROJECT_LABEL_ROUTE_KEYS,
   PROJECT_LIST_ROUTE_KEYS,
+  PROJECT_PAGES_ROUTE_KEYS,
   PROJECT_READ_ROUTE_KEYS,
   PROJECT_SOCKET_ROUTE_KEYS,
   PROJECT_WRITE_ROUTE_KEYS,
@@ -179,8 +181,46 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
     "workspace-level rules only (project_id null), behind workspace:manage_settings; project rules are listed by the project route. Rows carry no work item content",
   "GET /api/workspaces/{workspaceId}/features":
     "workspace feature-flag overrides; configuration rows, not project rows",
+  "GET /api/workspaces/{workspaceId}/features/resolved":
+    "effective on/off values of the workspace's feature flags for navigation; configuration values, no project rows",
   "GET /api/workspaces/{workspaceId}/audit":
     "audit rows are filtered by project reach inside the audit reader (#319/#334)",
+  // P5 service management, change management and releases.
+  "GET /api/service-catalogue/status":
+    "feature flag and the caller's own manage capabilities; no rows",
+  "GET /api/services":
+    "service definitions (name, category, owner team, status); links to projects are only on the detail route, which is reach-filtered. Incident and open-change counts are workspace-wide per-service aggregates (SVC-3), with no project or work item ids, names or titles",
+  "GET /api/change-freezes":
+    "freeze window definitions (name, reason, start, end); workspace configuration rows, not project rows",
+  "GET /api/releases":
+    "release rows (name, service, planned date, status) with change and checklist counts; the changes themselves, their keys and titles, are only on the reach-filtered detail route, which also reports a hidden count",
+  "GET /api/change-cab-template":
+    "whether the workspace has adopted the CAB workflow template; configuration status, no rows",
+  // P5 reports and dashboards.
+  "GET /api/reports":
+    "the static report catalogue (key, title, options, feature availability); definitions, not data. The data routes (/reports/{key}, /items, widget data) declare reach filtering",
+  "GET /api/dashboards":
+    "the caller's own and workspace dashboard definitions (name, layout, widget count); a widget filter may hold a project id but no project content, and the data behind a widget is only served by the reach-filtered widget data route",
+  "GET /api/dashboards/{id}":
+    "one dashboard definition with its widget configuration (report key, chart type, filters as ids); no report data. Widget data is served by the reach-filtered widget data route",
+  // P5 time tracking.
+  "GET /api/time-activities":
+    "workspace activity definitions (name, billable default, archived); configuration rows, not project rows",
+  "GET /api/time-settings":
+    "workspace-level time settings (backdating limit, rounding, caller's time zone and capabilities) plus, with a projectId query, one reach-filtered project row (id, defaultBillable) that is omitted when the project is outside the caller's reach; no other project content",
+  "GET /api/rates":
+    "hourly rate cards behind time_entry:manage_rates with cost tracking on; rows name a person and, for a per-project override, carry a project id only, never a project name, key or work item",
+  // P5 knowledge base.
+  "GET /api/kb/settings":
+    "workspace knowledge base settings (feature options); configuration, no article or project rows",
+  // P5 service calendars.
+  "GET /api/service-calendars/{id}/holidays/presets":
+    "the bundled country holiday dataset that ships with the release; static reference data, no workspace rows",
+  // P5 customer invitations.
+  "GET /api/workspace/{workspaceId}/customer-organisations":
+    "customer organisation names an invitation may target (member:invite); organisation rows, not project rows",
+  "GET /api/workspace/{workspaceId}/organisations/{organisationId}/invitations":
+    "one organisation's customer invitations (address, status, dates; never the accept credential); invitation rows, no project rows",
 };
 
 /** Pure, so the negative cases can prove the check is not vacuous. */
@@ -481,6 +521,8 @@ describe("project reach guard: the real router", () => {
           ...PROJECT_WRITE_ROUTE_KEYS,
           ...PROJECT_READ_ROUTE_KEYS,
           ...PROJECT_LABEL_ROUTE_KEYS,
+          ...PROJECT_AGILE_ROUTE_KEYS,
+          ...PROJECT_PAGES_ROUTE_KEYS,
         ]),
         PROJECT_REACH_EXEMPT,
       ),

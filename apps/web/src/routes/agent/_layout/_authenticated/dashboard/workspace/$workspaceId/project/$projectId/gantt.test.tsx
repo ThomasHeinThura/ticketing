@@ -84,6 +84,40 @@ vi.mock("@tanstack/react-router", () => ({
     },
 }));
 
+// P5: the timeline reads the resolved feature flags (module grouping) and, only when asked,
+// the module list and the dependency edges. `agile` holds what those queries return.
+const agile = vi.hoisted(() => ({
+  modules: false,
+  moduleList: [] as Array<{ id: string; name: string }>,
+  edges: [] as Array<{
+    id: string;
+    type: "blocks" | "precedes";
+    sourceKey: string;
+    targetKey: string;
+  }>,
+  queryKeys: [] as unknown[][],
+}));
+vi.mock("@/hooks/queries/agile/use-agile-features", () => ({
+  default: () => ({
+    features: { cycles: false, modules: agile.modules, estimates: false },
+    isLoading: false,
+  }),
+}));
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQuery: (options: { queryKey: unknown[]; enabled?: boolean }) => {
+      if (options.enabled !== false) agile.queryKeys.push(options.queryKey);
+      if (options.enabled === false) return { data: undefined };
+      if (options.queryKey[1] === "modules")
+        return { data: { data: agile.moduleList } };
+      if (options.queryKey[1] === "dependencies") return { data: agile.edges };
+      return { data: undefined };
+    },
+  };
+});
+
 const useGetTasks = vi.fn();
 vi.mock("@/hooks/queries/work-item/use-schedule-project", () => ({
   useScheduleProject: (projectId: string) => useGetTasks(projectId),
@@ -194,6 +228,10 @@ beforeEach(() => {
   vi.setSystemTime(new Date(2026, 7, 31));
   window.history.replaceState({}, "", "/gantt");
   routeState.search = {};
+  agile.modules = false;
+  agile.moduleList = [];
+  agile.edges = [];
+  agile.queryKeys = [];
 });
 
 afterEach(() => {
@@ -637,5 +675,100 @@ describe("Gantt grouping (VW-27, VW-1)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Assignee" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "None" }));
     expect(routeState.search).not.toHaveProperty("group");
+  });
+});
+
+describe("Gantt module grouping and dependency arrows (VW-27, VW-28)", () => {
+  function mockModuleTasks() {
+    useGetTasks.mockReturnValue({
+      data: {
+        id: "project-1",
+        name: "Roadmap",
+        slug: "RM",
+        columns: [
+          {
+            id: "col-1",
+            name: "In Progress",
+            tasks: [
+              makeTask({
+                id: "RM-1",
+                title: "First",
+                number: 1,
+                moduleId: "m-checkout",
+                startDate: "2026-08-28",
+                dueDate: "2026-09-02",
+              }),
+              makeTask({
+                id: "RM-2",
+                title: "Loose",
+                number: 2,
+                startDate: "2026-08-29",
+                dueDate: "2026-09-03",
+              }),
+            ],
+          },
+        ],
+        plannedTasks: [],
+        archivedTasks: [],
+      },
+    });
+  }
+
+  it("groups by module when feature.modules is on, with the no-module bucket last", () => {
+    agile.modules = true;
+    agile.moduleList = [{ id: "m-checkout", name: "Checkout" }];
+    routeState.search = { group: "module" };
+    mockModuleTasks();
+    render(<GanttRoute />);
+    const headings = screen
+      .getAllByTestId("gantt-group-row")
+      .map((row) => row.querySelector("h2")?.textContent);
+    expect(headings).toEqual(["Checkout", "No module"]);
+  });
+
+  it("ignores group=module when the modules feature is off", () => {
+    agile.modules = false;
+    routeState.search = { group: "module" };
+    mockModuleTasks();
+    render(<GanttRoute />);
+    expect(screen.queryAllByTestId("gantt-group-row")).toHaveLength(0);
+  });
+
+  it("does not load or draw dependencies by default", () => {
+    mockModuleTasks();
+    render(<GanttRoute />);
+    expect(agile.queryKeys.some((key) => key[1] === "dependencies")).toBe(
+      false,
+    );
+    expect(screen.queryByTestId("gantt-dependency-arrows")).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Dependencies" })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
+  });
+
+  it("loads the edges when deps=1 and the toggle is pressed", () => {
+    routeState.search = { deps: "1" };
+    agile.edges = [
+      { id: "e1", type: "blocks", sourceKey: "RM-1", targetKey: "RM-2" },
+    ];
+    mockModuleTasks();
+    render(<GanttRoute />);
+    expect(agile.queryKeys.some((key) => key[1] === "dependencies")).toBe(true);
+    expect(
+      screen
+        .getByRole("button", { name: "Dependencies" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("writes deps=1 to the URL and removes it again", () => {
+    mockModuleTasks();
+    render(<GanttRoute />);
+    fireEvent.click(screen.getByRole("button", { name: "Dependencies" }));
+    expect(routeState.search).toMatchObject({ deps: "1" });
+    fireEvent.click(screen.getByRole("button", { name: "Dependencies" }));
+    expect(routeState.search).not.toHaveProperty("deps");
   });
 });

@@ -37,6 +37,11 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   manageWebhooks?: boolean;
   manageCustomFields?: boolean;
   manageLabels?: boolean;
+  // Strict time_entry:manage_rates, workflow:manage and budget:read: what the Rates, Workflows
+  // (CAB template) and project Budget APIs enforce. Optional so an older server fails closed.
+  manageRates?: boolean;
+  manageWorkflows?: boolean;
+  readBudgets?: boolean;
   createAttachments?: boolean;
 };
 
@@ -154,6 +159,9 @@ export function useWorkspacePermission(
       canManageRoles: () => can.manageRoles === true,
       canManageWebhooks: () => can.manageWebhooks === true,
       canManageCustomFields: () => can.manageCustomFields === true,
+      canManageRates: () => can.manageRates === true,
+      canManageWorkflows: () => can.manageWorkflows === true,
+      canReadBudgets: () => can.readBudgets === true,
       canBindProjectOrganisation: () => can.bindProjectOrganisation === true,
     };
   }, [can]);

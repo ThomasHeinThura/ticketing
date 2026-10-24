@@ -12,6 +12,9 @@ const { mocks } = vi.hoisted(() => ({
   },
 }));
 
+// The per-state limit field has its own tests and its own queries.
+vi.mock("./state-wip-limit-field", () => ({ default: () => null }));
+
 vi.mock("@dnd-kit/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@dnd-kit/core")>();
   return {

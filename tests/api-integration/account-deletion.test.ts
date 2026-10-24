@@ -272,7 +272,7 @@ describe("API integration: account deletion", () => {
 
     const timeEntry = requireRow(
       await db
-        .insert(schema.timeEntryTable)
+        .insert(schema.taskTimeEntryTable)
         .values({
           taskId: task.id,
           userId: guest.id,
@@ -309,8 +309,8 @@ describe("API integration: account deletion", () => {
     const remainingTimeEntry = requireRow(
       await db
         .select()
-        .from(schema.timeEntryTable)
-        .where(eq(schema.timeEntryTable.id, timeEntry.id)),
+        .from(schema.taskTimeEntryTable)
+        .where(eq(schema.taskTimeEntryTable.id, timeEntry.id)),
       "remainingTimeEntry",
     );
     const remainingActivity = requireRow(

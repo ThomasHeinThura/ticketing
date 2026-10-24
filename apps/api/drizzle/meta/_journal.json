@@ -1037,6 +1037,55 @@
 			"when": 1792752709145,
 			"tag": "0158_step_up_workspace_operations",
 			"breakpoints": true
+		},
+		{
+			"idx": 148,
+			"version": "7",
+			"when": 1792752710145,
+			"tag": "0148_p5_agile_planning",
+			"breakpoints": true
+		},
+		{
+			"idx": 149,
+			"version": "7",
+			"when": 1792752711145,
+			"tag": "0149_p5_time_and_cost",
+			"breakpoints": true
+		},
+		{
+			"idx": 150,
+			"version": "7",
+			"when": 1792752712145,
+			"tag": "0150_p5_knowledge_base",
+			"breakpoints": true
+		},
+		{
+			"idx": 151,
+			"version": "7",
+			"when": 1792752713145,
+			"tag": "0151_p5_service_management",
+			"breakpoints": true
+		},
+		{
+			"idx": 152,
+			"version": "7",
+			"when": 1792752714145,
+			"tag": "0152_p5_reports_dashboards",
+			"breakpoints": true
+		},
+		{
+			"idx": 153,
+			"version": "7",
+			"when": 1792752715145,
+			"tag": "0153_p5_customer_invitations",
+			"breakpoints": true
+		},
+		{
+			"idx": 154,
+			"version": "7",
+			"when": 1792752716145,
+			"tag": "0154_p5_project_pages",
+			"breakpoints": true
 		}
 	]
 }

@@ -62,6 +62,7 @@ import {
   isClosingCategory,
   useOpenChildrenGuard,
 } from "./open-children-warning";
+import WorkItemAgileRows from "./work-item-agile-rows";
 import {
   useHasWorkItemFeedback,
   useWorkItemFeedback,
@@ -1176,6 +1177,7 @@ function WorkItemPropertiesPanel({
             />
             <DateControl {...controlProps} field="startDate" />
             <DateControl {...controlProps} field="dueDate" />
+            <WorkItemAgileRows item={item} compact={compact} />
           </div>
         </div>
         <div

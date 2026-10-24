@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   paint: { resolve: () => {} },
   getSavedViews: vi.fn(),
   countSavedView: vi.fn(),
+  getWorkspaceResolvedFeatures: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -48,6 +49,11 @@ vi.mock("@/lib/i18n/after-first-paint", () => ({
 vi.mock("@/fetchers/saved-views", () => ({
   getSavedViews: (...args: unknown[]) => mocks.getSavedViews(...args),
   countSavedView: (...args: unknown[]) => mocks.countSavedView(...args),
+}));
+
+vi.mock("@/fetchers/feature-flags", () => ({
+  getWorkspaceResolvedFeatures: (...args: unknown[]) =>
+    mocks.getWorkspaceResolvedFeatures(...args),
 }));
 
 const view = (id: string, name: string, isPinned: boolean) => ({
@@ -85,6 +91,7 @@ beforeEach(() => {
   );
   mocks.user = { id: "viewer-1" };
   mocks.navigate.mockReset();
+  mocks.getWorkspaceResolvedFeatures.mockResolvedValue([]);
   mocks.getSavedViews.mockResolvedValue([
     view("v-pinned", "Escalations", true),
     view("v-other", "Not pinned", false),
@@ -201,5 +208,48 @@ describe("NavMain saved views (SV-20, SV-22)", () => {
     mocks.paint.resolve();
     await Promise.resolve();
     expect(mocks.getSavedViews).not.toHaveBeenCalled();
+  });
+});
+
+describe("NavMain feature entries (P5-R4-04)", () => {
+  const on = (...keys: string[]) => keys.map((key) => ({ key, enabled: true }));
+
+  it("shows the gated entries from the resolved read, which every workspace member may call", async () => {
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue([
+      ...on(
+        "feature.knowledge_base",
+        "feature.time_tracking",
+        "feature.reports",
+      ),
+    ]);
+    renderNav();
+    mocks.paint.resolve();
+    for (const name of ["Knowledge base", "Timesheet", "Reports", "Dashboard"])
+      expect(await screen.findByRole("button", { name })).toBeInTheDocument();
+    expect(mocks.getWorkspaceResolvedFeatures).toHaveBeenCalledWith("ws-1");
+  });
+
+  it("hides an entry whose flag is off and all of them when the read fails", async () => {
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue(
+      on("feature.knowledge_base"),
+    );
+    const first = renderNav();
+    mocks.paint.resolve();
+    expect(
+      await screen.findByRole("button", { name: "Knowledge base" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Timesheet" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reports" })).toBeNull();
+    first.unmount();
+
+    mocks.getWorkspaceResolvedFeatures.mockRejectedValue(
+      new HttpError(403, "no"),
+    );
+    renderNav();
+    mocks.paint.resolve();
+    await waitFor(() =>
+      expect(mocks.getWorkspaceResolvedFeatures).toHaveBeenCalledTimes(2),
+    );
+    expect(screen.queryByRole("button", { name: "Knowledge base" })).toBeNull();
   });
 });

@@ -3,6 +3,9 @@ import { HttpError } from "@/lib/http-error";
 import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
 import { parseWorkItemRow, type WorkItemRow } from "@/types/work-item";
 
+/** A cycle or module whose members a list read is narrowed to (P5 agile). */
+export type WorkItemAgileScope = { cycleId?: string; moduleId?: string };
+
 export type WorkItemsResult = {
   items: WorkItemRow[];
   /**
@@ -25,16 +28,24 @@ async function getWorkItems(
   projectId: string,
   sort: WorkItemSortField,
   dir: WorkItemSortDirection,
-  options: { cursor?: string; limit?: number } = {},
+  options: {
+    cursor?: string;
+    limit?: number;
+    /** P5 agile: narrow to one cycle or module (`cycle` / `module` list filters). */
+    scope?: WorkItemAgileScope;
+  } = {},
 ): Promise<WorkItemsResult> {
+  const query: Record<string, string> = {
+    sort,
+    dir,
+    ...(options.cursor ? { cursor: options.cursor } : {}),
+    ...(options.limit ? { limit: String(options.limit) } : {}),
+    ...(options.scope?.cycleId ? { cycle: options.scope.cycleId } : {}),
+    ...(options.scope?.moduleId ? { module: options.scope.moduleId } : {}),
+  };
   const response = await client.projects[":projectId"]["work-items"].$get({
     param: { projectId },
-    query: {
-      sort,
-      dir,
-      ...(options.cursor ? { cursor: options.cursor } : {}),
-      ...(options.limit ? { limit: String(options.limit) } : {}),
-    },
+    query: query as { sort: typeof sort; dir: typeof dir },
   });
 
   if (!response.ok) {

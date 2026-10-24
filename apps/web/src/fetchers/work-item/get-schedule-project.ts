@@ -77,6 +77,7 @@ export async function getScheduleProject(
         assigneeName: item.assigneeName,
         projectId: item.projectId,
         columnId: item.stateId,
+        moduleId: item.moduleId ?? null,
         labels: item.labels ?? [],
       });
     }

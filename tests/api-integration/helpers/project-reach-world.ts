@@ -31,6 +31,9 @@ export const PROJECT_ADMIN_CAPABILITIES = [
   "time_entry:create",
   "time_entry:read_any",
   "time_entry:update_any",
+  // P5 time and cost: project budgets are read and managed by the caller's project role.
+  "budget:read",
+  "budget:manage",
   "workspace:read",
 ] as const;
 
@@ -47,6 +50,7 @@ export const PROJECT_KEY_SCOPE = {
   work_item: ["read", "create", "update", "delete", "assign"],
   label: ["create", "update", "delete", "manage"],
   time_entry: ["create", "read_any", "update_any"],
+  budget: ["read", "manage"],
   workspace: ["read"],
 };
 
@@ -256,8 +260,8 @@ export async function projectSnapshot() {
       .orderBy(schema.labelTable.id),
     timeEntries: await db
       .select()
-      .from(schema.timeEntryTable)
-      .orderBy(schema.timeEntryTable.id),
+      .from(schema.taskTimeEntryTable)
+      .orderBy(schema.taskTimeEntryTable.id),
   };
   return JSON.stringify(tables);
 }

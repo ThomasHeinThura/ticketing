@@ -249,9 +249,24 @@ export const workspaceTable = pgTable(
     deletedAt: timestamp("deleted_at", { mode: "date" }),
     purgeAfter: timestamp("purge_after", { mode: "date" }),
     defaultSlaPolicyId: text("default_sla_policy_id"),
+    // TC-4 (0149): days back a member may log time without `time_entry:log_backdated`. CHECK 0..3650
+    // is NOT VALID in the migration (populated table).
+    timeEntryBackdateLimitDays: integer("time_entry_backdate_limit_days")
+      .notNull()
+      .default(30),
+    // KB-4 (0150): an author submits, a reviewer publishes. Off by default.
+    kbReviewStepEnabled: boolean("kb_review_step_enabled")
+      .default(false)
+      .notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).notNull(),
   },
   (table) => [
+    check(
+      "workspace_time_entry_backdate_limit_days_check",
+      sql.raw(
+        '"time_entry_backdate_limit_days" >= 0 AND "time_entry_backdate_limit_days" <= 3650',
+      ),
+    ),
     foreignKey({
       name: "workspace_default_sla_policy_workspace_fk",
       columns: [table.id, table.defaultSlaPolicyId],
@@ -375,11 +390,44 @@ export const invitationTable = pgTable(
     inviterId: text("inviter_id")
       .notNull()
       .references(() => userTable.id, { onDelete: "cascade" }),
+    // CP-20..CP-26 (0153): `staff` (every pre-existing row) or `customer`. A customer row names one
+    // customer organisation and the `customer` role and carries a hash-only accept credential.
+    scope: text("scope").default("staff").notNull(),
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      { onDelete: "cascade", onUpdate: "cascade" },
+    ),
+    credentialHash: text("credential_hash"),
+    lastSentAt: timestamp("last_sent_at", { mode: "date", withTimezone: true }),
+    acceptedAt: timestamp("accepted_at", { mode: "date", withTimezone: true }),
+    acceptedPersonId: text("accepted_person_id").references(
+      () => personTable.id,
+      { onDelete: "set null", onUpdate: "cascade" },
+    ),
   },
   (table) => [
     index("invitation_workspaceId_idx").on(table.workspaceId),
     index("invitation_email_idx").on(table.email),
     index("invitation_inviterId_idx").on(table.inviterId),
+    check(
+      "invitation_scope_allowed",
+      sql.raw("scope IN ('staff', 'customer')"),
+    ),
+    check(
+      "invitation_scope_shape",
+      sql.raw(
+        "(scope = 'staff' AND organisation_id IS NULL AND credential_hash IS NULL) OR (scope = 'customer' AND organisation_id IS NOT NULL AND role = 'customer' AND team_id IS NULL)",
+      ),
+    ),
+    uniqueIndex("invitation_credential_hash_unique")
+      .on(table.credentialHash)
+      .where(sql.raw("credential_hash IS NOT NULL")),
+    index("invitation_organisation_idx")
+      .on(table.organisationId)
+      .where(sql.raw("organisation_id IS NOT NULL")),
+    uniqueIndex("invitation_customer_pending_unique")
+      .on(table.organisationId, sql.raw("lower(email)"))
+      .where(sql.raw("scope = 'customer' AND status = 'pending'")),
   ],
 );
 
@@ -514,6 +562,8 @@ export const projectTable = pgTable(
       .$type<"public" | "internal">()
       .notNull()
       .default("internal"),
+    // TC-3 (0149): the `billable` default for time logged on this project.
+    defaultBillable: boolean("default_billable").notNull().default(true),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     // Decision log 2026-10-14 "A project's creator holds a project-lead membership": the
     // staff `person` who created the project, written by `createProjectRow` from now on.
@@ -1233,8 +1283,13 @@ export const taskReminderSentTable = pgTable(
   ],
 );
 
-export const timeEntryTable = pgTable(
-  "time_entry",
+// Kaneo's original legacy time-entry table, renamed `task_time_entry` (SQL name and index/constraint
+// names only -- migration 0149, the 0066 `task_activity` precedent) so the canonical work-item
+// `time_entry` (schema-p5-time.ts: integer minutes, person, activity, billable, snapshotted rate)
+// can use the name `time_entry`. Columns, data and the legacy `/api/time-entry` routes are
+// unchanged: still keyed on `task_id`/`user_id`, stored as seconds between start and end.
+export const taskTimeEntryTable = pgTable(
+  "task_time_entry",
   {
     id: text("id")
       .$defaultFn(() => createId())
@@ -1260,8 +1315,8 @@ export const timeEntryTable = pgTable(
       .notNull(),
   },
   (table) => [
-    index("time_entry_taskId_idx").on(table.taskId),
-    index("time_entry_userId_idx").on(table.userId),
+    index("task_time_entry_taskId_idx").on(table.taskId),
+    index("task_time_entry_userId_idx").on(table.userId),
   ],
 );
 
@@ -5806,7 +5861,7 @@ export const stepUpConfirmationTable = pgTable(
     check(
       "step_up_operation_route",
       sql.raw(
-        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text)) OR ((operation_key = 'instance_admin_suspend'::text) AND (route_key = 'POST /api/instance/users/{id}/suspend'::text)) OR ((operation_key = 'impersonation_start'::text) AND (route_key = 'POST /api/instance/users/{id}/impersonate'::text)) OR ((operation_key = 'secrets_rotate'::text) AND (route_key = 'POST /api/instance/plugins/rotate-secrets'::text)) OR ((operation_key = 'webhook_create'::text) AND (route_key = 'POST /api/webhooks'::text)) OR ((operation_key = 'webhook_update_url'::text) AND (route_key = 'PATCH /api/webhooks/{id}'::text)) OR ((operation_key = 'webhook_rotate_secret'::text) AND (route_key = 'POST /api/webhooks/{id}/rotate-secret'::text)) OR ((operation_key = 'workspace_role_create'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/roles'::text)) OR ((operation_key = 'workspace_role_update'::text) AND (route_key = 'PATCH /api/workspace/{workspaceId}/roles/{roleId}'::text)) OR ((operation_key = 'service_key_create'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys'::text)) OR ((operation_key = 'workspace_ownership_transfer'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/transfer-ownership'::text))",
+        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text)) OR ((operation_key = 'instance_admin_suspend'::text) AND (route_key = 'POST /api/instance/users/{id}/suspend'::text)) OR ((operation_key = 'impersonation_start'::text) AND (route_key = 'POST /api/instance/users/{id}/impersonate'::text)) OR ((operation_key = 'secrets_rotate'::text) AND (route_key = 'POST /api/instance/plugins/rotate-secrets'::text)) OR ((operation_key = 'webhook_create'::text) AND (route_key = 'POST /api/webhooks'::text)) OR ((operation_key = 'webhook_update_url'::text) AND (route_key = 'PATCH /api/webhooks/{id}'::text)) OR ((operation_key = 'webhook_rotate_secret'::text) AND (route_key = 'POST /api/webhooks/{id}/rotate-secret'::text)) OR ((operation_key = 'workspace_role_create'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/roles'::text)) OR ((operation_key = 'workspace_role_update'::text) AND (route_key = 'PATCH /api/workspace/{workspaceId}/roles/{roleId}'::text)) OR ((operation_key = 'service_key_create'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys'::text)) OR ((operation_key = 'workspace_ownership_transfer'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/transfer-ownership'::text)) OR ((operation_key = 'change_freeze_override'::text) AND (route_key = 'POST /api/work-items/{key}/change/override-freeze'::text))",
       ),
     ),
     check(

@@ -23,6 +23,7 @@ import {
   patchProjectFeatures,
   patchWorkspaceFeatures,
   resolveProjectFeatures,
+  resolveWorkspaceFeatureValues,
 } from "./repository";
 import {
   featureConflictSchema,
@@ -34,6 +35,7 @@ import {
   patchLevelFeaturesBody,
   resolvedFeaturesQuery,
   resolvedFeaturesSchema,
+  workspaceResolvedFeaturesSchema,
 } from "./schema";
 
 // biome-ignore lint/suspicious/noExplicitAny: handlers run under differing route generics
@@ -125,6 +127,25 @@ const getWorkspaceRoute = createRoute({
   responses: {
     200: jsonResponse("Flags resolved for the workspace", levelFeaturesSchema),
     403: errorResponse("Missing workspace:manage_settings permission"),
+  },
+});
+
+const getWorkspaceResolvedRoute = createRoute({
+  method: "get",
+  operationId: "getWorkspaceResolvedFeatures",
+  path: "/workspaces/{workspaceId}/features/resolved",
+  tags: ["Workspaces"],
+  summary: "Effective feature values for a workspace",
+  description:
+    "Only the effective on/off value of each flag, for navigation. Open to any workspace reader (project:read); the admin list with locks and overrides stays at /features.",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("project:read"),
+  ] as const,
+  request: { params: featureWorkspaceParam },
+  responses: {
+    200: jsonResponse("Effective values", workspaceResolvedFeaturesSchema),
+    403: errorResponse("Missing project:read permission"),
   },
 });
 
@@ -248,6 +269,14 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(getWorkspaceRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
     return c.json({ features: await listWorkspaceFeatures(workspaceId) }, 200);
+  })
+  .openapi(getWorkspaceResolvedRoute, async (c) => {
+    const workspaceId = c.get("workspaceId");
+    c.header("Cache-Control", "no-store");
+    return c.json(
+      { features: await resolveWorkspaceFeatureValues(workspaceId) },
+      200,
+    );
   })
   .openapi(patchWorkspaceRoute, async (c) => {
     const workspaceId = c.get("workspaceId");

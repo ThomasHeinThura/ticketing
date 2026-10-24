@@ -27,6 +27,10 @@ const workItemShape = z.object({
   assigneeId: z.string().nullable(),
   requesterId: z.string().nullable(),
   parentId: z.string().nullable(),
+  // P5 agile planning pointers (cycles, modules, estimates).
+  cycleId: z.string().nullable().optional(),
+  moduleId: z.string().nullable().optional(),
+  estimatePointId: z.string().nullable().optional(),
   position: z
     .string()
     .openapi({ description: "numeric(20,10) fractional rank, as a string." }),

@@ -127,3 +127,16 @@ are MIT and BSD-3-Clause respectively (see the #557 decision in `docs/07-plannin
 Installed as declared dependencies, with versions and transitive licences in the release
 SBOM. No implementation source is copied from either project. Thomas explicitly approved
 these additions on 2026-10-03.
+
+## P5 holiday preset dataset (CAL-10, CAL-11)
+
+`packages/domain/src/service-management/holiday-presets.ts` generates country holiday presets
+for the service calendar. **Source:** the public statutory rules themselves (fixed dates,
+Easter-relative days computed with the Meeus/Jones/Butcher Gregorian algorithm, nth-weekday
+rules and the usual weekend substitutions), written down by the TaskDesk authors as rules, not
+copied from a holiday database, library or web page. No third-party code or data file is
+included, so there is no third-party licence to carry; the file is AGPL like the rest of
+TaskDesk. The dataset is versioned (`HOLIDAY_PRESET_DATASET_VERSION`), refreshed each release,
+and never fetched at request time. Presets are a starting point the administrator confirms
+(`CAL-11`); each states what it leaves out (regional, lunar, religious and one-off proclaimed
+holidays). Approved by Thomas on 23 October 2026 (decision log: holiday dataset, CAL-10/11).

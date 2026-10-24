@@ -1,6 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import {
   GitBranch,
+  PiggyBank,
+  Ruler,
   Settings,
   Tag,
   ToggleRight,
@@ -12,7 +14,7 @@ type Translator = (key: string) => string;
 
 export function getProjectSettingsMenuItems(
   t: Translator,
-  access: { canManageProjectSettings: boolean },
+  access: { canManageProjectSettings: boolean; canReadBudgets?: boolean },
 ): Array<{
   title: string;
   icon: LucideIcon;
@@ -22,7 +24,9 @@ export function getProjectSettingsMenuItems(
     | "labels"
     | "members"
     | "features"
-    | "automations";
+    | "automations"
+    | "estimates"
+    | "budget";
 }> {
   const items: ReturnType<typeof getProjectSettingsMenuItems> = [
     {
@@ -60,6 +64,18 @@ export function getProjectSettingsMenuItems(
         icon: Zap,
         segment: "automations",
       },
+      {
+        title: t("agile:estimates.navTitle"),
+        icon: Ruler,
+        segment: "estimates",
+      },
     );
+  // Budget needs budget:read (members hold it, project settings rights are not required).
+  if (access.canReadBudgets)
+    items.push({
+      title: t("timeTracking:budget.navTitle"),
+      icon: PiggyBank,
+      segment: "budget",
+    });
   return items;
 }

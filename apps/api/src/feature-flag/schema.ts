@@ -105,6 +105,11 @@ export const resolvedFeaturesSchema = z.object({
   ),
 });
 
+/** Values only: no source, lock, override or version metadata (that is admin data). */
+export const workspaceResolvedFeaturesSchema = z.object({
+  features: z.array(z.object({ key: featureKey, enabled: z.boolean() })),
+});
+
 export const featureConflictSchema = z.object({
   message: z.enum(["feature_locked", "version_conflict"]),
   key: featureKey,

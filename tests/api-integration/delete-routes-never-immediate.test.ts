@@ -46,6 +46,10 @@ const ALLOWED_IMMEDIATE: Record<string, string> = {
     "unlink: revokes one DIRECT roster membership of a project (PR-4); the person, their work and the project survive, the removal is audited as membership.changed, and an inherited or identity-provider-managed row is refused with 409",
   "DELETE /api/teams/{id}/members/{personId}":
     "unlink: removes one team membership (TM-3); the person, the team and their work survive, and the removal is audited as a team membership change; team deletion is DELETE /api/teams/{id} (202)",
+  "DELETE /api/cycles/{id}/work-items/{workItemKey}":
+    "unlink: clears the work item's cycle (CY-4) and logs a removal in the cycle's scope log; the work item and the cycle survive, audited as cycle.work_item_removed; cycle deletion is DELETE /api/cycles/{id} (202)",
+  "DELETE /api/modules/{id}/work-items/{workItemKey}":
+    "unlink: clears the work item's module (MO-2); the work item and the module survive, audited as module.work_item_removed; module deletion is DELETE /api/modules/{id} (202)",
   "DELETE /api/custom-field-sections/{id}":
     "configuration row with no history: only an EMPTY section can go (409 while any field, including one inside its 30-day restore window, still belongs to it), so no field, value or work item data is removed; custom_field:manage, audited; field deletion is DELETE /api/custom-fields/{id} (202)",
   "DELETE /api/instance/impersonate":

@@ -52,6 +52,24 @@ export function parseWorkItemGroup(value: unknown): WorkItemGroup | undefined {
     : undefined;
 }
 
+/**
+ * `VW-27`: the timeline may also group by module (`feature.modules`). Only project views that
+ * name it accept it; the board's own grouping (`parseWorkItemGroup`) stays state, assignee and
+ * priority.
+ */
+export type ProjectViewGroup = WorkItemGroup | "module";
+
+export function parseProjectViewGroup(
+  value: unknown,
+): ProjectViewGroup | undefined {
+  return value === "module" ? "module" : parseWorkItemGroup(value);
+}
+
+/** `VW-28`: `deps=1` draws the timeline's dependency arrows. Off (absent) by default. */
+export function parseTimelineDependencies(value: unknown): "1" | undefined {
+  return value === "1" || value === 1 || value === true ? "1" : undefined;
+}
+
 /** `VW-25`: the calendar's range. `month` is the default and is never written. */
 export const CALENDAR_VIEWS = ["month", "week", "day"] as const;
 export type CalendarView = (typeof CALENDAR_VIEWS)[number];
@@ -87,7 +105,8 @@ export type ProjectViewSearch = ProjectViewFilters &
     q?: string;
     sort?: SortField;
     dir?: SortDirection;
-    group?: WorkItemGroup;
+    group?: ProjectViewGroup;
+    deps?: "1";
     calendarView?: CalendarView;
     date?: string;
   };
@@ -120,6 +139,7 @@ const SCALAR_KEYS = [
   "sort",
   "dir",
   "group",
+  "deps",
   "calendarView",
   "date",
 ] as const;
@@ -166,7 +186,8 @@ export function parseProjectViewSearch(
       value &&
       (key !== "sort" || SORT_FIELDS.includes(value as SortField)) &&
       (key !== "dir" || SORT_DIRECTIONS.includes(value as SortDirection)) &&
-      (key !== "group" || parseWorkItemGroup(value)) &&
+      (key !== "group" || parseProjectViewGroup(value)) &&
+      (key !== "deps" || parseTimelineDependencies(value)) &&
       (key !== "calendarView" || parseCalendarView(value)) &&
       (key !== "date" || parseCalendarDay(value)) &&
       (!calendar || key !== "month" || parseMonth(value))

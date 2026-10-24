@@ -1,4 +1,7 @@
-import { TASK_TARGET_WORK_ITEM_ROUTE_KEYS } from "./project-reach-route-keys";
+import {
+  PROJECT_AGILE_ITEM_ROUTE_KEYS,
+  TASK_TARGET_WORK_ITEM_ROUTE_KEYS,
+} from "./project-reach-route-keys";
 
 /**
  * The route keys each behavioural reach table covers. Pure data (no DB), imported by the
@@ -87,6 +90,13 @@ export const OTHER_COVERED_ROUTE_KEYS = [
   "GET /api/work-items/{key}/approval-request-context",
   "GET /api/work-items/{key}/approval-candidates",
   "POST /api/work-items/search",
+  // P5 change detail: hidden-project 404 and per-capability refusals in p5-service-changes.test.ts.
+  "GET /api/work-items/{key}/change",
+  "PATCH /api/work-items/{key}/change",
+  "POST /api/work-items/{key}/change/override-freeze",
+  "POST /api/work-items/{key}/service",
+  // P5 agile planning: the item-scoped estimate, cycle and module routes, in p5-agile-reach.test.ts.
+  ...PROJECT_AGILE_ITEM_ROUTE_KEYS,
   ...TASK_TARGET_WORK_ITEM_ROUTE_KEYS,
 ] as const;
 

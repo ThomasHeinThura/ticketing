@@ -397,6 +397,10 @@ export const listWorkItemsQuery = z.object({
   assignee: noNulByte("assignee").optional(),
   priority: workItemPriorityFilter.optional(),
   due_before: workItemDateOnly.optional(),
+  // P5 agile planning: only the items in this cycle or module (ids; another project's
+  // matches nothing because the route already scopes by project).
+  cycle: noNulByte("cycle").max(128).optional(),
+  module: noNulByte("module").max(128).optional(),
   sort: z.enum(WORK_ITEM_SORT_FIELDS).optional(),
   dir: z.enum(WORK_ITEM_SORT_DIRECTIONS).optional(),
 });

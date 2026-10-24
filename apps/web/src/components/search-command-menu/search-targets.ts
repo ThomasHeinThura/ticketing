@@ -8,6 +8,7 @@ export type PaletteResultType =
   | "work_item"
   | "person"
   | "saved_view"
+  | "page"
   | "project"
   | "workspace";
 
@@ -29,6 +30,7 @@ export type SearchResultItem = {
 export const PALETTE_RESULT_TYPES: readonly PaletteResultType[] = [
   "work_item",
   "saved_view",
+  "page",
   "project",
   "person",
   "workspace",
@@ -48,6 +50,13 @@ export function searchResultHref(item: SearchResultItem): string | null {
     case "project":
       return item.projectSlug
         ? routes.projectOverview.build({ projectKey: item.projectSlug })
+        : null;
+    case "page":
+      return item.id && item.projectSlug
+        ? routes.projectPage.build({
+            projectKey: item.projectSlug,
+            pageId: item.id,
+          })
         : null;
     case "saved_view":
       return item.id ? routes.savedView.build({ id: item.id }) : null;

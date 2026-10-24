@@ -24,7 +24,8 @@ export type StepUpOperation =
   | "workspace_role_create"
   | "workspace_role_update"
   | "service_key_create"
-  | "workspace_ownership_transfer";
+  | "workspace_ownership_transfer"
+  | "change_freeze_override";
 
 export type StepUpAuditAction =
   | "auth.step_up_issued"
@@ -61,6 +62,7 @@ export const STEP_UP_OPERATION_ROUTES: Record<StepUpOperation, string> = {
   service_key_create: "POST /api/workspaces/{id}/api-keys",
   workspace_ownership_transfer:
     "POST /api/workspace/{workspaceId}/transfer-ownership",
+  change_freeze_override: "POST /api/work-items/{key}/change/override-freeze",
 };
 
 /**

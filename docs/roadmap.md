@@ -4,7 +4,7 @@
 
 ## Goal (set 22 October 2026, owner Thomas)
 
-**Finish P0–P4 as fast as possible, starting tonight.** Each phase: implement and design → local gates → one Opus review → pass: commit/push and next phase; fail: `report.html` only and wait for Thomas. P5–P7 follow; P8/P9 stay proposed.
+**Finish P0–P4 as fast as possible, starting tonight** (24 Oct: P0–P4 committed, P5 in review; see the phase status below). Each phase: implement and design → local gates → one Opus review → pass: commit/push and next phase; fail: `report.html` only and wait for Thomas. P5–P7 follow; P8/P9 stay proposed.
 
 | Bucket | Items |
 | --- | --- |
@@ -17,6 +17,17 @@
 **Updated 23 Oct (Thomas approved the full plan):** extend the same loop through **P5** (then P6–P7). P4 closes out its carries before its Opus review; P5 follows in lanes A–F (agile planning; time and cost; reports and dashboards; knowledge base; services, changes, releases; contracts then customer invitations / typed-domain SSO / Pages) with migrations 0148–0157 reserved, per [audit-P5](report/audit/audit-P5.json). Decisions taken as recommended: `task_time_entry` rename, inline-SVG charts with Table equivalents (no recharts), dnd-kit dashboard grid (no react-grid-layout), indented-list service impact, estimates in project settings, CAB workflow opt-in for existing workspaces, scratch DB before the live DB with `NOT VALID` foreign keys, staff-only project Pages, customer-scoped invitations that refuse staff roles. Old PRs #880 and #886/#888/#889 were closed as superseded.
 
 Phase exit criteria are the visible-finish column below plus a passing Opus review. Update this Goal block and the report whenever it changes.
+
+## Phase status (24 October 2026)
+
+| Phase | State |
+| --- | --- |
+| P0–P3 | Done, Opus-reviewed (AI reviewed, not Thomas-accepted), committed and pushed |
+| P4 | Committed `c02a0892b` and pushed (5 Opus rounds, round 5 pass); review notes in `1de552577` |
+| P5 | Built, **not committed**. Opus rounds 1–4 failed, every medium fixed; round 5 (extra round) in progress |
+| P6–P7 | Not started. P8/P9 proposed |
+
+**Honest note: P0–P5 are only half finished.** "Reviewed" means code audit plus tests; nothing from P4 or P5 is browser-verified, and each phase carries partials, missing items and external blockers (P5 audit: 62 implemented and tested, 3 untested, 22 partial, 4 missing of 91). The `carry` lists per phase in [report data](report/data.json) are the open work, not a footnote. Detail in [status](status.md).
 
 ## Added priority: exact Kaneo work-item experience
 

@@ -3,14 +3,19 @@ type GroupableTask = {
   id: string;
   assigneeId?: string | null;
   assigneeName?: string | null;
+  moduleId?: string | null;
 };
+
+export type GanttGroupBy = "none" | "assignee" | "module";
 
 export type GanttRow<TTask extends GroupableTask> =
   | { kind: "task"; task: TTask }
   | {
       kind: "group";
       id: string;
-      /** The assignee's name; `null` is the unassigned bucket. */
+      /** What the heading groups by, so the empty bucket reads as "Unassigned" or "No module". */
+      by: "assignee" | "module";
+      /** The assignee's or module's name; `null` is the empty bucket. */
       name: string | null;
       count: number;
     };
@@ -18,24 +23,29 @@ export type GanttRow<TTask extends GroupableTask> =
 export const GANTT_UNASSIGNED_GROUP_ID = "gantt-group:none";
 
 /**
- * `VW-27`: the timeline's rows, optionally grouped by assignee. Each group is a heading row
- * followed by that assignee's bars in the order they arrived (start date), assignees sorted by
- * name, the unassigned bucket last. Without a grouping the rows are the tasks, untouched.
- * Module and epic grouping need the P5 data and are not offered.
+ * `VW-27`: the timeline's rows, optionally grouped by assignee or module. Each group is a heading
+ * row followed by that bucket's bars in the order they arrived (start date), buckets sorted by
+ * name, the empty bucket (unassigned, no module) last. Without a grouping the rows are the tasks,
+ * untouched. Module grouping resolves names from `moduleNames`; a module id with no known name
+ * keeps its own heading rather than merging into "No module". Epic grouping is not offered.
  */
 export function buildGanttRows<TTask extends GroupableTask>(
   tasks: readonly TTask[],
-  group: "none" | "assignee",
+  group: GanttGroupBy,
+  moduleNames: ReadonlyMap<string, string> = new Map(),
 ): GanttRow<TTask>[] {
   if (group === "none") return tasks.map((task) => ({ kind: "task", task }));
 
   const buckets = new Map<string, { name: string | null; tasks: TTask[] }>();
   for (const task of tasks) {
-    const id = task.assigneeId
-      ? `gantt-group:${task.assigneeId}`
-      : GANTT_UNASSIGNED_GROUP_ID;
+    const key = group === "assignee" ? task.assigneeId : task.moduleId;
+    const id = key ? `gantt-group:${key}` : GANTT_UNASSIGNED_GROUP_ID;
     const bucket = buckets.get(id) ?? {
-      name: task.assigneeId ? (task.assigneeName ?? null) : null,
+      name: key
+        ? group === "assignee"
+          ? (task.assigneeName ?? null)
+          : (moduleNames.get(key) ?? null)
+        : null,
       tasks: [],
     };
     bucket.tasks.push(task);
@@ -57,6 +67,7 @@ export function buildGanttRows<TTask extends GroupableTask>(
     {
       kind: "group" as const,
       id,
+      by: group,
       name: bucket.name,
       count: bucket.tasks.length,
     },

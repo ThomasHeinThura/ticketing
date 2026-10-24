@@ -41,6 +41,7 @@ import { useDndAccessibility } from "@/hooks/use-dnd-accessibility";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
+import StateWipLimitField from "./state-wip-limit-field";
 
 const NONE = "none";
 
@@ -311,6 +312,14 @@ export default function ProjectStatesEditor({
                 })}
               >
                 <span className="text-sm flex-1 truncate">{state.name}</span>
+                {canEdit ? (
+                  <StateWipLimitField
+                    projectId={projectId}
+                    workspaceId={workspaceId}
+                    stateId={state.id}
+                    stateName={state.name}
+                  />
+                ) : null}
                 <Badge variant="outline">
                   {t(`settings:projectStates.groups.${state.group}`)}
                 </Badge>

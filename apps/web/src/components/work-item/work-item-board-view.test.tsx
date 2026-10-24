@@ -19,6 +19,10 @@ const state = vi.hoisted(() => ({
   queryProps: undefined as Record<string, unknown> | undefined,
 }));
 
+vi.mock("@/hooks/queries/agile/use-wip-limits", () => ({
+  default: () => ({ limits: new Map<string, number>(), canManage: false }),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: translate }),
 }));

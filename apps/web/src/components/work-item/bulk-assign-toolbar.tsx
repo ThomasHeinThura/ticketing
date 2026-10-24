@@ -14,6 +14,7 @@ import {
 import { Archive, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { BulkAgileActions } from "@/components/agile/bulk-agile-actions";
 import { Avatar, AvatarFallback } from "@/components/avatar";
 import BulkToolbarPresentation, {
   type BulkActionGroup,
@@ -473,6 +474,18 @@ export default function BulkAssignToolbar({
         isDatePickerOpen={isDatePickerOpen}
         onDatePickerOpenChange={setIsDatePickerOpen}
         busy={isBusy}
+        extraActions={
+          <BulkAgileActions
+            projectId={projectId}
+            workspaceId={workspaceId}
+            canUpdate={canUpdate}
+            selectedKeys={selectedKeys}
+            busy={isBusy}
+            onDone={(added) => {
+              if (added.length) onAssigned(added);
+            }}
+          />
+        }
       >
         {preparing ? (
           <p role="status">{t("workItems:bulk.preparing")}</p>

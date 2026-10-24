@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
@@ -14,9 +14,16 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@taskdesk/ui";
-import { ClipboardList, Home, LayoutGrid, LogOut } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardList,
+  Home,
+  LayoutGrid,
+  LogOut,
+} from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { getPortalKb } from "@/fetchers/kb/portal";
 import { portalAuthClient } from "@/lib/portal-auth-client";
 import { routes } from "@/lib/routes";
 
@@ -28,6 +35,14 @@ export default function PortalSidebar() {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+  // The knowledge base entry only appears when the portal has something to show (KB flag on,
+  // at least one published, customer-visible article within the organisation's reach).
+  const knowledgeBase = useQuery({
+    queryKey: ["portal", "kb-navigation"],
+    queryFn: () => getPortalKb({ limit: 1 }),
+    retry: false,
+    staleTime: 60_000,
+  });
   const navigation = [
     { to: routes.portalHome.path, label: t("navigation.home"), icon: Home },
     {
@@ -35,6 +50,15 @@ export default function PortalSidebar() {
       label: t("navigation.catalogue"),
       icon: LayoutGrid,
     },
+    ...((knowledgeBase.data?.total ?? 0) > 0
+      ? [
+          {
+            to: routes.portalKb.path,
+            label: t("navigation.knowledgeBase"),
+            icon: BookOpen,
+          },
+        ]
+      : []),
     {
       to: routes.portalRequests.path,
       label: t("navigation.requests"),
@@ -88,7 +112,11 @@ export default function PortalSidebar() {
               {navigation.map(({ to, label, icon: Icon }) => (
                 <SidebarMenuItem key={to}>
                   <SidebarMenuButton
-                    isActive={location.pathname === to}
+                    isActive={
+                      location.pathname === to ||
+                      (to === routes.portalKb.path &&
+                        location.pathname.startsWith(`${to}/`))
+                    }
                     render={
                       <Link
                         to={to}

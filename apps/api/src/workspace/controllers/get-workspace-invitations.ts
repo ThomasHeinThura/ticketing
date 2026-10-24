@@ -54,6 +54,7 @@ async function getWorkspaceInvitations(workspaceId: string) {
     .where(
       and(
         eq(invitationTable.workspaceId, workspaceId),
+        eq(invitationTable.scope, "staff"),
         eq(invitationTable.status, "pending"),
       ),
     );

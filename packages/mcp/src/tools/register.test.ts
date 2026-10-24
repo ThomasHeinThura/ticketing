@@ -60,6 +60,7 @@ const WRITE_TOOLS = [
   "assign_work_item",
   "add_comment",
   "create_relation",
+  "log_time",
   "delete_work_item",
   "delete_comment",
   "delete_relation",
@@ -77,6 +78,7 @@ describe("canonical tool set", () => {
       "list_work_item_activity",
       "list_states",
       "list_work_item_types",
+      "list_time_activities",
       "list_request_types",
       "list_people",
       "get_sla_status",
@@ -109,7 +111,6 @@ describe("canonical tool set", () => {
       "list_workspaces",
       "decide_approval",
       "list_my_work",
-      "log_time",
       "bulk_create_work_items",
       "create_submission",
     ])
@@ -137,12 +138,56 @@ describe("canonical tool set", () => {
       commentId: "c",
       relationId: "r",
       pendingActionId: "pa",
+      workItemId: "wi",
+      date: "2026-10-24",
+      minutes: 30,
+      activityId: "a",
     };
     for (const name of tools.keys()) await call(name, args);
     for (const { path } of calls)
       expect(path).not.toMatch(
         /^\/api\/(task|task-relation|comment|time-entry|label|auth\/organization)\b/,
       );
+  });
+
+  it("log_time posts whole minutes to the canonical time-entries route with an idempotency key", async () => {
+    const { calls, call } = harness(() => ({ id: "e1" }));
+    await call("log_time", {
+      idempotencyKey: FIXTURE_ID,
+      workspaceId: "w",
+      workItemId: "wi",
+      date: "2026-10-24",
+      minutes: 90,
+      activityId: "dev",
+    });
+    expect(calls[0]?.path).toBe("/api/time-entries");
+    expect(calls[0]?.init?.method).toBe("POST");
+    expect(headerOf(calls[0]?.init, "Idempotency-Key")).toBe(FIXTURE_ID);
+    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({
+      workspaceId: "w",
+      workItemId: "wi",
+      date: "2026-10-24",
+      minutes: 90,
+      activityId: "dev",
+    });
+  });
+
+  it("log_time refuses fractional minutes and a malformed date before any request", async () => {
+    const { tools } = harness();
+    const parse = (extra: Record<string, unknown>) =>
+      tools.get("log_time")?.config.inputSchema?.parse({
+        idempotencyKey: FIXTURE_ID,
+        workspaceId: "w",
+        workItemId: "wi",
+        date: "2026-10-24",
+        minutes: 30,
+        activityId: "a",
+        ...extra,
+      });
+    expect(() => parse({ minutes: 0.5 })).toThrow();
+    expect(() => parse({ minutes: 1441 })).toThrow();
+    expect(() => parse({ date: "yesterday" })).toThrow();
+    expect(() => parse({})).not.toThrow();
   });
 
   it("MC-6: write tools state their permission and that a read-only key is refused", () => {

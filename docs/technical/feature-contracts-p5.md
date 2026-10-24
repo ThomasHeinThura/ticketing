@@ -198,9 +198,9 @@ system that models time as money cannot express unbilled effort.
   can be analysed by kind.
 - `TC-3` A `billable` flag, defaulting from the project.
 - `TC-4` Entries may be logged for a past date, up to a configurable limit (default 30
-  days). Beyond that requires `time_entry:read_any`.
-- `TC-5` A person edits their own entries. Editing anyone else's requires
-  `time_entry:read_any`.
+  days). Beyond that requires `time_entry:log_backdated`.
+- `TC-5` A person edits their own entries (`time_entry:update_own`). Editing anyone else's
+  requires `time_entry:update_any`, which implies `time_entry:read_any`.
 - `TC-6` A timer is offered — start, stop, and it survives a page reload — but manual entry
   is always available, because most people log time at the end of the day.
 - `TC-7` Entries roll up to the work item, its parent chain, its cycle, its module and its
@@ -232,9 +232,11 @@ system that models time as money cannot express unbilled effort.
 
 - `TC-15` A budget belongs to a project, with a planned amount, a currency and a period.
 - `TC-16` Actuals are computed from time entries valued at their effective rates, plus cost
-  entries.
+  entries. *Current state: partial.* Actuals are time entries valued at the rate captured on
+  the entry; there are no cost entries yet, so nothing is added beyond logged time.
 - `TC-17` A project shows planned versus actual versus committed, where committed includes
-  estimated remaining work valued at current rates.
+  estimated remaining work valued at current rates. *Current state: partial.* Planned and
+  actual are shown; `committedMinor` is `null` until remaining-work estimates exist.
 - `TC-18` Thresholds — 75% and 90% — raise notifications to the project manager.
 - `TC-19` Multi-currency is supported by storing the currency per row. Cross-currency
   aggregation requires an exchange rate table, which is **out of scope for v2**; reports
@@ -255,7 +257,8 @@ system that models time as money cannot express unbilled effort.
 | Log own time | `time_entry:create` |
 | See own entries | `time_entry:create` |
 | See anyone's entries | `time_entry:read_any` |
-| Edit anyone's entries | `time_entry:read_any` |
+| Edit anyone's entries | `time_entry:update_any` |
+| Log beyond the backdating window | `time_entry:log_backdated` |
 | See and manage rates | `time_entry:manage_rates` |
 | See budgets | `budget:read` |
 | Manage budgets | `budget:manage` |
@@ -299,7 +302,7 @@ GET    /api/projects/{key}/costs                budget:read
 | Time logged against a work item later deleted | Retained, reassigned to the project, flagged in reporting |
 | Rate added retroactively | Applies to entries on and after its effective date. Actuals recompute; the change is audited |
 | Person with no rate | Time is logged; cost shows as unpriced and is counted separately in reports |
-| Entry crossing midnight | Split by the client into two dated entries before submission |
+| Entry crossing midnight | Split by the server into two dated entries at midnight (profile, then workspace, then UTC timezone; owner decision D4, 20 Oct) |
 | Timer left running overnight | Capped at 12 hours with a prompt on next sign-in asking what actually happened |
 | Two currencies in one project | Reported separately, never summed |
 | Budget period changed | Actuals recompute for the new period |

@@ -10,8 +10,10 @@ import {
   Button,
   ContextMenuItem,
 } from "@taskdesk/ui";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { RemoveFromScopeItem } from "@/components/agile/remove-from-scope-item";
+import { ScopedMembershipContext } from "@/components/agile/scoped-membership-context";
 import TaskContextMenuPresentation from "@/components/kanban-board/task-card-context-menu/task-context-menu-presentation";
 import archiveWorkItem from "@/fetchers/work-item/archive-work-item";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
@@ -148,6 +150,7 @@ function CanonicalMenuActions({
 }) {
   const { t } = useTranslation();
   const client = useQueryClient();
+  const scopedMembership = useContext(ScopedMembershipContext);
   const permission = useWorkspacePermission(item.workspaceId, item.projectId);
   const refresh = useRefreshWorkItem(item);
   const lifecycle = useIntentLifecycle(
@@ -447,15 +450,27 @@ function CanonicalMenuActions({
           canEdit ? () => void execute({ kind: "archive" }) : undefined
         }
         extraArchiveAction={
-          canEdit && permission.canCreateTasks() ? (
-            <ContextMenuItem
-              onClick={() => {
-                onClose();
-                setMoveOpen(true);
-              }}
-            >
-              <span>{t("workItems:move.action")}</span>
-            </ContextMenuItem>
+          (canEdit && permission.canCreateTasks()) ||
+          (canEdit && scopedMembership?.canEdit) ? (
+            <>
+              {canEdit && permission.canCreateTasks() ? (
+                <ContextMenuItem
+                  onClick={() => {
+                    onClose();
+                    setMoveOpen(true);
+                  }}
+                >
+                  <span>{t("workItems:move.action")}</span>
+                </ContextMenuItem>
+              ) : null}
+              {canEdit && scopedMembership?.canEdit ? (
+                <RemoveFromScopeItem
+                  membership={scopedMembership}
+                  itemKey={item.key}
+                  onClose={onClose}
+                />
+              ) : null}
+            </>
           ) : undefined
         }
         onDelete={

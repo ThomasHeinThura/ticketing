@@ -76,6 +76,12 @@ export type IdentityOperationBinding =
       operation: "workspace_ownership_transfer";
       workspaceId: string;
       newOwnerUserId: string;
+    }
+  | {
+      operation: "change_freeze_override";
+      workspaceId: string;
+      workItemKey: string;
+      reason: string;
     };
 
 export type IdentityStepUpFactor = { method: StepUpMethod; secret: string };

@@ -164,6 +164,8 @@ function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
           return t("navigation:search.groups.workItem");
         case "saved_view":
           return t("navigation:search.groups.savedView");
+        case "page":
+          return t("navigation:search.groups.page");
         case "project":
           return t("navigation:search.groups.project");
         case "person":

@@ -26,6 +26,7 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { findAssetWorkspaceScope } from "../asset/repository";
 import db, { schema } from "../database";
+import { timeEntryTable } from "../database/schema-p5-time";
 import type { RegisteredHttpRoute } from "../observability/metrics.js";
 import { policyRegistry } from "../policy-registry";
 import {
@@ -481,7 +482,30 @@ async function loadAuthoritativeEvidence(
     }
   }
 
-  if (policy.orOwner) {
+  if (
+    policy.orOwner &&
+    policy.orOwner.predicate === "row.person_id === identity.personId" &&
+    entry.source === "apps/api/src/time-tracking/policy.ts"
+  ) {
+    // P5 time and cost: the entry's own person, re-read from the persisted id like the comment
+    // author below. A row in another workspace than the one the middleware resolved is refused.
+    const entryId = c.req.param("id");
+    if (!entryId) refuse(500);
+    const [timeEntry] = await db
+      .select({
+        personId: timeEntryTable.personId,
+        workspaceId: timeEntryTable.workspaceId,
+      })
+      .from(timeEntryTable)
+      .where(eq(timeEntryTable.id, entryId))
+      .limit(1);
+    if (!timeEntry || timeEntry.workspaceId !== evidence.workspaceId)
+      refuse(404);
+    evidence = {
+      ...evidence,
+      row: { ...evidence.row, personId: timeEntry.personId },
+    };
+  } else if (policy.orOwner) {
     if (policy.orOwner.predicate === "row.person_id === identity.personId") {
       const commentId = c.req.param("id");
       if (!commentId) refuse(500);

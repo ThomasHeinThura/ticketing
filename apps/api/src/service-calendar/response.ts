@@ -40,6 +40,36 @@ const affectedWorkItemCount = z.number().int().min(0).openapi({
 export const calendarUpdateSchema = calendarSchema.extend({
   affectedWorkItemCount,
 });
+export const holidayPresetListSchema = z.object({
+  datasetVersion: z.string(),
+  presets: z.array(
+    z.object({
+      country: z.string(),
+      name: z.string(),
+      notIncluded: z.string(),
+    }),
+  ),
+});
+export const holidayPresetResultSchema = z.object({
+  datasetVersion: z.string(),
+  country: z.string(),
+  year: z.number().int(),
+  /** CAL-11: what this preset deliberately leaves out. A starting point, never authority. */
+  notIncluded: z.string(),
+  holidays: z.array(
+    z.object({
+      date: z.string(),
+      name: z.string(),
+      /** Already present on the calendar (as a dated or annually recurring holiday). */
+      existing: z.boolean(),
+    }),
+  ),
+  applied: z.boolean(),
+  importedCount: z.number().int().min(0),
+  duplicateCount: z.number().int().min(0),
+  affectedWorkItemCount,
+  calendar: calendarSchema.nullable(),
+});
 export const calendarHolidayImportSchema = z.object({
   calendar: calendarSchema,
   affectedWorkItemCount,

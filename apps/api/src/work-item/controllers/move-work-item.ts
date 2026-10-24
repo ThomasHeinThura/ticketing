@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { recordCycleRemovalsOnMove } from "../../agile/cycle.repository";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { customFieldValueTable } from "../../database/migration-schema";
@@ -12,6 +13,10 @@ import {
   workItemLabelTable,
   workItemTable,
 } from "../../database/schema";
+import {
+  runningTimerTable,
+  timeEntryTable,
+} from "../../database/schema-p5-time";
 import { publishEvent } from "../../events";
 import { lockRankPartition } from "../../scheduler/position-rebalance";
 import { callerReach } from "../../utils/caller-reach";
@@ -431,6 +436,7 @@ export async function moveWorkItem(input: MoveWorkItemInput) {
       }));
 
       const now = new Date();
+      await recordCycleRemovalsOnMove(tx, moving, input.actorId, now);
       try {
         await tx.execute(sql`
           UPDATE work_item AS w SET
@@ -483,6 +489,23 @@ export async function moveWorkItem(input: MoveWorkItemInput) {
             ),
           ),
         );
+
+      // Time follows the item (P5-R4-02): the item's time entries and running timer are re-homed
+      // to the destination project, so reach checks, roll-ups, budgets and a later timer stop
+      // (which writes against the timer's project) all see the item's CURRENT project. Owner
+      // decision D4: rates are snapshotted at creation and never repriced, so `rate_minor` /
+      // `currency` stay exactly as recorded (a moved entry keeps the old project's price). The
+      // rows move, never delete, so legal-hold coverage (`running_timer`/`time_entry` people)
+      // is unchanged.
+      const movedIds = plan.map((entry) => entry.row.id);
+      await tx
+        .update(timeEntryTable)
+        .set({ projectId: target.id })
+        .where(inArray(timeEntryTable.workItemId, movedIds));
+      await tx
+        .update(runningTimerTable)
+        .set({ projectId: target.id })
+        .where(inArray(runningTimerTable.workItemId, movedIds));
 
       await tx.insert(workItemKeyAliasTable).values(
         plan.map((entry) => ({

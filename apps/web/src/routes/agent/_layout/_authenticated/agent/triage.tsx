@@ -33,6 +33,7 @@ import {
   TriageFilterChips,
   TriageFilterMenu,
 } from "@/components/intake/triage-filter-menu";
+import { KbTriageSuggestions } from "@/components/kb/agent/kb-triage-suggestions";
 import PageTitle from "@/components/page-title";
 import {
   acceptSubmission,
@@ -620,6 +621,20 @@ function IntakeRoute() {
                             </div>
                           ))}
                         </section>
+                      ) : null}
+                      {/* KB-12: the same article suggestions the customer was offered. */}
+                      {workspace.data?.id ? (
+                        <KbTriageSuggestions
+                          workspaceId={workspace.data.id}
+                          text={
+                            rows.find((row) => row.ref === ref)?.summary ?? ""
+                          }
+                          onInsert={(line) =>
+                            setMessage((old) =>
+                              old ? `${old}\n${line}` : line,
+                            )
+                          }
+                        />
                       ) : null}
                       <label
                         className="flex flex-col gap-1"

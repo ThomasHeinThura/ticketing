@@ -91,3 +91,22 @@ export async function patchFeatures(
     })
   ).features;
 }
+
+export type ResolvedFeatureValue = { key: FeatureKey; enabled: boolean };
+
+/**
+ * The effective on/off value of every flag for a workspace, open to any workspace reader. This is
+ * what navigation reads; the list above needs `workspace:manage_settings`.
+ */
+export async function getWorkspaceResolvedFeatures(workspaceId: string) {
+  const response = await apiFetch(
+    getApiUrl(
+      `workspaces/${encodeURIComponent(workspaceId)}/features/resolved`,
+    ),
+    { credentials: "include", cache: "no-store" },
+  );
+  if (!response.ok)
+    throw new HttpError(response.status, "Feature flag request failed");
+  return ((await response.json()) as { features: ResolvedFeatureValue[] })
+    .features;
+}

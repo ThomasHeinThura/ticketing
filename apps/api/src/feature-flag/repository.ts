@@ -258,6 +258,71 @@ export async function resolveProjectFeatures(
   }));
 }
 
+/**
+ * The effective on/off value of every flag at workspace level (instance, workspace override,
+ * default). Values only: no lock, override or version metadata, so any workspace reader may see it.
+ */
+export async function resolveWorkspaceFeatureValues(
+  workspaceId: string,
+  executor = db,
+) {
+  const [instanceRows, workspaceRows] = await Promise.all([
+    readInstanceRows(executor),
+    readWorkspaceRows(executor, workspaceId),
+  ]);
+  return FEATURE_FLAGS.map((key) => ({
+    key,
+    enabled: resolveFeatureFlag({
+      feature: key,
+      instance: instanceView(instanceRows.get(key)),
+      workspace: workspaceRows.get(key)?.enabled ?? null,
+    }).enabled,
+  }));
+}
+
+/**
+ * The subset of `projectIds` for which `feature` resolves on (project, workspace, instance,
+ * default). Fails closed: an unreadable flag set returns no projects.
+ */
+export async function projectsWithFeature(
+  feature: FeatureFlag,
+  workspaceId: string,
+  projectIds: string[],
+  executor = db,
+): Promise<string[]> {
+  if (projectIds.length === 0) return [];
+  try {
+    const [instanceRows, workspaceRows, projectRows] = await Promise.all([
+      readInstanceRows(executor),
+      readWorkspaceRows(executor, workspaceId),
+      executor
+        .select({
+          projectId: schema.projectFeatureFlagTable.projectId,
+          enabled: schema.projectFeatureFlagTable.enabled,
+        })
+        .from(schema.projectFeatureFlagTable)
+        .where(
+          and(
+            eq(schema.projectFeatureFlagTable.featureKey, feature),
+            inArray(schema.projectFeatureFlagTable.projectId, projectIds),
+          ),
+        ),
+    ]);
+    const own = new Map(projectRows.map((r) => [r.projectId, r.enabled]));
+    return projectIds.filter(
+      (projectId) =>
+        resolveFeatureFlag({
+          feature,
+          instance: instanceView(instanceRows.get(feature)),
+          workspace: workspaceRows.get(feature)?.enabled ?? null,
+          project: own.get(projectId) ?? null,
+        }).enabled,
+    );
+  } catch {
+    return [];
+  }
+}
+
 async function auditAfterCommit(
   entries: Array<Parameters<typeof appendAuditLog>[1]>,
 ) {

@@ -20,12 +20,15 @@ const WORK_ITEM_SOURCES = [
   '"approval"',
   '"attachment"',
   '"uploaded_by"',
+  '"running_timer"',
 ];
 const PROJECT_SOURCES = [
   '"stakeholder"',
   '"project_feature_flag"',
   '"task"',
+  '"task_time_entry"',
   '"time_entry"',
+  '"hourly_rate"',
   '"task_activity"',
   '"task_comment"',
   '"asset"',
