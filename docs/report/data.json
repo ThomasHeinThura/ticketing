@@ -213,15 +213,27 @@
 				"Browser-check the post-browser-pass changes: role description text, quiet-hours editor, portal custom fields, request-type 'Maps to', API-key table clipping"
 			],
 			"review": {
-				"verdict": "not started",
-				"note": "Wave 1 and 2 built: API keys + MCP, roles on canonical store, teams, custom fields, webhooks, automations, feature flags, God Mode health/settings, impersonation, notifications. Counts below are still the pre-wave audit and will be re-audited before the Opus review."
+				"verdict": "pass_with_conditions",
+				"findings": 38,
+				"note": "5 rounds (extra rounds approved by Thomas). R1: 2 high + 10 medium; R2: 5 medium; R3: 1 medium; R4: 1 medium; R5 pass, 0 high/medium, 3 low test gaps. All high/medium fixed and re-tested. Code-reviewed only: no browser verification (scripted sign-in blocked). AI reviewed, not accepted."
 			},
 			"gates": {
-				"pass": 8,
+				"pass": 11,
 				"fail": 2,
-				"not_run": 3,
-				"note": "pass: API unit 1635, web unit 2322, permissions 108/108, typecheck, web build, events, raw-elements, openapi, i18n, policy. integration 4141 pass / 5 fail (being fixed). fail: contrast tokens (pre-existing), 3 stale ci-script tests. not run: browser checks of P4 screens, bundle budget, Trivy"
-			}
+				"not_run": 2,
+				"note": "pass: full integration 314 files / 4241 tests, API unit 1656, web unit, permissions 115, packages/permissions 277, typecheck api+web, web build, events, raw-elements, openapi, policy, inventory, gitleaks. fail: contrast/tokens (fail at HEAD too), 3 stale ci-script tests. not run: browser checks of P4 screens, Trivy"
+			},
+			"carry": [
+				"Browser verification of all P4 screens (needs Thomas sign-in or classifier allow)",
+				"P4R3-L3 partial index for quiet-hours release scan (needs migration)",
+				"P4R3-L6 project nav gated on workspace flag",
+				"Migration journal order 0147 before 0145; missing 0158 snapshot; 0142 snapshot without SQL",
+				"automation:manage not enforced",
+				"R2-L4 non-concurrent audit_log index in 0147",
+				"R2-L6 webhook delivery person-hold",
+				"R2-L8 shared AAD for cursors and secrets",
+				"Before live-DB migrate: check __drizzle_migrations order and local_factor_policy on taskdesk_browser_journey_1022_test"
+			]
 		},
 		{
 			"id": "P5",
@@ -274,5 +286,5 @@
 		"Pending: migration 0145 rewrites role data and 0138 un-flags duplicate CAB teams when applied to your live database — tell me when to migrate it.",
 		"Pending: restart native Postgres on 62870 (all checks use scratch 62871)."
 	],
-	"next": "Fix the 5 integration failures, rerun, re-audit P4 states, check P4 screens in the browser, then run the Opus review."
+	"next": "P4 committed (c02a0892b) and pushed. P5 wave 0 and lanes A-F are next; browser verification of P4 still needs a sign-in."
 }
