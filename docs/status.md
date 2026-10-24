@@ -11,14 +11,14 @@ Nothing below is Thomas-accepted. "Reviewed" means an Opus 5.5 code review plus 
 | P2 Service desk | Committed, pushed | 2 rounds, pass with conditions | 117 of 137 | 15 partial, 5 blocked | Not verified |
 | P3 Portal and identity | Committed, pushed | 1 round, pass with conditions | 34 of 53 | 9 partial, 10 blocked (real Entra) | Not verified |
 | P4 Governance | `c02a0892b`, pushed | 5 rounds, round 5 pass | 112 of 152 (5 untested) | 30 partial, 4 missing, 1 blocked | None: step-up flows need Thomas to sign in |
-| P5 Planning, insight, knowledge | WIP commit (not review-passed) | Rounds 1-6 failed on different mediums (all but round 6's fixed); WIP commit | 62 of 91 (3 untested) | 22 partial, 4 missing | None |
+| P5 Planning, insight, knowledge | `95ba4061d`, pushed | Rounds 1-7 found mediums (all fixed); round 8 pass (no high/medium) | 62 of 91 (3 untested) | 22 partial, 4 missing | None |
 
 P5 not built: cost entries (TC-12/13/14) and so budget actuals are time-only, available hours (TC-20), typed-domain SSO (CP-17/18/27-29, IP-9/29). P5 also has partial reports (no snapshots, drill-down on 12 reports), KB editor gaps, CAB opt-in only, no customer release page. The full carry lists are the `carry` fields for P4 and P5 in data.json.
 
 ## Gates
 
 - **P4 (committed):** full integration 314 files / 4241 tests, API unit 1656, permissions 115, packages/permissions 277. Failing: `check:tokens`/contrast (also fails at HEAD) and 3 stale ci-script tests. Not run: browser, Trivy.
-- **P5 (final tree):** API unit 1822, web unit 2611, permissions 115, typechecks clean, `check:policy`, `check:events`, `check:ui:raw-elements`, inventory, env, i18n and drizzle drift pass. Lane integration suites pass. Full integration on the P5 tree: 348 files, 4893 of 4894 passed; the one failure (OpenAPI step-up operation list) is fixed and re-run green. Same two known failures; Trivy and browser not run.
+- **P5 (final tree):** API unit 1863, web unit 2651, permissions 115, typechecks clean, `check:policy`, `check:events`, `check:ui:raw-elements`, inventory, env, i18n and drizzle drift pass. Lane integration suites pass. Full integration on the final tree: 5011 of 5011 tests passed (fresh scratch DB; two harmless file-level noises). Same two known failures; Trivy and browser not run.
 - Port-bound MFA fixture tests fail while a local stack holds the ports. Details in [testing](testing.md).
 
 ## Environments
