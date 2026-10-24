@@ -4,7 +4,7 @@
 
 ## Goal (set 22 October 2026, owner Thomas)
 
-**Finish P0–P4 as fast as possible, starting tonight** (24 Oct: P0–P4 committed, P5 in review; see the phase status below). Each phase: implement and design → local gates → one Opus review → pass: commit/push and next phase; fail: `report.html` only and wait for Thomas. P5–P7 follow; P8/P9 stay proposed.
+**Finish P0–P4 as fast as possible, starting tonight** (25 Oct: P0–P5 committed; see the phase status below). Each phase: implement and design → local gates → one Opus review → pass: commit/push and next phase; fail: `report.html` only and wait for Thomas. P5–P7 follow; P8/P9 stay proposed.
 
 | Bucket | Items |
 | --- | --- |
@@ -24,7 +24,7 @@ Phase exit criteria are the visible-finish column below plus a passing Opus revi
 | --- | --- |
 | P0–P3 | Done, Opus-reviewed (AI reviewed, not Thomas-accepted), committed and pushed |
 | P4 | Committed `c02a0892b` and pushed (5 Opus rounds, round 5 pass); review notes in `1de552577` |
-| P5 | Built, **not committed**. Opus rounds 1–4 failed, every medium fixed; round 5 (extra round) in progress |
+| P5 | Built, committed and pushed (`95ba4061d`). Opus rounds 1–7 found mediums (all fixed); round 8 pass. Not browser-verified |
 | P6–P7 | Not started. P8/P9 proposed |
 
 **Honest note: P0–P5 are only half finished.** "Reviewed" means code audit plus tests; nothing from P4 or P5 is browser-verified, and each phase carries partials, missing items and external blockers (P5 audit: 62 implemented and tested, 3 untested, 22 partial, 4 missing of 91). The `carry` lists per phase in [report data](report/data.json) are the open work, not a footnote. Detail in [status](status.md).
