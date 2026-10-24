@@ -31,6 +31,8 @@ export const PROJECT_ADMIN_CAPABILITIES = [
   "time_entry:create",
   "time_entry:read_any",
   "time_entry:update_any",
+  // POST /api/projects/{id}/costs writes cost entries, which needs the rate-management capability.
+  "time_entry:manage_rates",
   // P5 time and cost: project budgets are read and managed by the caller's project role.
   "budget:read",
   "budget:manage",
@@ -49,7 +51,7 @@ export const PROJECT_KEY_SCOPE = {
   ],
   work_item: ["read", "create", "update", "delete", "assign"],
   label: ["create", "update", "delete", "manage"],
-  time_entry: ["create", "read_any", "update_any"],
+  time_entry: ["create", "read_any", "update_any", "manage_rates"],
   budget: ["read", "manage"],
   workspace: ["read"],
 };

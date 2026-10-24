@@ -64,11 +64,14 @@ describe("API integration: API key bearer authentication", () => {
 
     expect(res.status).toBe(200);
 
+    // AK-2: a legacy SHA-256 row is rewritten to Argon2id on first use (same row, same key).
     const rows = await db
       .select()
       .from(schema.apikeyTable)
-      .where(eq(schema.apikeyTable.key, hashed));
+      .where(eq(schema.apikeyTable.userId, member.user.id));
     expect(rows.length).toBe(1);
+    expect(rows[0]?.key).not.toBe(hashed);
+    expect(rows[0]?.key.startsWith("$argon2id$")).toBe(true);
   });
 
   it("rejects an unknown Bearer token rather than falling back to anything else", async () => {

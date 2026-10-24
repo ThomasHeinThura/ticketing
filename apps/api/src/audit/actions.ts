@@ -80,6 +80,8 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   // Data leaving through a person's hands.
   "work_item.exported",
   "report.exported",
+  // RP-10: a large export was queued for the `report-export` job (nothing has left yet).
+  "report.export_requested",
   "attachment.downloaded",
   "config.exported",
   "instance.exported",
@@ -161,6 +163,12 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "time_settings.updated",
   "hourly_rate.created",
   "budget.created",
+  "cost_type.created",
+  "cost_type.updated",
+  "cost_entry.created",
+  "cost_entry.updated",
+  "cost_entry.deleted",
+  "available_hours.created",
   // P5 agile planning: cycles, modules, estimates (feature-contracts-p5.md, agile).
   "cycle.created",
   "cycle.updated",

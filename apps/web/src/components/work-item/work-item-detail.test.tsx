@@ -12,7 +12,10 @@ const locationState = vi.hoisted(() => ({
   hash: "",
 }));
 const navigate = vi.hoisted(() => vi.fn());
-const timeFeature = vi.hoisted(() => ({ on: false }));
+const timeFeature = vi.hoisted(() => ({ on: false, logTime: true }));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({ canLogTime: () => timeFeature.logTime }),
+}));
 vi.mock("@/hooks/queries/time-tracking/use-time-tracking", () => ({
   useTimeTrackingFeatures: () => ({
     time: timeFeature.on,
@@ -30,6 +33,7 @@ vi.mock("@taskdesk/ui", async (importOriginal) => ({
 
 afterEach(() => {
   timeFeature.on = false;
+  timeFeature.logTime = true;
   device.mobile = false;
   locationState.search = {};
   locationState.searchStr = "";
@@ -281,6 +285,15 @@ describe("WorkItemDetail", () => {
       itemKey: "PROJ-123",
       open: ["time"],
     });
+  });
+
+  it("hides the Time section from a caller without time_entry:create even with the flag on (R6-02)", () => {
+    timeFeature.on = true;
+    timeFeature.logTime = false;
+    render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
+    expect(
+      screen.queryByRole("button", { name: "workItems:detail.time.heading" }),
+    ).toBeNull();
   });
 
   it("uses kaneo's compact properties strip in the side pane", () => {

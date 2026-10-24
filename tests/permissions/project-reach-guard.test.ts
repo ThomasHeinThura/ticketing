@@ -210,6 +210,16 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
     "workspace-level time settings (backdating limit, rounding, caller's time zone and capabilities) plus, with a projectId query, one reach-filtered project row (id, defaultBillable) that is omitted when the project is outside the caller's reach; no other project content",
   "GET /api/rates":
     "hourly rate cards behind time_entry:manage_rates with cost tracking on; rows name a person and, for a per-project override, carry a project id only, never a project name, key or work item",
+  "GET /api/cost-types":
+    "workspace cost type definitions (name, unit, default rate, currency, billable flag, archived); configuration rows with no project, work item or entry content",
+  "GET /api/available-hours":
+    "per-person weekly available hours with effective dates; rows carry a person id and hours only, never project content, and others' rows need time_entry:read_any",
+  "GET /api/report-exports":
+    "the caller's own export requests only (requester-scoped, another person's export is a 404); the export content is rendered under the requester's reach at generation time",
+  "GET /api/report-exports/{id}":
+    "a single export request of the caller; another person's or workspace's export is a 404, no project rows are returned by this route",
+  "GET /api/report-exports/{id}/download":
+    "downloads the caller's own rendered export; another person's export is a 404 and a render made with wider rights is refused once those rights are lost",
   // P5 knowledge base.
   "GET /api/kb/settings":
     "workspace knowledge base settings (feature options); configuration, no article or project rows",

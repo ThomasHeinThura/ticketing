@@ -2,7 +2,7 @@ import { APIError } from "better-auth/api";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { ApiKeyKind } from "../api-key/credential";
-import { enforceApiKeyRequest } from "../api-key/enforce";
+import { clientIpForContext, enforceApiKeyRequest } from "../api-key/enforce";
 import { authForHost, hasCustomerPortalIdentity, portalForHost } from "../auth";
 import { mcpFeatureEnabled } from "./mcp-feature-enabled";
 import { verifyApiKey } from "./verify-api-key";
@@ -140,7 +140,9 @@ export async function authenticateApiRequest(c: Context): Promise<void> {
 
   const normalizedApiKey = apiKeyHeader?.trim();
   if (!token && normalizedApiKey) {
-    const apiKeyResult = await verifyApiKey(normalizedApiKey);
+    const apiKeyResult = await verifyApiKey(normalizedApiKey, {
+      clientIp: clientIpForContext(c),
+    });
     if (!apiKeyResult?.valid || !apiKeyResult.key) {
       throw new HTTPException(401, { message: "Unauthorized" });
     }
@@ -150,7 +152,9 @@ export async function authenticateApiRequest(c: Context): Promise<void> {
   }
 
   if (token) {
-    const apiKeyResult = await verifyApiKey(token);
+    const apiKeyResult = await verifyApiKey(token, {
+      clientIp: clientIpForContext(c),
+    });
     if (apiKeyResult?.valid && apiKeyResult.key) {
       const key = apiKeyResult.key;
       setApiKeyContext(c, key, await enforceKeyRules(c, key.id));
@@ -190,7 +194,9 @@ export async function resolveAssetBearerOrCookie(c: Context): Promise<{
 
   const apiKeyHeader = apiKeyHeaderValue?.trim();
   if (!token && apiKeyHeader) {
-    const apiKeyResult = await verifyApiKey(apiKeyHeader);
+    const apiKeyResult = await verifyApiKey(apiKeyHeader, {
+      clientIp: clientIpForContext(c),
+    });
     if (apiKeyResult?.valid && apiKeyResult.key) {
       await enforceKeyRules(c, apiKeyResult.key.id);
       return {
@@ -202,7 +208,9 @@ export async function resolveAssetBearerOrCookie(c: Context): Promise<{
   }
 
   if (token) {
-    const apiKeyResult = await verifyApiKey(token);
+    const apiKeyResult = await verifyApiKey(token, {
+      clientIp: clientIpForContext(c),
+    });
     if (apiKeyResult?.valid && apiKeyResult.key) {
       await enforceKeyRules(c, apiKeyResult.key.id);
       return {

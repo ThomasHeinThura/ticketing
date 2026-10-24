@@ -20,6 +20,36 @@ import { ReportChart } from "./report-chart";
 import { metricText } from "./report-format";
 import { ReportTable } from "./report-table";
 
+/**
+ * `RP-9`: where the numbers came from, stated. Closed days read from the hourly snapshots; the
+ * current period (and any day not stored yet) is computed live, and the boundary is the date.
+ */
+function boundaryText(
+  report: ReportEnvelope,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const snapshot = report.snapshot;
+  if (report.boundary === "live" || !snapshot) return t("reports:context.live");
+  // `through` is the end of the last stored day: the day itself is the instant before it.
+  const last = snapshot.through
+    ? formatDate(new Date(new Date(snapshot.through).getTime() - 1), {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+      })
+    : "";
+  const computed = snapshot.computedAt
+    ? formatDateTime(snapshot.computedAt)
+    : "";
+  return t(
+    report.boundary === "snapshot"
+      ? "reports:context.snapshot"
+      : "reports:context.mixed",
+    { through: last, computed, count: snapshot.closedDays },
+  );
+}
+
 /** `RP-3` and `RP-4`: whose numbers these are, over which window, and as of when. */
 export function ReportContextLine({ report }: { report: ReportEnvelope }) {
   const { t } = useTranslation();
@@ -54,7 +84,7 @@ export function ReportContextLine({ report }: { report: ReportEnvelope }) {
         {t("reports:context.asOf", { time: formatDateTime(report.asOf) })}
       </span>
       <span aria-hidden="true"> · </span>
-      <span>{t("reports:context.live")}</span>
+      <span data-testid="report-boundary">{boundaryText(report, t)}</span>
     </p>
   );
 }

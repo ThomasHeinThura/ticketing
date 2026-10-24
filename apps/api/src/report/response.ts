@@ -56,7 +56,15 @@ export const reportEnvelopeSchema = z.object({
     live: z.boolean(),
   }),
   asOf: z.string(),
-  boundary: z.literal("live"),
+  boundary: z.enum(["live", "snapshot", "mixed"]),
+  snapshot: z
+    .object({
+      closedDays: z.number().int(),
+      uncoveredDays: z.number().int(),
+      computedAt: z.string().nullable(),
+      through: z.string().nullable(),
+    })
+    .nullable(),
   filters: reportFiltersSchema,
   options: z.record(z.string(), z.string()),
   choices: z.array(
@@ -149,16 +157,21 @@ export const reportCatalogueSchema = z.object({
   }),
 });
 
+export const drillItemSchema = z.object({
+  kind: z.enum(["work_item", "time_entry", "article"]),
+  key: z.string(),
+  title: z.string(),
+  projectKey: z.string().nullable(),
+  state: z.string().nullable(),
+  priority: z.string().nullable(),
+  date: z.string().nullable().optional(),
+  person: z.string().nullable().optional(),
+  hours: z.number().nullable().optional(),
+  workItemKey: z.string().nullable().optional(),
+});
+
 export const drillResponseSchema = z.object({
-  data: z.array(
-    z.object({
-      key: z.string(),
-      title: z.string(),
-      projectKey: z.string().nullable(),
-      state: z.string().nullable(),
-      priority: z.string().nullable(),
-    }),
-  ),
+  data: z.array(drillItemSchema),
 });
 
 export const widgetSchema = z.object({
@@ -195,3 +208,23 @@ export const dashboardListSchema = z.object({
   data: z.array(dashboardSchema),
   meta: z.object({ canManageWorkspaceDashboards: z.boolean() }),
 });
+
+/** RP-10: an export request as its owner sees it (never the content, which is only downloaded). */
+export const exportDtoSchema = z.object({
+  id: z.string(),
+  kind: z.enum(["report", "custom"]),
+  reportKey: z.string().nullable(),
+  title: z.string(),
+  status: z.enum(["queued", "running", "ready", "failed", "expired"]),
+  rowCount: z.number().int().nullable(),
+  byteSize: z.number().int().nullable(),
+  truncated: z.boolean(),
+  error: z.string().nullable(),
+  downloadCount: z.number().int(),
+  createdAt: z.string(),
+  finishedAt: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+});
+
+export const exportEnvelopeSchema = z.object({ data: exportDtoSchema });
+export const exportListSchema = z.object({ data: z.array(exportDtoSchema) });

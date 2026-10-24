@@ -126,6 +126,10 @@ const shapes = {
       .trim()
       .min(CHANGE_FREEZE_OVERRIDE_REASON_MIN)
       .max(CHANGE_FREEZE_OVERRIDE_REASON_MAX),
+    // The optional proposed window widens what the override covers, so the proof is bound to it:
+    // absent or null means "no window" and a proof minted for that cannot be spent with one.
+    windowStart: z.string().datetime({ offset: true }).nullable().optional(),
+    windowEnd: z.string().datetime({ offset: true }).nullable().optional(),
   },
 } as const;
 
@@ -186,6 +190,8 @@ export type ExtInput =
       workspaceId: string;
       workItemKey: string;
       reason: string;
+      windowStart?: string | null;
+      windowEnd?: string | null;
     };
 
 const sortedUnique = (values: readonly string[]) => [...new Set(values)].sort();
@@ -432,6 +438,12 @@ function binding(input: ExtInput): {
             workspaceId: input.workspaceId,
             workItemKey: input.workItemKey,
             reason: input.reason,
+            windowStart: input.windowStart
+              ? new Date(input.windowStart).toISOString()
+              : null,
+            windowEnd: input.windowEnd
+              ? new Date(input.windowEnd).toISOString()
+              : null,
           },
         ),
       };

@@ -115,6 +115,16 @@ export const summarySchema = z.object({
     .object({
       byCurrency: z.array(costByCurrencySchema),
       unpricedMinutes: z.number().int(),
+      /** TC-16: cost entries in the same scope, per currency (never converted). */
+      costEntries: z
+        .array(
+          z.object({
+            currency: z.string(),
+            amountMinor: z.number().int(),
+            entryCount: z.number().int(),
+          }),
+        )
+        .optional(),
     })
     .optional(),
 });
@@ -156,6 +166,9 @@ export const budgetSchema = z.object({
   figuresHidden: z.boolean(),
   /** Time cost in the budget's currency inside the period; entries in other currencies are not converted. */
   actualMinor: z.number().int().optional(),
+  /** TC-16: `actualMinor` is priced time plus cost entries; these are its two parts. */
+  timeMinor: z.number().int().optional(),
+  costEntriesMinor: z.number().int().optional(),
   remainingMinor: z.number().int().optional(),
   /** TC-18: the highest threshold reached (75 or 90), or null below 75%. */
   thresholdReached: z
@@ -165,7 +178,11 @@ export const budgetSchema = z.object({
   /** Minutes valued in other currencies, reported separately and never converted (TC-19). */
   otherCurrencies: z.array(costByCurrencySchema).optional(),
   unpricedMinutes: z.number().int().optional(),
-  /** TC-17: remaining-work estimates do not exist yet, so committed is null rather than guessed. */
+  /**
+   * TC-17: committed would be estimated remaining work valued at current rates. Estimates in this
+   * product are story points (`estimate`/`estimate_point`), not remaining hours, so there is no
+   * time estimate to value; committed stays null rather than guessed.
+   */
   committedMinor: z.number().int().nullable(),
   createdAt: responseTimestamp,
 });
@@ -175,4 +192,86 @@ export const budgetResponseSchema = z.object({
   data: z.array(budgetSchema),
   byActivity: z.array(breakdownMinutes),
   byPerson: z.array(breakdownMinutes),
+});
+
+// ---------------------------------------------------------------------------------------------
+// Cost types, cost entries, available hours (TC-12..TC-14, TC-20)
+// ---------------------------------------------------------------------------------------------
+
+export const costTypeSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  name: z.string(),
+  unit: z.string(),
+  /** Present only for callers holding `time_entry:manage_rates` (TC-11); the cost-type API requires it anyway. */
+  defaultRateMinor: z.number().int().nullable().optional(),
+  currency: z.string(),
+  billable: z.boolean(),
+  archived: z.boolean(),
+});
+export const costTypeListSchema = z.object({ data: z.array(costTypeSchema) });
+
+export const costEntrySchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  projectId: z.string(),
+  workItemId: z.string().nullable(),
+  workItemKey: z.string().nullable(),
+  workItemTitle: z.string().nullable(),
+  costTypeId: z.string(),
+  costTypeName: z.string(),
+  unit: z.string(),
+  personId: z.string(),
+  personName: z.string().nullable(),
+  date: z.string(),
+  units: z.number().int(),
+  currency: z.string(),
+  billable: z.boolean(),
+  note: z.string().nullable(),
+  createdAt: responseTimestamp,
+  updatedAt: responseTimestamp,
+  /** Rate and amount appear only for callers holding `time_entry:manage_rates` (TC-11). */
+  rateMinor: z.number().int().optional(),
+  amountMinor: z.number().int().optional(),
+});
+
+export const projectCostsSchema = z.object({
+  data: z.array(costEntrySchema),
+  /** The caller holds `time_entry:manage_rates` at this project (a project role may override the workspace role): they may log, edit and delete cost entries. */
+  canManage: z.boolean(),
+  /** Active cost types for the quick-add; present only with `canManage`. */
+  costTypes: z.array(costTypeSchema).optional(),
+  /** Per currency, never summed across currencies (TC-19). Present only with `canManage`. */
+  totals: z
+    .array(
+      z.object({
+        currency: z.string(),
+        amountMinor: z.number().int(),
+        entryCount: z.number().int(),
+      }),
+    )
+    .optional(),
+  /** Units are shown to every reader: how many entries, how many units. */
+  entryCount: z.number().int(),
+  canLogBackdated: z.boolean(),
+  backdateLimitDays: z.number().int(),
+  callerPersonId: z.string(),
+  today: z.string(),
+});
+
+export const availableHoursSchema = z.object({
+  id: z.string(),
+  personId: z.string(),
+  personName: z.string().nullable(),
+  minutesPerWeek: z.number().int(),
+  effectiveFrom: z.string(),
+  createdAt: responseTimestamp,
+});
+export const availableHoursListSchema = z.object({
+  data: z.array(availableHoursSchema),
+  /** The caller may add rows (`workspace:manage_settings`). */
+  canManage: z.boolean(),
+  /** Staff who can be given a row: the picker; present only with `canManage`. */
+  people: z.array(z.object({ personId: z.string(), name: z.string() })),
+  callerPersonId: z.string(),
 });

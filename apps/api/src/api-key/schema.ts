@@ -91,3 +91,17 @@ export const apiKeyCreatedSchema = apiKeySummarySchema.extend({
 });
 
 export type ApiKeySummary = z.infer<typeof apiKeySummarySchema>;
+
+export const instanceKeyListQuery = z
+  .object({ limit: z.coerce.number().int().min(1).max(200).default(100) })
+  .strict();
+
+export const instanceApiKeySchema = apiKeySummarySchema.extend({
+  ownerName: z.string().nullable(),
+  workspaceName: z.string().nullable(),
+});
+
+export const instanceApiKeyListSchema = z.object({
+  apiKeys: z.array(instanceApiKeySchema),
+  hasMore: z.boolean(),
+});

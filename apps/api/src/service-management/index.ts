@@ -371,7 +371,7 @@ const patchChangeRoute = createRoute({
   tags: ["Service management"],
   summary: "Set risk, window, rollback plan, affected services or release",
   description:
-    "Only a work item of a change type has change detail. Moving the window voids a freeze override granted for the old one.",
+    "Only a work item of a change type has change detail. An override is recorded per freeze id and version, so moving the window does not void it; a freeze the override has not covered still blocks.",
   middleware: [
     requireWorkItemReach("key", { deferApiKeyCapability: true }),
     ...manageChange,
@@ -896,6 +896,8 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
         workspaceId,
         workItemKey: key,
         reason,
+        windowStart: windowStart ? windowStart.toISOString() : null,
+        windowEnd: windowEnd ? windowEnd.toISOString() : null,
       },
       (spend) =>
         grantFreezeOverride({

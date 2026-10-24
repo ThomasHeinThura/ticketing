@@ -1,5 +1,5 @@
 {
-	"id": "2207d2de-1f78-4720-8591-d6a0957e0aac",
+	"id": "b10b53ac-922d-441e-a4bb-739522c595c9",
 	"prevId": "620a6c5b-7a24-440c-8b20-6844fee4082c",
 	"version": "7",
 	"dialect": "postgresql",
@@ -642,6 +642,21 @@
 					"columns": [
 						{
 							"expression": "key",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"apikey_start_idx": {
+					"name": "apikey_start_idx",
+					"columns": [
+						{
+							"expression": "start",
 							"isExpression": false,
 							"asc": true,
 							"nulls": "last"
@@ -18535,6 +18550,108 @@
 			},
 			"isRLSEnabled": false
 		},
+		"public.available_hours": {
+			"name": "available_hours",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"person_id": {
+					"name": "person_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"minutes_per_week": {
+					"name": "minutes_per_week",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"effective_from": {
+					"name": "effective_from",
+					"type": "date",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"created_by": {
+					"name": "created_by",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"available_hours_person_id_idx": {
+					"name": "available_hours_person_id_idx",
+					"columns": [
+						{
+							"expression": "person_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"available_hours_workspace_fk": {
+					"name": "available_hours_workspace_fk",
+					"tableFrom": "available_hours",
+					"tableTo": "workspace",
+					"columnsFrom": ["workspace_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"available_hours_person_fk": {
+					"name": "available_hours_person_fk",
+					"tableFrom": "available_hours",
+					"tableTo": "person",
+					"columnsFrom": ["person_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"available_hours_person_effective_unique": {
+					"name": "available_hours_person_effective_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "person_id", "effective_from"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"available_hours_minutes_range": {
+					"name": "available_hours_minutes_range",
+					"value": "\"available_hours\".\"minutes_per_week\" >= 0 AND \"available_hours\".\"minutes_per_week\" <= 10080"
+				}
+			},
+			"isRLSEnabled": false
+		},
 		"public.budget": {
 			"name": "budget",
 			"schema": "",
@@ -18655,6 +18772,426 @@
 				"budget_name_not_blank": {
 					"name": "budget_name_not_blank",
 					"value": "btrim(\"budget\".\"name\") <> ''"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.budget_threshold_notice": {
+			"name": "budget_threshold_notice",
+			"schema": "",
+			"columns": {
+				"budget_id": {
+					"name": "budget_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"threshold": {
+					"name": "threshold",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"budget_threshold_notice_budget_fk": {
+					"name": "budget_threshold_notice_budget_fk",
+					"tableFrom": "budget_threshold_notice",
+					"tableTo": "budget",
+					"columnsFrom": ["budget_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {
+				"budget_threshold_notice_pk": {
+					"name": "budget_threshold_notice_pk",
+					"columns": ["budget_id", "threshold"]
+				}
+			},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"budget_threshold_notice_threshold_allowed": {
+					"name": "budget_threshold_notice_threshold_allowed",
+					"value": "\"budget_threshold_notice\".\"threshold\" IN (75, 90)"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.cost_entry": {
+			"name": "cost_entry",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"project_id": {
+					"name": "project_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"work_item_id": {
+					"name": "work_item_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"cost_type_id": {
+					"name": "cost_type_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"person_id": {
+					"name": "person_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"date": {
+					"name": "date",
+					"type": "date",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"units": {
+					"name": "units",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"rate_minor": {
+					"name": "rate_minor",
+					"type": "bigint",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"amount_minor": {
+					"name": "amount_minor",
+					"type": "bigint",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"currency": {
+					"name": "currency",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"billable": {
+					"name": "billable",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"note": {
+					"name": "note",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_by": {
+					"name": "created_by",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"cost_entry_project_id_date_idx": {
+					"name": "cost_entry_project_id_date_idx",
+					"columns": [
+						{
+							"expression": "project_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "date",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"cost_entry_work_item_id_idx": {
+					"name": "cost_entry_work_item_id_idx",
+					"columns": [
+						{
+							"expression": "work_item_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"cost_entry_person_id_idx": {
+					"name": "cost_entry_person_id_idx",
+					"columns": [
+						{
+							"expression": "person_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"cost_entry_cost_type_id_idx": {
+					"name": "cost_entry_cost_type_id_idx",
+					"columns": [
+						{
+							"expression": "cost_type_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"cost_entry_workspace_id_date_idx": {
+					"name": "cost_entry_workspace_id_date_idx",
+					"columns": [
+						{
+							"expression": "workspace_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "date",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"cost_entry_workspace_project_fk": {
+					"name": "cost_entry_workspace_project_fk",
+					"tableFrom": "cost_entry",
+					"tableTo": "project",
+					"columnsFrom": ["workspace_id", "project_id"],
+					"columnsTo": ["workspace_id", "id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				},
+				"cost_entry_work_item_fk": {
+					"name": "cost_entry_work_item_fk",
+					"tableFrom": "cost_entry",
+					"tableTo": "work_item",
+					"columnsFrom": ["work_item_id"],
+					"columnsTo": ["id"],
+					"onDelete": "set null",
+					"onUpdate": "cascade"
+				},
+				"cost_entry_person_fk": {
+					"name": "cost_entry_person_fk",
+					"tableFrom": "cost_entry",
+					"tableTo": "person",
+					"columnsFrom": ["person_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"cost_entry_workspace_cost_type_fk": {
+					"name": "cost_entry_workspace_cost_type_fk",
+					"tableFrom": "cost_entry",
+					"tableTo": "cost_type",
+					"columnsFrom": ["workspace_id", "cost_type_id"],
+					"columnsTo": ["workspace_id", "id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"cost_entry_units_range": {
+					"name": "cost_entry_units_range",
+					"value": "\"cost_entry\".\"units\" > 0 AND \"cost_entry\".\"units\" <= 1000000"
+				},
+				"cost_entry_rate_nonnegative": {
+					"name": "cost_entry_rate_nonnegative",
+					"value": "\"cost_entry\".\"rate_minor\" >= 0"
+				},
+				"cost_entry_amount_matches": {
+					"name": "cost_entry_amount_matches",
+					"value": "\"cost_entry\".\"amount_minor\" = \"cost_entry\".\"units\"::bigint * \"cost_entry\".\"rate_minor\""
+				},
+				"cost_entry_currency_format": {
+					"name": "cost_entry_currency_format",
+					"value": "\"cost_entry\".\"currency\" ~ '^[A-Z]{3}$'"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.cost_type": {
+			"name": "cost_type",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"name": {
+					"name": "name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"unit": {
+					"name": "unit",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'unit'"
+				},
+				"default_rate_minor": {
+					"name": "default_rate_minor",
+					"type": "bigint",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"currency": {
+					"name": "currency",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"billable": {
+					"name": "billable",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true,
+					"default": true
+				},
+				"archived_at": {
+					"name": "archived_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"cost_type_workspace_fk": {
+					"name": "cost_type_workspace_fk",
+					"tableFrom": "cost_type",
+					"tableTo": "workspace",
+					"columnsFrom": ["workspace_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"cost_type_workspace_id_id_unique": {
+					"name": "cost_type_workspace_id_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "id"]
+				},
+				"cost_type_workspace_name_unique": {
+					"name": "cost_type_workspace_name_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "name"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"cost_type_name_not_blank": {
+					"name": "cost_type_name_not_blank",
+					"value": "btrim(\"cost_type\".\"name\") <> ''"
+				},
+				"cost_type_unit_not_blank": {
+					"name": "cost_type_unit_not_blank",
+					"value": "btrim(\"cost_type\".\"unit\") <> ''"
+				},
+				"cost_type_rate_nonnegative": {
+					"name": "cost_type_rate_nonnegative",
+					"value": "\"cost_type\".\"default_rate_minor\" IS NULL OR \"cost_type\".\"default_rate_minor\" >= 0"
+				},
+				"cost_type_currency_format": {
+					"name": "cost_type_currency_format",
+					"value": "\"cost_type\".\"currency\" ~ '^[A-Z]{3}$'"
 				}
 			},
 			"isRLSEnabled": false
@@ -21451,6 +21988,556 @@
 				"dashboard_widget_grid_range": {
 					"name": "dashboard_widget_grid_range",
 					"value": "\"dashboard_widget\".\"x\" BETWEEN 0 AND 11 AND \"dashboard_widget\".\"y\" BETWEEN 0 AND 999 AND \"dashboard_widget\".\"w\" BETWEEN 1 AND 12 AND \"dashboard_widget\".\"h\" BETWEEN 1 AND 12 AND \"dashboard_widget\".\"x\" + \"dashboard_widget\".\"w\" <= 12"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.metric_snapshot_day": {
+			"name": "metric_snapshot_day",
+			"schema": "",
+			"columns": {
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"period_start": {
+					"name": "period_start",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"computed_at": {
+					"name": "computed_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"metric_snapshot_day_workspace_fk": {
+					"name": "metric_snapshot_day_workspace_fk",
+					"tableFrom": "metric_snapshot_day",
+					"tableTo": "workspace",
+					"columnsFrom": ["workspace_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {
+				"metric_snapshot_day_workspace_id_period_start_pk": {
+					"name": "metric_snapshot_day_workspace_id_period_start_pk",
+					"columns": ["workspace_id", "period_start"]
+				}
+			},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.metric_snapshot": {
+			"name": "metric_snapshot",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"period_start": {
+					"name": "period_start",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"period_end": {
+					"name": "period_end",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"grain": {
+					"name": "grain",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'day'"
+				},
+				"metric_key": {
+					"name": "metric_key",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"project_id": {
+					"name": "project_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"organisation_id": {
+					"name": "organisation_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"dimensions": {
+					"name": "dimensions",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'{}'::jsonb"
+				},
+				"measures": {
+					"name": "measures",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'{}'::jsonb"
+				},
+				"computed_at": {
+					"name": "computed_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"metric_snapshot_key_unique": {
+					"name": "metric_snapshot_key_unique",
+					"columns": [
+						{
+							"expression": "workspace_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "metric_key",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "grain",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "period_start",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "COALESCE(\"project_id\", '')",
+							"asc": true,
+							"isExpression": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "COALESCE(\"organisation_id\", '')",
+							"asc": true,
+							"isExpression": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "dimensions",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": true,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"metric_snapshot_read_idx": {
+					"name": "metric_snapshot_read_idx",
+					"columns": [
+						{
+							"expression": "workspace_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "metric_key",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "grain",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "period_start",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "project_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "organisation_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"metric_snapshot_project_idx": {
+					"name": "metric_snapshot_project_idx",
+					"columns": [
+						{
+							"expression": "project_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"metric_snapshot_organisation_idx": {
+					"name": "metric_snapshot_organisation_idx",
+					"columns": [
+						{
+							"expression": "organisation_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"where": "\"metric_snapshot\".\"organisation_id\" IS NOT NULL",
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"metric_snapshot_workspace_fk": {
+					"name": "metric_snapshot_workspace_fk",
+					"tableFrom": "metric_snapshot",
+					"tableTo": "workspace",
+					"columnsFrom": ["workspace_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"metric_snapshot_project_fk": {
+					"name": "metric_snapshot_project_fk",
+					"tableFrom": "metric_snapshot",
+					"tableTo": "project",
+					"columnsFrom": ["project_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"metric_snapshot_organisation_fk": {
+					"name": "metric_snapshot_organisation_fk",
+					"tableFrom": "metric_snapshot",
+					"tableTo": "organisation",
+					"columnsFrom": ["organisation_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"metric_snapshot_grain_allowed": {
+					"name": "metric_snapshot_grain_allowed",
+					"value": "\"metric_snapshot\".\"grain\" IN ('day')"
+				},
+				"metric_snapshot_period_order": {
+					"name": "metric_snapshot_period_order",
+					"value": "\"metric_snapshot\".\"period_end\" > \"metric_snapshot\".\"period_start\""
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.report_export": {
+			"name": "report_export",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"person_id": {
+					"name": "person_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"user_id": {
+					"name": "user_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"kind": {
+					"name": "kind",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"report_key": {
+					"name": "report_key",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"title": {
+					"name": "title",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"spec": {
+					"name": "spec",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"caps": {
+					"name": "caps",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"status": {
+					"name": "status",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'queued'"
+				},
+				"rates_included": {
+					"name": "rates_included",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true,
+					"default": false
+				},
+				"filename": {
+					"name": "filename",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"content": {
+					"name": "content",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"row_count": {
+					"name": "row_count",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"byte_size": {
+					"name": "byte_size",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"truncated": {
+					"name": "truncated",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true,
+					"default": false
+				},
+				"error": {
+					"name": "error",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"download_count": {
+					"name": "download_count",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"started_at": {
+					"name": "started_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"finished_at": {
+					"name": "finished_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"expires_at": {
+					"name": "expires_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"downloaded_at": {
+					"name": "downloaded_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				}
+			},
+			"indexes": {
+				"report_export_status_idx": {
+					"name": "report_export_status_idx",
+					"columns": [
+						{
+							"expression": "status",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "created_at",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"report_export_person_idx": {
+					"name": "report_export_person_idx",
+					"columns": [
+						{
+							"expression": "person_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "created_at",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"report_export_workspace_idx": {
+					"name": "report_export_workspace_idx",
+					"columns": [
+						{
+							"expression": "workspace_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"report_export_workspace_fk": {
+					"name": "report_export_workspace_fk",
+					"tableFrom": "report_export",
+					"tableTo": "workspace",
+					"columnsFrom": ["workspace_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"report_export_person_fk": {
+					"name": "report_export_person_fk",
+					"tableFrom": "report_export",
+					"tableTo": "person",
+					"columnsFrom": ["person_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"report_export_user_fk": {
+					"name": "report_export_user_fk",
+					"tableFrom": "report_export",
+					"tableTo": "user",
+					"columnsFrom": ["user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"report_export_kind_allowed": {
+					"name": "report_export_kind_allowed",
+					"value": "\"report_export\".\"kind\" IN ('report', 'custom')"
+				},
+				"report_export_status_allowed": {
+					"name": "report_export_status_allowed",
+					"value": "\"report_export\".\"status\" IN ('queued', 'running', 'ready', 'failed', 'expired')"
+				},
+				"report_export_report_key": {
+					"name": "report_export_report_key",
+					"value": "(\"report_export\".\"kind\" = 'report') = (\"report_export\".\"report_key\" IS NOT NULL)"
 				}
 			},
 			"isRLSEnabled": false

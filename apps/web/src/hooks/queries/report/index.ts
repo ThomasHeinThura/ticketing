@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   type CustomQueryInput,
+  getCustomItems,
   getDashboard,
   getDashboards,
   getReport,
   getReportCatalogue,
+  getReportExport,
   getReportItems,
   getWidgetData,
+  getWidgetItems,
   previewCustomReport,
   ReportsDisabledError,
 } from "@/fetchers/report";
@@ -32,6 +35,23 @@ export const reportKeys = {
     ["reports", workspaceId, "dashboard", id] as const,
   widget: (workspaceId: string, dashboardId: string, widgetId: string) =>
     ["reports", workspaceId, "widget", dashboardId, widgetId] as const,
+  widgetItems: (
+    workspaceId: string,
+    dashboardId: string,
+    widgetId: string,
+    handle: string | null,
+  ) =>
+    [
+      "reports",
+      workspaceId,
+      "widget-items",
+      dashboardId,
+      widgetId,
+      handle,
+    ] as const,
+  customItems: (workspaceId: string, body: unknown, handle: string | null) =>
+    ["reports", workspaceId, "custom-items", body, handle] as const,
+  export: (id: string) => ["reports", "export", id] as const,
 };
 
 /** A switch the API answers 409 for, or a refusal, is a state of the screen, not an error to retry. */
@@ -135,5 +155,59 @@ export function useWidgetData(
     enabled: Boolean(workspaceId && dashboardId && widgetId),
     retry: noRetry,
     staleTime: 30_000,
+  });
+}
+
+/** `RP-12` for a dashboard widget: the items behind one of its rows. */
+export function useWidgetItems(
+  workspaceId: string,
+  dashboardId: string,
+  widgetId: string,
+  handle: string | null,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: reportKeys.widgetItems(
+      workspaceId,
+      dashboardId,
+      widgetId,
+      handle,
+    ),
+    queryFn: () => getWidgetItems(dashboardId, widgetId, handle),
+    enabled: Boolean(workspaceId && dashboardId && widgetId) && enabled,
+    retry: noRetry,
+  });
+}
+
+/** `RP-12` for a tier 3 report that is being built: the items behind one group. */
+export function useCustomItems(
+  workspaceId: string,
+  body: {
+    name?: string;
+    query: CustomQueryInput;
+    chartType: "bar" | "line" | "table" | "number";
+  },
+  handle: string | null,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: reportKeys.customItems(workspaceId, body, handle),
+    queryFn: () => getCustomItems({ workspaceId, ...body, handle }),
+    enabled: Boolean(workspaceId) && enabled,
+    retry: noRetry,
+  });
+}
+
+/** `RP-10`: a queued export, polled every two seconds until it is finished. */
+export function useReportExport(id: string | null) {
+  return useQuery({
+    queryKey: reportKeys.export(id ?? ""),
+    queryFn: () => getReportExport(id ?? ""),
+    enabled: Boolean(id),
+    retry: noRetry,
+    refetchInterval: (query) => {
+      const status = query.state.data?.data.status;
+      return status === "queued" || status === "running" ? 2000 : false;
+    },
   });
 }

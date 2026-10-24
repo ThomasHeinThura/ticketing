@@ -28,6 +28,7 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
+vi.mock("./work-item-costs", () => ({ default: () => null }));
 vi.mock("@/hooks/use-open-pending-action", () => ({
   useOpenPendingAction: () => mocks.openPendingAction,
 }));

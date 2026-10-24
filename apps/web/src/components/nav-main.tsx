@@ -19,6 +19,7 @@ import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-fea
 import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
 import { useCatalogueStatus } from "@/hooks/queries/service-management";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { routes } from "@/lib/routes";
 import { savedViewKeys } from "@/lib/saved-view-keys";
@@ -71,7 +72,10 @@ export function NavMain() {
   const features = useWorkspaceFeatures(workspace?.id, shellPainted);
   const knowledgeBaseOn = features.isOn("feature.knowledge_base");
   // `feature.time_tracking` off: the Timesheet entry is gone (P5 time and cost).
-  const timeTrackingOn = features.isOn("feature.time_tracking");
+  // The time APIs need time_entry:create (the built-in Viewer role lacks it), so the entry also
+  // follows the strict `logTime` capability.
+  const { canLogTime } = useWorkspacePermission();
+  const timeTrackingOn = features.isOn("feature.time_tracking") && canLogTime();
   // `feature.reports` off: the Reports and Dashboard entries are gone (P5 reports).
   const reportsOn = features.isOn("feature.reports");
   // `feature.service_catalogue` off: the service management entry is gone (P5). The status read

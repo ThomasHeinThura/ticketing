@@ -35,8 +35,8 @@ export async function isEmailProviderConfigured(): Promise<boolean> {
  * Sends the customer invitation through the existing invitation mailer. The link opens the accept
  * page on the portal host root (`/invite/{id}`, CP-24); the credential rides in the fragment so
  * it never reaches a server log or a Referer header. Returns whether the message was accepted for
- * delivery, so an agent can tell that a resend is needed; it never throws on a transport failure. Callers log and audit a failure but must not
- * let it change the response (CP-22).
+ * delivery. The result is for the server-side log and audit trail only: callers must never let
+ * it change the response, which reports only whether a provider is configured (CP-22).
  */
 export async function sendCustomerInvitationEmail(
   input: CustomerInvitationMail,

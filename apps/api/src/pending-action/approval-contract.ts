@@ -185,6 +185,13 @@ export const pendingActionApprovalContracts = [
   },
   {
     action: "delete",
+    targetType: "cost_entry",
+    confirmationRequired: "click",
+    routeKey: "DELETE /api/cost-entries/{id}",
+    executor: "registered_deletion",
+  },
+  {
+    action: "delete",
     targetType: "automation",
     confirmationRequired: "click",
     routeKey: "DELETE /api/automations/{id}",

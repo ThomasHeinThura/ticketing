@@ -1745,6 +1745,51 @@
 			"pageTitle": "Feature Settings",
 			"subtitle": "Choose which features are available in this project.",
 			"title": "Features"
+		},
+		"instanceApiKeys": {
+			"columnOwner": "Owner",
+			"description": "Every personal and service key on this instance. Never shows a key itself.",
+			"empty": "No API keys on this instance yet.",
+			"forbiddenDescription": "Only an instance administrator can see the keys of every account and workspace.",
+			"forbiddenTitle": "Instance administrators only",
+			"hasMore": "Only the newest keys are shown.",
+			"loadError": "The API keys could not be loaded.",
+			"serviceKey": "Service key of {{workspace}}",
+			"title": "API keys",
+			"unknownOwner": "Unknown"
+		},
+		"serviceKeys": {
+			"create": {
+				"creating": "Creating...",
+				"description": "Creating a service key is a protected action: you confirm it with a fresh verification. The key is shown once.",
+				"expiry": {
+					"30d": "30 days",
+					"90d": "90 days",
+					"never": "Never"
+				},
+				"expiryLabel": "Expiry",
+				"frozenDescription": "The key is limited to what you tick now and never to more than you hold yourself. It is not widened later and is not clamped to anyone's current role.",
+				"frozenTitle": "The subset is frozen",
+				"nameLabel": "Name",
+				"namePlaceholder": "e.g. Deployment pipeline",
+				"open": "Create service key",
+				"readIncluded": "Read access is always included. Tick any write access the key needs.",
+				"submit": "Create key",
+				"title": "Create a service key"
+			},
+			"deleteAria": "Request deletion of {{name}}",
+			"deleteFailed": "Failed to request the deletion",
+			"deleteRequested": "Deletion requested. Approve it with your exact key name and a fresh verification.",
+			"description": "Keys owned by this workspace, not a person. They keep working when their creator leaves and are limited to the capabilities chosen when they were created.",
+			"empty": "No service keys yet. Create one for an integration that should not depend on a person.",
+			"formerMember": "Created by a former member, owned by workspace administrators",
+			"loading": "Loading service keys...",
+			"revokeDescription": "{{name}} stops working immediately. The key stays listed so you can see when it was used.",
+			"revokeTitle": "Revoke service key?",
+			"stepUpFailed": "Fresh verification failed. Nothing was created.",
+			"title": "Workspace service keys",
+			"toastRevoked": "Service key revoked",
+			"toastRevokeError": "Failed to revoke the service key"
 		}
 	},
 	"navigation": {
@@ -6685,7 +6730,8 @@
 			"threshold": "{{percent}}% reached",
 			"title": "Budget",
 			"unpriced": "{{time}} logged without a rate is not counted.",
-			"figuresHidden": "Hidden: time cost needs permission to see rates"
+			"figuresHidden": "Hidden: time cost needs permission to see rates",
+			"actualSplit": "Time {{time}} · Cost entries {{cost}}"
 		},
 		"edit": {
 			"title": "Edit time entry"
@@ -6792,6 +6838,56 @@
 			"defaultBillable": "New time is billable by default",
 			"defaultBillableHelp": "The starting value of Billable when time is logged on this project. Each entry can still override it.",
 			"saved": "Saved"
+		},
+		"availableHours": {
+			"add": "Add hours",
+			"added": "Available hours saved",
+			"description": "Each person's capacity in hours per week, from a date. Changing someone's hours adds a row; earlier rows stay as history. Capacity feeds the utilisation and capacity reports only; nothing assigns work from it.",
+			"duplicate": "Hours for this person already start on that date.",
+			"empty": "No available hours yet.",
+			"hoursPerWeek": "Hours per week",
+			"title": "Available hours"
+		},
+		"costs": {
+			"add": "Log cost",
+			"amount": "Amount",
+			"count_many": "{{count}} entries",
+			"count_one": "{{count}} entry",
+			"count_other": "{{count}} entries",
+			"delete": "Delete cost entry",
+			"edit": "Edit cost entry",
+			"editTitle": "Edit cost entry",
+			"empty": "No costs logged on this item.",
+			"loadError": "Could not load the costs on this item.",
+			"note": "Note",
+			"noTypes": "No cost types yet. Add one under Rates to log costs.",
+			"rate": "Rate per unit ({{currency}})",
+			"rateNote": "The rate stays as captured unless you change it here.",
+			"title": "Costs",
+			"type": "Cost type",
+			"units": "Units ({{unit}})",
+			"unitsShort": "Units"
+		},
+		"costTypes": {
+			"add": "Add cost type",
+			"added": "Cost type added",
+			"archive": "Archive",
+			"archiveLabel": "Archive {{name}}",
+			"defaultRate": "Default rate",
+			"description": "What can be bought and logged against work: a seat, a kilometre, a licence. Archiving a type hides it from new entries; cost already logged keeps it.",
+			"duplicate": "A cost type with this name already exists.",
+			"edit": "Edit {{name}}",
+			"editTitle": "Edit cost type",
+			"empty": "No cost types yet.",
+			"loadError": "Could not load the cost types",
+			"name": "Name",
+			"noDefaultRate": "Set per entry",
+			"restore": "Restore",
+			"restoreLabel": "Restore {{name}}",
+			"snapshotNote": "A new default rate prices entries logged from now on. Entries already logged keep the rate they were captured with.",
+			"title": "Cost types",
+			"unit": "Unit",
+			"unitPlaceholder": "seat"
 		}
 	},
 	"pages": {
@@ -7208,7 +7304,9 @@
 			"scopeReach_one": "Your projects ({{count}} project)",
 			"scopeReach_other": "Your projects ({{count}} projects)",
 			"window": "{{from}} to {{to}} ({{days}} days)",
-			"windowLive": "Live: as of now, no window"
+			"windowLive": "Live: as of now, no window",
+			"mixed": "{{count}} closed days from stored daily snapshots, up to {{through}} (computed {{computed}}); the current period is computed live",
+			"snapshot": "{{count}} closed days from stored daily snapshots, up to {{through}} (computed {{computed}})"
 		},
 		"dashboard": {
 			"choose": "Choose a dashboard",
@@ -7223,7 +7321,8 @@
 			"savedView": "Saved report",
 			"title": "Dashboard",
 			"widgetView": "View of {{title}}",
-			"workspaceScope": "Workspace"
+			"workspaceScope": "Workspace",
+			"exportWidget": "Export {{title}} as CSV"
 		},
 		"detail": {
 			"back": "All reports",
@@ -7240,7 +7339,14 @@
 			"open": "View items",
 			"priority": "Priority",
 			"state": "State",
-			"title": "Items behind this number"
+			"title": "Items behind this number",
+			"article": "Article",
+			"date": "Day",
+			"hours": "Hours",
+			"note": "Note",
+			"person": "Person",
+			"project": "Project",
+			"workItem": "Work item"
 		},
 		"editor": {
 			"add": "Add",
@@ -7417,7 +7523,8 @@
 			"time_tracking_off": "Time tracking is off for this workspace.",
 			"unit_count": "Scope is measured in item counts.",
 			"unit_points": "Scope is measured in points.",
-			"unit_time": "Scope is measured in time."
+			"unit_time": "Scope is measured in time.",
+			"available_hours_fallback": "Some people have no available hours set, so their team's working days are used instead."
 		},
 		"options": {
 			"by": {
@@ -7502,6 +7609,41 @@
 			"stale_items": "Stale items",
 			"started": "Started",
 			"velocity_last_three_cycles": "Velocity (last three cycles)"
+		},
+		"export": {
+			"dismiss": "Dismiss",
+			"download": "Download CSV",
+			"queuedToast": "This export is large, so it is being prepared in the background.",
+			"status": {
+				"expired": {
+					"description": "Exports can be downloaded for 24 hours. Export the report again.",
+					"title": "This export has expired"
+				},
+				"failed": {
+					"description": "Try again. If it keeps failing, ask an administrator.",
+					"title": "The export could not be made"
+				},
+				"queued": {
+					"description": "It will start in a moment.",
+					"title": "Export queued"
+				},
+				"ready": {
+					"description_many": "{{count}} rows. It can be downloaded for 24 hours.",
+					"description_one": "{{count}} row. It can be downloaded for 24 hours.",
+					"description_other": "{{count}} rows. It can be downloaded for 24 hours.",
+					"title": "Your export is ready"
+				},
+				"running": {
+					"description": "Large exports take a little while. You can keep working.",
+					"title": "Preparing your export"
+				},
+				"unavailable": {
+					"description": "Export the report again.",
+					"title": "This export is no longer available"
+				}
+			},
+			"tooMany": "You already have three exports running. Wait for one to finish.",
+			"truncated": "Some rows were left out because the report limits its rows; narrow the filters for the rest."
 		}
 	}
 }

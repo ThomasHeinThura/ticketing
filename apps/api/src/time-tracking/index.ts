@@ -17,6 +17,8 @@ import {
 } from "../utils/reach-filtered-list";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { costEntriesByCurrency } from "./cost-repository";
+import costRouter from "./cost-routes";
 import { TIME_ENTRY_DELETION_ROUTE } from "./deletion-target";
 import {
   assertTrackingEnabledForProject,
@@ -730,6 +732,18 @@ const router = apiRouter<Vars>()
               cost: {
                 byCurrency: summary.byCurrency,
                 unpricedMinutes: summary.unpricedMinutes,
+                costEntries: await costEntriesByCurrency(
+                  {
+                    workspaceId: query.workspaceId,
+                    workItemId: query.workItemId,
+                    projectId: query.projectId,
+                    cycleId: query.cycleId,
+                    moduleId: query.moduleId,
+                    from: query.from,
+                    to: query.to,
+                  },
+                  identity,
+                ),
               },
             }
           : {}),
@@ -908,6 +922,8 @@ async function budgetResponse(
       ...(actuals
         ? {
             actualMinor: actuals.actualMinor,
+            timeMinor: actuals.timeMinor,
+            costEntriesMinor: actuals.costEntriesMinor,
             remainingMinor: budget.plannedAmountMinor - actuals.actualMinor,
             thresholdReached: actuals.threshold,
             otherCurrencies: actuals.otherCurrencies,
@@ -924,4 +940,4 @@ async function budgetResponse(
   };
 }
 
-export default router;
+export default apiRouter<Vars>().route("/", router).route("/", costRouter);

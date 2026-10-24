@@ -53,6 +53,7 @@ const base: ReportEnvelope = {
   },
   asOf: "2026-10-24T09:30:00.000Z",
   boundary: "live",
+  snapshot: null,
   filters: {},
   options: {},
   choices: [],

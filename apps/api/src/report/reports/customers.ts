@@ -251,6 +251,18 @@ const satisfaction: ReportDefinition = {
       by === "customer"
         ? sql`COALESCE(o.name, ${NO_ORG})`
         : sql`COALESCE(rt.name, '(not raised through a request type)')`;
+    // Submissions are not unique per item (link-as-duplicate points a second submission at an
+    // existing item), so by=request_type takes exactly one non-duplicate submission per item;
+    // by=customer does not need the submission at all.
+    const submissionJoin =
+      by === "request_type"
+        ? sql`LEFT JOIN LATERAL (
+            SELECT s.request_type_id FROM submission s
+            WHERE s.work_item_id = w.id AND s.state <> 'duplicate'
+            ORDER BY s.created_at, s.id LIMIT 1
+          ) sub ON true
+          LEFT JOIN request_type rt ON rt.id = sub.request_type_id`
+        : sql``;
     const rows = await selectRows<{
       label: string;
       ratings: string;
@@ -260,19 +272,18 @@ const satisfaction: ReportDefinition = {
       s3: string;
       s4: string;
       s5: string;
-    }>(sql`SELECT ${label} AS label, count(*) AS ratings,
-        count(*) FILTER (WHERE sr.score >= 4) AS satisfied,
-        count(*) FILTER (WHERE sr.score = 1) AS s1,
-        count(*) FILTER (WHERE sr.score = 2) AS s2,
-        count(*) FILTER (WHERE sr.score = 3) AS s3,
-        count(*) FILTER (WHERE sr.score = 4) AS s4,
-        count(*) FILTER (WHERE sr.score = 5) AS s5
+    }>(sql`SELECT ${label} AS label, count(DISTINCT sr.id) AS ratings,
+        count(DISTINCT sr.id) FILTER (WHERE sr.score >= 4) AS satisfied,
+        count(DISTINCT sr.id) FILTER (WHERE sr.score = 1) AS s1,
+        count(DISTINCT sr.id) FILTER (WHERE sr.score = 2) AS s2,
+        count(DISTINCT sr.id) FILTER (WHERE sr.score = 3) AS s3,
+        count(DISTINCT sr.id) FILTER (WHERE sr.score = 4) AS s4,
+        count(DISTINCT sr.id) FILTER (WHERE sr.score = 5) AS s5
       FROM satisfaction_rating sr
       JOIN work_item w ON w.id = sr.work_item_id
       JOIN project p ON p.id = w.project_id
       LEFT JOIN organisation o ON o.id = p.organisation_id
-      LEFT JOIN submission sub ON sub.work_item_id = w.id
-      LEFT JOIN request_type rt ON rt.id = sub.request_type_id
+      ${submissionJoin}
       WHERE w.workspace_id = ${ctx.workspaceId}
         AND w.deleted_at IS NULL AND p.deleted_at IS NULL
         AND ${ctx.reach}

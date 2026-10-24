@@ -15,6 +15,12 @@ import { runPagePurgeJob } from "./page-purge";
 import { expirePendingActions } from "./pending-action-expire";
 import { runPositionRebalanceJob } from "./position-rebalance-job";
 import { runReminderScan } from "./reminder-scan";
+import {
+  METRICS_SNAPSHOT_JOB,
+  REPORT_EXPORT_JOB,
+  runMetricsSnapshot,
+  runReportExport,
+} from "./report-jobs";
 import { scanScheduledTransitions } from "./scheduled-transition";
 import { runSecretsRekeyJob, SECRETS_REKEY_JOB } from "./secrets-rekey";
 import { runSessionCleanup } from "./session-cleanup";
@@ -155,6 +161,18 @@ export function initializeScheduler(): void {
       name: TIMER_SWEEPER_JOB,
       pattern: "*/15 * * * *",
       handler: runTimerSweeper,
+    },
+    {
+      // RP-9: stores closed days of the SLA and throughput metrics (day grain, aggregates only).
+      name: METRICS_SNAPSHOT_JOB,
+      pattern: "0 * * * *",
+      handler: () => runMetricsSnapshot(),
+    },
+    {
+      // RP-10: renders queued large exports; also started right after one is queued.
+      name: REPORT_EXPORT_JOB,
+      pattern: "* * * * *",
+      handler: () => runReportExport(),
     },
     {
       // IP-25: pings each enabled identity connection's OIDC discovery document.

@@ -78,10 +78,21 @@ export type IdentityOperationBinding =
       newOwnerUserId: string;
     }
   | {
+      operation: "service_key_create";
+      workspaceId: string;
+      name: string;
+      expiresIn?: number | null;
+      capabilities: string[];
+      ipAllowlist?: string[];
+      rateLimitPerMinute?: number;
+    }
+  | {
       operation: "change_freeze_override";
       workspaceId: string;
       workItemKey: string;
       reason: string;
+      windowStart?: string | null;
+      windowEnd?: string | null;
     };
 
 export type IdentityStepUpFactor = { method: StepUpMethod; secret: string };

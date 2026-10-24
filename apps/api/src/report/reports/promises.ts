@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { itemFilterSql, num, selectRows, tsn, tstz } from "../context";
 import { countValue, ratePercent, type Sampled, trendOf, utc } from "../logic";
+import { type DailyRow, loadDaily } from "../snapshot.repository";
 import type { ReportContext, ReportDefinition, Row } from "../types";
 import {
   cell,
@@ -9,6 +10,7 @@ import {
   emptyBody,
   itemsOf,
   MIN,
+  rowCap,
   weekAxis,
   weekKey,
 } from "./shared";
@@ -27,34 +29,34 @@ function settledAt(metric: "resolution" | "first_response") {
     : sql`w.first_response_at`;
 }
 
-type OutcomeRow = {
-  settled: string | Date;
-  state: string;
-  priority: string | null;
-};
-
-/** Items whose SLA clock was settled in `[from, to)`, with the met/missed outcome. */
-async function outcomeRows(
+/**
+ * Settled SLA outcomes per day and priority over `[from, to)` (RP-9): closed days come from the
+ * stored snapshots, the current day and any partial edge are computed live.
+ */
+function outcomeRows(
   ctx: ReportContext,
   from: Date,
   to: Date,
-): Promise<OutcomeRow[]> {
-  const metric = metricOf(ctx);
-  return selectRows<OutcomeRow>(sql`SELECT ${settledAt(metric)} AS settled, c.state, w.priority
-    FROM work_item w
-    JOIN project p ON p.id = w.project_id
-    JOIN work_item_sla_cache c ON c.work_item_id = w.id AND c.metric = ${metric}
-    WHERE w.workspace_id = ${ctx.workspaceId}
-      AND w.deleted_at IS NULL AND p.deleted_at IS NULL
-      AND ${ctx.reach} AND ${itemFilterSql(ctx)}
-      AND c.state IN ('met', 'missed')
-      AND ${settledAt(metric)} >= ${tsn(from)} AND ${settledAt(metric)} < ${tsn(to)}`);
+): Promise<DailyRow[]> {
+  return loadDaily(
+    ctx,
+    metricOf(ctx) === "resolution" ? "sla_resolution" : "sla_first_response",
+    from,
+    to,
+  );
 }
 
-function attainmentOf(rows: OutcomeRow[]): Sampled {
-  const met = rows.filter((row) => row.state === "met").length;
-  return ratePercent(met, rows.length, MIN);
+const sumMet = (rows: DailyRow[]) =>
+  rows.reduce((total, row) => total + row.a, 0);
+const sumMissed = (rows: DailyRow[]) =>
+  rows.reduce((total, row) => total + row.b, 0);
+const settledCount = (rows: DailyRow[]) => sumMet(rows) + sumMissed(rows);
+
+function attainmentOf(rows: DailyRow[]): Sampled {
+  return ratePercent(sumMet(rows), settledCount(rows), MIN);
 }
+
+const dayDate = (day: string) => new Date(`${day}T00:00:00.000Z`);
 
 async function policyVersionsChanged(ctx: ReportContext): Promise<boolean> {
   const [row] = await selectRows<{
@@ -91,12 +93,11 @@ const slaAttainment: ReportDefinition = {
     const rows: Row[] = [];
     for (const priority of PRIORITIES) {
       const subset = now.filter((row) => row.priority === priority);
-      if (subset.length === 0) continue;
-      const met = subset.filter((row) => row.state === "met").length;
+      if (settledCount(subset) === 0) continue;
       rows.push({
         priority,
-        met,
-        missed: subset.length - met,
+        met: sumMet(subset),
+        missed: sumMissed(subset),
         attainment: cell(attainmentOf(subset)),
         _drill: priority,
       });
@@ -104,12 +105,11 @@ const slaAttainment: ReportDefinition = {
     const other = now.filter(
       (row) => !PRIORITIES.includes(row.priority as never),
     );
-    if (other.length) {
-      const met = other.filter((row) => row.state === "met").length;
+    if (settledCount(other) > 0) {
       rows.push({
         priority: "none",
-        met,
-        missed: other.length - met,
+        met: sumMet(other),
+        missed: sumMissed(other),
         attainment: cell(attainmentOf(other)),
         _drill: "none",
       });
@@ -129,13 +129,13 @@ const slaAttainment: ReportDefinition = {
           key: "met",
           label: "Met",
           unit: "count",
-          ...countValue(now.filter((row) => row.state === "met").length),
+          ...countValue(sumMet(now)),
         },
         {
           key: "missed",
           label: "Missed",
           unit: "count",
-          ...countValue(now.filter((row) => row.state === "missed").length),
+          ...countValue(sumMissed(now)),
         },
       ],
       chart:
@@ -165,7 +165,7 @@ const slaAttainment: ReportDefinition = {
         col("attainment", "Attainment", "percent"),
       ],
       rows,
-      population: now.length,
+      population: settledCount(now),
       outsideWindow: await slaOutsideWindow(ctx),
       notes,
       drill: true,
@@ -189,9 +189,9 @@ const slaTrend: ReportDefinition = {
     const now = await outcomeRows(ctx, ctx.window.from, ctx.window.to);
     const before = await outcomeRows(ctx, ctx.previous.from, ctx.previous.to);
     const weeks = weekAxis(ctx);
-    const byWeek = new Map<string, OutcomeRow[]>();
+    const byWeek = new Map<string, DailyRow[]>();
     for (const row of now) {
-      const key = weekKey(row.settled);
+      const key = weekKey(dayDate(row.day));
       byWeek.set(key, [...(byWeek.get(key) ?? []), row]);
     }
     // A week with fewer than the minimum is a null point: the line has a gap, not a 0% or 100%.
@@ -211,7 +211,7 @@ const slaTrend: ReportDefinition = {
         },
       ],
       chart:
-        now.length > 0
+        settledCount(now) > 0
           ? {
               type: "line",
               unit: "percent",
@@ -232,11 +232,11 @@ const slaTrend: ReportDefinition = {
       ],
       rows: weekly.map((entry) => ({
         week: entry.week,
-        settled: entry.subset.length,
+        settled: settledCount(entry.subset),
         attainment: cell(entry.value),
         _drill: entry.week,
       })),
-      population: now.length,
+      population: settledCount(now),
       outsideWindow: await slaOutsideWindow(ctx),
       notes: (await policyVersionsChanged(ctx)) ? ["sla_policy_changed"] : [],
       drill: true,
@@ -290,7 +290,7 @@ const breachAnalysis: ReportDefinition = {
         AND ${ctx.reach} AND ${itemFilterSql(ctx)}
         AND c.state IN ('met', 'missed', 'breached')
         AND c.due_at >= ${tstz(ctx.window.from)} AND c.due_at < ${tstz(ctx.window.to)}
-      GROUP BY 1 ORDER BY breached DESC, total DESC LIMIT 100`);
+      GROUP BY 1 ORDER BY breached DESC, total DESC LIMIT ${rowCap(ctx, 100)}`);
     const table: Row[] = rows.map((row) => {
       const breached = num(row.breached);
       const total = num(row.total);
@@ -340,6 +340,7 @@ const breachAnalysis: ReportDefinition = {
         col("rate", "Breach rate", "percent"),
       ],
       rows: table,
+      truncated: rows.length >= rowCap(ctx, 100),
       population: table.reduce((sum, row) => sum + Number(row.total), 0),
       outsideWindow: 0,
       notes: (await policyVersionsChanged(ctx)) ? ["sla_policy_changed"] : [],
@@ -376,7 +377,7 @@ const atRiskNow: ReportDefinition = {
         AND c.state IN ('at_risk', 'breached')
         AND st."group" NOT IN ('completed', 'cancelled')
       ORDER BY c.state = 'breached' DESC, c.due_at ASC NULLS LAST
-      LIMIT 200`);
+      LIMIT ${rowCap(ctx, 200)}`);
     const table: Row[] = rows.map((row) => ({
       key: row.key,
       title: row.title,
@@ -413,7 +414,7 @@ const atRiskNow: ReportDefinition = {
       ],
       rows: table,
       population: rows.length,
-      truncated: rows.length >= 200,
+      truncated: rows.length >= rowCap(ctx, 200),
       notes: [],
       drill: true,
     });

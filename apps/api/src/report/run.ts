@@ -5,6 +5,8 @@ import { workspaceFeatureEnabled } from "./feature";
 import type { ReportWindow } from "./logic";
 import { type ReportEnvelope, stripRates } from "./present";
 import { reportByKey } from "./registry";
+import { EXTRA_DRILL } from "./reports/drill-extra";
+import { boundaryOf } from "./snapshot.logic";
 import type { ReportChoice, ReportDefinition, ReportFilters } from "./types";
 
 export type ReportCaps = {
@@ -70,6 +72,10 @@ export async function runReport(input: {
   filters: ReportFilters;
   options?: Record<string, string | undefined>;
   now?: Date;
+  /** RP-9: `false` computes every period live (tests compare the two). */
+  snapshots?: boolean;
+  /** RP-10: a background export, which may return more rows than the screen. */
+  exporting?: boolean;
 }): Promise<ReportEnvelope> {
   const { def } = input;
   if (
@@ -89,8 +95,20 @@ export async function runReport(input: {
     window: input.window,
     filters: input.filters,
     options,
+    ...(input.snapshots === false ? { snapshots: false } : {}),
+    ...(input.exporting ? { exporting: true } : {}),
   });
   const body = await def.compute(ctx);
+  // RP-12: a report with no drill of its own takes the one in `drill-extra.ts` (its rows get a handle).
+  const extra = def.drillItems ? undefined : EXTRA_DRILL[def.key];
+  if (extra) {
+    body.rows = body.rows.map((row) => {
+      const handle = extra.handleOf(row, ctx);
+      return handle ? { ...row, _drill: handle } : row;
+    });
+    body.drill = true;
+  }
+  const use = ctx.snapshots.use;
   const scope = await scopeCounts(ctx);
   const empty = body.population === 0;
   const notes = [...body.notes];
@@ -112,7 +130,16 @@ export async function runReport(input: {
       live: def.live === true,
     },
     asOf: ctx.now.toISOString(),
-    boundary: "live",
+    boundary: boundaryOf(use),
+    snapshot:
+      use.snapshotDays > 0
+        ? {
+            closedDays: use.snapshotDays,
+            uncoveredDays: use.uncoveredDays,
+            computedAt: use.computedAt?.toISOString() ?? null,
+            through: use.throughDay?.toISOString() ?? null,
+          }
+        : null,
     filters: input.filters,
     options,
     choices: [...staticChoices(def, options), ...(body.choices ?? [])],

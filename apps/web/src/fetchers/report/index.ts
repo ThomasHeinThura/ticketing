@@ -63,7 +63,15 @@ export type ReportEnvelope = {
     live: boolean;
   };
   asOf: string;
-  boundary: "live";
+  /** `RP-9`: where the numbers came from; `snapshot` is closed days only, `mixed` adds a live current day. */
+  boundary: "live" | "snapshot" | "mixed";
+  snapshot: {
+    closedDays: number;
+    uncoveredDays: number;
+    computedAt: string | null;
+    /** The end of the last stored day: everything after it is computed live. */
+    through: string | null;
+  } | null;
   filters: Record<string, string | undefined>;
   options: Record<string, string>;
   choices: Array<{
@@ -107,13 +115,41 @@ export type ReportCatalogue = {
   };
 };
 
+/** `RP-12`: one thing behind a number: a work item, a time entry (hours only) or a knowledge base article. */
 export type DrillItem = {
+  kind: "work_item" | "time_entry" | "article";
   key: string;
   title: string;
   projectKey: string | null;
   state: string | null;
   priority: string | null;
+  date?: string | null;
+  person?: string | null;
+  hours?: number | null;
+  workItemKey?: string | null;
 };
+
+/** `RP-10`: an export that was queued for the background job. */
+export type ReportExportInfo = {
+  id: string;
+  kind: "report" | "custom";
+  reportKey: string | null;
+  title: string;
+  status: "queued" | "running" | "ready" | "failed" | "expired";
+  rowCount: number | null;
+  byteSize: number | null;
+  truncated: boolean;
+  error: string | null;
+  downloadCount: number;
+  createdAt: string;
+  finishedAt: string | null;
+  expiresAt: string | null;
+};
+
+/** A small export is the file itself; a large one is queued and polled. */
+export type ExportOutcome =
+  | { kind: "file"; filename: string; blob: Blob }
+  | { kind: "queued"; export: ReportExportInfo };
 
 export type DashboardWidget = {
   id: string;
@@ -260,22 +296,91 @@ export const getReportItems = (
     "Failed to load the items",
   );
 
-/** `RP-10`: the CSV of what is on screen. Returned as a file name and a Blob, never a rate. */
+async function exportOutcome(
+  response: Response,
+  fallback: string,
+): Promise<ExportOutcome> {
+  if (response.status === 202) {
+    const { data } = (await response.json()) as { data: ReportExportInfo };
+    return { kind: "queued", export: data };
+  }
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? fallback;
+  return { kind: "file", filename, blob: await response.blob() };
+}
+
+/**
+ * `RP-10`: the CSV of what is on screen (never a rate), or, when the export is large, the queued
+ * export to poll.
+ */
 export async function exportReport(
   workspaceId: string,
   key: string,
   search: ReportSearch,
-): Promise<{ filename: string; blob: Blob }> {
+): Promise<ExportOutcome> {
   const body: Record<string, string> = { workspaceId };
   for (const [name, value] of reportQuery(search, true)) body[name] = value;
+  return exportOutcome(
+    await send(
+      `/reports/${enc(key)}/export`,
+      { method: "POST", body },
+      "Failed to export the report",
+    ),
+    `${key}.csv`,
+  );
+}
+
+export async function exportCustomReport(input: {
+  workspaceId: string;
+  name?: string;
+  query: CustomQueryInput;
+  chartType: "bar" | "line" | "table" | "number";
+}): Promise<ExportOutcome> {
+  return exportOutcome(
+    await send(
+      "/reports/custom/export",
+      { method: "POST", body: input },
+      "Failed to export the report",
+    ),
+    "custom-report.csv",
+  );
+}
+
+export async function exportWidget(
+  dashboardId: string,
+  widgetId: string,
+): Promise<ExportOutcome> {
+  return exportOutcome(
+    await send(
+      `/dashboards/${enc(dashboardId)}/widgets/${enc(widgetId)}/export`,
+      { method: "POST", body: {} },
+      "Failed to export the widget",
+    ),
+    "widget.csv",
+  );
+}
+
+export const getReportExport = (id: string) =>
+  request<{ data: ReportExportInfo }>(
+    `/report-exports/${enc(id)}`,
+    {},
+    "Failed to load the export",
+  );
+
+/** The stored CSV of a finished export, from the authenticated download route. */
+export async function downloadReportExport(
+  id: string,
+): Promise<{ filename: string; blob: Blob }> {
   const response = await send(
-    `/reports/${enc(key)}/export`,
-    { method: "POST", body },
-    "Failed to export the report",
+    `/report-exports/${enc(id)}/download`,
+    {},
+    "Failed to download the export",
   );
   const disposition = response.headers.get("content-disposition") ?? "";
-  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `${key}.csv`;
-  return { filename, blob: await response.blob() };
+  return {
+    filename: /filename="([^"]+)"/.exec(disposition)?.[1] ?? "report.csv",
+    blob: await response.blob(),
+  };
 }
 
 export type CustomQueryInput = {
@@ -360,3 +465,34 @@ export const getWidgetData = (
     {},
     "Failed to load the widget",
   );
+
+export const getWidgetItems = (
+  dashboardId: string,
+  widgetId: string,
+  handle: string | null,
+) =>
+  request<{ data: DrillItem[] }>(
+    `/dashboards/${enc(dashboardId)}/widgets/${enc(widgetId)}/items?limit=100${
+      handle ? `&handle=${enc(handle)}` : ""
+    }`,
+    {},
+    "Failed to load the items",
+  );
+
+export const getCustomItems = (input: {
+  workspaceId: string;
+  name?: string;
+  query: CustomQueryInput;
+  chartType: "bar" | "line" | "table" | "number";
+  handle: string | null;
+}) => {
+  const { handle, ...rest } = input;
+  return request<{ data: DrillItem[] }>(
+    "/reports/custom/items",
+    {
+      method: "POST",
+      body: { ...rest, ...(handle ? { handle } : {}), limit: 100 },
+    },
+    "Failed to load the items",
+  );
+};

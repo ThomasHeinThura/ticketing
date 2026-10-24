@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
 import {
   authorityFor,
@@ -33,23 +33,19 @@ import {
   lockApiKey,
 } from "./repository";
 import type { ApiKeySummary } from "./schema";
+import { apiKeySelector, hashApiKeySecretArgon2id } from "./secret-hash";
 import { toApiKeySummary } from "./summary";
 
 /** AK-8: keys authenticate as `Authorization: Bearer tdk_…`. */
 export const API_KEY_PREFIX = "tdk_";
 
 /**
- * Same encoding `utils/verify-api-key.ts` hashes with (SHA-256, unpadded base64url), so a
- * key issued here is found by the existing verification path. AK-2's Argon2id storage is not
- * implemented: see the hashing migration note in the P4 handback.
+ * AK-2: the stored form of a key secret is an Argon2id PHC string (`secret-hash.ts`). The
+ * verification path (`utils/verify-api-key.ts`) finds the row by the visible selector
+ * (`apikey.start`) and also still accepts the pre-P4 unsalted SHA-256 form, rewriting it on use.
  */
-export function hashApiKeySecret(secret: string): string {
-  return createHash("sha256")
-    .update(secret)
-    .digest("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+export async function hashApiKeySecret(secret: string): Promise<string> {
+  return hashApiKeySecretArgon2id(secret);
 }
 
 export function generateApiKeySecret(): string {
@@ -123,6 +119,7 @@ export async function createPersonalApiKey(
   }
 
   const secret = generateApiKeySecret();
+  const hashedKey = await hashApiKeySecret(secret);
   const id = createId();
   const expiresAt = expiryFrom(body.expiresIn);
   const isMcp = body.isMcp === true;
@@ -132,8 +129,8 @@ export async function createPersonalApiKey(
       id,
       name: body.name,
       prefix: API_KEY_PREFIX,
-      start: secret.slice(0, 6),
-      hashedKey: hashApiKeySecret(secret),
+      start: apiKeySelector(secret),
+      hashedKey,
       userId: context.userId,
       permissions: capabilitiesToPermissions(capabilities),
       expiresAt,
@@ -242,6 +239,7 @@ export async function createServiceApiKey(
   }
 
   const secret = generateApiKeySecret();
+  const hashedKey = await hashApiKeySecret(secret);
   const id = createId();
   const expiresAt = expiryFrom(body.expiresIn);
 
@@ -251,8 +249,8 @@ export async function createServiceApiKey(
       id,
       name: body.name,
       prefix: API_KEY_PREFIX,
-      start: secret.slice(0, 6),
-      hashedKey: hashApiKeySecret(secret),
+      start: apiKeySelector(secret),
+      hashedKey,
       userId: null,
       permissions: capabilitiesToPermissions(frozen),
       expiresAt,

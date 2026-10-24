@@ -8,7 +8,11 @@ const mocks = vi.hoisted(() => ({ getProjectBudget: vi.fn() }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
-      options?.amounts ? `${key} ${options.amounts}` : key,
+      options?.amounts
+        ? `${key} ${options.amounts}`
+        : options?.time
+          ? `${key} ${options.time} / ${options.cost}`
+          : key,
   }),
 }));
 vi.mock("@/lib/format", () => ({
@@ -97,6 +101,30 @@ describe("ProjectBudget", () => {
     expect(
       screen.getByText("timeTracking:budget.committedUnavailable"),
     ).toBeTruthy();
+  });
+
+  it("splits the actual figure into time and cost entries when the API sends the parts", async () => {
+    const [first] = base.data;
+    mocks.getProjectBudget.mockResolvedValue({
+      ...base,
+      data: [
+        {
+          ...(first as (typeof base.data)[number]),
+          timeMinor: 61_000,
+          costEntriesMinor: 30_000,
+        },
+      ],
+    });
+    renderBudget();
+    expect((await screen.findByTestId("budget-actual-split")).textContent).toBe(
+      "timeTracking:budget.actualSplit 610.00 EUR / 300.00 EUR",
+    );
+  });
+
+  it("shows no split when the parts are absent", async () => {
+    renderBudget();
+    await screen.findByTestId("budget-card");
+    expect(screen.queryByTestId("budget-actual-split")).toBeNull();
   });
 
   it("reports other currencies apart, never converted", async () => {

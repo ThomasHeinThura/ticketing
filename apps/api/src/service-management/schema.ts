@@ -104,7 +104,7 @@ export const freezeOverrideBody = z
     /**
      * Optional PROPOSED deployment window: the override then also covers the freezes covering it,
      * so a change can be cleared for a future freeze before it is planned into it. The step-up
-     * proof stays bound to the operation, change key and reason only.
+     * proof is bound to the operation, change key, reason and this window (none when absent).
      */
     windowStart: instant.optional(),
     windowEnd: instant.optional(),

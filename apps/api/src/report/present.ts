@@ -26,8 +26,19 @@ export type ReportEnvelope = {
     live: boolean;
   };
   asOf: string;
-  /** RP-9: every period is computed live; no snapshot is read. */
-  boundary: "live";
+  /**
+   * RP-9: where the numbers came from. `snapshot` is closed days only, `live` is computed now, and
+   * `mixed` is stored closed days plus a live current day (or a day the job has not stored yet).
+   */
+  boundary: "live" | "snapshot" | "mixed";
+  /** RP-9: the stored part, stated: how many closed days, how many were missing, and from when. */
+  snapshot: {
+    closedDays: number;
+    uncoveredDays: number;
+    computedAt: string | null;
+    /** The end of the last stored day: everything after it is computed live. */
+    through: string | null;
+  } | null;
   filters: ReportFilters;
   options: Record<string, string>;
   choices: ReportChoice[];
@@ -105,8 +116,26 @@ export function reportToCsv(envelope: ReportEnvelope): string {
         : `# Window: ${isoDay(new Date(envelope.window.from))} to ${isoDay(new Date(envelope.window.to))}`,
     ]),
     csvRow([`# As of: ${envelope.asOf}`]),
-    csvRow(envelope.columns.map((column) => column.label)),
   ];
+  // RP-9: the same boundary the screen states.
+  if (envelope.snapshot)
+    lines.push(
+      csvRow([
+        `# Source: ${envelope.snapshot.closedDays} closed day(s) from stored daily snapshots${
+          envelope.snapshot.through
+            ? ` up to ${envelope.snapshot.through.slice(0, 10)}`
+            : ""
+        }${envelope.boundary === "mixed" ? "; the rest is computed live" : ""}`,
+      ]),
+    );
+  // RP-10: a report cut at its row cap says so; a cap that silently drops rows is a lie by omission.
+  if (envelope.truncated)
+    lines.push(
+      csvRow([
+        `# Truncated: this report stops at ${envelope.rows.length} rows; narrow the filters for the rest`,
+      ]),
+    );
+  lines.push(csvRow(envelope.columns.map((column) => column.label)));
   for (const row of envelope.rows)
     lines.push(
       csvRow(envelope.columns.map((column) => cellText(row[column.key]))),

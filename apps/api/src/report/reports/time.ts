@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { dayOf, num, selectRows, timeFrom } from "../context";
 import { countValue, minutesToHours, ratePercent } from "../logic";
 import type { ReportContext, ReportDefinition, Row } from "../types";
-import { cell, col, emptyBody, MIN } from "./shared";
+import { cell, col, emptyBody, MIN, rowCap } from "./shared";
 
 function money(minor: number, currency: string): string {
   try {
@@ -54,7 +54,7 @@ const timeLogged: ReportDefinition = {
         COALESCE(sum(te.minutes) FILTER (WHERE te.billable), 0) AS billable,
         count(*) AS entries
       ${timeFrom(ctx, join)} AND ${inDates(ctx)}
-      GROUP BY 1, 2 ORDER BY sum(te.minutes) DESC LIMIT 200`);
+      GROUP BY 1, 2 ORDER BY sum(te.minutes) DESC LIMIT ${rowCap(ctx, 200)}`);
     // Cost is only selected for a caller who may see rates (TC-11). Currencies stay apart (TC-19).
     const costs = ctx.showRates
       ? await selectRows<{
@@ -181,6 +181,7 @@ const timeLogged: ReportDefinition = {
         col("unpriced", "Unpriced hours", "hours", true),
       ],
       rows: table,
+      truncated: hours.length >= rowCap(ctx, 200),
       population: hours.reduce((sum, row) => sum + num(row.entries), 0),
       notes,
     });

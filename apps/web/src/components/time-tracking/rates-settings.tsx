@@ -32,6 +32,7 @@ import { useHourlyRates } from "@/hooks/queries/time-tracking/use-time-tracking"
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { formatMinor, parseMinor } from "@/lib/money-minor";
 import { toast } from "@/lib/toast";
+import { CostTypesSection } from "./cost-types-settings";
 import { DateField } from "./date-field";
 import { useInvalidateTime, useTimeErrorMessage } from "./time-shared";
 
@@ -263,6 +264,7 @@ export function RatesSettings() {
                 </TableBody>
               </Table>
             )}
+            <CostTypesSection workspaceId={workspace?.id ?? ""} />
           </>
         )}
       </div>

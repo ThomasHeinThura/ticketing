@@ -98,6 +98,22 @@ function BudgetCard({ budget }: { budget: Budget }) {
             <dd className="tabular-nums">
               {hidden ? hiddenText : formatMinor(actualMinor, budget.currency)}
             </dd>
+            {!hidden &&
+            (budget.timeMinor !== undefined ||
+              budget.costEntriesMinor !== undefined) ? (
+              <dd
+                className="text-muted-foreground text-xs tabular-nums"
+                data-testid="budget-actual-split"
+              >
+                {t("timeTracking:budget.actualSplit", {
+                  time: formatMinor(budget.timeMinor ?? 0, budget.currency),
+                  cost: formatMinor(
+                    budget.costEntriesMinor ?? 0,
+                    budget.currency,
+                  ),
+                })}
+              </dd>
+            ) : null}
           </div>
           <div>
             <dt className="text-muted-foreground text-xs">

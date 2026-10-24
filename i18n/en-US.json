@@ -1740,6 +1740,51 @@
 			"title": "Features",
 			"pageTitle": "Feature Settings",
 			"subtitle": "Choose which features are available in this project."
+		},
+		"serviceKeys": {
+			"title": "Workspace service keys",
+			"description": "Keys owned by this workspace, not a person. They keep working when their creator leaves and are limited to the capabilities chosen when they were created.",
+			"loading": "Loading service keys...",
+			"empty": "No service keys yet. Create one for an integration that should not depend on a person.",
+			"formerMember": "Created by a former member, owned by workspace administrators",
+			"toastRevoked": "Service key revoked",
+			"toastRevokeError": "Failed to revoke the service key",
+			"revokeTitle": "Revoke service key?",
+			"revokeDescription": "{{name}} stops working immediately. The key stays listed so you can see when it was used.",
+			"deleteAria": "Request deletion of {{name}}",
+			"deleteRequested": "Deletion requested. Approve it with your exact key name and a fresh verification.",
+			"deleteFailed": "Failed to request the deletion",
+			"stepUpFailed": "Fresh verification failed. Nothing was created.",
+			"create": {
+				"open": "Create service key",
+				"title": "Create a service key",
+				"description": "Creating a service key is a protected action: you confirm it with a fresh verification. The key is shown once.",
+				"nameLabel": "Name",
+				"namePlaceholder": "e.g. Deployment pipeline",
+				"expiryLabel": "Expiry",
+				"expiry": {
+					"30d": "30 days",
+					"90d": "90 days",
+					"never": "Never"
+				},
+				"frozenTitle": "The subset is frozen",
+				"frozenDescription": "The key is limited to what you tick now and never to more than you hold yourself. It is not widened later and is not clamped to anyone's current role.",
+				"readIncluded": "Read access is always included. Tick any write access the key needs.",
+				"submit": "Create key",
+				"creating": "Creating..."
+			}
+		},
+		"instanceApiKeys": {
+			"title": "API keys",
+			"description": "Every personal and service key on this instance. Never shows a key itself.",
+			"columnOwner": "Owner",
+			"serviceKey": "Service key of {{workspace}}",
+			"unknownOwner": "Unknown",
+			"empty": "No API keys on this instance yet.",
+			"hasMore": "Only the newest keys are shown.",
+			"loadError": "The API keys could not be loaded.",
+			"forbiddenTitle": "Instance administrators only",
+			"forbiddenDescription": "Only an instance administrator can see the keys of every account and workspace."
 		}
 	},
 	"navigation": {
@@ -6608,8 +6653,18 @@
 			"status": "Status",
 			"title": "Time activities"
 		},
+		"availableHours": {
+			"add": "Add hours",
+			"added": "Available hours saved",
+			"description": "Each person's capacity in hours per week, from a date. Changing someone's hours adds a row; earlier rows stay as history. Capacity feeds the utilisation and capacity reports only; nothing assigns work from it.",
+			"duplicate": "Hours for this person already start on that date.",
+			"empty": "No available hours yet.",
+			"hoursPerWeek": "Hours per week",
+			"title": "Available hours"
+		},
 		"budget": {
 			"actual": "Actual",
+			"actualSplit": "Time {{time}} · Cost entries {{cost}}",
 			"by": {
 				"activity": "By activity",
 				"person": "By person"
@@ -6637,6 +6692,46 @@
 			"threshold": "{{percent}}% reached",
 			"title": "Budget",
 			"unpriced": "{{time}} logged without a rate is not counted."
+		},
+		"costTypes": {
+			"add": "Add cost type",
+			"added": "Cost type added",
+			"archive": "Archive",
+			"archiveLabel": "Archive {{name}}",
+			"defaultRate": "Default rate",
+			"description": "What can be bought and logged against work: a seat, a kilometre, a licence. Archiving a type hides it from new entries; cost already logged keeps it.",
+			"duplicate": "A cost type with this name already exists.",
+			"edit": "Edit {{name}}",
+			"editTitle": "Edit cost type",
+			"empty": "No cost types yet.",
+			"loadError": "Could not load the cost types",
+			"name": "Name",
+			"noDefaultRate": "Set per entry",
+			"restore": "Restore",
+			"restoreLabel": "Restore {{name}}",
+			"snapshotNote": "A new default rate prices entries logged from now on. Entries already logged keep the rate they were captured with.",
+			"title": "Cost types",
+			"unit": "Unit",
+			"unitPlaceholder": "seat"
+		},
+		"costs": {
+			"add": "Log cost",
+			"amount": "Amount",
+			"count_one": "{{count}} entry",
+			"count_other": "{{count}} entries",
+			"delete": "Delete cost entry",
+			"edit": "Edit cost entry",
+			"editTitle": "Edit cost entry",
+			"empty": "No costs logged on this item.",
+			"loadError": "Could not load the costs on this item.",
+			"noTypes": "No cost types yet. Add one under Rates to log costs.",
+			"note": "Note",
+			"rate": "Rate per unit ({{currency}})",
+			"rateNote": "The rate stays as captured unless you change it here.",
+			"title": "Costs",
+			"type": "Cost type",
+			"units": "Units ({{unit}})",
+			"unitsShort": "Units"
 		},
 		"edit": {
 			"title": "Edit time entry"
@@ -7187,7 +7282,9 @@
 			"window": "{{from}} to {{to}} ({{days}} days)",
 			"windowLive": "Live: as of now, no window",
 			"asOf": "As of {{time}}",
-			"live": "Computed live, no snapshot"
+			"live": "Computed live, no snapshot",
+			"snapshot": "{{count}} closed days from stored daily snapshots, up to {{through}} (computed {{computed}})",
+			"mixed": "{{count}} closed days from stored daily snapshots, up to {{through}} (computed {{computed}}); the current period is computed live"
 		},
 		"trend": {
 			"insufficient": "A trend needs two comparable periods; there is not enough data yet.",
@@ -7213,6 +7310,7 @@
 			"assumes_eight_hour_day": "Available hours assume an eight hour working day.",
 			"own_time_only": "You can see your own logged time only.",
 			"no_capacity_set": "Some people or teams have no capacity set, so their utilisation cannot be shown.",
+			"available_hours_fallback": "Some people have no available hours set, so their team's working days are used instead.",
 			"committed_work_in_items": "Committed work is not in time units; open items are counted instead.",
 			"mixed_units": "Cycles use different estimate units, so they are not added together.",
 			"costs_hidden": "Costs are hidden: you do not have permission to see rates.",
@@ -7280,7 +7378,48 @@
 			"key": "Key",
 			"itemTitle": "Title",
 			"state": "State",
-			"priority": "Priority"
+			"priority": "Priority",
+			"date": "Day",
+			"person": "Person",
+			"project": "Project",
+			"workItem": "Work item",
+			"note": "Note",
+			"hours": "Hours",
+			"article": "Article"
+		},
+		"export": {
+			"queuedToast": "This export is large, so it is being prepared in the background.",
+			"tooMany": "You already have three exports running. Wait for one to finish.",
+			"truncated": "Some rows were left out because the report limits its rows; narrow the filters for the rest.",
+			"download": "Download CSV",
+			"dismiss": "Dismiss",
+			"status": {
+				"queued": {
+					"title": "Export queued",
+					"description": "It will start in a moment."
+				},
+				"running": {
+					"title": "Preparing your export",
+					"description": "Large exports take a little while. You can keep working."
+				},
+				"ready": {
+					"title": "Your export is ready",
+					"description_one": "{{count}} row. It can be downloaded for 24 hours.",
+					"description_other": "{{count}} rows. It can be downloaded for 24 hours."
+				},
+				"failed": {
+					"title": "The export could not be made",
+					"description": "Try again. If it keeps failing, ask an administrator."
+				},
+				"expired": {
+					"title": "This export has expired",
+					"description": "Exports can be downloaded for 24 hours. Export the report again."
+				},
+				"unavailable": {
+					"title": "This export is no longer available",
+					"description": "Export the report again."
+				}
+			}
 		},
 		"errors": {
 			"disabled": {
@@ -7376,7 +7515,8 @@
 			"noneDescription": "You have no dashboards yet.",
 			"savedView": "Saved report",
 			"widgetView": "View of {{title}}",
-			"noMetric": "This report has no single number."
+			"noMetric": "This report has no single number.",
+			"exportWidget": "Export {{title}} as CSV"
 		},
 		"editor": {
 			"title": "Dashboard editor",

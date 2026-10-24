@@ -1,7 +1,13 @@
-import type { Capability, ResolvedIdentity } from "@taskdesk/permissions";
+import {
+  type Capability,
+  can,
+  type ResolvedIdentity,
+} from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import db from "../database";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
+import { projectAncestryFor } from "../utils/project-ancestry";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import {
   assertCallerHasCapability,
@@ -10,6 +16,7 @@ import {
 } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import type { TimeActor } from "./audit";
+import { getCostEntry, getCostEntryScope } from "./cost-repository";
 import {
   COST_TRACKING_FEATURE_KEY,
   TIME_TRACKING_FEATURE_KEY,
@@ -140,4 +147,70 @@ export function requireEntryCapability(
     );
     await next();
   };
+}
+
+/**
+ * `PATCH`/`DELETE /api/cost-entries/{id}`: the same row-first resolution as `entryReach`: a
+ * foreign or unreachable row is a 404, never a 403 that confirms it exists. The capability
+ * (`time_entry:manage_rates`) is checked against the row's workspace afterwards.
+ */
+export async function costEntryReach(c: Context, next: Next) {
+  const id = c.req.param("id");
+  if (!id) throw new HTTPException(400, { message: "Missing cost entry id" });
+  rejectNulByte(id, "Cost entry id");
+  const row = await getCostEntryScope(id);
+  if (!row) throw new HTTPException(404, { message: "Cost entry not found" });
+  try {
+    await validateWorkspaceAccess(
+      c.get("userId") as string,
+      row.workspaceId,
+      (c.get("apiKey") as { id: string } | undefined)?.id,
+    );
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 403)
+      throw new HTTPException(404, { message: "Cost entry not found" });
+    throw error;
+  }
+  const identity = await identityOf(c);
+  if (!(await getCostEntry(identity, id)))
+    throw new HTTPException(404, { message: "Cost entry not found" });
+  // Created at project scope, so changed at project scope: a project role override that removes
+  // time_entry:manage_rates for this project blocks edits and deletes as it blocks creation.
+  if (
+    !(await holdsAtProject(
+      identity,
+      "time_entry:manage_rates",
+      row.workspaceId,
+      row.projectId,
+    ))
+  )
+    throw new HTTPException(403, { message: "Insufficient permissions" });
+  c.set("workspaceId", row.workspaceId);
+  c.set("workspaceIdSource", "row");
+  await next();
+}
+
+/**
+ * Does the caller hold `capability` AT the project (a project role that overrides the workspace
+ * role for this project counts, exactly as the project-scoped create route evaluates it)? Cost
+ * entries are created at project scope, so editing and deleting them must be refused to the same
+ * caller, and the quick-add must not be offered to them.
+ */
+export async function holdsAtProject(
+  identity: ResolvedIdentity,
+  capability: Capability,
+  workspaceId: string,
+  projectId: string,
+) {
+  const ancestorProjectIds = await projectAncestryFor(
+    db,
+    identity,
+    workspaceId,
+    projectId,
+  );
+  return can(identity, capability, "project", {
+    projectId,
+    workspaceId,
+    ancestorProjectIds,
+  });
 }

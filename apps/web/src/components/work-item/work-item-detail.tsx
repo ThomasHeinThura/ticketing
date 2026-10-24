@@ -24,6 +24,7 @@ import WorkItemChangeSection, {
 import { TaskDetailContentPresentation } from "@/components/task/task-detail-presentation";
 import WorkItemTime from "@/components/time-tracking/work-item-time";
 import { useTimeTrackingFeatures } from "@/hooks/queries/time-tracking/use-time-tracking";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { parseWorkItemApprovalRequestSearch } from "@/lib/work-item-approval-request-search";
@@ -93,6 +94,9 @@ function WorkItemDetail({
   const isCompactPage = useIsMobile(1024);
   // TC-6: the Time section exists only where feature.time_tracking is on for the item's project.
   const timeTracking = useTimeTrackingFeatures(item?.projectId);
+  // The time APIs need time_entry:create, which the built-in Viewer role lacks: no Time section
+  // (and no error alert) for a caller who cannot log time.
+  const { canLogTime } = useWorkspacePermission();
   // P5: the service and change section exists only while the service catalogue is on.
   const changeVisible = useChangeSectionVisible();
 
@@ -180,7 +184,7 @@ function WorkItemDetail({
     <WorkItemDetailSections
       workItemKey={workItemKey}
       hidden={[
-        ...(timeTracking.time ? [] : (["time"] as const)),
+        ...(timeTracking.time && canLogTime() ? [] : (["time"] as const)),
         ...(changeVisible ? [] : (["change"] as const)),
       ]}
     >

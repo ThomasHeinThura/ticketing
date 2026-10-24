@@ -12,6 +12,13 @@ import { PortalActionError } from "@/lib/portal-request";
 import enUS from "../../../../../../i18n/en-US.json";
 import { Route } from "./$ref";
 
+/** A due time that is still in the future but never rolls past local midnight, so "today" holds at any hour. */
+function dueLaterToday() {
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 0);
+  return new Date(Math.min(Date.now() + 3_600_000, endOfToday.getTime()));
+}
+
 const mocks = vi.hoisted(() => ({
   getSubmission: vi.fn(),
   getAttachments: vi.fn(),
@@ -81,7 +88,7 @@ const accepted = {
     priority: "medium",
     sla: {
       state: "at_risk",
-      dueAt: new Date(Date.now() + 3_600_000).toISOString(),
+      dueAt: dueLaterToday().toISOString(),
     },
   },
   requestType: { name: "Hardware" },

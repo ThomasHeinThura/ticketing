@@ -10,7 +10,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@taskdesk/ui";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DashboardWidget } from "@/fetchers/report";
 import { useWidgetData } from "@/hooks/queries/report";
@@ -31,11 +31,20 @@ export function DashboardWidgetCard({
   dashboardId,
   version,
   widget,
+  onDrill,
+  headerAction,
+  footer,
 }: {
   workspaceId: string;
   dashboardId: string;
   version: number;
   widget: DashboardWidget;
+  /** `RP-12`: open the items behind a row (a viewing dashboard only, never while editing the layout). */
+  onDrill?: ((handle: string) => void) | undefined;
+  /** `RP-10`: the export control, given the widget's title for its accessible name. */
+  headerAction?: ((title: string) => ReactNode) | undefined;
+  /** The status of an export queued from this widget. */
+  footer?: ReactNode;
 }) {
   const { t } = useTranslation();
   const data = useWidgetData(workspaceId, dashboardId, widget.id, version);
@@ -69,6 +78,7 @@ export function DashboardWidgetCard({
             title
           )}
         </CardTitle>
+        {headerAction?.(title)}
         {widget.chartType !== "number" &&
         widget.chartType !== "table" &&
         report?.chart ? (
@@ -91,6 +101,7 @@ export function DashboardWidgetCard({
         ) : null}
       </CardHeader>
       <CardContent className="min-h-0 flex-1 space-y-2 overflow-auto pt-0">
+        {footer}
         {data.isLoading ? (
           <Skeleton className="h-full min-h-16 w-full" />
         ) : data.isError || !report ? (
@@ -121,6 +132,7 @@ export function DashboardWidgetCard({
             columns={report.columns}
             rows={report.rows}
             label={t("reports:tableLabel", { title })}
+            onDrill={report.drill ? onDrill : undefined}
           />
         ) : report.chart ? (
           <ReportChart

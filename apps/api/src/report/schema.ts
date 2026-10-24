@@ -56,6 +56,20 @@ export const customPreviewBody = z.object({
   chartType: z.enum(CUSTOM_CHART_TYPES).default("bar"),
 });
 
+/** RP-12: the items behind one group of a tier 3 report (the handle is the group's label). */
+export const customItemsBody = customPreviewBody.extend({
+  handle: short.optional(),
+  limit: z.number().int().min(1).max(200).default(50),
+});
+
+/** RP-12: the items behind a widget (a report or a saved tier 2/3 view). */
+export const widgetItemsQuery = z.object({
+  handle: short.optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+
+export const exportIdParam = z.object({ id: z.string().min(1).max(80) });
+
 export const MAX_WIDGETS = 20;
 export const MAX_PERSONAL_DASHBOARDS = 20;
 export const MAX_WORKSPACE_DASHBOARDS = 20;

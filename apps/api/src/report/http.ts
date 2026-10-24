@@ -5,6 +5,7 @@ import { rejectNulByte } from "../utils/reject-nul-byte";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import type { ReportActor } from "./audit";
 import { getDashboardScope } from "./dashboard.repository";
+import { getExport } from "./export.service";
 import { REPORTS_FEATURE_KEY, workspaceFeatureEnabled } from "./feature";
 import type { ReportCaps } from "./run";
 
@@ -73,6 +74,35 @@ export async function dashboardReach(c: Context, next: Next) {
       throw new HTTPException(404, { message: "Dashboard not found" });
     throw error;
   }
+  c.set("workspaceId", row.workspaceId);
+  c.set("workspaceIdSource", "row");
+  await next();
+}
+
+/**
+ * RP-10: `/report-exports/{id}` routes. An export is its requester's: another person's export, and
+ * one in a workspace the caller is not in, are both a 404, never a 403 that confirms it exists.
+ */
+export async function exportReach(c: Context, next: Next) {
+  const id = c.req.param("id");
+  if (!id) throw new HTTPException(400, { message: "Missing export id" });
+  rejectNulByte(id, "Export id");
+  const row = await getExport(id);
+  if (!row) throw new HTTPException(404, { message: "Export not found" });
+  try {
+    await validateWorkspaceAccess(
+      c.get("userId") as string,
+      row.workspaceId,
+      (c.get("apiKey") as { id: string } | undefined)?.id,
+    );
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 403)
+      throw new HTTPException(404, { message: "Export not found" });
+    throw error;
+  }
+  const identity = await identityOf(c);
+  if (row.personId !== identity.personId)
+    throw new HTTPException(404, { message: "Export not found" });
   c.set("workspaceId", row.workspaceId);
   c.set("workspaceIdSource", "row");
   await next();

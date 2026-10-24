@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   getSavedViews: vi.fn(),
   countSavedView: vi.fn(),
   getWorkspaceResolvedFeatures: vi.fn(),
+  logTime: true,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -36,6 +37,9 @@ vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "ws-1" } }),
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({ canLogTime: () => mocks.logTime }),
 }));
 vi.mock("@/hooks/queries/invitation/use-pending-invitations", () => ({
   usePendingInvitations: () => ({ data: [] }),
@@ -227,6 +231,20 @@ describe("NavMain feature entries (P5-R4-04)", () => {
     for (const name of ["Knowledge base", "Timesheet", "Reports", "Dashboard"])
       expect(await screen.findByRole("button", { name })).toBeInTheDocument();
     expect(mocks.getWorkspaceResolvedFeatures).toHaveBeenCalledWith("ws-1");
+  });
+
+  it("hides the Timesheet entry from a caller without time_entry:create even with the flag on (R6-02)", async () => {
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue([
+      ...on("feature.time_tracking", "feature.reports"),
+    ]);
+    mocks.logTime = false;
+    renderNav();
+    mocks.paint.resolve();
+    expect(
+      await screen.findByRole("button", { name: "Reports" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Timesheet" })).toBeNull();
+    mocks.logTime = true;
   });
 
   it("hides an entry whose flag is off and all of them when the read fails", async () => {

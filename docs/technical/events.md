@@ -85,7 +85,7 @@ distinguishable from a person, in the event, in the activity stream and in the a
 | `project.created` | A project or managed service is created | — | ✅ | — | `key`, `kind` |
 | `project.archived` | Archived | — | ✅ | — | `key` |
 | `prerequisite.overdue` | The reminders job finds a blocking prerequisite past due | — | ✅ | ✅ | `prerequisiteId`, `dueDate` |
-| `budget.threshold_reached` | Actual + committed crosses 75 % or 90 % of planned | — | ✅ | ✅ | `budgetId`, `threshold`, `currency` |
+| `budget.threshold_reached` | Actual + committed crosses 75 % or 90 % of planned | — | ✅ | ✅ | `budgetId`, `budgetName`, `threshold`, `currency`, `url` |
 | Key | Emitted when | A | W | N | Payload |
 | --- | --- | :-: | :-: | :-: | --- |
 | `saved_view.created` | A saved view is created (search-and-saved-views.md SV-14) | — | — | — | `savedViewId`, `workspaceId`, `visibility` |

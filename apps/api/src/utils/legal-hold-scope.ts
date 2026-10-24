@@ -107,7 +107,7 @@ export function workItemPeople(items: SQL): SQL {
  * `person.user_id`. P5 rows that go with the project: its pages and their versions, its
  * project-scoped knowledge base articles (authors, owners, versions, feedback, deflection
  * events), the module lead, and the user ids stored on cycles, scope events, modules, estimates,
- * estimate changes, budgets and rate cards. All are person data (a person-scope hold fences
+ * estimate changes, budgets, rate cards and cost entries (`cost_entry.person_id` and `created_by`). All are person data (a person-scope hold fences
  * them); none of them is organisation data.
  */
 export function projectOwnPeople(projectIds: SQL): SQL {
@@ -117,11 +117,13 @@ export function projectOwnPeople(projectIds: SQL): SQL {
     UNION ALL SELECT x."updated_by" FROM "project_feature_flag" x WHERE x."project_id" IN (${projectIds})
     UNION ALL SELECT x."person_id" FROM "time_entry" x WHERE x."project_id" IN (${projectIds})
     UNION ALL SELECT x."person_id" FROM "hourly_rate" x WHERE x."project_id" IN (${projectIds})
+    UNION ALL SELECT x."person_id" FROM "cost_entry" x WHERE x."project_id" IN (${projectIds})
     UNION ALL SELECT x."lead_id" FROM "module" x WHERE x."project_id" IN (${projectIds})
     UNION ALL ${pagePeople(sql`SELECT pg."id" FROM "project_page" pg WHERE pg."project_id" IN (${projectIds})`)}
     UNION ALL ${kbArticlePeople(sql`SELECT ka."id" FROM "kb_article" ka WHERE ka."project_id" IN (${projectIds})`)}
     UNION ALL ${peopleOfUsers(sql`
       SELECT x."created_by" FROM "hourly_rate" x WHERE x."project_id" IN (${projectIds})
+      UNION ALL SELECT x."created_by" FROM "cost_entry" x WHERE x."project_id" IN (${projectIds})
       UNION ALL SELECT x."created_by" FROM "budget" x WHERE x."project_id" IN (${projectIds})
       UNION ALL SELECT x."created_by" FROM "cycle" x WHERE x."project_id" IN (${projectIds})
       UNION ALL SELECT x."completed_by" FROM "cycle" x WHERE x."project_id" IN (${projectIds})
@@ -211,7 +213,7 @@ export const PROJECT_UNDER_OPEN_HOLD = openHoldOver(
  * P5 workspace-level rows: every knowledge base article (and its versions, feedback, deflection
  * events), dashboard owners, saved-view creators, invitation inviters and acceptors, and the
  * creators of services, releases and change freezes, the `done_by` person of every release checklist item (releases are workspace-bound, not project-bound), and the person and creator of the
- * workspace-default hourly rates (`project_id IS NULL`; project rates go with the project). Mirrors
+ * workspace-default hourly rates (`project_id IS NULL`; project rates go with the project) and the person and creator of every `available_hours` row. Mirrors
  * `workspaceDependentPredicates` in `workspace/controllers/delete-workspace-role-dependents.ts`.
  */
 export function workspaceOwnPeople(workspaceId: string): SQL {
@@ -246,11 +248,13 @@ export function workspaceOwnPeople(workspaceId: string): SQL {
     UNION ALL SELECT iv."accepted_person_id" FROM "invitation" iv WHERE iv."workspace_id" = ${workspaceId}
     UNION ALL SELECT hr."person_id" FROM "hourly_rate" hr
       WHERE hr."workspace_id" = ${workspaceId} AND hr."project_id" IS NULL
+    UNION ALL SELECT ah."person_id" FROM "available_hours" ah WHERE ah."workspace_id" = ${workspaceId}
     UNION ALL SELECT ci."done_by" FROM "checklist_item" ci
       WHERE ci."release_id" IN (SELECT rl2."id" FROM "release" rl2 WHERE rl2."workspace_id" = ${workspaceId})
     UNION ALL ${peopleOfUsers(sql`
       SELECT hr."created_by" FROM "hourly_rate" hr
         WHERE hr."workspace_id" = ${workspaceId} AND hr."project_id" IS NULL
+      UNION ALL SELECT ah."created_by" FROM "available_hours" ah WHERE ah."workspace_id" = ${workspaceId}
       UNION ALL SELECT iv."inviter_id" FROM "invitation" iv WHERE iv."workspace_id" = ${workspaceId}
       UNION ALL SELECT sx."created_by" FROM "service" sx WHERE sx."workspace_id" = ${workspaceId}
       UNION ALL SELECT sx."status_changed_by" FROM "service" sx WHERE sx."workspace_id" = ${workspaceId}

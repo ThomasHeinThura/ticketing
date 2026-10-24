@@ -1076,3 +1076,41 @@ export async function changeGateBlocks(
       );
   return blocks;
 }
+
+/**
+ * CH-4: a cross-project move can map a change straight into the destination state of an approving
+ * edge (its workflow's CAB or risk-guarded pre-approval edge) without ever taking that edge, which
+ * would leave `approved_at` null and the PATCH freeze gate skipped. Call it inside the move
+ * transaction AFTER the state write, only while the service catalogue is on (with the catalogue
+ * off `approved_at` is not maintained anywhere, so the move leaves it alone too). Items whose new
+ * state is not an approving-edge target, non-change items and already approved changes are untouched.
+ */
+export async function markApprovedOnMove(
+  executor: Executor,
+  workItemIds: readonly string[],
+  now: Date,
+): Promise<void> {
+  if (workItemIds.length === 0) return;
+  // Upsert: a change that never had its detail edited has no row yet (a transition cannot reach
+  // an approving edge without one, because the rollback plan lives there; a move can).
+  await executor.execute(sql`
+    INSERT INTO change_detail (work_item_id, workspace_id, approved_at)
+    SELECT w.id, w.workspace_id, ${now.toISOString()}::timestamptz
+    FROM work_item w
+    JOIN work_item_type t ON t.id = w.type_id
+    JOIN workflow wf ON wf.id = t.workflow_id
+    JOIN state s ON s.id = w.state_id
+    WHERE w.id = ANY(${sql.param([...workItemIds])}::text[])
+      AND t.is_change = true
+      AND EXISTS (
+        SELECT 1 FROM workflow_transition tr
+        WHERE tr.version_id = wf.active_version_id
+          AND tr.to_state_template_id = s.state_template_id
+          AND (tr.requires_cab OR EXISTS (
+            SELECT 1 FROM jsonb_array_elements(tr.guards) g
+            WHERE g->>'type' = 'change_risk_at_most'))
+      )
+    ON CONFLICT (work_item_id) DO UPDATE
+      SET approved_at = COALESCE(change_detail.approved_at, EXCLUDED.approved_at)
+  `);
+}

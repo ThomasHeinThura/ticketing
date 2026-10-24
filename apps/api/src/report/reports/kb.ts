@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { num, selectRows, tstz } from "../context";
 import { countValue, ratePercent } from "../logic";
 import type { ReportDefinition, Row } from "../types";
-import { cell, col, emptyBody, MIN } from "./shared";
+import { cell, col, emptyBody, MIN, rowCap } from "./shared";
 
 /**
  * KB-10: opening an article from the request form is a candidate; abandoning the form afterwards
@@ -34,7 +34,7 @@ const kbDeflection: ReportDefinition = {
         AND d.created_at >= ${tstz(ctx.window.from)} AND d.created_at < ${tstz(ctx.window.to)}
       GROUP BY a.id, a.title
       ORDER BY count(d.id) FILTER (WHERE d.abandoned_at IS NOT NULL) DESC, count(d.id) DESC
-      LIMIT 200`);
+      LIMIT ${rowCap(ctx, 200)}`);
     const [outside] = await selectRows<{ n: string }>(sql`SELECT count(*) AS n
       FROM deflection_event d
       JOIN kb_article a ON a.id = d.kb_article_id
@@ -106,6 +106,7 @@ const kbDeflection: ReportDefinition = {
         col("helpful", "Found helpful", "percent"),
       ],
       rows: table,
+      truncated: rows.length >= rowCap(ctx, 200),
       population: opened,
       outsideWindow: num(outside?.n),
     });

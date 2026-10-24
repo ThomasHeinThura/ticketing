@@ -1,5 +1,9 @@
 import { sql } from "drizzle-orm";
 import {
+  type AvailableHoursRow,
+  availableMinutes,
+} from "../../time-tracking/cost-logic";
+import {
   dayOf,
   itemFrom,
   num,
@@ -177,12 +181,69 @@ function lastDay(ctx: ReportContext): string {
   return dayOf(new Date(ctx.window.to.getTime() - 1));
 }
 
-function weeksIn(ctx: ReportContext): number {
-  return ctx.window.days / 7;
-}
-
 function timeWindow(ctx: ReportContext) {
   return sql`te.date >= ${dayOf(ctx.window.from)}::date AND te.date <= ${lastDay(ctx)}::date`;
+}
+
+const MINUTES_PER_DAY = WORKING_HOURS_PER_DAY * 60;
+
+function hoursOf(minutes: number): number {
+  return Math.round((minutes / 60) * 10) / 10;
+}
+
+/**
+ * R6-06: the teams a caller may see, as a predicate over alias `t` (team). `report:read_all` sees
+ * every team of the workspace; everyone else sees the teams they belong to and the teams that own
+ * a project in their reach (owner-team reach, TM-4). A team outside both is not listed, and its
+ * members do not appear in a capacity or utilisation row only because capacity is set.
+ */
+function reachableTeam(ctx: ReportContext) {
+  if (ctx.readAll) return sql`true`;
+  return sql`(
+    EXISTS (SELECT 1 FROM team_member mine WHERE mine.team_id = t.id AND mine.user_id = ${ctx.identity.userId})
+    OR EXISTS (SELECT 1 FROM project p WHERE p.owner_team_id = t.id AND p.workspace_id = ${ctx.workspaceId}
+      AND p.deleted_at IS NULL AND ${ctx.reach})
+  )`;
+}
+
+type AvailableRow = {
+  person_id: string;
+  minutes_per_week: number;
+  effective_from: string | Date;
+};
+
+/** TC-20: the `available_hours` history of the given people, grouped by person. */
+async function loadAvailableHours(
+  ctx: ReportContext,
+  personIds: readonly string[],
+): Promise<Map<string, AvailableHoursRow[]>> {
+  const byPerson = new Map<string, AvailableHoursRow[]>();
+  if (personIds.length === 0) return byPerson;
+  const rows = await selectRows<AvailableRow>(
+    sql`SELECT person_id, minutes_per_week, to_char(effective_from, 'YYYY-MM-DD') AS effective_from
+      FROM available_hours
+      WHERE workspace_id = ${ctx.workspaceId}
+        AND person_id IN (${sql.join(
+          personIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})`,
+  );
+  for (const row of rows) {
+    const list = byPerson.get(row.person_id) ?? [];
+    list.push({
+      personId: row.person_id,
+      minutesPerWeek: num(row.minutes_per_week),
+      effectiveFrom: String(row.effective_from),
+    });
+    byPerson.set(row.person_id, list);
+  }
+  return byPerson;
+}
+
+/** The team-capacity fallback of TC-21: working days per week x allocation x an eight hour day, in minutes per week. */
+function fallbackMinutesPerWeek(days: unknown): number | null {
+  if (days === null || days === undefined) return null;
+  return Math.round(num(days) * MINUTES_PER_DAY);
 }
 
 const utilisation: ReportDefinition = {
@@ -191,6 +252,13 @@ const utilisation: ReportDefinition = {
   title: "Utilisation",
   feature: "feature.time_tracking",
   async compute(ctx) {
+    const capacityVisible = ctx.readAnyTime
+      ? ctx.readAll && !ctx.filters.teamId
+        ? sql`true`
+        : sql`(pe.id = ${ctx.identity.personId} OR pe.id IN (SELECT person_id FROM listed))`
+      : sql`pe.id = ${ctx.identity.personId}`;
+    // Listed: people with logged time in reach, plus people with capacity (an `available_hours`
+    // row or team capacity) who are the caller, or members of a team the caller may see (R6-06).
     const rows = await selectRows<{
       person_id: string;
       name: string | null;
@@ -207,6 +275,15 @@ const utilisation: ReportDefinition = {
         JOIN team_member tm ON tm.team_id = t.id
         JOIN person pc ON pc.user_id = tm.user_id
         WHERE t.workspace_id = ${ctx.workspaceId} AND t.capacity_days_per_week IS NOT NULL
+        GROUP BY 1),
+      listed AS (
+        SELECT pc.id AS person_id
+        FROM team t
+        JOIN team_member tm ON tm.team_id = t.id
+        JOIN person pc ON pc.user_id = tm.user_id
+        WHERE t.workspace_id = ${ctx.workspaceId}
+          AND ${ctx.filters.teamId ? sql`t.id = ${ctx.filters.teamId}` : sql`true`}
+          AND ${reachableTeam(ctx)}
         GROUP BY 1)
       SELECT pe.id AS person_id, COALESCE(pe.display_name, u.name, 'Unknown') AS name,
         COALESCE(l.minutes, 0) AS minutes, c.days
@@ -215,31 +292,47 @@ const utilisation: ReportDefinition = {
       LEFT JOIN logged l ON l.person_id = pe.id
       LEFT JOIN cap c ON c.person_id = pe.id
       WHERE pe.id IN (SELECT person_id FROM logged)
-        OR (c.days IS NOT NULL AND ${ctx.readAnyTime ? sql`true` : sql`pe.id = ${ctx.identity.personId}`})
+        OR (
+          (c.days IS NOT NULL OR EXISTS (SELECT 1 FROM available_hours ah
+              WHERE ah.workspace_id = ${ctx.workspaceId} AND ah.person_id = pe.id))
+          AND ${capacityVisible}
+        )
       ORDER BY COALESCE(l.minutes, 0) DESC LIMIT 200`);
+    const available = await loadAvailableHours(
+      ctx,
+      rows.map((row) => row.person_id),
+    );
+    const from = dayOf(ctx.window.from);
+    const to = lastDay(ctx);
+    let usedFallback = false;
+    let someUnset = false;
     const table: Row[] = rows.map((row) => {
       const loggedHours = minutesToHours(num(row.minutes));
-      const available =
-        row.days === null
-          ? null
-          : Math.round(
-              num(row.days) * WORKING_HOURS_PER_DAY * weeksIn(ctx) * 10,
-            ) / 10;
+      const result = availableMinutes(
+        available.get(row.person_id) ?? [],
+        from,
+        to,
+        fallbackMinutesPerWeek(row.days),
+      );
+      if (result?.fellBack) usedFallback = true;
+      if (result === null) someUnset = true;
+      const availableHours = result === null ? null : hoursOf(result.minutes);
       return {
         person: row.name ?? "Unknown",
         logged: loggedHours,
-        available,
+        available: availableHours,
         utilisation:
-          available === null
+          availableHours === null
             ? { n: 0, needed: 1 }
-            : cell(ratePercent(loggedHours, available, 1)),
+            : cell(ratePercent(loggedHours, availableHours, 1)),
       };
     });
     const logged = table.reduce((sum, row) => sum + Number(row.logged), 0);
-    const notes = ["assumes_eight_hour_day"];
+    const notes: string[] = [];
+    if (usedFallback) notes.push("assumes_eight_hour_day");
+    if (usedFallback) notes.push("available_hours_fallback");
     if (!ctx.readAnyTime) notes.push("own_time_only");
-    if (table.some((row) => row.available === null))
-      notes.push("no_capacity_set");
+    if (someUnset) notes.push("no_capacity_set");
     return emptyBody({
       metrics: [
         {
@@ -298,15 +391,35 @@ const capacity: ReportDefinition = {
       name: string;
       days: string | null;
       members: string;
-      allocated_days: string | null;
     }>(sql`SELECT t.id, t.name, t.capacity_days_per_week AS days,
-        (SELECT count(*) FROM team_member tm WHERE tm.team_id = t.id) AS members,
-        (SELECT sum(t.capacity_days_per_week * COALESCE(tm.allocation_pct, 100) / 100.0)
-           FROM team_member tm WHERE tm.team_id = t.id) AS allocated_days
+        (SELECT count(*) FROM team_member tm WHERE tm.team_id = t.id) AS members
       FROM team t
       WHERE t.workspace_id = ${ctx.workspaceId}
         AND ${ctx.filters.teamId ? sql`t.id = ${ctx.filters.teamId}` : sql`true`}
+        AND ${reachableTeam(ctx)}
       ORDER BY t.name LIMIT 200`);
+    const members = teams.length
+      ? await selectRows<{
+          team_id: string;
+          person_id: string;
+          allocation: string;
+        }>(sql`SELECT tm.team_id, pc.id AS person_id, COALESCE(tm.allocation_pct, 100) AS allocation
+          FROM team_member tm
+          JOIN person pc ON pc.user_id = tm.user_id
+          WHERE tm.team_id IN (${sql.join(
+            teams.map((team) => sql`${team.id}`),
+            sql`, `,
+          )})`)
+      : [];
+    // R7-04: another person's individual hours are `time_entry:read_any` data (the same gate as
+    // GET /api/available-hours). Without it only the caller's own rows are read; every other
+    // member contributes the documented team-capacity fallback instead of their own figure.
+    const available = await loadAvailableHours(
+      ctx,
+      [...new Set(members.map((member) => member.person_id))].filter(
+        (id) => ctx.readAnyTime || id === ctx.identity.personId,
+      ),
+    );
     const logged = await selectRows<{
       team_id: string;
       minutes: string;
@@ -325,30 +438,52 @@ const capacity: ReportDefinition = {
       logged.map((row) => [row.team_id, num(row.minutes)]),
     );
     const openBy = new Map(open.map((row) => [row.team_id, num(row.n)]));
+    const from = dayOf(ctx.window.from);
+    const to = lastDay(ctx);
+    let usedFallback = false;
     const table: Row[] = teams.map((team) => {
-      const available =
-        team.days === null || team.allocated_days === null
-          ? null
-          : Math.round(
-              num(team.allocated_days) *
-                WORKING_HOURS_PER_DAY *
-                weeksIn(ctx) *
-                10,
-            ) / 10;
+      // TC-20/TC-22: each member contributes their own available hours (scaled by their
+      // allocation to this team); a member without a row falls back to the team's working days.
+      let total = 0;
+      let anySet = false;
+      for (const member of members.filter(
+        (entry) => entry.team_id === team.id,
+      )) {
+        const allocation = num(member.allocation) / 100;
+        const rows = (available.get(member.person_id) ?? []).map((row) => ({
+          ...row,
+          minutesPerWeek: Math.round(row.minutesPerWeek * allocation),
+        }));
+        const result = availableMinutes(
+          rows,
+          from,
+          to,
+          fallbackMinutesPerWeek(
+            team.days === null ? null : num(team.days) * allocation,
+          ),
+        );
+        if (result === null) continue;
+        if (result.fellBack) usedFallback = true;
+        anySet = true;
+        total += result.minutes;
+      }
+      const availableHours = anySet ? hoursOf(Math.round(total)) : null;
       const loggedHours = minutesToHours(loggedBy.get(team.id) ?? 0);
       return {
         team: team.name,
         members: num(team.members),
-        capacity: available,
+        capacity: availableHours,
         logged: loggedHours,
         open: openBy.get(team.id) ?? 0,
         utilisation:
-          available === null
+          availableHours === null
             ? { n: 0, needed: 1 }
-            : cell(ratePercent(loggedHours, available, 1)),
+            : cell(ratePercent(loggedHours, availableHours, 1)),
       };
     });
-    const notes = ["assumes_eight_hour_day", "committed_work_in_items"];
+    const notes = ["committed_work_in_items"];
+    if (usedFallback) notes.unshift("assumes_eight_hour_day");
+    if (usedFallback) notes.push("available_hours_fallback");
     if (!ctx.readAnyTime) notes.push("own_time_only");
     if (table.some((row) => row.capacity === null))
       notes.push("no_capacity_set");

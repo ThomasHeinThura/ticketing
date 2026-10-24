@@ -42,6 +42,8 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   manageRates?: boolean;
   manageWorkflows?: boolean;
   readBudgets?: boolean;
+  // Strict time_entry:create: gates the Timesheet entry and the work item Time section.
+  logTime?: boolean;
   createAttachments?: boolean;
 };
 
@@ -162,6 +164,7 @@ export function useWorkspacePermission(
       canManageRates: () => can.manageRates === true,
       canManageWorkflows: () => can.manageWorkflows === true,
       canReadBudgets: () => can.readBudgets === true,
+      canLogTime: () => can.logTime === true,
       canBindProjectOrganisation: () => can.bindProjectOrganisation === true,
     };
   }, [can]);

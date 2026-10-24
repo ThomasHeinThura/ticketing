@@ -14,6 +14,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -283,5 +284,197 @@ export const budgetTable = pgTable(
       sql`${table.periodEnd} >= ${table.periodStart}`,
     ),
     check("budget_name_not_blank", sql`btrim(${table.name}) <> ''`),
+  ],
+);
+
+/**
+ * TC-12: a workspace-level cost type (Licence per seat, Travel per kilometre): name, unit label,
+ * optional default rate in minor units, currency, billable flag. Archived, never deleted.
+ */
+export const costTypeTable = pgTable(
+  "cost_type",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    name: text("name").notNull(),
+    unit: text("unit").notNull().default("unit"),
+    defaultRateMinor: bigint("default_rate_minor", { mode: "number" }),
+    currency: text("currency").notNull(),
+    billable: boolean("billable").notNull().default(true),
+    archivedAt: timestamp("archived_at", tz),
+    createdAt: timestamp("created_at", tz).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", tz)
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "cost_type_workspace_fk",
+      columns: [table.workspaceId],
+      foreignColumns: [workspaceTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("cascade"),
+    unique("cost_type_workspace_id_id_unique").on(table.workspaceId, table.id),
+    unique("cost_type_workspace_name_unique").on(table.workspaceId, table.name),
+    check("cost_type_name_not_blank", sql`btrim(${table.name}) <> ''`),
+    check("cost_type_unit_not_blank", sql`btrim(${table.unit}) <> ''`),
+    check(
+      "cost_type_rate_nonnegative",
+      sql`${table.defaultRateMinor} IS NULL OR ${table.defaultRateMinor} >= 0`,
+    ),
+    check("cost_type_currency_format", sql`${table.currency} ~ '^[A-Z]{3}$'`),
+  ],
+);
+
+/**
+ * TC-13/TC-14: units of a cost type on a date, on a project and optionally a work item (nulled
+ * when the item is deleted; the row stays on its project). The rate is captured on the row, and
+ * `amount_minor = units * rate_minor` is a CHECK, so a later rate change never rewrites it.
+ */
+export const costEntryTable = pgTable(
+  "cost_entry",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    projectId: text("project_id").notNull(),
+    workItemId: text("work_item_id"),
+    costTypeId: text("cost_type_id").notNull(),
+    personId: text("person_id").notNull(),
+    date: date("date", { mode: "string" }).notNull(),
+    units: integer("units").notNull(),
+    rateMinor: bigint("rate_minor", { mode: "number" }).notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: text("currency").notNull(),
+    billable: boolean("billable").notNull(),
+    note: text("note"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", tz).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", tz)
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "cost_entry_workspace_project_fk",
+      columns: [table.workspaceId, table.projectId],
+      foreignColumns: [projectTable.workspaceId, projectTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("no action"),
+    foreignKey({
+      name: "cost_entry_work_item_fk",
+      columns: [table.workItemId],
+      foreignColumns: [workItemTable.id],
+    })
+      .onDelete("set null")
+      .onUpdate("cascade"),
+    foreignKey({
+      name: "cost_entry_person_fk",
+      columns: [table.personId],
+      foreignColumns: [personTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("cascade"),
+    foreignKey({
+      name: "cost_entry_workspace_cost_type_fk",
+      columns: [table.workspaceId, table.costTypeId],
+      foreignColumns: [costTypeTable.workspaceId, costTypeTable.id],
+    })
+      .onDelete("no action")
+      .onUpdate("no action"),
+    index("cost_entry_project_id_date_idx").on(table.projectId, table.date),
+    index("cost_entry_work_item_id_idx").on(table.workItemId),
+    index("cost_entry_person_id_idx").on(table.personId),
+    index("cost_entry_cost_type_id_idx").on(table.costTypeId),
+    index("cost_entry_workspace_id_date_idx").on(table.workspaceId, table.date),
+    check(
+      "cost_entry_units_range",
+      sql`${table.units} > 0 AND ${table.units} <= 1000000`,
+    ),
+    check("cost_entry_rate_nonnegative", sql`${table.rateMinor} >= 0`),
+    check(
+      "cost_entry_amount_matches",
+      sql`${table.amountMinor} = ${table.units}::bigint * ${table.rateMinor}`,
+    ),
+    check("cost_entry_currency_format", sql`${table.currency} ~ '^[A-Z]{3}$'`),
+  ],
+);
+
+/**
+ * TC-20: a person's capacity in integer minutes per week from an effective date. Append-only
+ * history; the latest row on or before a day applies to that day.
+ */
+export const availableHoursTable = pgTable(
+  "available_hours",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    personId: text("person_id").notNull(),
+    minutesPerWeek: integer("minutes_per_week").notNull(),
+    effectiveFrom: date("effective_from", { mode: "string" }).notNull(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", tz).defaultNow().notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "available_hours_workspace_fk",
+      columns: [table.workspaceId],
+      foreignColumns: [workspaceTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("cascade"),
+    foreignKey({
+      name: "available_hours_person_fk",
+      columns: [table.personId],
+      foreignColumns: [personTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("cascade"),
+    unique("available_hours_person_effective_unique").on(
+      table.workspaceId,
+      table.personId,
+      table.effectiveFrom,
+    ),
+    index("available_hours_person_id_idx").on(table.personId),
+    check(
+      "available_hours_minutes_range",
+      sql`${table.minutesPerWeek} >= 0 AND ${table.minutesPerWeek} <= 10080`,
+    ),
+  ],
+);
+
+/** TC-18: one row per (budget, threshold); the insert is the once-per-threshold gate. */
+export const budgetThresholdNoticeTable = pgTable(
+  "budget_threshold_notice",
+  {
+    budgetId: text("budget_id").notNull(),
+    threshold: integer("threshold").notNull(),
+    createdAt: timestamp("created_at", tz).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "budget_threshold_notice_pk",
+      columns: [table.budgetId, table.threshold],
+    }),
+    foreignKey({
+      name: "budget_threshold_notice_budget_fk",
+      columns: [table.budgetId],
+      foreignColumns: [budgetTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("cascade"),
+    check(
+      "budget_threshold_notice_threshold_allowed",
+      sql`${table.threshold} IN (75, 90)`,
+    ),
   ],
 );

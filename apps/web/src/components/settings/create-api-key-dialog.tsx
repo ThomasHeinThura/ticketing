@@ -44,7 +44,7 @@ import useCreateApiKey from "@/hooks/mutations/api-key/use-create-api-key";
 import { toast } from "@/lib/toast";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 
-const EXPIRATION_SECONDS = {
+export const EXPIRATION_SECONDS = {
   "1d": 86400,
   "7d": 604800,
   "30d": 2592000,
@@ -64,12 +64,14 @@ type FormValues = {
  * read set is always included and is not offered as a choice, so a new key is read-only
  * until something here is ticked.
  */
-const READ_CAPABILITIES = (Object.keys(CAPABILITIES) as Capability[]).filter(
+export const READ_CAPABILITIES = (
+  Object.keys(CAPABILITIES) as Capability[]
+).filter(
   (capability) =>
     capabilityTier(capability) === "workspace" && capability.endsWith(":read"),
 );
 
-const WRITE_CAPABILITY_GROUPS = CAPABILITY_GROUPS.map((group) => ({
+export const WRITE_CAPABILITY_GROUPS = CAPABILITY_GROUPS.map((group) => ({
   group,
   capabilities: capabilitiesInGroup(group).filter(
     (capability) =>

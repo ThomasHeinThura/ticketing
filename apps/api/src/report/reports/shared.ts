@@ -1,8 +1,10 @@
 import { sql } from "drizzle-orm";
-import { itemFilterSql, num, selectRows, tsn } from "../context";
+import { itemFilterSql, num, selectRows, timeFrom, tsn } from "../context";
+import { capFor } from "../export.logic";
 import {
   DEFAULT_MIN_SAMPLE,
   isoDay,
+  minutesToHours,
   utc,
   weekStartOf,
   weeksBetween,
@@ -17,6 +19,11 @@ import type {
 } from "../types";
 
 export const ROW_CAP = 500;
+
+/** The row cap of a report: `n` on screen, more in a background export (RP-10). */
+export function rowCap(ctx: ReportContext, n: number): number {
+  return capFor(ctx.exporting, n);
+}
 
 export function emptyBody(overrides: Partial<ReportBody> = {}): ReportBody {
   return {
@@ -67,6 +74,7 @@ export async function itemsOf(
   extra: ReturnType<typeof sql>,
   limit: number,
   order: ReturnType<typeof sql> = sql`w.updated_at DESC`,
+  joins: ReturnType<typeof sql> = sql``,
 ): Promise<DrillItem[]> {
   const rows = await selectRows<{
     key: string;
@@ -79,11 +87,13 @@ export async function itemsOf(
     JOIN project p ON p.id = w.project_id
     JOIN state s ON s.id = w.state_id
     JOIN state_template st ON st.id = s.state_template_id
+    ${joins}
     WHERE w.workspace_id = ${ctx.workspaceId}
       AND w.deleted_at IS NULL AND p.deleted_at IS NULL
       AND ${ctx.reach} AND ${itemFilterSql(ctx)} AND ${extra}
     ORDER BY ${order} LIMIT ${limit}`);
   return rows.map((row) => ({
+    kind: "work_item" as const,
     key: row.key,
     title: row.title,
     projectKey: row.project_key,
@@ -112,3 +122,40 @@ export async function countOutside(
 }
 
 export type { Row };
+
+/**
+ * Time entries behind a number (RP-12), under the report's reach and `time_entry:read_any` rule
+ * (`timeFrom`). Hours only: no rate, no cost, whatever the caller may see elsewhere (TC-11).
+ */
+export async function timeItemsOf(
+  ctx: ReportContext,
+  extra: ReturnType<typeof sql>,
+  joins: ReturnType<typeof sql>,
+  limit: number,
+): Promise<DrillItem[]> {
+  const rows = await selectRows<{
+    id: string;
+    date: string;
+    person: string | null;
+    project_key: string | null;
+    work_item_key: string | null;
+    title: string | null;
+    minutes: string;
+  }>(sql`SELECT te.id, te.date::text AS date, COALESCE(pe.display_name, u.name, 'Unknown') AS person,
+      p.slug AS project_key, w.key AS work_item_key,
+      COALESCE(NULLIF(btrim(te.description), ''), w.title) AS title, te.minutes
+    ${timeFrom(ctx, joins)} AND ${extra}
+    ORDER BY te.date DESC, te.created_at DESC LIMIT ${limit}`);
+  return rows.map((row) => ({
+    kind: "time_entry" as const,
+    key: row.id,
+    title: row.title ?? "",
+    projectKey: row.project_key,
+    state: null,
+    priority: null,
+    date: row.date,
+    person: row.person,
+    hours: minutesToHours(num(row.minutes)),
+    workItemKey: row.work_item_key,
+  }));
+}

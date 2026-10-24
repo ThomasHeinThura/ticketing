@@ -11,6 +11,7 @@ import {
   trendOf,
   utc,
 } from "../logic";
+import { loadDaily } from "../snapshot.repository";
 import type { ReportDefinition, Row } from "../types";
 import {
   col,
@@ -33,22 +34,24 @@ const throughput: ReportDefinition = {
   category: "delivery",
   title: "Throughput",
   async compute(ctx) {
-    const rows = await selectRows<{
-      resolved_at: string | Date;
-    }>(sql`SELECT w.resolved_at
-      ${itemFrom(ctx)} AND ${DONE}
-      AND ${resolvedIn(ctx.previous.from, ctx.window.to)}`);
+    // RP-9: closed days come from the stored snapshots, the current day is live.
+    const daily = await loadDaily(
+      ctx,
+      "throughput",
+      ctx.previous.from,
+      ctx.window.to,
+    );
     const weeks = weekAxis(ctx);
     const perWeek = new Map<string, number>();
     let current = 0;
     let before = 0;
-    for (const row of rows) {
-      const at = utc(row.resolved_at);
+    for (const row of daily) {
+      const at = new Date(`${row.day}T00:00:00.000Z`);
       if (at >= ctx.window.from) {
-        current += 1;
+        current += row.a;
         const key = weekKey(at);
-        perWeek.set(key, (perWeek.get(key) ?? 0) + 1);
-      } else before += 1;
+        perWeek.set(key, (perWeek.get(key) ?? 0) + row.a);
+      } else before += row.a;
     }
     return emptyBody({
       metrics: [

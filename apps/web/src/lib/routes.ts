@@ -1335,6 +1335,11 @@ export const routes = {
     path: "/agent/god-mode/features" as const,
     build: () => "/agent/god-mode/features",
   },
+  /** `AK-7`: God Mode inventory of every API key on the instance. */
+  godModeApiKeys: {
+    path: "/agent/god-mode/api-keys" as const,
+    build: () => "/agent/god-mode/api-keys",
+  },
   godModeAudit: {
     path: "/agent/god-mode/audit" as const,
     build: (search: { action?: string; limit?: number } = {}) => {

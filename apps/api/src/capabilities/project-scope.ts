@@ -31,6 +31,14 @@ const PROJECT_WORK_FLAGS = {
   createInternalComments: "comment:create_internal",
 } as const satisfies Partial<Record<keyof CapabilityMap, Capability>>;
 
+/**
+ * Flags whose API is project-scoped rather than work-item-scoped (`budget:read` on
+ * `GET /api/projects/{projectId}/budget`): with `?projectId` they follow the project's own grants.
+ */
+const PROJECT_SCOPE_FLAGS = {
+  readBudgets: "budget:read",
+} as const satisfies Partial<Record<keyof CapabilityMap, Capability>>;
+
 /** Intersect existing workspace authority with the exact project's effective role. */
 export async function scopeWorkCapabilitiesToProject(
   c: Context,
@@ -66,12 +74,22 @@ export async function scopeWorkCapabilitiesToProject(
       project.projectId,
     ),
   };
+  const entries = [
+    ...Object.entries(PROJECT_WORK_FLAGS).map(
+      ([name, capability]) =>
+        [name, capability, "work_item"] as [string, Capability, "work_item"],
+    ),
+    ...Object.entries(PROJECT_SCOPE_FLAGS).map(
+      ([name, capability]) =>
+        [name, capability, "project"] as [string, Capability, "project"],
+    ),
+  ];
   await Promise.all(
-    Object.entries(PROJECT_WORK_FLAGS).map(async ([name, capability]) => {
-      const key = name as keyof typeof PROJECT_WORK_FLAGS;
+    entries.map(async ([name, capability, scope]) => {
+      const key = name as keyof CapabilityMap;
       scoped[key] =
         flags[key] === true &&
-        hasProjectReadCapability(identity, capability, "work_item", facts);
+        hasProjectReadCapability(identity, capability, scope, facts);
       if (!scoped[key]) return;
       try {
         await assertCallerHasCapability(

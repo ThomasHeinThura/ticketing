@@ -20,6 +20,8 @@ const RESOURCE_EVENT_KINDS = {
     "approval.withdrawn",
   ],
   workspace: ["workspace.created"],
+  // TC-18: the project manager is told when a budget crosses 75% or 90% (time-tracking/budget-notify.ts).
+  project: ["budget.threshold_reached"],
   // IQ-12 / IQ-15: a clarification reply reaches the customer who owns the request (or the
   // triager who last handled it); a decline reaches the requester with its reason. Read access is the dedicated submission branch in `inbox.repository.ts`.
   submission: ["submission.replied", "submission.declined"],

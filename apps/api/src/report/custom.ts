@@ -14,8 +14,9 @@ import {
 import { workspaceFeatureEnabled } from "./feature";
 import { countValue, minutesToHours, type ReportWindow } from "./logic";
 import { type ReportEnvelope, stripRates } from "./present";
+import { itemsOf, rowCap, timeItemsOf } from "./reports/shared";
 import { type ReportCaps, scopeCounts } from "./run";
-import type { Row } from "./types";
+import type { DrillItem, Row } from "./types";
 
 /**
  * Tier 3 (RP, "Customisable reports"): a saved view's query with a `groupBy` and an `aggregate`.
@@ -166,6 +167,8 @@ export async function runCustomReport(input: {
   window: ReportWindow;
   chartType: (typeof CUSTOM_CHART_TYPES)[number];
   now?: Date;
+  /** RP-10: a background export, which returns more groups than the screen. */
+  exporting?: boolean;
 }): Promise<ReportEnvelope> {
   const { query } = input;
   const ctx = buildContext({
@@ -177,7 +180,9 @@ export async function runCustomReport(input: {
     ...(input.now ? { now: input.now } : {}),
     window: input.window,
     filters: cleanFilters(query.filter ?? {}),
+    ...(input.exporting ? { exporting: true } : {}),
   });
+  const cap = rowCap(ctx, 200);
   const timeOn =
     query.entity === "time_entry" &&
     (await workspaceFeatureEnabled(input.workspaceId, "feature.time_tracking"));
@@ -189,12 +194,12 @@ export async function runCustomReport(input: {
     groups = await selectRows(sql`SELECT ${label} AS label, count(*) AS value
       ${itemFrom(ctx, joins)}
       AND w.created_at >= ${tsn(ctx.window.from)} AND w.created_at < ${tsn(ctx.window.to)}
-      GROUP BY 1 ORDER BY count(*) DESC, 1 LIMIT 200`);
+      GROUP BY 1 ORDER BY count(*) DESC, 1 LIMIT ${cap}`);
   } else if (timeOn) {
     groups = await selectRows(sql`SELECT ${label} AS label, ${measure} AS value
       ${timeFrom(ctx, joins)}
       AND te.date >= ${dayOf(ctx.window.from)}::date AND te.date <= ${dayOf(new Date(ctx.window.to.getTime() - 1))}::date
-      GROUP BY 1 ORDER BY ${measure} DESC, 1 LIMIT 200`);
+      GROUP BY 1 ORDER BY ${measure} DESC, 1 LIMIT ${cap}`);
   }
   const timeUnits = summing;
   const rows: Row[] = groups.map((row) => ({
@@ -226,6 +231,7 @@ export async function runCustomReport(input: {
     },
     asOf: ctx.now.toISOString(),
     boundary: "live",
+    snapshot: null,
     filters: ctx.filters,
     options: { chartType: input.chartType },
     choices: [],
@@ -264,8 +270,11 @@ export async function runCustomReport(input: {
         kind: timeUnits ? "hours" : "number",
       },
     ],
-    rows: empty ? [] : rows,
-    truncated: groups.length >= 200,
+    // RP-12: a group row carries its own label as the drill handle; the same expression picks its items.
+    rows: empty
+      ? []
+      : rows.map((row) => ({ ...row, _drill: String(row.group) })),
+    truncated: groups.length >= cap,
     empty: empty
       ? {
           reason:
@@ -279,8 +288,62 @@ export async function runCustomReport(input: {
     excluded: null,
     notes:
       query.entity === "time_entry" && !timeOn ? ["time_tracking_off"] : [],
-    drill: false,
+    drill: !empty,
     costVisible: false,
   };
   return stripRates(envelope, false);
+}
+
+/**
+ * RP-12: the work items or time entries behind one group of a tier 3 report, under the same window,
+ * filters and reach as the report. The handle is the group's label (the report groups by that
+ * label, so two people with one name are one group and one drill). No handle lists the whole
+ * population. Time entries carry hours only, never a rate.
+ */
+export async function drillCustomReport(input: {
+  query: CustomQuery;
+  handle: string | null;
+  limit: number;
+  workspaceId: string;
+  identity: ResolvedIdentity;
+  caps: ReportCaps;
+  window: ReportWindow;
+  now?: Date;
+}): Promise<DrillItem[]> {
+  const { query, handle } = input;
+  const ctx = buildContext({
+    workspaceId: input.workspaceId,
+    identity: input.identity,
+    readAll: input.caps.readAll,
+    showRates: false,
+    readAnyTime: input.caps.readAnyTime,
+    ...(input.now ? { now: input.now } : {}),
+    window: input.window,
+    filters: cleanFilters(query.filter ?? {}),
+  });
+  const { label, joins } = await groupExpression(query, input.workspaceId);
+  const narrowed =
+    handle !== null && query.groupBy ? sql`${label} = ${handle}` : sql`true`;
+  if (query.entity === "time_entry") {
+    if (
+      !(await workspaceFeatureEnabled(
+        input.workspaceId,
+        "feature.time_tracking",
+      ))
+    )
+      return [];
+    return timeItemsOf(
+      ctx,
+      sql`te.date >= ${dayOf(ctx.window.from)}::date AND te.date <= ${dayOf(new Date(ctx.window.to.getTime() - 1))}::date AND ${narrowed}`,
+      joins,
+      input.limit,
+    );
+  }
+  return itemsOf(
+    ctx,
+    sql`w.created_at >= ${tsn(ctx.window.from)} AND w.created_at < ${tsn(ctx.window.to)} AND ${narrowed}`,
+    input.limit,
+    sql`w.created_at DESC`,
+    joins,
+  );
 }

@@ -11,10 +11,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getTimeSettings: vi.fn(),
   updateTimeSettings: vi.fn(),
+  getAvailableHours: vi.fn(),
+  createAvailableHours: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}));
+vi.mock("@/lib/format", () => ({
+  formatDate: (value: unknown) => String(value),
 }));
 vi.mock("@/lib/toast", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
@@ -25,6 +30,9 @@ vi.mock("@/fetchers/time-tracking", () => ({
   TimeTrackingDisabledError: class extends Error {},
   getTimeSettings: (...args: unknown[]) => mocks.getTimeSettings(...args),
   updateTimeSettings: (...args: unknown[]) => mocks.updateTimeSettings(...args),
+  getAvailableHours: (...args: unknown[]) => mocks.getAvailableHours(...args),
+  createAvailableHours: (...args: unknown[]) =>
+    mocks.createAvailableHours(...args),
   getTimer: vi.fn(),
   getTimeActivities: vi.fn(),
   getTimeEntries: vi.fn(),
@@ -33,7 +41,11 @@ vi.mock("@/fetchers/time-tracking", () => ({
   stopTimer: vi.fn(),
 }));
 
-import { BackdateLimitSetting, ProjectBillableSetting } from "./time-settings";
+import {
+  AvailableHoursSetting,
+  BackdateLimitSetting,
+  ProjectBillableSetting,
+} from "./time-settings";
 
 function wrap(node: React.ReactNode) {
   return render(
@@ -54,6 +66,25 @@ beforeEach(() => {
     project: { id: "p1", defaultBillable: true },
   });
   mocks.updateTimeSettings.mockResolvedValue({});
+  mocks.getAvailableHours.mockResolvedValue({
+    data: [
+      {
+        id: "h1",
+        personId: "me",
+        personName: "Me",
+        minutesPerWeek: 2400,
+        effectiveFrom: "2026-01-01",
+        createdAt: "2026-01-01T00:00:00Z",
+      },
+    ],
+    canManage: true,
+    people: [
+      { personId: "me", name: "Me" },
+      { personId: "ann", name: "Ann" },
+    ],
+    callerPersonId: "me",
+  });
+  mocks.createAvailableHours.mockResolvedValue({});
 });
 afterEach(() => {
   cleanup();
@@ -132,5 +163,60 @@ describe("ProjectBillableSetting", () => {
     const view = wrap(<ProjectBillableSetting projectId="p1" />);
     await waitFor(() => expect(mocks.getTimeSettings).toHaveBeenCalled());
     expect(view.container.querySelector("[role=switch]")).toBeNull();
+  });
+});
+
+describe("AvailableHoursSetting", () => {
+  it("lists the history and posts hours per week as integer minutes", async () => {
+    wrap(<AvailableHoursSetting />);
+    expect(await screen.findAllByTestId("available-hours-row")).toHaveLength(1);
+    expect(screen.getByText("40:00")).toBeTruthy();
+    fireEvent.change(
+      screen.getByLabelText("timeTracking:availableHours.hoursPerWeek", {
+        selector: "input",
+      }),
+      { target: { value: "37.5" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "timeTracking:availableHours.add" }),
+    );
+    await waitFor(() =>
+      expect(mocks.createAvailableHours).toHaveBeenCalledTimes(1),
+    );
+    expect(mocks.createAvailableHours).toHaveBeenCalledWith({
+      workspaceId: "w1",
+      personId: "me",
+      minutesPerWeek: 2250,
+      effectiveFrom: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/u),
+    });
+  });
+
+  it("will not post text that is not hours", async () => {
+    wrap(<AvailableHoursSetting />);
+    const input = await screen.findByLabelText(
+      "timeTracking:availableHours.hoursPerWeek",
+      { selector: "input" },
+    );
+    fireEvent.change(input, { target: { value: "lots" } });
+    const add = screen.getByRole("button", {
+      name: "timeTracking:availableHours.add",
+    }) as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+    fireEvent.change(input, { target: { value: "169" } });
+    expect(add.disabled).toBe(true);
+  });
+
+  it("is hidden from people without workspace:manage_settings", async () => {
+    mocks.getTimeSettings.mockResolvedValue({
+      backdateLimitDays: 30,
+      canManage: false,
+      project: null,
+    });
+    const view = wrap(<AvailableHoursSetting />);
+    await waitFor(() => expect(mocks.getTimeSettings).toHaveBeenCalled());
+    expect(
+      view.container.querySelector("[data-testid=available-hours]"),
+    ).toBeNull();
+    expect(mocks.getAvailableHours).not.toHaveBeenCalled();
   });
 });

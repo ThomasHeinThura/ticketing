@@ -115,6 +115,9 @@ export type ProjectBudget = {
   /** True for callers without `time_entry:manage_rates`: no figure derived from priced time is sent. */
   figuresHidden: boolean;
   actualMinor?: number;
+  /** Parts of `actualMinor`: priced time and logged cost entries (TC-13). */
+  timeMinor?: number;
+  costEntriesMinor?: number;
   remainingMinor?: number;
   thresholdReached?: 75 | 90 | null;
   otherCurrencies?: CostByCurrency[];
@@ -403,4 +406,200 @@ export const createProjectBudget = (
     `/projects/${enc(projectId)}/budgets`,
     { method: "POST", body: input },
     "Failed to create the budget",
+  );
+
+export type CostType = {
+  id: string;
+  workspaceId: string;
+  name: string;
+  unit: string;
+  /** Minor units per unit; null = each entry states its rate. Present for rate managers. */
+  defaultRateMinor?: number | null;
+  currency: string;
+  billable: boolean;
+  archived: boolean;
+};
+
+export async function getCostTypes(
+  workspaceId: string,
+  includeArchived = false,
+) {
+  const result = await request<{ data: CostType[] }>(
+    `/cost-types?${query({ workspaceId, includeArchived })}`,
+    {},
+    "Failed to load the cost types",
+  );
+  return result.data;
+}
+
+export const createCostType = (input: {
+  workspaceId: string;
+  name: string;
+  unit: string;
+  defaultRateMinor: number | null;
+  currency: string;
+  billable: boolean;
+}) =>
+  request<CostType>(
+    "/cost-types",
+    { method: "POST", body: input },
+    "Failed to add the cost type",
+  );
+
+export const updateCostType = (
+  id: string,
+  workspaceId: string,
+  input: {
+    name?: string;
+    unit?: string;
+    defaultRateMinor?: number | null;
+    currency?: string;
+    billable?: boolean;
+    archived?: boolean;
+  },
+) =>
+  request<CostType>(
+    `/cost-types/${enc(id)}?${query({ workspaceId })}`,
+    { method: "PATCH", body: input },
+    "Failed to save the cost type",
+  );
+
+export type CostEntry = {
+  id: string;
+  workspaceId: string;
+  projectId: string;
+  workItemId: string | null;
+  workItemKey: string | null;
+  workItemTitle: string | null;
+  costTypeId: string;
+  costTypeName: string;
+  unit: string;
+  personId: string;
+  personName: string | null;
+  date: string;
+  units: number;
+  currency: string;
+  billable: boolean;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Rate and amount only for `time_entry:manage_rates` holders (TC-11). */
+  rateMinor?: number;
+  amountMinor?: number;
+};
+
+export type CostTotal = {
+  currency: string;
+  amountMinor: number;
+  entryCount: number;
+};
+
+export type ProjectCosts = {
+  data: CostEntry[];
+  /** The caller holds `time_entry:manage_rates`: amounts are present and entries can be changed. */
+  canManage: boolean;
+  costTypes?: CostType[];
+  totals?: CostTotal[];
+  entryCount: number;
+  canLogBackdated: boolean;
+  backdateLimitDays: number;
+  callerPersonId: string;
+  today: string;
+};
+
+export const getProjectCosts = (
+  projectId: string,
+  filter: { workItemId?: string; from?: string; to?: string } = {},
+) =>
+  request<ProjectCosts>(
+    `/projects/${enc(projectId)}/costs?${query(filter)}`,
+    {},
+    "Failed to load the costs",
+  );
+
+export const createProjectCost = (
+  projectId: string,
+  input: {
+    costTypeId: string;
+    workItemId?: string;
+    date: string;
+    units?: number;
+    rateMinor?: number;
+    currency?: string;
+    personId?: string;
+    billable?: boolean;
+    note?: string;
+  },
+) =>
+  request<CostEntry>(
+    `/projects/${enc(projectId)}/costs`,
+    { method: "POST", body: input },
+    "Failed to log the cost",
+  );
+
+export const updateCostEntry = (
+  id: string,
+  input: {
+    costTypeId?: string;
+    workItemId?: string | null;
+    date?: string;
+    units?: number;
+    rateMinor?: number;
+    currency?: string;
+    billable?: boolean;
+    note?: string | null;
+  },
+) =>
+  request<CostEntry>(
+    `/cost-entries/${enc(id)}`,
+    { method: "PATCH", body: input },
+    "Failed to save the cost entry",
+  );
+
+/** Deleting a cost entry is a pending action, like a time entry: approved in the browser. */
+export async function requestCostEntryDeletion(id: string) {
+  return readPendingDeletion(
+    await apiFetch(getApiUrl(`/cost-entries/${enc(id)}`), {
+      method: "DELETE",
+      credentials: "include",
+    }),
+    "Failed to request the deletion",
+  );
+}
+
+export type AvailableHoursRow = {
+  id: string;
+  personId: string;
+  personName: string | null;
+  /** Integer minutes per week (40 h = 2400). */
+  minutesPerWeek: number;
+  effectiveFrom: string;
+  createdAt: string;
+};
+
+export type AvailableHoursOverview = {
+  data: AvailableHoursRow[];
+  /** The caller holds `workspace:manage_settings`. */
+  canManage: boolean;
+  people: Array<{ personId: string; name: string }>;
+  callerPersonId: string;
+};
+
+export const getAvailableHours = (workspaceId: string, personId?: string) =>
+  request<AvailableHoursOverview>(
+    `/available-hours?${query({ workspaceId, personId })}`,
+    {},
+    "Failed to load the available hours",
+  );
+
+export const createAvailableHours = (input: {
+  workspaceId: string;
+  personId: string;
+  minutesPerWeek: number;
+  effectiveFrom: string;
+}) =>
+  request<AvailableHoursRow>(
+    "/available-hours",
+    { method: "POST", body: input },
+    "Failed to save the available hours",
   );

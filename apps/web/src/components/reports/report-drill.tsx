@@ -18,28 +18,159 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
-import { useReportItems } from "@/hooks/queries/report";
+import type { CustomQueryInput, DrillItem } from "@/fetchers/report";
+import {
+  useCustomItems,
+  useReportItems,
+  useWidgetItems,
+} from "@/hooks/queries/report";
 import type { ReportSearch } from "@/lib/report-search";
 
+const linkClass =
+  "rounded-sm font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+function WorkItemRows({ items }: { items: DrillItem[] }) {
+  const { t } = useTranslation();
+  return (
+    <Table aria-label={t("reports:drill.title")}>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t("reports:drill.key")}</TableHead>
+          <TableHead>{t("reports:drill.itemTitle")}</TableHead>
+          <TableHead>{t("reports:drill.state")}</TableHead>
+          <TableHead>{t("reports:drill.priority")}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {items.map((item) => (
+          <TableRow key={item.key}>
+            <TableCell className="whitespace-nowrap">
+              <Link
+                to="/agent/work-items/$key"
+                params={{ key: item.key }}
+                className={linkClass}
+              >
+                {item.key}
+              </Link>
+            </TableCell>
+            <TableCell className="max-w-72 truncate">{item.title}</TableCell>
+            <TableCell>{item.state ?? "—"}</TableCell>
+            <TableCell>
+              {item.priority
+                ? t(`reports:priorities.${item.priority}`, {
+                    defaultValue: item.priority,
+                  })
+                : "—"}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+/** Time entries behind a number: hours only, never a rate. */
+function TimeEntryRows({ items }: { items: DrillItem[] }) {
+  const { t } = useTranslation();
+  return (
+    <Table aria-label={t("reports:drill.title")}>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t("reports:drill.date")}</TableHead>
+          <TableHead>{t("reports:drill.person")}</TableHead>
+          <TableHead>{t("reports:drill.project")}</TableHead>
+          <TableHead>{t("reports:drill.workItem")}</TableHead>
+          <TableHead>{t("reports:drill.note")}</TableHead>
+          <TableHead className="text-right">
+            {t("reports:drill.hours")}
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {items.map((item) => (
+          <TableRow key={item.key}>
+            <TableCell className="whitespace-nowrap">
+              {item.date ?? "—"}
+            </TableCell>
+            <TableCell>{item.person ?? "—"}</TableCell>
+            <TableCell>{item.projectKey ?? "—"}</TableCell>
+            <TableCell className="whitespace-nowrap">
+              {item.workItemKey ? (
+                <Link
+                  to="/agent/work-items/$key"
+                  params={{ key: item.workItemKey }}
+                  className={linkClass}
+                >
+                  {item.workItemKey}
+                </Link>
+              ) : (
+                "—"
+              )}
+            </TableCell>
+            <TableCell className="max-w-64 truncate">{item.title}</TableCell>
+            <TableCell className="text-right tabular-nums">
+              {item.hours ?? "—"}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+function ArticleRows({ items }: { items: DrillItem[] }) {
+  const { t } = useTranslation();
+  return (
+    <Table aria-label={t("reports:drill.title")}>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t("reports:drill.article")}</TableHead>
+          <TableHead>{t("reports:drill.state")}</TableHead>
+          <TableHead>{t("reports:drill.project")}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {items.map((item) => (
+          <TableRow key={item.key}>
+            <TableCell className="max-w-96 truncate">
+              <Link
+                to="/agent/kb/$id"
+                params={{ id: item.key }}
+                className={linkClass}
+              >
+                {item.title}
+              </Link>
+            </TableCell>
+            <TableCell>{item.state ?? "—"}</TableCell>
+            <TableCell>{item.projectKey ?? "—"}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+type DrillQuery = {
+  data?: { data: DrillItem[] } | undefined;
+  isLoading: boolean;
+  isError: boolean;
+};
+
 /**
- * `RP-12`: from a number to the work items behind it, under exactly the same window, filters and
- * reach. A metric you cannot interrogate is not trustworthy.
+ * `RP-12`: from a number to the things behind it, under exactly the same window, filters and
+ * reach. A metric you cannot interrogate is not trustworthy. The kind of the items says which table
+ * is shown: work items, time entries (hours only) or knowledge base articles.
  */
-export function ReportDrillDialog({
-  workspaceId,
-  reportKey,
-  search,
-  handle,
+export function DrillItemsDialog({
+  items,
   onClose,
 }: {
-  workspaceId: string;
-  reportKey: string;
-  search: ReportSearch;
-  handle: string;
+  items: DrillQuery;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const items = useReportItems(workspaceId, reportKey, search, handle, true);
+  const list = items.data?.data ?? [];
+  const kind = list[0]?.kind ?? "work_item";
   return (
     <Dialog
       open
@@ -64,53 +195,84 @@ export function ReportDrillDialog({
             <p className="text-destructive-foreground text-sm">
               {t("reports:drill.loadError")}
             </p>
-          ) : (items.data?.data.length ?? 0) === 0 ? (
+          ) : list.length === 0 ? (
             <Empty>
               <EmptyHeader>
                 <EmptyTitle>—</EmptyTitle>
                 <EmptyDescription>{t("reports:drill.empty")}</EmptyDescription>
               </EmptyHeader>
             </Empty>
+          ) : kind === "time_entry" ? (
+            <TimeEntryRows items={list} />
+          ) : kind === "article" ? (
+            <ArticleRows items={list} />
           ) : (
-            <Table aria-label={t("reports:drill.title")}>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("reports:drill.key")}</TableHead>
-                  <TableHead>{t("reports:drill.itemTitle")}</TableHead>
-                  <TableHead>{t("reports:drill.state")}</TableHead>
-                  <TableHead>{t("reports:drill.priority")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.data?.data.map((item) => (
-                  <TableRow key={item.key}>
-                    <TableCell className="whitespace-nowrap">
-                      <Link
-                        to="/agent/work-items/$key"
-                        params={{ key: item.key }}
-                        className="rounded-sm font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {item.key}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="max-w-72 truncate">
-                      {item.title}
-                    </TableCell>
-                    <TableCell>{item.state ?? "—"}</TableCell>
-                    <TableCell>
-                      {item.priority
-                        ? t(`reports:priorities.${item.priority}`, {
-                            defaultValue: item.priority,
-                          })
-                        : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <WorkItemRows items={list} />
           )}
         </div>
       </DialogContent>
     </Dialog>
   );
+}
+
+/** The drill of a fixed report. */
+export function ReportDrillDialog({
+  workspaceId,
+  reportKey,
+  search,
+  handle,
+  onClose,
+}: {
+  workspaceId: string;
+  reportKey: string;
+  search: ReportSearch;
+  handle: string;
+  onClose: () => void;
+}) {
+  const items = useReportItems(workspaceId, reportKey, search, handle, true);
+  return <DrillItemsDialog items={items} onClose={onClose} />;
+}
+
+/** The drill of a dashboard widget (a report of any tier, under the widget's own window and filters). */
+export function WidgetDrillDialog({
+  workspaceId,
+  dashboardId,
+  widgetId,
+  handle,
+  onClose,
+}: {
+  workspaceId: string;
+  dashboardId: string;
+  widgetId: string;
+  handle: string;
+  onClose: () => void;
+}) {
+  const items = useWidgetItems(
+    workspaceId,
+    dashboardId,
+    widgetId,
+    handle,
+    true,
+  );
+  return <DrillItemsDialog items={items} onClose={onClose} />;
+}
+
+/** The drill of a tier 3 report that is still being built. */
+export function CustomDrillDialog({
+  workspaceId,
+  body,
+  handle,
+  onClose,
+}: {
+  workspaceId: string;
+  body: {
+    name?: string;
+    query: CustomQueryInput;
+    chartType: "bar" | "line" | "table" | "number";
+  };
+  handle: string;
+  onClose: () => void;
+}) {
+  const items = useCustomItems(workspaceId, body, handle, true);
+  return <DrillItemsDialog items={items} onClose={onClose} />;
 }

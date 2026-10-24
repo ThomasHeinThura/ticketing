@@ -5,7 +5,7 @@ import db from "../../database";
 import { dayOf, num, selectRows } from "../context";
 import { countValue, utc } from "../logic";
 import type { ReportContext, ReportDefinition, Row } from "../types";
-import { cell, col, emptyBody } from "./shared";
+import { cell, col, emptyBody, rowCap } from "./shared";
 
 type CycleChoice = {
   id: string;
@@ -23,7 +23,22 @@ async function reachableCycles(ctx: ReportContext): Promise<CycleChoice[]> {
       AND ${ctx.reach}
       AND ${ctx.filters.projectId ? sql`p.id = ${ctx.filters.projectId}` : sql`true`}
       AND ${ctx.filters.organisationId ? sql`p.organisation_id = ${ctx.filters.organisationId}` : sql`true`}
-    ORDER BY c.start_date DESC LIMIT 100`);
+    ORDER BY c.start_date DESC LIMIT ${rowCap(ctx, 100)}`);
+}
+
+/** The cycle the burndown shows: the requested one, else the running one, else the newest (reach-filtered). */
+export async function burndownCycle(
+  ctx: ReportContext,
+): Promise<{ cycles: CycleChoice[]; chosen: CycleChoice | undefined }> {
+  const cycles = await reachableCycles(ctx);
+  const today = dayOf(ctx.now);
+  const chosen =
+    cycles.find((cycle) => cycle.id === ctx.options.cycle) ??
+    cycles.find(
+      (cycle) => cycle.start_date <= today && cycle.end_date >= today,
+    ) ??
+    cycles[0];
+  return { cycles, chosen };
 }
 
 const cycleBurndownReport: ReportDefinition = {
@@ -32,15 +47,7 @@ const cycleBurndownReport: ReportDefinition = {
   title: "Cycle burndown",
   live: true,
   async compute(ctx) {
-    const cycles = await reachableCycles(ctx);
-    const today = dayOf(ctx.now);
-    const requested = ctx.options.cycle;
-    const chosen =
-      cycles.find((cycle) => cycle.id === requested) ??
-      cycles.find(
-        (cycle) => cycle.start_date <= today && cycle.end_date >= today,
-      ) ??
-      cycles[0];
+    const { cycles, chosen } = await burndownCycle(ctx);
     const choices = [
       {
         key: "cycle",
@@ -156,7 +163,7 @@ const cycleVelocity: ReportDefinition = {
         AND c.completed_at IS NOT NULL AND ${ctx.reach}
         AND ${ctx.filters.projectId ? sql`p.id = ${ctx.filters.projectId}` : sql`true`}
         AND ${ctx.filters.organisationId ? sql`p.organisation_id = ${ctx.filters.organisationId}` : sql`true`}
-      ORDER BY c.completed_at DESC LIMIT 500`);
+      ORDER BY c.completed_at DESC LIMIT ${rowCap(ctx, 500)}`);
     const byProject = new Map<string, typeof rows>();
     for (const row of rows)
       byProject.set(row.slug, [...(byProject.get(row.slug) ?? []), row]);
@@ -229,6 +236,7 @@ const cycleVelocity: ReportDefinition = {
         col("unestimated", "Unestimated items, last three", "number"),
       ],
       rows: table,
+      truncated: rows.length >= rowCap(ctx, 500),
       population: rows.length,
       notes: mixed ? ["mixed_units"] : [],
     });

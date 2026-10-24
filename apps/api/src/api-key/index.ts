@@ -1,6 +1,7 @@
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { runWithStepUp, stepUpTokenHeader } from "../auth/step-up-spend";
+import { requireCurrentInstanceAdmin } from "../instance/require-instance-admin";
 import {
   apiRouter,
   type BaseVariables,
@@ -17,12 +18,15 @@ import { requireWorkspaceCapability } from "../utils/require-workspace-capabilit
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { clientIpForContext } from "./enforce";
+import { listKeysForInstance } from "./repository";
 import {
   apiKeyCreatedSchema,
   apiKeyListSchema,
   apiKeySummarySchema,
   createPersonalKeyBody,
   createServiceKeyBody,
+  instanceApiKeyListSchema,
+  instanceKeyListQuery,
   personalKeyParam,
   workspaceIdParam,
   workspaceKeyParam,
@@ -36,6 +40,7 @@ import {
   revokeServiceApiKey,
 } from "./service";
 import { SERVICE_KEY_DELETION_ROUTE } from "./service-key-deletion-target";
+import { toApiKeySummary } from "./summary";
 
 const noStore = { "cache-control": "no-store" } as const;
 
@@ -201,6 +206,22 @@ const revokeServiceKeyRoute = createRoute({
   },
 });
 
+const listInstanceKeysRoute = createRoute({
+  method: "get",
+  operationId: "listInstanceApiKeys",
+  path: "/instance/api-keys",
+  tags: ["API keys"],
+  summary: "List every API key on the instance",
+  description:
+    "God Mode inventory (`AK-7`): personal and service keys with owner or workspace, last use and expiry. A service key whose creator has left shows `createdByFormerMember`. Never returns a key or its hash.",
+  middleware: [requireSessionOnly()] as const,
+  request: { query: instanceKeyListQuery },
+  responses: {
+    200: jsonResponse("Every key on the instance", instanceApiKeyListSchema),
+    403: errorResponse("Instance administrators only"),
+  },
+});
+
 function requestContext(c: {
   get: (key: "userId") => string;
   req: { header: (name: string) => string | undefined };
@@ -231,6 +252,22 @@ const apiKey = apiRouter<BaseVariables & { workspaceId: string }>()
       c.req.valid("param").id,
     );
     return c.json(revoked, 200);
+  })
+  .openapi(listInstanceKeysRoute, async (c) => {
+    await requireCurrentInstanceAdmin(c, "GET", "/api/instance/api-keys");
+    const { limit } = c.req.valid("query");
+    const { rows, hasMore } = await listKeysForInstance(limit);
+    return c.json(
+      {
+        apiKeys: rows.map((row) => ({
+          ...toApiKeySummary(row),
+          ownerName: row.ownerName,
+          workspaceName: row.workspaceName,
+        })),
+        hasMore,
+      },
+      200,
+    );
   })
   .openapi(listServiceKeysRoute, async (c) => {
     const { id } = c.req.valid("param");

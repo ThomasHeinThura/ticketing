@@ -17,12 +17,12 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@taskdesk/ui";
-import { ChevronLeft, Save } from "lucide-react";
+import { ChevronLeft, Download, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
-import type { CustomQueryInput } from "@/fetchers/report";
+import { type CustomQueryInput, exportCustomReport } from "@/fetchers/report";
 import {
   createSavedView,
   getSavedView,
@@ -30,13 +30,19 @@ import {
   updateSavedView,
 } from "@/fetchers/saved-views";
 import { useCustomFields } from "@/hooks/queries/custom-field/use-custom-fields";
-import { reportKeys, useCustomPreview } from "@/hooks/queries/report";
+import {
+  reportKeys,
+  useCustomPreview,
+  useReportCatalogue,
+} from "@/hooks/queries/report";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { ReportBuilderSearch } from "@/lib/report-search";
 import { routes } from "@/lib/routes";
 import { savedViewKeys } from "@/lib/saved-view-keys";
 import { toast } from "@/lib/toast";
 import { ReportError } from "./report-detail";
+import { CustomDrillDialog } from "./report-drill";
+import { useExportAction } from "./report-export";
 import {
   ReportContextLine,
   ReportEmpty,
@@ -178,11 +184,17 @@ export function ReportBuilder({ search }: { search: ReportBuilderSearch }) {
         ? { fn: "sum", field: "minutes" }
         : { fn: "count" },
   };
-  const preview = useCustomPreview(workspaceId, {
+  const previewBody = {
     ...(name.trim() ? { name: name.trim() } : {}),
     query,
     chartType,
-  });
+  };
+  const preview = useCustomPreview(workspaceId, previewBody);
+  const catalogue = useReportCatalogue(workspaceId);
+  const exporting = useExportAction(() =>
+    exportCustomReport({ workspaceId, ...previewBody }),
+  );
+  const [drilling, setDrilling] = useState<string | null>(null);
   const save = useMutation({
     mutationFn: async () => {
       const shared =
@@ -369,7 +381,21 @@ export function ReportBuilder({ search }: { search: ReportBuilderSearch }) {
             <ReportError error={preview.error} />
           ) : (
             <>
-              <ReportContextLine report={preview.data} />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <ReportContextLine report={preview.data} />
+                {catalogue.data?.meta.canExport ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={exporting.pending}
+                    onClick={exporting.run}
+                  >
+                    <Download aria-hidden="true" />
+                    {t("reports:detail.export")}
+                  </Button>
+                ) : null}
+              </div>
+              {exporting.panel}
               <ReportMetrics
                 metrics={preview.data.metrics}
                 empty={preview.data.empty !== null}
@@ -383,10 +409,19 @@ export function ReportBuilder({ search }: { search: ReportBuilderSearch }) {
                     ? "table"
                     : "chart"
                 }
+                onDrill={(handle) => setDrilling(handle)}
               />
             </>
           )}
         </div>
+        {drilling ? (
+          <CustomDrillDialog
+            workspaceId={workspaceId}
+            body={previewBody}
+            handle={drilling}
+            onClose={() => setDrilling(null)}
+          />
+        ) : null}
         <Card>
           <CardContent className="flex flex-wrap items-end gap-4 p-4">
             <Pick

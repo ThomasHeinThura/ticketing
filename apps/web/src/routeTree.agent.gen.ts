@@ -42,6 +42,7 @@ import { Route as LayoutAuthenticatedDashboardSettingsRouteImport } from './rout
 import { Route as LayoutAuthenticatedGodModeObservabilityRouteImport } from './routes/agent/_layout/_authenticated/god-mode/observability'
 import { Route as LayoutAuthenticatedAgentDashboardEditRouteImport } from './routes/agent/_layout/_authenticated/agent/dashboard_.edit'
 import { Route as LayoutAuthenticatedAgentGodModeIndexRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/index'
+import { Route as LayoutAuthenticatedAgentGodModeApiKeysRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/api-keys'
 import { Route as LayoutAuthenticatedAgentGodModeAuditRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/audit'
 import { Route as LayoutAuthenticatedAgentGodModeAuthenticationRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/authentication'
 import { Route as LayoutAuthenticatedAgentGodModeFeaturesRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/features'
@@ -324,6 +325,12 @@ const LayoutAuthenticatedAgentGodModeIndexRoute =
   LayoutAuthenticatedAgentGodModeIndexRouteImport.update({
     id: '/',
     path: '/',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeApiKeysRoute =
+  LayoutAuthenticatedAgentGodModeApiKeysRouteImport.update({
+    id: '/api-keys',
+    path: '/api-keys',
     getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
   } as any)
 const LayoutAuthenticatedAgentGodModeAuditRoute =
@@ -989,6 +996,7 @@ export interface FileRoutesByFullPath {
   '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
   '/agent/dashboard/edit': typeof LayoutAuthenticatedAgentDashboardEditRoute
+  '/agent/god-mode/api-keys': typeof LayoutAuthenticatedAgentGodModeApiKeysRoute
   '/agent/god-mode/audit': typeof LayoutAuthenticatedAgentGodModeAuditRoute
   '/agent/god-mode/authentication': typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
   '/agent/god-mode/features': typeof LayoutAuthenticatedAgentGodModeFeaturesRoute
@@ -1117,6 +1125,7 @@ export interface FileRoutesByTo {
   '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/dashboard': typeof LayoutAuthenticatedDashboardIndexRoute
   '/agent/dashboard/edit': typeof LayoutAuthenticatedAgentDashboardEditRoute
+  '/agent/god-mode/api-keys': typeof LayoutAuthenticatedAgentGodModeApiKeysRoute
   '/agent/god-mode/audit': typeof LayoutAuthenticatedAgentGodModeAuditRoute
   '/agent/god-mode/authentication': typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
   '/agent/god-mode/features': typeof LayoutAuthenticatedAgentGodModeFeaturesRoute
@@ -1249,6 +1258,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/_layout/_authenticated/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
   '/_layout/_authenticated/agent/dashboard_/edit': typeof LayoutAuthenticatedAgentDashboardEditRoute
+  '/_layout/_authenticated/agent/god-mode/api-keys': typeof LayoutAuthenticatedAgentGodModeApiKeysRoute
   '/_layout/_authenticated/agent/god-mode/audit': typeof LayoutAuthenticatedAgentGodModeAuditRoute
   '/_layout/_authenticated/agent/god-mode/authentication': typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
   '/_layout/_authenticated/agent/god-mode/features': typeof LayoutAuthenticatedAgentGodModeFeaturesRoute
@@ -1381,6 +1391,7 @@ export interface FileRouteTypes {
     | '/god-mode/observability'
     | '/dashboard/'
     | '/agent/dashboard/edit'
+    | '/agent/god-mode/api-keys'
     | '/agent/god-mode/audit'
     | '/agent/god-mode/authentication'
     | '/agent/god-mode/features'
@@ -1509,6 +1520,7 @@ export interface FileRouteTypes {
     | '/god-mode/observability'
     | '/dashboard'
     | '/agent/dashboard/edit'
+    | '/agent/god-mode/api-keys'
     | '/agent/god-mode/audit'
     | '/agent/god-mode/authentication'
     | '/agent/god-mode/features'
@@ -1640,6 +1652,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/god-mode/observability'
     | '/_layout/_authenticated/dashboard/'
     | '/_layout/_authenticated/agent/dashboard_/edit'
+    | '/_layout/_authenticated/agent/god-mode/api-keys'
     | '/_layout/_authenticated/agent/god-mode/audit'
     | '/_layout/_authenticated/agent/god-mode/authentication'
     | '/_layout/_authenticated/agent/god-mode/features'
@@ -1979,6 +1992,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/agent/god-mode/'
       preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeIndexRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/api-keys': {
+      id: '/_layout/_authenticated/agent/god-mode/api-keys'
+      path: '/api-keys'
+      fullPath: '/agent/god-mode/api-keys'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeApiKeysRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
     }
     '/_layout/_authenticated/agent/god-mode/audit': {
@@ -2679,6 +2699,7 @@ const LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren =
   )
 
 interface LayoutAuthenticatedAgentGodModeRouteChildren {
+  LayoutAuthenticatedAgentGodModeApiKeysRoute: typeof LayoutAuthenticatedAgentGodModeApiKeysRoute
   LayoutAuthenticatedAgentGodModeAuditRoute: typeof LayoutAuthenticatedAgentGodModeAuditRoute
   LayoutAuthenticatedAgentGodModeAuthenticationRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
   LayoutAuthenticatedAgentGodModeFeaturesRoute: typeof LayoutAuthenticatedAgentGodModeFeaturesRoute
@@ -2691,6 +2712,8 @@ interface LayoutAuthenticatedAgentGodModeRouteChildren {
 
 const LayoutAuthenticatedAgentGodModeRouteChildren: LayoutAuthenticatedAgentGodModeRouteChildren =
   {
+    LayoutAuthenticatedAgentGodModeApiKeysRoute:
+      LayoutAuthenticatedAgentGodModeApiKeysRoute,
     LayoutAuthenticatedAgentGodModeAuditRoute:
       LayoutAuthenticatedAgentGodModeAuditRoute,
     LayoutAuthenticatedAgentGodModeAuthenticationRoute:

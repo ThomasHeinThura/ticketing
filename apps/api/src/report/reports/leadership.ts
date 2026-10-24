@@ -1,5 +1,13 @@
 import { sql } from "drizzle-orm";
-import { dayOf, num, selectRows, timeFrom, tsn, tstz } from "../context";
+import {
+  dayOf,
+  num,
+  selectRows,
+  timeFilterSql,
+  timeFrom,
+  tsn,
+  tstz,
+} from "../context";
 import { countValue, minutesToHours, ratePercent } from "../logic";
 import type { ReportContext, ReportDefinition, Row } from "../types";
 import { cell, col, emptyBody, weekAxis, weekKey } from "./shared";
@@ -268,14 +276,34 @@ const costToDeliver: ReportDefinition = {
           minutes: string;
         }>(sql`SELECT b.id AS budget_id, b.project_id, p.slug, p.name, b.name AS budget,
             b.currency, b.planned_amount_minor AS planned,
-            COALESCE((SELECT sum(te.minutes * te.rate_minor / 60.0) FROM time_entry te
+            COALESCE((SELECT sum((te.minutes::bigint * te.rate_minor + 30) / 60) FROM time_entry te
+              JOIN project p ON p.id = te.project_id
+              LEFT JOIN work_item w ON w.id = te.work_item_id
               WHERE te.project_id = b.project_id AND te.currency = b.currency
-                AND te.date >= b.period_start AND te.date <= b.period_end), 0) AS actual,
+                AND te.rate_minor IS NOT NULL AND ${timeFilterSql(ctx)}
+                AND te.date >= b.period_start AND te.date <= b.period_end), 0)
+            + COALESCE((SELECT sum(ce.amount_minor) FROM cost_entry ce
+              WHERE ce.project_id = b.project_id AND ce.currency = b.currency
+                AND ${ctx.readAnyTime ? sql`true` : sql`ce.person_id = ${ctx.identity.personId}`}
+                AND ${
+                  ctx.filters.teamId
+                    ? sql`EXISTS (
+                        SELECT 1 FROM team_member tmc
+                        JOIN team tc ON tc.id = tmc.team_id AND tc.workspace_id = ${ctx.workspaceId}
+                        JOIN person pec ON pec.user_id = tmc.user_id
+                        WHERE tmc.team_id = ${ctx.filters.teamId} AND pec.id = ce.person_id)`
+                    : sql`true`
+                }
+                AND ce.date >= b.period_start AND ce.date <= b.period_end), 0) AS actual,
             COALESCE((SELECT sum(te.minutes) FROM time_entry te
-              WHERE te.project_id = b.project_id AND te.rate_minor IS NULL
+              JOIN project p ON p.id = te.project_id
+              LEFT JOIN work_item w ON w.id = te.work_item_id
+              WHERE te.project_id = b.project_id AND te.rate_minor IS NULL AND ${timeFilterSql(ctx)}
                 AND te.date >= b.period_start AND te.date <= b.period_end), 0) AS unpriced,
             COALESCE((SELECT sum(te.minutes) FROM time_entry te
-              WHERE te.project_id = b.project_id
+              JOIN project p ON p.id = te.project_id
+              LEFT JOIN work_item w ON w.id = te.work_item_id
+              WHERE te.project_id = b.project_id AND ${timeFilterSql(ctx)}
                 AND te.date >= b.period_start AND te.date <= b.period_end), 0) AS minutes
           FROM budget b
           JOIN project p ON p.id = b.project_id

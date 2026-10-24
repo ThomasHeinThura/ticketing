@@ -18,7 +18,11 @@ import {
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import { useDashboard, useDashboards } from "@/hooks/queries/report";
+import {
+  useDashboard,
+  useDashboards,
+  useReportCatalogue,
+} from "@/hooks/queries/report";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { DashboardSearch } from "@/lib/report-search";
 import { routes } from "@/lib/routes";
@@ -28,7 +32,7 @@ import {
   readingOrder,
   useWideGrid,
 } from "./dashboard-grid";
-import { DashboardWidgetCard } from "./dashboard-widget";
+import { LiveWidgetCard } from "./dashboard-widget-live";
 import { ReportError } from "./report-detail";
 
 /**
@@ -52,6 +56,7 @@ export function DashboardView({
     list.find((entry) => entry.isDefault) ??
     list[0];
   const dashboard = useDashboard(workspaceId, chosen?.id ?? "");
+  const catalogue = useReportCatalogue(workspaceId);
   const wide = useWideGrid();
   return (
     <>
@@ -147,11 +152,12 @@ export function DashboardView({
                     style={gridItemStyle(widget, wide)}
                     className="min-w-0"
                   >
-                    <DashboardWidgetCard
+                    <LiveWidgetCard
                       workspaceId={workspaceId}
                       dashboardId={dashboard.data.id}
                       version={dashboard.data.version}
                       widget={widget}
+                      canExport={catalogue.data?.meta.canExport === true}
                     />
                   </div>
                 ))}

@@ -16,7 +16,7 @@ import {
 } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import type { Executor } from "../database/executor";
+import type { Executor, Transaction } from "../database/executor";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
 import {
   instanceSettingTable,
@@ -38,6 +38,8 @@ import { openHoldOver } from "../utils/legal-hold-scope";
 import { lockLegalHolds } from "../utils/workspace-legal-hold";
 import { runWithParentWriteDeadlockRetry } from "../work-item/parent-write-deadlock-retry";
 import { auditTime, type TimeActor } from "./audit";
+import { evaluateBudgetThresholds } from "./budget-notify";
+import { costEntriesByCurrency } from "./cost-repository";
 import {
   assertTrackingEnabledForProject,
   TIME_TRACKING_FEATURE_KEY,
@@ -57,7 +59,7 @@ import {
 } from "./logic";
 
 /** A statement that must return a row (INSERT .. RETURNING): its absence is a programming error. */
-function one<T>(row: T | undefined): T {
+export function one<T>(row: T | undefined): T {
   if (row === undefined) throw new Error("expected a returned row");
   return row;
 }
@@ -75,7 +77,7 @@ export function isUniqueViolation(error: unknown, constraint?: string) {
   return code === "23505" && (constraint === undefined || name === constraint);
 }
 
-function projectReach(identity: ResolvedIdentity, executor: Executor) {
+export function projectReach(identity: ResolvedIdentity, executor: Executor) {
   return and(
     isNull(projectTable.deletedAt),
     currentProjectReachPredicate(
@@ -473,14 +475,14 @@ export async function loadWorkItemTarget(
 // ---------------------------------------------------------------------------------------------
 
 /** The project the work item lives in NOW (a move changes it; the entry's own project follows). */
-const itemProject = aliasedTable(projectTable, "item_project");
+export const itemProject = aliasedTable(projectTable, "item_project");
 
 /**
  * A work item's key and title are shown only while its CURRENT project is in the caller's reach
  * (defence in depth next to the entry's own project reach: a move re-homes the entry, but a row
  * must never name an item the caller cannot see; same rule as the timer view's `canSeeItem`).
  */
-function itemVisible(identity: ResolvedIdentity, executor: Executor) {
+export function itemVisible(identity: ResolvedIdentity, executor: Executor) {
   return exists(
     executor
       .select({ one: sql`1` })
@@ -705,6 +707,7 @@ export async function createEntry(input: CreateEntryInput): Promise<string> {
         billable: row.billable,
       },
     });
+    await evaluateBudgetThresholds(tx, input.workspaceId, target.projectId);
     return row.id;
   });
 }
@@ -859,6 +862,7 @@ export async function updateEntry(
         ...(workItemKey ? { workItemKey } : {}),
       },
     });
+    await evaluateBudgetThresholds(tx, input.workspaceId, projectId);
     return row.id;
   });
 }
@@ -1003,7 +1007,7 @@ type StoppedTimer = {
 
 /** Close one locked timer row into entries: cap, split at local midnight, snapshot rates. */
 async function closeTimer(
-  tx: Executor,
+  tx: Transaction,
   timer: typeof runningTimerTable.$inferSelect,
   nowMs: number,
   patch: { description?: string; activityId?: string },
@@ -1069,6 +1073,7 @@ async function closeTimer(
       capped: stop.capped,
     },
   });
+  await evaluateBudgetThresholds(tx, timer.workspaceId, timer.projectId);
   return { entryIds, capped: stop.capped };
 }
 
@@ -1662,7 +1667,10 @@ export async function listBudgets(
   const result = [] as Array<{
     budget: (typeof budgets)[number];
     actuals: {
+      /** TC-16: priced time plus cost entries, in the budget's currency. */
       actualMinor: number;
+      timeMinor: number;
+      costEntriesMinor: number;
       otherCurrencies: Summary["byCurrency"];
       unpricedMinutes: number;
       threshold: 75 | 90 | null;
@@ -1683,16 +1691,52 @@ export async function listBudgets(
       },
       executor,
     );
+    const costEntries = await costEntriesByCurrency(
+      {
+        workspaceId,
+        projectId,
+        from: budget.periodStart,
+        to: budget.periodEnd,
+      },
+      identity,
+      executor,
+    );
     const own = summary.byCurrency.find(
       (row) => row.currency === budget.currency,
     );
-    const actualMinor = own?.costMinor ?? 0;
+    const timeMinor = own?.costMinor ?? 0;
+    const costEntriesMinor =
+      costEntries.find((row) => row.currency === budget.currency)
+        ?.amountMinor ?? 0;
+    const actualMinor = timeMinor + costEntriesMinor;
+    // Other currencies are reported separately and never converted (TC-19): time and cost
+    // entries in the same foreign currency are added together, nothing is cross-converted.
+    const others = new Map<
+      string,
+      { currency: string; costMinor: number; pricedMinutes: number }
+    >();
+    for (const row of summary.byCurrency)
+      if (row.currency !== budget.currency)
+        others.set(row.currency, { ...row });
+    for (const row of costEntries) {
+      if (row.currency === budget.currency) continue;
+      const existing = others.get(row.currency);
+      if (existing) existing.costMinor += row.amountMinor;
+      else
+        others.set(row.currency, {
+          currency: row.currency,
+          costMinor: row.amountMinor,
+          pricedMinutes: 0,
+        });
+    }
     result.push({
       budget,
       actuals: {
         actualMinor,
-        otherCurrencies: summary.byCurrency.filter(
-          (row) => row.currency !== budget.currency,
+        timeMinor,
+        costEntriesMinor,
+        otherCurrencies: [...others.values()].sort((a, b) =>
+          a.currency.localeCompare(b.currency),
         ),
         unpricedMinutes: summary.unpricedMinutes,
         threshold: budgetThreshold(budget.plannedAmountMinor, actualMinor),
@@ -1745,6 +1789,8 @@ export async function createBudget(input: {
         periodEnd: row.periodEnd,
       },
     });
+    // A budget created over already-spent time can start past a threshold.
+    await evaluateBudgetThresholds(tx, input.workspaceId, input.projectId);
     return row;
   });
 }

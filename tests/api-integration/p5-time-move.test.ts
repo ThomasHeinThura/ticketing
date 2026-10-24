@@ -7,9 +7,17 @@
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
-import { timeEntryTable } from "../../apps/api/src/database/schema-p5-time";
+import {
+  budgetThresholdNoticeTable,
+  costEntryTable,
+  timeEntryTable,
+} from "../../apps/api/src/database/schema-p5-time";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
+import {
+  grantProjectRole,
+  grantWorkItemProjectAccess,
+} from "./helpers/fixtures";
 import {
   entryRows,
   isoDaysAgo,
@@ -17,6 +25,7 @@ import {
   timerRows,
   timeWorld,
 } from "./helpers/p5-time";
+import { addMember } from "./helpers/reach-world";
 
 let w: TimeWorld;
 beforeEach(async () => {
@@ -96,12 +105,12 @@ const budgetOf = async (projectId: string) =>
   (await (
     await w.agent(w.owner.user, `/api/projects/${projectId}/budget`)
   ).json()) as Budget;
-const createBudget = (projectId: string) =>
+const createBudget = (projectId: string, planned = 100000) =>
   w.agent(w.owner.user, `/api/projects/${projectId}/budgets`, {
     method: "POST",
     body: {
       name: "Q4",
-      plannedAmountMinor: 100000,
+      plannedAmountMinor: planned,
       currency: "EUR",
       periodStart: isoDaysAgo(10),
       periodEnd: isoDaysAgo(-20),
@@ -210,5 +219,100 @@ describe("a cross-project move re-homes the item's time (P5-R4-02)", () => {
     const body = (await direct.json()) as Entry;
     expect(body.workItemKey).toBeNull();
     expect(body.workItemTitle).toBeNull();
+  });
+});
+
+describe("a cross-project move re-homes the item's costs (R7-01)", () => {
+  async function makeCost(projectId: string, itemId: string) {
+    const type = (await (
+      await w.agent(w.owner.user, "/api/cost-types", {
+        method: "POST",
+        body: {
+          workspaceId: w.workspaceId,
+          name: "Licence",
+          unit: "seat",
+          defaultRateMinor: 1000,
+          currency: "EUR",
+        },
+      })
+    ).json()) as { id: string };
+    const response = await w.agent(
+      w.owner.user,
+      `/api/projects/${projectId}/costs`,
+      {
+        method: "POST",
+        body: {
+          costTypeId: type.id,
+          workItemId: itemId,
+          date: isoDaysAgo(1),
+          units: 8,
+          rateMinor: 1000,
+        },
+      },
+    );
+    expect(response.status, await response.clone().text()).toBe(201);
+    return (await response.json()) as { id: string };
+  }
+  const costs = async (projectId: string, query = "") =>
+    (await (
+      await w.agent(w.owner.user, `/api/projects/${projectId}/costs${query}`)
+    ).json()) as { data: Array<{ id: string; amountMinor?: number }> };
+
+  it("moves the cost entry with the item: lists, budgets and thresholds follow, and a destination-only manager can edit it", async () => {
+    for (const project of [w.projectA, w.projectB])
+      await grantProjectRole(w.owner.user.id, project.id, [
+        "time_entry:manage_rates",
+      ]);
+    expect((await createBudget(w.projectA.id)).status).toBe(201);
+    expect((await createBudget(w.projectB.id, 10_000)).status).toBe(201);
+    // Destination project's budget is small enough that the moved cost crosses 75%.
+    await db
+      .update(schema.projectTable)
+      .set({ managerId: w.ownerPersonId })
+      .where(eq(schema.projectTable.id, w.projectB.id));
+    const entry = await makeCost(w.projectA.id, w.itemA.id);
+    expect((await budgetOf(w.projectA.id)).data[0]?.actualMinor).toBe(8000);
+
+    await moveWithVersion(w.itemA, w.projectB.id);
+
+    const [row] = await db
+      .select()
+      .from(costEntryTable)
+      .where(eq(costEntryTable.id, entry.id));
+    expect(row?.projectId).toBe(w.projectB.id);
+    // Captured rate, amount and currency are untouched (D4).
+    expect(row).toMatchObject({
+      rateMinor: 1000,
+      amountMinor: 8000,
+      currency: "EUR",
+    });
+    expect((await costs(w.projectA.id)).data).toHaveLength(0);
+    expect(
+      (await costs(w.projectB.id, `?workItemId=${w.itemA.id}`)).data.map(
+        (cost) => cost.id,
+      ),
+    ).toEqual([entry.id]);
+    expect((await budgetOf(w.projectA.id)).data[0]?.actualMinor).toBe(0);
+    expect((await budgetOf(w.projectB.id)).data[0]?.actualMinor).toBe(8000);
+    // Destination thresholds were evaluated by the move itself.
+    const notices = await db.select().from(budgetThresholdNoticeTable);
+    expect(notices.map((notice) => notice.threshold).sort()).toEqual([75]);
+
+    // A manager who reaches only the destination can still edit the entry.
+    const manager = await addMember(w.workspaceId, "admin");
+    await grantWorkItemProjectAccess(manager.user.id, w.projectB.id);
+    await grantProjectRole(manager.user.id, w.projectB.id, [
+      "time_entry:manage_rates",
+      "budget:read",
+    ]);
+    const edited = await w.agent(
+      manager.user,
+      `/api/cost-entries/${entry.id}`,
+      {
+        method: "PATCH",
+        body: { units: 9 },
+      },
+    );
+    expect(edited.status, await edited.clone().text()).toBe(200);
   });
 });

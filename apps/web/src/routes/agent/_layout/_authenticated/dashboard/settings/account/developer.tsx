@@ -16,6 +16,7 @@ import PageTitle from "@/components/page-title";
 import { ApiKeyCreatedModal } from "@/components/settings/api-key-created-modal";
 import { ApiKeyTable } from "@/components/settings/api-key-table";
 import { CreateApiKeyDialog } from "@/components/settings/create-api-key-dialog";
+import { ServiceKeysCard } from "@/components/settings/service-keys-card";
 import useGetApiKeys from "@/hooks/queries/use-get-api-keys";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 
@@ -86,6 +87,8 @@ function RouteComponent() {
             </CardPanel>
           </Card>
         </CardFrame>
+
+        <ServiceKeysCard />
       </div>
 
       <CreateApiKeyDialog

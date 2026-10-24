@@ -1,4 +1,3 @@
-import { useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Alert,
@@ -17,8 +16,8 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { HttpError } from "@/lib/http-error";
 import type { ReportSearch } from "@/lib/report-search";
 import { routes } from "@/lib/routes";
-import { toast } from "@/lib/toast";
 import { ReportDrillDialog } from "./report-drill";
+import { useExportAction } from "./report-export";
 import { ReportFilters } from "./report-filters";
 import {
   ReportContextLine,
@@ -27,17 +26,6 @@ import {
   ReportNotes,
   ReportVisual,
 } from "./report-view";
-
-function save(filename: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
 
 /** Why a report did not load, in words: the feature is off, it is not yours, or the window is bad. */
 export function ReportError({ error }: { error: unknown }) {
@@ -80,11 +68,9 @@ export function ReportDetail({
   const entry = catalogue.data?.data.find((report) => report.key === reportKey);
   const report = useReport(workspaceId, reportKey, search);
   const [drilling, setDrilling] = useState<string | null>(search.drill ?? null);
-  const exporting = useMutation({
-    mutationFn: () => exportReport(workspaceId, reportKey, search),
-    onSuccess: ({ filename, blob }) => save(filename, blob),
-    onError: (error) => toast.error(error.message),
-  });
+  const exporting = useExportAction(() =>
+    exportReport(workspaceId, reportKey, search),
+  );
   const title = t(`reports:catalogue.${reportKey}.title`, {
     defaultValue: entry?.title ?? report.data?.title ?? reportKey,
   });
@@ -120,8 +106,8 @@ export function ReportDetail({
             {catalogue.data?.meta.canExport ? (
               <Button
                 variant="outline"
-                disabled={exporting.isPending || !report.data}
-                onClick={() => exporting.mutate()}
+                disabled={exporting.pending || !report.data}
+                onClick={exporting.run}
               >
                 <Download aria-hidden="true" />
                 {t("reports:detail.export")}
@@ -129,6 +115,7 @@ export function ReportDetail({
             ) : null}
           </div>
         </div>
+        {exporting.panel}
         <ReportFilters
           workspaceId={workspaceId}
           search={search}

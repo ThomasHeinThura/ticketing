@@ -55,6 +55,7 @@ import { dashboardDeletionTarget } from "../report/deletion-target";
 import { assertCalendarUnused } from "../service-calendar/repository";
 import { serviceDeletionTarget } from "../service-management/deletion-target";
 import { teamDeletionTarget } from "../team/deletion-target";
+import { costEntryDeletionTarget } from "../time-tracking/cost-deletion-target";
 import { timeEntryDeletionTarget } from "../time-tracking/deletion-target";
 import { dbNowUtc } from "../utils/db-time";
 import {
@@ -1159,6 +1160,7 @@ export function registeredDeletionTargets(): readonly RegisteredDeletionTarget[]
     serviceDeletionTarget,
     kbCategoryDeletionTarget,
     timeEntryDeletionTarget,
+    costEntryDeletionTarget,
     webhookDeletionTarget,
     automationDeletionTarget,
     cycleDeletionTarget,

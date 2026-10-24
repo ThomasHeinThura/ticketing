@@ -43,6 +43,8 @@ const items = vi.hoisted(() => ({
 }));
 vi.mock("@/hooks/queries/report", () => ({
   useReportItems: () => items,
+  useWidgetItems: () => items,
+  useCustomItems: () => items,
 }));
 
 afterEach(cleanup);
@@ -63,6 +65,7 @@ function report(overrides: Partial<ReportEnvelope> = {}): ReportEnvelope {
     },
     asOf: "2026-10-24T09:30:00.000Z",
     boundary: "live",
+    snapshot: null,
     filters: {},
     options: {},
     choices: [],
@@ -122,6 +125,26 @@ describe("the honesty rule on screen", () => {
     expect(line).toContain("reports:context.window");
     expect(line).toContain("reports:context.asOf");
     expect(line).toContain("reports:context.live");
+  });
+
+  it("states the boundary between stored closed days and the live current period (RP-9)", () => {
+    const snapshot = {
+      closedDays: 28,
+      uncoveredDays: 0,
+      computedAt: "2026-10-24T09:00:00.000Z",
+      through: "2026-10-24T00:00:00.000Z",
+    };
+    const { rerender } = render(
+      <ReportContextLine report={report({ boundary: "mixed", snapshot })} />,
+    );
+    const text = () => screen.getByTestId("report-boundary").textContent ?? "";
+    expect(text()).toBe("reports:context.mixed 28");
+    rerender(
+      <ReportContextLine report={report({ boundary: "snapshot", snapshot })} />,
+    );
+    expect(text()).toBe("reports:context.snapshot 28");
+    rerender(<ReportContextLine report={report()} />);
+    expect(text()).toBe("reports:context.live");
   });
 
   it("says a live report is live instead of naming a window", () => {
@@ -244,6 +267,7 @@ describe("drill-down (RP-12)", () => {
     items.data = {
       data: [
         {
+          kind: "work_item",
           key: "RPT-1",
           title: "First",
           projectKey: "P",
@@ -263,6 +287,68 @@ describe("drill-down (RP-12)", () => {
     );
     expect(screen.getByText("RPT-1")).toBeTruthy();
     expect(screen.getByText("First")).toBeTruthy();
+  });
+
+  it("lists time entries by hours, with no rate or cost column", () => {
+    items.data = {
+      data: [
+        {
+          kind: "time_entry",
+          key: "te1",
+          title: "Fixed the thing",
+          projectKey: "P",
+          state: null,
+          priority: null,
+          date: "2026-10-23",
+          person: "Ada",
+          hours: 1.5,
+          workItemKey: "RPT-9",
+        },
+      ],
+    };
+    render(
+      <ReportDrillDialog
+        workspaceId="w1"
+        reportKey="utilisation"
+        search={{}}
+        handle="Ada"
+        onClose={() => undefined}
+      />,
+    );
+    expect(screen.getByText("Ada")).toBeTruthy();
+    expect(screen.getByText("1.5")).toBeTruthy();
+    expect(screen.getByText("RPT-9")).toBeTruthy();
+    const headings = screen
+      .getAllByRole("columnheader")
+      .map((cell) => cell.textContent);
+    expect(headings).toContain("reports:drill.hours");
+    expect(headings.join(" ")).not.toMatch(/rate|cost/i);
+  });
+
+  it("lists articles for the knowledge base report", () => {
+    items.data = {
+      data: [
+        {
+          kind: "article",
+          key: "art1",
+          title: "Reset your password",
+          projectKey: null,
+          state: "published",
+          priority: null,
+        },
+      ],
+    };
+    render(
+      <ReportDrillDialog
+        workspaceId="w1"
+        reportKey="kb_deflection"
+        search={{}}
+        handle="Reset your password"
+        onClose={() => undefined}
+      />,
+    );
+    expect(screen.getByText("Reset your password")).toBeTruthy();
+    expect(screen.getByText("published")).toBeTruthy();
   });
 
   it("says when nothing matches", () => {

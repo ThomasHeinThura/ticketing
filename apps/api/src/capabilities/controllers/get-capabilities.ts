@@ -31,6 +31,9 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   manageRates: boolean;
   manageWorkflows: boolean;
   readBudgets: boolean;
+  // time_entry:create (log time, run the timer): the Timesheet entry and the work item Time
+  // section, exactly what the time APIs enforce (the built-in Viewer role lacks it).
+  logTime: boolean;
   bindProjectOrganisation: boolean;
   manageLabels: boolean;
   createAttachments: boolean;
@@ -65,6 +68,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     manageRates,
     manageWorkflows,
     readBudgets,
+    logTime,
   ] = await Promise.all([
     Promise.all(
       entries.map(async ([name, permissions]) => {
@@ -108,6 +112,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasCanonicalCapability(c, "time_entry:manage_rates"),
     hasCanonicalCapability(c, "workflow:manage"),
     hasCanonicalCapability(c, "budget:read"),
+    hasCanonicalCapability(c, "time_entry:create"),
   ]);
   // The agent API refuses customer principals on item-scoped routes (403), so the UI must not
   // be told it may rank or comment publicly there. Same predicate the routes use
@@ -137,6 +142,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     manageRates,
     manageWorkflows,
     readBudgets,
+    logTime,
     bindProjectOrganisation,
     manageLabels,
     createAttachments: agentOnly(createAttachments),
@@ -161,7 +167,8 @@ async function hasCanonicalCapability(
     | "custom_field:manage"
     | "time_entry:manage_rates"
     | "workflow:manage"
-    | "budget:read",
+    | "budget:read"
+    | "time_entry:create",
 ): Promise<boolean> {
   const workspaceId = c.get("workspaceId");
   const userId = c.get("userId");

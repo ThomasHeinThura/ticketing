@@ -39,6 +39,36 @@ export const reportPolicies = {
     scopeSource: "request",
     reach: "required",
   },
+  "POST /api/reports/custom/export": {
+    capability: "report:export",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "POST /api/reports/custom/items": {
+    capability: "report:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "GET /api/report-exports": {
+    capability: "report:export",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "GET /api/report-exports/{id}": {
+    capability: "report:export",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/report-exports/{id}/download": {
+    capability: "report:export",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
   "POST /api/reports/custom/preview": {
     capability: "report:read",
     scope: "workspace",
@@ -77,6 +107,18 @@ export const reportPolicies = {
   },
   "GET /api/dashboards/{id}/widgets/{wid}/data": {
     capability: "report:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/dashboards/{id}/widgets/{wid}/items": {
+    capability: "report:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/dashboards/{id}/widgets/{wid}/export": {
+    capability: "report:export",
     scope: "workspace",
     scopeSource: "row",
     reach: "required",

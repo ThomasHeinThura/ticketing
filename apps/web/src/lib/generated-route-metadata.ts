@@ -9,6 +9,7 @@ export const generatedRouteMetadata = {
     "/agent/dashboard/edit",
     "/agent/god-mode",
     "/agent/god-mode/",
+    "/agent/god-mode/api-keys",
     "/agent/god-mode/audit",
     "/agent/god-mode/authentication",
     "/agent/god-mode/authentication/$id",

@@ -10,6 +10,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
 } from "./helpers/fixtures";
 import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
 
@@ -632,5 +633,58 @@ describe("project-scoped work capability introspection", () => {
       expect(response.status).toBe(404);
       expect(await response.text()).toBe("Project not found");
     }
+  });
+});
+
+describe("time and budget capabilities (R6-02, R6-08)", () => {
+  it("reports logTime from time_entry:create: the built-in viewer lacks it, a member holds it", async () => {
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const member = await createWorkspaceMember({ role: "member" });
+    const { app } = createApp();
+    const read = async (user: typeof viewer.user, workspaceId: string) => {
+      mockAuthenticatedSession(user);
+      const response = await app.request(
+        `/api/capabilities?workspaceId=${workspaceId}`,
+      );
+      expect(response.status).toBe(200);
+      return (await response.json()) as Record<string, boolean>;
+    };
+    expect((await read(viewer.user, viewer.workspace.id)).logTime).toBe(false);
+    expect((await read(member.user, member.workspace.id)).logTime).toBe(true);
+  });
+
+  it("resolves readBudgets for the selected project when projectId is given", async () => {
+    const member = await createWorkspaceMember({ role: "member" });
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const memberProject = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const viewerProject = await createProjectFixture({
+      workspaceId: viewer.workspace.id,
+    });
+    await grantProjectRole(member.user.id, memberProject.project.id, [
+      "project:read",
+      "budget:read",
+    ]);
+    await grantProjectRole(viewer.user.id, viewerProject.project.id, [
+      "project:read",
+    ]);
+    const { app } = createApp();
+    mockAuthenticatedSession(member.user);
+    const allowed = await app.request(
+      `/api/capabilities?workspaceId=${member.workspace.id}&projectId=${memberProject.project.id}`,
+    );
+    expect(allowed.status).toBe(200);
+    expect(
+      ((await allowed.json()) as { readBudgets: boolean }).readBudgets,
+    ).toBe(true);
+    mockAuthenticatedSession(viewer.user);
+    const denied = await app.request(
+      `/api/capabilities?workspaceId=${viewer.workspace.id}&projectId=${viewerProject.project.id}`,
+    );
+    expect(denied.status).toBe(200);
+    expect(
+      ((await denied.json()) as { readBudgets: boolean }).readBudgets,
+    ).toBe(false);
   });
 });

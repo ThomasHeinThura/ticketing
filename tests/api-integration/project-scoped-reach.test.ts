@@ -20,6 +20,7 @@ import { and, eq } from "drizzle-orm";
 import { Client, type Notification } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { costTypeTable } from "../../apps/api/src/database/schema-p5-time";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -341,6 +342,31 @@ const WRITES: Case[] = [
       }),
   },
   {
+    // P5 time and cost (`TC-14`): a cost entry needs an active cost type and feature.cost_tracking.
+    matrixKey: "POST /api/projects/{projectId}/costs",
+    prepare: async (w) => {
+      await setTimeFlags(w.workspaceId);
+      await db
+        .insert(costTypeTable)
+        .values({
+          id: "ct-reach-row",
+          workspaceId: w.workspaceId,
+          name: "Licence",
+          unit: "seat",
+          defaultRateMinor: 100,
+          currency: "EUR",
+        })
+        .onConflictDoNothing();
+    },
+    successStatus: 201,
+    call: (app, _w, i) =>
+      json(app, "POST", `/api/projects/${i.projectId}/costs`, {
+        costTypeId: "ct-reach-row",
+        date: new Date().toISOString().slice(0, 10),
+        units: 1,
+      }),
+  },
+  {
     matrixKey: "POST /api/task/{projectId}",
     call: (app, _w, i) =>
       json(app, "POST", `/api/task/${i.projectId}`, {
@@ -480,6 +506,13 @@ const READS: Case[] = [
       await setTimeFlags(w.workspaceId);
     },
     call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/budget`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/costs",
+    prepare: async (w) => {
+      await setTimeFlags(w.workspaceId);
+    },
+    call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/costs`),
   },
   {
     matrixKey: "GET /api/features/resolved",

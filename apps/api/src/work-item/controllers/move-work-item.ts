@@ -14,11 +14,15 @@ import {
   workItemTable,
 } from "../../database/schema";
 import {
+  costEntryTable,
   runningTimerTable,
   timeEntryTable,
 } from "../../database/schema-p5-time";
 import { publishEvent } from "../../events";
 import { lockRankPartition } from "../../scheduler/position-rebalance";
+import { markApprovedOnMove } from "../../service-management/change-repository";
+import { serviceCatalogueEnabled } from "../../service-management/common";
+import { evaluateBudgetThresholds } from "../../time-tracking/budget-notify";
 import { callerReach } from "../../utils/caller-reach";
 import { isRaiseException } from "../../utils/is-raise-exception";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
@@ -172,6 +176,8 @@ export async function moveWorkItem(input: MoveWorkItemInput) {
       message: "The work item is already in that project",
     });
 
+  // Read before the transaction takes its locks (same shape as the transition path).
+  const catalogueOn = await serviceCatalogueEnabled(input.workspaceId);
   const result = await runWithParentWriteDeadlockRetry(() =>
     db.transaction(async (tx) => {
       const lockIds = [...new Set([pre.projectId, input.target.id])].sort();
@@ -498,6 +504,8 @@ export async function moveWorkItem(input: MoveWorkItemInput) {
       // rows move, never delete, so legal-hold coverage (`running_timer`/`time_entry` people)
       // is unchanged.
       const movedIds = plan.map((entry) => entry.row.id);
+      // CH-4: a change moved straight into an approving-edge target state counts as approved.
+      if (catalogueOn) await markApprovedOnMove(tx, movedIds, now);
       await tx
         .update(timeEntryTable)
         .set({ projectId: target.id })
@@ -506,6 +514,21 @@ export async function moveWorkItem(input: MoveWorkItemInput) {
         .update(runningTimerTable)
         .set({ projectId: target.id })
         .where(inArray(runningTimerTable.workItemId, movedIds));
+      // R7-01: cost entries follow the item too (same D4 rule: captured rate, amount and
+      // currency are untouched), otherwise the item's Costs section would lose them, the source
+      // budget would keep counting them and the entry would become uneditable by a
+      // destination-only manager. Both budgets are then re-checked for threshold crossings.
+      await tx
+        .update(costEntryTable)
+        .set({ projectId: target.id })
+        .where(inArray(costEntryTable.workItemId, movedIds));
+      // Sorted so two opposing moves lock the budget rows in the same order.
+      const affectedProjectIds = new Set(
+        plan.map((entry) => entry.row.projectId),
+      );
+      affectedProjectIds.add(target.id);
+      for (const projectId of [...affectedProjectIds].sort())
+        await evaluateBudgetThresholds(tx, input.workspaceId, projectId, now);
 
       await tx.insert(workItemKeyAliasTable).values(
         plan.map((entry) => ({

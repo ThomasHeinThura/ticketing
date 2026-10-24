@@ -210,7 +210,8 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
     const [row] = await db
       .select({ permissions: schema.apikeyTable.permissions })
       .from(schema.apikeyTable)
-      .where(eq(schema.apikeyTable.key, hashed));
+      // AK-2: the first request rewrote the stored hash to Argon2id, so find the row by owner.
+      .where(eq(schema.apikeyTable.userId, member.user.id));
     expect(row).toBeDefined();
     const parsed = JSON.parse(row?.permissions ?? "{}") as Record<
       string,

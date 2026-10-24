@@ -1101,7 +1101,12 @@ describe("the freeze override is freeze-scoped (CH-4, P5-R5-02, R5-04, R5-10)", 
         t.app,
         user.cookie,
         "change_freeze_override",
-        { workspaceId: t.workspaceId, workItemKey: t.key, reason },
+        {
+          workspaceId: t.workspaceId,
+          workItemKey: t.key,
+          reason,
+          ...window,
+        },
       );
       return call(`${changePath}/override-freeze`, {
         method: "POST",
@@ -1123,7 +1128,16 @@ describe("the freeze override is freeze-scoped (CH-4, P5-R5-02, R5-04, R5-10)", 
       });
       expect(response.status, await response.clone().text()).toBe(200);
     };
-    return { t, call, patch, transition, override, overrideAudit, prepare };
+    return {
+      t,
+      user,
+      call,
+      patch,
+      transition,
+      override,
+      overrideAudit,
+      prepare,
+    };
   }
 
   const nowFreeze = (workspaceId: string) =>
@@ -1210,6 +1224,114 @@ describe("the freeze override is freeze-scoped (CH-4, P5-R5-02, R5-04, R5-10)", 
       windowEnd: iso(26, 5),
     });
     expect(again.status).toBe(409);
+  });
+
+  it("a proof minted for no window cannot be spent with a proposed window, and the reverse (R6-03)", async () => {
+    const w = await approvalWorld();
+    await nowFreeze(w.t.workspaceId);
+    await insertFreeze(
+      w.t.workspaceId,
+      new Date(iso(20)),
+      new Date(iso(31)),
+      "Freeze B",
+    );
+    await w.prepare();
+    const reason = "Customer outage fix, approved by the CTO";
+    const mint = (extra: Record<string, unknown>) =>
+      mintStepUpToken(w.t.app, w.user.cookie, "change_freeze_override", {
+        workspaceId: w.t.workspaceId,
+        workItemKey: w.t.key,
+        reason,
+        ...extra,
+      });
+    // The mint above is for the window-free override; spend it WITH a wide window.
+    const noWindow = await mint({});
+    const widened = await w.call(
+      `/api/work-items/${w.t.key}/change/override-freeze`,
+      {
+        method: "POST",
+        body: { reason, ...window25 },
+        token: noWindow,
+      },
+    );
+    expect(widened.status).toBe(403);
+    expect(
+      (await changeDetailOf(w.t.workItem.id))?.freezeOverrideFreezes ?? [],
+    ).toEqual([]);
+    // A proof bound to the window spends with exactly that window.
+    const bound = await mint(window25);
+    const ok = await w.call(
+      `/api/work-items/${w.t.key}/change/override-freeze`,
+      {
+        method: "POST",
+        body: { reason, ...window25 },
+        token: bound,
+      },
+    );
+    expect(ok.status, await ok.clone().text()).toBe(200);
+  });
+
+  it("a change moved straight into an approving-edge target state is approved, so the freeze gate holds (R6-04)", async () => {
+    const w = await approvalWorld();
+    await insertFreeze(w.t.workspaceId, new Date(iso(20)), new Date(iso(31)));
+    const target = (
+      await createProjectFixture({ workspaceId: w.t.workspaceId })
+    ).project;
+    await grantProjectRole(w.user.user.id, target.id, [
+      "project:read",
+      "work_item:read",
+      "work_item:update",
+      "work_item:create",
+      "work_item:transition",
+      "change:manage",
+    ]);
+    // The item sits in "In progress" without ever taking the approving edge.
+    const [wipState] = await db
+      .select()
+      .from(schema.stateTable)
+      .where(eq(schema.stateTable.stateTemplateId, w.t.wip.id));
+    await db
+      .update(schema.workItemTable)
+      .set({ stateId: (wipState as { id: string }).id })
+      .where(eq(schema.workItemTable.id, w.t.workItem.id));
+    await db.insert(schema.stateTable).values({
+      projectId: target.id,
+      stateTemplateId: w.t.wip.id,
+      isDefault: false,
+    });
+    expect(await changeDetailOf(w.t.workItem.id)).toBeUndefined();
+    const [row] = await db
+      .select({ version: schema.workItemTable.version })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, w.t.workItem.id));
+    const moved = await csrfRequest(
+      w.t.app,
+      `/api/v2/work-items/${w.t.key}/move`,
+      {
+        method: "POST",
+        headers: {
+          ...json,
+          cookie: w.user.cookie,
+          "if-match": `"${row?.version}"`,
+        },
+        body: JSON.stringify({
+          targetProjectId: target.id,
+          moveChildren: false,
+        }),
+      },
+      w.user.cookie,
+    );
+    expect(moved.status, await moved.clone().text()).toBe(200);
+    expect((await changeDetailOf(w.t.workItem.id))?.approvedAt).toBeInstanceOf(
+      Date,
+    );
+    const newKey = ((await moved.json()) as { item: { key: string } }).item.key;
+    const refused = await w.call(`/api/work-items/${newKey}/change`, {
+      method: "PATCH",
+      body: window25,
+    });
+    expect(refused.status, await refused.clone().text()).toBe(409);
+    expect(await refused.text()).toContain("change.frozen");
   });
 
   it("an unapproved change may be planned anywhere; once approved it stays checked after leaving the approval state (R5-04)", async () => {

@@ -33,7 +33,8 @@ async function createApprovalApiKey(
   userId: string,
   permissions: Record<string, string[]> | null,
 ): Promise<string> {
-  const rawKey = `taskdesk_test_${randomUUID()}`;
+  // Issued keys are `tdk_` + random, so the 12 character lookup selector is unique per key.
+  const rawKey = `tdk_${randomUUID()}`;
   const now = new Date();
   await db.insert(schema.apikeyTable).values({
     referenceId: userId,

@@ -2,6 +2,7 @@ import {
   and,
   desc,
   eq,
+  gt,
   isNotNull,
   isNull,
   or,
@@ -14,6 +15,8 @@ import {
   apiKeyExtensionTable,
   apikeyTable,
   personTable,
+  userTable,
+  workspaceTable,
 } from "../database/schema";
 import { type ApiKeyKind, legacyPersonalKeyKind } from "./credential";
 
@@ -93,6 +96,56 @@ export async function recordApiKeyUse(
   } catch {
     // Observability only: a failed last-used write must never fail an authenticated request.
   }
+}
+
+/**
+ * AK-2 lookup: an Argon2id hash is salted, so the row cannot be found by equality. The visible
+ * selector (`apikey.start`, 12 characters) narrows to a handful of candidates, each of which is
+ * then verified in constant time. Only enabled, unexpired Argon2id rows are candidates; a
+ * legacy SHA-256 row is found by digest instead (`utils/access-lookups.repository.ts`).
+ */
+export const MAX_SELECTOR_CANDIDATES = 4;
+
+export async function findActiveApiKeysBySelector(selector: string) {
+  return db
+    .select()
+    .from(apikeyTable)
+    .where(
+      and(
+        eq(apikeyTable.start, selector),
+        sql`${apikeyTable.key} LIKE '$argon2id$%'`,
+        eq(apikeyTable.enabled, true),
+        or(
+          isNull(apikeyTable.expiresAt),
+          gt(apikeyTable.expiresAt, new Date()),
+        ),
+      ),
+    )
+    .limit(MAX_SELECTOR_CANDIDATES);
+}
+
+/**
+ * Transparent upgrade on verify: swap a legacy or outdated stored hash for a fresh Argon2id
+ * one. Compare-and-swap on the old value, so two concurrent upgrades cannot interleave and a
+ * revoked or rotated row is never resurrected.
+ */
+export async function upgradeApiKeyHash(
+  apiKeyId: string,
+  previousStoredHash: string,
+  nextStoredHash: string,
+  selector: string,
+): Promise<boolean> {
+  const [row] = await db
+    .update(apikeyTable)
+    .set({ key: nextStoredHash, start: selector })
+    .where(
+      and(
+        eq(apikeyTable.id, apiKeyId),
+        eq(apikeyTable.key, previousStoredHash),
+      ),
+    )
+    .returning({ id: apikeyTable.id });
+  return row !== undefined;
 }
 
 /* ------------------------------------------------------------------ *
@@ -203,6 +256,51 @@ export async function listKeysForUser(
     personalKeyOwnedBy(userId),
   );
   return rows.map(toStored);
+}
+
+export type InstanceKeyRow = StoredApiKey & {
+  ownerName: string | null;
+  workspaceName: string | null;
+};
+
+/**
+ * AK-7 God Mode list: every key on the instance, newest first, with the owning person (personal
+ * key) or workspace (service key). `limit + 1` rows are read so the caller can say whether more
+ * exist. Never returns a secret or its hash.
+ */
+export async function listKeysForInstance(
+  limit: number,
+): Promise<{ rows: InstanceKeyRow[]; hasMore: boolean }> {
+  const rows = await db
+    .select({
+      ...storedKeyColumns,
+      ownerName: userTable.name,
+      workspaceName: workspaceTable.name,
+    })
+    .from(apikeyTable)
+    .leftJoin(
+      apiKeyExtensionTable,
+      eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+    )
+    .leftJoin(
+      personTable,
+      eq(personTable.id, apiKeyExtensionTable.createdByPersonId),
+    )
+    .leftJoin(userTable, eq(userTable.id, apikeyTable.userId))
+    .leftJoin(
+      workspaceTable,
+      eq(workspaceTable.id, apiKeyExtensionTable.workspaceId),
+    )
+    .orderBy(desc(apikeyTable.createdAt), desc(apikeyTable.id))
+    .limit(limit + 1);
+  return {
+    hasMore: rows.length > limit,
+    rows: rows.slice(0, limit).map((row) => ({
+      ...toStored(row),
+      ownerName: row.ownerName ?? null,
+      workspaceName: row.workspaceName ?? null,
+    })),
+  };
 }
 
 export async function listKeysForWorkspace(

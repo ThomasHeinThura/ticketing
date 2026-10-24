@@ -222,7 +222,11 @@
           },
           "readBudgets": {
             "type": "boolean",
-            "description": "Strict budget:read; gates the project Budget settings entry. Absent means denied."
+            "description": "Strict budget:read; gates the project Budget settings entry. With ?projectId it is resolved for that project (grants and ancestors). Absent means denied."
+          },
+          "logTime": {
+            "type": "boolean",
+            "description": "Strict time_entry:create; gates the Timesheet entry and the work item Time section. Absent means denied."
           },
           "bindProjectOrganisation": {
             "type": "boolean",
@@ -16545,6 +16549,28 @@
                         },
                         "unpricedMinutes": {
                           "type": "integer"
+                        },
+                        "costEntries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "currency": {
+                                "type": "string"
+                              },
+                              "amountMinor": {
+                                "type": "integer"
+                              },
+                              "entryCount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "currency",
+                              "amountMinor",
+                              "entryCount"
+                            ]
+                          }
                         }
                       },
                       "required": [
@@ -17480,6 +17506,12 @@
                           "actualMinor": {
                             "type": "integer"
                           },
+                          "timeMinor": {
+                            "type": "integer"
+                          },
+                          "costEntriesMinor": {
+                            "type": "integer"
+                          },
                           "remainingMinor": {
                             "type": "integer"
                           },
@@ -17748,6 +17780,12 @@
                           "actualMinor": {
                             "type": "integer"
                           },
+                          "timeMinor": {
+                            "type": "integer"
+                          },
+                          "costEntriesMinor": {
+                            "type": "integer"
+                          },
                           "remainingMinor": {
                             "type": "integer"
                           },
@@ -17900,6 +17938,1530 @@
           },
           "409": {
             "description": "feature.cost_tracking is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-types": {
+      "get": {
+        "operationId": "listCostTypes",
+        "tags": [
+          "Time"
+        ],
+        "summary": "List cost types",
+        "description": "TC-12: the workspace's cost types (name, unit, default rate, currency, billable). time_entry:manage_rates.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "includeArchived",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cost types",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "workspaceId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unit": {
+                            "type": "string"
+                          },
+                          "defaultRateMinor": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "billable": {
+                            "type": "boolean"
+                          },
+                          "archived": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "workspaceId",
+                          "name",
+                          "unit",
+                          "currency",
+                          "billable",
+                          "archived"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing time_entry:manage_rates",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "feature.cost_tracking is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createCostType",
+        "tags": [
+          "Time"
+        ],
+        "summary": "Add a cost type",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "unit": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40,
+                    "default": "unit"
+                  },
+                  "defaultRateMinor": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 1000000000000,
+                    "default": null
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "billable": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "name",
+                  "currency"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "defaultRateMinor": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "billable": {
+                      "type": "boolean"
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "unit",
+                    "currency",
+                    "billable",
+                    "archived"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing time_entry:manage_rates",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Name taken, or the feature is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-types/{id}": {
+      "patch": {
+        "operationId": "updateCostType",
+        "tags": [
+          "Time"
+        ],
+        "summary": "Edit or archive a cost type",
+        "description": "Changing the default rate never rewrites logged cost: each entry captured its own rate (TC-13). Archiving hides the type from new entries.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "unit": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "defaultRateMinor": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 1000000000000
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "billable": {
+                    "type": "boolean"
+                  },
+                  "archived": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "defaultRateMinor": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "billable": {
+                      "type": "boolean"
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "unit",
+                    "currency",
+                    "billable",
+                    "archived"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing time_entry:manage_rates",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cost type not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Name taken, or the feature is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/costs": {
+      "get": {
+        "operationId": "listProjectCosts",
+        "tags": [
+          "Time"
+        ],
+        "summary": "A project's cost entries",
+        "description": "TC-14: cost entries on the project or any of its work items; with `workItemId`, that item and its sub-items. Rate, amount and totals appear only for time_entry:manage_rates; everyone with budget:read sees what was bought and when.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": false,
+            "name": "workItemId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-24"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-24"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cost entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "workspaceId": {
+                            "type": "string"
+                          },
+                          "projectId": {
+                            "type": "string"
+                          },
+                          "workItemId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "workItemKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "workItemTitle": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "costTypeId": {
+                            "type": "string"
+                          },
+                          "costTypeName": {
+                            "type": "string"
+                          },
+                          "unit": {
+                            "type": "string"
+                          },
+                          "personId": {
+                            "type": "string"
+                          },
+                          "personName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "date": {
+                            "type": "string"
+                          },
+                          "units": {
+                            "type": "integer"
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "billable": {
+                            "type": "boolean"
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "rateMinor": {
+                            "type": "integer"
+                          },
+                          "amountMinor": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "workspaceId",
+                          "projectId",
+                          "workItemId",
+                          "workItemKey",
+                          "workItemTitle",
+                          "costTypeId",
+                          "costTypeName",
+                          "unit",
+                          "personId",
+                          "personName",
+                          "date",
+                          "units",
+                          "currency",
+                          "billable",
+                          "note",
+                          "createdAt",
+                          "updatedAt"
+                        ]
+                      }
+                    },
+                    "canManage": {
+                      "type": "boolean"
+                    },
+                    "costTypes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "workspaceId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unit": {
+                            "type": "string"
+                          },
+                          "defaultRateMinor": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "billable": {
+                            "type": "boolean"
+                          },
+                          "archived": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "workspaceId",
+                          "name",
+                          "unit",
+                          "currency",
+                          "billable",
+                          "archived"
+                        ]
+                      }
+                    },
+                    "totals": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "currency": {
+                            "type": "string"
+                          },
+                          "amountMinor": {
+                            "type": "integer"
+                          },
+                          "entryCount": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "currency",
+                          "amountMinor",
+                          "entryCount"
+                        ]
+                      }
+                    },
+                    "entryCount": {
+                      "type": "integer"
+                    },
+                    "canLogBackdated": {
+                      "type": "boolean"
+                    },
+                    "backdateLimitDays": {
+                      "type": "integer"
+                    },
+                    "callerPersonId": {
+                      "type": "string"
+                    },
+                    "today": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "canManage",
+                    "entryCount",
+                    "canLogBackdated",
+                    "backdateLimitDays",
+                    "callerPersonId",
+                    "today"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing budget:read",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "feature.cost_tracking is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProjectCost",
+        "tags": [
+          "Time"
+        ],
+        "summary": "Log a cost entry",
+        "description": "TC-13/TC-14: units of a cost type on a date, on the project or one of its work items. The rate (default: the type's) is captured on the row. Dates follow the time-entry backdating window.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "costTypeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "workItemId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2026-10-24"
+                  },
+                  "units": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000,
+                    "default": 1
+                  },
+                  "rateMinor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000000000
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "personId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "billable": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "costTypeId",
+                  "date"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created entry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "projectId": {
+                      "type": "string"
+                    },
+                    "workItemId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "workItemKey": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "workItemTitle": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "costTypeId": {
+                      "type": "string"
+                    },
+                    "costTypeName": {
+                      "type": "string"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "personId": {
+                      "type": "string"
+                    },
+                    "personName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "date": {
+                      "type": "string"
+                    },
+                    "units": {
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "billable": {
+                      "type": "boolean"
+                    },
+                    "note": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "rateMinor": {
+                      "type": "integer"
+                    },
+                    "amountMinor": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workspaceId",
+                    "projectId",
+                    "workItemId",
+                    "workItemKey",
+                    "workItemTitle",
+                    "costTypeId",
+                    "costTypeName",
+                    "unit",
+                    "personId",
+                    "personName",
+                    "date",
+                    "units",
+                    "currency",
+                    "billable",
+                    "note",
+                    "createdAt",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing time_entry:manage_rates",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or work item not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "feature.cost_tracking is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Date outside the window, no rate, or unavailable type",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-entries/{id}": {
+      "patch": {
+        "operationId": "updateCostEntry",
+        "tags": [
+          "Time"
+        ],
+        "summary": "Edit a cost entry",
+        "description": "The captured rate stays with the entry unless the request sets a new one.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "costTypeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "workItemId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2026-10-24"
+                  },
+                  "units": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000
+                  },
+                  "rateMinor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000000000
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "billable": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 2000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated entry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "projectId": {
+                      "type": "string"
+                    },
+                    "workItemId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "workItemKey": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "workItemTitle": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "costTypeId": {
+                      "type": "string"
+                    },
+                    "costTypeName": {
+                      "type": "string"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "personId": {
+                      "type": "string"
+                    },
+                    "personName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "date": {
+                      "type": "string"
+                    },
+                    "units": {
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "billable": {
+                      "type": "boolean"
+                    },
+                    "note": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "rateMinor": {
+                      "type": "integer"
+                    },
+                    "amountMinor": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workspaceId",
+                    "projectId",
+                    "workItemId",
+                    "workItemKey",
+                    "workItemTitle",
+                    "costTypeId",
+                    "costTypeName",
+                    "unit",
+                    "personId",
+                    "personName",
+                    "date",
+                    "units",
+                    "currency",
+                    "billable",
+                    "note",
+                    "createdAt",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing time_entry:manage_rates",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cost entry not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "feature.cost_tracking is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Date outside the window, or unavailable type",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteCostEntry",
+        "tags": [
+          "Time"
+        ],
+        "summary": "Delete a cost entry",
+        "description": "Request deletion (202 pending action, click approval).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Deletion awaiting approval",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing time_entry:manage_rates",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cost entry not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "feature.cost_tracking is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/available-hours": {
+      "get": {
+        "operationId": "listAvailableHours",
+        "tags": [
+          "Time"
+        ],
+        "summary": "Per-person available hours",
+        "description": "TC-20: a person's capacity in minutes per week with effective dates. Your own rows with time_entry:create; everyone's with workspace:manage_settings or time_entry:read_any.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": false,
+            "name": "personId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Available hours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "personId": {
+                            "type": "string"
+                          },
+                          "personName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "minutesPerWeek": {
+                            "type": "integer"
+                          },
+                          "effectiveFrom": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "personId",
+                          "personName",
+                          "minutesPerWeek",
+                          "effectiveFrom",
+                          "createdAt"
+                        ]
+                      }
+                    },
+                    "canManage": {
+                      "type": "boolean"
+                    },
+                    "people": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "personId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "personId",
+                          "name"
+                        ]
+                      }
+                    },
+                    "callerPersonId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "canManage",
+                    "people",
+                    "callerPersonId"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Another person's hours need time_entry:read_any",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "feature.time_tracking is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createAvailableHours",
+        "tags": [
+          "Time"
+        ],
+        "summary": "Set a person's available hours from a date",
+        "description": "Append-only history: the latest row on or before a day applies to that day. Capacity feeds the utilisation and capacity reports only; nothing assigns work from it (TC-22).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "personId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "minutesPerWeek": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10080
+                  },
+                  "effectiveFrom": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2026-10-24"
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "personId",
+                  "minutesPerWeek",
+                  "effectiveFrom"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "personId": {
+                      "type": "string"
+                    },
+                    "personName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "minutesPerWeek": {
+                      "type": "integer"
+                    },
+                    "effectiveFrom": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "personId",
+                    "personName",
+                    "minutesPerWeek",
+                    "effectiveFrom",
+                    "createdAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing workspace:manage_settings",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Person not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A row already starts on that date, or the feature is off",
             "content": {
               "text/plain": {
                 "schema": {
@@ -36280,7 +37842,7 @@
           "Service management"
         ],
         "summary": "Set risk, window, rollback plan, affected services or release",
-        "description": "Only a work item of a change type has change detail. Moving the window voids a freeze override granted for the old one.",
+        "description": "Only a work item of a change type has change detail. An override is recorded per freeze id and version, so moving the window does not void it; a freeze the override has not covered still blocks.",
         "parameters": [
           {
             "schema": {
@@ -49223,6 +50785,20 @@
                         "type": "string",
                         "minLength": 12,
                         "maxLength": 500
+                      },
+                      "windowStart": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      },
+                      "windowEnd": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
                       }
                     },
                     "required": [
@@ -54263,6 +55839,20 @@
                         "minLength": 12,
                         "maxLength": 500
                       },
+                      "windowStart": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      },
+                      "windowEnd": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      },
                       "challengeId": {
                         "type": "string"
                       },
@@ -54326,6 +55916,20 @@
                         "minLength": 12,
                         "maxLength": 500
                       },
+                      "windowStart": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      },
+                      "windowEnd": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      },
                       "challengeId": {
                         "type": "string"
                       },
@@ -54387,6 +55991,20 @@
                         "type": "string",
                         "minLength": 12,
                         "maxLength": 500
+                      },
+                      "windowStart": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      },
+                      "windowEnd": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
                       },
                       "challengeId": {
                         "type": "string"
@@ -73109,6 +74727,210 @@
         }
       }
     },
+    "/instance/api-keys": {
+      "get": {
+        "operationId": "listInstanceApiKeys",
+        "tags": [
+          "API keys"
+        ],
+        "summary": "List every API key on the instance",
+        "description": "God Mode inventory (`AK-7`): personal and service keys with owner or workspace, last use and expiry. A service key whose creator has left shows `createdByFormerMember`. Never returns a key or its hash.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every key on the instance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "apiKeys": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "personal",
+                              "service"
+                            ]
+                          },
+                          "prefix": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "start": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "isMcp": {
+                            "type": "boolean"
+                          },
+                          "capabilities": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "writesEnabled": {
+                            "type": "boolean"
+                          },
+                          "ipAllowlist": {
+                            "type": [
+                              "array",
+                              "null"
+                            ],
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "rateLimitPerMinute": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "expiresAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "lastUsedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "lastUsedIp": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "disabledAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "disabledReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "workspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdByFormerMember": {
+                            "type": "boolean"
+                          },
+                          "ownerName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "workspaceName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "kind",
+                          "prefix",
+                          "start",
+                          "enabled",
+                          "isMcp",
+                          "capabilities",
+                          "writesEnabled",
+                          "ipAllowlist",
+                          "rateLimitPerMinute",
+                          "expiresAt",
+                          "createdAt",
+                          "lastUsedAt",
+                          "lastUsedIp",
+                          "disabledAt",
+                          "disabledReason",
+                          "workspaceId",
+                          "createdByFormerMember",
+                          "ownerName",
+                          "workspaceName"
+                        ]
+                      }
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "apiKeys",
+                    "hasMore"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Instance administrators only",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/workspaces/{id}/api-keys": {
       "get": {
         "operationId": "listWorkspaceApiKeys",
@@ -84553,7 +86375,41 @@
                     "boundary": {
                       "type": "string",
                       "enum": [
-                        "live"
+                        "live",
+                        "snapshot",
+                        "mixed"
+                      ]
+                    },
+                    "snapshot": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "closedDays": {
+                          "type": "integer"
+                        },
+                        "uncoveredDays": {
+                          "type": "integer"
+                        },
+                        "computedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "through": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "closedDays",
+                        "uncoveredDays",
+                        "computedAt",
+                        "through"
                       ]
                     },
                     "filters": {
@@ -84942,6 +86798,7 @@
                     "window",
                     "asOf",
                     "boundary",
+                    "snapshot",
                     "filters",
                     "options",
                     "choices",
@@ -85203,6 +87060,14 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "work_item",
+                              "time_entry",
+                              "article"
+                            ]
+                          },
                           "key": {
                             "type": "string"
                           },
@@ -85226,9 +87091,34 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "date": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "person": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "hours": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "workItemKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
+                          "kind",
                           "key",
                           "title",
                           "projectKey",
@@ -85291,6 +87181,449 @@
         }
       }
     },
+    "/reports/custom/export": {
+      "post": {
+        "operationId": "exportCustomReport",
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Export a tier 3 report as CSV",
+        "description": "The same body as the preview. Same rules as a fixed report export: reach, no rates, audited, queued above the synchronous limit.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "query": {
+                    "type": "object",
+                    "properties": {
+                      "entity": {
+                        "type": "string",
+                        "enum": [
+                          "work_item",
+                          "time_entry"
+                        ],
+                        "default": "work_item"
+                      },
+                      "filter": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "groupBy": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "aggregate": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "chartType": {
+                    "type": "string",
+                    "enum": [
+                      "bar",
+                      "line",
+                      "table",
+                      "number"
+                    ],
+                    "default": "bar"
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "query"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "A large export was queued: poll GET /api/report-exports/{id}",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "report",
+                            "custom"
+                          ]
+                        },
+                        "reportKey": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "ready",
+                            "failed",
+                            "expired"
+                          ]
+                        },
+                        "rowCount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "byteSize": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        },
+                        "error": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "downloadCount": {
+                          "type": "integer"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "finishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "expiresAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "reportKey",
+                        "title",
+                        "status",
+                        "rowCount",
+                        "byteSize",
+                        "truncated",
+                        "error",
+                        "downloadCount",
+                        "createdAt",
+                        "finishedAt",
+                        "expiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not staff, or missing report:export",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown report",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Feature off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid window",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many exports queued or running for this person",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/custom/items": {
+      "post": {
+        "operationId": "listCustomReportItems",
+        "tags": [
+          "Reports"
+        ],
+        "summary": "The items behind one group of a tier 3 report",
+        "description": "Drill-down (RP-12) for a custom report: the same entity, filters, window and reach, narrowed to the group whose label is `handle`. Time entries carry hours only.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "query": {
+                    "type": "object",
+                    "properties": {
+                      "entity": {
+                        "type": "string",
+                        "enum": [
+                          "work_item",
+                          "time_entry"
+                        ],
+                        "default": "work_item"
+                      },
+                      "filter": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "groupBy": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "aggregate": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "chartType": {
+                    "type": "string",
+                    "enum": [
+                      "bar",
+                      "line",
+                      "table",
+                      "number"
+                    ],
+                    "default": "bar"
+                  },
+                  "handle": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200,
+                    "default": 50
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "query"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "work_item",
+                              "time_entry",
+                              "article"
+                            ]
+                          },
+                          "key": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "projectKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "state": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "priority": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "date": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "person": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "hours": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "workItemKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "key",
+                          "title",
+                          "projectKey",
+                          "state",
+                          "priority"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not staff, or missing report:read",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "feature.reports is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unsupported filter, grouping or aggregate",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/reports/{key}/export": {
       "post": {
         "operationId": "exportReport",
@@ -85298,7 +87631,7 @@
           "Reports"
         ],
         "summary": "Export a report as CSV",
-        "description": "Respects the filters and the caller's reach, carries no rate data without time_entry:manage_rates, neutralises spreadsheet formulas, and is audited (report.exported).",
+        "description": "Respects the filters and the caller's reach, carries no rate data without time_entry:manage_rates, neutralises spreadsheet formulas, and is audited (report.exported). A small export is the CSV itself (200); one that hit the report's row cap or is above 150 rows is queued for the report-export job (202) and downloaded from /api/report-exports/{id}/download. API-key and impersonated requests are always answered synchronously, with any truncation stated in the CSV.",
         "parameters": [
           {
             "schema": {
@@ -85417,6 +87750,109 @@
               }
             }
           },
+          "202": {
+            "description": "A large export was queued: poll GET /api/report-exports/{id}",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "report",
+                            "custom"
+                          ]
+                        },
+                        "reportKey": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "ready",
+                            "failed",
+                            "expired"
+                          ]
+                        },
+                        "rowCount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "byteSize": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        },
+                        "error": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "downloadCount": {
+                          "type": "integer"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "finishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "expiresAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "reportKey",
+                        "title",
+                        "status",
+                        "rowCount",
+                        "byteSize",
+                        "truncated",
+                        "error",
+                        "downloadCount",
+                        "createdAt",
+                        "finishedAt",
+                        "expiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing or invalid credentials"
           },
@@ -85452,6 +87888,407 @@
           },
           "422": {
             "description": "Invalid window",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many exports queued or running for this person",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/report-exports": {
+      "get": {
+        "operationId": "listReportExports",
+        "tags": [
+          "Reports"
+        ],
+        "summary": "The caller's recent exports",
+        "description": "Only the caller's own exports in this workspace.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exports",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "report",
+                              "custom"
+                            ]
+                          },
+                          "reportKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "queued",
+                              "running",
+                              "ready",
+                              "failed",
+                              "expired"
+                            ]
+                          },
+                          "rowCount": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "byteSize": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "truncated": {
+                            "type": "boolean"
+                          },
+                          "error": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "downloadCount": {
+                            "type": "integer"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "finishedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "expiresAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "reportKey",
+                          "title",
+                          "status",
+                          "rowCount",
+                          "byteSize",
+                          "truncated",
+                          "error",
+                          "downloadCount",
+                          "createdAt",
+                          "finishedAt",
+                          "expiresAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not staff, or missing report:export",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "feature.reports is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/report-exports/{id}": {
+      "get": {
+        "operationId": "getReportExport",
+        "tags": [
+          "Reports"
+        ],
+        "summary": "The status of one export",
+        "description": "Another person's export, or one in another workspace, is a 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The export",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "report",
+                            "custom"
+                          ]
+                        },
+                        "reportKey": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "ready",
+                            "failed",
+                            "expired"
+                          ]
+                        },
+                        "rowCount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "byteSize": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        },
+                        "error": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "downloadCount": {
+                          "type": "integer"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "finishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "expiresAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "reportKey",
+                        "title",
+                        "status",
+                        "rowCount",
+                        "byteSize",
+                        "truncated",
+                        "error",
+                        "downloadCount",
+                        "createdAt",
+                        "finishedAt",
+                        "expiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not staff, or missing report:export",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Export not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "feature.reports is off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/report-exports/{id}/download": {
+      "get": {
+        "operationId": "downloadReportExport",
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Download a finished export",
+        "description": "Streams the stored CSV to its requester and audits report.exported. 409 while queued or running or after it failed, 410 once expired, 403 when the file carries rate data and the caller may no longer see rates.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not staff, missing report:export, or rates revoked",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Export not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not ready, or failed",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired",
             "content": {
               "text/plain": {
                 "schema": {
@@ -85616,7 +88453,41 @@
                     "boundary": {
                       "type": "string",
                       "enum": [
-                        "live"
+                        "live",
+                        "snapshot",
+                        "mixed"
+                      ]
+                    },
+                    "snapshot": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "closedDays": {
+                          "type": "integer"
+                        },
+                        "uncoveredDays": {
+                          "type": "integer"
+                        },
+                        "computedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "through": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "closedDays",
+                        "uncoveredDays",
+                        "computedAt",
+                        "through"
                       ]
                     },
                     "filters": {
@@ -86005,6 +88876,7 @@
                     "window",
                     "asOf",
                     "boundary",
+                    "snapshot",
                     "filters",
                     "options",
                     "choices",
@@ -87306,7 +90178,41 @@
                     "boundary": {
                       "type": "string",
                       "enum": [
-                        "live"
+                        "live",
+                        "snapshot",
+                        "mixed"
+                      ]
+                    },
+                    "snapshot": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "closedDays": {
+                          "type": "integer"
+                        },
+                        "uncoveredDays": {
+                          "type": "integer"
+                        },
+                        "computedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "through": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "closedDays",
+                        "uncoveredDays",
+                        "computedAt",
+                        "through"
                       ]
                     },
                     "filters": {
@@ -87695,6 +90601,7 @@
                     "window",
                     "asOf",
                     "boundary",
+                    "snapshot",
                     "filters",
                     "options",
                     "choices",
@@ -87748,6 +90655,393 @@
           },
           "422": {
             "description": "The widget's saved view cannot be run",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboards/{id}/widgets/{wid}/items": {
+      "get": {
+        "operationId": "listDashboardWidgetItems",
+        "tags": [
+          "Dashboards"
+        ],
+        "summary": "The items behind a widget number",
+        "description": "Drill-down (RP-12) for a widget: its report (any tier) under the widget's own window and filters and the caller's reach, optionally narrowed to one row (`handle`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "required": true,
+            "name": "wid",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "handle",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "work_item",
+                              "time_entry",
+                              "article"
+                            ]
+                          },
+                          "key": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "projectKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "state": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "priority": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "date": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "person": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "hours": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "workItemKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "key",
+                          "title",
+                          "projectKey",
+                          "state",
+                          "priority"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not staff, or missing report:read",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Dashboard, widget or saved view not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Feature off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The widget's saved view cannot be run",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboards/{id}/widgets/{wid}/export": {
+      "post": {
+        "operationId": "exportDashboardWidget",
+        "tags": [
+          "Dashboards"
+        ],
+        "summary": "Export one widget as CSV",
+        "description": "The widget's report (any tier) with its own window and filters, for the caller: reach, no rates without time_entry:manage_rates, audited, queued above the synchronous limit.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "required": true,
+            "name": "wid",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "A large export was queued: poll GET /api/report-exports/{id}",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "report",
+                            "custom"
+                          ]
+                        },
+                        "reportKey": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "ready",
+                            "failed",
+                            "expired"
+                          ]
+                        },
+                        "rowCount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "byteSize": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        },
+                        "error": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "downloadCount": {
+                          "type": "integer"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "finishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "expiresAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "reportKey",
+                        "title",
+                        "status",
+                        "rowCount",
+                        "byteSize",
+                        "truncated",
+                        "error",
+                        "downloadCount",
+                        "createdAt",
+                        "finishedAt",
+                        "expiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not staff, or missing report:export",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown report",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Feature off",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid window",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many exports queued or running for this person",
             "content": {
               "text/plain": {
                 "schema": {

@@ -8,6 +8,7 @@ import {
   resolveWindow,
   type WindowInput,
 } from "./logic";
+import { emptyUse } from "./snapshot.logic";
 import { FILTER_KEYS, type ReportContext, type ReportFilters } from "./types";
 
 /** A statement that returns rows: the raw `db.execute` result unwrapped. */
@@ -52,6 +53,10 @@ export function buildContext(input: {
   window: ReportWindow;
   filters: ReportFilters;
   options?: Record<string, string>;
+  /** RP-9: read closed days from snapshots (default). Off, every period is computed live. */
+  snapshots?: boolean;
+  /** RP-10: a background export, which may return more rows than the screen. */
+  exporting?: boolean;
 }): ReportContext {
   return {
     workspaceId: input.workspaceId,
@@ -65,6 +70,8 @@ export function buildContext(input: {
     filters: input.filters,
     reach: reachPredicate(input.identity, input.readAll),
     options: input.options ?? {},
+    snapshots: { enabled: input.snapshots !== false, use: emptyUse() },
+    exporting: input.exporting === true,
   };
 }
 

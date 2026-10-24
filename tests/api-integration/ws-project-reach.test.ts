@@ -175,7 +175,8 @@ async function apiKeyFor(
     work_item: ["read"],
   },
 ) {
-  const rawKey = `taskdesk_test_${randomBytes(16).toString("hex")}`;
+  // Issued keys are `tdk_` + random, so the 12 character lookup selector is unique per key.
+  const rawKey = `tdk_${randomBytes(24).toString("base64url")}`;
   const now = new Date();
   await db.insert(schema.apikeyTable).values({
     referenceId: userId,

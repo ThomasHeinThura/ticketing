@@ -72,6 +72,77 @@ describe("customers", () => {
     expect(outsider.body.empty).not.toBeNull();
   });
 
+  it("counts a rating once when a duplicate-linked submission shares the item (R6-01)", async () => {
+    const item = await w.addItem({ createdDaysAgo: 5, resolvedDaysAgo: 1 });
+    await db.insert(schema.satisfactionRatingTable).values({
+      workItemId: item.id,
+      personId: w.customer.person.id,
+      score: 5,
+    });
+    const makeType = async (name: string) => {
+      const [type] = await db
+        .insert(schema.requestTypeTable)
+        .values({
+          workspaceId: w.workspaceId,
+          key: `req-${name}-${item.id}`,
+          name,
+          group: "General",
+          workItemTypeId: item.typeId,
+          defaultProjectId: item.projectId,
+          formSchema: { fields: [] },
+          published: true,
+          customerVisible: true,
+        })
+        .returning();
+      const [version] = await db
+        .insert(schema.requestTypeVersionTable)
+        .values({
+          workspaceId: w.workspaceId,
+          requestTypeId: (type as { id: string }).id,
+          number: 1,
+          formSchema: { fields: [] },
+          workItemTypeId: item.typeId,
+          defaultProjectId: item.projectId,
+        })
+        .returning();
+      return {
+        typeId: (type as { id: string }).id,
+        versionId: (version as { id: string }).id,
+      };
+    };
+    const original = await makeType("Original type");
+    const other = await makeType("Duplicate type");
+    for (const [state, kind] of [
+      ["accepted", original],
+      ["duplicate", other],
+    ] as const)
+      await db.insert(schema.submissionTable).values({
+        organisationId: w.customer.orgId,
+        requesterId: w.customer.person.id,
+        requestTypeId: kind.typeId,
+        requestTypeVersionId: kind.versionId,
+        formData: {},
+        state,
+        submittedAt: new Date(),
+        workItemId: item.id,
+      });
+    const byCustomer = await w.report(
+      w.owner.user,
+      "satisfaction",
+      "&window=30",
+    );
+    expect(metric(byCustomer.body, "ratings")?.value).toBe(1);
+    const byType = await w.report(
+      w.owner.user,
+      "satisfaction",
+      "&window=30&by=request_type",
+    );
+    expect(metric(byType.body, "ratings")?.value).toBe(1);
+    expect(byType.body.rows.map((row) => row.request_type)).toEqual([
+      "Original type",
+    ]);
+  });
+
   it("shows volume change only against a previous period large enough to compare (RP-6)", async () => {
     await w.addItem({ createdDaysAgo: 2 });
     await w.addItem({ createdDaysAgo: 40 });

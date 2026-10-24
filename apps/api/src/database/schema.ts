@@ -1859,6 +1859,7 @@ export const apikeyTable = pgTable(
   (table) => [
     index("apikey_configId_idx").on(table.configId),
     index("apikey_key_idx").on(table.key),
+    index("apikey_start_idx").on(table.start),
     index("apikey_referenceId_idx").on(table.referenceId),
     index("apikey_userId_idx").on(table.userId),
   ],

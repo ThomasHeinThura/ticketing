@@ -33,6 +33,10 @@ import { QUIET_HOURS_HOLD_KEY } from "../notification-preferences/delivery.repos
 import { resolveIdentity } from "../permissions/resolve-identity";
 import type { AuthenticatedApiKey } from "../permissions/resolve-request-identity";
 import {
+  COST_TRACKING_FEATURE_KEY,
+  trackingFeatureEnabled,
+} from "../time-tracking/feature";
+import {
   projectAncestryFor,
   projectOwnerTeamFor,
 } from "../utils/project-ancestry";
@@ -169,6 +173,7 @@ function registeredNotificationResource() {
     eq(notificationTable.resourceType, "instance"),
     eq(notificationTable.resourceType, "person"),
     eq(notificationTable.resourceType, "submission"),
+    eq(notificationTable.resourceType, "project"),
     sql`false`,
   );
 }
@@ -353,6 +358,64 @@ async function readableNativeRows(
         )
     : [];
   const workspaceFacts = new Map(currentWorkspaces.map((row) => [row.id, row]));
+  // TC-18: `budget.threshold_reached` rows point at a project. Reach and the two capabilities
+  // the budget view itself needs are re-evaluated per page, so a manager who lost either since
+  // the notice stops seeing it.
+  const budgetProjectIds = [
+    ...new Set(
+      rows
+        .filter(
+          (row) =>
+            row.resourceType === "project" &&
+            row.kind === "budget.threshold_reached" &&
+            row.resourceId,
+        )
+        .map((row) => row.resourceId as string),
+    ),
+  ];
+  const budgetProjectFacts = new Map<
+    string,
+    {
+      workspaceId: string;
+      ancestorProjectIds: string[];
+      costTrackingOn: boolean;
+    }
+  >();
+  if (budgetProjectIds.length) {
+    const reachableProjects = await tx
+      .select({ id: projectTable.id, workspaceId: projectTable.workspaceId })
+      .from(projectTable)
+      .where(
+        and(
+          inArray(projectTable.id, budgetProjectIds),
+          isNull(projectTable.deletedAt),
+          currentProjectReachPredicate(
+            identity,
+            projectTable.id,
+            projectTable.workspaceId,
+            projectTable.organisationId,
+            tx,
+          ),
+        ),
+      );
+    for (const project of reachableProjects)
+      budgetProjectFacts.set(project.id, {
+        workspaceId: project.workspaceId,
+        ancestorProjectIds: await projectAncestryFor(
+          tx,
+          identity,
+          project.workspaceId,
+          project.id,
+        ),
+        // R7-06: the recipient resolver also requires cost tracking; a notice stops showing when
+        // the feature has been switched off since.
+        costTrackingOn: await trackingFeatureEnabled(
+          COST_TRACKING_FEATURE_KEY,
+          project.workspaceId,
+          project.id,
+        ),
+      });
+  }
   // IQ-12: `submission.replied` rows point at a submission, not a work item. Facts are loaded
   // once per page; the verdict is per row below.
   const submissionIds = [
@@ -398,6 +461,22 @@ async function readableNativeRows(
         "due_date_reminder",
         "task_overdue",
       ].includes(row.type);
+    }
+    if (row.resourceType === "project") {
+      const project = budgetProjectFacts.get(row.resourceId);
+      return Boolean(
+        project?.costTrackingOn &&
+          row.kind === "budget.threshold_reached" &&
+          row.personId === identity.personId &&
+          can(identity, "budget:read", "project", {
+            projectId: row.resourceId,
+            workspaceId: project.workspaceId,
+            ancestorProjectIds: project.ancestorProjectIds,
+          }) &&
+          can(identity, "time_entry:manage_rates", "workspace", {
+            workspaceId: project.workspaceId,
+          }),
+      );
     }
     if (row.resourceType === "approval") {
       return (
@@ -597,6 +676,31 @@ function currentOwnerPredicate(
         "pending_action.requested",
         "pending_action.executed",
       ]),
+    );
+  }
+  if (row.resourceType === "project") {
+    // SQL mirror of the `project` branch in `readableNativeRows`; the capability half stays in JS.
+    return and(
+      eq(notificationTable.personId, identity.personId),
+      eq(notificationTable.kind, "budget.threshold_reached"),
+      exists(
+        executor
+          .select({ one: sql`1` })
+          .from(projectTable)
+          .where(
+            and(
+              eq(projectTable.id, notificationTable.resourceId),
+              isNull(projectTable.deletedAt),
+              currentProjectReachPredicate(
+                identity,
+                projectTable.id,
+                projectTable.workspaceId,
+                projectTable.organisationId,
+                executor,
+              ),
+            ),
+          ),
+      ),
     );
   }
   if (row.resourceType === "workspace") {

@@ -164,3 +164,99 @@ export const createBudgetBody = z
   .refine((value) => value.periodEnd >= value.periodStart, {
     message: "periodEnd must not be before periodStart",
   });
+
+// ---------------------------------------------------------------------------------------------
+// Cost types, cost entries, available hours (TC-12..TC-14, TC-20)
+// ---------------------------------------------------------------------------------------------
+
+const costUnit = z.string().trim().min(1).max(40);
+const costNote = z.string().trim().max(2000);
+
+export const costTypeIdParam = z.object({ id });
+
+export const listCostTypesQuery = z.object({
+  workspaceId: id,
+  includeArchived: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
+});
+
+export const createCostTypeBody = z.object({
+  workspaceId: id,
+  name: z.string().trim().min(1).max(80),
+  /** The unit a cost is counted in: "seat", "km", "licence". */
+  unit: costUnit.default("unit"),
+  /** Minor units per unit; null = every entry states its own rate. */
+  defaultRateMinor: amountMinor.nullable().default(null),
+  currency,
+  billable: z.boolean().default(true),
+});
+
+export const updateCostTypeBody = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    unit: costUnit.optional(),
+    defaultRateMinor: amountMinor.nullable().optional(),
+    currency: currency.optional(),
+    billable: z.boolean().optional(),
+    archived: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Provide at least one field to change",
+  });
+
+const costUnits = z.number().int().min(1).max(1_000_000);
+
+export const projectCostsQuery = z.object({
+  workItemId: id.optional(),
+  from: calendarDate.optional(),
+  to: calendarDate.optional(),
+});
+
+export const createCostEntryBody = z.object({
+  costTypeId: id,
+  /** TC-14: omitted = attached directly to the project. */
+  workItemId: id.optional(),
+  date: calendarDate,
+  units: costUnits.default(1),
+  /** Minor units per unit; defaults to the cost type's default rate and is captured on the row (TC-13). */
+  rateMinor: amountMinor.optional(),
+  /** Defaults to the cost type's currency. */
+  currency: currency.optional(),
+  /** The person the cost is for; defaults to the caller. */
+  personId: id.optional(),
+  billable: z.boolean().optional(),
+  note: costNote.optional(),
+});
+
+export const updateCostEntryBody = z
+  .object({
+    costTypeId: id.optional(),
+    workItemId: id.nullable().optional(),
+    date: calendarDate.optional(),
+    units: costUnits.optional(),
+    rateMinor: amountMinor.optional(),
+    currency: currency.optional(),
+    billable: z.boolean().optional(),
+    note: costNote.nullable().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Provide at least one field to change",
+  });
+
+export const costEntryIdParam = z.object({ id });
+
+export const listAvailableHoursQuery = z.object({
+  workspaceId: id,
+  /** Defaults to the caller. Another person needs `time_entry:read_any`. */
+  personId: id.optional(),
+});
+
+export const createAvailableHoursBody = z.object({
+  workspaceId: id,
+  personId: id,
+  /** Integer minutes per week (40 h = 2400). */
+  minutesPerWeek: z.number().int().min(0).max(10080),
+  effectiveFrom: calendarDate,
+});

@@ -11,6 +11,7 @@ import {
   Activity,
   Bell,
   FileClock,
+  KeyRound,
   Settings,
   Shield,
   ToggleRight,
@@ -56,6 +57,11 @@ export function InstanceSettingsFrame({ children }: { children: ReactNode }) {
       title: t("featureFlags:page.godModeTitle"),
       path: routes.godModeFeatures.path,
       icon: ToggleRight,
+    },
+    {
+      title: t("settings:instanceApiKeys.title"),
+      path: routes.godModeApiKeys.path,
+      icon: KeyRound,
     },
     {
       title: t("common:navigation.auditLog", { defaultValue: "Audit log" }),

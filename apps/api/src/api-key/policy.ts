@@ -64,6 +64,20 @@ export const apiKeyPolicies = {
     elevated: true,
     sessionOnly: true,
   },
+  // AK-7: God Mode's key list, so a durable credential with no live owner is visible.
+  "GET /api/instance/api-keys": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide credential inventory",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only inventory: never returns a key or its hash, mints no authority",
+    sessionOnly: true,
+  },
   "POST /api/workspaces/{id}/api-keys/{keyId}/revoke": {
     capability: "api_key:manage",
     scope: "workspace",

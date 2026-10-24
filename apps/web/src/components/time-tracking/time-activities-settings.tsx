@@ -30,7 +30,7 @@ import { useTimeActivities } from "@/hooks/queries/time-tracking/use-time-tracki
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
-import { BackdateLimitSetting } from "./time-settings";
+import { AvailableHoursSetting, BackdateLimitSetting } from "./time-settings";
 import { useInvalidateTime, useTimeErrorMessage } from "./time-shared";
 
 function ActivityRow({
@@ -159,6 +159,7 @@ export function TimeActivitiesSettings() {
         ) : (
           <>
             <BackdateLimitSetting />
+            <AvailableHoursSetting />
             {canManage ? (
               <form
                 className="flex flex-wrap items-end gap-2"

@@ -43,6 +43,7 @@ import {
   useInvalidateTime,
   useTimeErrorMessage,
 } from "./time-shared";
+import WorkItemCosts from "./work-item-costs";
 
 /**
  * The work item's Time section (`TC-1`..`TC-7`, screens.md "Time entries"): the entries on this
@@ -352,6 +353,7 @@ export default function WorkItemTime({ item }: { item: WorkItemDetailRow }) {
           onClose={() => setEditing(null)}
         />
       ) : null}
+      <WorkItemCosts item={item} />
     </div>
   );
 }

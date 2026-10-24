@@ -56,7 +56,11 @@ export const capabilitiesResponseSchema = z
     }),
     readBudgets: z.boolean().optional().openapi({
       description:
-        "Strict budget:read; gates the project Budget settings entry. Absent means denied.",
+        "Strict budget:read; gates the project Budget settings entry. With ?projectId it is resolved for that project (grants and ancestors). Absent means denied.",
+    }),
+    logTime: z.boolean().optional().openapi({
+      description:
+        "Strict time_entry:create; gates the Timesheet entry and the work item Time section. Absent means denied.",
     }),
     bindProjectOrganisation: z.boolean().openapi({
       description:
