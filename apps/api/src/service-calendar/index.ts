@@ -9,6 +9,7 @@ import {
 } from "@taskdesk/domain";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import db from "../database";
 import {
   apiRouter,
@@ -506,7 +507,7 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
       organisationId: null,
       actorId: c.get("userId"),
       actorType: apiKey ? "api_key" : "person",
-      actorIp: c.req.header("x-forwarded-for") ?? null,
+      actorIp: clientIpForContext(c),
       userAgent: c.req.header("user-agent") ?? null,
     });
     return c.json(

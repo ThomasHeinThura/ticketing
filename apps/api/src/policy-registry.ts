@@ -32,17 +32,21 @@ import {
   type PolicyRegistry,
 } from "@taskdesk/permissions";
 import { activityPolicies } from "./activity/policy";
+import { apiKeyPolicies } from "./api-key/policy";
 import { approvalPolicies } from "./approval/policy";
 import { assetPolicies } from "./asset/policy";
 import { attachmentPolicies } from "./attachment/policy";
 import { auditPolicies } from "./audit/policy";
 import { factorStatusPolicies } from "./auth/factor-status-policy";
+import { automationPolicies } from "./automation/policy";
 import { cannedResponsePolicies } from "./canned-response/policy";
 import { capabilitiesPolicies } from "./capabilities/policy";
 import { columnPolicies } from "./column/policy";
 import { commentPolicies } from "./comment/policy";
 import { configPolicies } from "./config/policy";
+import { customFieldPolicies } from "./custom-field/policy";
 import { externalLinkPolicies } from "./external-link/policy";
+import { featureFlagPolicies } from "./feature-flag/policy";
 import { instancePolicies } from "./instance/policy";
 import { intakePolicies } from "./intake/policy";
 import { invitationPolicies } from "./invitation/policy";
@@ -59,10 +63,12 @@ import { serviceCalendarPolicies } from "./service-calendar/policy";
 import { slaPolicyPolicies } from "./sla-policy/policy";
 import { taskPolicies } from "./task/policy";
 import { taskRelationPolicies } from "./task-relation/policy";
+import { teamPolicies } from "./team/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
 import { userPolicies } from "./user/policy";
 import { userPreferencePolicies } from "./user-preference/policy";
 import { viewPolicies } from "./view/policy";
+import { webhookPolicies } from "./webhook/policy";
 import { workItemPolicies } from "./work-item/policy";
 import { workItemRelationPolicies } from "./work-item-relation/policy";
 import { workflowPolicies } from "./workflow/policy";
@@ -401,6 +407,18 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/view/policy.ts", policies: viewPolicies },
   { name: "apps/api/src/attachment/policy.ts", policies: attachmentPolicies },
   { name: "apps/api/src/workflow/policy.ts", policies: workflowPolicies },
+  { name: "apps/api/src/api-key/policy.ts", policies: apiKeyPolicies },
+  {
+    name: "apps/api/src/custom-field/policy.ts",
+    policies: customFieldPolicies,
+  },
+  { name: "apps/api/src/team/policy.ts", policies: teamPolicies },
+  { name: "apps/api/src/webhook/policy.ts", policies: webhookPolicies },
+  { name: "apps/api/src/automation/policy.ts", policies: automationPolicies },
+  {
+    name: "apps/api/src/feature-flag/policy.ts",
+    policies: featureFlagPolicies,
+  },
 ];
 
 /**

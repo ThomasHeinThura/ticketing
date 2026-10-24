@@ -13,6 +13,8 @@ export type CreateWorkItemInput = {
   priority?: "low" | "medium" | "high" | "urgent";
   /** `WI-5`: a live work-item template of the same type; explicit fields above win. */
   templateId?: string;
+  /** CF-3/CF-4: custom field values by key; required fields block creation server-side. */
+  customFields?: Record<string, unknown>;
 };
 
 /**

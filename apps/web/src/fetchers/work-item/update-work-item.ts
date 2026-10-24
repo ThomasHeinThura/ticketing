@@ -1,5 +1,5 @@
 import { client } from "@taskdesk/libs";
-import { HttpError } from "@/lib/http-error";
+import { HttpError, readErrorDetail } from "@/lib/http-error";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 
 export type UpdateWorkItemInput = {
@@ -13,6 +13,8 @@ export type UpdateWorkItemInput = {
   priority?: "low" | "medium" | "high" | "urgent" | null;
   startDate?: string | null;
   dueDate?: string | null;
+  // CF-3: custom field values by key; null clears a field. Validated server-side.
+  customFields?: Record<string, unknown>;
 };
 
 export default async function updateWorkItem({
@@ -46,6 +48,12 @@ export default async function updateWorkItem({
     }
   }
   if (!response.ok)
-    throw new HttpError(response.status, "Failed to update work item");
+    throw new HttpError(
+      response.status,
+      // A 400 names the custom field that was refused; other failures stay generic.
+      response.status === 400
+        ? await readErrorDetail(response, "Failed to update work item")
+        : "Failed to update work item",
+    );
   return response.json();
 }

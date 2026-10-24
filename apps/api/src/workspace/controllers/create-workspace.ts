@@ -14,6 +14,7 @@ import {
   randomSlugSuffix,
   slugifyWorkspaceName,
 } from "../../utils/workspace-slug";
+import { seedWorkspaceBuiltInRoles } from "../built-in-roles.repository";
 import { syncWorkspaceAdminReach } from "../workspace-admin-reach";
 
 export type CreateWorkspaceInput = {
@@ -149,6 +150,7 @@ async function createWorkspace(input: CreateWorkspaceInput) {
         // rbac.md Reach step 2). Written in the same transaction as the owner row: without
         // it a fresh owner has no project reach at all. An `owner` grant never reads
         // `workspace_role`, so it can follow the owner row directly.
+        await seedWorkspaceBuiltInRoles(tx, workspace.id);
         await syncWorkspaceAdminReach(tx, workspace.id, input.ownerId);
 
         // (3) the default role rows. `owner` is deliberately NOT among them

@@ -31,6 +31,51 @@ export type IdentityOperationBinding =
       operation: "scim_token_rotate" | "scim_token_revoke";
       connectionId: string;
       version: number;
+    }
+  | {
+      operation: "webhook_create";
+      workspaceId: string;
+      name: string;
+      url: string;
+      events: string[];
+    }
+  | {
+      operation: "webhook_update_url";
+      workspaceId: string;
+      webhookId: string;
+      url: string;
+    }
+  | {
+      operation: "webhook_rotate_secret";
+      workspaceId: string;
+      webhookId: string;
+    }
+  | {
+      operation: "secrets_rotate";
+    }
+  | {
+      operation: "workspace_role_create";
+      workspaceId: string;
+      role: string;
+      description?: string | null;
+      rank?: number;
+      capabilities?: string[];
+      cloneFromRoleId?: string;
+    }
+  | {
+      operation: "workspace_role_update";
+      workspaceId: string;
+      roleId: string;
+      name?: string;
+      description?: string | null;
+      rank?: number;
+      capabilities?: string[];
+      expectedVersion?: string;
+    }
+  | {
+      operation: "workspace_ownership_transfer";
+      workspaceId: string;
+      newOwnerUserId: string;
     };
 
 export type IdentityStepUpFactor = { method: StepUpMethod; secret: string };

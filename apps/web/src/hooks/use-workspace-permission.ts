@@ -30,6 +30,12 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   // as CA-2's default comment visibility. Never inferred from `manageProjects`/`updateProjects`,
   // which follow the broader legacy statement (#708).
   manageProjectSettings?: boolean;
+  // Strict per-area settings capabilities (workspace:manage_roles, webhook:manage,
+  // custom_field:manage), exactly what each settings API enforces. Optional so an older server
+  // fails closed; never inferred from `manageWorkspaceSettings`.
+  manageRoles?: boolean;
+  manageWebhooks?: boolean;
+  manageCustomFields?: boolean;
   manageLabels?: boolean;
   createAttachments?: boolean;
 };
@@ -145,6 +151,9 @@ export function useWorkspacePermission(
       canExportTasks: () => can.exportTasks === true,
       canSetPriorityTasks: () => can.setPriorityTasks === true,
       canManageProjectSettings: () => can.manageProjectSettings === true,
+      canManageRoles: () => can.manageRoles === true,
+      canManageWebhooks: () => can.manageWebhooks === true,
+      canManageCustomFields: () => can.manageCustomFields === true,
       canBindProjectOrganisation: () => can.bindProjectOrganisation === true,
     };
   }, [can]);

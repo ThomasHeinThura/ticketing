@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { loadApiKeyKind } from "../api-key/repository";
 import {
   findActiveApiKeyByHash,
   findApiKeyOwnerStatus,
@@ -63,8 +64,13 @@ export async function verifyApiKey(key: string) {
   // banned or deactivated owner's still-enabled key even when strict policy enforcement is
   // off. This is the same refusal `resolveIdentity` applies in strict mode: a missing user or
   // person, an inactive person, or a banned user has no authority, so the key gets a 401.
+  //
+  // A workspace service key (AK-7) is owned by the workspace, not a person: it has no owner
+  // row to check, so the owner check is skipped when its `api_key` extension row carries a
+  // `workspace_id`. Its own disabled/IP/rate rules run in `enforceApiKeyRequest`.
   const ownerId = apiKey.referenceId ?? apiKey.userId ?? "";
-  if (!(await apiKeyOwnerIsActive(ownerId))) {
+  const kind = await loadApiKeyKind(apiKey.id);
+  if (kind.kind !== "service" && !(await apiKeyOwnerIsActive(ownerId))) {
     return null;
   }
 
@@ -72,6 +78,7 @@ export async function verifyApiKey(key: string) {
     valid: true,
     key: {
       id: apiKey.id,
+      kind: kind.kind,
       userId: apiKey.referenceId ?? apiKey.userId ?? "",
       name: apiKey.name,
       prefix: apiKey.prefix,

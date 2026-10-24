@@ -1,16 +1,28 @@
-import { type BuiltInRoleName, builtInRoles } from "@taskdesk/permissions";
+import {
+  BUILT_IN_ROLES,
+  type BuiltInRoleName,
+  builtInRoles,
+  type Capability,
+  expandCapabilities,
+} from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
+import { capabilitiesSatisfyLegacyStatements } from "../permissions/legacy-statements";
 import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { findWorkspaceRoleByKey } from "../permissions/workspace-role-authority.repository";
 import { apiKeyHasPermissionScope } from "./require-api-key-permission-scope";
+import {
+  serviceKeyOfRequest,
+  serviceKeySatisfiesStatements,
+} from "./service-key-gate";
 import {
   type MembershipRoleResolution,
   resolveMembershipRole,
-  workspaceRolePermission,
+  workspaceRoleAuthority,
 } from "./workspace-member-roles";
 
 type PermissionMap = Record<string, string[]>;
@@ -58,15 +70,28 @@ function parsePermissionStatements(
   return result;
 }
 
-async function customRoleStatements(
+/**
+ * What this workspace's own role row grants to a legacy statement gate: a custom role is answered
+ * from its canonical `role.capabilities`; a built-in default row from its legacy statements.
+ * `null` is a refusal.
+ */
+async function roleSatisfies(
   workspaceId: string,
   role: string,
-): Promise<Record<string, readonly string[]> | null> {
-  // #118: ALL rows, refusing on more than one. See `workspaceRolePermission`.
-  const permission = await workspaceRolePermission(db, workspaceId, role);
-  if (!permission) return null;
-
-  return parsePermissionStatements(permission);
+  required: PermissionMap,
+): Promise<boolean> {
+  const authority = await workspaceRoleAuthority(db, workspaceId, role);
+  if (authority.kind === "capabilities") {
+    return capabilitiesSatisfyLegacyStatements(
+      authority.capabilities,
+      required,
+    );
+  }
+  if (authority.kind === "statements") {
+    const statements = parsePermissionStatements(authority.permission);
+    return Boolean(statements && satisfies(statements, required));
+  }
+  return false;
 }
 
 function satisfies(
@@ -91,6 +116,12 @@ export async function hasWorkspacePermission(
   if (!workspaceId) return false;
 
   if (!apiKeyHasPermissionScope(c, permissions)) return false;
+
+  // AK-7: a workspace service key has no membership row; it holds exactly its stored subset
+  // in its own workspace.
+  const service = serviceKeyOfRequest(c);
+  if (service)
+    return serviceKeySatisfiesStatements(service, workspaceId, permissions);
 
   const userId = c.get("userId");
   if (!userId) return false;
@@ -147,12 +178,11 @@ export async function hasWorkspacePermission(
   // no longer swallows a seed failure -- it now rolls the workspace back
   // and reports the failure to the caller instead of returning success
   // for a workspace with no role rows behind it.
-  const statements =
-    role === "owner"
-      ? builtInRoleStatements("owner")
-      : await customRoleStatements(workspaceId, role);
-
-  return Boolean(statements && satisfies(statements, permissions));
+  if (role === "owner") {
+    const statements = builtInRoleStatements("owner");
+    return Boolean(statements && satisfies(statements, permissions));
+  }
+  return roleSatisfies(workspaceId, role, permissions);
 }
 
 /**
@@ -192,33 +222,33 @@ export async function callerMembershipResolution(
 }
 
 /**
- * The caller's OWN resolved capability statements in this workspace — what S7's "cannot grant
- * a capability you do not hold" check (`roles-and-permissions-ui.md`'s `RL-3`, S7 blueprint
- * Finding F2) tests every requested `(resource, action)` pair against.
+ * The caller's OWN resolved capability set in this workspace: what `RL-3` ("you cannot grant a
+ * capability you do not hold yourself") tests every requested capability against.
  *
- * NO INSTANCE-ADMIN BRANCH. Instance-admin global reach does not substitute for a
- * workspace capability. The route middleware must have required the caller's actual role to
- * satisfy its legacy permission before this helper is called; this helper resolves that same
- * role rather than providing an alternate authority path.
+ * NO INSTANCE-ADMIN BRANCH. Instance-admin global reach does not substitute for a workspace
+ * capability. `owner` is compiled; every other key resolves from its canonical `role` row.
  *
- * Returns `null` when no usable statements can be resolved at all (no workspaceId/userId in
- * context, no membership, an ambiguous or malformed membership row, or a missing/ambiguous
- * custom-role permission row). Callers MUST treat `null` as "holds nothing" — every requested
- * grant fails the ceiling check — never as "skip the check".
+ * Returns `null` when nothing usable can be resolved (no workspaceId/userId in context, no
+ * membership, an ambiguous or malformed membership row, or no role row). Callers MUST treat
+ * `null` as "holds nothing", never as "skip the check".
  */
-export async function resolveCallerWorkspaceStatements(
+export async function resolveCallerWorkspaceCapabilities(
   c: Context,
-): Promise<Record<string, readonly string[]> | null> {
+): Promise<ReadonlySet<Capability> | null> {
   const workspaceId = c.get("workspaceId");
   const userId = c.get("userId");
   if (!workspaceId || !userId) return null;
 
   const membership = await resolveMembershipRole(db, workspaceId, userId);
   if (!membership.ok) return null;
-
-  return membership.role === "owner"
-    ? builtInRoleStatements("owner")
-    : await customRoleStatements(workspaceId, membership.role);
+  if (membership.role === "owner") {
+    return expandCapabilities(BUILT_IN_ROLES.owner.capabilities, {
+      tier: "workspace",
+    });
+  }
+  const row = await findWorkspaceRoleByKey(db, workspaceId, membership.role);
+  if (!row) return null;
+  return expandCapabilities(row.capabilities, { tier: "workspace" });
 }
 
 export function requireWorkspacePermission(permissions: PermissionMap) {
@@ -236,7 +266,7 @@ export function requireWorkspacePermission(permissions: PermissionMap) {
     }
 
     if (!(await hasWorkspacePermission(c, permissions))) {
-      if (!c.get("userId")) {
+      if (!c.get("userId") && !serviceKeyOfRequest(c)) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(401, { message: "Unauthorized" });
       }

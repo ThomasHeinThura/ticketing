@@ -1,6 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
+import { findWorkspaceRoleByKey } from "../../permissions/workspace-role-authority.repository";
 import { roleGrantsOwner } from "../../utils/workspace-member-roles";
+import { assertMayAssignRole } from "../role-assignment-guard";
 import { syncWorkspaceAdminReach } from "../workspace-admin-reach";
 import { lockWorkspaceRoleAssignment } from "../workspace-role-assignment.repository";
 import {
@@ -14,6 +16,8 @@ export type AddWorkspaceMemberInput = {
   workspaceId: string;
   userId: string;
   role: string;
+  /** Who is adding the person: the rank guard compares the role given with theirs. */
+  actorUserId: string;
 };
 
 export type AddedWorkspaceMember = {
@@ -59,19 +63,19 @@ async function addWorkspaceMember(
   return db.transaction(async (tx) => {
     await lockWorkspaceRoleAssignment(tx, input.workspaceId);
 
-    const [roleRow] = await tx
-      .select({ role: schema.workspaceRoleTable.role })
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, input.workspaceId),
-          eq(schema.workspaceRoleTable.role, input.role),
-        ),
-      )
-      .limit(1);
+    const roleRow = await findWorkspaceRoleByKey(
+      tx,
+      input.workspaceId,
+      input.role,
+    );
     if (!roleRow) {
       throw new WorkspaceRoleNotFoundError(input.role);
     }
+    await assertMayAssignRole(tx, {
+      workspaceId: input.workspaceId,
+      actorUserId: input.actorUserId,
+      targetRoleKey: input.role,
+    });
 
     const [user] = await tx
       .select({

@@ -76,6 +76,7 @@ export {
   reaches,
   ScopeResolutionError,
   scopeIdFor,
+  selectedGrantsFor,
   workItemScopeFromRequest,
   workItemScopeFromRow,
   workspaceScopeFromRequest,

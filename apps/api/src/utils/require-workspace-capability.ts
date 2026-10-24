@@ -11,11 +11,20 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import {
+  expandedRoleCapabilities,
+  findWorkspaceRoleByKey,
+} from "../permissions/workspace-role-authority.repository";
 import { findRoleIsSystem } from "./access-lookups.repository";
 import {
   type ApiKeyPermissionScope,
   apiKeyHasCapabilityScope,
 } from "./require-api-key-permission-scope";
+import {
+  serviceKeyHolds,
+  serviceKeyOfCredential,
+  serviceKeyOfRequest,
+} from "./service-key-gate";
 import {
   isGenuineBuiltInRoleGrant,
   isUnambiguousMembership,
@@ -94,7 +103,7 @@ export function requireWorkspaceCapability(capability: Capability) {
     markShadowLegacyAuthorizationUnknown(c);
     const workspaceId = c.get("workspaceId");
     const userId = c.get("userId");
-    if (!workspaceId || !userId) {
+    if (!workspaceId || (!userId && !serviceKeyOfRequest(c))) {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
@@ -178,6 +187,17 @@ export async function assertCallerHasCapability(
     !apiKeyHasCapability(credential.scope, capability)
   ) {
     throw new HTTPException(403, { message: "Insufficient API key scope" });
+  }
+  // AK-7: a workspace service key holds exactly its stored subset in its own workspace; there
+  // is no membership row to read.
+  const service =
+    credential.kind === "api_key"
+      ? serviceKeyOfCredential(credential.scope)
+      : null;
+  if (service) {
+    if (!serviceKeyHolds(service, workspaceId, capability))
+      throw new HTTPException(403, { message: "Insufficient permissions" });
+    return;
   }
   // Fail-closed against duplicate `workspace_member` rows for this pair
   // (`workspace_member` has no unique constraint on
@@ -329,23 +349,27 @@ export async function builtInRoleHasCapability(
   capability: Capability,
   executor: DbOrTx = executorOrDefault(),
 ): Promise<boolean> {
-  // `Object.hasOwn`, not `role in BUILT_IN_ROLES` -- `in` also matches
-  // `Object.prototype` members, so role values like `"toString"`,
-  // `"constructor"`, `"hasOwnProperty"`, `"valueOf"` and `"__proto__"` would
-  // pass this check with `BUILT_IN_ROLES[key].capabilities === undefined`,
-  // and `expandCapabilities(undefined)` throws `TypeError: stored is not
-  // iterable`. Same idiom already used at
-  // `packages/permissions/src/capabilities.ts`'s `isCapability`.
-  //
-  // AND IT IS REACHABLE TODAY -- an earlier version of this comment said it
-  // was not, and that was wrong. The independent security review of pull
-  // request #77 measured it: `dynamicAccessControl` is enabled
-  // (`apps/api/src/auth.ts`) and the plugin's `create-role` validates the role
-  // name as a bare `z.string()`, so `create-role` with `role: "constructor"`
-  // returns 200 and writes a real `workspace_role` row, which can then be
-  // assigned to a member. So this is a live guard, not a defensive one against
-  // a hypothetical future route.
-  if (!role || !Object.hasOwn(BUILT_IN_ROLES, role)) return false;
+  if (!role) return false;
+
+  // The canonical `role` row is the source of truth for every non-owner key (owner decision,
+  // 23 Oct): a custom role's capabilities live only there, and the six seeded built-in rows hold
+  // the compiled lists. `owner` is never read from a row: compiled, so an administrator can never
+  // edit the workspace creator's authority away.
+  if (role !== "owner") {
+    const row = await findWorkspaceRoleByKey(executor, workspaceId, role);
+    if (row) {
+      // A custom row squatting on a built-in key is never trusted as that built-in (issue #318).
+      if (Object.hasOwn(BUILT_IN_ROLES, role) && !row.isSystem) return false;
+      return expandedRoleCapabilities(row.capabilities).has(capability);
+    }
+  }
+
+  // No canonical row: the transitional legacy path for a built-in name. `Object.hasOwn`, not
+  // `role in BUILT_IN_ROLES` -- `in` also matches `Object.prototype` members (`"constructor"`,
+  // `"toString"`, `"__proto__"`), whose `capabilities` is undefined and would throw in
+  // `expandCapabilities`. A `workspace_member.role` of that shape is reachable through role
+  // creation, so this is a live guard, not a defensive one.
+  if (!Object.hasOwn(BUILT_IN_ROLES, role)) return false;
   const key = role as BuiltInRoleKey;
   if (!expandCapabilities(BUILT_IN_ROLES[key].capabilities).has(capability)) {
     // Cheap and DB-free: most (role, capability) pairs fail here, so the genuine-row

@@ -289,7 +289,9 @@ const decideApprovalRoute = createRoute({
   method: "post",
   operationId: "decideApproval",
   path: "/approvals/{id}/decide",
-  middleware: [approvalIdEvidence()] as const,
+  // F12 / PA-14: a key (API or MCP) can never decide an approval until the `mcp_destructive`
+  // pending action exists; the credential check runs before the evidence and policy layers.
+  middleware: [requireSessionOnly(), approvalIdEvidence()] as const,
   tags: ["Approvals"],
   summary: "Decide an approval",
   request: {
@@ -306,7 +308,9 @@ const decideApprovalRoute = createRoute({
     ),
     400: errorResponse("Invalid request"),
     401: errorResponse("Authentication required"),
-    403: errorResponse("Caller is not the named eligible approver"),
+    403: errorResponse(
+      "Caller is not the named eligible approver, or is not a browser session (session_required)",
+    ),
     404: errorResponse("Approval not found"),
     409: errorResponse("Approval is no longer pending"),
     422: errorResponse("Rejected decisions require a non-empty note"),

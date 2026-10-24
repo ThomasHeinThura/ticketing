@@ -28,14 +28,22 @@ import {
 } from "@/components/shared/modals/create-task-presentation";
 import { TASK_DESCRIPTION_EDITOR_CLASS } from "@/components/task/task-detail-presentation";
 import useCreateWorkItem from "@/hooks/mutations/work-item/use-create-work-item";
+import { useCustomFields } from "@/hooks/queries/custom-field/use-custom-fields";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
+import {
+  conditionSatisfied,
+  fieldsForType,
+  isValueSet,
+  missingRequired,
+} from "@/lib/custom-field";
 import { HttpError } from "@/lib/http-error";
 import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
 import { dayToIso } from "@/lib/work-item-date";
+import CreateWorkItemCustomFields from "./create-work-item-custom-fields";
 import CreateWorkItemProperties from "./create-work-item-properties";
 import CreateWorkItemStagedAttachments from "./create-work-item-staged-attachments";
 import CreateWorkItemTemplatePicker from "./create-work-item-template-picker";
@@ -92,6 +100,9 @@ export default function CreateWorkItemDialogForm({
   const [labelDraftDirty, setLabelDraftDirty] = useState(false);
   const [description, setDescription] = useState("");
   const [descriptionDocument, setDescriptionDocument] = useState<unknown>();
+  const [customFieldValues, setCustomFieldValues] = useState<
+    Record<string, unknown>
+  >({});
   const [createMore, setCreateMore] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
@@ -156,6 +167,21 @@ export default function CreateWorkItemDialogForm({
         labelIds.every((id) =>
           options.labels.some((label) => label.id === id),
         )));
+  // CF-3: only the fields that apply to the chosen type, and (CF-6) only those currently shown.
+  const customFieldDefinitions = useCustomFields(workspaceId ?? "");
+  const applicableCustomFields = typeId
+    ? fieldsForType(customFieldDefinitions.data?.data ?? [], typeId)
+    : [];
+  const shownCustomFields = applicableCustomFields.filter((field) =>
+    conditionSatisfied(field.visibilityCondition, customFieldValues),
+  );
+  const customFieldPayload = Object.fromEntries(
+    shownCustomFields
+      .filter((field) => isValueSet(customFieldValues[field.key]))
+      .map((field) => [field.key, customFieldValues[field.key]]),
+  );
+  const requiredCustomFieldsFilled =
+    missingRequired(applicableCustomFields, customFieldValues).length === 0;
   const { mutateAsync, isPending } = useCreateWorkItem({
     projectId,
     typeId: typeId ?? "",
@@ -167,6 +193,9 @@ export default function CreateWorkItemDialogForm({
     assigneeId: assigneeId || undefined,
     labelIds: labelIds.length ? labelIds : undefined,
     templateId: templateId ?? undefined,
+    customFields: Object.keys(customFieldPayload).length
+      ? customFieldPayload
+      : undefined,
   });
   const busy = isPending || labelBusy || uploadBusy;
   const locked = busy || Boolean(createdKey) || createUnconfirmed;
@@ -181,6 +210,7 @@ export default function CreateWorkItemDialogForm({
         dueDate ||
         assigneeId ||
         labelIds.length ||
+        Object.values(customFieldValues).some(isValueSet) ||
         labelDraftDirty,
     );
   useEffect(() => {
@@ -206,6 +236,7 @@ export default function CreateWorkItemDialogForm({
     (!attachments.rows.length || canAttach) &&
     !permission.isCheckingPermissions &&
     permission.canCreateTasks() &&
+    requiredCustomFieldsFilled &&
     optionalFieldsValid;
   function resetDraft() {
     attachments.reset();
@@ -219,6 +250,7 @@ export default function CreateWorkItemDialogForm({
     setDueDate(undefined);
     setAssigneeId("");
     setLabelIds([]);
+    setCustomFieldValues({});
     setTemplateId(null);
     setCreatedLabels([]);
     setLabelDraftDirty(false);
@@ -500,6 +532,16 @@ export default function CreateWorkItemDialogForm({
           disabled={locked}
         />
 
+        <CreateWorkItemCustomFields
+          fields={applicableCustomFields}
+          values={customFieldValues}
+          people={options.people}
+          disabled={locked}
+          onChange={(key, value) =>
+            setCustomFieldValues((current) => ({ ...current, [key]: value }))
+          }
+        />
+
         {isTypesError ? (
           <div className="flex items-center gap-2">
             <p className="text-sm text-destructive-foreground">
@@ -518,6 +560,18 @@ export default function CreateWorkItemDialogForm({
         {!isLoadingTypes && !isTypesError && types?.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {t("workItems:create.noTypes")}
+          </p>
+        ) : null}
+        {!selectedType &&
+        !createdKey &&
+        !isLoadingTypes &&
+        !isTypesError &&
+        (types?.length ?? 0) > 0 ? (
+          <p
+            className="text-sm text-muted-foreground"
+            data-testid="create-work-item-type-hint"
+          >
+            {t("workItems:create.typeRequired")}
           </p>
         ) : null}
         {submitError ? (

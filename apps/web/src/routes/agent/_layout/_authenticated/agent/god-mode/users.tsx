@@ -203,6 +203,25 @@ function InstanceUsersPage() {
           verificationNote: note,
           token,
         });
+      } else if (requestedAction === "impersonate") {
+        const note = reason.trim();
+        const token = await createUserOperationProof({
+          operation: "impersonation_start",
+          userId: user.id,
+          reason: note,
+          method,
+          secret,
+        });
+        if (!isCurrentOperation()) return;
+        await actions.impersonate.mutateAsync({
+          id: user.id,
+          reason: note,
+          token,
+        });
+        // The session cookie is now the target's: reload so every query and the banner
+        // start from the impersonated identity.
+        window.location.assign("/agent");
+        return;
       } else {
         return;
       }
@@ -245,7 +264,8 @@ function InstanceUsersPage() {
     actions.signOut.isPending ||
     actions.deactivate.isPending ||
     actions.grantAdmin.isPending ||
-    actions.resetMfa.isPending;
+    actions.resetMfa.isPending ||
+    actions.impersonate.isPending;
 
   return (
     <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
@@ -611,6 +631,8 @@ function UserDetails({
     !user.person.isPlaceholder &&
     !user.isSuspended &&
     !user.isInstanceAdmin;
+  // GM-10 plus the staff-only reading of GM-7: the server enforces the same rules.
+  const eligibleForImpersonation = eligibleForAdmin;
   return (
     <Card className="h-fit" data-testid="instance-user-details">
       <CardContent className="space-y-4 p-5">
@@ -725,6 +747,16 @@ function UserDetails({
           {!user.isInstanceAdmin && (
             <Button
               size="sm"
+              variant="outline"
+              disabled={!eligibleForImpersonation}
+              onClick={() => onAction("impersonate")}
+            >
+              {t("instanceUsers:dynamic.actions.impersonate")}
+            </Button>
+          )}
+          {!user.isInstanceAdmin && (
+            <Button
+              size="sm"
               disabled={!eligibleForAdmin}
               onClick={() => onAction("grant-admin")}
             >
@@ -785,6 +817,7 @@ function UserActionDialog({
   const isStepUp =
     action === "grant-admin" ||
     action === "reset-mfa" ||
+    action === "impersonate" ||
     (action === "suspend" && user.isInstanceAdmin);
   const factorBlocked =
     isStepUp && (!factor || (factor.required && !factor.enabled));
@@ -792,7 +825,9 @@ function UserActionDialog({
     !pending &&
     (!isStepUp || (!factorBlocked && secret.length > 0)) &&
     (action !== "reset-mfa" || verificationNote.trim().length >= 12) &&
-    (action !== "suspend" || Array.from(reason).length <= 500);
+    (action !== "suspend" || Array.from(reason).length <= 500) &&
+    (action !== "impersonate" ||
+      (reason.trim().length >= 12 && Array.from(reason).length <= 500));
   const titles: Record<GodModeUserAction, string> = {
     suspend: t("instanceUsers:dynamic.actions.suspend"),
     unsuspend: t("instanceUsers:dynamic.actions.unsuspend"),
@@ -800,6 +835,7 @@ function UserActionDialog({
     "reset-mfa": t("instanceUsers:dynamic.actions.resetMfa"),
     "sign-out": t("instanceUsers:dynamic.actions.signOut"),
     deactivate: t("instanceUsers:dynamic.actions.deactivate"),
+    impersonate: t("instanceUsers:dynamic.actions.impersonate"),
   };
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onCancel()}>
@@ -838,6 +874,26 @@ function UserActionDialog({
                 </p>
               </div>
             </>
+          )}
+          {action === "impersonate" && (
+            <div className="space-y-2">
+              <p className="text-sm">
+                {t("instanceUsers:dynamic.impersonation.explainer")}
+              </p>
+              <Label htmlFor="impersonation-reason">
+                {t("instanceUsers:dynamic.impersonation.reasonLabel")}
+              </Label>
+              <Input
+                id="impersonation-reason"
+                minLength={12}
+                maxLength={500}
+                value={reason}
+                onChange={(event) => onReason(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("instanceUsers:dynamic.impersonation.reasonHelp")}
+              </p>
+            </div>
           )}
           {action === "unsuspend" && (
             <p className="text-sm">{t("instanceUsers:copy.711c48ecc613")}</p>

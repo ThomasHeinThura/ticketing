@@ -7,7 +7,10 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
-import { loadProjectAncestorIdsForRequest } from "../project/hierarchy.repository";
+import {
+  loadProjectAncestorIdsForRequest,
+  loadProjectOwnerTeamId,
+} from "../project/hierarchy.repository";
 import {
   projectCapabilityRefused,
   projectReadDecision,
@@ -242,13 +245,18 @@ export function requireWorkItemReach(
       workItem.workspaceId,
       workItem.projectId,
     );
+    const ownerTeamId = await loadProjectOwnerTeamId(
+      db,
+      workItem.workspaceId,
+      workItem.projectId,
+    );
     if (policyShadowEnabled && "organisationId" in workItem) {
       c.set("projectReachFacts", {
         projectId: workItem.projectId,
         workspaceId: workItem.workspaceId,
         organisationId: workItem.organisationId,
         ancestorProjectIds,
-        ownerTeamId: null,
+        ownerTeamId,
       });
     }
 
@@ -276,7 +284,7 @@ export function requireWorkItemReach(
         organisationId,
         workItemId: workItem.id,
         ancestorProjectIds,
-        ownerTeamId: null,
+        ownerTeamId,
       });
       if (!decision) {
         throw new HTTPException(500, {

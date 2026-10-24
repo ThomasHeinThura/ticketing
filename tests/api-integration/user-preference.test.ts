@@ -382,7 +382,9 @@ describe("API integration: GET/PATCH /api/me/settings (settings-hierarchy.md ST-
     mockAuthenticatedSession(member.user, { impersonatedBy: "admin-user" });
     const impersonated = await patch(app, { density: "compact" });
     expect(impersonated.status).toBe(403);
-    expect(await impersonated.text()).toContain("session_required");
+    // GM-9: the default-deny impersonation guard answers first and names impersonation.
+    expect(await impersonated.text()).toContain("impersonation");
+    expect(await rowsFor(member.user.id)).toHaveLength(0);
 
     const rawKey = `taskdesk_mcp_${randomUUID()}`;
     const now = new Date();

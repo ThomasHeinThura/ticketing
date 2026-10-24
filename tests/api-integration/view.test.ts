@@ -19,6 +19,7 @@ import {
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
+import { seedMockedSessionForStepUp } from "./helpers/step-up";
 import { ensureCreationWorkflow } from "./helpers/workflow";
 import {
   transferWorkspaceOwnershipNative,
@@ -1533,7 +1534,7 @@ describe("API integration: saved views", () => {
     expect(approval.status).toBe(409);
   });
 
-  it("retains a pending saved-view deletion when the legacy role permission JSON changes", async () => {
+  it("retains a pending saved-view deletion when a role edit keeps the access it needs", async () => {
     const owner = await createWorkspaceMember({ role: "owner" });
     const requesterUser = requireRow(
       await db
@@ -1560,13 +1561,18 @@ describe("API integration: saved views", () => {
       role: "admin",
       joinedAt: new Date(),
     });
+    // Owner decision, 23 Oct: roles are edited through the canonical `role` row.
     const [adminRole] = await db
-      .select({ id: schema.workspaceRoleTable.id })
-      .from(schema.workspaceRoleTable)
+      .select({
+        id: schema.roleTable.id,
+        capabilities: schema.roleTable.capabilities,
+      })
+      .from(schema.roleTable)
       .where(
         and(
-          eq(schema.workspaceRoleTable.workspaceId, owner.workspace.id),
-          eq(schema.workspaceRoleTable.role, "admin"),
+          eq(schema.roleTable.workspaceId, owner.workspace.id),
+          eq(schema.roleTable.scope, "workspace"),
+          eq(schema.roleTable.key, "admin"),
         ),
       )
       .limit(1);
@@ -1628,12 +1634,18 @@ describe("API integration: saved views", () => {
     });
 
     mockAuthenticatedSession(owner.user);
+    await seedMockedSessionForStepUp(owner.user.id);
     const updated = await updateWorkspaceRoleNative(
       app,
       `__Host-tdk_agent_session=token-${owner.user.id}`,
       owner.workspace.id,
       adminRole.id,
-      { permission: {} },
+      {
+        // An edit that keeps every capability the saved-view deletion needs.
+        capabilities: (adminRole.capabilities as string[]).filter(
+          (capability) => capability !== "webhook:manage",
+        ),
+      },
     );
     expect(updated.status, await updated.clone().text()).toBe(200);
     expect(
@@ -1712,6 +1724,7 @@ describe("API integration: saved views", () => {
     const pending = (await deletion.json()) as { pendingActionId: string };
 
     const ownerCookie = `__Host-tdk_agent_session=token-${owner.user.id}`;
+    await seedMockedSessionForStepUp(owner.user.id);
     const transferred = await transferWorkspaceOwnershipNative(
       app,
       ownerCookie,

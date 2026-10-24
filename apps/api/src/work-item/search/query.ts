@@ -1,5 +1,9 @@
 import { STATE_GROUPS } from "@taskdesk/domain";
 import { HTTPException } from "hono/http-exception";
+import {
+  CUSTOM_FIELD_FILTER_KEY,
+  customFieldLeafShapeProblem,
+} from "./custom-field-filter";
 
 export type SearchFilter =
   | { op: "and" | "or"; clauses: SearchFilter[] }
@@ -20,7 +24,7 @@ const priorities = ["low", "medium", "high", "urgent"] as const;
 // through project.organisation_id but has no whitelisted operator/value contract in the P1
 // table, so it stays unavailable (never an empty or unfiltered result).
 const unavailable =
-  /^(?:sla\.(?:state|due_at)|cf\.[a-zA-Z0-9_.-]+|label|requester|cycle|module|epic|organisation)$/u;
+  /^(?:sla\.(?:state|due_at)|label|requester|cycle|module|epic|organisation)$/u;
 const knownUnavailable = (field: string) => unavailable.test(field);
 
 function bad(message: string): never {
@@ -94,6 +98,15 @@ export function validateWorkItemSearchQuery(
       vals.length > 0 &&
       vals.length <= 20 &&
       vals.every((v) => typeof v === "string" && accepted.includes(v));
+    // CF-10: `cf.<key>`. The key pattern, operator and value shape are checked here; the
+    // field's existence and format need the workspace and are checked when the search runs.
+    if (field.startsWith("cf.")) {
+      if (!CUSTOM_FIELD_FILTER_KEY.test(field))
+        return bad(`Unknown filter field: ${field}`);
+      const problem = customFieldLeafShapeProblem(op, value);
+      if (problem) return bad(`${field}: ${problem}`);
+      return { field, op, value };
+    }
     switch (field) {
       case "state.group":
         if (
@@ -294,13 +307,16 @@ export function parseFilterText(text: string): SearchFilter {
     let rest = t.value.slice(colon + 1);
     let op = "eq";
     let value: unknown;
-    const comparison = /^(<=|>=|<|>)(.*)$/u.exec(rest);
+    const comparison = /^(<=|>=|!=|<|>)(.*)$/u.exec(rest);
     if (comparison) {
       op = (
-        { "<": "lt", "<=": "lte", ">": "gt", ">=": "gte" } as Record<
-          string,
-          string
-        >
+        {
+          "<": "lt",
+          "<=": "lte",
+          ">": "gt",
+          ">=": "gte",
+          "!=": "neq",
+        } as Record<string, string>
       )[comparison[1]!]!;
       rest = comparison[2]!;
     }
@@ -328,6 +344,14 @@ export function parseFilterText(text: string): SearchFilter {
     ) {
       const next = take()!;
       value = next.value;
+    } else if (
+      field.startsWith("cf.") &&
+      !t.quoted &&
+      (rest === "is_set" || rest === "not_set")
+    ) {
+      // CF-10: `cf.<key>:is_set` / `cf.<key>:not_set`.
+      op = "is_set";
+      value = rest === "is_set";
     } else value = t.quoted ? t.value : rest;
     return { field, op, value };
   };
@@ -352,7 +376,9 @@ export function parseFilterText(text: string): SearchFilter {
 }
 
 function printValue(value: string): string {
-  return /[\s(),:<>"\\]/u.test(value) ? JSON.stringify(value) : value;
+  return /[\s(),:<>"\\]|^[!=]|^(?:is_set|not_set)$/u.test(value)
+    ? JSON.stringify(value)
+    : value;
 }
 export function printFilterText(filter: SearchFilter): string {
   if ("clauses" in filter)
@@ -371,8 +397,11 @@ export function printFilterText(filter: SearchFilter): string {
     return `${f}:in(${(filter.value as string[]).map(printValue).join(",")})`;
   if (filter.op === "contains")
     return `${f}:contains(${printValue(String(filter.value))})`;
+  if (filter.op === "is_set")
+    return `${f}:${filter.value === false ? "not_set" : "is_set"}`;
   const symbols: Record<string, string> = {
     eq: "",
+    neq: "!=",
     lt: "<",
     lte: "<=",
     gt: ">",

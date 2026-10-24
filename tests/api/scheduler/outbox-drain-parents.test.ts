@@ -14,6 +14,13 @@ vi.mock("../../../apps/api/src/notification/immediate-runtime", () => ({
 vi.mock("../../../apps/api/src/notification/outbox-drain", () => ({
   processNextNotificationDelivery: mocks.child,
 }));
+vi.mock("../../../apps/api/src/scheduler/outbox-drain-p4", () => ({
+  drainP4Consumers: async () => ({
+    webhooks: null,
+    automations: null,
+    degraded: false,
+  }),
+}));
 
 import {
   drainOutbox,

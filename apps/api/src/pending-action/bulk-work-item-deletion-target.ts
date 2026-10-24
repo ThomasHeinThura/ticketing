@@ -13,7 +13,10 @@ import { consumePendingActionProof } from "../auth/step-up-service";
 import db, { schema } from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
 import {
   deleteWorkItemInTransaction,
   publishWorkItemDeletion,
@@ -410,8 +413,14 @@ export async function bulkWorkItemDeletionReadSummary(
       t.workspaceId,
       t.projectId,
     );
+    const ownerTeamId = await projectOwnerTeamFor(
+      executor,
+      identity,
+      t.workspaceId,
+      t.projectId,
+    );
     if (
-      !reaches(identity, { ...t, ancestorProjectIds }) ||
+      !reaches(identity, { ...t, ancestorProjectIds, ownerTeamId }) ||
       !can(identity, "work_item:read", "work_item", {
         workItemId: t.id,
         workItemProjectId: t.projectId,

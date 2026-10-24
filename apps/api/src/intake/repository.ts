@@ -60,6 +60,13 @@ import {
   requestCustomerReopen,
 } from "../workflow/customer-reopen";
 import {
+  applyAcceptedCustomFields,
+  customFieldKeyOf,
+  loadPortalCustomFields,
+  type PortalCustomField,
+  refusedCustomFieldMappings,
+} from "./custom-field-mapping";
+import {
   filtersScope,
   olderThanCutoff,
   type SubmissionListFilters,
@@ -399,16 +406,34 @@ export async function publishRequestType(id: string, actorId: string) {
       workspaceId: type.workspaceId,
       projectId: type.defaultProjectId,
     });
+    // CF-11: a form may also collect a customer-visible custom field, mapped as `cf.<key>`.
+    const refusedCustomFields = await refusedCustomFieldMappings(tx, {
+      workspaceId: type.workspaceId,
+      workItemTypeId: type.workItemTypeId,
+      form: formSchema,
+    });
+    const supportedNativeFields = new Set(["title", "description", "priority"]);
     const defects = validateFormSchema(
       formSchema,
-      new Set(["title", "description", "priority"]),
+      new Set([
+        ...supportedNativeFields,
+        ...formSchema.fields.flatMap((field) =>
+          field.mapsTo &&
+          customFieldKeyOf(field.mapsTo.field) !== null &&
+          !refusedCustomFields.includes(field.mapsTo.field)
+            ? [field.mapsTo.field]
+            : [],
+        ),
+      ]),
     );
-    const supportedNativeFields = new Set(["title", "description", "priority"]);
-    const unsupportedMapping = formSchema.fields.some(
-      (field) =>
-        field.mapsTo !== undefined &&
-        !supportedNativeFields.has(field.mapsTo.field),
-    );
+    const unsupportedMapping =
+      refusedCustomFields.length > 0 ||
+      formSchema.fields.some(
+        (field) =>
+          field.mapsTo !== undefined &&
+          customFieldKeyOf(field.mapsTo.field) === null &&
+          !supportedNativeFields.has(field.mapsTo.field),
+      );
     const requiredFileField = formSchema.fields.some(
       (field) => field.type === "file" && field.required === true,
     );
@@ -419,7 +444,10 @@ export async function publishRequestType(id: string, actorId: string) {
       !hasValidTitleMapping(formSchema)
     ) {
       throw new HTTPException(422, {
-        message: "Request type form is not publishable",
+        message:
+          refusedCustomFields.length > 0
+            ? `Request type form is not publishable: ${refusedCustomFields.join(", ")} cannot be collected (not a customer-visible custom field of this work-item type, or the wrong control for its format)`
+            : "Request type form is not publishable",
       });
     }
     const [workItemType] = await tx
@@ -1168,6 +1196,17 @@ async function convertSubmissionInTransaction(
       payload: { key: item.key, title: item.title },
     },
   ]);
+  // CF-11: customer answers mapped to customer-visible custom fields, re-checked now.
+  const customFields = await applyAcceptedCustomFields(
+    tx,
+    {
+      id: item.id,
+      workspaceId,
+      projectId: project.id,
+      typeId: item.typeId,
+    },
+    mappedFields,
+  );
   await recordWorkItemEvent(tx, {
     kind: "work_item.created",
     workItemId: item.id,
@@ -1260,6 +1299,9 @@ async function convertSubmissionInTransaction(
     after: {
       ref: formatSubmissionReference(submission.number),
       workItemKey: item.key,
+      ...(customFields.skipped.length > 0
+        ? { customFieldsSkipped: customFields.skipped }
+        : {}),
       ...(assigneeSkipped
         ? {
             defaultAssigneeSkipped: {
@@ -1780,6 +1822,7 @@ export async function findPortalSubmission(
     label: field.label,
     multiple: field.multiple,
   }));
+  let customFields: PortalCustomField[] = [];
   let workItem: {
     title: string;
     description: string;
@@ -1797,6 +1840,8 @@ export async function findPortalSubmission(
     const [item] = await db
       .select({
         id: schema.workItemTable.id,
+        workspaceId: schema.workItemTable.workspaceId,
+        typeId: schema.workItemTable.typeId,
         title: schema.workItemTable.title,
         description: schema.workItemTable.description,
         stateGroup: schema.stateTemplateTable.group,
@@ -1823,11 +1868,18 @@ export async function findPortalSubmission(
     if (item) {
       const {
         id: itemId,
+        workspaceId: itemWorkspaceId,
+        typeId: itemTypeId,
         resolvedAt: itemResolvedAt,
         stateGroup,
         ...visible
       } = item;
       linkedWorkItemId = itemId;
+      customFields = await loadPortalCustomFields(db, {
+        id: itemId,
+        workspaceId: itemWorkspaceId,
+        typeId: itemTypeId,
+      });
       resolvedAt = itemResolvedAt;
       statusFacts = { resolvedAt: itemResolvedAt, stateGroup };
       workItem = {
@@ -1920,6 +1972,7 @@ export async function findPortalSubmission(
     },
     version: { formSchema: { fields } },
     workItem,
+    customFields,
     messages: portalRow.messages.map((message) => ({
       id: message.id,
       ...authorOf(message.authorId, message.actorType),

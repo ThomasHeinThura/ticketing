@@ -3,7 +3,7 @@
  * check:policy — the agent policy stays short, linked and free of live state.
  *
  * AGENTS.md is the entry point; docs/ contains the concise roadmap, scope and evidence.
- * CLAUDE.md is a provider pointer. Archived guidance is not policy. Checked here:
+ * AGENTS.md is the only rulebook (CLAUDE.md was removed). Archived guidance is not policy. Checked here:
  *
  *   1. Every relative link and #anchor in those files resolves.
  *   2. The entry files carry no live state: no 40-character SHA, no PR/issue number.
@@ -20,7 +20,6 @@ const NAME = "check:policy";
 
 export const POLICY_FILES = [
   "AGENTS.md",
-  "CLAUDE.md",
   "docs/README.md",
   "docs/features.md",
   "docs/alignment.md",
@@ -35,11 +34,7 @@ export const POLICY_FILES = [
 ];
 
 /** Files whose job is permanent policy: no SHAs, no PR numbers. */
-export const NO_LIVE_STATE_FILES = [
-  "AGENTS.md",
-  "CLAUDE.md",
-  "docs/testing.md",
-];
+export const NO_LIVE_STATE_FILES = ["AGENTS.md", "docs/testing.md"];
 
 /** GitHub's heading-anchor slug, close enough for the ASCII headings these files use. */
 export function slugify(heading) {

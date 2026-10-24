@@ -30,6 +30,7 @@ const names = {
   P2: "Service desk",
   P3: "Portal & identity",
   P4: "Governance",
+  P5: "Planning & knowledge",
 };
 
 const audits = {};

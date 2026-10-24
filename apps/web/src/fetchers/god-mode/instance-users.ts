@@ -116,10 +116,29 @@ export async function resetInstanceUserMfa(input: {
 
 export type StepUpMethod = "password" | "totp" | "backup_code";
 
+export async function startInstanceUserImpersonation(input: {
+  id: string;
+  reason: string;
+  token: string;
+}) {
+  const response = await detail.impersonate.$post({
+    param: { id: input.id },
+    header: { "x-taskdesk-step-up-token": input.token },
+    json: { reason: input.reason },
+  });
+  await ensureOk(response, "Unable to start impersonation");
+  return response.json();
+}
+
 export async function createUserOperationProof(input: {
-  operation: "instance_admin_grant" | "instance_admin_suspend" | "mfa_reset";
+  operation:
+    | "instance_admin_grant"
+    | "instance_admin_suspend"
+    | "mfa_reset"
+    | "impersonation_start";
   userId: string;
   verificationNote?: string;
+  reason?: string;
   request?: InstanceUserSuspensionRequest;
   method: StepUpMethod;
   secret: string;
@@ -131,19 +150,26 @@ export async function createUserOperationProof(input: {
           operation: input.operation,
           targetUserId: input.userId,
         }
-      : input.operation === "instance_admin_suspend"
+      : input.operation === "impersonation_start"
         ? {
             kind: "operation" as const,
             operation: input.operation,
             targetUserId: input.userId,
-            request: input.request ?? {},
+            reason: input.reason ?? "",
           }
-        : {
-            kind: "operation" as const,
-            operation: input.operation,
-            userId: input.userId,
-            verificationNote: input.verificationNote ?? "",
-          };
+        : input.operation === "instance_admin_suspend"
+          ? {
+              kind: "operation" as const,
+              operation: input.operation,
+              targetUserId: input.userId,
+              request: input.request ?? {},
+            }
+          : {
+              kind: "operation" as const,
+              operation: input.operation,
+              userId: input.userId,
+              verificationNote: input.verificationNote ?? "",
+            };
   const challengeResponse = await client.me["step-up"].challenges.$post({
     json: binding,
   });

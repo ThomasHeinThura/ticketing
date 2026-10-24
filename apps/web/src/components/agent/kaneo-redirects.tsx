@@ -40,7 +40,13 @@ export function ProjectSettingsRedirect({
   search,
 }: {
   projectKey: string;
-  section: "general" | "workflow" | "labels" | "members";
+  section:
+    | "general"
+    | "workflow"
+    | "labels"
+    | "members"
+    | "features"
+    | "automations";
   search?: LabelCatalogueSearch;
 }) {
   const { data: workspace, isLoading: isWorkspaceLoading } =
@@ -69,6 +75,22 @@ export function ProjectSettingsRedirect({
     return (
       <Navigate
         to="/dashboard/settings/projects/$projectId/members"
+        params={{ projectId: project.id }}
+        replace
+      />
+    );
+  if (section === "automations")
+    return (
+      <Navigate
+        to="/dashboard/settings/projects/$projectId/automations"
+        params={{ projectId: project.id }}
+        replace
+      />
+    );
+  if (section === "features")
+    return (
+      <Navigate
+        to="/dashboard/settings/projects/$projectId/features"
         params={{ projectId: project.id }}
         replace
       />

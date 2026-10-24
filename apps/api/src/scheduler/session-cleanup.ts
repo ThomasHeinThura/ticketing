@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import db from "../database";
 import { deleteExpiredPreferenceHandoffs } from "../notification/preference-handoff.repository";
+import { purgeReadNotifications } from "../notification/retention";
 import { withJobLease } from "./leader-lock";
 import {
   purgeExpiredOutboxReservations,
@@ -29,8 +30,9 @@ import {
  *   that was already accepted is not a candidate), so it wants its own reading of
  *   `IP-*` rather than a guess here.
  * - **Idempotency keys** — purged here once past `expires_at` (`deleteExpiredIdempotencyKeys`).
- * - **Notification/event-envelope retention** — read notifications, terminal children, digest
- *   groups and terminal parent envelopes are not purged by this job yet.
+ * - **Notification/event-envelope retention** — read notifications are purged here (`NO-17`,
+ *   `notification/retention.ts`); terminal children, digest groups and terminal parent
+ *   envelopes are not purged by this job yet.
  * - **Soft-deleted comments** — not purged by this job yet (review-p0 F20 gap).
  *
  * None of this is a silent omission: it is tracked on issue #198, and the exclusion
@@ -48,6 +50,8 @@ export type SessionCleanupOutcome = {
   sessionsDeleted: number;
   notificationReservationsDeleted: number;
   notificationPreferenceHandoffsDeleted: number;
+  /** `NO-17`: read notifications past `notification_retention_days`. */
+  readNotificationsPurged?: number;
   softDelete: SoftDeletePurgeOutcome;
   degraded: boolean;
 };
@@ -154,13 +158,23 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
         const notificationPreferenceHandoffsDeleted =
           await deleteExpiredPreferenceHandoffs();
         idempotencyKeysDeleted = await deleteExpiredIdempotencyKeys();
+        // A failure here must not skip the soft-delete purge in the same lease; the run is
+        // reported degraded and the next daily run retries.
+        let readNotificationsPurged = 0;
+        let retentionFailed = false;
+        try {
+          readNotificationsPurged = await purgeReadNotifications();
+        } catch {
+          retentionFailed = true;
+        }
         const softDelete = await purgeSoftDeletedRows();
         return {
           sessionsDeleted,
           notificationReservationsDeleted,
           notificationPreferenceHandoffsDeleted,
+          readNotificationsPurged,
           softDelete,
-          degraded: softDelete.degraded,
+          degraded: softDelete.degraded || retentionFailed,
         };
       },
       // Held elsewhere: not an error, and not this replica's work to do.
@@ -168,6 +182,7 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
         sessionsDeleted: 0,
         notificationReservationsDeleted: 0,
         notificationPreferenceHandoffsDeleted: 0,
+        readNotificationsPurged: 0,
         softDelete: NO_SOFT_DELETE_WORK,
         degraded: false,
       }),
@@ -179,6 +194,7 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
       outcome.sessionsDeleted +
         outcome.notificationReservationsDeleted +
         outcome.notificationPreferenceHandoffsDeleted +
+        (outcome.readNotificationsPurged ?? 0) +
         idempotencyKeysDeleted +
         outcome.softDelete.projectsPurged +
         outcome.softDelete.workItemsPurged,

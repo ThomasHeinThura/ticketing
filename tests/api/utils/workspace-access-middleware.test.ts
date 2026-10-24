@@ -89,6 +89,8 @@ vi.mock("../../../apps/api/src/project/hierarchy.repository", () => ({
   loadProjectAncestorIds: async () => [],
   loadProjectAncestorIdsForRequest: async () => [],
   loadProjectAncestorIdsFor: async () => [],
+  loadProjectOwnerTeamId: async () => null,
+  loadProjectOwnerTeamIdFor: async () => null,
 }));
 
 vi.mock("../../../apps/api/src/utils/validate-workspace-access", async () => {

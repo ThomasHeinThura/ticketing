@@ -6,7 +6,10 @@ import { schema } from "../database";
 import { workItemRelationTable } from "../database/schema";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
 import { lockRelationGraph } from "../work-item-relation/blockers";
 import {
   deleteWorkItemRelationInTransaction,
@@ -164,12 +167,19 @@ export async function relationDeletionEndpointAccess(
     endpoint.workspaceId,
     endpoint.projectId,
   );
+  const ownerTeamId = await projectOwnerTeamFor(
+    executor,
+    identity,
+    endpoint.workspaceId,
+    endpoint.projectId,
+  );
   if (
     !reaches(identity, {
       projectId: endpoint.projectId,
       workspaceId: endpoint.workspaceId,
       organisationId: endpoint.organisationId,
       ancestorProjectIds,
+      ownerTeamId,
     })
   )
     return { allowed: false, failure: "reach", status: 404 };
@@ -395,12 +405,19 @@ export async function relationDeletionReadSummary(
       endpoint.workspaceId,
       endpoint.projectId,
     );
+    const ownerTeamId = await projectOwnerTeamFor(
+      executor,
+      identity,
+      endpoint.workspaceId,
+      endpoint.projectId,
+    );
     if (
       !reaches(identity, {
         projectId: endpoint.projectId,
         workspaceId: endpoint.workspaceId,
         organisationId: endpoint.organisationId,
         ancestorProjectIds,
+        ownerTeamId,
       }) ||
       !can(identity, "work_item:read", "work_item", {
         workItemId: endpoint.id,

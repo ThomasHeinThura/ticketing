@@ -7,7 +7,14 @@ test("workspace settings creates, edits and deletes reusable replies with URL-ad
 }) => {
   await installPerformanceApiFixture(page);
   await page.route("**/api/capabilities**", (route) =>
-    route.fulfill({ json: { manageWorkspaceSettings: true } }),
+    route.fulfill({
+      json: {
+        manageWorkspaceSettings: true,
+        manageRoles: true,
+        manageWebhooks: true,
+        manageCustomFields: true,
+      },
+    }),
   );
   let rows: Array<{
     id: string;

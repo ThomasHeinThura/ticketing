@@ -178,11 +178,32 @@ export function currentProjectReachPredicate(
       ),
   );
 
+  // TM-4 / reach step 5: the caller is an active member of the team that owns the project.
+  // `identity.teamIds` is already limited to teams of workspaces the person currently belongs
+  // to; the same-workspace check below keeps a stale team id from reaching across tenants.
+  const ownerProject = alias(projectTable, "reach_owner_project");
+  const ownerTeamReach =
+    Array.isArray(identity.teamIds) && identity.teamIds.length > 0
+      ? exists(
+          executor
+            .select({ one: sql`1` })
+            .from(ownerProject)
+            .where(
+              and(
+                eq(ownerProject.id, projectId),
+                eq(ownerProject.workspaceId, projectWorkspaceId),
+                inArray(ownerProject.ownerTeamId, [...identity.teamIds]),
+              ),
+            ),
+        )
+      : sql`false`;
+
   return or(
     currentInstanceAdminPredicate(identity, executor),
     directProjectMembership,
     ancestorProjectMembership,
     workspaceSeesAll,
+    ownerTeamReach,
   );
 }
 

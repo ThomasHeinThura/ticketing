@@ -8,7 +8,9 @@
  * asserted so each writer is pinned individually (`syncWorkspaceAdminReach` in every
  * membership writer; remove one call and exactly that writer's test goes red).
  */
+
 import { randomUUID } from "node:crypto";
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -26,6 +28,7 @@ import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
 import { projectKey } from "./helpers/project-key";
+import { mintStepUpToken, STEP_UP_TOKEN_HEADER } from "./helpers/step-up";
 import {
   createWorkspaceNative,
   deleteWorkspaceThroughApproval,
@@ -33,6 +36,21 @@ import {
 
 type App = ReturnType<typeof createApp>["app"];
 type Actor = Awaited<ReturnType<typeof signUpUser>>;
+
+/** The one-use proof header for an ownership transfer, bound to exactly this workspace and recipient. */
+async function transferProof(
+  app: App,
+  cookie: string,
+  fields: { workspaceId: string; newOwnerUserId: string },
+): Promise<Record<string, string>> {
+  const token = await mintStepUpToken(
+    app,
+    cookie,
+    "workspace_ownership_transfer",
+    fields,
+  );
+  return token ? { [STEP_UP_TOKEN_HEADER]: token } : {};
+}
 
 async function call(
   app: App,
@@ -366,6 +384,10 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       "POST",
       `/api/workspace/${world.workspaceId}/transfer-ownership`,
       { newOwnerUserId: next.user.id },
+      await transferProof(world.app, world.owner.cookie, {
+        workspaceId: world.workspaceId,
+        newOwnerUserId: next.user.id,
+      }),
     );
     expect(transferred.status).toBe(200);
     expect(
@@ -701,7 +723,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       ).toEqual([]);
     });
 
-    it("carrier role rows are system, not editable, and carry no capabilities", async () => {
+    it("the workspace-scope role rows are the six system built-ins, carrying their compiled capabilities (owner decision, 23 Oct)", async () => {
       const world = await newWorld();
       await addMember(world, "admin");
       const roles = await db
@@ -712,21 +734,30 @@ describe("workspace owner/admin explicit sees_all grant", () => {
           capabilities: schema.roleTable.capabilities,
         })
         .from(schema.roleTable)
-        // The workspace-scope carriers only: the project-scope `project-lead` role
-        // (decision log 2026-10-14) carries real capabilities by design.
+        // The workspace-scope rows only: the project-scope `project-lead` role (decision log
+        // 2026-10-14) carries real capabilities by design.
         .where(
           and(
             eq(schema.roleTable.workspaceId, world.workspaceId),
             eq(schema.roleTable.scope, "workspace"),
           ),
         );
-      expect(roles.map((r) => r.key).sort()).toEqual(["admin", "owner"]);
+      expect(roles.map((r) => r.key).sort()).toEqual([
+        "admin",
+        "lead",
+        "manager",
+        "member",
+        "owner",
+        "viewer",
+      ]);
       for (const role of roles) {
-        expect(role).toMatchObject({
-          isSystem: true,
-          isEditable: false,
-          capabilities: [],
-        });
+        const compiled =
+          BUILT_IN_ROLES[role.key as keyof typeof BUILT_IN_ROLES];
+        expect(role.isSystem, role.key).toBe(true);
+        expect(role.isEditable, role.key).toBe(compiled.isEditable);
+        expect([...(role.capabilities as string[])].sort(), role.key).toEqual(
+          [...compiled.capabilities].sort(),
+        );
       }
     });
 
@@ -985,6 +1016,15 @@ describe("workspace owner/admin explicit sees_all grant", () => {
         { userId: first.owner.user.id, role: "member" },
       );
       expect(added.status).toBe(200);
+      // One proof per actor (each is a separate session), obtained before the race starts.
+      const firstProof = await transferProof(first.app, first.owner.cookie, {
+        workspaceId: first.workspaceId,
+        newOwnerUserId: secondOwner.user.id,
+      });
+      const secondProof = await transferProof(first.app, secondOwner.cookie, {
+        workspaceId: ws2Id,
+        newOwnerUserId: first.owner.user.id,
+      });
       const [a, b] = await Promise.all([
         call(
           first.app,
@@ -992,6 +1032,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
           "POST",
           `/api/workspace/${first.workspaceId}/transfer-ownership`,
           { newOwnerUserId: secondOwner.user.id },
+          firstProof,
         ),
         call(
           first.app,
@@ -999,6 +1040,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
           "POST",
           `/api/workspace/${ws2Id}/transfer-ownership`,
           { newOwnerUserId: first.owner.user.id },
+          secondProof,
         ),
       ]);
       expect([a.status, b.status]).toEqual([200, 200]);

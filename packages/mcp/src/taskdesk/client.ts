@@ -17,6 +17,8 @@ export class TaskDeskApiError extends Error {
   constructor(
     message: string,
     readonly detail: string | null = null,
+    /** HTTP status of the failed call; absent for errors raised by the tool itself. */
+    readonly status: number | null = null,
   ) {
     super(message);
     this.name = "TaskDeskApiError";
@@ -84,7 +86,11 @@ export class TaskDeskClient {
       } else if (typeof body === "string" && body.length > 0) {
         detail = body.length > 500 ? `${body.slice(0, 500)}…` : body;
       }
-      throw new TaskDeskApiError(`${path}: HTTP ${res.status}`, detail);
+      throw new TaskDeskApiError(
+        `${path}: HTTP ${res.status}`,
+        detail,
+        res.status,
+      );
     }
     return body as T;
   }

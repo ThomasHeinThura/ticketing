@@ -19,6 +19,11 @@ import { HTTPException } from "hono/http-exception";
 import { lockApprovalsForWorkItemTransition } from "../../approval/repository";
 import { closePendingApprovalsOnTransition } from "../../approval/service";
 import { appendAuditLog } from "../../audit/audit-writer";
+import { transitionRequiresFields } from "../../custom-field/logic";
+import {
+  guardFieldValues,
+  missingRequiredForTransition,
+} from "../../custom-field/repository";
 import db from "../../database";
 import { slaPauseTable } from "../../database/migration-schema";
 import {
@@ -309,6 +314,15 @@ export async function transitionWorkItem(
   input: TransitionWorkItemInput,
   /** `WF-19` / `WF-21`: set only by `executeSystemTransition`; identity/actorId are then null. */
   system?: SystemTransitionRequest,
+  /**
+   * `AM-3`: set ONLY by the automation `transition` action (`automation/actions-executor.ts`);
+   * never reachable from an HTTP schema. The acting role is the rule's effective role instead of
+   * a person's memberships, so only edges open to that role (or to any role) are legal. Every
+   * other rule is unchanged: the same graph, the most-restrictive-edge ordering, guards,
+   * required custom fields, assignee eligibility and concurrency checks apply, and an edge that
+   * needs an approval or CAB gate is refused (an automation cannot decide one).
+   */
+  automationActor?: { roleId: string },
 ): Promise<TransitionedWorkItem> {
   const ctx = await loadWorkflowTransitionContext(workItemId);
   if (!ctx) {
@@ -325,11 +339,13 @@ export async function transitionWorkItem(
   // A system actor bypasses role legality only (WF-21): every edge's role is acceptable.
   const actorRoleIds = system
     ? [...new Set(ctx.transitions.flatMap((t) => (t.roleId ? [t.roleId] : [])))]
-    : await resolveActorRoleIds(
-        personId,
-        ctx.workItem.workspaceId,
-        ctx.workItem.projectId,
-      );
+    : automationActor
+      ? [automationActor.roleId]
+      : await resolveActorRoleIds(
+          personId,
+          ctx.workItem.workspaceId,
+          ctx.workItem.projectId,
+        );
   const legal = legalTransitions(
     ctx.transitions,
     ctx.currentStateTemplateId,
@@ -436,8 +452,11 @@ export async function transitionWorkItem(
     );
   }
 
-  if (system && (match.requiresApproval || match.requiresCab)) {
-    // A system actor cannot satisfy an approval or CAB gate: fail closed.
+  if (
+    (system || automationActor) &&
+    (match.requiresApproval || match.requiresCab)
+  ) {
+    // A system actor or an automation cannot satisfy an approval or CAB gate: fail closed.
     throw new TransitionBlockedError(
       [],
       "A system transition cannot satisfy an approval gate",
@@ -603,7 +622,8 @@ export async function transitionWorkItem(
         // also re-run its OWN unlocked, redundant children query this function already
         // did correctly, under lock, above.
         hasOpenBlockers: await hasOpenBlockers(ctx.workItem.id, tx),
-        fieldValues: {},
+        // WF-15: `field_required` guards read the real custom field values (`cf.<key>`).
+        fieldValues: await guardFieldValues(tx, ctx.workItem.id),
         changeRiskLevel: null,
         assigneePresent: locked.assigneeId !== null,
         approvalSatisfied: false,
@@ -676,6 +696,21 @@ export async function transitionWorkItem(
             : reason;
         });
         throw new TransitionBlockedError(blockedBy);
+      }
+
+      // CF-4: a required custom field blocks entry to a started/completed state group;
+      // `cancelled` is deliberately exempt so incomplete work can always be abandoned.
+      if (transitionRequiresFields(toGroup)) {
+        const missingFields = await missingRequiredForTransition(tx, {
+          id: ctx.workItem.id,
+          workspaceId: ctx.workItem.workspaceId,
+          typeId: ctx.workItem.typeId,
+        });
+        if (missingFields.length > 0)
+          throw new TransitionBlockedError(
+            [{ kind: "guard", reasonCode: "guard.field_required" }],
+            `Required custom fields are empty: ${missingFields.join(", ")}`,
+          );
       }
 
       // B2: a `set_assignee` target must pass the SAME roster/active eligibility check

@@ -225,7 +225,7 @@ export function createScimTokenChallenge(input: {
   });
 }
 
-function canonicalOperationBody(
+export function canonicalOperationBody(
   operation: string,
   route: string,
   version: number,
@@ -328,7 +328,7 @@ export async function createPendingActionChallenge(input: {
   };
 }
 
-async function createOperationChallenge(input: {
+export async function createOperationChallenge(input: {
   personId: string;
   sessionId: string;
   userId?: string;
@@ -584,7 +584,7 @@ export async function consumeScimTokenProof(
   });
 }
 
-async function consumeOperationProof(
+export async function consumeOperationProof(
   tx: StepUpTransaction,
   input: {
     token: string;
@@ -887,7 +887,7 @@ export async function issueScimTokenToken(
   );
 }
 
-async function issueOperationToken(
+export async function issueOperationToken(
   input: {
     id: string;
     nonce: string;

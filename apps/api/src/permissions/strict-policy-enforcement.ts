@@ -28,7 +28,10 @@ import { findAssetWorkspaceScope } from "../asset/repository";
 import db, { schema } from "../database";
 import type { RegisteredHttpRoute } from "../observability/metrics.js";
 import { policyRegistry } from "../policy-registry";
-import { loadProjectAncestorIdsFor } from "../project/hierarchy.repository";
+import {
+  loadProjectAncestorIdsFor,
+  loadProjectOwnerTeamIdFor,
+} from "../project/hierarchy.repository";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { enforcedPolicySources } from "./enforcement-config";
 import {
@@ -105,15 +108,15 @@ async function identityFor(
   c: RuntimeContext,
 ): Promise<ResolvedIdentity | null> {
   const userId = c.get("userId") as string | undefined;
-  if (!userId) return null;
-
   const apiKey = c.get("apiKey") as AuthenticatedApiKey | undefined;
+  // A workspace service key (AK-7) has no user id by design; its principal is the key itself.
+  if (!userId && !apiKey?.service) return null;
   const session = c.get("session") as
     | { id?: string; impersonatedBy?: string | null }
     | null
     | undefined;
   return resolveRequestIdentity({
-    userId,
+    userId: userId ?? "",
     apiKey,
     impersonatedBy: session?.impersonatedBy,
   });
@@ -348,7 +351,12 @@ async function projectReach(
       project.workspaceId,
       project.id,
     ),
-    ownerTeamId: null,
+    ownerTeamId: await loadProjectOwnerTeamIdFor(
+      db,
+      identity,
+      project.workspaceId,
+      project.id,
+    ),
     ...(visibleToPersonIds === null ? {} : { visibleToPersonIds }),
   };
   return reaches(identity, facts);

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { expect } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import type { createApp } from "../../../apps/api/src/index";
+import { seedWorkspaceBuiltInRoles } from "../../../apps/api/src/workspace/built-in-roles.repository";
 import { mockAuthenticatedSession } from "./auth";
 import {
   createProjectFixture,
@@ -54,6 +55,8 @@ export async function seedWorkspaceRole(workspaceId: string, role: string) {
       updatedAt: now,
     })
     .onConflictDoNothing();
+  // The canonical `role` rows the strict engine resolves the member's role key against.
+  await seedWorkspaceBuiltInRoles(db, workspaceId);
 }
 
 export async function addMember(workspaceId: string, role: string) {

@@ -44,6 +44,12 @@ const ALLOWED_IMMEDIATE: Record<string, string> = {
     "unlink: removes a membership (the person and their work survive); owner and last-owner guards apply",
   "DELETE /api/projects/{projectId}/members/{personId}":
     "unlink: revokes one DIRECT roster membership of a project (PR-4); the person, their work and the project survive, the removal is audited as membership.changed, and an inherited or identity-provider-managed row is refused with 409",
+  "DELETE /api/teams/{id}/members/{personId}":
+    "unlink: removes one team membership (TM-3); the person, the team and their work survive, and the removal is audited as a team membership change; team deletion is DELETE /api/teams/{id} (202)",
+  "DELETE /api/custom-field-sections/{id}":
+    "configuration row with no history: only an EMPTY section can go (409 while any field, including one inside its 30-day restore window, still belongs to it), so no field, value or work item data is removed; custom_field:manage, audited; field deletion is DELETE /api/custom-fields/{id} (202)",
+  "DELETE /api/instance/impersonate":
+    "ends the caller's own impersonation session (GM-11, always allowed): deletes only that session row and restores the administrator's session; no business data, audited as impersonation.ended",
   // Own-settings housekeeping with no shared business data.
   "DELETE /api/user/avatar":
     "own avatar only: clears the caller's profile picture (session user, no shared data)",

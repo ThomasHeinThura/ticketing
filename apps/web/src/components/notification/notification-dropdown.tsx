@@ -204,6 +204,24 @@ export function getPendingActionNotificationHref(
 }
 
 /**
+ * `NO-14`: a work-item, comment or approval notification opens its work item on the canonical
+ * `/agent` route, and a comment notification focuses that comment.
+ */
+export function getWorkItemNotificationHref(
+  notification: Pick<Notification, "resourceType" | "resourceId"> & {
+    workItemKey?: string | null;
+  },
+): string | null {
+  if (!notification.workItemKey) return null;
+  return routes.workItemDetail.build(
+    { key: notification.workItemKey },
+    notification.resourceType === "comment" && notification.resourceId
+      ? { comment: notification.resourceId }
+      : {},
+  );
+}
+
+/**
  * Marks a notification read and opens what it is about. Shared by the dropdown and the
  * full-page inbox (`/agent/inbox`).
  */
@@ -219,6 +237,12 @@ export function useNotificationClick() {
       const pendingActionHref = getPendingActionNotificationHref(notification);
       if (pendingActionHref) {
         void navigate({ href: pendingActionHref });
+        return;
+      }
+
+      const workItemHref = getWorkItemNotificationHref(notification);
+      if (workItemHref) {
+        void navigate({ href: workItemHref });
         return;
       }
 

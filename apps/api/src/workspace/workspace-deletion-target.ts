@@ -10,6 +10,7 @@ import {
   captureWorkspaceDeletionAccess,
   invalidateWorkspaceDeletionAccessLosses,
 } from "../pending-action/workspace-access-invalidation";
+import { storedCapabilities } from "../permissions/workspace-role-authority.repository";
 import {
   assertWorkspaceNotUnderLegalHold,
   WorkspaceUnderLegalHoldError,
@@ -24,8 +25,21 @@ import {
 } from "./controllers/delete-workspace-role-dependents";
 import {
   RoleAssignedToMembersError,
+  RoleInUseError,
   RoleNameReservedError,
+  SystemRoleNotDeletableError,
 } from "./controllers/workspace-role-errors";
+import {
+  countRoleReferences,
+  deleteLegacyWorkspaceRoleRow,
+  deleteRoleRow,
+  lockRoleRow,
+} from "./role.repository";
+import {
+  appendRoleAudit,
+  assertActiveRoleManagerRemains,
+  LastRoleManagerError,
+} from "./role-governance";
 import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment.repository";
 
 export const WORKSPACE_DELETION_ROUTE =
@@ -133,40 +147,45 @@ export const workspaceRoleDeletionTarget: RegisteredDeletionTarget = {
   sessionOnly: true,
   notFound: "Role not found",
   load: async (tx, id) => {
+    // Canonical `role` rows (owner decision, 23 Oct). A legacy `workspace_role` id still
+    // resolves: migration 0145 keeps the id of every migrated row.
     const [anchor] = await tx
-      .select({ workspaceId: schema.workspaceRoleTable.workspaceId })
-      .from(schema.workspaceRoleTable)
-      .where(eq(schema.workspaceRoleTable.id, id))
-      .limit(1);
-    if (!anchor) return undefined;
-    await lockWorkspaceRoleAssignment(tx, anchor.workspaceId);
-    const [role] = await tx
-      .select()
-      .from(schema.workspaceRoleTable)
+      .select({ workspaceId: schema.roleTable.workspaceId })
+      .from(schema.roleTable)
       .where(
         and(
-          eq(schema.workspaceRoleTable.id, id),
-          eq(schema.workspaceRoleTable.workspaceId, anchor.workspaceId),
+          eq(schema.roleTable.id, id),
+          eq(schema.roleTable.scope, "workspace"),
         ),
       )
-      .for("update")
       .limit(1);
+    if (!anchor?.workspaceId) return undefined;
+    await lockWorkspaceRoleAssignment(tx, anchor.workspaceId);
+    const role = await lockRoleRow(tx, anchor.workspaceId, id);
     if (!role) return undefined;
     return {
       id: role.id,
-      workspaceId: role.workspaceId,
+      workspaceId: anchor.workspaceId,
       projectId: null,
       organisationId: null,
-      name: role.role,
-      summary: { roleId: role.id, name: role.role },
+      // The key is what `workspace_member.role` holds, so the reference checks run on it.
+      name: role.key,
+      summary: { roleId: role.id, name: role.name },
       version: registeredDeletionFingerprint(role),
     };
   },
   assertDeletable: async (tx, loaded) => {
-    // Defensive only: `owner` is never a DB row (see delete-workspace-role.ts).
+    // Defensive only: `owner` is never deletable.
     if (loaded.name === "owner")
       throw new HTTPException(400, {
         message: new RoleNameReservedError().message,
+      });
+    const row = await lockRoleRow(tx, loaded.workspaceId, loaded.id);
+    if (!row) throw new HTTPException(404, { message: "Role not found" });
+    // Built-in roles are never deleted.
+    if (row.isSystem)
+      throw new HTTPException(400, {
+        message: new SystemRoleNotDeletableError(row.key).message,
       });
     const members = await tx
       .select({ role: schema.workspaceUserTable.role })
@@ -181,21 +200,48 @@ export const workspaceRoleDeletionTarget: RegisteredDeletionTarget = {
       throw new HTTPException(400, {
         message: new RoleAssignedToMembersError(loaded.name).message,
       });
+    // Rows that would block the delete at the database level (`ON DELETE RESTRICT`): refuse
+    // with a readable answer instead of a 500.
+    const references = await countRoleReferences(tx, loaded.id);
+    if (Object.values(references).some((value) => value > 0))
+      throw new HTTPException(409, {
+        message: new RoleInUseError(references).message,
+      });
+    // RL-7: the last role granting role management cannot be deleted.
+    try {
+      await assertActiveRoleManagerRemains(tx, loaded.workspaceId, {
+        kind: "delete",
+        roleId: loaded.id,
+      });
+    } catch (error) {
+      if (error instanceof LastRoleManagerError)
+        throw new HTTPException(409, { message: error.message });
+      throw error;
+    }
   },
-  execute: async (tx, { loaded }) => {
-    const [deleted] = await tx
-      .delete(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.id, loaded.id),
-          eq(schema.workspaceRoleTable.workspaceId, loaded.workspaceId),
-        ),
-      )
-      .returning({ id: schema.workspaceRoleTable.id });
+  execute: async (tx, { loaded, identity }) => {
+    const existing = await lockRoleRow(tx, loaded.workspaceId, loaded.id);
+    if (!existing)
+      throw new HTTPException(409, {
+        message: "pending_action_target_changed",
+      });
+    const deleted = await deleteRoleRow(tx, loaded.workspaceId, loaded.id);
     if (!deleted)
       throw new HTTPException(409, {
         message: "pending_action_target_changed",
       });
+    // The legacy `workspace_role` row stays readable until cleanup but is never left stale.
+    await deleteLegacyWorkspaceRoleRow(tx, loaded.workspaceId, existing.key);
+    // RL-10: audited at execution (not at request time), with the capabilities it carried.
+    await appendRoleAudit(tx, {
+      action: "role.deleted",
+      workspaceId: loaded.workspaceId,
+      roleId: loaded.id,
+      roleName: loaded.name,
+      actor: { userId: identity.userId, actorType: "person" },
+      before: storedCapabilities(existing.capabilities),
+      after: null,
+    });
     return {
       afterCommit: () =>
         invalidateNativeAuthorization({ workspaceId: loaded.workspaceId }),

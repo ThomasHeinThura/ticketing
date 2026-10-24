@@ -213,6 +213,7 @@ function row(): WorkItemDetailRow {
     version: 4,
     unavailableFields: [],
     defaultCommentVisibility: "internal",
+    customFields: [],
   } as WorkItemDetailRow;
 }
 function mount() {

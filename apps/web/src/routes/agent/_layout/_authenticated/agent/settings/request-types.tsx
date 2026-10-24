@@ -28,6 +28,7 @@ import {
   saveRequestType,
   unpublishRequestType,
 } from "@/fetchers/intake";
+import { useCustomFields } from "@/hooks/queries/custom-field/use-custom-fields";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { resolveIntakeVisibility } from "@/lib/intake-visibility";
@@ -139,6 +140,11 @@ function RequestTypesPage() {
   const workItemTypes = useGetWorkItemTypes({
     workspaceId: workspace.data?.id,
   });
+  // CF-11: a form field may be mapped to a customer-visible custom field (`cf.<key>`).
+  const customFields = useCustomFields(workspace.data?.id ?? "");
+  const collectableFields = (customFields.data?.data ?? []).filter(
+    (field) => field.customerVisible,
+  );
   const [draft, setDraft] = useState<
     Omit<RequestType, "id" | "version" | "published" | "key">
   >(blank());
@@ -645,7 +651,12 @@ function RequestTypesPage() {
                       <SelectTrigger id={`field-maps-to-${index}`}>
                         <SelectValue placeholder="Keep in request data">
                           {field.mapsTo?.field
-                            ? mapsToLabels[field.mapsTo.field]
+                            ? (mapsToLabels[field.mapsTo.field] ??
+                              collectableFields.find(
+                                (candidate) =>
+                                  `cf.${candidate.key}` === field.mapsTo?.field,
+                              )?.name ??
+                              field.mapsTo.field)
                             : undefined}
                         </SelectValue>
                       </SelectTrigger>
@@ -657,6 +668,14 @@ function RequestTypesPage() {
                         <SelectItem value="priority">
                           Work item priority
                         </SelectItem>
+                        {collectableFields.map((candidate) => (
+                          <SelectItem
+                            key={candidate.id}
+                            value={`cf.${candidate.key}`}
+                          >
+                            {candidate.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </label>

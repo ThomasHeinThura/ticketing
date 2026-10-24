@@ -133,7 +133,11 @@ export async function resolveCallerIdentity(
   userId: string,
 ): Promise<ResolvedIdentity | null> {
   const apiKey = c.get("apiKey") as
-    | ({ enabled?: boolean; userId?: string } & ApiKeyPermissionScope)
+    | ({
+        enabled?: boolean;
+        userId?: string;
+        isMcp?: boolean;
+      } & ApiKeyPermissionScope)
     | undefined;
   const session = c.get("session") as
     | { impersonatedBy?: string | null }
@@ -142,7 +146,9 @@ export async function resolveCallerIdentity(
   return resolveIdentity({
     userId,
     credential: apiKey
-      ? "api_key"
+      ? apiKey.isMcp
+        ? "mcp_key"
+        : "api_key"
       : session?.impersonatedBy
         ? "impersonation"
         : "session",

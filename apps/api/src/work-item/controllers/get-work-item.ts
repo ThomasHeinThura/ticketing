@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { workItemCustomFields } from "../../custom-field/repository";
 import db from "../../database";
 import {
   personTable,
@@ -108,6 +109,8 @@ export async function getWorkItemByKey(key: string, workspaceId: string) {
     // resolvable" (a placeholder person, or a user outside this workspace) apart from
     // "unassigned".
     assigneeName: row.assigneeIsWorkspaceMember ? row.assigneeName : null,
+    // CF-3: only the fields that apply to this item's type, with its values.
+    customFields: await workItemCustomFields(db, row.workItem),
   };
 }
 

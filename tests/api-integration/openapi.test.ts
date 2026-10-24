@@ -101,7 +101,7 @@ describe("TaskDesk API OpenAPI spec", () => {
         "application/json"
       ]?.schema;
 
-    expect(challengeSchema?.oneOf).toHaveLength(12);
+    expect(challengeSchema?.oneOf).toHaveLength(21);
     const branches = challengeSchema?.oneOf as Array<{
       properties?: {
         kind?: { enum?: string[] };
@@ -111,7 +111,7 @@ describe("TaskDesk API OpenAPI spec", () => {
     const operationBranches = branches.filter(
       (branch) => branch.properties?.kind?.enum?.[0] === "operation",
     );
-    expect(operationBranches).toHaveLength(11);
+    expect(operationBranches).toHaveLength(20);
     expect(
       operationBranches
         .map((branch) => branch.properties?.operation?.enum?.[0])
@@ -129,6 +129,15 @@ describe("TaskDesk API OpenAPI spec", () => {
         "scim_token_revoke",
         "identity_connection_create",
         "identity_connection_configure",
+        "impersonation_start",
+        "secrets_rotate",
+        "webhook_create",
+        "webhook_update_url",
+        "webhook_rotate_secret",
+        "workspace_role_create",
+        "workspace_role_update",
+        "service_key_create",
+        "workspace_ownership_transfer",
       ].sort(),
     );
     expect(

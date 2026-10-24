@@ -1,4 +1,7 @@
-import type { ProjectReachFacts } from "@taskdesk/permissions";
+import {
+  isCapabilityPolicy,
+  type ProjectReachFacts,
+} from "@taskdesk/permissions";
 import {
   and,
   eq,
@@ -18,7 +21,10 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
-import { loadProjectAncestorIdsForRequest } from "../project/hierarchy.repository";
+import {
+  loadProjectAncestorIdsForRequest,
+  loadProjectOwnerTeamId,
+} from "../project/hierarchy.repository";
 import { callerReach } from "./caller-reach";
 import {
   projectCapabilityRefused,
@@ -27,6 +33,12 @@ import {
 import { isCustomerPrincipal } from "./is-customer-principal";
 import { WORK_ITEM_REACH_MARK, type WorkItemReachMark } from "./reach-mark";
 import { rejectNulByte } from "./reject-nul-byte";
+import {
+  registeredPolicyOfRequest,
+  type ServiceKeyFacts,
+  serviceKeyHolds,
+  serviceKeyOfRequest,
+} from "./service-key-gate";
 import { validateWorkspaceAccess } from "./validate-workspace-access";
 
 // T4 (independent Opus security review of PR #271, delta round): a NUL byte in an id
@@ -249,7 +261,8 @@ async function currentProjectReachFacts(
       workspaceId,
       projectId,
     ),
-    ownerTeamId: null,
+    // TM-4 / reach step 5.
+    ownerTeamId: await loadProjectOwnerTeamId(db, workspaceId, projectId),
   };
 }
 
@@ -263,11 +276,74 @@ async function readJsonObjectBody(
   return raw as Record<string, unknown>;
 }
 
+/**
+ * AK-7: a workspace SERVICE key names its workspace by request (path, query or body) and may
+ * only name its own. Row-addressed sources (a project, task, label, view ... looked up by id)
+ * need project reach, which a service key does not hold, so they answer like a missing row.
+ */
+async function serviceKeyWorkspaceAccess(
+  c: Context,
+  config: WorkspaceAccessMiddlewareConfig,
+  service: ServiceKeyFacts,
+) {
+  if (config.sources.some((source) => source.type.startsWith("lookup"))) {
+    setShadowLegacyAuthorization(c, "denied");
+    throw new HTTPException(404, { message: "Not found" });
+  }
+  let workspaceId: string | null = null;
+  for (const source of config.sources) {
+    let raw: string | null = null;
+    if (source.type === "query") raw = c.req.query(source.key) || null;
+    else if (source.type === "param") raw = c.req.param(source.key) || null;
+    else if (source.type === "body") {
+      const value = (await readJsonObjectBody(c))[source.key];
+      raw = typeof value === "string" ? value : null;
+    }
+    if (raw) {
+      rejectNulByte(raw, NUL_BYTE_LABEL);
+      workspaceId = raw;
+      break;
+    }
+  }
+  if (!workspaceId)
+    throw new HTTPException(400, {
+      message: "Workspace ID could not be determined",
+    });
+  if (workspaceId !== service.workspaceId) {
+    setShadowLegacyAuthorization(c, "denied");
+    throw new HTTPException(403, {
+      message: "You don't have access to this workspace",
+    });
+  }
+  // The route's registered policy decides what a key may do here, whatever legacy gates follow:
+  // only a workspace-scope capability policy whose capability is in the key's stored subset.
+  // Self, instance, organisation and project policies are never a service key's (no person, no
+  // instance authority, no project reach), so a route that is "any member may" stays closed.
+  const policy = registeredPolicyOfRequest(c);
+  if (
+    !policy ||
+    !isCapabilityPolicy(policy) ||
+    policy.scope !== "workspace" ||
+    !serviceKeyHolds(service, workspaceId, policy.capability)
+  ) {
+    setShadowLegacyAuthorization(c, "denied");
+    throw new HTTPException(403, { message: "Insufficient permissions" });
+  }
+  setShadowLegacyAuthorization(c, "allowed");
+  c.set("workspaceId", workspaceId);
+  c.set("workspaceIdSource", "request");
+}
+
 export function workspaceAccessMiddleware(
   config: WorkspaceAccessMiddlewareConfig,
 ) {
   const middleware = async (c: Context, next: Next) => {
     markShadowLegacyAuthorizationUnknown(c);
+    const service = serviceKeyOfRequest(c);
+    if (service) {
+      await serviceKeyWorkspaceAccess(c, config, service);
+      return next();
+    }
     const userId = c.get("userId");
 
     if (!userId) {

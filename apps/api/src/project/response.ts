@@ -30,6 +30,10 @@ export const projectSchema = z
       description:
         "PR-1: the parent project in the same workspace; null for a root project.",
     }),
+    ownerTeamId: z.string().nullable().openapi({
+      description:
+        "TM-4: the team whose active members reach this project (reach only, never a capability); null when none.",
+    }),
     managerId: z.string().nullable().openapi({
       description:
         "PR-6: the project manager (a person); null when none is set.",

@@ -1,7 +1,10 @@
 import { type ResolvedIdentity, reaches } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import { loadAncestorIdsByProject } from "../project/hierarchy.repository";
+import {
+  loadAncestorIdsByProject,
+  loadOwnerTeamIdsByProject,
+} from "../project/hierarchy.repository";
 import {
   deleteOwnSettingRow,
   listLiveProjectReachFacts,
@@ -28,9 +31,12 @@ async function reachableProjectIds(
   if (projectIds.length === 0) return new Set();
   const projects = await listLiveProjectReachFacts(identity, projectIds);
   // PR-2: inherited project membership, read at call time (one query for all workspaces).
-  const ancestorsByProject = await loadAncestorIdsByProject(db, [
+  const workspaceIds = [
     ...new Set(projects.map((project) => project.workspaceId)),
-  ]);
+  ];
+  const ancestorsByProject = await loadAncestorIdsByProject(db, workspaceIds);
+  // TM-4 / reach step 5.
+  const ownerTeams = await loadOwnerTeamIdsByProject(db, workspaceIds);
   return new Set(
     projects
       .filter((project) =>
@@ -39,7 +45,7 @@ async function reachableProjectIds(
           workspaceId: project.workspaceId,
           organisationId: project.organisationId,
           ancestorProjectIds: ancestorsByProject.get(project.id) ?? [],
-          ownerTeamId: null,
+          ownerTeamId: ownerTeams.get(project.id) ?? null,
         }),
       )
       .map((project) => project.id),

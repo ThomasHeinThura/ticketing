@@ -141,6 +141,41 @@ export const pendingActionApprovalContracts = [
     routeKey: "DELETE /api/invitation/{id}",
     executor: "registered_deletion",
   },
+  {
+    action: "delete",
+    targetType: "api_key",
+    confirmationRequired: "typed_name_step_up",
+    routeKey: "DELETE /api/workspaces/{id}/api-keys/{keyId}",
+    executor: "registered_deletion",
+  },
+  {
+    action: "delete",
+    targetType: "webhook",
+    confirmationRequired: "typed_name_step_up",
+    routeKey: "DELETE /api/webhooks/{id}",
+    executor: "registered_deletion",
+  },
+  {
+    action: "delete",
+    targetType: "custom_field",
+    confirmationRequired: "click",
+    routeKey: "DELETE /api/custom-fields/{id}",
+    executor: "registered_deletion",
+  },
+  {
+    action: "delete",
+    targetType: "team",
+    confirmationRequired: "click",
+    routeKey: "DELETE /api/teams/{id}",
+    executor: "registered_deletion",
+  },
+  {
+    action: "delete",
+    targetType: "automation",
+    confirmationRequired: "click",
+    routeKey: "DELETE /api/automations/{id}",
+    executor: "registered_deletion",
+  },
 ] as const;
 
 export type PendingActionApprovalContract =

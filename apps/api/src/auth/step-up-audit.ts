@@ -15,7 +15,16 @@ export type StepUpOperation =
   | "scim_token_rotate"
   | "scim_token_revoke"
   | "identity_connection_create"
-  | "identity_connection_configure";
+  | "identity_connection_configure"
+  | "impersonation_start"
+  | "secrets_rotate"
+  | "webhook_create"
+  | "webhook_update_url"
+  | "webhook_rotate_secret"
+  | "workspace_role_create"
+  | "workspace_role_update"
+  | "service_key_create"
+  | "workspace_ownership_transfer";
 
 export type StepUpAuditAction =
   | "auth.step_up_issued"
@@ -25,7 +34,7 @@ export type StepUpAuditAction =
 type StepUpTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type AuditDatabase = typeof db | StepUpTransaction;
 
-const operationRoutes: Record<StepUpOperation, string> = {
+export const STEP_UP_OPERATION_ROUTES: Record<StepUpOperation, string> = {
   metrics_token_rotate: "POST /api/instance/observability/metrics-token/rotate",
   mfa_reset: "POST /api/instance/users/{id}/reset-mfa",
   instance_admin_grant: "POST /api/instance/users/{id}/grant-admin",
@@ -42,6 +51,16 @@ const operationRoutes: Record<StepUpOperation, string> = {
   identity_connection_create: "POST /api/instance/identity-connections",
   identity_connection_configure:
     "PATCH /api/instance/identity-connections/{id}",
+  impersonation_start: "POST /api/instance/users/{id}/impersonate",
+  secrets_rotate: "POST /api/instance/plugins/rotate-secrets",
+  webhook_create: "POST /api/webhooks",
+  webhook_update_url: "PATCH /api/webhooks/{id}",
+  webhook_rotate_secret: "POST /api/webhooks/{id}/rotate-secret",
+  workspace_role_create: "POST /api/workspace/{workspaceId}/roles",
+  workspace_role_update: "PATCH /api/workspace/{workspaceId}/roles/{roleId}",
+  service_key_create: "POST /api/workspaces/{id}/api-keys",
+  workspace_ownership_transfer:
+    "POST /api/workspace/{workspaceId}/transfer-ownership",
 };
 
 /**
@@ -71,7 +90,7 @@ export async function appendStepUpAudit(
       after: {
         bindingKind: "operation",
         operation: input.operation,
-        route: operationRoutes[input.operation],
+        route: STEP_UP_OPERATION_ROUTES[input.operation],
       },
     });
   } catch {

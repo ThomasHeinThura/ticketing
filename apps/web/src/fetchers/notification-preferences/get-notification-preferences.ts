@@ -17,8 +17,12 @@ export type NotificationPreferenceWorkspaceRule = {
   updatedAt: string;
 };
 
+export type QuietHours = { start: string; end: string; timezone: string };
+
 export type NotificationPreferences = {
   canonicalPreferences?: CanonicalMentionPreference[];
+  /** NO-3: the caller's quiet-hours window; null when none is set. */
+  quietHours?: QuietHours | null;
   emailAddress: string | null;
   emailEnabled: boolean;
   ntfyEnabled: boolean;

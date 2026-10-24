@@ -22,6 +22,7 @@ import {
   InvitationExpiredError,
   InvitationNotFoundError,
   InvitationNotPendingError,
+  InvitationRoleNotAssignableError,
   NotInvitationRecipientError,
 } from "./controllers/invitation-action-errors";
 import rejectInvitationCtrl from "./controllers/reject-invitation";
@@ -235,6 +236,9 @@ const invitation = apiRouter()
       }
       if (error instanceof AlreadyWorkspaceMemberError) {
         throw new HTTPException(409, { message: error.message });
+      }
+      if (error instanceof InvitationRoleNotAssignableError) {
+        throw new HTTPException(403, { message: error.message });
       }
       if (error instanceof WorkspaceRoleNotFoundError) {
         throw new HTTPException(400, {

@@ -123,6 +123,20 @@ describe("relation activity descriptions", () => {
   ) {
     return { field, verb: "updated", oldValue, newValue };
   }
+  it("names the edited custom field from the row payload", () => {
+    expect(
+      activityChangeDescription(
+        {
+          field: "custom_field",
+          verb: "updated",
+          oldValue: "a",
+          newValue: "b",
+          payload: { key: "region", name: "Region" },
+        },
+        translate,
+      ),
+    ).toBe("Region: a → b");
+  });
   it("shows relation creation and removal as readable from/to labels", () => {
     expect(
       activityChangeDescription(

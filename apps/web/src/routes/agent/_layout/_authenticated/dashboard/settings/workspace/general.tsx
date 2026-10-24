@@ -27,6 +27,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import {
+  FailureAlert,
+  StepUpFields,
+} from "@/components/god-mode/step-up-fields";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import useDeleteWorkspace from "@/hooks/mutations/workspace/use-delete-workspace";
@@ -35,6 +39,7 @@ import useUpdateWorkspace from "@/hooks/mutations/workspace/use-update-workspace
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetFullWorkspace from "@/hooks/queries/workspace/use-get-full-workspace";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
+import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
 
@@ -106,6 +111,9 @@ function RouteComponent() {
     useDeleteWorkspace();
   const { mutateAsync: transferOwnership, isPending: isTransferring } =
     useTransferWorkspaceOwnership();
+  // Ownership transfer is elevated: it spends a fresh, single-use verification bound to this
+  // workspace and this new owner.
+  const transferStepUp = useStepUpAction();
   const { canManageWorkspace, canDeleteWorkspace, isOwner } =
     useWorkspacePermission();
   const canEdit = canManageWorkspace();
@@ -236,10 +244,22 @@ function RouteComponent() {
       return;
 
     try {
-      await transferOwnership({
-        workspaceId: workspace.id,
-        newOwnerUserId: selectedMember.id,
-      });
+      const outcome = await transferStepUp.run(
+        {
+          operation: "workspace_ownership_transfer",
+          workspaceId: workspace.id,
+          newOwnerUserId: selectedMember.id,
+        },
+        (token) =>
+          transferOwnership({
+            workspaceId: workspace.id,
+            newOwnerUserId: selectedMember.id,
+            stepUpToken: token,
+          }),
+        { writeErrors: "rethrow" },
+      );
+      // A failed verification is reported inside the dialog; nothing was changed.
+      if (!outcome.ok) return;
       toast.success(
         t("settings:workspaceGeneral.transferOwnership.toastSuccess", {
           defaultValue: "Ownership transferred",
@@ -262,6 +282,7 @@ function RouteComponent() {
     currentOwnerMember,
     selectedMember,
     transferOwnership,
+    transferStepUp,
     t,
   ]);
 
@@ -543,7 +564,10 @@ function RouteComponent() {
 
         <AlertDialog
           open={isTransferModalOpen}
-          onOpenChange={setIsTransferModalOpen}
+          onOpenChange={(open) => {
+            setIsTransferModalOpen(open);
+            if (!open) transferStepUp.clearFailure();
+          }}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -564,6 +588,18 @@ function RouteComponent() {
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="space-y-3 px-6">
+              <StepUpFields
+                action={transferStepUp}
+                idPrefix="transfer-ownership"
+              />
+              <FailureAlert
+                failure={transferStepUp.failure}
+                title={t(
+                  "settings:workspaceGeneral.transferOwnership.stepUpFailedTitle",
+                )}
+              />
+            </div>
             <AlertDialogFooter>
               <AlertDialogClose
                 render={
@@ -576,16 +612,19 @@ function RouteComponent() {
               >
                 {t("common:actions.cancel")}
               </AlertDialogClose>
-              <AlertDialogClose
-                render={
-                  <Button
-                    size="sm"
-                    disabled={!canTransferOwnership || isTransferring}
-                    onClick={handleTransferOwnership}
-                  />
+              {/* Not an AlertDialogClose: the dialog must stay open if the verification fails;
+                  the handler closes it once the transfer succeeded. */}
+              <Button
+                size="sm"
+                disabled={
+                  !canTransferOwnership ||
+                  isTransferring ||
+                  transferStepUp.busy ||
+                  !transferStepUp.secret
                 }
+                onClick={() => void handleTransferOwnership()}
               >
-                {isTransferring
+                {isTransferring || transferStepUp.busy
                   ? t(
                       "settings:workspaceGeneral.transferOwnership.transferring",
                       { defaultValue: "Transferring…" },
@@ -593,7 +632,7 @@ function RouteComponent() {
                   : t("settings:workspaceGeneral.transferOwnership.confirm", {
                       defaultValue: "Transfer ownership",
                     })}
-              </AlertDialogClose>
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

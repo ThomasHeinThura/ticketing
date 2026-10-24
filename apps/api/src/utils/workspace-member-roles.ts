@@ -1,11 +1,18 @@
 import {
+  BUILT_IN_ROLES,
   type BuiltInRoleKey,
+  type Capability,
   type MembershipRoleProblem,
   membershipRoleProblem,
 } from "@taskdesk/permissions";
 import type { Executor } from "../database/executor";
 import {
+  expandedRoleCapabilities,
+  findWorkspaceRoleByKey,
+} from "../permissions/workspace-role-authority.repository";
+import {
   countOwnerRows,
+  findRoleIsSystem,
   listMemberRoleRows,
   listRolePermissionRows,
 } from "./access-lookups.repository";
@@ -233,6 +240,72 @@ export async function workspaceRolePermission(
   if (rows.length !== 1) return null;
   return rows[0]?.permission ?? null;
 }
+
+/**
+ * What a non-owner `workspace_member.role` key grants to the LEGACY statement gates.
+ *
+ * Custom-role capabilities live in the canonical `role` table (owner decision, 23 Oct), so a
+ * non-system role is answered from its `role.capabilities` row, translated by
+ * `legacy-statements.ts`. The built-in default rows (`viewer` / `member` / `admin`) keep their
+ * legacy `workspace_role.permission` statements, because the legacy vocabulary and the compiled
+ * canonical built-ins differ (members hold `project:create` and `label:*` there), and only a
+ * genuine seeded (`is_system`) legacy row may answer: a custom legacy-only row grants nothing.
+ * Anything else, including a missing or duplicated row, is `none` (fail closed, issue #66).
+ */
+export type WorkspaceRoleAuthority =
+  | { kind: "capabilities"; capabilities: Set<Capability> }
+  | { kind: "statements"; permission: string }
+  | { kind: "none" };
+
+export async function workspaceRoleAuthority(
+  executor: DbOrTx,
+  workspaceId: string,
+  role: string,
+): Promise<WorkspaceRoleAuthority> {
+  const canonical = await findWorkspaceRoleByKey(executor, workspaceId, role);
+  if (canonical && !canonical.isSystem) {
+    // A custom row that shares a built-in key is never trusted as that built-in.
+    if (Object.hasOwn(BUILT_IN_ROLES, role)) return { kind: "none" };
+    return {
+      kind: "capabilities",
+      capabilities: expandedRoleCapabilities(canonical.capabilities),
+    };
+  }
+  const legacy = await findRoleIsSystem(executor, workspaceId, role);
+  if (legacy?.isSystem === true) {
+    const permission = await workspaceRolePermission(
+      executor,
+      workspaceId,
+      role,
+    );
+    // A genuine legacy row that is ambiguous (duplicated, issue #118) or unreadable denies; it
+    // never falls through to the canonical list.
+    return permission === null
+      ? { kind: "none" }
+      : { kind: "statements", permission };
+  }
+  // A seeded built-in that never had a legacy statement row (`manager`, `lead`) is answered from
+  // its canonical capabilities. The three that DO have one (`viewer`, `member`, `admin`) are
+  // never answered from the compiled list when that row is missing or not genuine: deleting or
+  // replacing the legacy row must not restore the compiled privileges (issue #66).
+  if (
+    canonical?.isSystem === true &&
+    !LEGACY_STATEMENT_BACKED_ROLES.has(role)
+  ) {
+    return {
+      kind: "capabilities",
+      capabilities: expandedRoleCapabilities(canonical.capabilities),
+    };
+  }
+  return { kind: "none" };
+}
+
+/** The default roles whose legacy `workspace_role` statement row the legacy gates still read. */
+const LEGACY_STATEMENT_BACKED_ROLES: ReadonlySet<string> = new Set([
+  "viewer",
+  "member",
+  "admin",
+]);
 
 export function isUnambiguousMembership(roles: string[]): boolean {
   return roles.length === 1;

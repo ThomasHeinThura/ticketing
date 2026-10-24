@@ -233,3 +233,26 @@ describe("WI-23 single work-item deletion dialog content", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("executed role deletion", () => {
+  beforeEach(() => {
+    mocks.approve.mockReset().mockResolvedValue({ state: "executed" });
+    mocks.navigate.mockReset().mockResolvedValue(undefined);
+    mocks.invalidate.mockReset().mockResolvedValue(undefined);
+    mocks.pathname.current = "/agent/settings/roles/role-1";
+    mocks.action.current = workItemAction({
+      targetType: "workspace_role",
+      targetIds: ["role-1"],
+      summary: { roleId: "role-1", name: "Service desk lead" },
+    });
+  });
+  afterEach(() => cleanup());
+
+  it("names the role (not its slug) and returns to the roles list", async () => {
+    await approve();
+    expect(screen.getByText("Service desk lead")).toBeTruthy();
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/agent/settings/roles",
+    });
+  });
+});

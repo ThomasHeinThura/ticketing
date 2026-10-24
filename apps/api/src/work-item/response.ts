@@ -1,3 +1,4 @@
+import { workItemCustomFieldSchema } from "../custom-field/response";
 import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
 
 // Plain (unregistered) shape shared by `workItemSchema` and `workItemDetailSchema`, so the
@@ -108,6 +109,7 @@ export const workItemDetailSchema = workItemShape
     }),
     assigneeName: z.string().nullable(),
     ...assigneeFactsShape,
+    customFields: z.array(workItemCustomFieldSchema),
   })
   .openapi("WorkItemDetail");
 

@@ -30,6 +30,7 @@ import { deleteExpiredNotificationReservations } from "../../../apps/api/src/sch
 import { seedDefaultWorkspaceRoles } from "../../../apps/api/src/utils/seed-default-workspace-roles";
 import { resetTestDatabase } from "./database";
 import { createProjectFixture, grantProjectRole } from "./fixtures";
+import { quietWindowAround } from "./quiet-hours";
 
 /**
  * The notification outbox delivery suite, parameterised by the process/database time zone
@@ -822,14 +823,89 @@ export function defineNotificationOutboxSuite(zoneLabel: string): void {
       expect(row.rows[0]).toEqual({ attempts: 0, state: "pending" });
     });
 
-    it("NO-3 leaves a child pending without provider authorization when quiet hours are configured but unresolved", async () => {
+    it("NO-3 defers a non-urgent child inside the recipient's quiet hours without consuming an attempt", async () => {
       const fixture = await makeEventAndDelivery(true, {
         eventKind: "work_item.assigned",
         resourceType: "work_item",
         resourceId: ids.item,
         payload: { workItemId: ids.item },
       });
-      await db.execute(sql`UPDATE person SET quiet_hours_start = '22:00', quiet_hours_end = '07:00',
+      const window = quietWindowAround(new Date(), "Europe/London");
+      await db.execute(sql`UPDATE person SET quiet_hours_start = ${window.quietHoursStart}, quiet_hours_end = ${window.quietHoursEnd},
+      quiet_hours_timezone = 'Europe/London' WHERE id = ${ids.person}`);
+
+      let sent = 0;
+      const runtime = currentEligibilityRuntime(async () => {
+        sent += 1;
+      });
+
+      await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+        kind: "deferred",
+        reason: "quiet_hours",
+      });
+      expect(sent).toBe(0);
+      const row = await db.execute<{
+        attempts: number;
+        state: string;
+        deferred: boolean;
+      }>(sql`
+      SELECT attempts, state, next_attempt_at > (now() AT TIME ZONE 'UTC') + interval '30 minutes' AS deferred
+      FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+      expect(row.rows[0]).toEqual({
+        attempts: 0,
+        state: "pending",
+        deferred: true,
+      });
+    });
+
+    it("NO-3 delivers outside the configured quiet hours and when they are cleared", async () => {
+      await makeEventAndDelivery(true, {
+        eventKind: "work_item.assigned",
+        resourceType: "work_item",
+        resourceId: ids.item,
+        payload: { workItemId: ids.item },
+      });
+      const window = quietWindowAround(
+        new Date(Date.now() + 12 * 60 * 60 * 1000),
+        "Europe/London",
+      );
+      await db.execute(sql`UPDATE person SET quiet_hours_start = ${window.quietHoursStart}, quiet_hours_end = ${window.quietHoursEnd},
+      quiet_hours_timezone = 'Europe/London' WHERE id = ${ids.person}`);
+      let sent = 0;
+      const runtime = currentEligibilityRuntime(async () => {
+        sent += 1;
+      });
+      await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+        kind: "delivered",
+      });
+      expect(sent).toBe(1);
+    });
+
+    it("NO-3 ignores quiet hours for an SLA breach", async () => {
+      await makeEventAndDelivery(true, {
+        eventKind: "sla.breached",
+        resourceType: "work_item",
+        resourceId: ids.item,
+        payload: { workItemId: ids.item },
+      });
+      const window = quietWindowAround(new Date(), "Europe/London");
+      await db.execute(sql`UPDATE person SET quiet_hours_start = ${window.quietHoursStart}, quiet_hours_end = ${window.quietHoursEnd},
+      quiet_hours_timezone = 'Europe/London' WHERE id = ${ids.person}`);
+      const result = await processNextNotificationDelivery(
+        currentEligibilityRuntime(async () => {}),
+      );
+      expect(result).toEqual({ kind: "delivered" });
+    });
+
+    it("NO-3 leaves a child pending without provider authorization when the configured quiet hours are malformed", async () => {
+      const fixture = await makeEventAndDelivery(true, {
+        eventKind: "work_item.assigned",
+        resourceType: "work_item",
+        resourceId: ids.item,
+        payload: { workItemId: ids.item },
+      });
+      await db.execute(sql`UPDATE person SET quiet_hours_start = '22:00', quiet_hours_end = '25:99',
       quiet_hours_timezone = 'Europe/London' WHERE id = ${ids.person}`);
 
       let sent = 0;

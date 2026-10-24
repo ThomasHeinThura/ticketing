@@ -17,6 +17,10 @@ import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
 import { appendAuditLog } from "./audit/audit-writer";
 import { authConfigurationVersion } from "./auth/configuration-version";
+import {
+  IMPERSONATION_SESSION_SECONDS,
+  isSanctionedAdminEndpoint,
+} from "./auth/impersonation-context";
 import { loadLocalFactorState } from "./auth/local-factor-service";
 import {
   completeFirstUserSetup,
@@ -530,6 +534,9 @@ function createAuth(
               // the two removed above.
               enableSessionForAPIKeys: false,
               apiKeyHeaders: "x-api-key",
+              // AK-8: keys authenticate as `Authorization: Bearer tdk_…`. Keys issued through
+              // `/api/me/api-keys` carry the same prefix (`api-key/service.ts`).
+              defaultPrefix: "tdk_",
               rateLimit: {
                 enabled: true,
                 maxRequests: 100,
@@ -547,6 +554,10 @@ function createAuth(
             adminPlugin({
               defaultRole: "user",
               adminRoles: ["admin"],
+              // GM-7: an impersonation session is capped at 30 minutes. Administrators are
+              // never impersonable (GM-10), so `allowImpersonatingAdmins` stays at its
+              // default of false.
+              impersonationSessionDuration: IMPERSONATION_SESSION_SECONDS,
             }),
           ]
         : []),
@@ -836,7 +847,10 @@ function createAuth(
         // the matched endpoint path, so encoding/case/slash variants either
         // resolve to this same path (and are refused) or match nothing (404).
         // Authority for these operations lives in `/api/instance/*`.
-        if (ctx.path === "/admin" || ctx.path.startsWith("/admin/")) {
+        if (
+          (ctx.path === "/admin" || ctx.path.startsWith("/admin/")) &&
+          !isSanctionedAdminEndpoint(ctx.path)
+        ) {
           throw new APIError("NOT_FOUND", { message: "Not found" });
         }
 

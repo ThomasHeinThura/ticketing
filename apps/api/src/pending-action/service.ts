@@ -3,7 +3,13 @@ import type { JsonValue } from "@taskdesk/domain";
 import type { PolicyMap, ResolvedIdentity } from "@taskdesk/permissions";
 import { and, desc, eq, gt, lt, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import {
+  assertKeyHasApprover,
+  pendingActionOriginForKey,
+} from "../api-key/credential";
+import { loadApiKeyKind } from "../api-key/repository";
 import { appendAuditLog } from "../audit/audit-writer";
+import { currentImpersonatorId } from "../auth/impersonation-context";
 import { appendPendingActionStepUpAudit } from "../auth/step-up-audit";
 import { consumePendingActionProof } from "../auth/step-up-service";
 import db, { schema } from "../database";
@@ -113,8 +119,34 @@ export type CreatePendingActionInput = {
   userAgent?: string | null;
 };
 
+/**
+ * F13 / PA-5a: a key credential's pending-action origin comes from the key's stored `is_mcp`
+ * flag, never from the calling route, and a workspace service key (no person) has no approver
+ * and is refused `403 no_approver`. A `web` origin on a key credential is left alone so the
+ * target's own credential validation still refuses it.
+ */
+async function bindKeyCredentialOrigin(
+  requested: CreatePendingActionInput,
+): Promise<CreatePendingActionInput> {
+  if (requested.credentialType !== "api_key" || !requested.credentialId?.trim())
+    return requested;
+  const key = await loadApiKeyKind(requested.credentialId);
+  assertKeyHasApprover(key);
+  if (requested.origin === "web") return requested;
+  return { ...requested, origin: pendingActionOriginForKey(key) };
+}
+
 /** Creates the durable approval and its audit record before returning any 202 response. */
-export async function createPendingAction(input: CreatePendingActionInput) {
+export async function createPendingAction(requested: CreatePendingActionInput) {
+  // GM-9: an impersonator may not request a deletion (or any other pending action) as the
+  // target. Every route that opens one, single or bulk, DELETE or POST, passes through here.
+  if (currentImpersonatorId() !== null) {
+    throw new HTTPException(403, {
+      message:
+        "impersonation: requesting a deletion is not allowed during an impersonation session",
+    });
+  }
+  const input = await bindKeyCredentialOrigin(requested);
   assertRegisteredRouteKey(input.routeKey);
   const now = new Date();
   const id = createId();
@@ -515,6 +547,9 @@ export async function requirePendingActionRequesterIdentity(
   userId: string,
   apiKey: { id: string; userId: string; enabled: boolean } | undefined,
 ) {
+  // PA-5a: refuse a workspace service key before identity resolution can turn "no person"
+  // into a generic 401.
+  if (apiKey) assertKeyHasApprover(await loadApiKeyKind(apiKey.id));
   const identity = await resolveIdentity({
     userId,
     credential: apiKey ? "api_key" : "session",

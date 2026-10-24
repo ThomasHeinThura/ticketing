@@ -25,6 +25,7 @@ Maintained route inventory for automated coverage. 🟡 means implemented/in pro
 | Modules list | `/agent/projects/{key}/modules` | route | P5 | ⬜ |
 | Module detail | `/agent/projects/{key}/modules/{id}` | route | P5 | ⬜ |
 | Pages | `/agent/projects/{key}/pages` | route | P5 | ⬜ |
+| Page view and editor | `/agent/projects/{key}/pages/{id}` | route | P5 | ⬜ |
 | Milestones & prerequisites | `/agent/projects/{key}/plan` | route | P2 | ⬜ |
 | Stakeholders | `/agent/projects/{key}/stakeholders` | route | P2 | ⬜ |
 | Work item — full page | `/agent/work-items/{key}` | route | P1 | 🟡 |
@@ -57,8 +58,8 @@ Maintained route inventory for automated coverage. 🟡 means implemented/in pro
 | Workspace — members | `/agent/settings/members` | route | P1 | 🟡 |
 | Workspace — teams | `/agent/settings/teams` | route | P4 | ⬜ |
 | Team detail | `/agent/settings/teams/{id}` | route | P4 | ⬜ |
-| **Workspace — roles** | `/agent/settings/roles` | route | P4 | ⬜ |
-| **Role editor** | `/agent/settings/roles/{id}` | route | P4 | ⬜ |
+| **Workspace — roles** | `/agent/settings/roles` | route | P4 | 🟡 |
+| **Role editor** | `/agent/settings/roles/{id}` | route | P4 | 🟡 |
 | Workspace — work item types | `/agent/settings/work-item-types` | route | P2 | ⬜ |
 | Workspace — states | `/agent/settings/states` | route | P1 | 🟡 |
 | Workspace — workflows | `/agent/settings/workflows` | route | P2 | ⬜ |
@@ -76,10 +77,10 @@ Maintained route inventory for automated coverage. 🟡 means implemented/in pro
 | Workspace — rates | `/agent/settings/rates` | route | P5 | ⬜ |
 | Workspace — time activities | `/agent/settings/time-activities` | route | P5 | ⬜ |
 | Workspace — cost types | `/agent/settings/cost-types` | route | P5 | ⬜ |
-| Workspace — automations | `/agent/settings/automations` | route | P4 | ⬜ |
-| Workspace — webhooks | `/agent/settings/webhooks` | route | P4 | ⬜ |
-| Webhook editor | `/agent/settings/webhooks/{id}` | route | P4 | ⬜ |
-| Webhook delivery history | `/agent/settings/webhooks/{id}/deliveries` | route | P4 | ⬜ |
+| Workspace — automations | `/agent/settings/automations` | route | P4 | 🟡 |
+| Workspace — webhooks | `/agent/settings/webhooks` | route | P4 | 🟡 |
+| Webhook editor | `/agent/settings/webhooks/{id}` | route | P4 | 🟡 |
+| Webhook delivery history | `/agent/settings/webhooks/{id}/deliveries` | route | P4 | 🟡 |
 | Workspace — import | `/agent/settings/import` | route | P6 | ⬜ |
 | Workspace — danger zone | `/agent/settings/danger` | route | P1 | 🟡 |
 | Project — general | `/agent/projects/{key}/settings` | route | P1 | 🟡 |
@@ -87,12 +88,12 @@ Maintained route inventory for automated coverage. 🟡 means implemented/in pro
 | Project — states | `/agent/projects/{key}/settings/states` | route | P1 | 🟡 |
 | Project — labels | `/agent/projects/{key}/settings/labels` | route | P1 | 🟡 |
 | Project — SLA & calendar | `/agent/projects/{key}/settings/sla` | route | P2 | ⬜ |
-| Project — features | `/agent/projects/{key}/settings/features` | route | P4 | ⬜ |
-| Project — automations | `/agent/projects/{key}/settings/automations` | route | P4 | ⬜ |
+| Project — features | `/agent/projects/{key}/settings/features` | route | P4 | 🟡 |
+| Project — automations | `/agent/projects/{key}/settings/automations` | route | P4 | 🟡 |
 | Project — budget | `/agent/projects/{key}/settings/budget` | route | P5 | ⬜ |
 | Project — danger zone | `/agent/projects/{key}/settings/danger` | route | P1 | 🟡 |
-| God Mode home / health | `/agent/god-mode` | route | P4 | ⬜ |
-| General (incl. terminology) | `/agent/god-mode/general` | route | P4 | ⬜ |
+| God Mode home / health | `/agent/god-mode` | route | P4 | 🟡 |
+| General (incl. terminology) | `/agent/god-mode/general` | route | P4 | 🟡 |
 | Branding | `/agent/god-mode/branding` | route | P4 | ⬜ |
 | **Authentication providers** | `/agent/god-mode/authentication` | route | P3 | 🟡 |
 | **Provider editor** | `/agent/god-mode/authentication/{id}` | route | P3 | 🟡 |
@@ -102,7 +103,7 @@ Maintained route inventory for automated coverage. 🟡 means implemented/in pro
 | Storage | `/agent/god-mode/storage` | route | P4 | ⬜ |
 | Notification channels — SMTP configuration | `/agent/god-mode/notifications` | route | P4 | 🟡 |
 | Deliveries (outbox, dead letters) | `/agent/god-mode/deliveries` | route | P4 | ⬜ |
-| Feature flags | `/agent/god-mode/features` | route | P4 | ⬜ |
+| Feature flags | `/agent/god-mode/features` | route | P4 | 🟡 |
 | Jobs | `/agent/god-mode/jobs` | route | P4 | ⬜ |
 | Plugins | `/agent/god-mode/plugins` | route | P4 | ⬜ |
 | Observability and instance MFA policy | `/god-mode/observability` | route | P0 | 🟡 |
@@ -111,7 +112,7 @@ Maintained route inventory for automated coverage. 🟡 means implemented/in pro
 | Import runs | `/agent/god-mode/import` | route | P6 | ⬜ |
 | Users | `/agent/god-mode/users` | route | P4 | 🟡 |
 | Sign in | `/sign-in` | route | P3 | 🟡 |
-| Accept invitation | `/portal/invite` | route | P3 | ⬜ |
+| Accept invitation | `/invite/{id}` | route | P3 | ⬜ |
 | Home | `/portal` | route | P3 | ⬜ |
 | Request detail (work item) | `/portal/requests/{ref}` | route | P3 | ⬜ |
 | Catalogue | `/portal/new` | route | P3 | ⬜ |
@@ -121,8 +122,8 @@ Maintained route inventory for automated coverage. 🟡 means implemented/in pro
 | Approvals | `/portal/approvals` | route | P3 | ⬜ |
 | Projects list | `/portal/projects` | route | P3 | ⬜ |
 | Project detail | `/portal/projects/{key}` | route | P3 | ⬜ |
-| Knowledge base | `/portal/kb` | route | P5 | ⬜ |
-| Article | `/portal/kb/{id}` | route | P5 | ⬜ |
+| Knowledge base | `/kb` | route | P5 | ⬜ |
+| Article | `/kb/{id}` | route | P5 | ⬜ |
 | Satisfaction survey | `/portal/requests/{ref}/rate` | route | P3 | ⬜ |
 | Account (incl. notification preferences) | `/portal/account` | route | P3 | ⬜ |
 | Not found (portal origin) | `*` | route | P3 | ⬜ |
@@ -132,7 +133,7 @@ Maintained route inventory for automated coverage. 🟡 means implemented/in pro
 
 | Summary | Count |
 | --- | --- |
-| **Total** | **140** |
+| **Total** | **141** |
 
 ## Overlays, dialogs and embedded sections
 

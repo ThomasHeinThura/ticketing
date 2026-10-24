@@ -1,5 +1,5 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Executor } from "../database/executor";
 import { membershipTable, projectTable } from "../database/schema";
 import {
@@ -208,6 +208,67 @@ export async function loadProjectAncestorIdsFor(
 }
 
 /**
+ * TM-4 / reach step 5: the project's `owner_team_id`, or `null`. One indexed read, same
+ * workspace only (tenant boundary), live or archived alike (a soft-deleted project is refused by
+ * its own lookups before reach is asked).
+ */
+export async function loadProjectOwnerTeamId(
+  executor: Executor,
+  workspaceId: string,
+  projectId: string,
+): Promise<string | null> {
+  const [row] = await executor
+    .select({ ownerTeamId: projectTable.ownerTeamId })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        eq(projectTable.workspaceId, workspaceId),
+      ),
+    )
+    .limit(1);
+  return row?.ownerTeamId ?? null;
+}
+
+/**
+ * The owner team for an identity: `null` without a query when the caller is on no team (a
+ * customer, or a staff person with no team membership, can never be reached through step 5).
+ * `identity.teamIds` is already restricted to teams of workspaces the person currently belongs
+ * to, and an inactive person resolves to no identity at all.
+ */
+export async function loadProjectOwnerTeamIdFor(
+  executor: Executor,
+  identity: Pick<ResolvedIdentity, "teamIds" | "side"> | null,
+  workspaceId: string,
+  projectId: string,
+): Promise<string | null> {
+  if (!identity || identity.side === "customer") return null;
+  if (!Array.isArray(identity.teamIds) || identity.teamIds.length === 0)
+    return null;
+  return loadProjectOwnerTeamId(executor, workspaceId, projectId);
+}
+
+/** `projectId -> owner_team_id` (owned projects only) for many workspaces in one query. */
+export async function loadOwnerTeamIdsByProject(
+  executor: Executor,
+  workspaceIds: readonly string[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (workspaceIds.length === 0) return out;
+  const rows = await executor
+    .select({ id: projectTable.id, ownerTeamId: projectTable.ownerTeamId })
+    .from(projectTable)
+    .where(
+      and(
+        inArray(projectTable.workspaceId, [...workspaceIds]),
+        isNotNull(projectTable.ownerTeamId),
+      ),
+    );
+  for (const row of rows) if (row.ownerTeamId) out.set(row.id, row.ownerTeamId);
+  return out;
+}
+
+/**
  * Ancestor ids for many projects across workspaces in one query: `projectId -> ancestors`.
  * Used by the reach-filtered project list. Projects without ancestors map to `[]`.
  */
@@ -258,6 +319,20 @@ export async function setProjectParent(
     .returning();
   // The chain memoised on this transaction (if any) is now stale.
   invalidateProjectAncestry(executor);
+  return row;
+}
+
+/** TM-4: set or clear the owning team; the memoised ownership reads on `executor` are stale. */
+export async function setProjectOwnerTeam(
+  executor: Executor,
+  projectId: string,
+  ownerTeamId: string | null,
+) {
+  const [row] = await executor
+    .update(projectTable)
+    .set({ ownerTeamId })
+    .where(eq(projectTable.id, projectId))
+    .returning();
   return row;
 }
 

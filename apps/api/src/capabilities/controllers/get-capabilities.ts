@@ -21,6 +21,11 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   exportTasks: boolean;
   setPriorityTasks: boolean;
   manageProjectSettings: boolean;
+  // Per-area settings capabilities, exactly what each settings API enforces, so navigation and
+  // pages follow the server instead of the broader `workspace:manage_settings`.
+  manageRoles: boolean;
+  manageWebhooks: boolean;
+  manageCustomFields: boolean;
   bindProjectOrganisation: boolean;
   manageLabels: boolean;
   createAttachments: boolean;
@@ -49,6 +54,9 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     bindProjectOrganisation,
     manageLabels,
     createAttachments,
+    manageRoles,
+    manageWebhooks,
+    manageCustomFields,
   ] = await Promise.all([
     Promise.all(
       entries.map(async ([name, permissions]) => {
@@ -86,6 +94,9 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasCanonicalCapability(c, "project:create"),
     hasCanonicalCapability(c, "label:manage"),
     hasCanonicalCapability(c, "attachment:create"),
+    hasCanonicalCapability(c, "workspace:manage_roles"),
+    hasCanonicalCapability(c, "webhook:manage"),
+    hasCanonicalCapability(c, "custom_field:manage"),
   ]);
   // The agent API refuses customer principals on item-scoped routes (403), so the UI must not
   // be told it may rank or comment publicly there. Same predicate the routes use
@@ -109,6 +120,9 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     exportTasks: agentOnly(exportTasks),
     setPriorityTasks: agentOnly(setPriorityTasks),
     manageProjectSettings,
+    manageRoles,
+    manageWebhooks,
+    manageCustomFields,
     bindProjectOrganisation,
     manageLabels,
     createAttachments: agentOnly(createAttachments),
@@ -127,7 +141,10 @@ async function hasCanonicalCapability(
     | "project:manage_settings"
     | "project:create"
     | "label:manage"
-    | "attachment:create",
+    | "attachment:create"
+    | "workspace:manage_roles"
+    | "webhook:manage"
+    | "custom_field:manage",
 ): Promise<boolean> {
   const workspaceId = c.get("workspaceId");
   const userId = c.get("userId");

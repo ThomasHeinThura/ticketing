@@ -17,6 +17,7 @@ import {
   deleteThroughApproval,
   ensureAgentSession,
 } from "./helpers/pending-deletion";
+import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
 
 type CreateTaskBody = {
   title: string;
@@ -55,27 +56,12 @@ async function createWorkspaceRoleRow(
   role: string,
   permission: Record<string, string[]> | string,
 ) {
-  // Delete-then-insert rather than a blind insert: `createWorkspaceMember`
-  // now auto-seeds a `workspace_role` row for default role names (issue
-  // #66), so a test that overrides one of those roles' permissions (e.g.
-  // "viewer") would otherwise leave TWO rows for the same
-  // (workspaceId, role) pair -- there is no unique constraint on that pair
-  // at the DB level -- and which one `hasWorkspacePermission`'s
-  // unordered `.limit(1)` picks would be undefined.
-  await db
-    .delete(schema.workspaceRoleTable)
-    .where(
-      and(
-        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-        eq(schema.workspaceRoleTable.role, role),
-      ),
-    );
-  await db.insert(schema.workspaceRoleTable).values({
-    workspaceId,
-    role,
-    permission:
-      typeof permission === "string" ? permission : JSON.stringify(permission),
-  });
+  // Delete-then-insert rather than a blind insert: `createWorkspaceMember` auto-seeds the
+  // rows for default role names (issue #66), so a test that overrides one of those roles'
+  // permissions (e.g. "viewer") would otherwise leave TWO rows for the same (workspaceId,
+  // role) pair. Owner decision, 23 Oct: the helper writes the canonical `role` row too, which
+  // is where a custom role's capabilities live.
+  await upsertWorkspaceRoleRows(workspaceId, role, permission);
 }
 
 async function postCreateTask(

@@ -3,7 +3,10 @@ import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
-import { loadProjectAncestorIdsForRequest } from "../project/hierarchy.repository";
+import {
+  loadProjectAncestorIdsForRequest,
+  loadProjectOwnerTeamId,
+} from "../project/hierarchy.repository";
 import {
   projectCapabilityRefused,
   projectReadDecision,
@@ -46,7 +49,11 @@ export async function assertWorkItemProjectReach(
       facts.workspaceId,
       facts.projectId,
     ),
-    ownerTeamId: null,
+    ownerTeamId: await loadProjectOwnerTeamId(
+      db,
+      facts.workspaceId,
+      facts.projectId,
+    ),
   });
   if (!decision) {
     throw new HTTPException(500, {

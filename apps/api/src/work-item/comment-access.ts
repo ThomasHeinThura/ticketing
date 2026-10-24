@@ -5,7 +5,10 @@ import type { Executor } from "../database/executor";
 import { personTable, userTable, workspaceTable } from "../database/schema";
 import type { ApiKey } from "../openapi";
 import { resolveIdentity } from "../permissions/resolve-identity";
-import { loadProjectAncestorIdsFor } from "../project/hierarchy.repository";
+import {
+  loadProjectAncestorIdsFor,
+  loadProjectOwnerTeamIdFor,
+} from "../project/hierarchy.repository";
 import {
   evaluateProjectRead,
   hasProjectReadCapability,
@@ -102,7 +105,9 @@ export async function loadCommentCaller(
       {
         userId: viewer.userId,
         credential: viewer.apiKey
-          ? "api_key"
+          ? viewer.apiKey.isMcp
+            ? "mcp_key"
+            : "api_key"
           : viewer.impersonated
             ? "impersonation"
             : "session",
@@ -135,7 +140,12 @@ export async function loadCommentCaller(
       scope.workspaceId,
       scope.projectId,
     ),
-    ownerTeamId: null,
+    ownerTeamId: await loadProjectOwnerTeamIdFor(
+      executor,
+      identity,
+      scope.workspaceId,
+      scope.projectId,
+    ),
   };
   const reach = evaluateProjectRead(
     identity,

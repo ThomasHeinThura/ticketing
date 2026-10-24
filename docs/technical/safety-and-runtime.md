@@ -2472,10 +2472,10 @@ thing that is hashed or executed.
   (adding a route there is a contract change recorded here). The categories are:
   (1) **unlinks** that remove only a relationship and never the linked records or history
   (label detach from a task, assignee clear, own watch, parent clear, **workspace membership
-  removal** under its owner/last-owner guards); (2) **a person's own settings and inbox**
+  removal** under its owner/last-owner guards, **team membership removal**); (2) **a person's own settings and inbox**
   (own avatar, own notification clear-all and per-workspace overrides); (3) **configuration
   rows with no history** managed by a session-only administrator in the Kaneo editor
-  (workflow-rule deletion, `sessionOnly`, never reachable with an API/MCP key); (4)
+  (workflow-rule deletion, `sessionOnly`, never reachable with an API/MCP key; deleting an **empty** custom-field section, refused while any field still belongs to it); (4)
   **revocation under another authenticator** — a person revoking their own session or own
   API key through better-auth (`/api/auth/*`; killing your own credential is the safe
   direction and is not a data deletion) and **SCIM deprovision/group removal under the
@@ -2614,8 +2614,10 @@ thing that is hashed or executed.
   allowlist is `metrics_token_rotate`, `identity_connection_create`,
   `identity_connection_configure`, `oidc_group_mapping_create`,
   `oidc_group_mapping_update`, `scim_admin_update`, `scim_token_rotate`,
-  `scim_token_revoke`, `mfa_reset`, `instance_admin_grant`, and
-  `instance_admin_suspend`. Pending-action binding
+  `scim_token_revoke`, `mfa_reset`, `instance_admin_grant`,
+  `instance_admin_suspend`, `impersonation_start`, `secrets_rotate`, `webhook_create`,
+  `webhook_update_url` and `webhook_rotate_secret` (Thomas, 23 Oct, for the first two; the three
+  webhook keys implement `WH-15` and are pending his sign-off). Pending-action binding
   uses its existing `pending_action.id`
   and `payload_hash`; operation binding uses the exact fixed route key, operation key,
   expected resource version and server-computed canonical request-binding hash. The client
@@ -2758,6 +2760,15 @@ thing that is hashed or executed.
   | `scim_admin_update` | `PATCH /api/instance/identity-connections/{id}/scim` | `identity_connection.config_version` |
   | `scim_token_rotate` | `POST /api/instance/identity-connections/{id}/scim/rotate-token` | `identity_connection.config_version` |
   | `scim_token_revoke` | `POST /api/instance/identity-connections/{id}/scim/revoke-token` | `identity_connection.config_version` |
+  | `impersonation_start` | `POST /api/instance/users/{id}/impersonate` | fixed operation version `1`; body hash covers target user id and recorded reason |
+  | `secrets_rotate` | `POST /api/instance/plugins/rotate-secrets` | fixed operation version `1`; empty body |
+  | `webhook_create` | `POST /api/webhooks` | fixed operation version `1`; body hash covers workspace id, name, destination url and sorted event set (never the signing secret) |
+  | `webhook_update_url` | `PATCH /api/webhooks/{id}` | fixed operation version `1`; body hash covers workspace id, webhook id and the new url; spent only when the PATCH changes `url` |
+  | `webhook_rotate_secret` | `POST /api/webhooks/{id}/rotate-secret` | fixed operation version `1`; body hash covers workspace id and webhook id |
+
+  The two instance operations require current `instance:admin`; the three webhook operations
+  require `webhook:manage` in the bound workspace (re-checked at challenge, at proof issue and
+  inside the proof transaction), because a workspace manager is not an instance administrator.
 
   OIDC mapping and SCIM administration challenge and completion requests carry the exact
   connection id and strict operation body; the OIDC mapping id is a separate path id, while

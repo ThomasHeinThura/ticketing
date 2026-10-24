@@ -131,17 +131,21 @@ This is the retained route inventory. Existing routes are compared in both direc
 | Creating a workspace **service** API key | `POST /api/workspaces/{id}/api-keys` — bounded by the creator's authority |
 | Granting `sees_all` on a membership | `PATCH /api/workspaces/{id}/members/{personId}` with `sees_all: true` — never self-grantable; audited as a reach change |
 | Marking a provider "MFA satisfied upstream", or a JIT rule that provisions `side = staff` or a role above `member` | `PATCH /api/instance/identity-connections/{id}` |
-| Deleting a workspace, organisation, project, API key, webhook or identity connection — **typed exact name/key + step-up**, through a pending action | `DELETE /api/workspaces/{id}`, `DELETE /api/instance/organisations/{id}`, `DELETE /api/projects/{projectId}`, `DELETE /api/me/api-keys/{id}`, `DELETE /api/workspaces/{id}/api-keys/{id}`, `DELETE /api/webhooks/{id}`, `DELETE /api/instance/identity-connections/{id}`, `DELETE /api/instance/plugins/{id}` for `auth.*` (pending-actions.md) |
+| Deleting a workspace, organisation, project, API key, webhook or identity connection — **typed exact name/key + step-up**, through a pending action | `DELETE /api/workspaces/{id}`, `DELETE /api/instance/organisations/{id}`, `DELETE /api/projects/{projectId}`, `DELETE /api/me/api-keys/{id}`, `DELETE /api/workspaces/{id}/api-keys/{keyId}`, `DELETE /api/webhooks/{id}`, `DELETE /api/instance/identity-connections/{id}`, `DELETE /api/instance/plugins/{id}` for `auth.*` (pending-actions.md) |
 | Hard purge | `POST /api/instance/purge` (`PA-13`) |
 | Starting an impersonation session | `POST /api/instance/users/{id}/impersonate` |
 | Rotating the encryption key — the key itself is operator-staged via environment variables; this is the re-encryption step | `POST /api/instance/plugins/rotate-secrets` (starts `secrets-rekey` — see runbook) |
 | Exporting instance data — audit CSV, configuration export, full export | `POST /api/instance/audit/export`, `GET /api/instance/config-export`, `POST /api/instance/export` |
 | Rotating a webhook secret | `POST /api/webhooks/{id}/rotate-secret` |
 | Creating a webhook, or changing an existing webhook's `url` — a standing outbound data channel carrying every event in the owner's reach to an arbitrary endpoint, indefinitely | `POST /api/webhooks`, and `PATCH /api/webhooks/{id}` when the body changes `url` (webhooks-and-api-keys.md `WH-14`) |
+| Requesting deletion of a webhook (typed name + step-up pending action; registered target `webhook`) | `DELETE /api/webhooks/{id}` |
 | Overriding a change freeze | `POST /api/work-items/{key}/change/override-freeze` |
 | Creating, editing or deleting a workspace role — a role editor can mint authority up to their own rank | `POST /api/workspace/{workspaceId}/roles`, `PATCH /api/workspace/{workspaceId}/roles/{roleId}`, `DELETE /api/workspace/{workspaceId}/roles/{roleId}` |
+| Transferring workspace ownership — owner-only, bound to the new owner (retained-constraints.md) | `POST /api/workspace/{workspaceId}/transfer-ownership` |
 
 | Rotating the instance metrics bearer with an operation-bound proof | `POST /api/instance/observability/metrics-token/rotate` |
+
+PA-15 operation keys for the elevated actions above that are not pending actions: `impersonation_start` (`POST /api/instance/users/{id}/impersonate`), `secrets_rotate` (`POST /api/instance/plugins/rotate-secrets`), `webhook_create` (`POST /api/webhooks`), `webhook_update_url` (`PATCH /api/webhooks/{id}` when `url` changes), `webhook_rotate_secret` (`POST /api/webhooks/{id}/rotate-secret`), `workspace_role_create` (`POST /api/workspace/{workspaceId}/roles`), `workspace_role_update` (`PATCH /api/workspace/{workspaceId}/roles/{roleId}`), `service_key_create` (`POST /api/workspaces/{id}/api-keys`) and `workspace_ownership_transfer` (`POST /api/workspace/{workspaceId}/transfer-ownership`). Role deletion is the exception on the list: it is a click-level pending action (`RL-8`), not a step-up operation. Every elevated route spends its proof inside its own write transaction; the closed classification of each `elevated: true` route lives in `apps/api/src/auth/elevated-enforcement.ts` and is checked by `pnpm test:permissions`. An impersonation session is refused every elevated, session-only, deletion, approval-decision, export and authority-minting route with a `403` naming `impersonation` (`GM-9`), enforced once in the app-wide auth guard; the impersonation exit control (`GM-11`) is always allowed.
 
 ## Reach
 

@@ -2,6 +2,7 @@ import { defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { apiKeyExtensionTable } from "../../apps/api/src/database/schema";
 import { withPendingActionFailureOutcome } from "../../apps/api/src/pending-action/execution-failure";
 import { createPendingAction } from "../../apps/api/src/pending-action/service";
 import { approveWorkItemDeletion } from "../../apps/api/src/pending-action/work-item-deletion-target";
@@ -79,7 +80,7 @@ function approval(id: string) {
   };
 }
 
-async function insertDeleteKey(id: string, name: string | null) {
+async function insertDeleteKey(id: string, name: string | null, isMcp = false) {
   const now = new Date();
   await db.insert(schema.apikeyTable).values({
     id,
@@ -90,6 +91,13 @@ async function insertDeleteKey(id: string, name: string | null) {
     createdAt: now,
     updatedAt: now,
     enabled: true,
+  });
+  // F13 / PA-4: the pending-action origin of a key request comes from the key's stored `is_mcp`
+  // flag (the extension row), not from what the caller asks for.
+  await db.insert(apiKeyExtensionTable).values({
+    apikeyId: id,
+    personId: requesterPersonId,
+    isMcp,
   });
 }
 
@@ -367,7 +375,11 @@ describe("pending-action failed execution and requester notification", () => {
   it.each(["api", "mcp"] as const)(
     "PA-4: notifies the requester of a %s-origin request naming the key and target",
     async (origin) => {
-      await insertDeleteKey(`pa-failed-key-${origin}`, "ci-bot");
+      await insertDeleteKey(
+        `pa-failed-key-${origin}`,
+        "ci-bot",
+        origin === "mcp",
+      );
       const { pendingActionId } = await createPendingAction({
         ...webRequest(),
         credentialType: "api_key",

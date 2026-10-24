@@ -5,7 +5,10 @@ import type db from "../database";
 import { schema } from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
 import {
   deleteWorkItemInTransaction,
   publishWorkItemDeletion,
@@ -131,12 +134,19 @@ export async function workItemDeletionAccess(
     target.item.workspaceId,
     target.item.projectId,
   );
+  const ownerTeamId = await projectOwnerTeamFor(
+    executor,
+    identity,
+    target.item.workspaceId,
+    target.item.projectId,
+  );
   if (
     !reaches(identity, {
       projectId: target.item.projectId,
       workspaceId: target.item.workspaceId,
       organisationId: target.project.organisationId,
       ancestorProjectIds,
+      ownerTeamId,
     })
   )
     return { allowed: false, failure: "reach", status: 404 };
@@ -328,8 +338,14 @@ export async function workItemDeletionReadSummary(
     target.workspaceId,
     target.projectId,
   );
+  const ownerTeamId = await projectOwnerTeamFor(
+    executor,
+    identity,
+    target.workspaceId,
+    target.projectId,
+  );
   if (
-    !reaches(identity, { ...target, ancestorProjectIds }) ||
+    !reaches(identity, { ...target, ancestorProjectIds, ownerTeamId }) ||
     !can(identity, "work_item:read", "work_item", {
       workItemId: target.id,
       workItemProjectId: target.projectId,

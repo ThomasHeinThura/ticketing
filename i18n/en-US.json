@@ -13,7 +13,9 @@
 			"filter": "Filter",
 			"clearAllFilters": "Clear all filters",
 			"retry": "Retry",
-			"tryAgain": "Try Again"
+			"tryAgain": "Try Again",
+			"markRead": "Mark read",
+			"markUnread": "Mark unread"
 		},
 		"a11y": {
 			"toggleSidebar": "Toggle sidebar",
@@ -590,7 +592,7 @@
 			"priorityDescription": "Display priority indicators"
 		},
 		"developerPage": {
-			"pageTitle": "Developer Settings",
+			"pageTitle": "API keys",
 			"title": "Developer Settings",
 			"subtitle": "Manage your API keys and developer resources.",
 			"apiKeysCardTitle": "API Keys",
@@ -621,15 +623,23 @@
 				"columnActions": "Actions",
 				"unnamedKey": "Unnamed Key",
 				"expiredBadge": "Expired {{label}}",
-				"deleteConfirmTitle": "Delete API key?",
-				"deleteConfirmDescription": "This action cannot be undone. This will permanently delete {{name}}.",
-				"deleteFallbackName": "this API key",
-				"delete": "Delete",
-				"deleting": "Deleting...",
-				"deleteAria": "Delete {{name}}",
-				"deleteAriaFallback": "API key",
-				"toastDeleted": "API key deleted successfully",
-				"toastDeleteError": "Failed to delete API key"
+				"columnAccess": "Access",
+				"columnLastUsed": "Last used",
+				"neverUsed": "Never",
+				"lastUsedFrom": "{{date}} from {{ip}}",
+				"accessReadOnly": "Read only",
+				"accessReadWrite": "Read and write",
+				"revokedBadge": "Revoked",
+				"agentBadge": "AI agent",
+				"revokeConfirmTitle": "Revoke API key?",
+				"revokeConfirmDescription": "{{name}} stops working immediately and any approval it asked for is cancelled. The key stays listed so you can see when it was used.",
+				"revokeFallbackName": "this API key",
+				"revoke": "Revoke",
+				"revoking": "Revoking...",
+				"revokeAria": "Revoke {{name}}",
+				"revokeAriaFallback": "API key",
+				"toastRevoked": "API key revoked",
+				"toastRevokeError": "Failed to revoke API key"
 			},
 			"createDialog": {
 				"title": "Create API Key",
@@ -652,7 +662,16 @@
 					"nameRequired": "Name is required",
 					"nameShort": "Name must be at least 3 characters",
 					"expirationRequired": "Expiration is required"
-				}
+				},
+				"ipAllowlistLabel": "Allowed IP addresses",
+				"ipAllowlistPlaceholder": "203.0.113.7, 10.0.0.0/8",
+				"ipAllowlistDescription": "Optional. Separate addresses or ranges with commas. Leave empty to allow any address.",
+				"agentLabel": "Use with an AI agent",
+				"agentDescription": "Marks the key for MCP clients. It gets stricter write limits, and everything an agent reads from tickets is untrusted text.",
+				"writesLabel": "Allow changes",
+				"writesDescription": "Keys are read-only unless you choose otherwise. Pick exactly what this key may change.",
+				"writesWarningTitle": "Write access carries a risk",
+				"writesWarning": "Ticket text is written by customers. An AI agent holding a key that can change work can be talked into doing so by a hostile ticket. Grant only what the integration needs; deletions always need your approval in TaskDesk."
 			}
 		},
 		"workspaceGeneral": {
@@ -695,7 +714,8 @@
 				"dialogTitle": "Transfer ownership?",
 				"dialogDescription": "{{name}} will become the sole owner of {{workspace}}. You'll keep admin access but lose owner-only abilities like deleting the workspace or transferring it again.",
 				"transferring": "Transferring…",
-				"confirm": "Transfer ownership"
+				"confirm": "Transfer ownership",
+				"stepUpFailedTitle": "Fresh verification failed. Nothing was changed."
 			}
 		},
 		"workspaceRoles": {
@@ -1690,6 +1710,11 @@
 			"editChecklist": "Edit checklist",
 			"checklistHelp": "One item per line. Changing a checklist does not change work items that already copied it.",
 			"checklistItems": "Items"
+		},
+		"projectFeatures": {
+			"title": "Features",
+			"pageTitle": "Feature Settings",
+			"subtitle": "Choose which features are available in this project."
 		}
 	},
 	"navigation": {
@@ -1831,7 +1856,11 @@
 			"all": "All",
 			"unread": "Unread ({{count}})",
 			"emptyUnread": "You're all caught up.",
-			"loadError": "Notifications could not be loaded."
+			"loadError": "Notifications could not be loaded.",
+			"mentions": "Mentions",
+			"assignments": "Assignments",
+			"emptyMentions": "No mentions.",
+			"emptyAssignments": "No assignments."
 		},
 		"myWork": {
 			"assigned": "Assigned to me",
@@ -2814,6 +2843,7 @@
 			"typesError": "Couldn't load work item types.",
 			"typesRetry": "Retry",
 			"noTypes": "This workspace has no work item types configured.",
+			"typeRequired": "Choose a type to enable Create.",
 			"fieldTitle": "Title",
 			"titlePlaceholder": "What needs to be done?",
 			"fieldDescription": "Description",
@@ -3661,13 +3691,22 @@
 				"grantAdmin": "Grant instance administrator",
 				"resetMfa": "Reset authenticator factor",
 				"signOut": "Sign out all sessions",
-				"deactivate": "Request person deactivation"
+				"deactivate": "Request person deactivation",
+				"impersonate": "Impersonate this user"
 			},
 			"working": "Working…",
 			"signOutSessions": "Sign out sessions",
 			"authenticatorCode": "Authenticator code",
 			"backupCode": "Backup code",
-			"accountPassword": "Account password"
+			"accountPassword": "Account password",
+			"impersonation": {
+				"explainer": "You will see TaskDesk as this person for up to 30 minutes. Everything you do is recorded against both of you, and they are told when the session ends. You cannot approve or request deletions, export data or create keys, webhooks, invitations or roles while impersonating.",
+				"reasonLabel": "Reason for impersonating",
+				"reasonHelp": "At least 12 characters. The reason is recorded in the audit log and shown to the person afterwards.",
+				"banner": "{{impersonator}} is impersonating {{target}}",
+				"countdown": "Session ends in {{time}}",
+				"exit": "Exit impersonation"
+			}
 		}
 	},
 	"pendingActions": {
@@ -3989,6 +4028,412 @@
 			"calendarsCreate": "Create a calendar"
 		}
 	},
+	"webhooks": {
+		"list": {
+			"title": "Webhooks",
+			"description": "Send signed events from this workspace to another system. Each webhook delivers only what its owner can see.",
+			"new": "New webhook",
+			"readOnlyTitle": "Read-only access",
+			"readOnlyDescription": "Your workspace role does not allow managing webhooks. Contact a workspace administrator if you need access.",
+			"loading": "Loading webhooks",
+			"loadErrorTitle": "Webhooks could not be loaded",
+			"loadErrorDescription": "Check your connection and workspace access, then try again.",
+			"retry": "Retry",
+			"emptyTitle": "No webhooks yet",
+			"emptyDescription": "Create a webhook to send events to Power Automate, n8n, Zapier or your own service.",
+			"create": "Create webhook",
+			"eventCount": "{{total}} events",
+			"lastDelivery": "Last delivery {{when}}, status {{status}}",
+			"noResponse": "no response",
+			"neverDelivered": "No deliveries yet",
+			"lastError": "Last error: {{error}}"
+		},
+		"health": {
+			"healthy": "Healthy",
+			"failing": "Failing",
+			"paused": "Paused",
+			"inactive": "Inactive",
+			"untested": "Not delivered yet"
+		},
+		"editor": {
+			"pageTitle": "Webhook",
+			"newTitle": "New webhook",
+			"loading": "Loading webhook",
+			"loadErrorTitle": "Webhook could not be loaded",
+			"loadErrorDescription": "Check your connection and workspace access, then try again.",
+			"notFound": "This webhook does not exist in the active workspace.",
+			"back": "Back to webhooks",
+			"description": "Events are signed with your secret and sent over HTTPS to the address below.",
+			"deliveries": "Delivery history",
+			"detailsTitle": "Destination",
+			"detailsDescription": "Where events are sent, and what to call this webhook.",
+			"name": "Name",
+			"url": "Endpoint URL",
+			"urlHelp": "HTTPS only. Addresses on private or internal networks are refused.",
+			"create": "Create webhook",
+			"save": "Save changes",
+			"created": "Webhook created",
+			"saved": "Webhook saved",
+			"saveFailed": "The webhook could not be saved"
+		},
+		"events": {
+			"title": "Events",
+			"description": "Choose the events this webhook receives.",
+			"groups": {
+				"workItems": "Work items",
+				"sla": "SLA",
+				"approvals": "Approvals",
+				"intake": "Requests",
+				"projects": "Projects and budgets"
+			}
+		},
+		"secret": {
+			"title": "Signing secret",
+			"description": "Every delivery is signed with this secret so your receiver can verify it. The secret is never shown again once saved.",
+			"label": "Signing secret",
+			"createHelp": "Copy this secret into your receiver now. You will not be able to read it after saving.",
+			"generate": "Generate a new secret",
+			"copy": "Copy secret",
+			"rotate": "Rotate secret",
+			"rotatedAt": "Last rotated {{when}}.",
+			"neverRotated": "This secret has not been rotated.",
+			"overlapActive": "The previous secret still signs deliveries for 24 hours after a rotation."
+		},
+		"rotate": {
+			"title": "Rotate the secret for {{name}}",
+			"description": "The previous secret keeps signing for 24 hours, so your receiver can switch without a gap. Deliveries in that window carry two signatures.",
+			"newSecret": "New secret",
+			"copyWarning": "Copy this secret into your receiver before saving. It cannot be read back.",
+			"submit": "Rotate secret",
+			"rotated": "Secret rotated",
+			"failed": "The secret could not be rotated"
+		},
+		"status": {
+			"title": "Status",
+			"owner": "Owner: {{name}}. This webhook delivers only the events its owner can see.",
+			"unknownOwner": "unknown",
+			"active": "Delivering events",
+			"pausedAt": "Paused {{when}}.",
+			"failingTitle": "Deliveries are failing",
+			"failingSince": "Failing since {{when}}. A webhook that fails for 24 hours in a row is paused automatically.",
+			"reownHelp": "This webhook was paused because its owner left. Taking ownership makes you the owner and resumes it, and it will deliver only what you can see.",
+			"reown": "Take ownership and resume",
+			"reasons": {
+				"manual": "Paused",
+				"failing_24h": "Paused after 24 hours of failures",
+				"owner_left": "Paused because its owner left",
+				"event_removed": "Paused because it subscribes to an event that no longer exists"
+			}
+		},
+		"test": {
+			"title": "Send a test event",
+			"description": "Delivers a signed test event to the endpoint and shows what came back.",
+			"send": "Send test event",
+			"succeeded": "Test event delivered",
+			"failed": "Test event failed",
+			"detail": "Status {{status}}, {{duration}} ms.",
+			"noResponse": "no response",
+			"failedToSend": "The test event could not be sent"
+		},
+		"deliveries": {
+			"title": "Delivery history",
+			"description": "Every attempt to deliver an event, with its status, timing and payload. Payloads for items outside your access are hidden.",
+			"back": "Back to webhook",
+			"loading": "Loading deliveries",
+			"loadErrorTitle": "Deliveries could not be loaded",
+			"loadErrorDescription": "Check your connection and try again.",
+			"emptyTitle": "No deliveries yet",
+			"emptyDescription": "Deliveries appear here after an event is sent or a test event is delivered.",
+			"loadMore": "Load more",
+			"summary": "{{when}}. Status {{status}}, {{duration}} ms, attempt {{attempt}}.",
+			"noResponse": "no response",
+			"redeliver": "Redeliver",
+			"redelivered": "Redelivered",
+			"redeliveryFailed": "The redelivery did not succeed",
+			"redacted": "The payload is hidden because the item is outside your access.",
+			"noPayload": "No payload was recorded for this delivery.",
+			"inspect": "Inspect payload",
+			"request": "Request body",
+			"response": "Response body",
+			"states": {
+				"pending": "Queued",
+				"delivered": "Delivered",
+				"dead": "Failed",
+				"skipped_out_of_reach": "Skipped, out of reach",
+				"cancelled": "Cancelled"
+			},
+			"sources": {
+				"test": "Test",
+				"redelivery": "Redelivery",
+				"automation": "Automation"
+			}
+		},
+		"validation": {
+			"nameRequired": "Enter a name.",
+			"urlInvalid": "Enter a complete URL.",
+			"urlNotHttps": "The URL must start with https://.",
+			"secretTooShort": "The secret must be at least 24 characters.",
+			"eventsRequired": "Choose at least one event."
+		},
+		"stepUp": {
+			"failedTitle": "Fresh verification failed. Nothing was changed."
+		},
+		"delete": {
+			"title": "Danger zone",
+			"description": "Deleting a webhook also removes its delivery history. It is requested here and only happens once you approve it with the webhook's exact name and fresh verification.",
+			"action": "Request deletion",
+			"requested": "Deletion requested. Approve it in Pending actions.",
+			"failed": "The deletion could not be requested."
+		}
+	},
+	"automations": {
+		"workspace": {
+			"title": "Automations",
+			"description": "Rules that run when something happens in any project of this workspace. Each rule runs as a role and cannot do more than that role."
+		},
+		"project": {
+			"navTitle": "Automations",
+			"title": "Project automations",
+			"description": "Rules that run when something happens in this project. Each rule runs as a role and cannot do more than that role.",
+			"notFoundTitle": "Project not found",
+			"notFoundDescription": "This project does not exist or is out of your reach."
+		},
+		"list": {
+			"new": "New rule",
+			"enabled": "Enabled",
+			"disabled": "Disabled",
+			"enable": "Enable",
+			"summary": "When {{trigger}}. {{conditions}} conditions, {{actions}} actions.",
+			"runAs": "Runs as {{role}}",
+			"lastRun": "Last run {{when}}",
+			"neverRun": "Never run",
+			"fired_one": "Fired {{count}} time",
+			"fired_other": "Fired {{count}} times",
+			"history": "History",
+			"dryRun": "Dry run",
+			"edit": "Edit",
+			"editNamed": "Edit {{name}}",
+			"readOnlyTitle": "Read-only access",
+			"readOnlyDescription": "Your role lets you see these rules and their history, but not change them.",
+			"featureOffTitle": "Automations are turned off here",
+			"featureOffDescription": "Turn on the Automations feature in the feature settings before creating or enabling rules. Existing rules do not run while it is off.",
+			"noRolesTitle": "No role is available to run rules as",
+			"noRolesDescription": "A rule runs as a role and cannot do more than that role. Ask a workspace administrator to create a role at or below yours, then come back to create rules.",
+			"loading": "Loading rules",
+			"loadErrorTitle": "Rules could not be loaded",
+			"loadErrorDescription": "Check your connection and access, then try again.",
+			"retry": "Retry",
+			"emptyTitle": "No rules yet",
+			"emptyDescription": "Create a rule to do a repetitive thing automatically. New rules start disabled; dry-run one before you enable it."
+		},
+		"flags": {
+			"loop_depth_limit": "Stopped a loop",
+			"effective_role_unavailable": "Role is gone",
+			"effective_role_lost_capability": "Role lost a permission",
+			"references_deleted_label": "Label was deleted",
+			"unknown": "Needs attention"
+		},
+		"toast": {
+			"created": "Rule created, disabled",
+			"saved": "Rule saved",
+			"savedDisabled": "Rule saved and disabled. Enable it again when you are ready.",
+			"enabled": "Rule enabled",
+			"disabled": "Rule disabled",
+			"toggleFailed": "The rule could not be changed"
+		},
+		"triggers": {
+			"work_item": {
+				"created": "a work item is created",
+				"transitioned": "a work item changes state",
+				"updated": "a field of a work item changes",
+				"assigned": "a work item is assigned",
+				"commented": "a comment is added",
+				"escalated": "a priority is escalated"
+			},
+			"sla": {
+				"at_risk": "an SLA goal is at risk",
+				"breached": "an SLA goal is breached"
+			},
+			"approval": {
+				"decided": "an approval is decided"
+			},
+			"submission": {
+				"received": "a request is received"
+			}
+		},
+		"priorities": {
+			"low": "Low",
+			"medium": "Medium",
+			"high": "High",
+			"urgent": "Urgent"
+		},
+		"stateGroups": {
+			"backlog": "Backlog",
+			"unstarted": "Not started",
+			"started": "In progress",
+			"completed": "Completed",
+			"cancelled": "Cancelled"
+		},
+		"editor": {
+			"newTitle": "New automation rule",
+			"editTitle": "Edit automation rule",
+			"description": "When something happens, if every condition holds, do these things. For an either-or, write two rules.",
+			"name": "Rule name",
+			"when": "When",
+			"pickTrigger": "Choose what starts the rule",
+			"if": "If",
+			"ifHelp": "Every condition must hold. Leave this empty to run on every match of the trigger.",
+			"addCondition": "Add condition",
+			"then": "Then",
+			"addAction": "Add action",
+			"noDelete": "Rules can change and notify, but never delete anything.",
+			"rosterProject": "Pick people from",
+			"pickRosterProject": "Choose a project",
+			"rosterHelp": "People can only be chosen from one project's roster at a time.",
+			"runAs": "Run as",
+			"pickRole": "Choose a role",
+			"runAsHelp": "The rule can do only what this role may do. You can choose a role at or below your own.",
+			"stopProcessing": "Stop processing further rules after this one runs",
+			"create": "Create rule",
+			"save": "Save rule",
+			"saveFailed": "The rule could not be saved",
+			"problems": {
+				"nameRequired": "Enter a name.",
+				"roleRequired": "Choose the role this rule runs as.",
+				"actionsRequired": "Add at least one action.",
+				"actionValueRequired": "Choose a value for every action.",
+				"conditionValueRequired": "Choose a value for every condition."
+			}
+		},
+		"conditions": {
+			"field": "Field",
+			"operator": "Condition",
+			"value": "Value",
+			"remove": "Remove condition",
+			"keptAsStored": "Kept as stored",
+			"pickType": "Choose a type",
+			"pickValue": "Choose a value",
+			"pickLabel": "Choose a label",
+			"pickProject": "Choose a project",
+			"minutes": "Minutes",
+			"minutesSince": "minutes since it was",
+			"basis": "Counted from",
+			"basisCreated": "created",
+			"basisUpdated": "last updated",
+			"fields": {
+				"type": "Type",
+				"state": {
+					"group": "State group"
+				},
+				"priority": "Priority",
+				"label": "Label",
+				"project": "Project",
+				"age": "Age",
+				"comment_visibility": "Comment visibility",
+				"field_changed": "Field changed",
+				"assignee": "Assignee"
+			},
+			"ops": {
+				"eq": "is",
+				"ne": "is not",
+				"gte": "is at least",
+				"lte": "is at most",
+				"contains": "has",
+				"not_contains": "does not have",
+				"is_empty": "is empty",
+				"is_not_empty": "is set"
+			},
+			"visibility": {
+				"public": "Public",
+				"internal": "Internal"
+			},
+			"changeable": {
+				"title": "Title",
+				"description": "Description",
+				"priority": "Priority",
+				"dueDate": "Due date",
+				"assignee": "Assignee",
+				"labels": "Labels"
+			}
+		},
+		"actions": {
+			"type": "Action",
+			"remove": "Remove action",
+			"keptAsStored": "Kept as stored",
+			"person": "Person",
+			"pickPerson": "Choose a person",
+			"priority": "Priority",
+			"pickPriority": "Choose a priority",
+			"noPriority": "No priority",
+			"dueInDays": "Days",
+			"daysFromNow": "days from now (empty clears the due date)",
+			"label": "Label",
+			"pickLabel": "Choose a label",
+			"webhook": "Webhook",
+			"pickWebhook": "Choose a webhook",
+			"types": {
+				"assign": "Assign to",
+				"set_priority": "Set priority",
+				"set_due_date": "Set due date",
+				"add_label": "Add label",
+				"remove_label": "Remove label",
+				"add_watcher": "Add watcher",
+				"call_webhook": "Call webhook",
+				"transition": "Change state",
+				"post_comment": "Post comment",
+				"notify": "Send notification",
+				"create_linked_item": "Create linked item",
+				"request_approval": "Request approval",
+				"set_custom_field": "Set custom field"
+			}
+		},
+		"dryRun": {
+			"title": "Dry run: {{name}}",
+			"description": "See what this rule would have done recently. Nothing is changed.",
+			"window": "Look back",
+			"days": "{{total}} days",
+			"run": "Run again",
+			"running": "Running the dry run",
+			"failed": "The dry run failed",
+			"summary_one": "Would have fired {{count}} time in the last {{days}} days",
+			"summary_other": "Would have fired {{count}} times in the last {{days}} days",
+			"evaluated_one": "{{count}} event examined.",
+			"evaluated_other": "{{count}} events examined.",
+			"capped": "Only the most recent 1,000 were examined.",
+			"samples": "Examples",
+			"noItem": "No work item",
+			"validation": "Checks",
+			"allowed": "Allowed",
+			"refused": "Refused: needs {{capability}}",
+			"noPlaceholders": "This rule uses no placeholders.",
+			"visibility": {
+				"public": "Public",
+				"staff": "Staff only",
+				"unknown": "Unknown"
+			}
+		},
+		"runs": {
+			"title": "History: {{name}}",
+			"description": "Each run with the outcome of every action. History is kept for 30 days.",
+			"loading": "Loading history",
+			"loadFailed": "History could not be loaded",
+			"emptyTitle": "No runs yet",
+			"emptyDescription": "Runs appear here once the rule is enabled and its trigger happens.",
+			"loadMore": "Load more",
+			"ok": "OK",
+			"failed": "Failed",
+			"notMatched": "Conditions not met",
+			"depth": "Chain step {{depth}}",
+			"states": {
+				"pending": "Queued",
+				"running": "Running",
+				"done": "Done",
+				"failed": "Failed",
+				"skipped": "Skipped",
+				"abandoned": "Interrupted"
+			}
+		}
+	},
 	"serviceCalendars": {
 		"weekdays": {
 			"mon": "Monday",
@@ -4165,6 +4610,202 @@
 			"confirmRequest": "Request deletion",
 			"deleteRequested": "Deletion requested. Approve it to complete.",
 			"deleteError": "Deletion could not be requested."
+		}
+	},
+	"teams": {
+		"badges": {
+			"cab": "CAB"
+		},
+		"create": {
+			"description": "A team is a named group of staff with a capacity. It can own projects and be notified as a unit.",
+			"submit": "Create team",
+			"title": "New team"
+		},
+		"delete": {
+			"action": "Delete team",
+			"blockedTitle": "This team cannot be deleted yet",
+			"description": "Deleting a team removes its roster. It asks for your confirmation first.",
+			"title": "Delete team"
+		},
+		"detail": {
+			"allTeams": "All teams",
+			"loadErrorDescription": "The team could not be loaded. Try again.",
+			"loadErrorTitle": "Could not load the team",
+			"loading": "Loading the team",
+			"pageTitle": "Team",
+			"save": "Save",
+			"settingsDescription": "Name, capacity and whether this team acts as the Change Advisory Board.",
+			"settingsReadOnly": "You can see this team but not change its settings.",
+			"settingsTitle": "Team settings"
+		},
+		"fields": {
+			"cab": "Change Advisory Board",
+			"cabHelp": "Only one team per workspace can be the CAB. Its current members may decide CAB approvals.",
+			"capacity": "Capacity (days per week)",
+			"capacityHelp": "Working days per week, from 0 to 7. Used by capacity reports. Leave empty if not set.",
+			"name": "Name"
+		},
+		"list": {
+			"capacity": "{{days}} days per week",
+			"description": "Named groups of staff. Teams can own projects, be notified as a unit and act as the Change Advisory Board.",
+			"emptyDescription": "Create a team to group staff together.",
+			"emptyTitle": "No teams yet",
+			"loadErrorDescription": "The teams could not be loaded. Try again.",
+			"loadErrorTitle": "Could not load teams",
+			"loading": "Loading teams",
+			"members_one": "{{count}} member",
+			"members_other": "{{count}} members",
+			"new": "New team",
+			"title": "Teams"
+		},
+		"roster": {
+			"actions": "Actions",
+			"add": "Add a member",
+			"addAction": "Add",
+			"choose": "Choose a person",
+			"description": "Leads can add and remove members of this team. Deactivated people leave the active roster but stay in history.",
+			"empty": "This team has no members.",
+			"inactive": "Deactivated",
+			"lead": "Lead",
+			"leadFor": "{{name}} is a lead",
+			"noCandidates": "Everyone eligible is already on this team",
+			"person": "Person",
+			"remove": "Remove {{name}} from the team",
+			"showInactive": "Show deactivated members",
+			"title": "Roster"
+		}
+	},
+	"customFields": {
+		"access": {
+			"hidden": "Hidden",
+			"required": "Required",
+			"visible": "Visible"
+		},
+		"badges": {
+			"customer": "Customer visible",
+			"deleted": "Deleted"
+		},
+		"editor": {
+			"accessColumn": "On the form",
+			"accessFor": "Visibility on {{name}}",
+			"addOption": "Add option",
+			"allFields": "All custom fields",
+			"conditionDescription": "Show this field only when another field has a value. A controlling field cannot itself be conditional.",
+			"conditionTitle": "Conditional visibility",
+			"conditionToggle": "Show only when another field has a given value",
+			"controller": "Controlling field",
+			"controllerPlaceholder": "Choose a field",
+			"create": "Create field",
+			"defaultDescription": "New work items start with this value when the field applies to their type.",
+			"defaultTitle": "Default value",
+			"delete": "Delete field",
+			"deleteHelp_one": "{{count}} work item holds a value. Deleting asks for confirmation; the values are kept and the field can be restored for 30 days.",
+			"deleteHelp_other": "{{count}} work items hold a value. Deleting asks for confirmation; the values are kept and the field can be restored for 30 days.",
+			"detailsDescription": "What the field is called and which format it holds. The format cannot change once the field exists.",
+			"detailsTitle": "Field",
+			"loadErrorDescription": "The field could not be loaded. Try again.",
+			"loadErrorTitle": "Could not load the field",
+			"loading": "Loading the field",
+			"newTitle": "New custom field",
+			"noControllers": "No other unconditional field is available to control this one",
+			"noTypes": "This workspace has no work item types.",
+			"notFoundDescription": "This field does not exist or has been deleted.",
+			"notFoundTitle": "Field not found",
+			"operator": "Condition",
+			"optionLabel": "Option {{index}} label",
+			"optionsDescription": "Renaming an option never affects values already saved. An option that work items use cannot be removed.",
+			"optionsTitle": "Options",
+			"pageTitle": "Custom field",
+			"readOnlyDescription": "You can see this field but not change it.",
+			"readOnlyTitle": "Read only",
+			"removeOption": "Remove option {{index}}",
+			"save": "Save",
+			"saveFailed": "The field could not be saved",
+			"saved": "Field saved",
+			"saving": "Saving",
+			"typeColumn": "Work item type",
+			"value": "Value",
+			"visibilityDescription": "Choose, for each work item type, whether the field is hidden, visible or required. A required field blocks creation and moving into a started or completed state; cancelling is always allowed.",
+			"visibilityTitle": "Where it applies"
+		},
+		"fallbackSection": "Other",
+		"fields": {
+			"customerVisible": "Customer visible",
+			"customerVisibleHelp": "Show this field on the portal request detail and allow request forms to collect it.",
+			"format": "Format",
+			"formatLocked": "The format cannot change. Create a new field and migrate the values.",
+			"help": "Help text",
+			"key": "Key",
+			"keyHelp": "Lowercase letters, digits and underscores. Used in filters and cannot change later.",
+			"keyLocked": "The key cannot change.",
+			"name": "Name",
+			"section": "Section",
+			"sectionPlaceholder": "Choose a section"
+		},
+		"formats": {
+			"boolean": "Yes or no",
+			"currency": "Currency",
+			"date": "Date",
+			"datetime": "Date and time",
+			"decimal": "Decimal",
+			"email": "Email",
+			"long_text": "Long text",
+			"multi_select": "Multiple choice",
+			"multi_user": "Several people",
+			"number": "Whole number",
+			"select": "Single choice",
+			"text": "Text",
+			"url": "Link",
+			"user": "Person"
+		},
+		"list": {
+			"description": "Capture what your organisation needs to know. Fields are grouped into sections and each field says which work item types it applies to.",
+			"emptyDescription": "Create a section first, then add fields to it.",
+			"emptyTitle": "No sections yet",
+			"fieldMeta": "Key {{key}} · used on {{types}} types · {{used}} values saved",
+			"loadErrorDescription": "The custom fields could not be loaded. Try again.",
+			"loadErrorTitle": "Could not load custom fields",
+			"loading": "Loading custom fields",
+			"manyDescription": "A form with many fields is slow to fill in. Sections collapse, and each type shows only the fields that apply to it.",
+			"manyTitle": "You have many custom fields",
+			"moveDown": "Move {{name}} down",
+			"moveUp": "Move {{name}} up",
+			"new": "New field",
+			"noFields": "No custom fields yet. Add a field to start.",
+			"restore": "Restore",
+			"sectionCount_one": "{{count}} field",
+			"sectionCount_other": "{{count}} fields",
+			"sectionEmpty": "No fields in this section.",
+			"showDeleted": "Show deleted fields",
+			"title": "Custom fields"
+		},
+		"operators": {
+			"eq": "Equals",
+			"in": "Is one of",
+			"is_set": "Has a value",
+			"neq": "Does not equal"
+		},
+		"sections": {
+			"create": "New section",
+			"deleteNamed": "Delete section {{name}}",
+			"description": "Sections group fields on the work item form and collapse there.",
+			"moveDown": "Move section {{name}} down",
+			"moveUp": "Move section {{name}} up",
+			"name": "Section name",
+			"rename": "Rename section",
+			"renameNamed": "Rename section {{name}}"
+		},
+		"value": {
+			"amount": "Amount",
+			"clear": "Clear",
+			"currencyCode": "Currency code",
+			"no": "No",
+			"noChoices": "Nothing to choose from",
+			"notOnProject": "(not on this project)",
+			"notSet": "Not set",
+			"optional": "optional",
+			"requiredHint": "Required before this item can start or finish",
+			"yes": "Yes"
 		}
 	},
 	"savedViews": {
@@ -4598,6 +5239,441 @@
 			"unsupported": "This email refers to a preference that this page cannot edit yet. No preference has been changed.",
 			"linkUnavailable": "The email preference link could not be verified. Sign in as its recipient and try again.",
 			"unavailable": "Your mention preference could not be loaded."
+		},
+		"quietHours": {
+			"title": "Quiet hours",
+			"description": "Pause emails and other external notifications during these hours. In-app notifications still arrive.",
+			"start": "From",
+			"end": "Until",
+			"timezone": "Time zone",
+			"note": "Service-level breaches and approval expiries are always delivered. An end time earlier than the start crosses midnight.",
+			"invalid": "Enter two different times.",
+			"save": "Save quiet hours",
+			"clear": "Turn off quiet hours",
+			"saved": "Quiet hours saved.",
+			"cleared": "Quiet hours turned off.",
+			"saveFailed": "Quiet hours could not be saved. Try again.",
+			"unavailable": "Your quiet hours could not be loaded."
+		}
+	},
+	"featureFlags": {
+		"unavailable": "Feature switches are unavailable",
+		"loadFailed": "The feature switches could not be loaded.",
+		"retry": "Retry",
+		"saveFailed": "The change could not be saved.",
+		"versionConflictTitle": "Changed elsewhere",
+		"versionConflict": "Someone else changed this switch. The list has been refreshed; review it and try again.",
+		"lockedConflictTitle": "Locked by the instance",
+		"lockedConflict": "An instance administrator has locked this switch, so it cannot be changed here.",
+		"lock": "Lock",
+		"lockedByInstance": "Locked by the instance",
+		"overridden": "Overridden here",
+		"inheritedFrom": "Inherited from {{source}}",
+		"useInherited": "Use inherited value",
+		"lastChanged": "Last changed by {{who}} on {{when}}",
+		"unknownPerson": "an unknown person",
+		"system": "System",
+		"enabledSwitch": "Enabled",
+		"sources": {
+			"workspace": "workspace",
+			"instance": "instance",
+			"default": "the default"
+		},
+		"instance": {
+			"title": "Feature switches",
+			"description": "Turn features on or off for the whole instance. A locked switch cannot be overridden by any workspace or project."
+		},
+		"workspace": {
+			"title": "Feature switches",
+			"description": "Override the instance's switches for this workspace. Locked switches cannot be changed."
+		},
+		"project": {
+			"title": "Feature switches",
+			"description": "Override the workspace's switches for this project. Locked switches cannot be changed."
+		},
+		"flags": {
+			"feature": {
+				"cycles": {
+					"name": "Cycles",
+					"description": "Time-boxed sprints for planning and tracking work."
+				},
+				"modules": {
+					"name": "Modules",
+					"description": "Group related work into modules inside a project."
+				},
+				"estimates": {
+					"name": "Estimates",
+					"description": "Point, category or time estimates on work items."
+				},
+				"intake": {
+					"name": "Intake",
+					"description": "The intake queue, request types and the request catalogue."
+				},
+				"sla": {
+					"name": "Service levels",
+					"description": "SLA policies, service calendars and SLA indicators."
+				},
+				"approvals": {
+					"name": "Approvals",
+					"description": "Approval and change-advisory requests. Existing requests stay actionable."
+				},
+				"time_tracking": {
+					"name": "Time tracking",
+					"description": "Timesheets, time entries and the timer."
+				},
+				"cost_tracking": {
+					"name": "Cost tracking",
+					"description": "Rates, budgets and cost reports."
+				},
+				"knowledge_base": {
+					"name": "Knowledge base",
+					"description": "Articles and request deflection."
+				},
+				"service_catalogue": {
+					"name": "Service catalogue",
+					"description": "Services, changes, freezes and releases."
+				},
+				"customer_portal": {
+					"name": "Customer portal",
+					"description": "The customer portal. Turning it off shows a disabled notice on the portal address."
+				},
+				"reports": {
+					"name": "Reports",
+					"description": "The reports index, dashboards and detailed reports."
+				},
+				"automations": {
+					"name": "Automations",
+					"description": "Automation rules."
+				},
+				"timeline": {
+					"name": "Timeline",
+					"description": "The timeline (Gantt) view."
+				},
+				"calendar": {
+					"name": "Calendar",
+					"description": "The calendar view."
+				},
+				"pages": {
+					"name": "Pages",
+					"description": "Documents in a project."
+				},
+				"mcp": {
+					"name": "MCP",
+					"description": "API keys flagged for the MCP server. Off refuses them."
+				},
+				"scim": {
+					"name": "SCIM provisioning",
+					"description": "The SCIM endpoint. Off answers not found for every SCIM call."
+				},
+				"import": {
+					"name": "Import",
+					"description": "Import runs and the import screens."
+				},
+				"public_boards": {
+					"name": "Public boards",
+					"description": "Reserved. Nothing is behind this switch yet."
+				},
+				"dev_links": {
+					"name": "Developer links",
+					"description": "Reserved. Nothing is behind this switch yet."
+				}
+			}
+		},
+		"page": {
+			"godModeTitle": "Features",
+			"projectTitle": "Features"
+		},
+		"forbiddenTitle": "No access to feature settings",
+		"forbidden": "You need the settings permission for this level to view or change its features."
+	},
+	"godModeSettings": {
+		"title": "General",
+		"unavailable": "Settings are unavailable",
+		"loadFailed": "The instance settings could not be loaded.",
+		"retry": "Retry",
+		"save": "Save changes",
+		"saveFailed": "The settings could not be saved.",
+		"conflictTitle": "Changed elsewhere",
+		"conflict": "Another administrator saved these settings first. The current values have been loaded; review them and save again.",
+		"lastChanged": "Last changed {{when}}",
+		"general": {
+			"title": "Regional and retention",
+			"description": "The instance time zone and how long read notifications are kept."
+		},
+		"windows": {
+			"title": "Windows",
+			"description": "How long requests and approvals stay open."
+		},
+		"attachments": {
+			"title": "Attachments",
+			"description": "Limits that apply to every file uploaded to a work item."
+		},
+		"fields": {
+			"timezone": {
+				"label": "Time zone",
+				"help": "Used for digest windows and quiet hours when a person has not chosen their own."
+			},
+			"notificationRetentionDays": {
+				"label": "Keep read notifications for (days)",
+				"help": "Read notifications older than this are deleted daily. Unread notifications are never deleted."
+			},
+			"approvalDefaultExpiryDays": {
+				"label": "Approval expiry (days)",
+				"help": "The default for a new approval request. At most 90."
+			},
+			"clarificationWindowDays": {
+				"label": "Clarification window (days)",
+				"help": "A request awaiting the customer's reply for longer than this is declined automatically."
+			},
+			"reopenWindowDays": {
+				"label": "Reopen window (days)",
+				"help": "How long after resolution a customer may reopen a request."
+			},
+			"attachmentMaxBytes": {
+				"label": "Largest file (bytes)",
+				"help": "The maximum size of one uploaded file."
+			},
+			"attachmentMaxPerItem": {
+				"label": "Files per work item",
+				"help": "The maximum number of files on one work item."
+			},
+			"attachmentAllowedExtensions": {
+				"label": "Allowed file types",
+				"help": "Extensions separated by commas, for example pdf, png, docx."
+			}
+		}
+	},
+	"godModeHealth": {
+		"title": "Health",
+		"overall": "Overall",
+		"unavailable": "Health is unavailable",
+		"loadFailed": "The health checks could not be loaded.",
+		"retry": "Retry",
+		"refresh": "Refresh",
+		"checkedAt": "Checked {{when}}",
+		"yes": "yes",
+		"no": "no",
+		"states": {
+			"ok": "OK",
+			"degraded": "Degraded",
+			"failing": "Failing",
+			"unknown": "Unknown"
+		},
+		"checks": {
+			"database": {
+				"name": "Database",
+				"description": "Whether the database answers, and how quickly."
+			},
+			"secrets_encryption": {
+				"name": "Encryption key rotation",
+				"description": "Whether every stored secret is under the current encryption key. When it is, the previous key can be removed."
+			},
+			"outbox": {
+				"name": "Event delivery",
+				"description": "Pending and dead-lettered events and notification deliveries."
+			}
+		},
+		"details": {
+			"latencyMs": "Response time (ms)",
+			"keyConfigured": "Key configured",
+			"previousKeyConfigured": "Previous key configured",
+			"secretsTotal": "Secrets stored",
+			"secretsPendingRekey": "Secrets awaiting rekey",
+			"rekeyComplete": "Rekey complete",
+			"safeToRemovePreviousKey": "Safe to remove the previous key",
+			"outboxDead": "Dead events",
+			"outboxPending": "Pending events",
+			"deliveriesDead": "Dead deliveries",
+			"deliveriesPending": "Pending deliveries"
+		},
+		"rotateSecrets": {
+			"action": "Rotate secrets",
+			"title": "Rotate secrets",
+			"description": "Re-encrypts every stored plugin and identity secret under the current encryption key. It runs in the background and can be repeated safely. Once the encryption key row reports complete, remove the previous key.",
+			"started": "Rotation started. Refresh this page to follow its progress.",
+			"failed": "Rotation could not be started",
+			"cancel": "Cancel",
+			"close": "Close",
+			"submit": "Start rotation"
+		}
+	},
+	"roles": {
+		"badges": {
+			"custom": "Custom",
+			"notEditable": "Not editable",
+			"system": "Built-in"
+		},
+		"compare": {
+			"capability": "Capability",
+			"choose": "Choose a role",
+			"has": "Yes",
+			"hasNot": "No",
+			"pick": "Choose a role to see only where the two differ.",
+			"sameDescription": "This role and {{name}} grant exactly the same capabilities.",
+			"sameTitle": "No differences",
+			"with": "Compare with"
+		},
+		"create": {
+			"cloneHelp": "A copy is independent: changing the original later does not change it.",
+			"description": "Name a role and choose what it can do. You can only grant what you hold yourself.",
+			"duplicateWarning": "A role with this name already exists. Names need not be unique, but two with the same name are easy to confuse.",
+			"fromNothing": "Nothing, start empty",
+			"startFrom": "Start from",
+			"submit": "Create role",
+			"title": "New role"
+		},
+		"delete": {
+			"action": "Delete role",
+			"blockedDescription": "{{count}} people still hold this role. Move them to another role on the People tab first.",
+			"blockedTitle": "Move the people first",
+			"description": "Deleting a role is a request you approve next. It cannot be undone.",
+			"title": "Delete this role"
+		},
+		"detail": {
+			"allRoles": "All roles",
+			"loadErrorDescription": "The role could not be loaded. Try again.",
+			"loadErrorTitle": "Could not load the role",
+			"loading": "Loading the role",
+			"pageTitle": "Role"
+		},
+		"details": {
+			"title": "Details",
+			"descriptionBuiltIn": "The name and rank of a built-in role are fixed; its description and capabilities can change.",
+			"descriptionCustom": "Rename the role, describe it or change its rank. A rank must stay below your own."
+		},
+		"errors": {
+			"beyond_own_authority": "You cannot grant what you do not hold",
+			"generic": "The role could not be saved",
+			"invalid_capability": "A capability is not valid",
+			"last_role_manager": "Someone must keep the power to manage roles",
+			"reassign_refused": "The people could not be moved",
+			"reload": "Reload the role",
+			"role_changed": "Someone else changed this role",
+			"role_in_identity_use": "This role is used by identity provisioning",
+			"role_in_use": "This role is still in use",
+			"role_not_deletable": "A built-in role cannot be deleted",
+			"role_not_editable": "This role cannot be edited",
+			"rank_guard": "Rank limit",
+			"self_edit_confirmation_required": "Confirm editing your own role"
+		},
+		"fields": {
+			"description": "Description",
+			"name": "Name",
+			"rank": "Rank",
+			"rankFixed": "A built-in role keeps its rank.",
+			"rankHelp": "Higher ranks outrank lower ones. You can set a rank up to {{max}}, below your own."
+		},
+		"history": {
+			"actions": {
+				"created": "Role created",
+				"deleted": "Role deleted",
+				"updated": "Role updated"
+			},
+			"added": "Added:",
+			"change": "Change",
+			"emptyDescription": "Nothing has changed this role yet.",
+			"emptyTitle": "No history",
+			"errorTitle": "Could not load the history",
+			"loading": "Loading the history",
+			"rank": "Rank changed from {{before}} to {{after}}",
+			"removed": "Removed:",
+			"system": "System",
+			"when": "When",
+			"who": "Who",
+			"rankSet": "Rank set to {{after}}"
+		},
+		"list": {
+			"description": "What each role can do, who holds it, and how roles rank against each other. A role's rank decides who may edit whom.",
+			"emptyDescription": "Create a role to give people a defined set of capabilities.",
+			"emptyTitle": "No roles yet",
+			"holders_one": "{{count}} person",
+			"holders_other": "{{count}} people",
+			"loadErrorDescription": "The roles could not be loaded. Try again.",
+			"loadErrorTitle": "Could not load roles",
+			"loading": "Loading roles",
+			"modified": "changed {{date}}",
+			"new": "New role",
+			"rank": "Rank {{rank}}",
+			"title": "Roles"
+		},
+		"matrix": {
+			"impliedDescription": "Also added: {{names}}. A capability that needs another one brings it along.",
+			"impliedTitle": "Added because they are needed",
+			"label": "Capabilities",
+			"notHeld": "You do not hold this capability yourself, so you cannot grant it.",
+			"requiredBy": "Needed by {{names}}. Remove that first."
+		},
+		"people": {
+			"active": "Active",
+			"chooseRole": "Choose a role",
+			"confirm": "Move people",
+			"confirmTitle": "Move people to another role",
+			"deactivated": "Deactivated",
+			"description_one": "{{count}} person holds this role.",
+			"description_other": "{{count}} people hold this role.",
+			"emptyDescription": "Nobody holds this role.",
+			"emptyTitle": "No people",
+			"errorTitle": "Could not load the people",
+			"loading": "Loading the people",
+			"moveAll": "Move everyone",
+			"moveSelected_one": "Move {{count}} selected person",
+			"moveSelected_other": "Move {{count}} selected people",
+			"moveTo": "Move to role",
+			"moved_one": "Moved {{count}} person",
+			"moved_other": "Moved {{count}} people",
+			"person": "Person",
+			"select": "Select",
+			"selectPerson": "Select {{name}}",
+			"status": "Status",
+			"suspended": "Suspended",
+			"title": "People",
+			"confirmDescription_one": "Move {{count}} person from {{from}} to {{to}}? Their permissions change immediately.",
+			"confirmDescription_other": "Move {{count}} people from {{from}} to {{to}}? Their permissions change immediately."
+		},
+		"preview": {
+			"actions": "Actions on a work item",
+			"allowed": "Allowed",
+			"denied": "Not available",
+			"description": "Shows what someone holding the capabilities currently ticked would see and be able to do. Nothing is saved and nobody is affected.",
+			"errorTitle": "Could not run the preview",
+			"loading": "Running the preview",
+			"navigation": "Navigation",
+			"notImpersonation": "A preview, not impersonation"
+		},
+		"readOnly": {
+			"noPermission": "You can read this role but you do not have permission to manage roles.",
+			"notEditable": "This role is not editable.",
+			"rank": "A role ranked at or above your own rank is read-only. Only the role you hold yourself is an exception.",
+			"title": "This role is read-only"
+		},
+		"save": {
+			"action": "Save changes",
+			"added": "Added",
+			"confirm": "Save and apply now",
+			"confirmTitle": "Save this role",
+			"immediate_one": "This will change permissions for {{count}} person immediately.",
+			"immediate_other": "This will change permissions for {{count}} people immediately.",
+			"removed": "Removed",
+			"saved": "Role saved",
+			"selfDescription": "You hold this role. Removing capabilities from it can lock you out of parts of the workspace.",
+			"selfTitle": "You are editing your own role",
+			"selfType": "Type {{name}} to confirm"
+		},
+		"summary": {
+			"description": "What this role can do, in plain language, for the capabilities currently ticked.",
+			"emptyDescription": "This role has no capabilities, so it grants no access.",
+			"emptyTitle": "Nothing granted"
+		},
+		"tabs": {
+			"capabilities": "Capabilities",
+			"compare": "Compare",
+			"history": "History",
+			"people": "People",
+			"preview": "Test as this role",
+			"summary": "What it can do"
+		},
+		"stepUp": {
+			"failedTitle": "Fresh verification failed. Nothing was changed."
 		}
 	}
 }

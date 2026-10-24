@@ -1,7 +1,7 @@
 /**
  * SLA-16 / SLA-17 / NO-21 / NO-22 notification eligibility and the escalation walk against the
- * real DB and reach evaluators. WRITTEN, NOT YET RUN: needs the integration database
- * (coordinator runs it).
+ * real DB and reach evaluators. Runs under `vitest.integration.config.ts` against a dedicated
+ * `_test` PostgreSQL database (see docs/testing.md).
  */
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";

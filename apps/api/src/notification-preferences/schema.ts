@@ -1,11 +1,16 @@
 import { canonicalPreferenceWriteSchema } from "../notification/canonical-preferences";
 import { z } from "../openapi";
+import { quietHoursSchema } from "./quiet-hours";
 
 export const workspaceIdParam = z.object({ workspaceId: z.string() });
 
 // Secrets are write-only: a value sets it, null clears it, omitting leaves it.
 export const updatePreferencesBody = z.object({
   canonicalPreference: canonicalPreferenceWriteSchema.optional(),
+  quietHours: quietHoursSchema.nullable().optional().openapi({
+    description:
+      "NO-3: the caller's quiet-hours window (HH:MM, HH:MM and an IANA zone); null clears it. Saved on its own, never together with other fields.",
+  }),
   emailEnabled: z.boolean().optional(),
   ntfyEnabled: z.boolean().optional(),
   ntfyServerUrl: z.string().nullable().optional(),

@@ -242,7 +242,7 @@ describe("persisted approval authoring under strict policy", () => {
     };
     expect(page.data).toHaveLength(1);
     expect(page.page.hasMore).toBe(true);
-    expect(page.page.nextCursor).toMatch(/^enc:v1:/u);
+    expect(page.page.nextCursor).toMatch(/^enc:v2:/u);
     const next = (await (
       await read(`limit=1&cursor=${encodeURIComponent(page.page.nextCursor)}`)
     ).json()) as { data: { id: string }[] };

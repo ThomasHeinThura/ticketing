@@ -288,6 +288,43 @@ const WRITES: Case[] = [
     },
   },
   {
+    // ST-2: a flag override. `enabled: null` clears the project override, so the success path
+    // changes nothing yet still passes through reach and `project:manage_settings`.
+    matrixKey: "PATCH /api/projects/{projectId}/features",
+    call: (app, _w, i) =>
+      json(app, "PATCH", `/api/projects/${i.projectId}/features`, {
+        changes: [{ key: "feature.automations", enabled: null }],
+      }),
+  },
+  {
+    // AM: `feature.automations` is off by default, so a caller that passes reach and
+    // `project:manage_settings` is refused by the handler with 409 feature_disabled, a status
+    // distinct from the matrix's 404/403, which is what proves the gates ran before any write.
+    // `{key}` accepts the project id as well as its slug.
+    matrixKey: "POST /api/projects/{key}/automations",
+    successStatus: 409,
+    call: async (app, w, i) => {
+      const [role] = await db
+        .select({ id: schema.roleTable.id })
+        .from(schema.roleTable)
+        .where(
+          and(
+            eq(schema.roleTable.scope, "workspace"),
+            eq(schema.roleTable.workspaceId, w.workspaceId),
+            eq(schema.roleTable.key, "member"),
+          ),
+        )
+        .limit(1);
+      return json(app, "POST", `/api/projects/${i.projectId}/automations`, {
+        name: "Injected automation",
+        trigger: "work_item.created",
+        conditions: [],
+        actions: [{ type: "set_priority", priority: "high" }],
+        effectiveRoleId: role?.id ?? "missing-role",
+      });
+    },
+  },
+  {
     matrixKey: "POST /api/task/{projectId}",
     call: (app, _w, i) =>
       json(app, "POST", `/api/task/${i.projectId}`, {
@@ -410,6 +447,20 @@ const READS: Case[] = [
     matrixKey: "GET /api/projects/{projectId}/ownership/preview",
     call: (a, _w, i) =>
       json(a, "GET", `/api/projects/${i.projectId}/ownership/preview`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/features",
+    call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/features`),
+  },
+  {
+    matrixKey: "GET /api/projects/{key}/automations",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/automations`),
+  },
+  {
+    matrixKey: "GET /api/features/resolved",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/features/resolved?project=${i.projectId}`),
   },
   {
     matrixKey: "GET /api/projects/{projectId}/work-items",

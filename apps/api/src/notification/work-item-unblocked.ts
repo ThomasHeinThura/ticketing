@@ -4,7 +4,10 @@ import type { Transaction } from "../database/executor";
 import { personTable, projectTable } from "../database/schema";
 import type { DomainEventEnvelope } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
 import type { ActivityActorType } from "../work-item/activity";
 import { enqueueNotificationEvent } from "./fanout";
 import { canReadNativeInboxCandidate } from "./native-inbox-reach";
@@ -105,6 +108,12 @@ export async function enqueueWorkItemUnblocked(
                 resource.projectId ?? "",
               )
             : undefined,
+          await projectOwnerTeamFor(
+            tx,
+            identity,
+            resource.workspaceId,
+            resource.projectId ?? "",
+          ),
         )
       )
         return [];

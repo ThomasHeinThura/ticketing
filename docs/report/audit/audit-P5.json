@@ -1,0 +1,571 @@
+{
+	"phase": "P5",
+	"items": [
+		{
+			"id": "CY-1",
+			"state": "missing",
+			"evidence": "apps/api/src/database/schema.ts work_item.cycle_id (plain nullable column, comment: cycle is P5 scope); no table in apps/api/drizzle/*.sql or schema.ts 'cycle'",
+			"gap": "No cycle entity, API (/api/projects/{key}/cycles) or Cycles tab; gated by feature.cycles (packages/permissions/src/features.ts, default off)"
+		},
+		{
+			"id": "CY-2",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cycle'",
+			"gap": "No overlap refusal (naming the conflicting cycle) and no unit test"
+		},
+		{
+			"id": "CY-3",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cycle'",
+			"gap": "No date-derived upcoming/active/completed status"
+		},
+		{
+			"id": "CY-4",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts work_item.cycle_id single nullable column (structurally one cycle); apps/api/src/work-item/controllers/move-work-item.ts:445 clears cycle_id on cross-project move",
+			"gap": "Column only: no FK, no cycle table/API; move clears silently (contract requires warning first); no test"
+		},
+		{
+			"id": "CY-5",
+			"state": "missing",
+			"evidence": "apps/web/src/components/work-item/use-work-item-drag-drop.ts and bulk-assign-toolbar.tsx exist (reusable), no cycle target",
+			"gap": "No drag from backlog into a cycle, no bulk add-to-cycle, no POST /api/cycles/{id}/work-items"
+		},
+		{
+			"id": "CY-6",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cycle'",
+			"gap": "No completion action or per-project incomplete-item policy"
+		},
+		{
+			"id": "CY-7",
+			"state": "missing",
+			"evidence": "no metrics-snapshot job in apps/api/src/scheduler; no cycle_snapshot table; no chart component in packages/ui/src/components",
+			"gap": "No cycle summary, burndown or scope-change display"
+		},
+		{
+			"id": "CY-8",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cycle'",
+			"gap": "No scope-change tracking/marking of items added after start"
+		},
+		{
+			"id": "CY-9",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cycle_snapshot'",
+			"gap": "No velocity or three-cycle insufficient-data rule"
+		},
+		{
+			"id": "MO-1",
+			"state": "missing",
+			"evidence": "apps/api/src/database/schema.ts work_item.module_id (plain column); no table in apps/api/drizzle/*.sql or schema.ts 'module'",
+			"gap": "No module entity (name/lead/target/status), API or Modules tab; feature.modules default off"
+		},
+		{
+			"id": "MO-2",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts work_item.module_id single nullable column; move-work-item.ts:445 clears module_id",
+			"gap": "Column only: no FK, module table, assignment API or UI"
+		},
+		{
+			"id": "MO-3",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts work_item.cycle_id and work_item.module_id are independent columns",
+			"gap": "Orthogonality exists only structurally; no cycle or module behavior to exercise it; no test"
+		},
+		{
+			"id": "MO-4",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'module'",
+			"gap": "No progress/remaining/target-date range forecast"
+		},
+		{
+			"id": "ES-1",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'estimate'/'estimate_point'",
+			"gap": "No per-project estimate system (points/categories/time), API or settings screen; feature.estimates default off"
+		},
+		{
+			"id": "ES-2",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts work_item.estimate_point_id (plain column, no FK); move-work-item.ts:445 clears it",
+			"gap": "Column only: no estimate_point table, no estimate control on the work item"
+		},
+		{
+			"id": "ES-3",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'estimate'",
+			"gap": "No system-change mapping or loss preview"
+		},
+		{
+			"id": "ES-4",
+			"state": "missing",
+			"evidence": "apps/api/src/work-item/hierarchy.ts (hierarchy exists, no estimate roll-up)",
+			"gap": "No parent roll-up or own-vs-roll-up display"
+		},
+		{
+			"id": "ES-5",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'estimate'",
+			"gap": "No estimates, so no unestimated share in reports"
+		},
+		{
+			"id": "TC-1",
+			"state": "partial",
+			"evidence": "apps/api/src/time-entry/{index.ts,duration.ts,policy.ts}; apps/api/src/database/schema.ts timeEntryTable (legacy Kaneo: task_id, user_id, start_time, end_time, duration seconds); tests/api-integration/time-entry-duration.test.ts, tests/api-integration/activity-relation-time-entry-crud.test.ts",
+			"gap": "Legacy row is keyed to legacy task (not work_item), user (not person), stores integer seconds from start/end (not date + minutes); data-model §9 time_entry absent"
+		},
+		{
+			"id": "TC-2",
+			"state": "missing",
+			"evidence": "apps/api/src/time-entry/{index.ts,duration.ts,policy.ts}; apps/api/src/database/schema.ts timeEntryTable (legacy Kaneo: task_id, user_id, start_time, end_time, duration seconds)",
+			"gap": "No time_activity table or required activity type"
+		},
+		{
+			"id": "TC-3",
+			"state": "missing",
+			"evidence": "apps/api/src/time-entry/{index.ts,duration.ts,policy.ts}; apps/api/src/database/schema.ts timeEntryTable (legacy Kaneo: task_id, user_id, start_time, end_time, duration seconds)",
+			"gap": "No billable flag or project default"
+		},
+		{
+			"id": "TC-4",
+			"state": "missing",
+			"evidence": "packages/permissions/src/capabilities.ts time_entry:log_backdated (capability defined only); apps/api/src/time-entry/{index.ts,duration.ts,policy.ts}; apps/api/src/database/schema.ts timeEntryTable (legacy Kaneo: task_id, user_id, start_time, end_time, duration seconds)",
+			"gap": "No backdating window (default 30 days) enforcement"
+		},
+		{
+			"id": "TC-5",
+			"state": "partial",
+			"evidence": "apps/api/src/time-entry/policy.ts (documents that no own/any split exists; create/update gated on work_item:update, reads on time_entry:read_any)",
+			"gap": "Any member with work_item:update can edit any entry; no orOwner(person_id) policy, no update_own/update_any enforcement, no DELETE (contract: 202 pending action)"
+		},
+		{
+			"id": "TC-6",
+			"state": "partial",
+			"evidence": "apps/api/src/time-entry/index.ts createTimeEntryRoute (omit endTime = running entry, server-persisted); apps/web/src/hooks/mutations/time-entry/*, hooks/queries/time-entry/* (zero importers)",
+			"gap": "No running_timer table, no /timer/start|stop, no 12 h cap or timer-sweeper job, no timer or manual-entry UI anywhere in apps/web"
+		},
+		{
+			"id": "TC-7",
+			"state": "missing",
+			"evidence": "apps/api/src/time-entry/{index.ts,duration.ts,policy.ts}; apps/api/src/database/schema.ts timeEntryTable (legacy Kaneo: task_id, user_id, start_time, end_time, duration seconds)",
+			"gap": "No roll-up to work item/parent chain/cycle/module/project"
+		},
+		{
+			"id": "TC-8",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'hourly_rate'",
+			"gap": "No person/project rate with effective_from"
+		},
+		{
+			"id": "TC-9",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'hourly_rate'",
+			"gap": "No effective-date rate selection or snapshot at entry/timer stop (20 Oct owner decision)"
+		},
+		{
+			"id": "TC-10",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'hourly_rate'",
+			"gap": "No default per-person rate fallback"
+		},
+		{
+			"id": "TC-11",
+			"state": "missing",
+			"evidence": "packages/permissions/src/capabilities.ts time_entry:manage_rates (capability defined only)",
+			"gap": "No rates, so no rate-visibility enforcement or negative tests across reports/exports"
+		},
+		{
+			"id": "TC-12",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cost_type'",
+			"gap": "No cost types or workspace settings screen"
+		},
+		{
+			"id": "TC-13",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cost_entry'",
+			"gap": "No cost entries with captured rate"
+		},
+		{
+			"id": "TC-14",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'cost_entry'",
+			"gap": "No work-item-or-project cost attachment (CHECK exactly one)"
+		},
+		{
+			"id": "TC-15",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'budget'; packages/permissions/src/capabilities.ts budget:read/budget:manage (defined only)",
+			"gap": "No budget entity, API or project budget screen"
+		},
+		{
+			"id": "TC-16",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'budget'",
+			"gap": "No actuals computation"
+		},
+		{
+			"id": "TC-17",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'budget'",
+			"gap": "No planned vs actual vs committed view"
+		},
+		{
+			"id": "TC-18",
+			"state": "missing",
+			"evidence": "apps/api/src/events/event-keys.ts:38 declares budget.threshold_reached (key only, no emitter or fanout resolver)",
+			"gap": "No 75%/90% threshold notifications"
+		},
+		{
+			"id": "TC-19",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts rate/cost/budget",
+			"gap": "No per-row currency or grouped-by-currency reporting"
+		},
+		{
+			"id": "TC-20",
+			"state": "missing",
+			"evidence": "apps/api/src/database/schema.ts team.capacity_days_per_week (team-level only, P4); no table in apps/api/drizzle/*.sql or schema.ts 'available_hours'",
+			"gap": "No per-person available_hours per period"
+		},
+		{
+			"id": "TC-21",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'available_hours'",
+			"gap": "No utilisation computation"
+		},
+		{
+			"id": "TC-22",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'available_hours'",
+			"gap": "No capacity data; the reporting-only constraint has nothing to apply to yet"
+		},
+		{
+			"id": "RP-1",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
+			"gap": "No null/'Not enough data (n of m)' rendering helper"
+		},
+		{
+			"id": "RP-2",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
+			"gap": "No age/duration bucket aggregation"
+		},
+		{
+			"id": "RP-3",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
+			"gap": "No scope line (your projects vs all projects)"
+		},
+		{
+			"id": "RP-4",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
+			"gap": "No window/as-of statement"
+		},
+		{
+			"id": "RP-5",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
+			"gap": "No empty-result '—' with excluded count"
+		},
+		{
+			"id": "RP-6",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
+			"gap": "No trend arrows / comparable-period rule"
+		},
+		{
+			"id": "RP-7",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route; apps/api/src/view/schema.ts (filter envelope reusable)",
+			"gap": "No report filters by window/project/organisation/team/type/priority"
+		},
+		{
+			"id": "RP-8",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route; apps/web/src/lib/routes.ts has no report routes",
+			"gap": "No URL-held report filter state"
+		},
+		{
+			"id": "RP-9",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
+			"gap": "No hourly metric_snapshot, closed/live boundary"
+		},
+		{
+			"id": "RP-10",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route; no report-export job; apps/api/src/audit/actions.ts:82 catalogues report.exported (no writer)",
+			"gap": "No CSV export, reach-filtered or audited"
+		},
+		{
+			"id": "RP-11",
+			"state": "missing",
+			"evidence": "packages/ui/src/components/table.tsx exists (reusable); no chart component",
+			"gap": "No chart + accessible table equivalent"
+		},
+		{
+			"id": "RP-12",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
+			"gap": "No drill-down to identically filtered list"
+		},
+		{
+			"id": "RP-13",
+			"state": "missing",
+			"evidence": "no dashboard/dashboard_widget tables; apps/web/src/routes/agent/_layout/_authenticated/dashboard/* is Kaneo's legacy workspace shell, not a widget dashboard",
+			"gap": "No widget dashboard"
+		},
+		{
+			"id": "RP-14",
+			"state": "missing",
+			"evidence": "no dashboard tables or /api/dashboards routes",
+			"gap": "No personal/workspace dashboards or workspace:manage_settings gate"
+		},
+		{
+			"id": "RP-15",
+			"state": "missing",
+			"evidence": "@dnd-kit/* in apps/web/package.json (reusable for drag); no resize/grid",
+			"gap": "No draggable/resizable persisted widgets"
+		},
+		{
+			"id": "RP-16",
+			"state": "missing",
+			"evidence": "no dashboard tables or seed",
+			"gap": "No default dashboard"
+		},
+		{
+			"id": "RP-17",
+			"state": "missing",
+			"evidence": "no apps/api/src/report module, no /api/reports routes, no metrics-snapshot job in apps/api/src/scheduler, no metric_snapshot table, no apps/web reports route",
+			"gap": "No reach-filtered report queries"
+		},
+		{
+			"id": "RP-18",
+			"state": "partial",
+			"evidence": "packages/permissions/src/roles.ts CUSTOMER_CAPABILITIES excludes report:*; packages/permissions/src/roles.test.ts:57-60 asserts customer lacks report:read",
+			"gap": "No report routes exist, so contract's route-level negative tests (customer 403 on every report route, customer-cannot-read-reports.spec.ts) cannot exist yet"
+		},
+		{
+			"id": "KB-1",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No article entity with workspace/optional project scope"
+		},
+		{
+			"id": "KB-2",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No customer_visible + published double condition"
+		},
+		{
+			"id": "KB-3",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No immutable publish versions, history or restore"
+		},
+		{
+			"id": "KB-4",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No optional review step (workspace setting, off by default)"
+		},
+		{
+			"id": "KB-5",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "Tiptap editor exists for work items (apps/web package.json @tiptap/*) but no article editor with callouts/customer preview"
+		},
+		{
+			"id": "KB-6",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No live work-item reference embed"
+		},
+		{
+			"id": "KB-7",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No owner/review date; reminder-scan (apps/api/src/scheduler/reminder-scan.ts) does not flag overdue KB reviews"
+		},
+		{
+			"id": "KB-8",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No inline suggestions in portal request form (apps/web/src/routes/portal/catalogue.tsx)"
+		},
+		{
+			"id": "KB-9",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No KB full-text index weighted to titles"
+		},
+		{
+			"id": "KB-10",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No deflection_event table or candidate/abandon recording"
+		},
+		{
+			"id": "KB-11",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No deflection UI to check non-coercion"
+		},
+		{
+			"id": "KB-12",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No staff suggestions in triage (apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx)"
+		},
+		{
+			"id": "KB-13",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No reach-scoped KB search"
+		},
+		{
+			"id": "KB-14",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No categories"
+		},
+		{
+			"id": "KB-15",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No related articles"
+		},
+		{
+			"id": "KB-16",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No most-viewed/recently-updated lists or view_count"
+		},
+		{
+			"id": "KB-17",
+			"state": "missing",
+			"evidence": "no kb_article/kb_category/kb_article_version tables, no apps/api/src/kb module, no /agent/kb or portal kb routes (apps/web/src/routes/portal has none); feature.knowledge_base default off; kb_article:* capabilities defined only (packages/permissions/src/capabilities.ts)",
+			"gap": "No helpfulness feedback or report"
+		},
+		{
+			"id": "SVC-1",
+			"state": "missing",
+			"evidence": "no service/service_dependency tables, no apps/api/src/service module, no /agent/service-management routes; feature.service_catalogue default off; apps/api/src/service-calendar (P2, reusable) and team table exist",
+			"gap": "No service entity (category, owner team, L1-L3, calendar)"
+		},
+		{
+			"id": "SVC-2",
+			"state": "missing",
+			"evidence": "no service/service_dependency tables, no apps/api/src/service module, no /agent/service-management routes; feature.service_catalogue default off",
+			"gap": "No links to documentation/projects/KB articles"
+		},
+		{
+			"id": "SVC-3",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts work_item.service_id (plain nullable column, no FK, comment: service is P5 scope)",
+			"gap": "Column only: no service table, no API/UI to set it, no 'incidents per service' query"
+		},
+		{
+			"id": "SVC-4",
+			"state": "missing",
+			"evidence": "no service/service_dependency tables, no apps/api/src/service module, no /agent/service-management routes; feature.service_catalogue default off",
+			"gap": "No person-set operational/degraded/outage status"
+		},
+		{
+			"id": "SVC-5",
+			"state": "missing",
+			"evidence": "no service/service_dependency tables, no apps/api/src/service module, no /agent/service-management routes; feature.service_catalogue default off",
+			"gap": "No dependency graph, cycle flagging or impact traversal"
+		},
+		{
+			"id": "CH-1",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'change_detail'/'change_service'; apps/api/src/utils/default-work-item-types.ts (Change type, isChange: true); packages/domain/src/workflow/workflow.ts",
+			"gap": "No change detail (risk, window, rollback plan, affected services, freeze override) or task section"
+		},
+		{
+			"id": "CH-2",
+			"state": "partial",
+			"evidence": "apps/api/src/utils/default-work-item-types.ts (Change type, isChange: true); packages/domain/src/workflow/workflow.ts filterOfferableForType (requiresCab transitions offered only to change types); apps/api/src/approval/authoring-service.ts CAB candidates/decide_cab; packages/domain/src/workflow/workflow.test.ts:381-395, tests/api-integration/approval-lifecycle.test.ts, tests/api-integration/approval-gate-semantics.test.ts",
+			"gap": "CAB mechanism implemented and tested, but apps/api/src/utils/seed-default-workflow.ts:121 seeds requiresCab:false — no shipped change workflow requires CAB into Approved"
+		},
+		{
+			"id": "CH-3",
+			"state": "partial",
+			"evidence": "packages/domain/src/workflow/workflow.ts evaluateGuard change_risk_at_most + workflow.test.ts:626 (3x3 matrix); apps/api/src/work-item/controllers/transition-work-item.ts:612-613 and workflow-transition-context.ts:329 pass changeRiskLevel: null",
+			"gap": "Domain guard tested, runtime has no risk value (fails closed); no low-risk pre-approval configuration"
+		},
+		{
+			"id": "CH-4",
+			"state": "missing",
+			"evidence": "no table in apps/api/drizzle/*.sql or schema.ts 'change_freeze'",
+			"gap": "No freeze ranges, override flag/reason/elevation or prominent audit"
+		},
+		{
+			"id": "CH-5",
+			"state": "missing",
+			"evidence": "apps/web/src/components/calendar/* (Kaneo calendar, reusable); no change windows",
+			"gap": "No change calendar, freeze overlay or same-service conflict flag"
+		},
+		{
+			"id": "CH-6",
+			"state": "partial",
+			"evidence": "packages/domain/src/workflow/workflow.test.ts:573 field_required satisfied by dotted satellite key change.rollback_plan; apps/api/src/work-item/workflow-transition-context.ts guardFieldValues reads custom-field values only",
+			"gap": "No change satellite store, so rollback_plan can never be present at runtime; not enforced as a mandatory approval precondition"
+		},
+		{
+			"id": "REL-1",
+			"state": "missing",
+			"evidence": "no release table, no /api/releases routes, no releases screen",
+			"gap": "No release entity"
+		},
+		{
+			"id": "REL-2",
+			"state": "missing",
+			"evidence": "no release table, no /api/releases routes, no releases screen; change_detail.release_id absent",
+			"gap": "No change-release association"
+		},
+		{
+			"id": "REL-3",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts checklist_item.release_id + CHECK num_nonnulls(work_item_id, template_id, release_id)=1",
+			"gap": "Schema hook only: no release table/FK, no per-service checklist definition or instantiation"
+		},
+		{
+			"id": "REL-4",
+			"state": "missing",
+			"evidence": "no release table, no /api/releases routes, no releases screen",
+			"gap": "No generated, editable release notes"
+		},
+		{
+			"id": "REL-5",
+			"state": "missing",
+			"evidence": "no release table, no /api/releases routes, no releases screen",
+			"gap": "No portal publication (off by default)"
+		}
+	],
+	"top_gaps": [
+		"No P5 tables exist: none of cycle, cycle_snapshot, module, estimate, estimate_point, time_activity, running_timer, hourly_rate, cost_type, cost_entry, budget, available_hours, metric_snapshot, dashboard, dashboard_widget, kb_*, deflection_event, service, service_dependency, change_detail, change_service, change_freeze, release in apps/api/drizzle (latest 0147)",
+		"Only scaffolding exists: P5 capabilities (packages/permissions/src/capabilities.ts) and default-off feature flags (packages/permissions/src/features.ts) plus nullable work_item.cycle_id/module_id/estimate_point_id/service_id and checklist_item.release_id columns; none lifts a requirement above partial",
+		"Time tracking is legacy Kaneo time_entry (task_id/user_id, seconds) with no own/any policy, activity, billable, timer table or UI; name collides with data-model §9 time_entry (TC-1..7)",
+		"No reporting engine: no metrics-snapshot job, report routes, export job, chart component or dashboards; RP-18 rests on role grants only (RP-1..18)",
+		"No knowledge base or deflection on agent, portal request form or triage (KB-1..17)",
+		"Change management: CAB gating and risk/rollback guards exist in the domain and are tested, but runtime passes changeRiskLevel null, has no change satellite store, seeded workflow has no CAB transition, and there are no freezes, services or releases (CH-1..6, SVC-1..5, REL-1..5)",
+		"No P5 web screens: apps/web/src/routes and apps/web/src/lib/routes.ts have no cycles, modules, timesheet, budget, rates, reports, dashboard, kb or service-management paths (docs/screens.md P5 rows all open)",
+		"Pages has no requirement ids and no behavior spec (docs/features.md); feature.pages flag exists only"
+	],
+	"tonight_actions": [
+		"Now (only lane allowed before the P4 review passes): write the missing contracts — Pages behavior; customer invitations CP-11/12/13; typed-domain SSO CP-17/18, IP-9/IP-29 — for Thomas's approval",
+		"After P4 review passes: coordinator lands P5 schema wave 0 in reserved migrations 0148-0152 on the scratch database only, renaming drizzle-kit's generated prefix (next idx is 146) to the reserved number",
+		"Pending Thomas: rename legacy Kaneo time_entry to task_time_entry (0066 task_activity precedent) and create canonical work-item time_entry (integer minutes, activity, billable, person, date)",
+		"After P4 review passes: cycles/modules/estimates API with overlap refusal, date-derived status, completion policy and estimate-change preview, plus the contract's unit tests",
+		"After P4 review passes: time entries v2 — orOwner(person_id) policy, backdate window, running_timer start/stop with 12 h cap and timer-sweeper, task Time section and Kaneo table-based weekly timesheet",
+		"After P4 review passes: report core envelope (scope, window, as-of, null-with-sample, buckets, empty explanation), reach filter, customer-403 tests on every /api/reports route, then tier-1 reports over existing SLA/throughput/ageing/workload/CSAT/escalation data",
+		"After P4 review passes: KB article/version/category/feedback API with customer_visible+published double gate and portal isolation tests; deflection on portal request form and triage",
+		"After P4 review passes: service catalogue + change_detail satellite feeding changeRiskLevel and change.rollback_plan into transition guards; change_freeze with audited elevated override; change calendar on Kaneo calendar"
+	]
+}

@@ -112,6 +112,46 @@ describe("portal submission route", () => {
     expect(screen.getByRole("button", { name: "Send reply" })).toBeDisabled();
   });
 
+  it("shows customer-visible custom fields as label and value on an accepted request (CF-11)", async () => {
+    mocks.getSubmission.mockReset().mockResolvedValue({
+      ...submission,
+      submission: { ...submission.submission, state: "accepted" },
+      workItem: {
+        title: "Password reset",
+        description: "",
+        priority: null,
+        resolvedAt: null,
+        sla: null,
+      },
+      customFields: [
+        {
+          key: "order_no",
+          label: "Order number",
+          format: "text",
+          value: "ORD-1",
+        },
+        {
+          key: "tags",
+          label: "Affects",
+          format: "multi_select",
+          value: ["Email", "VPN"],
+        },
+        {
+          key: "urgent",
+          label: "Needs a call",
+          format: "boolean",
+          value: true,
+        },
+      ],
+    });
+    renderSubmission();
+    expect(await screen.findByText("Order number")).toBeVisible();
+    expect(screen.getByText("ORD-1")).toBeVisible();
+    expect(screen.getByText("Email, VPN")).toBeVisible();
+    expect(screen.getByText("Needs a call")).toBeVisible();
+    expect(screen.getByText("Yes")).toBeVisible();
+  });
+
   it("shows no dangling separator in the header while loading, then the joined subtitle", async () => {
     mocks.getSubmission.mockReset().mockResolvedValue(submission);
     const { container } = renderSubmission();

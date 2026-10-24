@@ -75,6 +75,17 @@ export const notificationPolicies = {
     },
   },
 
+  "PATCH /api/notification/{id}/unread": {
+    authenticated: true,
+    self: true,
+    sessionOnly: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "marks one of the caller's own notifications unread (WHERE id = :id AND userId = caller, same current reach as mark-read); the {id} parameter names the notification, not a person",
+    },
+  },
+
   "PATCH /api/notification/read-all": {
     authenticated: true,
     self: true,

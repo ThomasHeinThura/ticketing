@@ -22,9 +22,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { CAPABILITY_CHECKS } from "../../apps/api/src/capabilities/capability-checks";
 import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { legacyStatementsFromCapabilities } from "../../apps/api/src/permissions/legacy-statements";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
+import { mintStepUpToken } from "./helpers/step-up";
 import {
   acceptInvitationNative,
   inviteAndAcceptAsNewMemberNative,
@@ -61,16 +63,31 @@ async function createWorkspace(
   return ((await created.json()) as { id: string }).id;
 }
 
+/**
+ * The canonical workspace-scope `role` rows for a key (owner decision, 23 Oct: custom-role
+ * capabilities live in `role`). `permission` is the derived legacy statement view as JSON text,
+ * kept so the original assertions read unchanged.
+ */
 async function roleRows(workspaceId: string, role: string) {
-  return db
+  const rows = await db
     .select()
-    .from(schema.workspaceRoleTable)
+    .from(schema.roleTable)
     .where(
       and(
-        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-        eq(schema.workspaceRoleTable.role, role),
+        eq(schema.roleTable.scope, "workspace"),
+        eq(schema.roleTable.workspaceId, workspaceId),
+        eq(schema.roleTable.key, role),
       ),
     );
+  return rows.map((row) => ({
+    ...row,
+    role: row.key,
+    permission: JSON.stringify(
+      legacyStatementsFromCapabilities(
+        Array.isArray(row.capabilities) ? (row.capabilities as string[]) : [],
+      ),
+    ),
+  }));
 }
 
 async function memberRole(workspaceId: string, userId: string) {
@@ -169,7 +186,7 @@ beforeEach(async () => {
 });
 
 describe("S7 list roles (GET /api/workspace/{id}/roles)", () => {
-  it("returns every seeded default role plus a custom one, and never 'owner'", async () => {
+  it("returns the six built-in roles plus a custom one, with owner flagged non-editable", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Roster");
@@ -184,9 +201,27 @@ describe("S7 list roles (GET /api/workspace/{id}/roles)", () => {
       workspaceId,
     );
     expect(response.status).toBe(200);
-    const roles = (await response.json()) as Array<{ role: string }>;
+    const roles = (await response.json()) as Array<{
+      role: string;
+      isEditable: boolean;
+      isSystem: boolean;
+    }>;
     const names = roles.map((r) => r.role).sort();
-    expect(names).toEqual(["admin", "member", "readonly", "viewer"]);
+    expect(names).toEqual([
+      "admin",
+      "lead",
+      "manager",
+      "member",
+      "owner",
+      "readonly",
+      "viewer",
+    ]);
+    const ownerRole = roles.find((r) => r.role === "owner");
+    expect(ownerRole).toMatchObject({ isSystem: true, isEditable: false });
+    expect(roles.find((r) => r.role === "readonly")).toMatchObject({
+      isSystem: false,
+      isEditable: true,
+    });
   });
 
   it("does not leak another workspace's roles (cross-tenant isolation)", async () => {
@@ -241,13 +276,17 @@ describe("S7 list roles (GET /api/workspace/{id}/roles)", () => {
 
     const [viewerRole] = await roleRows(workspaceId, "viewer");
     if (!viewerRole) throw new Error("expected a seeded viewer role row");
-    const narrowed = { ...JSON.parse(viewerRole.permission), ac: [] };
+    // Owner decision, 23 Oct: the edit is a capability edit; the legacy statement row the
+    // legacy gates read moves by delta, so removing `workspace:read` removes `ac:read`.
+    const narrowed = (viewerRole.capabilities as string[]).filter(
+      (capability) => capability !== "workspace:read",
+    );
     const rewritten = await updateWorkspaceRoleNative(
       app,
       owner.cookie,
       workspaceId,
       viewerRole.id,
-      { permission: narrowed },
+      { capabilities: narrowed },
     );
     expect(rewritten.status).toBe(200);
 
@@ -300,7 +339,10 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
       { role: "Owner", permission: { work_item: ["read"] } },
     );
     expect(response.status).toBe(400);
-    expect(await roleRows(workspaceId, "owner")).toHaveLength(0);
+    // The only `owner` row is the built-in one; nothing custom was inserted.
+    expect(
+      (await roleRows(workspaceId, "owner")).filter((row) => !row.isSystem),
+    ).toHaveLength(0);
     expect(await roleRows(workspaceId, "Owner")).toHaveLength(0);
   });
 
@@ -378,12 +420,13 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
         expect(rows, seeded).toHaveLength(1);
         expect(rows[0]?.isSystem, seeded).toBe(true);
       }
-      for (const neverSeeded of [
-        "manager",
-        "lead",
-        "customer",
-        "instance_admin",
-      ] as const) {
+      // `manager` and `lead` are now genuine seeded built-ins too (owner decision, 23 Oct).
+      for (const seeded of ["manager", "lead", "owner"] as const) {
+        const rows = await roleRows(workspaceId, seeded);
+        expect(rows, seeded).toHaveLength(1);
+        expect(rows[0]?.isSystem, seeded).toBe(true);
+      }
+      for (const neverSeeded of ["customer", "instance_admin"] as const) {
         expect(
           await roleRows(workspaceId, neverSeeded),
           neverSeeded,
@@ -471,8 +514,8 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Ceiling25");
-    // 3 seeded (viewer/member/admin) + 22 custom = 25 already at the ceiling.
-    for (let i = 0; i < 22; i++) {
+    // The ceiling counts custom roles only: the six built-ins do not use it up.
+    for (let i = 0; i < 25; i++) {
       const created = await createWorkspaceRoleNative(
         app,
         owner.cookie,
@@ -497,15 +540,31 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(app, owner.cookie, "Race");
 
+    // One proof serves the race: the loser is refused for the duplicate name (409) before it
+    // reaches the point where a proof is spent, so no second proof is needed or consumed.
+    const body = { role: "racer", permission: { work_item: ["read"] } };
+    const proof = await mintStepUpToken(
+      app,
+      owner.cookie,
+      "workspace_role_create",
+      { workspaceId, ...body },
+    );
+    expect(proof).not.toBeNull();
     const [first, second] = await Promise.all([
-      createWorkspaceRoleNative(app, owner.cookie, workspaceId, {
-        role: "racer",
-        permission: { work_item: ["read"] },
-      }),
-      createWorkspaceRoleNative(app, owner.cookie, workspaceId, {
-        role: "racer",
-        permission: { work_item: ["read"] },
-      }),
+      createWorkspaceRoleNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        body,
+        proof as string,
+      ),
+      createWorkspaceRoleNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        body,
+        proof as string,
+      ),
     ]);
 
     const statuses = [first.status, second.status].sort((a, b) => a - b);
@@ -894,7 +953,7 @@ describe("F2 -- cannot grant a capability you do not hold yourself (RL-3, S7 blu
     expect(created.status).toBe(403);
     // Error bodies are plain text (`errorResponse` documents `text/plain`; Hono's
     // `HTTPException.getResponse()` returns the message as the raw body), not JSON.
-    expect(await created.text()).toMatch(/organization:delete/);
+    expect(await created.text()).toMatch(/workspace:delete/);
     expect(await roleRows(workspaceId, "super")).toHaveLength(0);
 
     // Step 2: with "super" never created, self-assigning it is impossible --
@@ -959,7 +1018,10 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
     const body = (await updated.json()) as {
       permission: Record<string, string[]>;
     };
-    expect(body.permission).toEqual({ organization: ["update"] });
+    // `organization:update` is `workspace:update`, which also implies `workspace:read`; the
+    // statement view is derived from the stored capabilities.
+    expect(body.permission.organization).toEqual(["update"]);
+    expect(body.permission.member).toBeUndefined();
 
     // Prove the OLD grant was actually dropped, not merely that the new
     // field was accepted: a member holding this role can no longer add
@@ -1063,7 +1125,7 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
 });
 
 describe("S7 delete role (DELETE /api/workspace/{id}/roles/{roleId})", () => {
-  it("succeeds on an unassigned seeded role ('viewer') and removes the row", async () => {
+  it("refuses to delete a built-in role even when nobody holds it ('viewer')", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const workspaceId = await createWorkspace(
@@ -1074,21 +1136,48 @@ describe("S7 delete role (DELETE /api/workspace/{id}/roles/{roleId})", () => {
     const [viewerRole] = await roleRows(workspaceId, "viewer");
     if (!viewerRole) throw new Error("expected a seeded viewer role row");
 
-    // The route only requests (202); the row is removed when the owner approves.
-    const pendingDelete = await requestWorkspaceRoleDeletion(
+    // Owner decision, 23 Oct: the six built-ins are real role rows that cannot be deleted.
+    const response = await deleteWorkspaceRoleNative(
       app,
       owner.cookie,
       workspaceId,
       viewerRole.id,
     );
+    expect(response.status, await response.clone().text()).toBe(400);
     expect(await roleRows(workspaceId, "viewer")).toHaveLength(1);
+  });
+
+  it("deletes an unassigned custom role once the owner approves, and removes the row", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "DeleteCustom",
+    );
+    const created = await createWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { role: "temp", permission: { work_item: ["read"] } },
+    );
+    const { id: roleId } = (await created.json()) as { id: string };
+
+    // The route only requests (202); the row is removed when the owner approves.
+    const pendingDelete = await requestWorkspaceRoleDeletion(
+      app,
+      owner.cookie,
+      workspaceId,
+      roleId,
+    );
+    expect(await roleRows(workspaceId, "temp")).toHaveLength(1);
     const response = await approveWorkspaceRoleDeletion(
       app,
       owner.cookie,
       pendingDelete,
     );
     expect(response.status, await response.clone().text()).toBe(200);
-    expect(await roleRows(workspaceId, "viewer")).toHaveLength(0);
+    expect(await roleRows(workspaceId, "temp")).toHaveLength(0);
   });
 
   it("refuses a role currently held by a member (the ordinary, single-role case)", async () => {

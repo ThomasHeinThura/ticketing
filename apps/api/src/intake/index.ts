@@ -193,6 +193,19 @@ const portalSubmissionResponseSchema = z.object({
       sla: portalSlaSchema.nullable(),
     })
     .nullable(),
+  /**
+   * CF-11: the customer-visible custom fields of the linked work item that currently hold a
+   * value. A label and a value only: no ids, options, conditions or staff people.
+   */
+  customFields: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      format: z.string(),
+      helpText: z.string().nullable(),
+      value: z.unknown(),
+    }),
+  ),
   messages: z.array(
     z.object({
       id: z.string(),

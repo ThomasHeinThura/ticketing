@@ -44,7 +44,7 @@ distinguishable from a person, in the event, in the activity stream and in the a
 | Key | Emitted when | A | W | N | Payload, beyond key + url |
 | --- | --- | :-: | :-: | :-: | --- |
 | `work_item.created` | A work item is created, including from intake acceptance | ✅ | ✅ | — | `typeId`, `stateId`, `requesterId`, `source: portal\|agent\|api\|automation\|import` |
-| `work_item.updated` | Any field other than state or assignee changes | ✅ | ✅ | — | `changes: [{ field, from, to, visibility: public\|internal }]`. Automations expose this as "a named field changed" — a **condition on `changes[].field`**, not a separate event. A customer or webhook consumer must drop an `internal` entry, the same way `work_item.commented`'s `visibility` works — `NO-19` |
+| `work_item.updated` | Any field other than state or assignee changes | ✅ | ✅ | — | `changes: [{ field, from, to, visibility: public\|internal }]`; a custom-field value edit is one entry with `field: "custom_field"`, the field's `key`, and `visibility: internal` unless the field is customer visible. Automations expose this as "a named field changed" — a **condition on `changes[].field`**, not a separate event. A customer or webhook consumer must drop an `internal` entry, the same way `work_item.commented`'s `visibility` works — `NO-19` |
 | `work_item.transitioned` | State changes through the lifecycle engine | ✅ | ✅ | ✅ | `fromStateId`, `toStateId`, `workflowVersion`, `note?` |
 | `work_item.assigned` | Assignee set or changed | ✅ | ✅ | ✅ | `assigneeId`, `previousAssigneeId` (null when newly assigned) |
 | `work_item.unassigned` | Assignee cleared | — | ✅ | ✅ | `previousAssigneeId` |
@@ -167,16 +167,19 @@ The first column alone registers emitted identifiers. Other columns explain exis
   event-derived inbox rows and `(event_id, recipient_person_id, channel)` on delivery
   children make materialization/replay idempotent. Re-draining a parent must not duplicate
   a notification, automation run, or webhook side effect. Parent event-consumer completion
-  is distinct from any individual notification provider success. **No-consumer decision
-  (review F26):** while no parent consumer is registered (webhook and automation runtimes
-  not built yet), `outbox-drain` marks every claimed parent `delivered`, including historical
-  pending rows. This is intentional: those events have no side effects to run, and they are
-  **not replayed** to consumers added later. A P4 consumer sees only events claimed after
-  its registration point; it must backfill from the source tables if it needs earlier state.
-  **P2 note:** `sla.at_risk`, `sla.breached`, `submission.replied` and `submission.declined`
+  is distinct from any individual notification provider success. **Consumer registry
+  (review F26, updated P4):** the registry now holds the `webhook` and `automation` parent
+  consumers (`registerBuiltInConsumers`, `apps/api/src/events/outbox-consumer.ts`), registered
+  lazily on the first default drain. Each only enqueues (a `webhook_delivery`, an
+  `automation_run`) inside the claim transaction; the signed POST and the rule actions run in
+  the later `outbox-drain` steps (`scheduler/outbox-drain-p4.ts`). A drain that cannot load its
+  consumers throws instead of marking parents `delivered`. Parents claimed while the registry
+  was empty (before P4) were marked `delivered` and are **not replayed**; each consumer starts
+  from its registration point and must backfill from the source tables if it needs earlier
+  state. **P2 note:** `sla.at_risk`, `sla.breached`, `submission.replied` and `submission.declined`
   notifications are materialised by their producers in the producing transaction (`EV-1`) via
-  `enqueueNotificationEvent`, not by a parent consumer, so the registry stays empty and no
-  historical parent is replayed into notifications. The `NO-22` escalation steps reuse the
+  `enqueueNotificationEvent`, not by a parent consumer, so notifications do not depend on the
+  registry and no historical parent is replayed into them. The `NO-22` escalation steps reuse the
   breach event id, so each stakeholder's inbox row stays keyed `(event_id, person_id)`.
 - `EV-3` `depth` increments on every event an automation's action produces; a rule does not
   fire on an event whose `originAutomationId` is itself (`AM-5`), and nothing fires past

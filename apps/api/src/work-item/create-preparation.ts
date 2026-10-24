@@ -1,6 +1,7 @@
 import { can, reaches } from "@taskdesk/permissions";
 import { and, eq, gt, isNotNull, isNull, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { loadApiKeyKind } from "../api-key/repository";
 import db, { schema } from "../database";
 import type { Transaction } from "../database/executor";
 import { lockWorkspaceLabelNames } from "../label/repository";
@@ -8,7 +9,10 @@ import {
   type ResolveIdentityInput,
   resolveIdentity,
 } from "../permissions/resolve-identity";
-import { loadProjectAncestorIdsFor } from "../project/hierarchy.repository";
+import {
+  loadProjectAncestorIdsFor,
+  loadProjectOwnerTeamIdFor,
+} from "../project/hierarchy.repository";
 import { dbNowUtc } from "../utils/db-time";
 import {
   apiKeyCapabilitySubset,
@@ -95,9 +99,12 @@ export async function prepareWorkItemCreation(
         (key.referenceId !== auth.userId && key.userId !== auth.userId)
       )
         throw new HTTPException(403, { message: "Invalid API credential" });
+      // MC-14: an MCP key is a distinct credential kind with its own clamp, read from the key's
+      // `api_key` extension row, never assumed to be a plain key.
+      const keyKind = await loadApiKeyKind(auth.apiKey.id, tx);
       identityInput = {
         userId: auth.userId,
-        credential: "api_key",
+        credential: keyKind.isMcp ? "mcp_key" : "api_key",
         apiKey: {
           enabled: true,
           ownerUserId: auth.userId,
@@ -131,6 +138,12 @@ export async function prepareWorkItemCreation(
         workspaceId: target.workspaceId,
         organisationId: project.organisationId,
         ancestorProjectIds,
+        ownerTeamId: await loadProjectOwnerTeamIdFor(
+          tx,
+          identity,
+          project.workspaceId,
+          project.id,
+        ),
       })
     )
       throw new HTTPException(404, { message: "Project not found" });

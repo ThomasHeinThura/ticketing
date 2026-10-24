@@ -15,6 +15,7 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { WebSocketServer } from "ws";
 import activity from "./activity";
+import apiKey from "./api-key";
 import approval from "./approval";
 import attachment from "./attachment";
 import audit from "./audit";
@@ -29,16 +30,20 @@ import {
 } from "./auth";
 import csrfToken, { portalCsrfToken } from "./auth/csrf-token-api";
 import factorStatus from "./auth/factor-status-api";
+import { runWithImpersonator } from "./auth/impersonation-context";
 import {
   InactiveFactorIdentityError,
   loadLocalFactorState,
 } from "./auth/local-factor-service";
 import stepUp from "./auth/step-up-api";
+import automation from "./automation";
 import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
 import column from "./column";
 import comment from "./comment";
 import config from "./config";
+import customField from "./custom-field";
+import customFieldSections from "./custom-field/sections";
 import {
   closeMigrationPool,
   getDatabase,
@@ -54,11 +59,18 @@ import { resolveMigrationDatabaseConfig } from "./database/resolve-database-url"
 import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
+import featureFlag from "./feature-flag";
 import identityConnectionAdmin from "./identity/connection-admin";
 import { oidcGroupMappingAdminRouter } from "./identity/oidc-group-mapping-admin";
 import scimAdmin from "./identity/scim-admin";
 import scimProtocol from "./identity/scim-protocol";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
+import instanceHealth from "./instance/health";
+import impersonation from "./instance/impersonation";
+import {
+  enforceImpersonationRestrictions,
+  impersonationMayCallAuthEndpoint,
+} from "./instance/impersonation/guard";
 import localFactorPolicy from "./instance/local-factor-policy";
 import observability from "./instance/observability";
 import {
@@ -75,6 +87,8 @@ import {
   stopObservabilityRuntime,
 } from "./instance/observability/runtime";
 import resetMfa from "./instance/reset-mfa";
+import rotateSecrets from "./instance/secrets/rotate-secrets";
+import instanceSettings from "./instance/settings";
 import { ensureSetupToken } from "./instance/setup-token";
 import users from "./instance/users";
 import intake from "./intake";
@@ -136,6 +150,7 @@ import {
 } from "./storage/filesystem";
 import task, { taskV2 } from "./task";
 import taskRelation from "./task-relation";
+import team from "./team";
 import timeEntry from "./time-entry";
 import user from "./user";
 import getAvatar from "./user/controllers/get-avatar";
@@ -167,9 +182,13 @@ import {
   assertCallerHasCapability,
   capabilityCredential,
 } from "./utils/require-workspace-capability";
-import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
+import {
+  seedCanonicalWorkspaceRoles,
+  seedDefaultWorkspaceRoles,
+} from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import view from "./view";
+import webhook from "./webhook";
 import workItem from "./work-item";
 import workItemCommentVersions from "./work-item/comment-versions";
 import workItemRelation from "./work-item-relation";
@@ -202,6 +221,7 @@ type ApiKey = {
   userId: string;
   enabled: boolean;
   permissions: Record<string, string[]> | null;
+  isMcp?: boolean;
 };
 
 type AppVariables = {
@@ -449,6 +469,19 @@ async function handleAuthRequest(
         !(await hasCustomerPortalIdentity(session.user.id))))
   ) {
     throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
+  // GM-9: an impersonation session may not change credentials, factors, keys or the account
+  // through Better Auth; it may only read and sign out.
+  if (
+    (session?.session as { impersonatedBy?: string | null } | undefined)
+      ?.impersonatedBy &&
+    !impersonationMayCallAuthEndpoint(c.req.method, c.req.path)
+  ) {
+    throw new HTTPException(403, {
+      message:
+        "impersonation: this action is not allowed during an impersonation session",
+    });
   }
 
   const accountDeletionRoute =
@@ -1403,6 +1436,8 @@ export function createApp(
       // `route-classification-guard.ts`'s own doc comment for exactly what this does and
       // does not check (presence only, never an ALLOW/DENY verdict).
       assertRouteIsClassified(c);
+      // GM-9: an impersonation session is refused the restricted classes before any route runs.
+      await enforceImpersonationRestrictions(c);
       const windowId = c.req.header("X-TaskDesk-Window-Id");
       const userId = c.get("userId");
       const initiatorId = windowId ? `${userId}:${windowId}` : userId;
@@ -1418,11 +1453,19 @@ export function createApp(
       // for the same registration-count reason: it scopes a key to the authenticated
       // caller and sits before every route's pending-action layer, so a keyed retry
       // replays the stored 202 instead of creating a second pending action.
-      return await eventContext.run({ initiatorId }, () =>
-        !["GET", "HEAD", "OPTIONS"].includes(c.req.method)
-          ? deleteIdempotency(c, () => runNextWithPolicyShadow(c, next))
-          : runNextWithPolicyShadow(c, next),
-      );
+      const impersonatorId = (
+        c.get("session") as { impersonatedBy?: string | null } | null
+      )?.impersonatedBy;
+      const runRequest = () =>
+        eventContext.run({ initiatorId }, () =>
+          !["GET", "HEAD", "OPTIONS"].includes(c.req.method)
+            ? deleteIdempotency(c, () => runNextWithPolicyShadow(c, next))
+            : runNextWithPolicyShadow(c, next),
+        );
+      // GM-8: every audit row written by an impersonated request names the impersonator.
+      return await (impersonatorId
+        ? runWithImpersonator(impersonatorId, runRequest)
+        : runRequest());
     } catch (error) {
       if (!(error instanceof HTTPException)) {
         logTaskDesk({
@@ -1589,6 +1632,8 @@ export function createApp(
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
   const resetMfaApi = api.route("/instance", resetMfa);
   const usersApi = api.route("/instance", users);
+  const impersonationApi = api.route("/instance", impersonation);
+  const rotateSecretsApi = api.route("/instance", rotateSecrets);
   const identityConnectionAdminApi = api.route(
     "/instance",
     identityConnectionAdmin,
@@ -1598,6 +1643,21 @@ export function createApp(
     oidcGroupMappingAdminRouter,
   );
   const scimAdminApi = api.route("/instance", scimAdmin);
+  const instanceHealthApi = api.route("/instance", instanceHealth);
+  const instanceSettingsApi = api.route("/instance", instanceSettings);
+  // P4 integration. Feature-flag, automation and api-key routers declare full paths
+  // (`/instance/features`, `/workspaces/{id}/automations`, `/me/api-keys`, ...), so they
+  // mount at the api root like `workItem`.
+  const featureFlagApi = api.route("/", featureFlag);
+  const automationApi = api.route("/", automation);
+  const apiKeyApi = api.route("/", apiKey);
+  const webhookApi = api.route("/webhooks", webhook);
+  const customFieldApi = api.route("/custom-fields", customField);
+  const customFieldSectionApi = api.route(
+    "/custom-field-sections",
+    customFieldSections,
+  );
+  const teamApi = api.route("/teams", team);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -1914,9 +1974,20 @@ export function createApp(
     localFactorPolicyApi,
     resetMfaApi,
     usersApi,
+    impersonationApi,
+    rotateSecretsApi,
     identityConnectionAdminApi,
     oidcGroupMappingAdminApi,
     scimAdminApi,
+    instanceHealthApi,
+    instanceSettingsApi,
+    featureFlagApi,
+    automationApi,
+    apiKeyApi,
+    webhookApi,
+    customFieldApi,
+    customFieldSectionApi,
+    teamApi,
     scimProtocolApi,
     invitationApi,
     invitationPublicApi,
@@ -2094,6 +2165,7 @@ export async function runApiBootTasks(
   await migrateColumns();
   await startAuthConfigRuntime();
   await seedDefaultWorkspaceRoles();
+  await seedCanonicalWorkspaceRoles();
   await seedInternalOrganisationAndStaffPersons();
   // Owner/admin explicit sees_all (decision log 2026-10-14): re-sync members whose person
   // or genuine-admin role row was created/healed by the two seeds above.
@@ -2367,9 +2439,20 @@ const {
   localFactorPolicyApi,
   resetMfaApi,
   usersApi,
+  impersonationApi,
+  rotateSecretsApi,
   identityConnectionAdminApi,
   oidcGroupMappingAdminApi,
   scimAdminApi,
+  instanceHealthApi,
+  instanceSettingsApi,
+  featureFlagApi,
+  automationApi,
+  apiKeyApi,
+  webhookApi,
+  customFieldApi,
+  customFieldSectionApi,
+  teamApi,
   scimProtocolApi,
   invitationApi,
   invitationPublicApi,
@@ -2472,9 +2555,20 @@ export type AppType =
   | typeof localFactorPolicyApi
   | typeof resetMfaApi
   | typeof usersApi
+  | typeof impersonationApi
+  | typeof rotateSecretsApi
   | typeof identityConnectionAdminApi
   | typeof oidcGroupMappingAdminApi
   | typeof scimAdminApi
+  | typeof instanceHealthApi
+  | typeof instanceSettingsApi
+  | typeof featureFlagApi
+  | typeof automationApi
+  | typeof apiKeyApi
+  | typeof webhookApi
+  | typeof customFieldApi
+  | typeof customFieldSectionApi
+  | typeof teamApi
   | typeof scimProtocolApi
   | typeof workflowApi
   | typeof workflowRuleApi

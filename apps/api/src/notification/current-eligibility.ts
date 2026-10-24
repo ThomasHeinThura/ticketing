@@ -2,13 +2,21 @@ import { can, type ProjectReachFacts, reaches } from "@taskdesk/permissions";
 import type { ClaimedNotificationDelivery } from "../database/repositories/notification-delivery.repository";
 import type { DbTransaction } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
 import { isCustomerEligibleNotificationEvent } from "./customer-event-audience";
 import type { NotificationProjection } from "./outbox-drain";
 import { resolveNotificationPreference } from "./preferences";
 import {
+  evaluateQuietHours,
+  QUIET_HOURS_EXEMPT_EVENT_KINDS,
+} from "./quiet-hours";
+import {
   findApprovalNotificationContext,
   findCurrentNotificationResource,
+  findInstanceTimezone,
   findNotificationPerson,
   isApprovalApproverStillValid,
   listApprovalWatcherPersonIds,
@@ -19,10 +27,15 @@ export type CurrentNotificationEligibility =
   | { kind: "suppress"; reason: string }
   | { kind: "eligible"; projection: NotificationProjection }
   | {
+      /** `NO-3`: the recipient is inside their quiet hours; retry at `until`. */
+      kind: "defer";
+      until: Date;
+      reason: "quiet_hours";
+    }
+  | {
       /**
-       * The current reach and channel preference passed, but configured quiet hours
-       * cannot be evaluated until the approved timezone/DST contract is resolved.
-       * This result must never be translated into provider authorization.
+       * Configured quiet hours are malformed (unparseable time, equal start and end, unknown
+       * zone) and cannot be evaluated. Never translated into provider authorization.
        */
       kind: "quiet_hours_unresolved";
     }
@@ -221,6 +234,12 @@ export async function evaluateCurrentNotificationReachAndPreference(
       workspaceId: resource.workspaceId,
       organisationId: resource.organisationId,
       ancestorProjectIds,
+      ownerTeamId: await projectOwnerTeamFor(
+        tx,
+        identity,
+        resource.workspaceId,
+        resource.projectId,
+      ),
       visibleToPersonIds:
         identity.side === "customer" ? resource.visibleToPersonIds : null,
     };
@@ -305,12 +324,22 @@ export async function evaluateCurrentNotificationReachAndPreference(
   if (!preference.enabled)
     return { kind: "suppress", reason: "channel_disabled" };
 
-  if (
-    person.quietHoursStart !== null ||
-    person.quietHoursEnd !== null ||
-    person.quietHoursTimezone !== null
-  )
-    return { kind: "quiet_hours_unresolved" };
+  if (!QUIET_HOURS_EXEMPT_EVENT_KINDS.has(delivery.eventKind)) {
+    const quiet = evaluateQuietHours(
+      {
+        start: person.quietHoursStart,
+        end: person.quietHoursEnd,
+        timezone: person.quietHoursTimezone,
+      },
+      person.quietHoursStart === null && person.quietHoursEnd === null
+        ? "UTC"
+        : await findInstanceTimezone(tx),
+      new Date(),
+    );
+    if (quiet.kind === "unresolved") return { kind: "quiet_hours_unresolved" };
+    if (quiet.kind === "quiet")
+      return { kind: "defer", until: quiet.until, reason: "quiet_hours" };
+  }
 
   if (identity.side !== "staff" || !resource.staffUrl)
     return { kind: "destination_unresolved" };

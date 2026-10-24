@@ -8,13 +8,16 @@ export async function findWorkspaceInvitationRole(
   workspaceId: string,
   role: string,
 ) {
+  // Canonical role rows (owner decision, 23 Oct): a role name is valid when this workspace has a
+  // workspace-scope `role` row with that key.
   return await executor
-    .select({ role: schema.workspaceRoleTable.role })
-    .from(schema.workspaceRoleTable)
+    .select({ role: schema.roleTable.key })
+    .from(schema.roleTable)
     .where(
       and(
-        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-        eq(schema.workspaceRoleTable.role, role),
+        eq(schema.roleTable.scope, "workspace"),
+        eq(schema.roleTable.workspaceId, workspaceId),
+        eq(schema.roleTable.key, role),
       ),
     )
     .limit(1);

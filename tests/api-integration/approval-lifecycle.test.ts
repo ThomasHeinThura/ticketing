@@ -585,10 +585,17 @@ describe("API integration: approval lifecycle", () => {
         body: JSON.stringify({ action: "approve" }),
       },
     );
+    // F12 / PA-14: no key can decide an approval, whatever its scope, until the
+    // `mcp_destructive` pending action carries `decide_approval` for keys.
     expect(scopedDecision.status, await scopedDecision.clone().text()).toBe(
-      200,
+      403,
     );
-    expect((await scopedDecision.json()).state).toBe("approved");
+    expect(await scopedDecision.text()).toContain("session_required");
+    const [stillPendingAfterKeyDecision] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, scopedDecisionApproval.id));
+    expect(stillPendingAfterKeyDecision?.state).toBe("pending");
 
     const scopedWithdrawalApproval =
       await createAdditionalApprovalAsRequester();

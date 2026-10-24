@@ -1439,11 +1439,13 @@ const updateProjectOwnershipRoute = createRoute({
   operationId: "updateProjectOwnership",
   path: "/{projectId}/ownership",
   tags: ["Projects"],
-  summary: "Set or clear a project's parent",
+  summary: "Set or clear a project's parent or owning team",
   description:
     "PR-1: re-parent a project (or make it a root with parentId null). Depth is capped at 4 " +
     "counting the moved subtree, cycles are refused, an archived project cannot take " +
     "children. Needs project:manage_members on the project AND on the prospective parent. " +
+    "TM-4: ownerTeamId names the team whose active members reach the project (reach only, " +
+    "never a capability); the team must be in the project's workspace. " +
     "A reach change: audited as project.reach_changed.",
   middleware: [
     workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
@@ -1717,7 +1719,7 @@ export const projectStates = apiRouter<
   })
   .openapi(updateProjectOwnershipRoute, async (c) => {
     const { projectId } = c.req.valid("param");
-    const { parentId } = c.req.valid("json");
+    const { parentId, ownerTeamId } = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
     const userId = c.get("userId");
 
@@ -1725,14 +1727,15 @@ export const projectStates = apiRouter<
     // registered policy). Re-parenting also needs it on the prospective parent: otherwise a
     // lead of one project could hang it under, and so extend reach into, one they do not
     // manage. An unreachable parent answers exactly like a missing one.
-    if (parentId !== null) {
+    if (parentId !== undefined && parentId !== null) {
       await assertCanManageProspectiveParent(c, { workspaceId, parentId });
     }
 
     const updated = await updateProjectOwnershipCtrl({
       projectId,
       workspaceId,
-      parentId,
+      ...(parentId === undefined ? {} : { parentId }),
+      ...(ownerTeamId === undefined ? {} : { ownerTeamId }),
       actorId: userId,
       actorType: c.get("apiKey") ? "api_key" : "person",
     });

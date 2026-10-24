@@ -312,6 +312,8 @@ describe("customer-facing intake responses expose only declared fields", () => {
         "canUpload",
         "canViewAttachments",
         "canWithdraw",
+        // CF-11: customer-visible custom fields (label and value only).
+        "customFields",
         "customerStatus",
         "isRequester",
         "messages",

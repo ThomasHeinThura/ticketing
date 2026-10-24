@@ -1,5 +1,9 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import {
+  applyWorkItemFieldValues,
+  type CustomFieldValueChange,
+} from "../../custom-field/repository";
 import db from "../../database";
 import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
@@ -19,6 +23,13 @@ import {
 import { replaceWorkItemLabels } from "../labels-repository";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 
+/** A `custom_field` change names its field by key, since `field` is the fixed CA-7 name. */
+function customFieldKey(row: NewActivityInput): { key?: string } {
+  if (row.field !== "custom_field") return {};
+  const key = (row.payload as { key?: unknown } | undefined)?.key;
+  return typeof key === "string" ? { key } : {};
+}
+
 export type UpdateWorkItemInput = {
   labelIds?: string[];
   title?: string;
@@ -26,6 +37,8 @@ export type UpdateWorkItemInput = {
   priority?: "low" | "medium" | "high" | "urgent" | null;
   startDate?: Date | null;
   dueDate?: Date | null;
+  /** CF-3: custom field values by key; a null value clears the field. */
+  customFields?: Record<string, unknown>;
 };
 
 /**
@@ -185,6 +198,15 @@ export async function updateWorkItem(
               input.labelIds,
             );
 
+      // CF-4: an edit never clears a required value it touches; validated per field format.
+      const customFieldChanges: CustomFieldValueChange[] = [];
+      if (input.customFields !== undefined)
+        await applyWorkItemFieldValues(tx, locked, input.customFields, {
+          create: false,
+          enforceRequired: "submitted",
+          changes: customFieldChanges,
+        });
+
       const [updated] = await tx
         .update(workItemTable)
         .set({ ...values, version: sql`${workItemTable.version} + 1` })
@@ -238,12 +260,30 @@ export async function updateWorkItem(
         after.startDate = updated.startDate;
       }
 
-      const activityRows = diffWorkItemFieldChanges(before, after, {
-        workspaceId: updated.workspaceId,
-        workItemId: updated.id,
-        actorId,
-        actorType,
-      });
+      const activityRows = [
+        ...diffWorkItemFieldChanges(before, after, {
+          workspaceId: updated.workspaceId,
+          workItemId: updated.id,
+          actorId,
+          actorType,
+        }),
+        // CA-6 / CF audit: one `updated`/`custom_field` row per value that changed, internal
+        // unless the field is customer visible (CA-7), naming the field in the payload.
+        ...customFieldChanges.map(
+          (change): NewActivityInput => ({
+            workspaceId: updated.workspaceId,
+            workItemId: updated.id,
+            actorId,
+            actorType,
+            verb: "updated",
+            field: "custom_field",
+            oldValue: change.from,
+            newValue: change.to,
+            payload: { key: change.key, name: change.name },
+            visibility: change.customerVisible ? "public" : "internal",
+          }),
+        ),
+      ];
 
       if (activityRows.length > 0) {
         await recordWorkItemActivity(tx, activityRows);
@@ -258,6 +298,7 @@ export async function updateWorkItem(
           from: row.oldValue,
           to: row.newValue,
           visibility: resolveVisibility(row),
+          ...customFieldKey(row),
         }));
       const realtimeEvent =
         visibleChanges.length > 0
@@ -305,6 +346,7 @@ export async function updateWorkItem(
         from: row.oldValue,
         to: row.newValue,
         visibility: resolveVisibility(row),
+        ...customFieldKey(row),
       }));
 
     await publishEvent("work_item.updated", {

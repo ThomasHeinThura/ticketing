@@ -28,7 +28,11 @@ function csrfTokenApi(audience: "agent" | "customer") {
     summary: "Get the current session's CSRF token",
     description:
       "Returns a short-lived session- and origin-bound token for same-origin unsafe API requests. The matching token is also stored in an HttpOnly cookie.",
-    middleware: [requireSessionOnly()] as const,
+    // GM-11: the agent issuer also serves an impersonation session, which needs a token for its
+    // ordinary writes and its always-allowed exit control (bound to that session's own id).
+    middleware: [
+      requireSessionOnly({ allowImpersonation: audience === "agent" }),
+    ] as const,
     responses: {
       200: jsonResponse("Current session CSRF token", csrfTokenResponse),
       401: jsonResponse("Unauthorized", z.object({ message: z.string() })),
@@ -62,7 +66,10 @@ function csrfTokenApi(audience: "agent" | "customer") {
       !session.userId ||
       session.userId !== userId ||
       session.portal !== audience ||
-      session.impersonatedBy
+      // GM-9/GM-11: an agent impersonation session performs ordinary writes and must be able
+      // to call its own exit control, so it may hold a CSRF token bound to its own session id.
+      // Customer-portal sessions are never impersonated.
+      (session.impersonatedBy && audience !== "agent")
     ) {
       throw new HTTPException(401, { message: "Unauthorized" });
     }
@@ -75,7 +82,9 @@ function csrfTokenApi(audience: "agent" | "customer") {
           eq(schema.sessionTable.userId, userId),
           eq(schema.sessionTable.portal, audience),
           gt(schema.sessionTable.expiresAt, dbNowUtc()),
-          isNull(schema.sessionTable.impersonatedBy),
+          audience === "agent"
+            ? undefined
+            : isNull(schema.sessionTable.impersonatedBy),
         ),
       )
       .limit(1);

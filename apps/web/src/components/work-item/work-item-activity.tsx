@@ -140,9 +140,18 @@ export function activityVerbLabel(
   });
 }
 
+/** A custom-field edit is one `custom_field` row whose payload names the field. */
+function customFieldLabel(row: { field?: string | null; payload?: unknown }) {
+  if (row.field !== "custom_field") return undefined;
+  const name = (row.payload as { name?: unknown } | null | undefined)?.name;
+  return typeof name === "string" && name.trim() ? name.trim() : undefined;
+}
+
 /** Relation activity carries type/direction only; never render arbitrary endpoint data. */
 export function activityChangeDescription(
-  row: Pick<WorkItemActivityRow, "field" | "verb" | "oldValue" | "newValue">,
+  row: Pick<WorkItemActivityRow, "field" | "verb" | "oldValue" | "newValue"> & {
+    payload?: unknown;
+  },
   t: (key: string) => string,
   includeVerb = false,
 ): string {
@@ -160,7 +169,9 @@ export function activityChangeDescription(
     );
   if (row.field !== "relation") {
     const label =
-      row.field ?? (includeVerb ? activityVerbLabel(row.verb, t) : undefined);
+      customFieldLabel(row) ??
+      row.field ??
+      (includeVerb ? activityVerbLabel(row.verb, t) : undefined);
     return `${label ? `${label}: ` : ""}${jsonText(row.oldValue)} → ${jsonText(row.newValue)}`;
   }
   const relationLabel = (value: unknown): string => {

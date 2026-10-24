@@ -63,6 +63,7 @@ const mocks = vi.hoisted(() => ({
     labelsError: false,
   },
   templates: [] as Array<Record<string, unknown>>,
+  customFields: [] as Array<Record<string, unknown>>,
   typesState: {
     data: undefined as Array<Record<string, unknown>> | undefined,
     isLoading: false,
@@ -140,6 +141,11 @@ vi.mock(
     default: () => ({ data: mocks.templates }),
   }),
 );
+vi.mock("@/hooks/queries/custom-field/use-custom-fields", () => ({
+  useCustomFields: () => ({
+    data: { data: mocks.customFields, meta: { total: 0 } },
+  }),
+}));
 vi.mock("@/hooks/queries/work-item/use-get-work-item-types", () => ({
   default: () => mocks.typesState,
 }));
@@ -224,6 +230,7 @@ beforeEach(() => {
   mocks.options.labelsError = false;
   mocks.editorDocument = undefined;
   mocks.templates = [];
+  mocks.customFields = [];
   mocks.typesState = {
     data: TYPES,
     isLoading: false,
@@ -236,6 +243,93 @@ afterEach(() => {
   cleanup();
   document.body.innerHTML = "";
   vi.clearAllMocks();
+});
+
+describe("CreateWorkItemDialog custom fields", () => {
+  const field = {
+    id: "cf-1",
+    key: "asset_tag",
+    name: "Asset tag",
+    format: "text",
+    options: [],
+    helpText: null,
+    visibilityCondition: null,
+    sectionId: "sec-1",
+    position: 0,
+    visibility: [{ workItemTypeId: "type-1", visible: true, required: true }],
+  };
+
+  it("shows only the fields that apply to the chosen type and holds submit until a required one is filled", async () => {
+    mocks.customFields = [
+      field,
+      {
+        ...field,
+        id: "cf-2",
+        key: "bug_only",
+        name: "Bug only",
+        visibility: [
+          { workItemTypeId: "type-2", visible: true, required: false },
+        ],
+      },
+    ];
+    mocks.mutateAsync.mockResolvedValue({ id: "wi-1", key: "OPS-1" });
+    renderDialog();
+    fireEvent.change(screen.getByTestId("create-work-item-title"), {
+      target: { value: "Replace the laptop" },
+    });
+    fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
+    pickOption(await screen.findByRole("button", { name: "Task" }));
+
+    expect(screen.getByLabelText(/Asset tag/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Bug only/)).toBeNull();
+    const submit = screen.getByRole("button", {
+      name: "workItems:create.submit",
+    });
+    expect(submit).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/Asset tag/), {
+      target: { value: "LT-204" },
+    });
+    expect(submit).toBeEnabled();
+    fireEvent.click(submit);
+    await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+    expect(mocks.lastCreateInput).toMatchObject({
+      customFields: { asset_tag: "LT-204" },
+    });
+  });
+
+  it("hides a conditional field until its condition holds", async () => {
+    mocks.customFields = [
+      {
+        ...field,
+        id: "cf-1",
+        key: "risk",
+        name: "Risk",
+        format: "text",
+        visibility: [
+          { workItemTypeId: "type-1", visible: true, required: false },
+        ],
+      },
+      {
+        ...field,
+        id: "cf-2",
+        key: "rollback",
+        name: "Rollback plan",
+        visibility: [
+          { workItemTypeId: "type-1", visible: true, required: true },
+        ],
+        visibilityCondition: { field_key: "risk", op: "eq", value: "high" },
+      },
+    ];
+    renderDialog();
+    fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
+    pickOption(await screen.findByRole("button", { name: "Task" }));
+    expect(screen.queryByLabelText(/Rollback plan/)).toBeNull();
+    fireEvent.change(screen.getByLabelText(/Risk/), {
+      target: { value: "high" },
+    });
+    expect(screen.getByLabelText(/Rollback plan/)).toBeInTheDocument();
+  });
 });
 
 describe("CreateWorkItemDialog", () => {
@@ -448,6 +542,23 @@ describe("CreateWorkItemDialog", () => {
     expect(
       screen.queryByText("workItems:create.noTypes"),
     ).not.toBeInTheDocument();
+  });
+
+  it("explains why Create is disabled until a type is chosen", async () => {
+    renderDialog();
+    fireEvent.change(screen.getByTestId("create-work-item-title"), {
+      target: { value: "Replace the laptop" },
+    });
+    expect(screen.getByTestId("create-work-item-type-hint")).toHaveTextContent(
+      "workItems:create.typeRequired",
+    );
+    expect(
+      screen.getByRole("button", { name: "workItems:create.submit" }),
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
+    pickOption(await screen.findByRole("button", { name: "Task" }));
+    expect(screen.queryByTestId("create-work-item-type-hint")).toBeNull();
   });
 
   it("says so when the workspace has no types at all", () => {

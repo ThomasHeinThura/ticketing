@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import type { StepUpExecutor } from "../../auth/repository";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
@@ -78,6 +79,8 @@ async function transferWorkspaceOwnership(
   workspaceId: string,
   callerId: string,
   newOwnerUserId: string,
+  /** Spends the caller's step-up proof in this transaction, right before the first write. */
+  beforeWrite?: (tx: StepUpExecutor) => Promise<void>,
 ): Promise<TransferredWorkspaceOwnership> {
   if (newOwnerUserId === callerId) {
     throw new AlreadyOwnerError();
@@ -127,6 +130,8 @@ async function transferWorkspaceOwnership(
     if (!isUnambiguousMembership(newOwnerRoles)) {
       throw new AmbiguousMembershipError();
     }
+
+    await beforeWrite?.(tx);
 
     await tx
       .update(schema.workspaceUserTable)

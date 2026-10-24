@@ -1,7 +1,10 @@
 import { type ProjectReachFacts, reaches } from "@taskdesk/permissions";
 import type { DbTransaction } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
 import {
   findWorkItemMentionContextQuery,
   listWorkItemMentionParticipantIdsQuery,
@@ -81,6 +84,12 @@ export async function classifyWorkItemMentionPeople(
       ...reachFacts,
       // PR-2: a member of an ancestor project reaches this one.
       ancestorProjectIds: await projectAncestryFor(
+        tx,
+        identity,
+        reachFacts.workspaceId,
+        reachFacts.projectId,
+      ),
+      ownerTeamId: await projectOwnerTeamFor(
         tx,
         identity,
         reachFacts.workspaceId,

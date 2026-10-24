@@ -29,9 +29,13 @@ import {
   workItemTable,
   workspaceTable,
 } from "../database/schema";
+import { QUIET_HOURS_HOLD_KEY } from "../notification-preferences/delivery.repository";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import type { AuthenticatedApiKey } from "../permissions/resolve-request-identity";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
 import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
 import { approvalNotificationReadable } from "./approval-reach.repository";
 import {
@@ -102,7 +106,26 @@ const CANDIDATE_PAGE_SIZE = 100;
 function materializeNotification(
   row: NotificationRow,
 ): MaterializedNotificationRow {
-  return { ...row, eventData: row.eventData as JsonValue | null };
+  return {
+    ...row,
+    eventData: withoutHoldMarker(row.eventData as JsonValue | null),
+  };
+}
+
+/**
+ * The quiet-hours hold marker is delivery bookkeeping stored beside the event data; it is never
+ * part of what a reader sees. A payload that held nothing else reads as null again.
+ */
+function withoutHoldMarker(eventData: JsonValue | null): JsonValue | null {
+  if (
+    eventData === null ||
+    typeof eventData !== "object" ||
+    Array.isArray(eventData) ||
+    !(QUIET_HOURS_HOLD_KEY in eventData)
+  )
+    return eventData;
+  const { [QUIET_HOURS_HOLD_KEY]: _held, ...rest } = eventData;
+  return Object.keys(rest).length === 0 ? null : (rest as JsonValue);
 }
 
 function isSerializationFailure(error: unknown) {
@@ -215,7 +238,9 @@ async function resolveInboxIdentity(
     {
       userId,
       credential: apiKey
-        ? "api_key"
+        ? apiKey.isMcp
+          ? "mcp_key"
+          : "api_key"
         : impersonatedBy
           ? "impersonation"
           : "session",
@@ -269,6 +294,8 @@ async function readableNativeRows(
   );
   // PR-2/PR-3: reach and read authority follow each resource project's ancestor chain.
   const ancestorsByProject = new Map<string, string[]>();
+  // TM-4 / reach step 5 (owner-team reach), per resource project.
+  const ownerTeamByProject = new Map<string, string | null>();
   for (const resource of resources.values()) {
     if (
       resource.projectId !== null &&
@@ -277,6 +304,19 @@ async function readableNativeRows(
       ancestorsByProject.set(
         resource.projectId,
         await projectAncestryFor(
+          tx,
+          identity,
+          resource.workspaceId,
+          resource.projectId,
+        ),
+      );
+    if (
+      resource.projectId !== null &&
+      !ownerTeamByProject.has(resource.projectId)
+    )
+      ownerTeamByProject.set(
+        resource.projectId,
+        await projectOwnerTeamFor(
           tx,
           identity,
           resource.workspaceId,
@@ -455,6 +495,9 @@ async function readableNativeRows(
       resource?.projectId
         ? ancestorsByProject.get(resource.projectId)
         : undefined,
+      resource?.projectId
+        ? (ownerTeamByProject.get(resource.projectId) ?? null)
+        : null,
     );
   });
 }
@@ -749,7 +792,7 @@ async function bulkMutation(userId: string, mode: "read" | "delete") {
         if (mode === "read") {
           await tx
             .update(notificationTable)
-            .set({ isRead: true })
+            .set({ isRead: true, readAt: readAtOnRead() })
             .where(and(eq(notificationTable.userId, userId), rowGuard));
         } else {
           await tx
@@ -785,9 +828,20 @@ export async function findOwnNotificationType(id: string, userId: string) {
   return existing;
 }
 
+/**
+ * `read_at` is a `timestamp without time zone` holding a UTC wall clock (the NO-17 retention
+ * cutoff compares against it), so it is stamped from the database clock in that convention and
+ * an already-read row keeps its original read time.
+ */
+function readAtOnRead() {
+  return sql`COALESCE(${notificationTable.readAt}, clock_timestamp() AT TIME ZONE 'UTC')`;
+}
+
+/** NO-15: mark one read (stamping `read_at`) or unread again (clearing it). */
 export async function markOwnReadableNotificationRead(
   id: string,
   userId: string,
+  mode: "read" | "unread" = "read",
 ): Promise<MaterializedNotificationRow | undefined> {
   return inboxTransaction(async (tx) => {
     const [row] = await tx
@@ -831,7 +885,11 @@ export async function markOwnReadableNotificationRead(
     const notification = content.notification;
     const [updated] = await tx
       .update(notificationTable)
-      .set({ isRead: true })
+      .set(
+        mode === "read"
+          ? { isRead: true, readAt: readAtOnRead() }
+          : { isRead: false, readAt: null },
+      )
       .where(
         and(
           bindSameRow(notification),

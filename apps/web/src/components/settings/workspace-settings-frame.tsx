@@ -14,9 +14,13 @@ import {
   MessageSquareText,
   Settings,
   Shield,
+  SlidersHorizontal,
   Tag,
   Timer,
+  Users,
+  Webhook,
   Workflow,
+  Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -28,60 +32,106 @@ import { getInitials } from "@/lib/get-initials";
 
 export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
-  const { workspace, role, canManageWorkspaceSettings } =
-    useWorkspacePermission();
+  const {
+    workspace,
+    role,
+    canManageWorkspaceSettings,
+    canManageServiceCalendars,
+    canManageRoles,
+    canManageWebhooks,
+    canManageCustomFields,
+  } = useWorkspacePermission();
   const location = useLocation();
-  const menuItems = [
+  const canSettings = canManageWorkspaceSettings();
+  const canCalendars = canManageServiceCalendars();
+  const canRoles = canManageRoles();
+  const canWebhooks = canManageWebhooks();
+  const canFields = canManageCustomFields();
+  // Every entry is shown only to people the server would let into it, using the capability the
+  // API of that area enforces: `workspace:manage_roles`, `webhook:manage`, `custom_field:manage`,
+  // `sla_policy:manage` (service calendars) and otherwise `workspace:manage_settings`. A direct
+  // URL still reaches the page, which shows the API's access-denied error.
+  const allMenuItems = [
     {
       title: t("settings:workspaceGeneral.title"),
       url: "/dashboard/settings/workspace/general",
       icon: Settings,
+      visible: true,
     },
     {
       title: t("settings:workspaceRoles.title", { defaultValue: "Roles" }),
-      url: "/dashboard/settings/workspace/roles",
+      url: "/agent/settings/roles",
       icon: Shield,
+      visible: canRoles,
     },
     {
       title: t("settings:workspaceLabels.title", { defaultValue: "Labels" }),
       url: "/dashboard/settings/workspace/labels",
       icon: Tag,
+      visible: true,
     },
-    ...(canManageWorkspaceSettings()
-      ? [
-          {
-            title: t("settings:cannedResponses.title"),
-            url: "/agent/settings/canned-responses",
-            icon: MessageSquareText,
-          },
-          {
-            title: t("settings:workItemTemplates.title"),
-            url: "/agent/settings/work-item-templates",
-            icon: LayoutTemplate,
-          },
-        ]
-      : []),
+    {
+      title: t("settings:cannedResponses.title"),
+      url: "/agent/settings/canned-responses",
+      icon: MessageSquareText,
+      visible: canSettings,
+    },
+    {
+      title: t("settings:workItemTemplates.title"),
+      url: "/agent/settings/work-item-templates",
+      icon: LayoutTemplate,
+      visible: canSettings,
+    },
     {
       title: t("serviceCalendars:list.title"),
       url: "/agent/settings/calendars",
       icon: CalendarDays,
+      visible: canCalendars,
     },
     {
       title: t("slaPolicies:list.title"),
       url: "/agent/settings/sla-policies",
       icon: Timer,
+      visible: canCalendars,
     },
     {
       title: t("requestTypes:title"),
       url: "/agent/settings/request-types",
       icon: Inbox,
+      visible: canSettings,
     },
     {
       title: t("settings:workflows.title"),
       url: "/agent/settings/workflows",
       icon: Workflow,
+      visible: canSettings,
+    },
+    {
+      title: t("teams:list.title"),
+      url: "/agent/settings/teams",
+      icon: Users,
+      visible: canSettings,
+    },
+    {
+      title: t("customFields:list.title"),
+      url: "/agent/settings/custom-fields",
+      icon: SlidersHorizontal,
+      visible: canFields,
+    },
+    {
+      title: t("automations:workspace.title"),
+      url: "/agent/settings/automations",
+      icon: Zap,
+      visible: canSettings,
+    },
+    {
+      title: t("webhooks:list.title"),
+      url: "/agent/settings/webhooks",
+      icon: Webhook,
+      visible: canWebhooks,
     },
   ];
+  const menuItems = allMenuItems.filter((item) => item.visible);
   const isActivePath = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
   const workspaceInitials = getInitials(workspace?.name, "WS");

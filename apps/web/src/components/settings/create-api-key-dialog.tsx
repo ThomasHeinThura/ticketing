@@ -1,5 +1,15 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import {
+  CAPABILITIES,
+  CAPABILITY_GROUPS,
+  type Capability,
+  capabilitiesInGroup,
+  capabilityTier,
+} from "@taskdesk/permissions";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Dialog,
   DialogContent,
@@ -15,16 +25,21 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  Label,
+  ScrollArea,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Separator,
+  Switch,
 } from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { describeCapability } from "@/components/settings/roles/capability-model";
 import useCreateApiKey from "@/hooks/mutations/api-key/use-create-api-key";
 import { toast } from "@/lib/toast";
 import type { CreateApiKeyResponse } from "@/types/api-key";
@@ -39,7 +54,29 @@ const EXPIRATION_SECONDS = {
 type FormValues = {
   name: string;
   expiresIn: string;
+  allowWrites: boolean;
+  isMcp: boolean;
+  ipAllowlist: string;
 };
+
+/**
+ * The write opt-in (AK-9): every workspace-tier capability that is not a plain read. The
+ * read set is always included and is not offered as a choice, so a new key is read-only
+ * until something here is ticked.
+ */
+const READ_CAPABILITIES = (Object.keys(CAPABILITIES) as Capability[]).filter(
+  (capability) =>
+    capabilityTier(capability) === "workspace" && capability.endsWith(":read"),
+);
+
+const WRITE_CAPABILITY_GROUPS = CAPABILITY_GROUPS.map((group) => ({
+  group,
+  capabilities: capabilitiesInGroup(group).filter(
+    (capability) =>
+      capabilityTier(capability) === "workspace" &&
+      !capability.endsWith(":read"),
+  ),
+})).filter(({ capabilities }) => capabilities.length > 0);
 
 type CreateApiKeyDialogProps = {
   open: boolean;
@@ -53,8 +90,12 @@ export function CreateApiKeyDialog({
   onSuccess,
 }: CreateApiKeyDialogProps) {
   const { t } = useTranslation();
-  const { mutateAsync: createApiKey } = useCreateApiKey();
+  const { mutateAsync: createApiKey, reset: resetCreatedKey } =
+    useCreateApiKey();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [writeCapabilities, setWriteCapabilities] = useState<
+    ReadonlySet<Capability>
+  >(new Set());
 
   const createApiKeySchema = useMemo(
     () =>
@@ -69,6 +110,9 @@ export function CreateApiKeyDialog({
             1,
             t("settings:apiKey.createDialog.validation.expirationRequired"),
           ),
+        allowWrites: z.boolean(),
+        isMcp: z.boolean(),
+        ipAllowlist: z.string(),
       }),
     [t],
   );
@@ -105,8 +149,21 @@ export function CreateApiKeyDialog({
     defaultValues: {
       name: "",
       expiresIn: "30d",
+      allowWrites: false,
+      isMcp: false,
+      ipAllowlist: "",
     },
   });
+  const allowWrites = form.watch("allowWrites");
+
+  const toggleWriteCapability = (capability: Capability) => {
+    setWriteCapabilities((previous) => {
+      const next = new Set(previous);
+      if (next.has(capability)) next.delete(capability);
+      else next.add(capability);
+      return next;
+    });
+  };
 
   const onSubmit = async (data: FormValues) => {
     const expiresInValue =
@@ -116,13 +173,28 @@ export function CreateApiKeyDialog({
 
     setIsSubmitting(true);
     try {
+      const ipAllowlist = data.ipAllowlist
+        .split(/[\s,]+/)
+        .map((entry) => entry.trim())
+        .filter(Boolean);
       const result = await createApiKey({
         name: data.name,
         expiresIn: expiresInValue ?? null,
+        isMcp: data.isMcp,
+        ...(ipAllowlist.length > 0 ? { ipAllowlist } : {}),
+        // Omitted means the read-only default; ticked writes are added to it by the server's
+        // own read set, never trusted from here (the API re-validates every name).
+        ...(data.allowWrites && writeCapabilities.size > 0
+          ? { capabilities: [...READ_CAPABILITIES, ...writeCapabilities] }
+          : {}),
       });
 
       form.reset();
+      setWriteCapabilities(new Set());
       onSuccess(result);
+      // The plaintext key now lives only in the parent's dialog state; drop the copy React Query
+      // keeps in its mutation cache.
+      resetCreatedKey();
       onClose();
     } catch (error) {
       toast.error(
@@ -138,6 +210,7 @@ export function CreateApiKeyDialog({
   const handleClose = () => {
     if (!isSubmitting) {
       form.reset();
+      setWriteCapabilities(new Set());
       onClose();
     }
   };
@@ -157,7 +230,7 @@ export function CreateApiKeyDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-0">
-            <div className="space-y-5 px-6 py-5">
+            <div className="max-h-[60vh] space-y-5 overflow-y-auto px-6 py-5">
               <FormField
                 control={form.control}
                 name="name"
@@ -224,6 +297,133 @@ export function CreateApiKeyDialog({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="ipAllowlist"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t("settings:apiKey.createDialog.ipAllowlistLabel")}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={t(
+                          "settings:apiKey.createDialog.ipAllowlistPlaceholder",
+                        )}
+                        {...field}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t("settings:apiKey.createDialog.ipAllowlistDescription")}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Separator />
+
+              <FormField
+                control={form.control}
+                name="isMcp"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between gap-6">
+                    <div className="space-y-0.5 min-w-0">
+                      <FormLabel>
+                        {t("settings:apiKey.createDialog.agentLabel")}
+                      </FormLabel>
+                      <FormDescription>
+                        {t("settings:apiKey.createDialog.agentDescription")}
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="allowWrites"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between gap-6">
+                    <div className="space-y-0.5 min-w-0">
+                      <FormLabel>
+                        {t("settings:apiKey.createDialog.writesLabel")}
+                      </FormLabel>
+                      <FormDescription>
+                        {t("settings:apiKey.createDialog.writesDescription")}
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {allowWrites && (
+                <>
+                  <Alert variant="warning">
+                    <AlertTitle>
+                      {t("settings:apiKey.createDialog.writesWarningTitle")}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {t("settings:apiKey.createDialog.writesWarning")}
+                    </AlertDescription>
+                  </Alert>
+                  <ScrollArea className="h-64 rounded-md border border-border">
+                    <div className="space-y-4 p-4">
+                      {WRITE_CAPABILITY_GROUPS.map(
+                        ({ group, capabilities }, groupIndex) => (
+                          <div key={group} className="space-y-4">
+                            {groupIndex > 0 && <Separator />}
+                            <p className="text-sm font-medium">
+                              {t(
+                                `settings:apiKey.createDialog.capabilityGroups.${group}`,
+                                { defaultValue: group },
+                              )}
+                            </p>
+                            {capabilities.map((capability) => (
+                              <div
+                                key={capability}
+                                className="flex items-center justify-between gap-6"
+                              >
+                                <div className="space-y-0.5 flex-1 min-w-0">
+                                  <Label className="text-sm font-medium">
+                                    {describeCapability(capability)}
+                                  </Label>
+                                  <p className="text-xs text-muted-foreground">
+                                    {capability}
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={writeCapabilities.has(capability)}
+                                  onCheckedChange={() =>
+                                    toggleWriteCapability(capability)
+                                  }
+                                  disabled={isSubmitting}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
             </div>
 
             <DialogFooter className="gap-2 sm:gap-2">

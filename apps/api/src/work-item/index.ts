@@ -1,7 +1,9 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import { appendAuditLog } from "../audit/audit-writer";
+import { applyWorkItemFieldValues } from "../custom-field/repository";
 import db from "../database";
 import {
   membershipTable,
@@ -32,6 +34,7 @@ import { resolveRequestIdentity } from "../permissions/resolve-request-identity"
 import {
   loadProjectAncestorIds,
   loadProjectAncestorIdsFor,
+  loadProjectOwnerTeamIdFor,
 } from "../project/hierarchy.repository";
 import {
   hasProjectReadCapability,
@@ -1611,6 +1614,7 @@ const workItem = apiRouter<
       labelIds,
       assigneeId,
       templateId,
+      customFields,
     } = c.req.valid("json");
     const { actorId, actorType } = resolveActor(
       c.get("userId"),
@@ -1634,14 +1638,19 @@ const workItem = apiRouter<
       dueDate,
       labelIds,
       assigneeId,
-      afterInsert: template
-        ? (tx, inserted) =>
-            applyTemplateInTransaction(tx, template, inserted, {
-              applyLabels: labelIds === undefined,
-              actorId,
-              actorType,
-            })
-        : undefined,
+      afterInsert: async (tx, inserted) => {
+        if (template)
+          await applyTemplateInTransaction(tx, template, inserted, {
+            applyLabels: labelIds === undefined,
+            actorId,
+            actorType,
+          });
+        // CF-4/CF-5: required fields block creation; defaults fill what was left out.
+        await applyWorkItemFieldValues(tx, inserted, customFields, {
+          create: true,
+          enforceRequired: true,
+        });
+      },
       authorization: {
         userId: c.get("userId"),
         apiKey: c.get("apiKey"),
@@ -1844,8 +1853,15 @@ const workItem = apiRouter<
     const workspaceId = c.get("workspaceId");
     const { "if-match": ifMatch } = c.req.valid("header");
     const assertedVersion = Number(ifMatch.replaceAll('"', ""));
-    const { title, description, priority, startDate, dueDate, labelIds } =
-      c.req.valid("json");
+    const {
+      title,
+      description,
+      priority,
+      startDate,
+      dueDate,
+      labelIds,
+      customFields,
+    } = c.req.valid("json");
 
     // Field-level authority, on top of the route's `work_item:update` gate above: rbac.md
     // scopes `priority` specifically to `work_item:set_priority`, not `work_item:update` --
@@ -1881,6 +1897,7 @@ const workItem = apiRouter<
           startDate,
           dueDate,
           labelIds,
+          customFields,
         },
       );
       return c.json(updated, 200);
@@ -1949,7 +1966,12 @@ const workItem = apiRouter<
           workspaceId,
           // PR-2/PR-3: assignment authority follows the same ancestor chain as the route.
           ancestorProjectIds,
-          ownerTeamId: null,
+          ownerTeamId: await loadProjectOwnerTeamIdFor(
+            db,
+            identity,
+            workspaceId,
+            projectId,
+          ),
           organisationId: null,
         })
       )
@@ -2381,7 +2403,7 @@ const workItem = apiRouter<
       workspaceId,
       actorId: userId,
       actorType: apiKey ? "api_key" : "person",
-      actorIp: c.req.header("x-forwarded-for") ?? null,
+      actorIp: clientIpForContext(c),
       userAgent: c.req.header("user-agent") ?? null,
     });
     return c.json(pendingDeletionRequestSchema.parse(pending), 202);
@@ -2487,7 +2509,7 @@ const workItem = apiRouter<
         workspaceId,
         actorId,
         actorType: apiKey ? "api_key" : "person",
-        actorIp: c.req.header("x-forwarded-for") ?? null,
+        actorIp: clientIpForContext(c),
         userAgent: c.req.header("user-agent") ?? null,
       });
       if (result.kind === "empty") return c.json(result.data, 200);
@@ -2826,7 +2848,7 @@ const workItem = apiRouter<
       workspaceId,
       actorId: userId,
       actorType: apiKey ? "api_key" : "person",
-      actorIp: c.req.header("x-forwarded-for") ?? null,
+      actorIp: clientIpForContext(c),
       userAgent: c.req.header("user-agent") ?? null,
     });
     return c.json(pendingDeletionRequestSchema.parse(pending), 202);

@@ -11,6 +11,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
 
 // Pinned literally against the existing client permission keys and the two
 // optional comment-choice response names. This prevents either side from
@@ -389,6 +390,37 @@ describe("GET /api/capabilities", () => {
     expect(viewerCapabilities.manageWorkspaceSettings).toBe(false);
   });
 
+  it("exposes the per-area settings capabilities the APIs enforce (M9)", async () => {
+    const { app } = createApp();
+    const read = async (role: "owner" | "manager" | "viewer") => {
+      const member = await createWorkspaceMember({ role });
+      mockAuthenticatedSession(member.user);
+      const response = await app.request(
+        `/api/capabilities?workspaceId=${member.workspace.id}`,
+      );
+      return response.json();
+    };
+    const owner = await read("owner");
+    expect([
+      owner.manageRoles,
+      owner.manageWebhooks,
+      owner.manageCustomFields,
+    ]).toEqual([true, true, true]);
+    // A manager manages webhooks and custom fields, but not role definitions.
+    const manager = await read("manager");
+    expect([
+      manager.manageRoles,
+      manager.manageWebhooks,
+      manager.manageCustomFields,
+    ]).toEqual([false, true, true]);
+    const viewer = await read("viewer");
+    expect([
+      viewer.manageRoles,
+      viewer.manageWebhooks,
+      viewer.manageCustomFields,
+    ]).toEqual([false, false, false]);
+  });
+
   it("scopes to the requested workspace -- same user, different roles in two workspaces, different answers (A1-P4)", async () => {
     const owner = await createWorkspaceMember({
       workspaceName: "Workspace Owner-side",
@@ -519,14 +551,11 @@ describe("project-scoped work capability introspection", () => {
     });
   });
 
-  it("does not turn legacy custom workspace statements into strict write authority", async () => {
+  it("a custom workspace role's capabilities (the canonical role row) are the strict authority, and a project role still decides inside its project", async () => {
     const actor = await createWorkspaceMember({ role: "custom-editor" });
-    await db.insert(schema.workspaceRoleTable).values({
-      workspaceId: actor.workspace.id,
-      role: "custom-editor",
-      permission: JSON.stringify({ work_item: ["read", "update"] }),
-      isSystem: false,
-      createdAt: new Date(),
+    // Owner decision, 23 Oct: a custom role's capabilities live in the canonical `role` row.
+    await upsertWorkspaceRoleRows(actor.workspace.id, "custom-editor", {
+      work_item: ["read", "update"],
     });
     const { project } = await createProjectFixture({
       workspaceId: actor.workspace.id,
@@ -562,7 +591,7 @@ describe("project-scoped work capability introspection", () => {
       `/api/capabilities?workspaceId=${actor.workspace.id}&projectId=${project.id}`,
     );
     expect(scoped.status).toBe(200);
-    expect((await scoped.json()).updateTasks).toBe(false);
+    expect((await scoped.json()).updateTasks).toBe(true);
   });
 
   it("makes missing, deleted and other-workspace projects indistinguishable", async () => {

@@ -884,6 +884,15 @@ describe("P1 agent core, project overview, and settings routes", () => {
       filter: "unread",
     });
     expect(parseAgentInboxSearch({ filter: "invalid" })).toEqual({});
+    expect(routes.agentInbox.build({ filter: "mentions" })).toBe(
+      "/agent/inbox?filter=mentions",
+    );
+    expect(routes.agentInbox.build({ filter: "assignments" })).toBe(
+      "/agent/inbox?filter=assignments",
+    );
+    expect(parseAgentInboxSearch({ filter: "assignments" })).toEqual({
+      filter: "assignments",
+    });
 
     const myWorkUrl = routes.agentMyWork.build({
       lens: "watching",

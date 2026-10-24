@@ -78,20 +78,11 @@ function decodeCursor(
   if (!input.cursor) return undefined;
   try {
     if (!isEncryptedSecret(input.cursor)) throw new Error("Invalid cursor");
-    const envelope =
-      /^enc:v1:([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$/u.exec(
-        input.cursor,
-      );
+    const envelope = /^enc:v2:([A-Za-z0-9_-]+)$/u.exec(input.cursor);
     if (
       !envelope ||
-      envelope
-        .slice(1)
-        .some(
-          (part) =>
-            Buffer.from(part, "base64url").toString("base64url") !== part,
-        ) ||
-      Buffer.from(envelope[1] ?? "", "base64url").length !== 12 ||
-      Buffer.from(envelope[2] ?? "", "base64url").length !== 16
+      Buffer.from(envelope[1] ?? "", "base64url").toString("base64url") !==
+        envelope[1]
     )
       throw new Error("Invalid cursor");
     const plaintext = decryptSecret(input.cursor);

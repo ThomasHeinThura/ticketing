@@ -80,6 +80,23 @@ const markAsReadRoute = createRoute({
   },
 });
 
+const markAsUnreadRoute = createRoute({
+  method: "patch",
+  operationId: "markNotificationAsUnread",
+  path: "/{id}/unread",
+  tags: ["Notifications"],
+  summary: "Mark notification unread",
+  description:
+    "NO-15: mark one notification as unread again, clearing its read time. Same recipient and current reach checks as mark-read; another user's, missing, or unreachable-resource notification is not found.",
+  middleware: [requireSessionOnly()] as const,
+  request: { params: notificationParam },
+  responses: {
+    200: jsonResponse("The updated notification", notificationSchema),
+    403: errorResponse("A browser session is required"),
+    404: errorResponse("Notification not found"),
+  },
+});
+
 const markAllAsReadRoute = createRoute({
   method: "patch",
   operationId: "markAllNotificationsAsRead",
@@ -155,6 +172,15 @@ const notification = apiRouter()
   })
   .openapi(markAsReadRoute, async (c) => {
     const updated = await markAsRead(c.req.valid("param").id, c.get("userId"));
+    const response: NotificationTransportRow = updated;
+    return c.json(response, 200);
+  })
+  .openapi(markAsUnreadRoute, async (c) => {
+    const updated = await markAsRead(
+      c.req.valid("param").id,
+      c.get("userId"),
+      "unread",
+    );
     const response: NotificationTransportRow = updated;
     return c.json(response, 200);
   })

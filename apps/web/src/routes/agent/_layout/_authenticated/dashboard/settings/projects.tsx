@@ -37,10 +37,13 @@ function RouteComponent() {
   const { t } = useTranslation();
   const projectLabelId = useId();
   const projectValueId = useId();
-  const { workspace, role } = useWorkspacePermission();
+  const { workspace, role, canManageProjectSettings } =
+    useWorkspacePermission();
   const location = useLocation();
   const navigate = useNavigate();
-  const menuItems = getProjectSettingsMenuItems(t);
+  const menuItems = getProjectSettingsMenuItems(t, {
+    canManageProjectSettings: canManageProjectSettings(),
+  });
   const { data: projects } = useGetProjects({
     workspaceId: workspace?.id || "",
   });

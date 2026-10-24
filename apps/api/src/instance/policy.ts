@@ -59,6 +59,51 @@ export const instancePolicies = {
       "unsuspension restores no credentials and is audited",
     sessionOnly: true,
   },
+  "POST /api/instance/users/{id}/impersonate": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide account support control",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
+  "GET /api/instance/impersonate": {
+    authenticated: true,
+    self: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "describes only the caller's own session; it names no other person",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only description of the caller's own impersonation session",
+  },
+  "DELETE /api/instance/impersonate": {
+    authenticated: true,
+    self: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason: "ends only the caller's own impersonation session",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "GM-11: the exit control is always allowed; it only restores the administrator's own session",
+  },
+  "POST /api/instance/plugins/rotate-secrets": {
+    capability: "instance:manage_plugins",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide secret re-encryption has no tenant resource",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
   "POST /api/instance/users/{id}/sign-out": {
     capability: "instance:admin",
     scope: "instance",
@@ -304,6 +349,41 @@ export const instancePolicies = {
     elevated: false,
     elevationExemptionReason:
       "returns a constant value regardless of instance state; it grants nothing, changes nothing, and no longer distinguishes claimed from unclaimed (#18)",
+  },
+  "GET /api/instance/settings": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide general and storage settings",
+    },
+    elevated: false,
+    elevationExemptionReason: "read-only list of instance settings",
+  },
+  "PATCH /api/instance/settings": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide general and storage settings",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "limits, windows and retention values only; none grants or changes authority, and each change is audited by key name",
+  },
+  "GET /api/instance/health": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide health overview",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only counts and states; no secret, key id or row content",
   },
   "GET /api/instance/observability": {
     capability: "instance:admin",

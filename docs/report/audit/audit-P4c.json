@@ -1,0 +1,1091 @@
+{
+	"phase": "P4",
+	"note": "Re-audit of the uncommitted working tree on 24 Oct. implemented_tested = enforcing code present and a test that exercises the decisive behaviour was run green in a cited run; unit tests of the decision function count, gaps say where only unit coverage exists. browser_verified is true only when the behaviour itself was exercised in a browser on persisted data (screens in docs/report/screens/p4-*.jpg or the cited agent report), and only for implemented_* states. Runs: R1 = full integration started 23 Oct 22:09 on a scratch DB, 4141/4146 (failures in god-mode-settings-routes, pending-actions-decisions, public-preference-handoff-csrf, session-cleanup-purge); R2 = triage rerun of those four files 49/49; R3 = close-out targeted run 23:56, 27 files 283/283; unit = API 1642, permissions 108, web 2334 (+2 unrelated portal TZ failures), mcp 54. R1 predates the close-out changes (owner-team reach in project, work-item, search, notification, webhook and approval paths; service-key gate; intake mapping), so R1 passes of reach-dependent suites are not reconfirmed on the current tree except the 27 files in R3. A second full integration run was still in progress at audit time.",
+	"items": [
+		{
+			"id": "RL-1",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/settings/roles/capability-model.ts (CAPABILITIES/CAPABILITY_GROUPS from @taskdesk/permissions); role-capabilities-panel.tsx (library CapabilityMatrix); capability-model.test.ts, role-capabilities-panel.test.tsx [web unit 2334 pass; 2 unrelated portal TZ failures]; tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'create and clone (RL-1, RL-2 data, RL-5)'; docs/report/screens/p4-roles-create.jpg [browser: P4 browser-verification agent, scratch DB] [browser: roles agent on Vite dev server, scratch DB]",
+			"gap": "",
+			"browser_verified": true
+		},
+		{
+			"id": "RL-2",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/settings/roles/capability-model.ts plainDescription(CAPABILITIES[id].description); role-capabilities-panel.test.tsx [web unit 2334 pass; 2 unrelated portal TZ failures]",
+			"gap": "Browser pass showed raw markdown (**not**, [Reach](#reach)) in descriptions; the plainDescription fix landed after the browser pass and is not re-verified in a browser",
+			"browser_verified": false
+		},
+		{
+			"id": "RL-3",
+			"state": "partial",
+			"evidence": "apps/api/src/workspace/role-service.ts (missing-grant refusal); apps/web/src/components/settings/roles/role-capabilities-panel.tsx (disabled + roles:matrix.notHeld reason); tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'RL-3: an admin cannot grant a capability they do not hold'; tests/api/workspace/role-service.test.ts [unit: API 196 files 1642/1642, permissions 108/108]; role-capabilities-panel.test.tsx [web unit 2334 pass; 2 unrelated portal TZ failures]",
+			"gap": "Role assignment (add, change, invite) checks rank only, not the target role's capabilities against the assigner's, so a manager can self-assign a low-rank role holding capabilities they lack; assignment has no tests (P4R1-H1, being fixed in P4 fix round 2). Disabled-with-reason UI not exercised in a browser",
+			"browser_verified": false
+		},
+		{
+			"id": "RL-4",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/workspace/role-service.ts rank guard; apps/web/src/hooks/use-caller-role-authority.ts; tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'RL-4: a role ranked at or above the caller's own is read-only'",
+			"gap": "Not exercised in a browser",
+			"browser_verified": false
+		},
+		{
+			"id": "RL-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/workspace/role-service.ts; apps/web/src/components/settings/roles/create-role-dialog.tsx; tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'RL-14: a role cannot be created at or above the caller's own rank'",
+			"gap": "Not exercised in a browser",
+			"browser_verified": false
+		},
+		{
+			"id": "RL-5",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/settings/roles/role-draft.ts, capability-model.ts (implies closure), role-capabilities-panel.tsx (implied Alert); capability-model.test.ts [web unit 2334 pass; 2 unrelated portal TZ failures]; tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] stores the implication closure",
+			"gap": "Visible auto-tick not exercised in a browser",
+			"browser_verified": false
+		},
+		{
+			"id": "RL-6",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/workspace/role-service.ts (instance-tier refused, owner immutable); tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'built-in roles (RL-6)'; tests/api/workspace/role-service.test.ts [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "RL-7",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/workspace/role-governance.ts last-active-manager check; tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'RL-7: a save that would leave only suspended people…' and 'RL-7: moving the last active role managers…'; tests/api/workspace/role-governance.test.ts [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "Last-holder 409 never fired in the browser pass",
+			"browser_verified": false
+		},
+		{
+			"id": "RL-8",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/workspace/index.ts /roles/{roleId}/holders + /reassign; role deletion pending action (tests/api-integration/pending-action-registered-deletion.test.ts 'workspace role: … deleted only on approval' [R1 full integration 23 Oct 22:09, 4141/4146 green]); tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'holders and bulk reassignment (RL-8)'; apps/web/src/components/settings/roles/role-people-panel.tsx; docs/report/screens/p4-roles-delete-pending.jpg [browser: P4 browser-verification agent, scratch DB] [browser: roles agent on Vite dev server, scratch DB]",
+			"gap": "Post-approval navigation and display-name fixes (a924 fix agent) not re-verified in a browser",
+			"browser_verified": false
+		},
+		{
+			"id": "RL-9",
+			"state": "partial",
+			"evidence": "apps/api/src/workspace/role-service.ts; resolve-identity reads canonical role row; tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'RL-9: a role change takes effect on the very next request'",
+			"gap": "Takes effect immediately (tested), but the IP-22 closure for roles referenced by identity provisioning is not implemented: such edits are refused with 409 role_in_identity_use instead of revalidating/retiring external grants",
+			"browser_verified": false
+		},
+		{
+			"id": "RL-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/workspace/role-governance.ts capability diff; audit role.created/updated/deleted; GET /api/workspace/{id}/roles/{roleId}/history; tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'RL-10: history lists who changed which capabilities'; tests/api/workspace/role-governance.test.ts; docs/report/screens/p4-roles-history.jpg [browser: P4 browser-verification agent, scratch DB]",
+			"gap": "",
+			"browser_verified": true
+		},
+		{
+			"id": "RL-15",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/workspace/controllers/delete-workspace-role.ts, workspace-role-lock.ts; tests/api-integration/workspace-role-writes.test.ts, workspace-delete-role-dependents.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] tenant isolation",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "RL-11",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/settings/roles/role-insight-panels.tsx ('What can this role do?'), capability-model.ts; capability-model.test.ts [web unit 2334 pass; 2 unrelated portal TZ failures]; docs/report/screens/p4-roles-create.jpg [browser: P4 browser-verification agent, scratch DB] [browser: roles agent on Vite dev server, scratch DB]",
+			"gap": "",
+			"browser_verified": true
+		},
+		{
+			"id": "RL-12",
+			"state": "implemented_tested",
+			"evidence": "POST /api/workspace/{id}/roles/{roleId}/preview; apps/web/src/components/settings/roles/role-insight-panels.tsx; tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'previews the navigation and work-item actions of a DRAFT set'; tests/api/workspace/role-service.test.ts 'role preview (RL-12)'; docs/report/screens/p4-roles-preview.jpg [browser: P4 browser-verification agent, scratch DB]",
+			"gap": "",
+			"browser_verified": true
+		},
+		{
+			"id": "RL-13",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/settings/roles/role-insight-panels.tsx compare tab, capability-model.ts diff; capability-model.test.ts [web unit 2334 pass; 2 unrelated portal TZ failures]; docs/report/screens/p4-roles-compare.jpg [browser: P4 browser-verification agent, scratch DB]",
+			"gap": "Compare showed raw markdown descriptions before the later fix",
+			"browser_verified": false
+		},
+		{
+			"id": "TM-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/team/index.ts, repository.ts (GET/POST/PATCH/DELETE /api/teams, members); tests/api-integration/p4-closeout-service-key-http.test.ts (POST /api/teams audited) [R3 close-out targeted integration 23:56, 27 files 283/283]; tests/api-integration/pending-action-registered-deletion.test.ts 'team: 202 keeps the team' [R1 full integration 23 Oct 22:09, 4141/4146 green]; docs/report/screens/p4-teams-detail-roster.jpg [browser: P4 browser-verification agent, scratch DB]",
+			"gap": "",
+			"browser_verified": true
+		},
+		{
+			"id": "TM-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/team/repository.ts addMember -> logic.memberRefusal (side/active/workspace member); tests/api/team/team-logic.test.ts 'member eligibility (TM-2)' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "No HTTP/DB test of the customer-side refusal",
+			"browser_verified": false
+		},
+		{
+			"id": "TM-3",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/team/index.ts rosterEditAllowed + isLeadOfTeam; capacity/CAB via workspace:manage_settings policy; tests/api/team/team-logic.test.ts 'roster edit authority (TM-3)'; tests/api-integration/delete-routes-never-immediate.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "Lead-as-editor not exercised over HTTP or in the browser (browser only set a lead)",
+			"browser_verified": false
+		},
+		{
+			"id": "TM-4",
+			"state": "implemented_tested",
+			"evidence": "apps/api/drizzle/0146_project_owner_team.sql; PATCH /api/projects/{id}/ownership ownerTeamId (project:manage_members, project.reach_changed); tests/api-integration/p4-closeout-teams.test.ts 'TM-4 owner_team_id is reach step 5' [R3 close-out targeted integration 23:56, 27 files 283/283]; tests/api/ws/project-read-authorization.test.ts",
+			"gap": "No owner-team UI or ownership preview; not browser-verified",
+			"browser_verified": false
+		},
+		{
+			"id": "TM-5",
+			"state": "implemented_untested",
+			"evidence": "apps/api/drizzle/0138_team_governance.sql team_workspace_cab_unique; apps/api/src/team/repository.ts 409 on second CAB; decide_cab membership at decision time: tests/api-integration/approval-tenant-checks.test.ts check 4 [R1 full integration 23 Oct 22:09, 4141/4146 green]; docs/report/screens/p4-teams-cab-conflict.jpg [browser: P4 browser-verification agent, scratch DB]",
+			"gap": "No automated test of the at-most-one-CAB 409 (browser only). Migration 0138 no longer rewrites live data: it refuses with counts when duplicate team_member rows or more than one CAB team per workspace exist (P4R1-M4; tests/api-integration/migration-0138-precheck.test.ts); the operator resolves them before migrating",
+			"browser_verified": true
+		},
+		{
+			"id": "TM-6",
+			"state": "implemented_tested",
+			"evidence": "DELETE /api/teams/{id}/members/{personId} (apps/api/src/team/index.ts); approver CAB membership evaluated at decision: tests/api-integration/approval-tenant-checks.test.ts check 4, approval-notifications.test.ts 'no inbox row … stopped being a valid CAB member' [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "No single end-to-end test removing a CAB member with an open approval",
+			"browser_verified": false
+		},
+		{
+			"id": "TM-7",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/team/logic.ts teamDeletionBlockers, repository.ts; tests/api-integration/p4-closeout-teams.test.ts 'TM-7 …' [R3 close-out targeted integration 23:56, 27 files 283/283]; tests/api/team/team-logic.test.ts; tests/api-integration/pending-action-registered-deletion.test.ts team [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "TM-8",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/repository.ts deactivation clears team_member.is_lead + audit; roster hides deactivated; tests/api-integration/p4-closeout-teams.test.ts 'TM-8 deactivation removes team-derived standing' [R3 close-out targeted integration 23:56, 27 files 283/283]",
+			"gap": "Reactivation does not restore lead status (open decision)",
+			"browser_verified": false
+		},
+		{
+			"id": "TM-9",
+			"state": "missing",
+			"evidence": "apps/api/src/automation/actions.ts (notify answers 422 unavailable); tests/api/automation/automation-p4-closeout-actions.test.ts 'keeps notify as 422 unavailable'",
+			"gap": "No notify action and no team-targeted notification; needs a catalogued event kind",
+			"browser_verified": false
+		},
+		{
+			"id": "CF-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/custom-field/index.ts, sections.ts, repository.ts; drizzle 0098 + 0139 composite workspace FKs; tests/api-integration/p4-closeout-service-key-http.test.ts (GET /api/custom-fields, POST /api/custom-field-sections) [R3 close-out targeted integration 23:56, 27 files 283/283]; docs/report/screens/p4-custom-field-new.jpg, p4-custom-field-create-dialog.jpg [browser: P4 browser-verification agent, scratch DB]",
+			"gap": "Field create/update routes have no HTTP integration test (fixtures insert rows directly)",
+			"browser_verified": true
+		},
+		{
+			"id": "CF-2",
+			"state": "implemented_tested",
+			"evidence": "PUT /api/custom-fields/{id}/visibility; apps/api/src/custom-field/logic.ts applicability; tests/api/custom-field/custom-field-logic.test.ts [unit: API 196 files 1642/1642, permissions 108/108] 'applicability and required gate (CF-2, CF-3, CF-4)'; apps/web/src/lib/custom-field.test.ts; docs/report/screens/p4-custom-field-create-dialog.jpg (required marker for the type) [browser: P4 browser-verification agent, scratch DB]",
+			"gap": "",
+			"browser_verified": true
+		},
+		{
+			"id": "CF-3",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/create-work-item-custom-fields.tsx, work-item-custom-fields.tsx; apps/web/src/lib/custom-field.test.ts [web unit 2334 pass; 2 unrelated portal TZ failures]; tests/api/custom-field/custom-field-logic.test.ts [unit: API 196 files 1642/1642, permissions 108/108] 'omits fields not visible for the type'",
+			"gap": "Absence for a non-applicable type not exercised in a browser",
+			"browser_verified": false
+		},
+		{
+			"id": "CF-4",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts missingRequiredForTransition (guard.field_required, cancelled exempt); apps/api/src/custom-field/repository.ts applyWorkItemFieldValues on create/update; tests/api/custom-field/custom-field-logic.test.ts [unit: API 196 files 1642/1642, permissions 108/108] 'gates started and completed but never cancelled'; docs/report/screens/p4-required-field-error.jpg [browser: P4 browser-verification agent, scratch DB] (create disabled, clearing refused)",
+			"gap": "Server create/transition refusal has only pure-logic unit coverage, no HTTP/DB test; transition block and cancelled exemption not exercised in the browser",
+			"browser_verified": false
+		},
+		{
+			"id": "CF-5",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/custom-field/logic.ts defaultValueFor; repository.ts validates default on save; tests/api/custom-field/custom-field-logic.test.ts [unit: API 196 files 1642/1642, permissions 108/108] 'defaults (CF-5)'",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "CF-6",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/custom-field/logic.ts single-level condition (eq/neq/in/is_set); tests/api/custom-field/custom-field-logic.test.ts [unit: API 196 files 1642/1642, permissions 108/108] 'conditional visibility (CF-6)'; tests/api-integration/p4-closeout-portal-custom-fields.test.ts 'does not let a conditional field leak…' [R3 close-out targeted integration 23:56, 27 files 283/283]; apps/web/src/lib/custom-field.test.ts",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "CF-7",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/custom-field/repository.ts (option in use refused, key stable); tests/api/custom-field/custom-field-logic.test.ts [unit: API 196 files 1642/1642, permissions 108/108] 'renaming a label keeps the key; removing a key is reported'",
+			"gap": "In-use refusal is not DB-tested",
+			"browser_verified": false
+		},
+		{
+			"id": "CF-8",
+			"state": "partial",
+			"evidence": "apps/api/src/custom-field/deletion-target.ts (click pending action), repository.ts softDelete + restoreField with 30-day window; POST /api/custom-fields/{id}/restore",
+			"gap": "The 30-day purge exists (scheduler/custom-field-purge.ts, tests/api-integration/custom-field-purge.test.ts). Its legal-hold scope used the stale custom_field_value.project_id (P4R1-M6); fixed in P4 fix round 2 to derive project and organisation from the live work_item (test 'P4R1-M6'), awaiting round-2 verification",
+			"browser_verified": false
+		},
+		{
+			"id": "CF-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/custom-field/repository.ts formatChangeRefused on PATCH; tests/api/custom-field/custom-field-logic.test.ts [unit: API 196 files 1642/1642, permissions 108/108] 'refuses a format change'",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "CF-10",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/search/custom-field-filter.ts (cf.<key> in search + saved views); tests/api-integration/p4-closeout-custom-field-filters.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283]; tests/api/work-item-search-query.test.ts",
+			"gap": "Not sortable, not available as table columns, no groupBy, not on GET /api/projects/{id}/work-items; neq also matches unset",
+			"browser_verified": false
+		},
+		{
+			"id": "CF-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/custom-field-mapping.ts; portal request detail customFields; apps/web/src/routes/portal/submissions/$ref.tsx, agent/settings/request-types.tsx 'Maps to'; tests/api-integration/p4-closeout-portal-custom-fields.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283]; tests/api-integration/intake-portal-response-shape.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283]",
+			"gap": "Portal detail and request-type editor not browser-verified; conversion does not enforce required custom fields (open decision)",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-1",
+			"state": "partial",
+			"evidence": "audit rows: instance.settings_changed (apps/api/src/instance/settings), feature_flag.changed, impersonation.started/ended, secrets rekey counts-only (tests/api-integration/secrets-rekey.test.ts 'audits counts only' [R1 full integration 23 Oct 22:09, 4141/4146 green]); apps/api/src/audit/actions.ts",
+			"gap": "Many God Mode sections still absent (Plugins, Jobs, Deliveries, Storage, MCP usage, Organisations, Branding), so 'every change' is not met",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-2",
+			"state": "partial",
+			"evidence": "PA-15 step-up consumed by webhook create/url/rotate, impersonation start, rotate-secrets, identity admin, typed_name_step_up pending actions (tests/api-integration/god-mode-p4-operations.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]); packages/permissions/src/elevated.ts",
+			"gap": "`elevated: true` in a route policy is declarative only (no runtime middleware reads it except the impersonation guard). Declared-elevated routes without any step-up: POST/PATCH /api/workspace/{id}/roles, POST …/roles/{roleId}/reassign, POST /api/workspaces/{id}/api-keys, member add/role change, transfer-ownership, project members/ownership (sessionOnly only)",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-3",
+			"state": "partial",
+			"evidence": "apps/api/src/notification-provider/runtime.ts; feature flags and instance settings read per request (tests/api-integration/feature-flag-repository.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green])",
+			"gap": "Live auth rebuild propagation proven for notification provider only",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-4",
+			"state": "partial",
+			"evidence": "apps/api/src/identity/connection-admin.ts (connection test); apps/api/src/notification-provider/service.ts; apps/api/src/plugins/registry.ts",
+			"gap": "Plugin registry still has no test contract; no Plugins page",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-5",
+			"state": "missing",
+			"evidence": "apps/web/src/components/god-mode/*-editor.tsx, instance-settings-form.tsx hand-written",
+			"gap": "No Zod-schema-generated plugin settings forms",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-6",
+			"state": "partial",
+			"evidence": "apps/api/src/pending-action/deletion-targets.ts (identity connections, purge, user deactivation, webhook, service key, role, team, custom field, automation); tests/api-integration/pending-action-*.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "Organisation and auth-plugin deletions are not typed-name + step-up pending actions in God Mode",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-15",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/instance/users/index.ts POST /users/{id}/deactivate; tests/api-integration/instance-users.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283], instance-users-guards.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "Browser deactivate blocked at password step-up; not browser-verified",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-7",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/instance/impersonation/index.ts POST /api/instance/users/{id}/impersonate (step-up impersonation_start, reason, 30-min cap); impersonation-cap job; tests/api-integration/god-mode-p4-operations.test.ts 'starts audited and capped…', 'ends a session that outlived its 30-minute cap' [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "Browser blocked at password step-up (p4-impersonation-dialog.jpg shows only the dialog)",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-8",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/auth/impersonation-context.ts feeds impersonator_id into audit-writer.ts; tests/api-integration/god-mode-p4-operations.test.ts 'records the impersonator on every action' [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-9",
+			"state": "partial",
+			"evidence": "apps/api/src/instance/impersonation/guard.ts (403 naming impersonation); createPendingAction refusal; finish.ts notifies target in-app + email; tests/api-integration/god-mode-p4-operations.test.ts 'classifies the GM-9 route matrix' [R1 full integration 23 Oct 22:09, 4141/4146 green]; pending-actions-decisions.test.ts, public-preference-handoff-csrf.test.ts [R2 triage rerun of the 4 failing R1 files, 49/49]",
+			"gap": "Regex denylist: PATCH /api/teams/{id} (isCab), team create and other configuration writes are open to impersonation (P4R1-M3, being fixed in P4 fix round 2). Email on end not exercised against real SMTP; the CSRF issuer opened to impersonation sessions is bound to the session id and origin, owner decision still pending",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/instance/impersonation/eligibility.ts; tests/api-integration/god-mode-p4-operations.test.ts 'refuses an administrator target' [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-11",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/god-mode/impersonation-banner.tsx in routes/agent/_layout/_authenticated.tsx; impersonation-banner.test.tsx [web unit 2334 pass; 2 unrelated portal TZ failures]; DELETE /api/instance/impersonate (tests/api-integration/god-mode-p4-operations.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green])",
+			"gap": "Banner and exit never seen in a browser (impersonation blocked at step-up)",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-12",
+			"state": "partial",
+			"evidence": "apps/api/src/secrets/ (current + previous key read, writes under current); tests/api-integration/secrets-rekey.test.ts 're-encrypts rows under the previous key' [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api/secrets/rekey.test.ts [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "Webhook signing secrets and notification tokens were stored with a single-key cipher the rekey job ignored (P4R1-H2). Fixed in P4 fix round 2: they now use the key-id envelope, current and previous key are read, and the rekey job covers them (tests/api-integration/secrets-rekey.test.ts, tests/api/notification-preferences/text-secrets.test.ts); awaiting round-2 verification. Not browser-verified",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-13",
+			"state": "implemented_tested",
+			"evidence": "POST /api/instance/plugins/rotate-secrets (apps/api/src/instance/secrets/rotate-secrets.ts, step-up secrets_rotate); apps/api/src/scheduler/secrets-rekey.ts resumable; tests/api-integration/god-mode-p4-operations.test.ts 'secrets re-encryption trigger (GM-13)' [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api-integration/secrets-rekey.test.ts resumable [R1 full integration 23 Oct 22:09, 4141/4146 green]; apps/web/src/components/god-mode/rotate-secrets-dialog.tsx",
+			"gap": "Trigger lives on the Health page (no God Mode Plugins page); rotate dialog not browser-verified",
+			"browser_verified": false
+		},
+		{
+			"id": "GM-14",
+			"state": "partial",
+			"evidence": "GET /api/instance/health encryption check; tests/api/instance/health-classify.test.ts 'GM-14: …' [unit: API 196 files 1642/1642, permissions 108/108]; tests/api-integration/secrets-rekey.test.ts reports completion [R1 full integration 23 Oct 22:09, 4141/4146 green]; docs/report/screens/p4-god-mode-health.jpg [browser: P4 browser-verification agent, scratch DB]",
+			"gap": "Health reported safeToRemovePreviousKey while webhook and notification secrets were still under the old key (P4R1-H2). Fixed in P4 fix round 2: the check now counts those secrets (tests/api/instance/health-classify.test.ts); awaiting round-2 verification. Browser saw the complete-state with zero secrets only",
+			"browser_verified": true
+		},
+		{
+			"id": "ST-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/feature-flag/ (GET/PATCH instance, workspace, project features; resolved); tests/api-integration/feature-flag-repository.test.ts 'resolves project over workspace over instance' [R1 full integration 23 Oct 22:09, 4141/4146 green]; apps/web/src/components/settings/feature-flags-panel.tsx + test [web unit 2334 pass; 2 unrelated portal TZ failures]; docs/report/screens/p4-god-mode-features.jpg, p4-project-features-override.jpg [browser: P4 browser-verification agent, scratch DB]",
+			"gap": "No workspace-level Features screen (API only)",
+			"browser_verified": true
+		},
+		{
+			"id": "ST-11",
+			"state": "partial",
+			"evidence": "tests/api-integration/approval-feature-flag.test.ts, intake-feature-gate.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api-integration/automation-run-pipeline.test.ts 'queues nothing while feature.automations is off' [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "Disable behaviour stated/tested for approvals, intake and automations only",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/feature-flag/repository.ts 409 feature_locked; tests/api-integration/feature-flag-repository.test.ts 'ST-2: a write below a locked instance flag is refused' [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api-integration/god-mode-settings-routes.test.ts 'a locked instance flag answers 409 feature_locked' [R2 triage rerun of the 4 failing R1 files, 49/49]",
+			"gap": "Browser showed the project switch disabled as 'Locked by the instance' but did not exercise the 409 path",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-3",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts workspace.defaultSlaPolicyId",
+			"gap": "Inheritance set (SLA policy, service calendar, enabled states) and God Mode project-defaults copy not verified; unchanged in P4",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-4",
+			"state": "partial",
+			"evidence": "apps/web/src/components/settings/feature-flags-panel.tsx ('Inherited from…', 'Overridden'); tests/api-integration/feature-flag-repository.test.ts reports what is inherited [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "Only feature flags show an inherited/override indicator; SLA policy, calendar and state-set settings do not",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-5",
+			"state": "partial",
+			"evidence": "feature flags last-changed-by (tests/api-integration/feature-flag-repository.test.ts 'ST-5' [R1 full integration 23 Oct 22:09, 4141/4146 green]); instance general shows when only; role history",
+			"gap": "Most settings screens show no last-changed who/when; God Mode General shows when, not who",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-6",
+			"state": "partial",
+			"evidence": "apps/api/src/audit/schema.ts entityType/entityId filter; role history route + tab (tests/api-integration/workspace-role-governance.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]); feature_flag.changed audited",
+			"gap": "History affordance only on roles (and work items); no History on workspace/project/workflow/team/custom-field/feature screens",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-7",
+			"state": "partial",
+			"evidence": "apps/web/src/components/settings/roles/role-capabilities-panel.tsx save names holderCount (roles:save.immediate)",
+			"gap": "No ?dryRun=true on role PATCH or workflow publish returning {affected:{people,workItems,projects}}",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-8",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/…/dashboard/settings/workspace/general.tsx dangerZone; apps/web/src/components/webhook/webhook-editor.tsx danger zone",
+			"gap": "Typed-name danger zone not uniform across new P4 settings screens (teams, custom fields, automations, roles)",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-9",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/lib/routes.ts (P4 routes registered); apps/web/e2e/settings-forms-direct-load.spec.ts; [browser: P4 browser-verification agent, scratch DB] loaded P4 settings URLs directly",
+			"gap": "/agent/settings/profile/api-keys only redirects to /dashboard/settings/account/developer; project features/automations redirect to /dashboard",
+			"browser_verified": true
+		},
+		{
+			"id": "ST-10",
+			"state": "missing",
+			"evidence": "apps/api/src/project (no cross-workspace move route)",
+			"gap": "Cross-workspace project move/remap by key absent",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-12",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/user-preference/index.ts, policy.ts; tests/api-integration/user-preference.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-13",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/user-preference/schema.ts, response.ts; tests/api-integration/user-preference.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/user-preference/whitelist.ts; tests/api-integration/user-preference.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-15",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/user-preference/service.ts; tests/api-integration/user-preference.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-16",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/user-preference/index.ts; tests/api-integration/user-preference.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "ST-17",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/lib/user-preference-sync.ts + test; apps/web/src/hooks/use-density-preference.test.tsx [web unit 2334 pass; 2 unrelated portal TZ failures]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-22",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/sla-recipients.ts, scheduler sla-escalation; tests/api-integration/sla-notifications-and-escalation.test.ts 'advances after the wait…', 'stops when a staff member comments' [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api-integration/scheduled-transition-and-escalation.test.ts 'stops a due walk … (NO-22)' [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api/notification/sla-and-submission-recipients.test.ts",
+			"gap": "P4b 'missing' was stale: implemented in P2. File header still says 'WRITTEN, NOT YET RUN' although R1 ran it green",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/preferences.ts defaultExternalPreference; tests/api/notification/preferences.test.ts [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/preference-link.ts, preference-handoff.ts; tests/api-integration/notification-preference-handoff.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283]",
+			"gap": "Customer (portal) preference destination still open",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-3",
+			"state": "partial",
+			"evidence": "apps/api/src/notification/quiet-hours.ts evaluated in current-eligibility.ts at drain; PUT /api/notification-preferences quietHours (apps/api/src/notification-preferences/quiet-hours.ts); tests/api/notification/quiet-hours.test.ts [unit: API 196 files 1642/1642, permissions 108/108]; tests/api-integration/helpers/notification-outbox-suite.ts NO-3 cases [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api-integration/p4-closeout-quiet-hours.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283]; apps/web/src/components/account/quiet-hours-preference.tsx + test",
+			"gap": "The legacy deliverNotification path (task.* subscribers, due-date reminders) bypassed quiet hours (P4R1-M8). Fixed in P4 fix round 2: it now defers to the end of the window with an in-process timer and fails closed on malformed hours (tests/api/notification-preferences/legacy-quiet-hours.test.ts); the deferral is not durable across a process restart, so the requirement stays partial. Quiet-hours editor not browser-verified",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-4",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/fanout.ts actor exclusion; tests/api/notification/fanout-rules.test.ts 'NO-4 you are never notified about your own action' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-5",
+			"state": "partial",
+			"evidence": "apps/api/src/notification/digest-writer.ts, digest-window.ts wired in fanout; tests/api-integration/notification-digest-writer.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api/notification/digest-window.test.ts",
+			"gap": "Writer is unreachable in practice: canonical preferences accept only digest 'off' (digest writes deliberately closed), so no candidate can be assigned to an hourly/daily digest",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-6",
+			"state": "partial",
+			"evidence": "apps/api/src/notification/digest-summary.ts, digest-seal.ts; apps/api/src/scheduler/notification-digest.ts sealing job; tests/api-integration/notification-digest-writer.test.ts 'seals only groups whose window has ended' [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api/notification/digest-summary.test.ts",
+			"gap": "No digest sender: groups are sealed but never delivered",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-7",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/fanout.ts urgent bypass; tests/api/notification/fanout-rules.test.ts 'NO-7 urgent events bypass digests' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-8",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/fanout.ts in-tx enqueue; tests/api-integration/notification-immediate-mention.test.ts, notification-outbox-delivery*.test.ts, workspace-write-create-contract.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "Producer coverage incomplete per docs/status.md",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/outbox-drain.ts, delivery-primitives.ts; tests/api-integration/helpers/notification-outbox-suite.ts (quiet-hours defer consumes no attempt) [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api/notification/delivery-primitives.test.ts",
+			"gap": "Customer external destinations still unresolved",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/fanout.ts; tests/api-integration/notification-outbox-delivery.test.ts, notification-immediate-mention.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "No explicit rollback-on-inbox-persist-failure test",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/delivery-primitives.ts notificationDedupeKey; tests/api/notification/delivery-primitives.test.ts [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-12",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/notification/notification-dropdown.tsx; notification-dropdown.test.ts [web unit 2334 pass; 2 unrelated portal TZ failures]",
+			"gap": "Unread count derived from the loaded page, not a server count; bell not checked in the browser pass",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-13",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/notification/notification-inbox.tsx + notification-filters.ts (All/Unread/Mentions/Assignments, URL state); notification-filters.test.ts [web unit 2334 pass; 2 unrelated portal TZ failures]; docs/report/screens/p4-inbox-unread-filter.jpg, p4-inbox-after-fix.jpg [browser: P4 browser-verification agent, scratch DB]",
+			"gap": "Mentions/assignments filters are client-side over the newest 50 rows; only the unread filter was exercised",
+			"browser_verified": true
+		},
+		{
+			"id": "NO-14",
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/notification/links.ts resolveNotificationWorkItemKeys (work_item/comment/approval -> key); apps/web/src/components/notification/notification-dropdown.tsx getWorkItemNotificationHref (canonical /agent route, comment focus)",
+			"gap": "No unit or integration test for link resolution or href building; not exercised in the browser",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-15",
+			"state": "implemented_tested",
+			"evidence": "PATCH /api/notification/{id}/unread; mark-read now stamps read_at; tests/api-integration/notification-mark-unread.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]; [browser: P4 browser-verification agent, scratch DB] mark read/unread persisted after reload (p4-inbox-after-fix.jpg)",
+			"gap": "",
+			"browser_verified": true
+		},
+		{
+			"id": "NO-16",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/ws/index.ts; apps/web/src/hooks/use-user-websocket.test.ts [web unit 2334 pass; 2 unrelated portal TZ failures]; tests/api-integration/node-server-websocket.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-17",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/retention.ts in session-cleanup; migration 0143 notification_retention_days default 90; tests/api-integration/notification-retention.test.ts (90-day default, 30-day case, holds) [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api-integration/session-cleanup-purge.test.ts [R2 triage rerun of the 4 failing R1 files, 49/49]; God Mode General retention 60 persisted (p4-god-mode-general.jpg) [browser: P4 browser-verification agent, scratch DB]",
+			"gap": "",
+			"browser_verified": true
+		},
+		{
+			"id": "NO-18",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/customer-event-audience.ts, current-eligibility.ts; tests/api/notification-current-eligibility.test.ts [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "Customer external destinations unresolved; only inbox path exercised",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-19",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/customer-event-audience.ts; tests/api/notification/work-item-recipients.test.ts; tests/api/webhook/webhook-envelope-and-delivery.test.ts 'drops internal change entries' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-20",
+			"state": "partial",
+			"evidence": "apps/api/src/notification/customer-event-audience.ts gates events",
+			"gap": "No customer-facing templates or test asserting absence of staff names/internal terms",
+			"browser_verified": false
+		},
+		{
+			"id": "NO-21",
+			"state": "missing",
+			"evidence": "apps/web/src/routes/portal/ (no account/preferences route); quiet hours refused for customer sessions (tests/api-integration/p4-closeout-quiet-hours.test.ts)",
+			"gap": "No portal preference controls (/portal/account or host-root equivalent)",
+			"browser_verified": false
+		},
+		{
+			"id": "AM-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/automation/conditions.ts; tests/api/automation/automation-conditions-and-loops.test.ts 'AM-1 conditions combine with AND' [unit: API 196 files 1642/1642, permissions 108/108]; tests/api-integration/automation-run-pipeline.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283] 'records a rule that does not match…'",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "AM-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/automation consumer registered in events/outbox-consumer.ts, scheduler/outbox-drain-p4.ts; tests/api-integration/automation-run-pipeline.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283] 'records one pending run per matching enabled rule … (AM-2, AM-6)'; [browser: P4 browser-verification agent, scratch DB] rule fired once on HELP-9 and the run appears in history (p4-automations-history.jpg)",
+			"gap": "",
+			"browser_verified": true
+		},
+		{
+			"id": "AM-3",
+			"state": "partial",
+			"evidence": "automation.effective_role_id; apps/api/src/automation/actions-executor.ts roleMayAct; tests/api/automation/automation-effective-role.test.ts [unit: API 196 files 1642/1642, permissions 108/108]; tests/api-integration/p4-closeout-automation-actions.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283] 'is refused when the effective role lacks the comment capability'; [browser: P4 browser-verification agent, scratch DB] run-as picker lists canonical roles (p4-automations-roles-picker.jpg)",
+			"gap": "The effective-role rank ceiling is not re-checked when a rule's actions or conditions are edited or the rule is enabled (P4R1-M2, being fixed in P4 fix round 2)",
+			"browser_verified": true
+		},
+		{
+			"id": "AM-4",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/events/automation-context.ts actor overlay; tests/api-integration/p4-closeout-automation-actions.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283] post_comment asserts actorType 'automation' on comment and audit row",
+			"gap": "Activity/audit attribution checked for post_comment; other actions rely on the same overlay without their own assertion",
+			"browser_verified": false
+		},
+		{
+			"id": "AM-5",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/events/outbox.ts depth/causation/origin stamping; tests/api/automation/automation-conditions-and-loops.test.ts 'AM-5 / EV-3 loop protection' [unit: API 196 files 1642/1642, permissions 108/108]; tests/api-integration/automation-run-pipeline.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283] depth-5 abandon; tests/api-integration/p4-closeout-automation-actions.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283] 'a comment-triggered rule never re-fires on its own comment'",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "AM-6",
+			"state": "implemented_tested",
+			"evidence": "automation.position, stop_processing; tests/api-integration/automation-run-pipeline.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283] '… a stop_processing rule skips the rest (AM-6, AM-7, AM-8)'",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "AM-7",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/automation/executor.ts per-action outcome; tests/api-integration/automation-run-pipeline.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283] 'records a failing action, still finishes the rule'",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "AM-8",
+			"state": "implemented_tested",
+			"evidence": "automation_run table (0141); GET /api/automations/{id}/runs; apps/api/src/automation/executor.ts purgeExpiredAutomationRunsOpportunistically; tests/api-integration/automation-run-pipeline.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283]; [browser: P4 browser-verification agent, scratch DB] run history (p4-automations-history.jpg)",
+			"gap": "30-day purge runs opportunistically inside the executor and has no test",
+			"browser_verified": true
+		},
+		{
+			"id": "AM-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/automation/dry-run.ts (windowDays default 7, max 30, 1,000 cap); tests/api/automation/automation-vocabulary-and-validation.test.ts 'AM-9 dry-run bounds' [unit: API 196 files 1642/1642, permissions 108/108]; [browser: P4 browser-verification agent, scratch DB] p4-automations-dry-run.jpg",
+			"gap": "Dry-run has no DB-backed test",
+			"browser_verified": true
+		},
+		{
+			"id": "AM-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/automation create disabled; tests/api-integration/automation-run-pipeline.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283] 'AM-10: created disabled, enabled by a deliberate act'; [browser: P4 browser-verification agent, scratch DB] create then enable",
+			"gap": "",
+			"browser_verified": true
+		},
+		{
+			"id": "AM-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/automation/placeholders.ts, visibility.ts; tests/api/automation/automation-vocabulary-and-validation.test.ts 'AM-11 placeholder visibility' (save-time refusal, execution redaction); tests/api/automation/automation-p4-closeout-actions.test.ts; tests/api-integration/p4-closeout-automation-actions.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283] 'refuses a staff-only placeholder in a public comment at save time'",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "AM-12",
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/automation/actions-executor.ts callWebhook (roleMayAct work_item:read on effective role + decideOwnerReach of webhook owner)",
+			"gap": "No unit or integration test executes call_webhook",
+			"browser_verified": false
+		},
+		{
+			"id": "AM-13",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/automation/actions.ts vocabulary has no delete/purge/archive; tests/api/automation/automation-vocabulary-and-validation.test.ts 'AM-13 there is no delete action' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/webhook/ HMAC-SHA256 X-TaskDesk-Signature, write-only secret, rotate-secret route; tests/api/webhook/webhook-signature.test.ts [unit: API 196 files 1642/1642, permissions 108/108] 'WH-1 signature' known vector; tests/api-integration/webhook-delivery-pipeline.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'signs and records a delivery…'",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-2",
+			"state": "implemented_tested",
+			"evidence": "tests/api/webhook/webhook-signature.test.ts [unit: API 196 files 1642/1642, permissions 108/108] 'WH-2 headers'; tests/api-integration/webhook-delivery-pipeline.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-3",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/webhook consumer enqueues from outbox (unique per event+webhook); tests/api-integration/webhook-delivery-pipeline.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'queues one delivery per active, subscribed webhook, and a replay adds none (WH-3)'",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-4",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/webhook/constants.ts backoff; tests/api/webhook/webhook-signature.test.ts [unit: API 196 files 1642/1642, permissions 108/108] 'WH-4 retry schedule'; tests/api/webhook/webhook-envelope-and-delivery.test.ts; tests/api-integration/webhook-delivery-pipeline.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'backs off 30 s … dead after the sixth attempt'",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-5",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/webhook/safe-http.ts WEBHOOK_TIMEOUT_MS, 2xx-only; tests/api/webhook/webhook-envelope-and-delivery.test.ts 'delivery outcome (WH-4, WH-5)'; tests/api-integration/webhook-delivery-pipeline.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "The local-endpoint cases ('only treats 2xx as success', 'enforces the whole-request deadline') in webhook-ssrf-guard.test.ts skip under the sandbox (listen EPERM); deadline never run",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-6",
+			"state": "implemented_tested",
+			"evidence": "GET /api/webhooks/{id}/deliveries with per-row body redaction by reader reach; tests/api-integration/webhook-delivery-pipeline.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]; apps/web/src/components/webhook/delivery-history.tsx",
+			"gap": "Delivery history UI not browser-verified (webhook create blocked at step-up)",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-7",
+			"state": "partial",
+			"evidence": "apps/api/src/webhook continuous-failure window -> pause + webhook.auto_disabled event; tests/api-integration/webhook-delivery-pipeline.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'auto-disables a webhook that has failed continuously for 24 hours'; tests/api/webhook/webhook-envelope-and-delivery.test.ts 'continuous failure window (WH-7)'",
+			"gap": "Owner is not notified (no notification resource type for webhooks)",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-8",
+			"state": "implemented_tested",
+			"evidence": "POST /api/webhooks/deliveries/{id}/redeliver; tests/api-integration/webhook-delivery-pipeline.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'redelivers the recorded body as a new delivery (WH-8)'; apps/web/src/components/webhook/delivery-history.tsx",
+			"gap": "Redelivery UI not browser-verified",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-13",
+			"state": "partial",
+			"evidence": "tests/api/webhook/webhook-signature.test.ts [unit: API 196 files 1642/1642, permissions 108/108] 'WH-13 rotation overlap' (X-TaskDesk-Signature-Previous for 24 h); POST /api/webhooks/{id}/rotate-secret (step-up)",
+			"gap": "No God Mode 'Rotate all webhook secrets' incident action",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/webhook/reach.ts decideOwnerReach at send; owner-left pause + PATCH reown; tests/api-integration/webhook-delivery-pipeline.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green] 'skips … outside the owner's reach' (skipped_out_of_reach), 'pauses a webhook whose owner left'",
+			"gap": "Contract's named webhook-delivery-reach.test.ts history half (project-B content via history) not written",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-15",
+			"state": "partial",
+			"evidence": "POST /api/webhooks and url-changing PATCH spend a bound PA-15 proof (apps/api/src/auth/step-up-ext.ts webhook_create/webhook_update_url); sees_all owner needs instance:admin (apps/api/src/webhook/index.ts receivesEverything); tests/api-integration/god-mode-p4-operations.test.ts 'creates only with a proof bound to workspace, name, url and events' [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api/webhook/webhook-automation-policies.test.ts",
+			"gap": "No security-posture panel listing sees_all/instance-admin-owned webhooks; sees_all->instance:admin refusal untested; browser create blocked at step-up (p4-webhooks-stepup-ui.jpg shows only the form)",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/webhook/safe-http.ts forbidden ranges + resolve-time check; tests/api/webhook/webhook-ssrf-guard.test.ts 'WH-9 …' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/webhook/safe-http.ts createGuardedLookup passed to https.request + post-handshake remoteAddress check; tests/api/webhook/webhook-ssrf-guard.test.ts 'WH-10 connect-time re-check' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "Guarded lookup is unit-tested; the live socket remoteAddress re-check only runs in the local-endpoint cases, which skip under the sandbox",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-11",
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/webhook/safe-http.ts (any 3xx is a failure, never followed)",
+			"gap": "The only test ('does not follow a redirect') is a local-endpoint case that skips under the sandbox (listen EPERM); never run green",
+			"browser_verified": false
+		},
+		{
+			"id": "WH-12",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/webhook/safe-http.ts developmentRelaxationActive (NODE_ENV === 'development' only); tests/api/webhook/webhook-ssrf-guard.test.ts 'WH-12 scheme and relaxation' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "AK-1",
+			"state": "partial",
+			"evidence": "personal: /api/me/api-keys + apps/web/src/components/settings/create-api-key-dialog.tsx at /dashboard/settings/account/developer (profile path redirects, apps/web/src/lib/profile-redirect.ts); service: POST /api/workspaces/{id}/api-keys (apps/api/src/api-key/index.ts)",
+			"gap": "No UI for workspace service keys; personal-key create was browser-verified (p4-api-keys-create-dialog.jpg) but /api/me/api-keys routes have no HTTP integration test",
+			"browser_verified": false
+		},
+		{
+			"id": "AK-2",
+			"state": "partial",
+			"evidence": "apps/api/src/api-key/service.ts hashApiKeySecret (SHA-256 base64url, comment says Argon2id not implemented); secret shown once ([browser: P4 browser-verification agent, scratch DB] masked after reload)",
+			"gap": "Argon2id hashing not implemented (needs a dependency and lazy-rehash plan)",
+			"browser_verified": false
+		},
+		{
+			"id": "AK-3",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/utils/require-api-key-permission-scope.ts, verify-api-key.ts owner-active; tests/api-integration/api-key-project-role-clamp*.test.ts, api-key-owner-state.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]; tests/api-integration/api-key-project-capabilities.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "AK-4",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/api-key/ip-allowlist.ts, rate-limit.ts, enforce.ts wired in apps/api/src/utils/authenticate-api-request.ts; tests/api/api-key/api-key-rules.test.ts 'AK-4 IP allowlist', 'per-request key rules' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "Rate limiter is in-process per replica; allowlist/rate-limit have no HTTP test; allowlist field not exercised in the browser",
+			"browser_verified": false
+		},
+		{
+			"id": "AK-5",
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/api-key/repository.ts recordApiKeyUse (throttled last_used_at/last_used_ip); apps/web/src/components/settings/api-key-table.tsx lastUsedFrom",
+			"gap": "No test asserts last-used time/IP are recorded or shown",
+			"browser_verified": false
+		},
+		{
+			"id": "AK-6",
+			"state": "implemented_tested",
+			"evidence": "POST /api/me/api-keys/{id}/revoke and workspace revoke; tests/api/api-key/api-key-rules.test.ts 'refuses a disabled key with a plain 401' [unit: API 196 files 1642/1642, permissions 108/108]; tests/api-integration/p4-closeout-service-key-http.test.ts 'a revoked or unknown key stays 401' [R3 close-out targeted integration 23:56, 27 files 283/283]; [browser: P4 browser-verification agent, scratch DB] revoke (p4-api-keys-revoke-dialog.jpg)",
+			"gap": "Personal-key revoke-then-401 has no HTTP test",
+			"browser_verified": true
+		},
+		{
+			"id": "AK-7",
+			"state": "partial",
+			"evidence": "apps/api/src/api-key/capability-set.ts creator bound; apps/api/src/permissions/service-principal.ts stored-subset evaluation; apps/api/src/utils/service-key-gate.ts; tests/api/api-key/api-key-rules.test.ts 'AK-7 …' [unit: API 196 files 1642/1642, permissions 108/108]; tests/api/permissions/service-principal.test.ts; tests/api-integration/service-key-principal.test.ts, p4-closeout-service-key-http.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283]",
+			"gap": "Service-key create now spends service_key_create (api-key/index.ts, tested in tests/api-integration/step-up-workspace-operations.test.ts). Remaining gaps: no re-attestation flag, no God Mode key list ('created by a former member'), no demoted-creator companion test",
+			"browser_verified": false
+		},
+		{
+			"id": "AK-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/api-key/capability-set.ts read default (workspace-tier :read); apps/web/src/components/settings/create-api-key-dialog.tsx write opt-in with warning; tests/api/api-key/api-key-rules.test.ts 'AK-9 read-only default' [unit: API 196 files 1642/1642, permissions 108/108]; tests/mcp/injection.test.ts [packages/mcp + tests/mcp 54/54]",
+			"gap": "Read default and warning not exercised in the browser",
+			"browser_verified": false
+		},
+		{
+			"id": "AK-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/drizzle/0144_api_key_extension.sql CHECK (NOT is_mcp OR person_id IS NOT NULL); service body refuses isMcp; tests/api-integration/service-key-principal.test.ts 'is never an MCP key' [R3 close-out targeted integration 23:56, 27 files 283/283]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "AK-12",
+			"state": "partial",
+			"evidence": "apps/api/src/api-key/capability-set.ts unknown capability refused at create; tests/api/api-key/api-key-rules.test.ts 'refuses an unknown capability … (AK-12)', 'a null or malformed permissions column holds nothing'",
+			"gap": "No two-phase rename/alias mechanism, data migration or CI check for stored capability strings",
+			"browser_verified": false
+		},
+		{
+			"id": "AK-11",
+			"state": "partial",
+			"evidence": "service key: apps/api/src/api-key/service-key-deletion-target.ts typed name + step-up; webhook: apps/api/src/webhook/deletion-target.ts; tests/api-integration/god-mode-p4-operations.test.ts 'deletes only through a typed-name + step-up pending action' [R1 full integration 23 Oct 22:09, 4141/4146 green]; PA-5a no_approver tests/api-integration/p4-closeout-service-key-http.test.ts [R3 close-out targeted integration 23:56, 27 files 283/283]",
+			"gap": "Personal-key deletion not implemented (no DELETE /api/me/api-keys/{id}; UI offers revoke only); service-key deletion flow has no HTTP test",
+			"browser_verified": false
+		},
+		{
+			"id": "AK-8",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/auth.ts defaultPrefix 'tdk_'; apps/api/src/api-key/service.ts API_KEY_PREFIX; tests/api-integration/api-key-bearer.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/api-key/schema.ts capabilities + isMcp; apps/web/src/components/settings/create-api-key-dialog.tsx 'Use with an AI agent'; tests/api/api-key/api-key-rules.test.ts [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-2",
+			"state": "implemented_tested",
+			"evidence": "keys clamped per request (AK-3 evidence); packages/mcp/src/tools/register.ts uses canonical routes only; packages/mcp/src/tools/register.test.ts 'no tool calls a legacy task … route' [packages/mcp + tests/mcp 54/54]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-3",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/auth/auth-service.ts (device flow removed); auth-service.test.ts [packages/mcp + tests/mcp 54/54]",
+			"gap": "Out of scope for P4; removal verified",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-4",
+			"state": "partial",
+			"evidence": "audit_log.api_key_id carries key identity; apps/api/src/pending-action origin derived from is_mcp",
+			"gap": "No agent-originated marking on audit rows (no origin column or read-time join)",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-5",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/tools/register.ts idempotencyKey -> Idempotency-Key header; register.test.ts 'MC-5 Idempotency-Key'; tests/mcp/injection.test.ts 'a write tool without an idempotency key is refused' [packages/mcp + tests/mcp 54/54]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-6",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/tools/register.ts descriptions; register.test.ts 'MC-6: write tools state their permission' [packages/mcp + tests/mcp 54/54]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-7",
+			"state": "partial",
+			"evidence": "packages/mcp/src/tools/pending-deletion.ts (delete tools open pending actions); tests/mcp/injection.test.ts 'an obeying model's destructive calls only open pending actions' [packages/mcp + tests/mcp 54/54]; F12 decide is session-only (apps/api/src/approval/policy.ts)",
+			"gap": "No decide_approval tool via mcp_destructive pending action; no bulk tools or >50-item bulk gating",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-7a",
+			"state": "partial",
+			"evidence": "packages/mcp/src/tools/register.ts canonical assign/transition/update/set_custom_field/add_comment; tests/mcp/injection.test.ts 'MCP writes follow the key, not the ticket' [packages/mcp + tests/mcp 54/54]",
+			"gap": "log_time absent; writes not audited with origin: mcp",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-8",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/utils/mcp-result.ts; register.test.ts 'MC-8 readable errors' [packages/mcp + tests/mcp 54/54]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-9",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/tools/register.ts compact reads; register.test.ts 'MC-9 compact, bounded reads' [packages/mcp + tests/mcp 54/54]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/api-key/rate-limit.ts + enforce.ts wired on every key path (authenticate-api-request.ts); tests/api/api-key/api-key-rules.test.ts 'MC-10 / MC-22 rate limits' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "Limiter is in-memory per replica; no bulk_create_work_items tool, so the bulk class is never selected; ceilings are code defaults",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-15",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/utils/untrusted.ts untrusted_content {source, data}; tool descriptions; tests/mcp/injection.test.ts 'MCP prompt injection (MC-15 …)', 'untrusted-by-default output' [packages/mcp + tests/mcp 54/54]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-16",
+			"state": "implemented_tested",
+			"evidence": "read default (tests/api/api-key/api-key-rules.test.ts 'AK-9 read-only default'); tests/mcp/injection.test.ts MC-16 [packages/mcp + tests/mcp 54/54]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-17",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/tools/pending-deletion.ts; tests/mcp/injection.test.ts 'no tool, given any arguments, reaches a direct-delete or approval route' [packages/mcp + tests/mcp 54/54]",
+			"gap": "Bulk tools do not exist, so the bulk half is vacuous",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-18",
+			"state": "implemented_tested",
+			"evidence": "tests/mcp/injection.test.ts (seeded hostile description, scripted model, read-only key cannot write, destructive -> pending_action_id, wrapper on every field) [packages/mcp + tests/mcp 54/54]",
+			"gap": "Runs against a scripted fetch, not the real API and database",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-11",
+			"state": "external_blocked",
+			"evidence": "packages/mcp/package.json (@taskdesk/mcp, bin taskdesk-mcp)",
+			"gap": "npm publication with provenance/2FA and scope reservation are external",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-12",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/server.ts; auth-service.test.ts, normalize-base-url.test.ts [packages/mcp + tests/mcp 54/54]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-13",
+			"state": "implemented_tested",
+			"evidence": "packages/mcp/src/cli.ts setup; packages/mcp/src/install/*.test.ts [packages/mcp + tests/mcp 54/54]",
+			"gap": "Wizard flow itself not unit-tested",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/api-key/enforce.ts evaluateKeyRequest 404 for is_mcp when feature.mcp off; apps/api/src/utils/mcp-feature-enabled.ts fail-closed; tests/api/api-key/api-key-rules.test.ts 'answers 404 for an is_mcp key when feature.mcp is off' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "No HTTP test of the 404",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-19",
+			"state": "partial",
+			"evidence": "MCP is a thin client over canonical routes (register.test.ts [packages/mcp + tests/mcp 54/54]); mcp_key credential in apps/api/src/permissions/resolve-request-identity.ts",
+			"gap": "credentialType 'api_key' literals in work-item, attachment and service-calendar still treat MCP keys as plain API keys; no MCP usage view",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-20",
+			"state": "implemented_tested",
+			"evidence": "is_mcp keys resolve as mcp_key and are clamped like personal keys; tests/api-integration/api-key-owner-state.test.ts, api-key-project-role-clamp*.test.ts [R1 full integration 23 Oct 22:09, 4141/4146 green]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-21",
+			"state": "implemented_tested",
+			"evidence": "0144 CHECK (NOT is_mcp OR person_id IS NOT NULL); tests/api-integration/service-key-principal.test.ts 'is never an MCP key' [R3 close-out targeted integration 23:56, 27 files 283/283]",
+			"gap": "",
+			"browser_verified": false
+		},
+		{
+			"id": "MC-22",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/api-key/rate-limit.ts MCP write ceiling; create dialog untrusted-content warning ([browser: P4 browser-verification agent, scratch DB] p4-api-keys-create-dialog.jpg); tests/api/api-key/api-key-rules.test.ts 'applies the MCP write ceiling only to MCP writes' [unit: API 196 files 1642/1642, permissions 108/108]",
+			"gap": "instance_setting.mcp_write_ceiling_per_minute column absent (code default)",
+			"browser_verified": false
+		}
+	],
+	"top_gaps": [
+		"Elevated routes without step-up: role create/update/reassign, service-key create, member add/role change and project ownership declare elevated: true but only sessionOnly runs; the policy flag is not enforced at runtime (GM-2, AK-7)",
+		"Browser verification blocked for every step-up flow: webhook create/editor/deliveries, impersonation start/banner/exit, user deactivate; SMTP config/test needs a real server (WH-6/8/15, GM-7/11/15)",
+		"Notification digests unreachable and unsent: digest preference writes closed, sealed groups have no sender (NO-5, NO-6); no portal preference controls (NO-21); deep links untested (NO-14)",
+		"Custom fields: cf.<key> not sortable or available as columns (CF-10); create/transition required-field refusal has only logic-level tests (CF-4)",
+		"API keys: Argon2id hashing not implemented (AK-2); personal-key deletion absent (AK-11); no service-key UI, re-attestation or God Mode key list (AK-1, AK-7); last-used recording untested (AK-5)",
+		"MCP: no decide_approval/bulk tools, no log_time, no agent-originated audit marking (MC-4, MC-7, MC-7a); MCP-key credentialType still 'api_key' in work-item/attachment/service-calendar (MC-19)",
+		"Automations: notify/team target (TM-9), create_linked_item, request_approval, set_custom_field and the schedule trigger unavailable; call_webhook (AM-12) and run-retention purge untested",
+		"Webhooks: owner not notified on auto-disable (WH-7); no God Mode rotate-all (WH-13) or security-posture panel (WH-15); redirect and deadline tests skip under the sandbox (WH-5, WH-11)",
+		"Settings UX: inherited indicator, last-changed who/when, History, ?dryRun blast radius and typed-name danger zone exist only on some screens (ST-4..ST-8); project move absent (ST-10)",
+		"Roles: edits to roles referenced by identity provisioning are refused (409 role_in_identity_use) instead of the IP-22 revalidate/retire closure (RL-9); last-holder 409 and rank guards not browser-verified"
+	],
+	"tonight_actions": [
+		"Consume a PA-15 step-up proof (or add operation keys) on role create/update/reassign and POST /api/workspaces/{id}/api-keys, or record an owner decision that these stay session-only; add HTTP tests",
+		"Have Thomas complete the password step-up for webhook create, impersonation and deactivate in the browser, then verify editor, deliveries, redelivery, banner, exit and auto-exit",
+		"Add HTTP/DB integration tests for custom-field CRUD (create/format-change 409/option-in-use/soft-delete pending action/restore) and the CF-4 create + transition refusal, plus a custom_field purge job after 30 days",
+		"Add tests for NO-14 link resolution (links.ts + getWorkItemNotificationHref), AK-5 last-used recording, AM-12 call_webhook and the automation_run 30-day purge",
+		"Run tests/api/webhook/webhook-ssrf-guard.test.ts outside the sandbox so the redirect, 2xx and deadline cases execute (WH-5, WH-10, WH-11)",
+		"Decide digest sender scope (NO-5/NO-6) and portal preference controls (NO-21); either build or record as carried",
+		"Browser-check the post-browser-pass changes: role description text, quiet-hours editor, portal custom fields, request-type 'Maps to', API-key table clipping"
+	]
+}

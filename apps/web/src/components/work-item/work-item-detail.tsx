@@ -32,6 +32,7 @@ import WorkItemApprovals from "./work-item-approvals";
 import WorkItemAttachments from "./work-item-attachments";
 import WorkItemAuditHistory from "./work-item-audit-history";
 import { WorkItemBlockedBadge } from "./work-item-blocked-badge";
+import WorkItemCustomFields from "./work-item-custom-fields";
 import WorkItemDescription from "./work-item-description";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 import { WorkItemFeedbackProvider } from "./work-item-feedback";
@@ -175,6 +176,10 @@ function WorkItemDetail({
       }}
     </WorkItemDetailSections>
   );
+  // CF-3: the custom fields that apply to this item's type; none renders nothing.
+  const customFields = (
+    <WorkItemCustomFields item={item} onAccessLost={onAccessLost} />
+  );
   const properties = (
     <WorkItemProperties
       item={item}
@@ -183,6 +188,7 @@ function WorkItemDetail({
     >
       {variant === "page" && !isCompactPage ? (
         <>
+          {customFields}
           {extensions}
           {metadata}
         </>
@@ -249,7 +255,14 @@ function WorkItemDetail({
           projectId={item.projectId}
         />
       }
-      supporting={variant === "pane" || isCompactPage ? extensions : null}
+      supporting={
+        variant === "pane" || isCompactPage ? (
+          <>
+            {customFields}
+            {extensions}
+          </>
+        ) : null
+      }
       activity={
         <>
           <WorkItemActivity

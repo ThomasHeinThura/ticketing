@@ -2,7 +2,10 @@ import type { Capability } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import { loadProjectAncestorIdsFor } from "../project/hierarchy.repository";
+import {
+  loadProjectAncestorIdsFor,
+  loadProjectOwnerTeamIdFor,
+} from "../project/hierarchy.repository";
 import {
   hasProjectReadCapability,
   resolveCallerIdentity,
@@ -56,7 +59,12 @@ export async function scopeWorkCapabilitiesToProject(
       project.workspaceId,
       project.projectId,
     ),
-    ownerTeamId: null,
+    ownerTeamId: await loadProjectOwnerTeamIdFor(
+      db,
+      identity,
+      project.workspaceId,
+      project.projectId,
+    ),
   };
   await Promise.all(
     Object.entries(PROJECT_WORK_FLAGS).map(async ([name, capability]) => {

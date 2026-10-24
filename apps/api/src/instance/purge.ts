@@ -1,4 +1,5 @@
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import db from "../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { createPendingAction } from "../pending-action/service";
@@ -115,7 +116,7 @@ const hardPurge = apiRouter().openapi(purgeRoute, async (c) => {
     targetIds: [target.targetId],
     actorId: c.get("userId"),
     actorType: "person",
-    actorIp: c.req.header("x-forwarded-for") ?? null,
+    actorIp: clientIpForContext(c),
     userAgent: c.req.header("user-agent") ?? null,
   });
   setShadowLegacyAuthorization(c, "allowed");

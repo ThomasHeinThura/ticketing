@@ -394,6 +394,16 @@ export async function findNotificationPerson(
   return person ?? null;
 }
 
+/** The instance IANA zone (`instance_setting.timezone`), the quiet-hours/digest fallback. */
+export async function findInstanceTimezone(tx: DbTransaction): Promise<string> {
+  const [row] = await tx
+    .select({ timezone: schema.instanceSettingTable.timezone })
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
+    .limit(1);
+  return row?.timezone ?? "UTC";
+}
+
 export async function findNotificationWorkspace(
   tx: DbTransaction,
   workspaceId: string,

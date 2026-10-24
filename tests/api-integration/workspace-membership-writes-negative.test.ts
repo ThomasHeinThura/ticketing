@@ -21,6 +21,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
+import { mintStepUpToken, signInAgain } from "./helpers/step-up";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import {
   leaveWorkspaceNative,
@@ -287,14 +288,47 @@ describe("S5 REQUIRED: the atomic transfer endpoint under concurrent use cannot 
     // admin, and the second transaction's re-read of the caller's role --
     // taken only after it acquires the lock the first one just released --
     // must see "admin", not "owner", and refuse.
-    const [result1, result2] = await Promise.all([
-      transferWorkspaceOwnershipNative(app, owner.cookie, workspaceId, {
+    //
+    // Each transfer is elevated and spends its own one-use proof, and a proof belongs to one
+    // session (a newer proof for the same session and operation supersedes the older one). So
+    // the same owner acts from two sessions here, each holding a live proof bound to its own
+    // target, obtained before the race starts. That keeps the refusal below the lock's
+    // (`CallerNotOwnerError`), never a step-up refusal standing in for it.
+    const secondSession = await signInAgain(app, owner.user.email);
+    const [proof1, proof2] = [
+      await mintStepUpToken(app, owner.cookie, "workspace_ownership_transfer", {
+        workspaceId,
         newOwnerUserId: admin1.user.id,
       }),
-      transferWorkspaceOwnershipNative(app, owner.cookie, workspaceId, {
-        newOwnerUserId: admin2.user.id,
-      }),
+      await mintStepUpToken(
+        app,
+        secondSession,
+        "workspace_ownership_transfer",
+        { workspaceId, newOwnerUserId: admin2.user.id },
+      ),
+    ];
+    expect(proof1).not.toBeNull();
+    expect(proof2).not.toBeNull();
+    const [result1, result2] = await Promise.all([
+      transferWorkspaceOwnershipNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        { newOwnerUserId: admin1.user.id },
+        proof1 as string,
+      ),
+      transferWorkspaceOwnershipNative(
+        app,
+        secondSession,
+        workspaceId,
+        { newOwnerUserId: admin2.user.id },
+        proof2 as string,
+      ),
     ]);
+    // The refused request is refused for ownership (the lock's re-read, or the capability gate
+    // when it started after the winner committed), never for its step-up proof.
+    const loser = result1.status === 200 ? result2 : result1;
+    expect(await loser.text()).not.toContain("step_up");
 
     const statuses = [result1.status, result2.status].sort();
     // Exactly one 200 and one refusal (403 CallerNotOwnerError) -- never two

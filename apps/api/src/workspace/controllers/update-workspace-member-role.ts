@@ -1,11 +1,14 @@
 import { and, eq } from "drizzle-orm";
+import { appendAuditLog } from "../../audit/audit-writer";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
+import { findWorkspaceRoleByKey } from "../../permissions/workspace-role-authority.repository";
 import {
   anyRoleIsOwner,
   roleGrantsOwner,
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
+import { assertMayAssignRole } from "../role-assignment-guard";
 import { syncWorkspaceAdminReach } from "../workspace-admin-reach";
 import { lockWorkspaceRoleAssignment } from "../workspace-role-assignment.repository";
 import {
@@ -55,6 +58,7 @@ async function updateWorkspaceMemberRole(
   workspaceId: string,
   userId: string,
   role: string,
+  actorUserId: string,
 ): Promise<{ userId: string; role: string }> {
   // Comma-aware for the same reason as `add-workspace-member.ts`: `"owner,admin"`
   // grants owner and must not be assignable through this route either.
@@ -73,18 +77,20 @@ async function updateWorkspaceMemberRole(
       throw new CannotChangeOwnerRoleHereError();
     }
 
-    const [roleRow] = await tx
-      .select({ role: schema.workspaceRoleTable.role })
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-          eq(schema.workspaceRoleTable.role, role),
-        ),
-      )
-      .limit(1);
+    const roleRow = await findWorkspaceRoleByKey(tx, workspaceId, role);
     if (!roleRow) {
       throw new WorkspaceRoleNotFoundError(role);
+    }
+    // The UPDATE below rewrites EVERY row of the person (duplicate rows exist, issue #118), so
+    // the rank/capability guard runs against every current row; the highest rank wins because
+    // the guard refuses as soon as any one of them outranks the actor.
+    for (const currentRoleKey of new Set(targetRoles)) {
+      await assertMayAssignRole(tx, {
+        workspaceId,
+        actorUserId,
+        targetRoleKey: role,
+        currentRoleKey,
+      });
     }
 
     await tx
@@ -98,6 +104,19 @@ async function updateWorkspaceMemberRole(
       );
 
     await syncWorkspaceAdminReach(tx, workspaceId, userId);
+
+    // Every role change is an audited membership change (before/after), not only one that moves
+    // admin reach (`syncWorkspaceAdminReach` writes its own row for that).
+    await appendAuditLog(tx, {
+      actorId: actorUserId,
+      actorType: "person",
+      workspaceId,
+      action: "membership.changed",
+      entityType: "workspace_member",
+      entityId: userId,
+      before: { role: [...new Set(targetRoles)].join(",") },
+      after: { kind: "member_role_changed", userId, role },
+    });
 
     return { userId, role };
   });

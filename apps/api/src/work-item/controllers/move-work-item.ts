@@ -3,6 +3,7 @@ import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
+import { customFieldValueTable } from "../../database/migration-schema";
 import {
   labelTable,
   projectTable,
@@ -467,6 +468,21 @@ export async function moveWorkItem(input: MoveWorkItemInput) {
           });
         throw error;
       }
+
+      // The denormalised `custom_field_value.project_id` follows the move; otherwise a stale value
+      // would still reference the old project and block its purge (project FK).
+      await tx
+        .update(customFieldValueTable)
+        .set({ projectId: target.id })
+        .where(
+          and(
+            eq(customFieldValueTable.entityType, "work_item"),
+            inArray(
+              customFieldValueTable.entityId,
+              plan.map((entry) => entry.row.id),
+            ),
+          ),
+        );
 
       await tx.insert(workItemKeyAliasTable).values(
         plan.map((entry) => ({

@@ -1,4 +1,5 @@
 import type db from "../database";
+import { currentAutomationContext } from "./automation-context";
 import { EVENT_KEYS } from "./event-keys";
 import { insertOutboxEvent } from "./outbox.repository";
 
@@ -44,10 +45,35 @@ export function eventScope(input: {
   return {};
 }
 
+/**
+ * `EV-3`: an event written while an automation action is executing carries the chain facts
+ * (`depth`, `causationId`, `originAutomationId`), whatever the producer passed. Outside an
+ * automation context the envelope is returned untouched.
+ */
+export function withAutomationContext<Payload extends Record<string, unknown>>(
+  event: DomainEventEnvelope<Payload>,
+): DomainEventEnvelope<Payload> {
+  const context = currentAutomationContext();
+  if (!context) return event;
+  return {
+    ...event,
+    // `AM-4`: produced by the rule, attributed to it by id and name.
+    actor: {
+      type: "automation",
+      id: context.automationId,
+      name: context.automationName,
+    },
+    depth: Math.max(event.depth, context.depth),
+    causationId: event.causationId ?? context.causationId,
+    originAutomationId: event.originAutomationId ?? context.automationId,
+  };
+}
+
 /** Persists the complete events.md envelope inside the mutation's transaction. */
 export async function enqueueOutboxEvent<
   Payload extends Record<string, unknown>,
->(tx: DbTransaction, event: DomainEventEnvelope<Payload>): Promise<void> {
+>(tx: DbTransaction, input: DomainEventEnvelope<Payload>): Promise<void> {
+  const event = withAutomationContext(input);
   if (!EVENT_KEYS.has(event.kind)) {
     throw new TypeError(`Unknown domain event kind: ${event.kind}`);
   }

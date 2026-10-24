@@ -1,3 +1,4 @@
+import { clientIpForContext } from "../api-key/enforce";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import { submissionRefParam } from "../intake/schema";
@@ -439,7 +440,7 @@ const attachment = apiRouter<
       workspaceId,
       actorId: userId,
       actorType: apiKey ? "api_key" : "person",
-      actorIp: c.req.header("x-forwarded-for") ?? null,
+      actorIp: clientIpForContext(c),
       userAgent: c.req.header("user-agent") ?? null,
     });
     return c.json(pendingDeletionRequestSchema.parse(pending), 202);

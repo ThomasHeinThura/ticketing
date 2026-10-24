@@ -23,7 +23,10 @@ import {
 import type { ApiKey } from "../openapi";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { dbClockUtc } from "../utils/db-time";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
 
 const approverPerson = alias(schema.personTable, "approver_person");
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -637,6 +640,12 @@ export async function loadApprovalTargetByKey(
       row.workspaceId,
       row.projectId,
     ),
+    ownerTeamId: await projectOwnerTeamFor(
+      queryDb,
+      identity,
+      row.workspaceId,
+      row.projectId,
+    ),
     visibleToPersonIds,
   };
   return {
@@ -786,6 +795,12 @@ export async function loadApprovalTargetByApprovalId(
     organisationId: row.organisationId,
     // PR-2/PR-3: reach and approval authority follow the ancestor chain.
     ancestorProjectIds: await projectAncestryFor(
+      db,
+      identity,
+      row.workspaceId,
+      row.projectId,
+    ),
+    ownerTeamId: await projectOwnerTeamFor(
       db,
       identity,
       row.workspaceId,

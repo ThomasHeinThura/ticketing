@@ -23,6 +23,7 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 import { privateSmtpReceiver } from "./helpers/private-smtp";
+import { quietWindowAround } from "./helpers/quiet-hours";
 
 // Use the real built email consumer and its actual Node singleton, not the legacy integration mock.
 const email = createRequire(
@@ -284,8 +285,7 @@ describe("native persisted comment mention to immediate SMTP delivery", () => {
         await db
           .update(schema.personTable)
           .set({
-            quietHoursStart: "21:00",
-            quietHoursEnd: "07:00",
+            ...quietWindowAround(new Date(), "Asia/Yangon"),
             quietHoursTimezone: "Asia/Yangon",
           })
           .where(eq(schema.personTable.id, f.person.id));
@@ -306,7 +306,7 @@ describe("native persisted comment mention to immediate SMTP delivery", () => {
         change === "disabled"
           ? "deferred"
           : change === "quiet_hours"
-            ? "unresolved"
+            ? "deferred"
             : "suppressed",
       );
       expect(send).not.toHaveBeenCalled();

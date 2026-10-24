@@ -1,14 +1,21 @@
 import { createHmac } from "node:crypto";
 import { sendNotificationEmail } from "@taskdesk/email";
+import {
+  evaluateQuietHours,
+  QUIET_HOURS_EXEMPT_EVENT_KINDS,
+} from "../notification/quiet-hours";
 import { userCanReachTask } from "../notification/task-reach.repository";
 import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
 import {
   findDeliveryNotification,
   findDeliveryPreference,
+  findDeliveryQuietHours,
   findDeliveryTaskContext,
   findDeliveryUser,
   findDeliveryWorkspaceContext,
   findDeliveryWorkspaceRule,
+  holdDeliveryUntil,
+  QUIET_HOURS_HOLD_KEY,
 } from "./delivery.repository";
 import { decryptSecret } from "./secrets";
 
@@ -386,6 +393,26 @@ async function sendWebhookNotification(input: {
   }
 }
 
+/**
+ * `NO-3` for the legacy producers (`task.*` subscribers, due-date reminders): external delivery
+ * is held while the recipient is inside their quiet hours and retried when the window ends. The
+ * in-app inbox row is already written and is unaffected. Malformed quiet hours fail closed (no
+ * external delivery) rather than sending at an unknown hour.
+ */
+export async function legacyQuietHoursDecision(
+  userId: string,
+  now: Date,
+): Promise<
+  { kind: "send" } | { kind: "defer"; until: Date } | { kind: "withhold" }
+> {
+  const { setting, fallbackTimezone } = await findDeliveryQuietHours(userId);
+  const decision = evaluateQuietHours(setting, fallbackTimezone, now);
+  if (decision.kind === "quiet")
+    return { kind: "defer", until: decision.until };
+  if (decision.kind === "unresolved") return { kind: "withhold" };
+  return { kind: "send" };
+}
+
 export async function deliverNotification(
   notificationId: string,
 ): Promise<void> {
@@ -420,6 +447,27 @@ export async function deliverNotification(
     return;
   }
 
+  // SLA breach and approval expiry ignore quiet hours (`NO-3`).
+  const exempt =
+    notification.kind !== null &&
+    notification.kind !== undefined &&
+    QUIET_HOURS_EXEMPT_EVENT_KINDS.has(notification.kind);
+  const quiet = exempt
+    ? ({ kind: "send" } as const)
+    : await legacyQuietHoursDecision(notification.userId, new Date());
+  if (quiet.kind === "defer") {
+    // Durable hold: persisted on the notification row, released by the scheduler once the
+    // window ends. An in-process timer would be lost on restart.
+    await holdDeliveryUntil(notificationId, quiet.until);
+    return;
+  }
+  if (quiet.kind === "withhold") {
+    console.info("Notification delivery withheld: quiet hours unresolved", {
+      notificationId,
+    });
+    return;
+  }
+
   const decryptedPreference = {
     ...preference,
     ntfyToken: decryptSecret(preference.ntfyToken),
@@ -446,14 +494,23 @@ export async function deliverNotification(
     return;
   }
 
+  // The durable quiet-hours marker is delivery bookkeeping, never content.
+  let publicEventData: Record<string, unknown> | null = null;
+  if (
+    notification.eventData &&
+    typeof notification.eventData === "object" &&
+    !Array.isArray(notification.eventData)
+  ) {
+    const { [QUIET_HOURS_HOLD_KEY]: _held, ...rest } =
+      notification.eventData as Record<string, unknown>;
+    publicEventData = rest;
+  }
+
   const content = buildDeliveryContent({
     type: notification.type,
     title: notification.title ?? null,
     content: notification.content ?? null,
-    eventData:
-      notification.eventData && typeof notification.eventData === "object"
-        ? (notification.eventData as Record<string, unknown>)
-        : null,
+    eventData: publicEventData,
   });
 
   if (
@@ -471,7 +528,7 @@ export async function deliverNotification(
       title: content.title,
       content: content.body,
       createdAt: notification.createdAt,
-      eventData: notification.eventData,
+      eventData: publicEventData,
       resourceId: notification.resourceId,
       resourceType: notification.resourceType,
     },

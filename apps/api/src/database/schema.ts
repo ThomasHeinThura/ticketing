@@ -300,6 +300,11 @@ export const teamTable = pgTable(
       .notNull()
       .references(() => workspaceTable.id, { onDelete: "cascade" }),
     isCab: boolean("is_cab").notNull().default(false),
+    // TM-3 / data-model.md `team`: working days per week, read by the capacity report. Null = not set.
+    capacityDaysPerWeek: numeric("capacity_days_per_week", {
+      precision: 3,
+      scale: 1,
+    }),
     createdAt: timestamp("created_at").notNull(),
     updatedAt: timestamp("updated_at").$onUpdate(
       () => /* @__PURE__ */ new Date(),
@@ -309,6 +314,16 @@ export const teamTable = pgTable(
     index("team_workspaceId_idx").on(table.workspaceId),
     // Parent key for tenant-composite foreign keys (0119: saved_view.shared_with_team_id).
     unique("team_workspace_id_id_unique").on(table.workspaceId, table.id),
+    // TM-5: at most one CAB team per workspace; a concurrent second designation gets 409 (0138).
+    uniqueIndex("team_workspace_cab_unique")
+      .on(table.workspaceId)
+      .where(sql.raw("is_cab")),
+    check(
+      "team_capacity_days_per_week_range",
+      sql.raw(
+        "(capacity_days_per_week IS NULL) OR ((capacity_days_per_week >= (0)::numeric) AND (capacity_days_per_week <= (7)::numeric))",
+      ),
+    ),
   ],
 );
 
@@ -322,11 +337,23 @@ export const teamMemberTable = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => userTable.id, { onDelete: "cascade" }),
+    // TM-3: a lead may add and remove members of this team (data-model.md `team_member.is_lead`).
+    isLead: boolean("is_lead").notNull().default(false),
+    // data-model.md `team_member.allocation_pct`: share of this person's time given to the team.
+    allocationPct: integer("allocation_pct"),
     createdAt: timestamp("created_at"),
   },
   (table) => [
     index("teamMember_teamId_idx").on(table.teamId),
     index("teamMember_userId_idx").on(table.userId),
+    // A person is on a team at most once (0138).
+    uniqueIndex("team_member_team_user_unique").on(table.teamId, table.userId),
+    check(
+      "team_member_allocation_pct_range",
+      sql.raw(
+        "(allocation_pct IS NULL) OR ((allocation_pct >= 0) AND (allocation_pct <= 100))",
+      ),
+    ),
   ],
 );
 
@@ -458,6 +485,12 @@ export const projectTable = pgTable(
     // RESTRICT` (a parent is archived/soft-deleted, never row-deleted from under children).
     // Written ONLY by `PATCH /api/projects/{id}/ownership`, never by the general update.
     parentId: text("parent_id"),
+    // TM-4: reach step 5 -- every active member of this team reaches the project. Reach only,
+    // never a capability. Same-workspace composite FK `project_workspace_owner_team_fk` below
+    // (`ON DELETE NO ACTION`: TM-7 refuses deleting an owning team, while a workspace deletion that
+    // cascades to the team and its projects together still passes). Written ONLY by
+    // `PATCH /api/projects/{id}/ownership`.
+    ownerTeamId: text("owner_team_id"),
     // P1 PR-6: "exactly one project manager" -> person. Nullable (a project without one is
     // a composition WARNING, not a refusal). Active-roster membership is validated by the
     // write path; people are deactivated, never deleted, so RESTRICT mirrors
@@ -526,6 +559,16 @@ export const projectTable = pgTable(
       .onDelete("restrict")
       .onUpdate("no action"),
     index("project_workspace_parent_idx").on(table.workspaceId, table.parentId),
+    foreignKey({
+      name: "project_workspace_owner_team_fk",
+      columns: [table.workspaceId, table.ownerTeamId],
+      foreignColumns: [teamTable.workspaceId, teamTable.id],
+    })
+      .onDelete("no action")
+      .onUpdate("no action"),
+    index("project_owner_team_idx")
+      .on(table.ownerTeamId)
+      .where(sql.raw('"project"."owner_team_id" IS NOT NULL')),
     check(
       "project_parent_not_self",
       sql.raw("(parent_id IS NULL) OR (parent_id <> id)"),
@@ -1055,6 +1098,14 @@ export const instanceSettingTable = pgTable(
     // CP-8 / WF-21 (data-model.md `instance_setting`): how long after resolution a customer may
     // reopen a request (reopen, reply to a closed request, upload to a resolved one). Default 14.
     reopenWindowDays: integer("reopen_window_days").notNull().default(14),
+    // NO-17 (data-model.md `instance_setting`): read notifications older than this many days
+    // are purged by `session-cleanup`. Default 90; unread rows are never eligible.
+    notificationRetentionDays: integer("notification_retention_days")
+      .notNull()
+      .default(90),
+    // The instance IANA time zone: the NO-5/NO-6 digest-window fallback when a person has no
+    // `quiet_hours_timezone`.
+    timezone: text("timezone").notNull().default("UTC"),
     localFactorPolicy: jsonb("local_factor_policy")
       .$type<{ mode: string; requiredRoleId: string | null }>()
       .notNull()
@@ -1118,6 +1169,10 @@ export const instanceSettingTable = pgTable(
     check(
       "instance_setting_reopen_window_days_positive",
       sql.raw("reopen_window_days >= 1"),
+    ),
+    check(
+      "instance_setting_notification_retention_days_positive",
+      sql.raw("notification_retention_days >= 1"),
     ),
     check(
       "instance_setting_observability_version_positive",
@@ -5751,7 +5806,7 @@ export const stepUpConfirmationTable = pgTable(
     check(
       "step_up_operation_route",
       sql.raw(
-        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text)) OR ((operation_key = 'instance_admin_suspend'::text) AND (route_key = 'POST /api/instance/users/{id}/suspend'::text))",
+        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text)) OR ((operation_key = 'instance_admin_suspend'::text) AND (route_key = 'POST /api/instance/users/{id}/suspend'::text)) OR ((operation_key = 'impersonation_start'::text) AND (route_key = 'POST /api/instance/users/{id}/impersonate'::text)) OR ((operation_key = 'secrets_rotate'::text) AND (route_key = 'POST /api/instance/plugins/rotate-secrets'::text)) OR ((operation_key = 'webhook_create'::text) AND (route_key = 'POST /api/webhooks'::text)) OR ((operation_key = 'webhook_update_url'::text) AND (route_key = 'PATCH /api/webhooks/{id}'::text)) OR ((operation_key = 'webhook_rotate_secret'::text) AND (route_key = 'POST /api/webhooks/{id}/rotate-secret'::text)) OR ((operation_key = 'workspace_role_create'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/roles'::text)) OR ((operation_key = 'workspace_role_update'::text) AND (route_key = 'PATCH /api/workspace/{workspaceId}/roles/{roleId}'::text)) OR ((operation_key = 'service_key_create'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys'::text)) OR ((operation_key = 'workspace_ownership_transfer'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/transfer-ownership'::text))",
       ),
     ),
     check(
@@ -6156,6 +6211,381 @@ export const slaEscalationTable = pgTable(
     check(
       "sla_escalation_active_has_due",
       sql.raw("(state <> 'active'::text) OR (next_due_at IS NOT NULL)"),
+    ),
+  ],
+);
+
+// P4 WH-1..WH-15 (`feature-contracts-p4.md` "Webhooks and API keys"): one outbound endpoint per
+// workspace, owned by the person who created it (`created_by` is the WH-14 reach identity).
+// `secret`/`secret_previous` hold the encrypted envelope, never plaintext, and no API response
+// carries them. `active = false` with `disabled_at` set is the system pause (WH-7 auto-disable,
+// owner left); `failing_since` anchors the WH-7 24-hour continuous-failure window.
+export const webhookTable = pgTable(
+  "webhook",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    secret: text("secret").notNull(),
+    secretPrevious: text("secret_previous"),
+    secretRotatedAt: timestamp("secret_rotated_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    events: text("events").array().notNull(),
+    active: boolean("active").default(true).notNull(),
+    disabledAt: timestamp("disabled_at", { mode: "date", withTimezone: true }),
+    disabledReason: text("disabled_reason"),
+    failingSince: timestamp("failing_since", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    lastError: text("last_error"),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    version: integer("version").default(1).notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("webhook_workspace_idx").on(table.workspaceId),
+    index("webhook_created_by_idx").on(table.createdBy),
+    check(
+      "webhook_name_length",
+      sql.raw("(char_length(name) >= 1) AND (char_length(name) <= 120)"),
+    ),
+    check(
+      "webhook_url_length",
+      sql.raw("(char_length(url) >= 1) AND (char_length(url) <= 2048)"),
+    ),
+    check("webhook_events_nonempty", sql.raw("cardinality(events) >= 1")),
+    check(
+      "webhook_disabled_consistent",
+      sql.raw("(NOT active) OR (disabled_at IS NULL)"),
+    ),
+    check("webhook_version_positive", sql.raw("version >= 1")),
+  ],
+);
+
+// One row per (webhook, event) delivery. `attempt` counts attempts started; the row carries the
+// latest attempt's outcome and doubles as the retry queue (`state = 'pending'` and
+// `next_attempt_at`). Replay of the parent outbox event cannot duplicate a delivery:
+// `webhook_delivery_event_unique` is the EV-2 idempotency key. Retained 30 days.
+export const webhookDeliveryTable = pgTable(
+  "webhook_delivery",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    webhookId: text("webhook_id")
+      .notNull()
+      .references(() => webhookTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    workspaceId: text("workspace_id").notNull(),
+    eventId: text("event_id").notNull(),
+    eventKind: text("event_kind").notNull(),
+    source: text("source").default("event").notNull(),
+    redeliveryOf: text("redelivery_of"),
+    // The project the event belongs to, kept so WH-6 history redaction can decide the reader's
+    // reach without re-reading the (possibly purged) outbox row.
+    projectId: text("project_id"),
+    attempt: integer("attempt").default(0).notNull(),
+    state: text("state").default("pending").notNull(),
+    nextAttemptAt: timestamp("next_attempt_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    leaseToken: text("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    statusCode: integer("status_code"),
+    durationMs: integer("duration_ms"),
+    requestBody: jsonb("request_body"),
+    responseBody: text("response_body"),
+    error: text("error"),
+    attemptedAt: timestamp("attempted_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("webhook_delivery_webhook_created_idx").on(
+      table.webhookId,
+      table.createdAt.desc(),
+    ),
+    index("webhook_delivery_due_idx")
+      .on(table.nextAttemptAt)
+      .where(sql.raw("(state = 'pending'::text)")),
+    index("webhook_delivery_created_at_idx").on(table.createdAt),
+    uniqueIndex("webhook_delivery_event_unique")
+      .on(table.webhookId, table.eventId)
+      .where(sql.raw("(source = 'event'::text)")),
+    check(
+      "webhook_delivery_state_allowed",
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'delivered'::text, 'dead'::text, 'skipped_out_of_reach'::text, 'cancelled'::text])",
+      ),
+    ),
+    check(
+      "webhook_delivery_source_allowed",
+      sql.raw(
+        "source = ANY (ARRAY['event'::text, 'test'::text, 'redelivery'::text, 'automation'::text])",
+      ),
+    ),
+    check("webhook_delivery_attempt_nonnegative", sql.raw("attempt >= 0")),
+  ],
+);
+
+// P4 AM-1..AM-13 (`feature-contracts-p4.md` "Automations"). One trigger, a flat AND-list of
+// conditions, a flat list of actions. `project_id` null is a workspace rule (optionally narrowed
+// by `project_filter`). `effective_role_id` is the AM-3 ceiling: the executor checks every
+// action against this role's capabilities, never the author's. New rules are created disabled
+// (AM-10). `flagged_reason` records an auto-disable (deleted label/state, role lost authority).
+export const automationTable = pgTable(
+  "automation",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    projectId: text("project_id"),
+    projectFilter: jsonb("project_filter"),
+    name: text("name").notNull(),
+    enabled: boolean("enabled").default(false).notNull(),
+    trigger: text("trigger").notNull(),
+    scheduleCron: text("schedule_cron"),
+    conditions: jsonb("conditions").notNull().default(sql`'[]'::jsonb`),
+    actions: jsonb("actions").notNull().default(sql`'[]'::jsonb`),
+    effectiveRoleId: text("effective_role_id")
+      .notNull()
+      .references(() => roleTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    position: integer("position").default(0).notNull(),
+    stopProcessing: boolean("stop_processing").default(false).notNull(),
+    flaggedReason: text("flagged_reason"),
+    fireCount: integer("fire_count").default(0).notNull(),
+    lastRunAt: timestamp("last_run_at", { mode: "date", withTimezone: true }),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    version: integer("version").default(1).notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.workspaceId, table.projectId],
+      foreignColumns: [projectTable.workspaceId, projectTable.id],
+    }).onDelete("cascade"),
+    index("automation_workspace_position_idx").on(
+      table.workspaceId,
+      table.position,
+    ),
+    index("automation_project_idx")
+      .on(table.projectId)
+      .where(sql.raw("(project_id IS NOT NULL)")),
+    index("automation_enabled_trigger_idx")
+      .on(table.workspaceId, table.trigger)
+      .where(sql.raw("(enabled)")),
+    index("automation_effective_role_idx").on(table.effectiveRoleId),
+    check(
+      "automation_name_length",
+      sql.raw("(char_length(name) >= 1) AND (char_length(name) <= 120)"),
+    ),
+    check(
+      "automation_trigger_length",
+      sql.raw("(char_length(trigger) >= 1) AND (char_length(trigger) <= 64)"),
+    ),
+    check(
+      "automation_schedule_cron_matches_trigger",
+      sql.raw("((trigger = 'schedule'::text)) = ((schedule_cron IS NOT NULL))"),
+    ),
+    check("automation_position_nonnegative", sql.raw("position >= 0")),
+    check("automation_fire_count_nonnegative", sql.raw("fire_count >= 0")),
+    check("automation_version_positive", sql.raw("version >= 1")),
+    check(
+      "automation_conditions_array",
+      sql.raw("jsonb_typeof(conditions) = 'array'::text"),
+    ),
+    check(
+      "automation_actions_array",
+      sql.raw("jsonb_typeof(actions) = 'array'::text"),
+    ),
+  ],
+);
+
+// AM-8: one row per rule execution against one event (or one scheduled candidate). The consumer
+// inserts it `pending` in the parent claim transaction (so replay cannot duplicate:
+// `automation_run_event_unique`), a separate executor claims it with a lease and records the
+// per-action `results`. A run whose lease expired mid-flight is marked `abandoned`, never re-run,
+// because its actions already committed on other connections. Retained 30 days.
+export const automationRunTable = pgTable(
+  "automation_run",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    automationId: text("automation_id")
+      .notNull()
+      .references(() => automationTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    workspaceId: text("workspace_id").notNull(),
+    workItemId: text("work_item_id"),
+    workItemKey: text("work_item_key"),
+    // The event's project, kept so a workspace rule's history can be filtered to the reader's reach.
+    projectId: text("project_id"),
+    eventId: text("event_id"),
+    origin: text("origin").default("event").notNull(),
+    position: integer("position").default(0).notNull(),
+    depth: integer("depth").default(0).notNull(),
+    triggeredAt: timestamp("triggered_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    state: text("state").default("pending").notNull(),
+    matched: boolean("matched"),
+    results: jsonb("results").notNull().default(sql`'[]'::jsonb`),
+    error: text("error"),
+    leaseExpiresAt: timestamp("lease_expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    finishedAt: timestamp("finished_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    index("automation_run_automation_triggered_idx").on(
+      table.automationId,
+      table.triggeredAt.desc(),
+    ),
+    index("automation_run_pending_idx")
+      .on(table.triggeredAt)
+      .where(sql.raw("(state = 'pending'::text)")),
+    index("automation_run_event_idx")
+      .on(table.eventId)
+      .where(sql.raw("(event_id IS NOT NULL)")),
+    index("automation_run_triggered_at_idx").on(table.triggeredAt),
+    uniqueIndex("automation_run_event_unique")
+      .on(table.automationId, table.eventId)
+      .where(sql.raw("(event_id IS NOT NULL)")),
+    check(
+      "automation_run_state_allowed",
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'failed'::text, 'skipped'::text, 'abandoned'::text])",
+      ),
+    ),
+    check(
+      "automation_run_origin_allowed",
+      sql.raw("origin = ANY (ARRAY['event'::text, 'schedule'::text])"),
+    ),
+    check("automation_run_depth_nonnegative", sql.raw("depth >= 0")),
+  ],
+);
+
+// P4 (AK-1..AK-10, MC-14, MC-21): the `api_key` extension of better-auth's `apikey`
+// (data-model.md). One row per key issued through `/api/me/api-keys` or
+// `/api/workspaces/{id}/api-keys`; a key with no row is a legacy personal, non-MCP key.
+// Exactly one of `workspace_id` (service key, no person behind it) / `person_id` (personal
+// key) is set, and an MCP key is always personal. `capabilities` freezes a service key's
+// creation-time subset (AK-7); a personal key's subset stays in `apikey.permissions`.
+const inetColumn = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return "inet";
+  },
+});
+
+export const apiKeyExtensionTable = pgTable(
+  "api_key",
+  {
+    apikeyId: text("apikey_id")
+      .primaryKey()
+      .references(() => apikeyTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    workspaceId: text("workspace_id").references(() => workspaceTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    personId: text("person_id").references(() => personTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    createdByPersonId: text("created_by_person_id").references(
+      () => personTable.id,
+      { onDelete: "set null", onUpdate: "cascade" },
+    ),
+    capabilities: jsonb("capabilities").$type<string[] | null>(),
+    ipAllowlist: inetColumn("ip_allowlist").array(),
+    rateLimitPerMinute: integer("rate_limit_per_minute"),
+    lastUsedAt: timestamp("last_used_at", { mode: "date", withTimezone: true }),
+    lastUsedIp: text("last_used_ip"),
+    isMcp: boolean("is_mcp").default(false).notNull(),
+    disabledAt: timestamp("disabled_at", { mode: "date", withTimezone: true }),
+    disabledReason: text("disabled_reason"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("api_key_workspace_idx")
+      .on(table.workspaceId)
+      .where(sql.raw("(workspace_id IS NOT NULL)")),
+    index("api_key_person_idx")
+      .on(table.personId)
+      .where(sql.raw("(person_id IS NOT NULL)")),
+    check(
+      "api_key_exactly_one_owner",
+      sql.raw("(workspace_id IS NULL) <> (person_id IS NULL)"),
+    ),
+    check(
+      "api_key_mcp_requires_person",
+      sql.raw("(NOT is_mcp) OR (person_id IS NOT NULL)"),
+    ),
+    check(
+      "api_key_rate_limit_positive",
+      sql.raw(
+        "(rate_limit_per_minute IS NULL) OR (rate_limit_per_minute >= 1)",
+      ),
     ),
   ],
 );

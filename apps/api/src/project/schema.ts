@@ -344,12 +344,25 @@ export const updateProjectBody = z.object({
   }),
 });
 
-export const updateProjectOwnershipBody = z.object({
-  parentId: nulSafeId.nullable().openapi({
-    description:
-      "PR-1: the parent project (same workspace, depth at most 4), or null for a root project.",
-  }),
-});
+export const updateProjectOwnershipBody = z
+  .object({
+    parentId: nulSafeId.nullable().optional().openapi({
+      description:
+        "PR-1: the parent project (same workspace, depth at most 4), or null for a root project. Omit to leave unchanged.",
+    }),
+    ownerTeamId: nulSafeId
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          "TM-4: the team whose active members reach this project (reach only, never a capability). " +
+          "Must be a team of the project's workspace; null clears it. Omit to leave unchanged.",
+      }),
+  })
+  .refine(
+    (body) => body.parentId !== undefined || body.ownerTeamId !== undefined,
+    { message: "parentId or ownerTeamId is required" },
+  );
 
 export const createProjectStateBody = z.object({
   stateTemplateId: nulSafeId.openapi({

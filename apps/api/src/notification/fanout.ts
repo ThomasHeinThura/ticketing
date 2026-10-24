@@ -5,6 +5,7 @@ import {
   enqueueOutboxEvent,
 } from "../events/outbox";
 import { notificationDedupeKey } from "./delivery-primitives";
+import { attachDigestWindow } from "./digest-writer";
 import {
   insertEventInboxRow,
   insertPendingDelivery,
@@ -33,7 +34,7 @@ export type NotificationFanoutHooks = {
     tx: DbTransaction,
     event: DomainEventEnvelope<Record<string, unknown>>,
   ): Promise<readonly NotificationRecipientCandidate[]>;
-  /** Allocate/lock the event-time window group; required only for digest preferences. */
+  /** Override the event-time window group writer; defaults to `attachDigestWindow`. */
   attachDigest?: (input: {
     tx: DbTransaction;
     event: DomainEventEnvelope<Record<string, unknown>>;
@@ -154,13 +155,8 @@ export async function materializeNotificationFanout(
         ? "off"
         : preference.digest;
       if (cadence !== "off") {
-        if (!hooks.attachDigest) {
-          throw new Error(
-            "Digest candidate cannot be materialized without the canonical digest-window writer",
-          );
-        }
         digestId = (
-          await hooks.attachDigest({
+          await (hooks.attachDigest ?? attachDigestWindow)({
             tx,
             event,
             recipientPersonId: candidate.personId,

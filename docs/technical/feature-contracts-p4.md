@@ -231,6 +231,19 @@ it.
 `GET /api/capabilities` returns the vocabulary with descriptions and implication rules, so
 the UI never hard-codes the list.
 
+**As built (23 Oct).** The role routes live under the existing workspace-scoped prefix, not a
+role-id-only prefix, so every one resolves its workspace from the path like its neighbours:
+`GET|POST /api/workspace/{workspaceId}/roles`, `GET|PATCH|DELETE .../roles/{roleId}`,
+`GET .../roles/{roleId}/holders`, `POST .../roles/{roleId}/reassign`,
+`GET .../roles/{roleId}/history`, `POST .../roles/{roleId}/preview`. Comparison (`RL-13`) is
+computed in the UI from the role list. `GET /api/capabilities` is unchanged (the caller's
+introspection map); the vocabulary is read from `@taskdesk/permissions`, the table the API
+validates against. Capabilities live in the canonical `role` row (owner decision, 23 Oct);
+`workspace_member.role` holds the role `key`; the legacy `workspace_role` row remains only as the
+statement source of the three default roles. A role edit is refused (409
+`role_in_identity_use`) while identity provisioning points at the role, until the shared IP-22
+closure covers role PATCH.
+
 <a id="roles-and-permissions-ui-edge-cases"></a>
 ### Edge cases
 
@@ -339,7 +352,7 @@ Board. Team membership and ownership participate in the existing [reach contract
 | See teams | `workspace:read` |
 | Create, delete, set capacity, set CAB flag | `workspace:manage_settings` |
 | Add/remove members, set leads | `workspace:manage_settings`, or a lead of that team (`orOwner: 'row.is_lead'`) |
-| Set a project's owning team | `project:manage_settings` |
+| Set a project's owning team | `project:manage_members` on the project (it is a reach grant, TM-4) |
 
 <a id="teams-screens"></a>
 ### Screens

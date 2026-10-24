@@ -1,5 +1,6 @@
 import type { JsonValue } from "@taskdesk/domain";
 import type { Context } from "hono";
+import { clientIpForContext } from "../../api-key/enforce";
 import db from "../../database";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../../instance/observability/runtime";
@@ -33,7 +34,7 @@ export function requestAuditActor(
     actorType: apiKey ? "api_key" : "person",
     apiKeyId: apiKey?.id ?? null,
     impersonatorId: session?.impersonatedBy ?? null,
-    actorIp: c.req.header("x-forwarded-for") ?? null,
+    actorIp: clientIpForContext(c),
     userAgent: c.req.header("user-agent") ?? null,
     traceId: normaliseTraceId(c.req.header("x-request-id")),
   };

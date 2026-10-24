@@ -183,6 +183,7 @@ export const GOD_MODE_USER_ACTIONS = [
   "reset-mfa",
   "sign-out",
   "deactivate",
+  "impersonate",
 ] as const;
 export type GodModeUserAction = (typeof GOD_MODE_USER_ACTIONS)[number];
 
@@ -386,14 +387,24 @@ export function parseProjectBacklogSearchFromQueryString(
   });
 }
 
-export type AgentInboxFilter = "all" | "unread";
+export const AGENT_INBOX_FILTERS = [
+  "all",
+  "unread",
+  "mentions",
+  "assignments",
+] as const;
+export type AgentInboxFilter = (typeof AGENT_INBOX_FILTERS)[number];
 export type AgentInboxSearch = {
   filter?: Exclude<AgentInboxFilter, "all">;
 };
 
 export function parseAgentInboxSearch(raw: unknown): AgentInboxSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
-  return value.filter === "unread" ? { filter: "unread" } : {};
+  return value.filter === "unread" ||
+    value.filter === "mentions" ||
+    value.filter === "assignments"
+    ? { filter: value.filter }
+    : {};
 }
 
 export function parseAgentInboxSearchFromQueryString(
@@ -504,6 +515,58 @@ export function parseCannedResponseSearch(raw: unknown): CannedResponseSearch {
         }
       : {}),
   };
+}
+
+/** Team detail: `inactive=1` also lists deactivated members (kept for history, TM-8). */
+export type TeamDetailSearch = { inactive?: boolean };
+export function parseTeamDetailSearch(raw: unknown): TeamDetailSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return value.inactive === true ||
+    value.inactive === "1" ||
+    value.inactive === 1
+    ? { inactive: true }
+    : {};
+}
+
+/** Role editor tabs (RL-1..RL-13); `capabilities` is the default and is never written. */
+export const ROLE_DETAIL_TABS = [
+  "capabilities",
+  "summary",
+  "preview",
+  "compare",
+  "people",
+  "history",
+] as const;
+export type RoleDetailTab = (typeof ROLE_DETAIL_TABS)[number];
+/** Role editor: the open tab and, on `compare`, the role being compared with (RL-13). */
+export type RoleDetailSearch = { tab?: RoleDetailTab; compare?: string };
+export function parseRoleDetailSearch(raw: unknown): RoleDetailSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const tab = ROLE_DETAIL_TABS.find(
+    (candidate) => candidate === value.tab && candidate !== "capabilities",
+  );
+  const compare =
+    typeof value.compare === "string" &&
+    value.compare.length > 0 &&
+    value.compare.length <= 128 &&
+    !value.compare.includes("\0")
+      ? value.compare
+      : undefined;
+  return {
+    ...(tab ? { tab } : {}),
+    ...(compare ? { compare } : {}),
+  };
+}
+
+/** Custom field list: `deleted=1` shows deleted fields inside their 30 day restore window (CF-8). */
+export type CustomFieldListSearch = { deleted?: boolean };
+export function parseCustomFieldListSearch(
+  raw: unknown,
+): CustomFieldListSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return value.deleted === true || value.deleted === "1" || value.deleted === 1
+    ? { deleted: true }
+    : {};
 }
 
 export type WorkItemTemplateSearch = SettingsTextFilterSearch & {
@@ -719,6 +782,28 @@ export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
 }
 
 export const routes = {
+  /** `docs/screens.md` "Workspace — webhooks". */
+  webhooks: { path: "/agent/settings/webhooks" as const },
+  /** `docs/screens.md` "Webhook editor"; `new` creates. */
+  webhookEditor: {
+    path: "/agent/settings/webhooks/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/webhooks/${encodeURIComponent(params.id)}`,
+  },
+  /** `docs/screens.md` "Webhook delivery history". */
+  webhookDeliveries: {
+    path: "/agent/settings/webhooks/$id/deliveries" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/webhooks/${encodeURIComponent(params.id)}/deliveries`,
+  },
+  /** `docs/screens.md` "Workspace — automations". */
+  automations: { path: "/agent/settings/automations" as const },
+  /** `docs/screens.md` "Project — automations" (redirects into the Kaneo project settings). */
+  projectAutomations: {
+    path: "/agent/projects/$projectKey/settings/automations" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/automations`,
+  },
   /** `docs/02-design/screen-inventory.md` "Workspace — service calendars". */
   serviceCalendars: {
     path: "/agent/settings/calendars" as const,
@@ -958,6 +1043,21 @@ export const routes = {
     path: "/agent/god-mode/notifications" as const,
     build: () => "/agent/god-mode/notifications",
   },
+  /** God Mode home: the Health landing page. */
+  godModeHealth: {
+    path: "/agent/god-mode" as const,
+    build: () => "/agent/god-mode",
+  },
+  /** God Mode General and Storage settings (`instance_setting`). */
+  godModeGeneral: {
+    path: "/agent/god-mode/general" as const,
+    build: () => "/agent/god-mode/general",
+  },
+  /** `ST-1`, `ST-2`: God Mode instance feature switches and locks. */
+  godModeFeatures: {
+    path: "/agent/god-mode/features" as const,
+    build: () => "/agent/god-mode/features",
+  },
   godModeAudit: {
     path: "/agent/god-mode/audit" as const,
     build: (search: { action?: string; limit?: number } = {}) => {
@@ -1054,8 +1154,8 @@ export const routes = {
     path: "/agent/inbox" as const,
     build: (search: AgentInboxSearch = {}) => {
       const resolved = parseAgentInboxSearch(search);
-      return resolved.filter === "unread"
-        ? "/agent/inbox?filter=unread"
+      return resolved.filter
+        ? `/agent/inbox?filter=${resolved.filter}`
         : "/agent/inbox";
     },
   },
@@ -1145,6 +1245,49 @@ export const routes = {
       return `/agent/settings/work-item-templates${query ? `?${query}` : ""}`;
     },
   },
+  /** `docs/screens.md` "Workspace — teams" and "Team detail". */
+  workspaceTeams: {
+    path: "/agent/settings/teams" as const,
+    build: () => "/agent/settings/teams",
+  },
+  workspaceTeamDetail: {
+    path: "/agent/settings/teams/$id" as const,
+    build: (params: { id: string }, search: TeamDetailSearch = {}) => {
+      const base = `/agent/settings/teams/${encodeURIComponent(params.id)}`;
+      return parseTeamDetailSearch(search).inactive
+        ? `${base}?inactive=1`
+        : base;
+    },
+  },
+  /** `docs/screens.md` "Workspace — roles" and "Role editor". */
+  workspaceRoles: {
+    path: "/agent/settings/roles" as const,
+    build: () => "/agent/settings/roles",
+  },
+  workspaceRoleDetail: {
+    path: "/agent/settings/roles/$id" as const,
+    build: (params: { id: string }, search: RoleDetailSearch = {}) => {
+      const base = `/agent/settings/roles/${encodeURIComponent(params.id)}`;
+      const query = new URLSearchParams(
+        parseRoleDetailSearch(search) as Record<string, string>,
+      ).toString();
+      return query ? `${base}?${query}` : base;
+    },
+  },
+  /** `docs/screens.md` "Workspace — custom fields (incl. sections)". */
+  workspaceCustomFields: {
+    path: "/agent/settings/custom-fields" as const,
+    build: (search: CustomFieldListSearch = {}) =>
+      parseCustomFieldListSearch(search).deleted
+        ? "/agent/settings/custom-fields?deleted=1"
+        : "/agent/settings/custom-fields",
+  },
+  /** `docs/screens.md` "Custom field editor"; `new` opens the create form. */
+  workspaceCustomFieldEditor: {
+    path: "/agent/settings/custom-fields/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/custom-fields/${encodeURIComponent(params.id)}`,
+  },
   workspaceDangerZone: {
     path: "/agent/settings/danger" as const,
     build: () => "/agent/settings/danger",
@@ -1171,6 +1314,12 @@ export const routes = {
       search: LabelCatalogueSearch = {},
     ) =>
       `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/labels${labelCatalogueQuery(search)}`,
+  },
+  /** `ST-1`: per-project feature switches (redirects to Kaneo's project settings). */
+  projectFeatures: {
+    path: "/agent/projects/$projectKey/settings/features" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/features`,
   },
   projectDangerZone: {
     path: "/agent/projects/$projectKey/settings/danger" as const,

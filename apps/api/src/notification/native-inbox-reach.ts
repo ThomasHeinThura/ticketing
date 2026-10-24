@@ -30,6 +30,8 @@ export function canReadNativeInboxCandidate(
    * role.
    */
   ancestorProjectIds?: readonly string[],
+  /** `project.owner_team_id` (reach step 5, `TM-4`); omitted means owner-team reach is not applied. */
+  ownerTeamId?: string | null,
 ): boolean {
   if (
     !identity ||
@@ -69,6 +71,7 @@ export function canReadNativeInboxCandidate(
     organisationId: resource.organisationId,
     visibleToPersonIds,
     ancestorProjectIds,
+    ownerTeamId: ownerTeamId ?? null,
   });
   if (!inCurrentReach) return false;
 

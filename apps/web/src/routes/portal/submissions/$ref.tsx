@@ -146,6 +146,13 @@ function PortalSubmissionPage() {
           priority: string | null;
           sla?: unknown;
         } | null;
+        /** CF-11: customer-visible custom fields that hold a value (label and value only). */
+        customFields?: Array<{
+          key: string;
+          label: string;
+          format: string;
+          value: unknown;
+        }>;
         requestType?: { name?: string };
         version?: {
           formSchema?: {
@@ -311,6 +318,29 @@ function PortalSubmissionPage() {
                         </dd>
                       </div>
                     )}
+                    {(record.customFields ?? []).map((field) => (
+                      <div key={field.key}>
+                        <dt>
+                          <CardDescription>{field.label}</CardDescription>
+                        </dt>
+                        <dd>
+                          {field.value === true
+                            ? t("customFields:value.yes", {
+                                defaultValue: "Yes",
+                              })
+                            : field.value === false
+                              ? t("customFields:value.no", {
+                                  defaultValue: "No",
+                                })
+                              : Array.isArray(field.value)
+                                ? field.value.join(", ")
+                                : typeof field.value === "object" &&
+                                    field.value !== null
+                                  ? Object.values(field.value).join(" ")
+                                  : String(field.value ?? "")}
+                        </dd>
+                      </div>
+                    ))}
                     {sla && (
                       <div>
                         <dt>

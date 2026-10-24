@@ -110,7 +110,7 @@ deploy/local/certs/
 deploy/traefik/dynamic/tls-local.yml
 deploy/seaweedfs/s3.json
 backups/
-archive*
+/archive*
 
 # Qodo review session context
 .qodo/

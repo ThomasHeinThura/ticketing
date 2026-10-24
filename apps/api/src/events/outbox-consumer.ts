@@ -30,14 +30,16 @@ import {
  * `EV-2` idempotency key — and a handler with an external side effect (a webhook POST) must
  * record its own per-attempt child row instead of performing I/O while this lock is held.
  *
- * Registered consumers today: none. The webhook and automation runtimes do not exist in this
- * codebase yet, so a claimed envelope is marked `delivered` after validation. The seam below is
- * where they register.
+ * Registered consumers: `webhook` and `automation` (P4, `registerBuiltInConsumers`). Both only
+ * **enqueue** (a `webhook_delivery`, an `automation_run`) inside this claim transaction; the
+ * signed POST and the rule actions run later in their own drain steps, never under this lock.
+ * They are registered lazily on the first default drain, so a caller (or a test) that passes its
+ * own consumer list never loads them.
  *
- * Decision (review F26, recorded in `events.md` `EV-2`): with no consumer registered, every
- * claimed parent, including historical pending rows, is marked `delivered` on purpose. Those
- * interim events are NOT replayed to consumers registered later (P4 webhooks/automations);
- * a consumer starts from its registration point and backfills from source tables if needed.
+ * Decision (review F26, recorded in `events.md` `EV-2`): while no consumer was registered, every
+ * claimed parent, including historical pending rows, was marked `delivered` on purpose. Those
+ * interim events are NOT replayed to the P4 consumers; each starts from its registration point
+ * and backfills from source tables if needed.
  */
 
 export type ParentEventEnvelope = DomainEventEnvelope<Record<string, unknown>>;
@@ -50,6 +52,36 @@ export type ParentEventConsumer = {
 };
 
 const registeredConsumers: ParentEventConsumer[] = [];
+
+let builtIns: Promise<void> | undefined;
+
+/**
+ * Registers the P4 webhook and automation consumers once. Dynamic imports keep the consumer
+ * modules (and the database) out of any caller that supplies its own consumer list, and avoid an
+ * import cycle with the modules that read `ParentEventEnvelope` from here.
+ *
+ * The load is memoised as a promise, not a flag: concurrent drains await the same load, and a
+ * failed load is forgotten so the next drain retries it. A drain that cannot load its consumers
+ * **throws** rather than marking parents `delivered` with an empty registry, because a delivered
+ * parent is never replayed (`EV-2`) and the events would be lost for good.
+ */
+export function registerBuiltInConsumers(): Promise<void> {
+  builtIns ??= (async () => {
+    const [{ webhookParentConsumer }, { automationParentConsumer }] =
+      await Promise.all([
+        import("../webhook/consumer"),
+        import("../automation/consumer"),
+      ]);
+    for (const consumer of [webhookParentConsumer, automationParentConsumer]) {
+      if (!registeredConsumers.some((entry) => entry.name === consumer.name))
+        registeredConsumers.push(consumer);
+    }
+  })().catch((error: unknown) => {
+    builtIns = undefined;
+    throw error;
+  });
+  return builtIns;
+}
 
 /** Registers a parent consumer (webhooks, automations). Names must be unique. */
 export function registerParentEventConsumer(
@@ -70,6 +102,7 @@ export function registeredParentEventConsumers(): readonly ParentEventConsumer[]
 /** For tests only. */
 export function resetParentEventConsumersForTests(): void {
   registeredConsumers.length = 0;
+  builtIns = undefined;
 }
 
 export function consumersForKind(
@@ -154,14 +187,16 @@ export type ParentDrainResult =
 
 /** Claims and processes at most one due parent envelope. Safe on every replica concurrently. */
 export async function processNextParentEvent(
-  consumers: readonly ParentEventConsumer[] = registeredConsumers,
+  consumers?: readonly ParentEventConsumer[],
 ): Promise<ParentDrainResult> {
+  if (consumers === undefined) await registerBuiltInConsumers();
+  const active = consumers ?? registeredConsumers;
   return claimNextPendingParentEvent(async (tx, row) => {
     let failedConsumer: string | undefined;
     try {
       const envelope = parseParentEnvelope(row);
       await tx.transaction(async (savepoint) => {
-        for (const consumer of consumersForKind(envelope.kind, consumers)) {
+        for (const consumer of consumersForKind(envelope.kind, active)) {
           failedConsumer = consumer.name;
           await consumer.handle(savepoint, envelope);
         }

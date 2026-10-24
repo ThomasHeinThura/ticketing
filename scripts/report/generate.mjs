@@ -116,7 +116,7 @@ h1{font-size:26px;margin:0 0 4px}h2{font-size:18px;margin:0}h3{font-size:14px;ma
 .note{border-left:3px solid var(--c3);padding:4px 12px;color:var(--ink2);font-size:13px;margin-bottom:14px}
 </style></head><body><main>
 <h1>TaskDesk phase report</h1>
-<p class="sub">Updated ${esc(data.generated.slice(0, 16).replace("T", " "))} UTC · ${total} requirements in P0–P4</p>
+<p class="sub">Updated ${esc(data.generated.slice(0, 16).replace("T", " "))} UTC · ${total} requirements in P0–P5</p>
 <div class="note">Counts come from the requirement audit and the Opus phase reviews. They show source and test evidence plus the reviewer's judgement. Nothing here is accepted by Thomas yet. Browser checks are in <code>docs/report/screens</code>.</div>
 <section class="card"><h2>Overall</h2>${bar(all)}<div class="legend">${legend}</div></section>
 ${rows}

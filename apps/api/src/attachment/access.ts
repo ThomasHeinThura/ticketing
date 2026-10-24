@@ -2,7 +2,10 @@ import type { Capability, ResolvedIdentity } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import type { Executor } from "../database/executor";
 import { personTable, workspaceTable } from "../database/schema";
-import { loadProjectAncestorIdsFor } from "../project/hierarchy.repository";
+import {
+  loadProjectAncestorIdsFor,
+  loadProjectOwnerTeamIdFor,
+} from "../project/hierarchy.repository";
 import {
   evaluateProjectRead,
   hasProjectReadCapability,
@@ -50,7 +53,12 @@ export async function loadAttachmentCaller(
       scope.workspaceId,
       scope.projectId,
     ),
-    ownerTeamId: null,
+    ownerTeamId: await loadProjectOwnerTeamIdFor(
+      executor,
+      identity,
+      scope.workspaceId,
+      scope.projectId,
+    ),
   };
   if (
     !evaluateProjectRead(identity, "work_item:read", "work_item", facts)

@@ -378,7 +378,10 @@ describe.each(["agent", "customer"] as const)(
         .update(schema.sessionTable)
         .set({ impersonatedBy: f.user.id })
         .where(eq(schema.sessionTable.id, f.session.id));
-      expect((await f.issue()).status).toBe(audience === "agent" ? 403 : 401);
+      // GM-9/GM-11: only the agent issuer serves an impersonation session (its ordinary
+      // writes and exit control need a token); the portal issuer never does. The handoff
+      // exchange below still refuses an impersonated browser on both audiences.
+      expect((await f.issue()).status).toBe(audience === "agent" ? 200 : 401);
       expect(
         (
           await f.exchange({

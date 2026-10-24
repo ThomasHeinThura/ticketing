@@ -11,11 +11,14 @@ import {
 import { and, eq, gt } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { serviceKeyDeletionTarget } from "../api-key/service-key-deletion-target";
 import { appendAuditLog } from "../audit/audit-writer";
 import { appendPendingActionStepUpAudit } from "../auth/step-up-audit";
 import { consumePendingActionProof } from "../auth/step-up-service";
+import { automationDeletionTarget } from "../automation/deletion-target";
 import { cannedResponseDeletionTarget } from "../canned-response/canned-response-deletion-target";
 import { columnDeletionTarget } from "../column/column-deletion-target";
+import { customFieldDeletionTarget } from "../custom-field/deletion-target";
 import db, { schema } from "../database";
 import {
   pendingActionTable,
@@ -43,8 +46,13 @@ import {
   projectDeletionTarget,
 } from "../project/project-deletion-target";
 import { assertCalendarUnused } from "../service-calendar/repository";
+import { teamDeletionTarget } from "../team/deletion-target";
 import { dbNowUtc } from "../utils/db-time";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
+import { webhookDeletionTarget } from "../webhook/deletion-target";
 import {
   workspaceDeletionTarget,
   workspaceRoleDeletionTarget,
@@ -1136,6 +1144,11 @@ export function registeredDeletionTargets(): readonly RegisteredDeletionTarget[]
     prerequisiteDeletionTarget,
     documentLinkDeletionTarget,
     invitationDeletionTarget,
+    serviceKeyDeletionTarget,
+    customFieldDeletionTarget,
+    teamDeletionTarget,
+    webhookDeletionTarget,
+    automationDeletionTarget,
   ];
   return registeredDeletionTargetCache;
 }
@@ -1202,13 +1215,6 @@ export async function evaluateRegisteredDeletionAccess(
     return { allowed: false, failure: "unsupported", status: 403 };
   if (target.sessionOnly && input.credentialType !== "session")
     return { allowed: false, failure: "credential", status: 403 };
-  const route = policyRegistry.get(target.routeKey);
-  if (
-    route?.kind !== "capability" ||
-    !("capability" in route.policy) ||
-    (route.policy.scope !== "project" && route.policy.scope !== "workspace")
-  )
-    return { allowed: false, failure: "unsupported", status: 403 };
   const loaded = await target.load(tx, id);
   if (
     !loaded ||
@@ -1217,6 +1223,17 @@ export async function evaluateRegisteredDeletionAccess(
     loaded.organisationId !== input.organisationId
   )
     return { allowed: false, failure: "target_scope", status: 404 };
+  const route = policyRegistry.get(
+    loaded.projectId && target.projectPolicyRouteKey
+      ? target.projectPolicyRouteKey
+      : target.routeKey,
+  );
+  if (
+    route?.kind !== "capability" ||
+    !("capability" in route.policy) ||
+    (route.policy.scope !== "project" && route.policy.scope !== "workspace")
+  )
+    return { allowed: false, failure: "unsupported", status: 403 };
   const policy = route.policy;
   const projectScoped = policy.scope === "project";
   if (projectScoped && !loaded.projectId)
@@ -1231,6 +1248,15 @@ export async function evaluateRegisteredDeletionAccess(
           loaded.projectId,
         )
       : undefined;
+  const ownerTeamId =
+    projectScoped && loaded.projectId
+      ? await projectOwnerTeamFor(
+          tx,
+          identity,
+          loaded.workspaceId,
+          loaded.projectId,
+        )
+      : null;
   const decision = evaluatePolicy(policy, {
     identity,
     ...(ancestorProjectIds ? { ancestorProjectIds } : {}),
@@ -1252,6 +1278,7 @@ export async function evaluateRegisteredDeletionAccess(
           projectId: loaded.projectId ?? "",
           organisationId: loaded.organisationId,
           ancestorProjectIds,
+          ownerTeamId,
         })
       : workspaceInReach(identity, loaded.workspaceId),
   });
@@ -1352,7 +1379,15 @@ export async function resolveRegisteredDeletionRequestScope(
     summary: {
       ...loaded.summary,
       targetType: target.targetType,
-      name: loaded.name,
+      // A click target may carry a display name that differs from the lookup name (a role's
+      // `name` versus the `key` the reference checks run on). Typed-name targets always show
+      // the exact name the person must type.
+      name:
+        target.confirmation === "click" &&
+        typeof loaded.summary?.name === "string" &&
+        loaded.summary.name.length > 0
+          ? loaded.summary.name
+          : loaded.name,
       requesterName: actor.name,
     },
     targetVersions: { [loaded.id]: loaded.version },

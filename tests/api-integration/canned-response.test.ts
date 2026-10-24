@@ -213,6 +213,17 @@ describe("API integration: canned responses (#27)", () => {
 
   it("management listing refuses an unbacked reserved manager alias", async () => {
     const member = await createWorkspaceMember({ role: "manager" });
+    // Every workspace now has a genuine canonical `manager` row; remove it to model a bare
+    // membership alias with nothing behind it.
+    await db
+      .delete(schema.roleTable)
+      .where(
+        and(
+          eq(schema.roleTable.scope, "workspace"),
+          eq(schema.roleTable.workspaceId, member.workspace.id),
+          eq(schema.roleTable.key, "manager"),
+        ),
+      );
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
     const response = await app.request(

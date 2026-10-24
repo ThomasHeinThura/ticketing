@@ -73,6 +73,7 @@ vi.mock("@/hooks/queries/god-mode/use-instance-users", () => ({
     deactivate: { isPending: false, mutateAsync: vi.fn() },
     grantAdmin: { isPending: false, mutateAsync: mocks.grantAdmin },
     resetMfa: { isPending: false, mutateAsync: vi.fn() },
+    impersonate: { isPending: false, mutateAsync: vi.fn() },
   }),
 }));
 

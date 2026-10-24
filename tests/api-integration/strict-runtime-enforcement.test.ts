@@ -50,6 +50,12 @@ const priorEnforcementSetting = vi.hoisted(() => {
     "apps/api/src/attachment/policy.ts",
     "apps/api/src/workflow/policy.ts",
     "apps/api/src/intake/policy.ts",
+    "apps/api/src/custom-field/policy.ts",
+    "apps/api/src/team/policy.ts",
+    "apps/api/src/webhook/policy.ts",
+    "apps/api/src/api-key/policy.ts",
+    "apps/api/src/automation/policy.ts",
+    "apps/api/src/feature-flag/policy.ts",
     "apps/api/src/task/policy.ts",
   ].join(",");
   return previous;

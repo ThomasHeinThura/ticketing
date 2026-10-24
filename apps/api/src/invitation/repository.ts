@@ -96,6 +96,7 @@ export async function findInvitationForAccept(
       role: schema.invitationTable.role,
       status: schema.invitationTable.status,
       expiresAt: schema.invitationTable.expiresAt,
+      inviterId: schema.invitationTable.inviterId,
     })
     .from(schema.invitationTable)
     .where(
@@ -174,12 +175,13 @@ export async function findWorkspaceRoleId(
   role: string,
 ) {
   const [roleRow] = await executor
-    .select({ id: schema.workspaceRoleTable.id })
-    .from(schema.workspaceRoleTable)
+    .select({ id: schema.roleTable.id })
+    .from(schema.roleTable)
     .where(
       and(
-        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-        eq(schema.workspaceRoleTable.role, role),
+        eq(schema.roleTable.scope, "workspace"),
+        eq(schema.roleTable.workspaceId, workspaceId),
+        eq(schema.roleTable.key, role),
       ),
     )
     .limit(1);

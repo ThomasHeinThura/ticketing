@@ -7,6 +7,7 @@ import {
   requestInstanceUserDeactivation,
   resetInstanceUserMfa,
   signOutInstanceUser,
+  startInstanceUserImpersonation,
   suspendInstanceUser,
   unsuspendInstanceUser,
 } from "@/fetchers/god-mode/instance-users";
@@ -65,5 +66,19 @@ export function useInstanceUserActions() {
     onSuccess: (_result, input) => refresh(input.id),
   });
 
-  return { suspend, unsuspend, signOut, deactivate, grantAdmin, resetMfa };
+  // The session cookie changes on success, so the caller reloads the app instead of refreshing
+  // cached queries.
+  const impersonate = useMutation({
+    mutationFn: startInstanceUserImpersonation,
+  });
+
+  return {
+    suspend,
+    unsuspend,
+    signOut,
+    deactivate,
+    grantAdmin,
+    resetMfa,
+    impersonate,
+  };
 }

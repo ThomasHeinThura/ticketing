@@ -1,6 +1,9 @@
 import type { DbTransaction, DomainEventEnvelope } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
 import type { NotificationRecipientCandidate } from "./fanout";
 import { configuredMentionChannels } from "./fanout.repository";
 import { canReadNativeInboxCandidate } from "./native-inbox-reach";
@@ -165,6 +168,12 @@ export function slaEventRecipientResolver(options: {
           },
           resource,
           await projectAncestryFor(
+            tx,
+            identity,
+            resource.workspaceId,
+            resource.projectId ?? "",
+          ),
+          await projectOwnerTeamFor(
             tx,
             identity,
             resource.workspaceId,

@@ -7,6 +7,7 @@
  * individually (create grant, member removal, leave, account erasure, project delete,
  * workspace delete). Mutating a writer must turn exactly that writer's test red.
  */
+
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -31,6 +32,7 @@ import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
 import { deleteThroughApprovalAsCookie } from "./helpers/pending-deletion";
 import { projectKey } from "./helpers/project-key";
+import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 type App = ReturnType<typeof createApp>["app"];
@@ -394,12 +396,12 @@ describe("a project's creator holds a project-lead membership", () => {
     expect(await projectStatus(world, admin, adminProject.id)).toBe(200);
   });
 
-  it("a legacy custom workspace_role without a built-in project:create capability is refused (403) (#708)", async () => {
+  it("a custom workspace role without the project:create capability is refused (403) (#708)", async () => {
     const world = await newWorld();
-    await db.insert(schema.workspaceRoleTable).values({
-      workspaceId: world.workspaceId,
-      role: "project-starter",
-      permission: JSON.stringify({ project: ["create"] }),
+    // Owner decision, 23 Oct: a custom role's capabilities live in the canonical `role` row, so
+    // `project:create` itself is what decides; a role that holds only `project:read` is refused.
+    await upsertWorkspaceRoleRows(world.workspaceId, "project-starter", {
+      project: ["read"],
     });
     const actor = await signUpUser(world.app);
     const added = await call(

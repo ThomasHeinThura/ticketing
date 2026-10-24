@@ -967,6 +967,76 @@
 			"when": 1792752699145,
 			"tag": "0137_satisfaction_rating",
 			"breakpoints": true
+		},
+		{
+			"idx": 138,
+			"version": "7",
+			"when": 1792752700145,
+			"tag": "0138_team_governance",
+			"breakpoints": true
+		},
+		{
+			"idx": 139,
+			"version": "7",
+			"when": 1792752701145,
+			"tag": "0139_custom_field_tenant_anchor",
+			"breakpoints": true
+		},
+		{
+			"idx": 140,
+			"version": "7",
+			"when": 1792752702145,
+			"tag": "0140_webhooks",
+			"breakpoints": true
+		},
+		{
+			"idx": 141,
+			"version": "7",
+			"when": 1792752703145,
+			"tag": "0141_automations",
+			"breakpoints": true
+		},
+		{
+			"idx": 142,
+			"version": "7",
+			"when": 1792752704145,
+			"tag": "0143_instance_setting_notifications",
+			"breakpoints": true
+		},
+		{
+			"idx": 143,
+			"version": "7",
+			"when": 1792752705145,
+			"tag": "0144_api_key_extension",
+			"breakpoints": true
+		},
+		{
+			"idx": 144,
+			"version": "7",
+			"when": 1792752706145,
+			"tag": "0147_step_up_god_mode_webhook_operations",
+			"breakpoints": true
+		},
+		{
+			"idx": 145,
+			"version": "7",
+			"when": 1792752707145,
+			"tag": "0145_canonical_workspace_roles",
+			"breakpoints": true
+		},
+		{
+			"idx": 146,
+			"version": "7",
+			"when": 1792752708145,
+			"tag": "0146_project_owner_team",
+			"breakpoints": true
+		},
+		{
+			"idx": 147,
+			"version": "7",
+			"when": 1792752709145,
+			"tag": "0158_step_up_workspace_operations",
+			"breakpoints": true
 		}
 	]
 }

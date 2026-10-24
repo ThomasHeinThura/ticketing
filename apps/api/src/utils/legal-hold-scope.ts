@@ -208,3 +208,35 @@ export function workspaceUnderOpenHold(workspaceId: string): SQL {
     `,
   );
 }
+
+/**
+ * Open hold over a workspace/project-scoped operational row that carries copies of work-item data
+ * (`webhook_delivery.request_body`, `automation_run.results`): the organisation of its workspace
+ * and of its project, plus every person attached to the work item it names and to the work items
+ * of its project. The columns are the caller's own row references (for example
+ * `${table.workspaceId}`); `workItemId` may be null for rows that name none. Retention purges
+ * of such rows must skip a row while this is true (`background-jobs.md`: retention obeys person,
+ * source, recipient and resource-owner legal holds). The caller must hold
+ * `LOCK TABLE legal_hold IN SHARE MODE` (`fenceLegalHolds`).
+ */
+export function scopedRowUnderOpenHold(row: {
+  workspaceId: SQL;
+  projectId: SQL;
+  workItemId: SQL | null;
+}): SQL {
+  const items = sql`
+    SELECT hi."id" FROM "work_item" hi
+    WHERE hi."project_id" = ${row.projectId}
+       ${row.workItemId ? sql`OR hi."id" = ${row.workItemId}` : sql``}
+  `;
+  return openHoldOver(
+    sql`${workItemPeople(items)} UNION ALL ${projectOwnPeople(sql`SELECT ${row.projectId}`)}`,
+    sql`
+      SELECT w."organisation_id" FROM "workspace" w WHERE w."id" = ${row.workspaceId}
+      UNION ALL
+      SELECT p."organisation_id" FROM "project" p WHERE p."id" = ${row.projectId}
+      UNION ALL
+      ${workItemAttachmentOrganisations(items)}
+    `,
+  );
+}

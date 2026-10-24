@@ -21,6 +21,8 @@ vi.mock("../../../apps/api/src/project/hierarchy.repository", () => ({
   // Same shape the real helper has: always loads (the mock ignores the short-circuit).
   loadProjectAncestorIdsFor: (...args: unknown[]) =>
     mocks.loadProjectAncestorIds(args[1], args[3], args[4]),
+  // TM-4: owner-team reach is covered on its own (`p4-closeout-teams.test.ts`).
+  loadProjectOwnerTeamIdFor: async () => null,
 }));
 vi.mock("../../../apps/api/src/ws/repository", () => ({
   findReachableLiveProject: mocks.findReachableLiveProject,

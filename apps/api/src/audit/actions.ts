@@ -93,10 +93,31 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "api_key.revoked",
   "webhook.created",
   "webhook.deleted",
+  "webhook.updated",
   "webhook.secret_rotated",
   // Rule state.
+  "automation.created",
+  "automation.updated",
+  "automation.deleted",
   "automation.enabled",
   "automation.disabled",
+  // P4 configuration governance: custom fields and sections, teams, instance settings.
+  "custom_field.created",
+  "custom_field.updated",
+  "custom_field.deleted",
+  "custom_field.restored",
+  // CF-8: the scheduled hard delete after the 30 day restore window (system actor).
+  "custom_field.purged",
+  "custom_field_section.created",
+  "custom_field_section.updated",
+  "custom_field_section.deleted",
+  "team.created",
+  "team.updated",
+  "team.deleted",
+  "team.member_added",
+  "team.member_updated",
+  "team.member_removed",
+  "instance.settings_changed",
   // A work item's content was sent to an ai.* provider.
   "ai.sent_externally",
   // Tenancy lifecycle. legal_hold.* not wired yet — see doc comment above.

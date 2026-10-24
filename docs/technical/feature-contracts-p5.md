@@ -12,6 +12,7 @@ The settled 20 October rate/timer owner decision takes precedence over older alt
 - [time-and-cost](#time-and-cost)
 - [reports-and-dashboards](#reports-and-dashboards)
 - [knowledge-base](#knowledge-base)
+- [project-pages](#project-pages)
 - [service-management](#service-management)
 
 <a id="agile"></a>
@@ -726,6 +727,71 @@ request; abandon the form and confirm the deflection is recorded.
 
 - [Request types](feature-contracts-p2.md#request-types-and-catalogue) · [Customer portal](feature-contracts-p3.md#customer-portal)
 - [Search](feature-contracts-p1.md#search-and-saved-views)
+
+<a id="project-pages"></a>
+## Project pages
+
+- **Primary phase:** P5
+- **Feature flag:** none (project-level availability follows project reach)
+- **Depends on:** projects, search, knowledge base editor
+
+<a id="project-pages-purpose"></a>
+### Purpose
+
+Staff write long-form project documents (plans, runbooks, meeting notes) next to the work. Pages are **not** the knowledge base: they have no status workflow, no customer visibility and no deflection role.
+
+<a id="project-pages-behaviour"></a>
+### Behaviour
+
+- `PG-1` A page belongs to exactly one project, has a title and a rich-text body, an author and timestamps. `Contract-new`
+- `PG-2` Pages are staff-only. No page, title, snippet, version or count appears in any portal response, portal search, deflection or notification; a portal session receives the constant-shape 404 on every page route. A page cannot be made customer-visible. `Contract-new`
+- `PG-3` The page editor is the knowledge-base Tiptap editor (`KB-5`) configured without KB publish controls: the same component, extensions and toolbar from Kaneo/`packages/ui`, not a second editor. `Contract-new`
+- `PG-4` Every successful save creates an immutable version (body, title, author, time). History is browsable and any version restorable; restore writes a new version rather than rewriting history. `Contract-new`
+- `PG-5` Saves use optimistic concurrency: a stale save returns 409 with the current version and nothing is written. There is no real-time co-editing, presence or cursor sharing. `Contract-new`
+- `PG-6` Pages are included in canonical search as their own entity type for callers with reach to the project, using the same index and reach filter as other entities; they are excluded from every portal and deflection query. `Contract-new`
+- `PG-7` Deleting a page goes through the pending-action flow (soft delete, restore window, audit), never a direct destructive route. Deleting a project follows `RH-11`/`PR-16`; its pages follow the project. `Contract-new`
+- `PG-8` Create, update, restore and delete write audit rows; the body is not copied into the audit record. `Contract-new`
+
+<a id="project-pages-permissions"></a>
+### Permissions
+
+| Action | Capability |
+| --- | --- |
+| List and read pages and versions | `project:read` (with project reach) |
+| Create, edit, restore | `project:update` (with project reach) |
+| Request deletion | `project:update`, completed through the pending action |
+
+Customer-role identities hold none of these capabilities.
+
+<a id="project-pages-screens"></a>
+### Screens
+
+`/agent/projects/{key}/pages` (list), `/agent/projects/{key}/pages/{id}` (view/edit with history side panel).
+
+<a id="project-pages-api"></a>
+### API
+
+```
+GET    /api/projects/{projectId}/pages                    project:read
+POST   /api/projects/{projectId}/pages                    project:update
+GET    /api/projects/{projectId}/pages/{id}               project:read
+PATCH  /api/projects/{projectId}/pages/{id}               project:update  (expected version required)
+GET    /api/projects/{projectId}/pages/{id}/versions      project:read
+POST   /api/projects/{projectId}/pages/{id}/restore       project:update
+DELETE /api/projects/{projectId}/pages/{id}               project:update  (creates a pending action)
+```
+
+<a id="project-pages-testing"></a>
+### Testing
+
+Integration: portal identity gets 404 on every route and finds no page in search; viewer cannot write; stale save is 409; each save adds a version; restore adds a version; delete creates a pending action and the page remains until approved; reach filter holds in search.
+
+E2E: create a page, edit twice, view history, restore, delete and approve.
+
+<a id="project-pages-related"></a>
+### Related
+
+- [Knowledge base](#knowledge-base) · [Search](feature-contracts-p1.md#search-and-saved-views)
 
 <a id="service-management"></a>
 ## Service catalogue, changes and releases

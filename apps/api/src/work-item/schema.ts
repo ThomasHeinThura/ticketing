@@ -1,3 +1,4 @@
+import { workItemCustomFieldsInput } from "../custom-field/schema";
 import { z } from "../openapi";
 import { COMMENT_BODY_MAX_NODES } from "./comment-schema";
 import {
@@ -230,6 +231,8 @@ export const createWorkItemBody = z.object({
     .min(1)
     .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
     .optional(),
+  // CF-3/CF-4/CF-5: custom field values travel inside the work item payload.
+  customFields: workItemCustomFieldsInput,
 });
 
 export const updateWorkItemBody = z
@@ -252,6 +255,7 @@ export const updateWorkItemBody = z
       .max(100)
       .refine((ids) => new Set(ids).size === ids.length, "Duplicate labels")
       .optional(),
+    customFields: workItemCustomFieldsInput,
   })
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field must be supplied",

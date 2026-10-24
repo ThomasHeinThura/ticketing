@@ -1,0 +1,127 @@
+{
+	"comparison_note": "Yardstick = docs/features.md, docs/roadmap.md, docs/alignment.md. Each item states whether it also exists elsewhere in docs/ (technical/, requirements*, screens.md). Items absent from ALL of docs/ are listed first in each array. Superseded archive entries (2026-10-20 P0-P4 condition-gate closure, 2026-10-14 claim-stays-committed accept rule, 'No RLS', 'AWS Marketplace first channel', 2026-09-23 'new v2 work-item screens') are deliberately not carried.",
+	"missing_features": [
+		{
+			"feature": "Project kind: dated Project vs Managed service (one table, `kind` drives tabs and required fields; managed services have no cycles, carry support level/cover window, RAG set by service owner)",
+			"phase": "P1 (structure) / P2 (service engagement)",
+			"archive_source": "archive/2026-10-22/docs/03-features/projects-and-engagements.md:13",
+			"why_it_matters": "Not a catalogue row in features.md; appears only as an inspiration phrase at alignment.md:99. Without it the product risks 'a support queue with a burndown chart, or a delivery project with an SLA it can never meet'. Detail retained in technical/ contracts, but no phase owns it in the roadmap."
+		},
+		{
+			"feature": "Engagement summary block: objective, in/out of scope, success criteria, person-set RAG health, timestamped status note, external document links (customer-hidden by default), stakeholder stand-down without deletion (PR-11 customer cannot tick prerequisites, PR-12)",
+			"phase": "P2",
+			"archive_source": "archive/2026-10-22/docs/03-features/projects-and-engagements.md:122",
+			"why_it_matters": "features.md P2 'Engagement coordination' lists milestones/prerequisites/stakeholders/contacts/escalation only; summary/RAG/documents and the customer-cannot-complete-prerequisite rule are not in the catalogue."
+		},
+		{
+			"feature": "Terminology overlay: per-instance/workspace renaming of domain nouns (work_item, project, cycle, module, epic, request, submission, service, change) per locale and audience, CLDR plural forms, live preview, public terminology endpoint (GM-T1..GM-T6, ADR 0012)",
+			"phase": "P4 (God Mode General + workspace settings)",
+			"archive_source": "archive/2026-10-22/docs/03-features/god-mode.md:92; archive/2026-10-22/docs/07-planning/decision-log.md:7169",
+			"why_it_matters": "Owner decision that nouns are renameable independent of state names. features.md only mentions 'terminology' as P7 localisation wording. Carried in technical/architecture-and-experience.md:237 and design-and-decisions ADR 0012, but has no catalogue row or roadmap placement."
+		},
+		{
+			"feature": "Canned responses (shared reply snippets with literal placeholders, authorized insertion into the composer)",
+			"phase": "P2",
+			"archive_source": "archive/2026-10-22/docs/03-features/comments-and-activity.md:143; archive/2026-10-22/docs/07-planning/plan.md:28",
+			"why_it_matters": "Already implemented and merged (#882 per archive status.md:44) yet absent from features.md/roadmap.md; only named as a competitor idea in alignment.md. A shipped feature with no catalogue row can be dropped in the Kaneo re-composition."
+		},
+		{
+			"feature": "@-mentions in comments: permissioned composition preflight, recipient access recheck on save, mentioned people become watchers without being unmuted, customers excluded from internal-comment mentions",
+			"phase": "P1",
+			"archive_source": "archive/2026-10-22/docs/07-planning/decision-log.md:7700",
+			"why_it_matters": "features.md P1 lists watchers but not mentions; behavior retained in technical/feature-contracts-p1.md. Mention-on-edit remains an open question (see risks)."
+		},
+		{
+			"feature": "Customer notifications: own requests only, never internal comments/activity/staff assignment, customer-facing language with no staff names, customer preference controls in portal account (NO-18..NO-21)",
+			"phase": "P3/P4",
+			"archive_source": "archive/2026-10-22/docs/03-features/notifications.md:332",
+			"why_it_matters": "features.md P4 Notifications and P3 portal rows do not mention the customer channel or its exposure limits; a data-exposure boundary for the portal."
+		},
+		{
+			"feature": "God Mode Health landing page with explicit thresholds, including backup-age warning (degraded 24h / failing 48h), outbox dead-letter, per-replica auth reload state and 'newer stable available' flag",
+			"phase": "P4",
+			"archive_source": "archive/2026-10-22/docs/03-features/god-mode.md:62",
+			"why_it_matters": "features.md lists 'health' generically; the backup-age alert is the R12 mitigation for unrestorable backups and is not visible in the catalogue (retained in technical/retained-constraints.md risk table)."
+		}
+	],
+	"decisions_to_carry": [
+		{
+			"decision": "Per-system retirement order: MS Planner after P1, Power Apps ticketing after P2, Jira and Plane after P5 (need cycles/estimates/reporting), Azure DevOps after P6 (needs importer, holds most history). Nothing switched off before its replacement is finished.",
+			"source": "archive/2026-10-22/docs/07-planning/roadmap.md:40; archive/2026-10-22/docs/07-planning/phases.md:221 (absent from all current docs; current docs only say retire after replacement/migration is verified)"
+		},
+		{
+			"decision": "Identity revocation SLA: Entra deactivating a person ends access within one minute (P3 exit criterion); revoked session fails on the next request (session cookie cache disabled); authority cache max 30 s with explicit invalidation.",
+			"source": "archive/2026-10-22/docs/07-planning/phases.md:301; archive/2026-10-22/docs/07-planning/decision-log.md:6493 ('within a minute' absent from all current docs; cookie-cache-off carried in technical/safety-and-runtime.md:1439)"
+		},
+		{
+			"decision": "Public product host is https://taskdesk.bimats.com (company domain bimats.com); taskdesk.app is not TaskDesk's domain and UAT must not be inferred from uat.taskdesk.app.",
+			"source": "archive/2026-10-22/docs/07-planning/decision-log.md:2400 (absent from all current docs)"
+		},
+		{
+			"decision": "Portal uses host-root URLs (/, /sign-in, /new, /requests/{ref}) with /portal/* redirecting; /agent/* is the single agent app with /dashboard/* redirects; screens without a backend API are hidden, no mock UI ships.",
+			"source": "archive/2026-10-22/docs/07-planning/decision-log.md:79 (absent from the three docs; CONTRADICTED by docs/screens.md:114-118, outside the three, which still lists planned /portal, /portal/new, /portal/requests/{ref} routes)"
+		},
+		{
+			"decision": "Release positioning: 2.0.0 is the P4 close and first sellable (self-hosted only) release; P0/P1 are internal; P2 is a service-desk pilot; external paying customers wait for the P7 external penetration test.",
+			"source": "archive/2026-10-22/docs/07-planning/release-plan.md:59 (absent from the three docs; carried in technical/retained-constraints.md:790)"
+		},
+		{
+			"decision": "P5 success criterion: a manager answers a portfolio SLA question in under thirty seconds; delivery teams run sprints in the product.",
+			"source": "archive/2026-10-22/docs/07-planning/phases.md:361 (absent from roadmap.md P5 finish evidence; present in technical/feature-contracts-p5.md:344)"
+		},
+		{
+			"decision": "Feature-flag defaults: every enumerated feature seeded off except feature.scim and feature.import (import on and locked at instance level); intake and approvals default off until an admin enables them; disabled feature APIs return generic 404 and navigation hides them; flags never grant permissions; disabling approvals keeps existing approvals readable/decidable and never bypasses workflow approval requirements.",
+			"source": "archive/2026-10-22/docs/07-planning/decision-log.md:382; archive/2026-10-22/docs/07-planning/decision-log.md:1297 (features.md 'Feature controls' states no defaults; detail in technical/feature-contracts-p3.md)"
+		},
+		{
+			"decision": "Engine boundary: if two implementations could be installed side by side and swapped by an admin it is a plugin; otherwise a domain module plus feature flag. Every feature still needs contract, generated configuration, flag and validate/test affordance; nothing hardcoded per customer.",
+			"source": "archive/2026-10-22/docs/07-planning/decision-log.md:6271; archive/2026-10-22/docs/07-planning/decision-log.md:7052 (features.md only says 'plugin contracts'; carried in technical/architecture-and-experience.md:934)"
+		},
+		{
+			"decision": "Customer authority matrix is enforced in packages/domain independent of capabilities so the role editor cannot misconfigure it: no assignment, no de-escalation (403), no self-approval, no SLA internals beyond own due time, cannot change own email/organisation/role, cannot delete anything; withdraw only before triage; customer may reopen only an auto-declined submission (staff decline is final).",
+			"source": "archive/2026-10-22/docs/03-features/customer-portal.md:55; archive/2026-10-22/docs/07-planning/decision-log.md:3149 (features.md P3 mentions escalation-only/withdrawal/reopen only; full matrix in technical/feature-contracts-p3.md)"
+		},
+		{
+			"decision": "Customer sign-in scope for this release: email-then-password for already-admitted customers only; registration, invitation acceptance and typed-domain SSO stay closed until the CP-11/CP-12 admission adapter and CP-18/IP-29 discovery route contracts are specified.",
+			"source": "archive/2026-10-22/docs/07-planning/decision-log.md:507; archive/2026-10-22/docs/03-features/customer-portal.md:372 (roadmap.md P3 says 'finish invitation/onboarding' without the blocking contract; carried in technical/feature-contracts-p3.md:400)"
+		},
+		{
+			"decision": "Search: ship PostgreSQL full-text; a Meilisearch plugin exists but is enabled only if Postgres is measured to miss the search budget.",
+			"source": "archive/2026-10-22/docs/07-planning/decision-log.md:7323 (absent from the three docs; carried in requirements-index.json and technical/foundation-details.md:253)"
+		},
+		{
+			"decision": "Email (notify.email/SMTP) is core, not an integration: sign-in codes (email OTP/magic link), invitations, first-run/setup and pending-action notices depend on it; configured only in God Mode.",
+			"source": "archive/2026-10-22/docs/07-planning/decision-log.md:6671 (features.md lists 'core email' for notifications only, not its auth/onboarding dependency)"
+		},
+		{
+			"decision": "Upgrade/support promises: latest = latest stable only; every stable upgrades cleanly from the two preceding minors; previous minor gets 90 days of security patches after the first external customer; API deprecations last two minors with Deprecation/Sunset headers; image rollback by previous digest, never a DB restore except failed majors.",
+			"source": "archive/2026-10-22/docs/07-planning/release-plan.md:126 (absent from the three docs; carried in technical/retained-constraints.md and design-and-decisions.md)"
+		}
+	],
+	"risks": [
+		{
+			"risk": "Inherited Kaneo calendar/Gantt/timeline, basic time entries and the workflow-rule automation engine were to ship flag-gated OFF until their v2 specs were aligned; current roadmap requires Calendar/Gantt continuity in P1 and says nothing about the inherited automation/time-entry code, so unspecified inherited behavior may become reachable.",
+			"source": "archive/2026-10-22/docs/07-planning/phases.md:330; archive/2026-10-22/docs/07-planning/phases.md:357; archive/2026-10-22/docs/07-planning/decision-log.md:6954 (contradiction with docs/features.md:26 and docs/roadmap.md P1 row)"
+		},
+		{
+			"risk": "Legacy task -> work_item data move may be one-shot only if no live deployment runs the pre-move schema; SIT now holds seeded/real data, so retiring the task stack/tables without a re-check could lose comments, labels, time entries, relations and attachments keyed by task_id.",
+			"source": "archive/2026-10-22/docs/07-planning/decision-log.md:3653 (absent from the three docs)"
+		},
+		{
+			"risk": "Workspace ownership transfer was shipped session-only and owner-only with an explicitly recorded step-up debt: it must become elevated (step-up) once step-up exists; no current doc records the debt.",
+			"source": "archive/2026-10-22/docs/07-planning/decision-log.md:5057"
+		},
+		{
+			"risk": "Point-in-time recovery (WAL archiving) was a decision with a deadline 'before real customer data lands' because it fixes the achievable RPO; current docs only recommend it, and roadmap/features never list it as a gate.",
+			"source": "archive/2026-10-22/docs/07-planning/roadmap.md:100 (technical/operations-and-distribution.md:194 says 'recommended' only)"
+		},
+		{
+			"risk": "Unresolved product questions not listed in alignment.md's 'unresolved details': mention notifications on comment edit; SLA completion/manual-resume pause continuity (D1); CAB membership (team.is_cab) blocking approval:decide_cab; custom_field_type_visibility/custom_field_value tenant anchoring; intake required-file and custom-field mappings held.",
+			"source": "archive/2026-10-22/docs/03-features/comments-and-activity.md:276; archive/2026-10-22/docs/07-planning/decision-log.md:853; archive/2026-10-22/docs/07-planning/decision-log.md:814; archive/2026-10-22/docs/07-planning/p2-ledger.md:87; archive/2026-10-22/docs/07-planning/decision-log.md:634 (individually retained in technical/ and requirements-index.json, but not surfaced at catalogue/roadmap level)"
+		},
+		{
+			"risk": "Notification runtime pre-wiring gaps: inbox read paths apply current reach only to resource_type='task' rows; legacy workspace delivery checks reach once with no banned/deactivated recheck; titles need CR/LF stripping before email subjects; a permanently failing evaluator retries every 30 s forever with no dead-letter decision; notification_delivery timestamps default to session-local now().",
+			"source": "archive/2026-10-22/docs/03-features/notifications.md:582 (absent from the three docs; retained as requirements in technical/foundation-details.md:171-173 and technical/feature-contracts-p4.md:2057, so P4 notification wiring must verify them)"
+		}
+	]
+}

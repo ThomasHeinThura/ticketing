@@ -24,4 +24,8 @@ export const WORK_LIST_PATH_PATTERN = /^\/agent\/projects\/[^/]+\/work\/?$/;
  */
 export const DEFERRED_NAMESPACE_ALLOWLIST: Readonly<
   Record<string, readonly string[]>
-> = {};
+> = {
+  // Renders nothing until `useTranslation(..).ready` reports the namespace loaded, and only
+  // after an impersonation status request resolves, so it can never paint raw keys.
+  "/components/god-mode/impersonation-banner.tsx": ["instanceUsers"],
+};

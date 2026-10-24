@@ -1,7 +1,10 @@
 import { APIError } from "better-auth/api";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import type { ApiKeyKind } from "../api-key/credential";
+import { enforceApiKeyRequest } from "../api-key/enforce";
 import { authForHost, hasCustomerPortalIdentity, portalForHost } from "../auth";
+import { mcpFeatureEnabled } from "./mcp-feature-enabled";
 import { verifyApiKey } from "./verify-api-key";
 
 function isAuthRejection(error: unknown) {
@@ -77,6 +80,49 @@ export function hasInvalidExplicitCredential(
   );
 }
 
+/**
+ * Per-request key rules (disabled, IP allowlist, `feature.mcp`, rate limit, last-used) that
+ * the `api_key` extension adds on top of "the key exists and its owner is active". Returns
+ * the key's kind, from which the request context carries `is_mcp` and, for a workspace service
+ * key (AK-7), the workspace and stored subset its principal is built from.
+ */
+async function enforceKeyRules(c: Context, keyId: string): Promise<ApiKeyKind> {
+  return enforceApiKeyRequest(c, keyId, { mcpFeatureEnabled });
+}
+
+function setApiKeyContext(
+  c: Context,
+  key: {
+    id: string;
+    userId: string;
+    enabled: boolean;
+    permissions: Record<string, string[]> | null;
+  },
+  kind: ApiKeyKind,
+) {
+  c.set("userId", key.userId);
+  c.set("userEmail", "");
+  c.set("user", null);
+  c.set("session", null);
+  c.set("apiKey", {
+    id: key.id,
+    userId: key.userId,
+    enabled: key.enabled,
+    permissions: key.permissions,
+    isMcp: kind.isMcp,
+    // AK-7: a service key has no person; it is evaluated against its own stored subset in its
+    // own workspace. A key row that claims `service` without a workspace is not a principal.
+    ...(kind.kind === "service" && kind.workspaceId
+      ? {
+          service: {
+            workspaceId: kind.workspaceId,
+            capabilities: kind.capabilities,
+          },
+        }
+      : {}),
+  });
+}
+
 export async function authenticateApiRequest(c: Context): Promise<void> {
   const authorization = c.req.header("Authorization");
   const apiKeyHeader = c.req.header("x-api-key");
@@ -99,16 +145,7 @@ export async function authenticateApiRequest(c: Context): Promise<void> {
       throw new HTTPException(401, { message: "Unauthorized" });
     }
     const key = apiKeyResult.key;
-    c.set("userId", key.userId);
-    c.set("userEmail", "");
-    c.set("user", null);
-    c.set("session", null);
-    c.set("apiKey", {
-      id: key.id,
-      userId: key.userId,
-      enabled: key.enabled,
-      permissions: key.permissions,
-    });
+    setApiKeyContext(c, key, await enforceKeyRules(c, key.id));
     return;
   }
 
@@ -116,16 +153,7 @@ export async function authenticateApiRequest(c: Context): Promise<void> {
     const apiKeyResult = await verifyApiKey(token);
     if (apiKeyResult?.valid && apiKeyResult.key) {
       const key = apiKeyResult.key;
-      c.set("userId", key.userId);
-      c.set("userEmail", "");
-      c.set("user", null);
-      c.set("session", null);
-      c.set("apiKey", {
-        id: key.id,
-        userId: key.userId,
-        enabled: key.enabled,
-        permissions: key.permissions,
-      });
+      setApiKeyContext(c, key, await enforceKeyRules(c, key.id));
       return;
     }
     // The pinned Better Auth stack does not accept bearer session tokens here.
@@ -164,6 +192,7 @@ export async function resolveAssetBearerOrCookie(c: Context): Promise<{
   if (!token && apiKeyHeader) {
     const apiKeyResult = await verifyApiKey(apiKeyHeader);
     if (apiKeyResult?.valid && apiKeyResult.key) {
+      await enforceKeyRules(c, apiKeyResult.key.id);
       return {
         userId: apiKeyResult.key.userId,
         apiKeyId: apiKeyResult.key.id,
@@ -175,6 +204,7 @@ export async function resolveAssetBearerOrCookie(c: Context): Promise<{
   if (token) {
     const apiKeyResult = await verifyApiKey(token);
     if (apiKeyResult?.valid && apiKeyResult.key) {
+      await enforceKeyRules(c, apiKeyResult.key.id);
       return {
         userId: apiKeyResult.key.userId,
         apiKeyId: apiKeyResult.key.id,

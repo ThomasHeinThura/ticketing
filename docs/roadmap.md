@@ -14,6 +14,8 @@
 
 **Approved by Thomas, 22 Oct:** all P0–P4 tasks in the [audit](report/audit) (`tonight_actions` and top gaps per phase) are approved as additional tasks on top of the rows below. Run phase by phase (P0 → P1 → P2 → P3 → P4), parallel inside a phase only on disjoint paths. No further approval is needed before starting a phase; the only stop is a failed Opus review.
 
+**Updated 23 Oct (Thomas approved the full plan):** extend the same loop through **P5** (then P6–P7). P4 closes out its carries before its Opus review; P5 follows in lanes A–F (agile planning; time and cost; reports and dashboards; knowledge base; services, changes, releases; contracts then customer invitations / typed-domain SSO / Pages) with migrations 0148–0157 reserved, per [audit-P5](report/audit/audit-P5.json). Decisions taken as recommended: `task_time_entry` rename, inline-SVG charts with Table equivalents (no recharts), dnd-kit dashboard grid (no react-grid-layout), indented-list service impact, estimates in project settings, CAB workflow opt-in for existing workspaces, scratch DB before the live DB with `NOT VALID` foreign keys, staff-only project Pages, customer-scoped invitations that refuse staff roles. Old PRs #880 and #886/#888/#889 were closed as superseded.
+
 Phase exit criteria are the visible-finish column below plus a passing Opus review. Update this Goal block and the report whenever it changes.
 
 ## Added priority: exact Kaneo work-item experience

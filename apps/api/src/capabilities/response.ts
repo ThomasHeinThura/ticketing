@@ -34,6 +34,18 @@ export const capabilitiesResponseSchema = z
     exportTasks: z.boolean().optional(),
     setPriorityTasks: z.boolean().optional(),
     manageProjectSettings: z.boolean(),
+    manageRoles: z.boolean().optional().openapi({
+      description:
+        "Strict workspace:manage_roles; gates the Roles settings entry. Absent means denied.",
+    }),
+    manageWebhooks: z.boolean().optional().openapi({
+      description:
+        "Strict webhook:manage; gates the Webhooks settings entry. Absent means denied.",
+    }),
+    manageCustomFields: z.boolean().optional().openapi({
+      description:
+        "Strict custom_field:manage; gates the Custom fields settings entry. Absent means denied.",
+    }),
     bindProjectOrganisation: z.boolean().openapi({
       description:
         "Strict project:create (owner/admin/manager): may list customer organisations and bind a new project to one.",

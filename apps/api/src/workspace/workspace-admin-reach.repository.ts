@@ -1,5 +1,4 @@
 import { createId } from "@paralleldrive/cuid2";
-import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 import type { Executor } from "../database/executor";
@@ -8,6 +7,7 @@ import {
   resolveMembershipRoleFrom,
   workspaceMemberRoles,
 } from "../utils/workspace-member-roles";
+import { seedWorkspaceBuiltInRoles } from "./built-in-roles.repository";
 
 const REACH_ROLE_KEYS = ["owner", "admin"] as const;
 export type ReachRoleKey = (typeof REACH_ROLE_KEYS)[number];
@@ -66,28 +66,17 @@ export async function findWorkspaceAdminReachRole(
   return row;
 }
 
+/**
+ * Make the workspace's built-in role rows exist (owner, admin, manager, lead, member, viewer),
+ * with their capabilities. The owner/admin rows double as the `sees_all` carrier a grant points
+ * at; `key` is unused and kept only for the call sites' readability.
+ */
 export async function createWorkspaceAdminReachRole(
   executor: Executor,
   workspaceId: string,
-  key: ReachRoleKey,
+  _key: ReachRoleKey,
 ): Promise<void> {
-  const builtIn = BUILT_IN_ROLES[key];
-  await executor
-    .insert(schema.roleTable)
-    .values({
-      id: createId(),
-      scope: "workspace",
-      workspaceId,
-      key,
-      name: key === "owner" ? "Owner" : "Admin",
-      description:
-        "Workspace-wide reach carrier (explicit sees_all). Authority is not read from this row.",
-      rank: builtIn.rank,
-      capabilities: [],
-      isSystem: true,
-      isEditable: false,
-    })
-    .onConflictDoNothing();
+  await seedWorkspaceBuiltInRoles(executor, workspaceId);
 }
 
 export async function findWorkspaceAdminReachPersonForUpdate(

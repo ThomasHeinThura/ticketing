@@ -147,6 +147,12 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
     "workspace members; no project rows",
   "GET /api/workspace/{workspaceId}/roles":
     "workspace role definitions; no project rows",
+  "GET /api/workspace/{workspaceId}/roles/{roleId}":
+    "one workspace role definition; no project rows",
+  "GET /api/workspace/{workspaceId}/roles/{roleId}/holders":
+    "the people holding one workspace role (name, email, state); workspace membership rows, not project rows",
+  "GET /api/workspace/{workspaceId}/roles/{roleId}/history":
+    "the audit history of one workspace role; role-definition rows, not project rows",
   "GET /api/workspace/{workspaceId}/work-item-types":
     "work-item type definitions; configuration rows, not project rows",
   "GET /api/workspace/{workspaceId}/work-item-templates":
@@ -155,6 +161,24 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
     "work item template definitions for settings (workspace:manage_settings); configuration rows, not project rows",
   "GET /api/workspace/{workspaceId}/checklist-templates":
     "checklist template definitions for settings (workspace:manage_settings); configuration rows, not project rows",
+  "GET /api/custom-field-sections":
+    "custom field section definitions; workspace configuration rows, not project rows",
+  "GET /api/custom-fields":
+    "custom field definitions with aggregate usage counts; workspace configuration rows, no work item or project ids, names or titles",
+  "GET /api/teams":
+    "team rows with member names (team:read); people and team definitions, no project rows",
+  "GET /api/teams/{id}":
+    "one team with its members; people rows, no project rows",
+  "GET /api/webhooks":
+    "webhook definitions (URL, event kinds, state, owner) behind webhook:manage; configuration rows with no project or work item content",
+  "GET /api/webhooks/{id}/deliveries":
+    "delivery attempts; each request and response body is redacted per row unless its entity is in the reader's reach (WH-6), so no hidden project content is returned",
+  "GET /api/workspaces/{id}/api-keys":
+    "service key summaries (prefix, capabilities, expiry, last use) behind api_key:manage; credential metadata, not project rows",
+  "GET /api/workspaces/{id}/automations":
+    "workspace-level rules only (project_id null), behind workspace:manage_settings; project rules are listed by the project route. Rows carry no work item content",
+  "GET /api/workspaces/{workspaceId}/features":
+    "workspace feature-flag overrides; configuration rows, not project rows",
   "GET /api/workspaces/{workspaceId}/audit":
     "audit rows are filtered by project reach inside the audit reader (#319/#334)",
 };

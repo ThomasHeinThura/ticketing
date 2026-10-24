@@ -2,6 +2,7 @@ import db from "../../database";
 import { sendNativeWorkspaceInvitationEmail } from "../../utils/send-workspace-invitation-email";
 import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../utils/workspace-invitation-limits";
 import { roleGrantsOwner } from "../../utils/workspace-member-roles";
+import { assertMayAssignRole } from "../role-assignment-guard";
 import {
   countPendingWorkspaceInvitations,
   findExistingWorkspaceMemberByEmail,
@@ -107,6 +108,11 @@ async function inviteWorkspaceMember(
     if (!roleRow) {
       throw new WorkspaceRoleNotFoundError(input.role);
     }
+    await assertMayAssignRole(tx, {
+      workspaceId: input.workspaceId,
+      actorUserId: input.inviterId,
+      targetRoleKey: input.role,
+    });
 
     const [existingMember] = await findExistingWorkspaceMemberByEmail(
       tx,

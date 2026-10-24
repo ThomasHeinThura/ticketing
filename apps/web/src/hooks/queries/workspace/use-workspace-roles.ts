@@ -1,44 +1,27 @@
 import { useQuery } from "@tanstack/react-query";
-import listWorkspaceRoles from "@/fetchers/workspace/list-workspace-roles";
+import {
+  listRoles,
+  type WorkspaceRoleDetail,
+} from "@/fetchers/workspace-roles";
 
-export type WorkspaceRole = {
-  id: string;
-  workspaceId: string;
-  role: string;
-  permission: Record<string, string[]>;
+/**
+ * Every workspace-scope role: the six built-ins and the custom ones, with capabilities, rank and
+ * holder count (owner decision, 23 Oct: capabilities live in the canonical `role` row). The
+ * pre-canonical `permission` statement view is not exposed; nothing here reads it.
+ */
+export type WorkspaceRole = WorkspaceRoleDetail & {
   createdAt: Date | string;
   updatedAt?: Date | string | null;
 };
 
-// S7 (issue #6, retrofit plan §3): native replacement for
-// authClient.organization.listRoles(). The native route always returns
-// `permission` as a parsed object (never a JSON string), but the
-// object-passthrough branch is kept defensively -- harmless, and it means a
-// stray malformed response fails soft (an empty map) rather than throwing.
-function parsePermission(raw: unknown): Record<string, string[]> {
-  if (raw && typeof raw === "object") {
-    return raw as Record<string, string[]>;
-  }
-  return {};
-}
+export const workspaceRolesKey = (workspaceId: string | undefined) =>
+  ["workspace-roles", workspaceId] as const;
 
 function useWorkspaceRoles(workspaceId: string | undefined) {
   return useQuery<WorkspaceRole[]>({
-    queryKey: ["workspace-roles", workspaceId],
+    queryKey: workspaceRolesKey(workspaceId),
     enabled: !!workspaceId,
-    queryFn: async () => {
-      if (!workspaceId) return [];
-      const roles = await listWorkspaceRoles({ workspaceId });
-
-      return roles.map((r) => ({
-        id: r.id,
-        workspaceId: r.workspaceId,
-        role: r.role,
-        permission: parsePermission(r.permission),
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-      }));
-    },
+    queryFn: async () => (workspaceId ? await listRoles(workspaceId) : []),
   });
 }
 

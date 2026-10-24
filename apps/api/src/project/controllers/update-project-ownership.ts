@@ -1,6 +1,8 @@
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
+import { personTable, teamMemberTable, teamTable } from "../../database/schema";
 import { invalidateNativeAuthorization } from "../../ws";
 import {
   checkReparent,
@@ -11,6 +13,7 @@ import {
   findLiveProject,
   loadWorkspaceParentMap,
   lockProjectHierarchy,
+  setProjectOwnerTeam,
   setProjectParent,
 } from "../hierarchy.repository";
 
@@ -38,11 +41,14 @@ const REFUSAL_MESSAGES: Record<ReparentRefusal, string> = {
 async function updateProjectOwnership(input: {
   projectId: string;
   workspaceId: string;
-  parentId: string | null;
+  /** `undefined` leaves the parent unchanged. */
+  parentId?: string | null;
+  /** `undefined` leaves the owning team unchanged (TM-4). */
+  ownerTeamId?: string | null;
   actorId: string;
   actorType: "person" | "api_key";
 }) {
-  const { projectId, workspaceId, parentId } = input;
+  const { projectId, workspaceId, parentId, ownerTeamId } = input;
   const result = await db.transaction(async (tx) => {
     await lockProjectHierarchy(tx, workspaceId);
 
@@ -50,9 +56,13 @@ async function updateProjectOwnership(input: {
     if (!project) {
       throw new HTTPException(404, { message: "Project not found" });
     }
-    if (project.parentId === parentId) return { project, changed: false };
+    const parentChanged =
+      parentId !== undefined && project.parentId !== parentId;
+    const teamChanged =
+      ownerTeamId !== undefined && project.ownerTeamId !== ownerTeamId;
+    if (!parentChanged && !teamChanged) return { project, changed: false };
 
-    if (parentId !== null) {
+    if (parentChanged && parentId !== null) {
       const parent = await findLiveProject(tx, workspaceId, parentId);
       if (!parent) {
         throw new HTTPException(422, {
@@ -74,7 +84,42 @@ async function updateProjectOwnership(input: {
       }
     }
 
-    const updated = await setProjectParent(tx, projectId, parentId);
+    // TM-4: the owning team must be a team of this workspace (the composite FK
+    // `project_workspace_owner_team_fk` backstops it); its CURRENT active members are named in
+    // the audit row so the reach grant is reviewable.
+    let ownerTeamMemberPersonIds: string[] | undefined;
+    if (teamChanged && ownerTeamId !== null && ownerTeamId !== undefined) {
+      const [team] = await tx
+        .select({ id: teamTable.id })
+        .from(teamTable)
+        .where(
+          and(
+            eq(teamTable.id, ownerTeamId),
+            eq(teamTable.workspaceId, workspaceId),
+          ),
+        )
+        .for("share")
+        .limit(1);
+      if (!team) {
+        throw new HTTPException(422, {
+          message: "project_owner_team_not_found",
+        });
+      }
+      ownerTeamMemberPersonIds = await activeTeamMemberPersonIds(
+        tx,
+        ownerTeamId,
+      );
+    }
+
+    let updated = project;
+    if (parentChanged) {
+      updated = (await setProjectParent(tx, projectId, parentId)) ?? updated;
+    }
+    if (teamChanged) {
+      updated =
+        (await setProjectOwnerTeam(tx, projectId, ownerTeamId ?? null)) ??
+        updated;
+    }
     await appendAuditLog(tx, {
       actorId: input.actorId,
       actorType: input.actorType,
@@ -83,14 +128,39 @@ async function updateProjectOwnership(input: {
       action: "project.reach_changed",
       entityType: "project",
       entityId: projectId,
-      before: { parentId: project.parentId },
-      after: { parentId },
+      before: {
+        parentId: project.parentId,
+        ...(teamChanged ? { ownerTeamId: project.ownerTeamId } : {}),
+      },
+      after: {
+        parentId: parentChanged ? parentId : project.parentId,
+        ...(teamChanged
+          ? {
+              ownerTeamId,
+              ownerTeamMemberPersonIds: ownerTeamMemberPersonIds ?? [],
+            }
+          : {}),
+      },
     });
-    return { project: updated ?? project, changed: true };
+    return { project: updated, changed: true };
   });
 
   if (result.changed) await invalidateNativeAuthorization({ projectId });
   return result.project;
+}
+
+async function activeTeamMemberPersonIds(
+  executor: Pick<typeof db, "select">,
+  teamId: string,
+): Promise<string[]> {
+  const rows = await executor
+    .select({ personId: personTable.id })
+    .from(teamMemberTable)
+    .innerJoin(personTable, eq(personTable.userId, teamMemberTable.userId))
+    .where(
+      and(eq(teamMemberTable.teamId, teamId), eq(personTable.active, true)),
+    );
+  return rows.map((row) => row.personId).sort();
 }
 
 export default updateProjectOwnership;

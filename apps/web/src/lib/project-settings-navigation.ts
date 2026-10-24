@@ -1,14 +1,30 @@
 import type { LucideIcon } from "lucide-react";
-import { GitBranch, Settings, Tag, Users } from "lucide-react";
+import {
+  GitBranch,
+  Settings,
+  Tag,
+  ToggleRight,
+  Users,
+  Zap,
+} from "lucide-react";
 
 type Translator = (key: string) => string;
 
-export function getProjectSettingsMenuItems(t: Translator): Array<{
+export function getProjectSettingsMenuItems(
+  t: Translator,
+  access: { canManageProjectSettings: boolean },
+): Array<{
   title: string;
   icon: LucideIcon;
-  segment: "general" | "workflow" | "labels" | "members";
+  segment:
+    | "general"
+    | "workflow"
+    | "labels"
+    | "members"
+    | "features"
+    | "automations";
 }> {
-  return [
+  const items: ReturnType<typeof getProjectSettingsMenuItems> = [
     {
       title: t("settings:projectGeneral.title"),
       icon: Settings,
@@ -30,4 +46,20 @@ export function getProjectSettingsMenuItems(t: Translator): Array<{
       segment: "workflow",
     },
   ];
+  // Features and Automations need project:manage_settings (the server refuses them otherwise), so
+  // the entries are not offered without it.
+  if (access.canManageProjectSettings)
+    items.push(
+      {
+        title: t("settings:projectFeatures.title"),
+        icon: ToggleRight,
+        segment: "features",
+      },
+      {
+        title: t("automations:project.navTitle"),
+        icon: Zap,
+        segment: "automations",
+      },
+    );
+  return items;
 }

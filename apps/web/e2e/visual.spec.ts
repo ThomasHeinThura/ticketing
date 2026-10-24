@@ -1549,7 +1549,12 @@ test("workspace settings canned responses screen @visual", async ({ page }) => {
         },
       ];
     else if (path.endsWith("/api/capabilities"))
-      body = { manageWorkspaceSettings: true };
+      body = {
+        manageWorkspaceSettings: true,
+        manageRoles: true,
+        manageWebhooks: true,
+        manageCustomFields: true,
+      };
     else if (path.endsWith("/api/config"))
       body = { disableWorkspaceCreation: true, disableRegistration: true };
     else if (path.endsWith("/api/canned-responses/manage"))

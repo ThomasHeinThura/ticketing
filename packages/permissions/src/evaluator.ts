@@ -239,17 +239,19 @@ function inheritedProjectGrants(
   return [];
 }
 
-export function authorityFor(
+/**
+ * The grants that actually stand for `scope` against `target`: a direct project-scope grant
+ * replaces workspace grants, else the nearest ancestor project's grants stand in, else every
+ * applicable grant. Exported so a save-time ceiling (automation author vs effective role) ranks
+ * and expands the very same selection the evaluator does, never a second copy of it.
+ */
+export function selectedGrantsFor(
   identity: Pick<ResolvedIdentity, "authority"> & {
     readonly side?: ResolvedIdentity["side"];
   },
   scope: Scope,
   target: ScopeTarget,
-  options: {
-    onUnknown?: UnknownCapabilityHandler;
-    onRefused?: RefusedCapabilityHandler;
-  } = {},
-): Set<Capability> {
+): readonly RoleGrant[] {
   const applicable = identity.authority.filter((grant) =>
     grantAppliesTo(grant, scope, target),
   );
@@ -272,6 +274,22 @@ export function authorityFor(
           ]
         : applicable;
   }
+
+  return selected;
+}
+
+export function authorityFor(
+  identity: Pick<ResolvedIdentity, "authority"> & {
+    readonly side?: ResolvedIdentity["side"];
+  },
+  scope: Scope,
+  target: ScopeTarget,
+  options: {
+    onUnknown?: UnknownCapabilityHandler;
+    onRefused?: RefusedCapabilityHandler;
+  } = {},
+): Set<Capability> {
+  const selected = selectedGrantsFor(identity, scope, target);
 
   const held = new Set<Capability>();
   for (const grant of selected) {

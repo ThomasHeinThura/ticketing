@@ -33,6 +33,7 @@ vi.mock("../../../apps/api/src/utils/has-project-reach", () => ({
 }));
 vi.mock("../../../apps/api/src/project/hierarchy.repository", () => ({
   loadProjectAncestorIdsFor: async () => ["parent-project"],
+  loadProjectOwnerTeamIdFor: async () => null,
 }));
 vi.mock("../../../apps/api/src/capabilities/repository", () => ({
   findCapabilityProject: mocks.project,

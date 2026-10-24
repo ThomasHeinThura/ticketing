@@ -10,6 +10,7 @@ import {
   type WorkflowTransition,
 } from "@taskdesk/domain";
 import { and, eq, isNull } from "drizzle-orm";
+import { guardFieldValues } from "../custom-field/repository";
 import db from "../database";
 import {
   membershipTable,
@@ -323,7 +324,8 @@ export async function buildGuardContext(
     allChildrenClosed,
     hasOpenBlockers: await hasOpenBlockers(ctx.workItem.id),
     assigneePresent: ctx.workItem.assigneeId !== null,
-    fieldValues: {},
+    // WF-15: `cf.<key>` guards resolve from the real custom field values.
+    fieldValues: await guardFieldValues(db, ctx.workItem.id),
     changeRiskLevel: null,
   };
 }

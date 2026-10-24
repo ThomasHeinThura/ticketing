@@ -3485,4 +3485,9 @@ Recorded in chat by Thomas, or taken by the coordinator under his standing instr
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.
-
+| 23 Oct | Custom-role capabilities live in the canonical `role` + `membership` tables, not `workspace_role` | `RL-1`, `RL-2`, `RL-4`, `RL-5` | Thomas |
+| 23 Oct | PA-15 allowlist gains keys for impersonation start and secret rotation | `GM-7`..`GM-11`, `GM-13` | Thomas |
+| 23 Oct | Holiday dataset (CAL-10/11) and list-virtualisation dependency approved; log in `THIRD-PARTY-NOTICES.md` | `CAL-10`, `CAL-11` | Thomas |
+| 23 Oct | Customer invitations (CP-11/12/13) and typed-domain SSO (CP-17/18) deferred to P5 pending contracts | `CP-11`..`CP-13`, `CP-17`, `CP-18` | Thomas |
+| 23 Oct | P5: rename old time table to `task_time_entry`; inline-SVG charts + Table equivalents; dnd-kit dashboard grid; indented-list service impact; estimates under project settings; CAB workflow opt-in for existing workspaces; NOT VALID FKs with scratch DB first; staff-only project Pages; customer-scoped invitations refusing staff roles | `TC-*`, `RP-*`, `ES-*`, `SVC-*`, `CH-*`, `CP-11` | Thomas (recommended options) |
+| 23 Oct | Customer invitations use a new hashed single-use credential and a scope discriminator on `invitation`; Pages reuse `project:read`/`project:update`; typed-domain route claims non-enumeration for accounts only (ADR 0014); invitation lifetime and rate limits are instance configuration | `CP-20`..`CP-29`, `PG-1`..`PG-8` | standing |

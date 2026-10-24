@@ -76,19 +76,19 @@
  * KNOWN GAPS AGAINST THE SPEC — found while building this, not guessed around. Per this
  * slice's own instructions: spec wins, and each is listed in the PR body too.
  *
- *  1. **The P4 API-key extension table does not exist yet.** `auth-and-identity.md` describes an
- *     `api_key` extension table carrying "capability subset, IP allowlist, per-key rate
- *     limit, expiry, last-used, `is_mcp`". `apps/api/src/database/schema.ts`'s `apikeyTable`
- *     has none of that — only better-auth's own `permissions` column, a `{resource:
- *     action[]}` statements map rather than the extension table's capability array. The
- *     request adapter projects only exact `resource:action` pairs accepted by
- *     `isCapability`; unknown strings are discarded, malformed scope becomes empty, and
- *     no alias or owner-derived capability is inferred. Full P4 key lifecycle and extension
- *     storage remain separate work.
- *  2. **`mcp_key` cannot be distinguished from `api_key` yet.** The same missing extension
- *     table would carry `is_mcp`; without it, every key-authenticated request resolves to
- *     the `"api_key"` `CredentialKind`. Harmless today (both kinds are clamped identically
- *     by `can()`), but the loader can never produce `"mcp_key"` until that column exists.
+ *  1. **(Closed.) The P4 API-key extension table exists.** `api_key_extension`
+ *     (`database/schema.ts`, migration 0144) carries the capability subset, IP allowlist, expiry,
+ *     last-used, `is_mcp` and the workspace/creator of a service key. This pure mapper still
+ *     receives only the already-projected `ApiKeyFact`: `resolve-request-identity.ts` builds it
+ *     from the authenticated key (a service key is evaluated by `service-principal.ts` against its
+ *     frozen subset instead of reaching this mapper; a personal key's subset is its
+ *     `apikey.permissions` filtered through `isCapability`). Unknown strings
+ *     are discarded, malformed scope becomes empty, and no alias or owner-derived capability is
+ *     inferred, so `?? []` below remains the fail-closed default for a key with nothing loaded.
+ *  2. **(Closed.) `mcp_key` is distinguished from `api_key`.** `is_mcp` is read from the key's
+ *     extension row at authentication and carried as `isMcp`, so `resolve-request-identity.ts`
+ *     and `permissions/shadow-middleware.ts` produce both `CredentialKind`s.
+ *     This mapper only reads `facts.credential`; it never derives the kind itself.
  *  3. **Legacy `workspace_member` rows do not carry `sees_all`.** Those rows resolve it as
  *     false. The generic P1 `membership` table is also loaded and its `sees_all` value is
  *     retained only on its validated concrete workspace scope; it never becomes global reach.
@@ -158,6 +158,17 @@ export type WorkspaceMembershipFact = {
    * doc comment named for the legacy capability check.
    */
   readonly isSystemRole: boolean;
+  /**
+   * The canonical workspace-scope `role` row this `role` key points at in this workspace (owner
+   * decision, 23 Oct: custom-role capabilities live in `role`, never in the legacy
+   * `workspace_role.permission`). Absent when no row exists; a custom key then grants nothing and
+   * a built-in key falls back to the compiled list behind the genuine-row check above.
+   */
+  readonly roleRow?: {
+    readonly rank: number;
+    readonly capabilities: unknown;
+    readonly isSystem: boolean;
+  };
 };
 
 /**
@@ -300,7 +311,7 @@ function keyCapabilitiesFor(
     return undefined;
   }
   // Invariant (`identity.ts`): a key credential ALWAYS carries a defined subset, even when
-  // nothing was actually loaded for it. `?? []` is the fail-closed default — see KNOWN GAP 1.
+  // nothing was actually loaded for it. `?? []` is the fail-closed default — see KNOWN GAP 1 (closed).
   return facts.apiKey?.capabilities ?? [];
 }
 
@@ -450,13 +461,6 @@ export function resolveIdentityFromFacts(
       // than guess. Matches `assertCallerHasCapability`'s exact resolution.
       continue;
     }
-    if (!isBuiltInWorkspaceRoleKey(resolution.role)) {
-      // Either a custom, editable role name (Slice 1 has no capability source for these
-      // yet — same gap `require-workspace-capability.ts`'s own doc comment names), or a
-      // built-in name that exists but is not workspace-scope (`instance_admin`,
-      // `customer`) — see `isBuiltInWorkspaceRoleKey`'s doc comment, S1.
-      continue;
-    }
     // `resolution.ok` came from `resolveMembershipRoleFrom(rows.map(...))`, whose
     // `isUnambiguousMembership` check means `rows` has EXACTLY one element here — the same
     // explicit-undefined-check idiom `resolveMembershipRoleFrom` itself uses under
@@ -465,13 +469,53 @@ export function resolveIdentityFromFacts(
     if (membershipRow === undefined) {
       continue;
     }
+
+    // The canonical role row is the authority for every non-owner key. A custom role has no
+    // other source. A custom row that shares a built-in key is never trusted as that built-in
+    // (issue #318), and a built-in key that names a non-workspace-scope built-in
+    // (`instance_admin`, `customer`) is never a workspace role (S1).
+    if (resolution.role !== "owner" && membershipRow.roleRow !== undefined) {
+      const roleRow = membershipRow.roleRow;
+      const isBuiltInKey = Object.hasOwn(BUILT_IN_ROLES, resolution.role);
+      if (isBuiltInKey && !isBuiltInWorkspaceRoleKey(resolution.role)) continue;
+      if (isBuiltInKey && !roleRow.isSystem) continue;
+      if (
+        !Number.isSafeInteger(roleRow.rank) ||
+        !Array.isArray(roleRow.capabilities) ||
+        !roleRow.capabilities.every(
+          (capability) => typeof capability === "string",
+        )
+      ) {
+        continue;
+      }
+      memberships.push({
+        scope: "workspace",
+        scopeId: workspaceId,
+        seesAll: rows.some((row) => row.seesAll),
+      });
+      authority.push({
+        roleKey: resolution.role,
+        scope: "workspace",
+        scopeId: workspaceId,
+        rank: roleRow.rank,
+        capabilities: roleRow.capabilities as readonly string[],
+      });
+      continue;
+    }
+
+    if (!isBuiltInWorkspaceRoleKey(resolution.role)) {
+      // A custom role name with no canonical row, or a built-in name that is not
+      // workspace-scope (`instance_admin`, `customer`) — see `isBuiltInWorkspaceRoleKey`'s
+      // doc comment, S1. Skipped, never guessed at.
+      continue;
+    }
     if (
       !isGenuineBuiltInRoleGrant(resolution.role, membershipRow.isSystemRole)
     ) {
-      // Issue #318 (security), S2: `role` names a real `BUILT_IN_ROLES` key, but this row
-      // is not backed by a genuine seeded `workspace_role` row — a custom role that took a
-      // built-in's name before `create-workspace-role.ts` reserved every key. Treated the
-      // same as an unrecognised custom role name above: skipped, not granted the built-in's
+      // Issue #318 (security), S2: `role` names a real `BUILT_IN_ROLES` key, but no canonical
+      // role row backs it and the legacy row is not a genuine seeded (`is_system`) one: a
+      // custom role that took a built-in's name before creation reserved every key. Treated
+      // like an unrecognised custom name above: skipped, not granted the built-in's
       // capabilities.
       continue;
     }
@@ -744,6 +788,37 @@ export async function resolveIdentity(
     systemRoleRows.map((row) => `${row.workspaceId}\u0000${row.role}`),
   );
 
+  // Owner decision, 23 Oct: the canonical workspace-scope `role` rows these keys point at. One
+  // bounded `IN (...)` query over the distinct workspace ids, never one per membership.
+  const canonicalRoleRows = new Map<
+    string,
+    { rank: number; capabilities: unknown; isSystem: boolean }
+  >();
+  if (memberWorkspaceIds.length > 0) {
+    const roleRowsForMemberships = await executor
+      .select({
+        workspaceId: schema.roleTable.workspaceId,
+        key: schema.roleTable.key,
+        rank: schema.roleTable.rank,
+        capabilities: schema.roleTable.capabilities,
+        isSystem: schema.roleTable.isSystem,
+      })
+      .from(schema.roleTable)
+      .where(
+        and(
+          eq(schema.roleTable.scope, "workspace"),
+          inArray(schema.roleTable.workspaceId, memberWorkspaceIds),
+        ),
+      );
+    for (const roleRow of roleRowsForMemberships) {
+      canonicalRoleRows.set(`${roleRow.workspaceId}\u0000${roleRow.key}`, {
+        rank: roleRow.rank,
+        capabilities: roleRow.capabilities,
+        isSystem: roleRow.isSystem,
+      });
+    }
+  }
+
   const scopedRoleRows = await executor
     .select({
       scope: schema.membershipTable.scope,
@@ -814,6 +889,9 @@ export async function resolveIdentity(
       // and validated separately below.
       seesAll: false,
       isSystemRole: systemRoleKeys.has(
+        `${member.workspaceId}\u0000${member.role}`,
+      ),
+      roleRow: canonicalRoleRows.get(
         `${member.workspaceId}\u0000${member.role}`,
       ),
     })),

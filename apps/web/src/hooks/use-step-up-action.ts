@@ -58,9 +58,17 @@ export function useStepUpAction() {
     setSecret("");
   }
 
+  /**
+   * Proves `binding` and runs `execute` with the single-use token. By default every failure,
+   * including the protected write's own, becomes `failure`. A screen that has its own, richer
+   * handling of the write's refusals (a role's `rank_guard`, say) passes
+   * `{ writeErrors: "rethrow" }`: only the verification failures are then reported here, and an
+   * error thrown by `execute` propagates to the caller untouched.
+   */
   async function run<T>(
     binding: IdentityOperationBinding,
     execute: (token: string) => Promise<T>,
+    options: { writeErrors?: "report" | "rethrow" } = {},
   ): Promise<StepUpResult<T>> {
     if (busyRef.current) return { ok: false };
     if (!secret) {
@@ -72,14 +80,17 @@ export function useStepUpAction() {
     setFailure(null);
     const submitted = secret;
     setSecret("");
+    let proved = false;
     try {
       const token = await proveIdentityOperation(binding, {
         method: effectiveMethod,
         secret: submitted,
       });
+      proved = true;
       const value = await execute(token);
       return { ok: true, value };
     } catch (error) {
+      if (proved && options.writeErrors === "rethrow") throw error;
       if (mounted.current)
         setFailure({
           kind: identityAdminFailureKind(error),

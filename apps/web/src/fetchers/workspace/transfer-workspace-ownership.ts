@@ -7,6 +7,8 @@ type TransferWorkspaceOwnershipBody = InferRequestType<
 
 type TransferWorkspaceOwnershipRequest = TransferWorkspaceOwnershipBody & {
   workspaceId: string;
+  /** The one-use PA-15 proof (`workspace_ownership_transfer`) the route spends. */
+  stepUpToken?: string;
 };
 
 // S5 (issue #6, retrofit plan §3): THE ATOMIC REPLACEMENT for the client's
@@ -19,12 +21,14 @@ type TransferWorkspaceOwnershipRequest = TransferWorkspaceOwnershipBody & {
 const transferWorkspaceOwnership = async ({
   workspaceId,
   newOwnerUserId,
+  stepUpToken,
 }: TransferWorkspaceOwnershipRequest) => {
   const response = await client.workspace[":workspaceId"][
     "transfer-ownership"
   ].$post({
     param: { workspaceId },
     json: { newOwnerUserId },
+    header: stepUpToken ? { "x-taskdesk-step-up-token": stepUpToken } : {},
   });
 
   if (!response.ok) {

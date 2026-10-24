@@ -1,7 +1,10 @@
 import { can, type ProjectReachFacts, reaches } from "@taskdesk/permissions";
 import type { DbTransaction, DomainEventEnvelope } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
 import type { NotificationRecipientCandidate } from "./fanout";
 import { configuredMentionChannels } from "./fanout.repository";
 import {
@@ -76,6 +79,12 @@ export async function resolveMentionEventRecipient(
       workspaceId: resource.workspaceId,
       organisationId: resource.organisationId,
       ancestorProjectIds: await projectAncestryFor(
+        tx,
+        identity,
+        resource.workspaceId,
+        resource.projectId,
+      ),
+      ownerTeamId: await projectOwnerTeamFor(
         tx,
         identity,
         resource.workspaceId,
@@ -182,7 +191,14 @@ export async function resolveApprovalEventRecipients(
       reachFacts.workspaceId,
       reachFacts.projectId,
     );
-    if (!reaches(identity, { ...reachFacts, ancestorProjectIds })) continue;
+    const ownerTeamId = await projectOwnerTeamFor(
+      tx,
+      identity,
+      reachFacts.workspaceId,
+      reachFacts.projectId,
+    );
+    if (!reaches(identity, { ...reachFacts, ancestorProjectIds, ownerTeamId }))
+      continue;
     candidates.push({
       personId,
       resourceType: "approval",

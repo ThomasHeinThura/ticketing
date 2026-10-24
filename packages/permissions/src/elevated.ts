@@ -27,6 +27,8 @@ import type { PolicyRegistry, RegistryEntry } from "./registry.js";
  * - `workspace:manage_members` — granting `sees_all` on a membership is a reach change and is
  *   never self-grantable.
  * - `workspace:manage_roles` — a role editor can mint authority up to the editor's own rank.
+ * - `workspace:transfer_ownership` — hands over the owner role; retained-constraints.md requires
+ *   operation-bound step-up for it.
  * - `project:manage_members` — the two reach-affecting fields, `parent_id` and `owner_team_id`.
  * - `api_key:manage` — a workspace service key is a standing credential bounded by its
  *   creator's authority.
@@ -39,6 +41,7 @@ export const AUTHORITY_GRANTING: readonly Capability[] = [
   "instance:manage_plugins",
   "workspace:manage_members",
   "workspace:manage_roles",
+  "workspace:transfer_ownership",
   "project:manage_members",
   "api_key:manage",
   "webhook:manage",

@@ -5,6 +5,7 @@ import {
   approvePendingDeletionAsCookie,
   type PendingDeletionBody,
 } from "./pending-deletion";
+import { type StepUpOption, stepUpHeaders } from "./step-up";
 
 // HTTP helpers for the S7 NATIVE role list/write routes (issue #6, retrofit
 // plan §3, S7 row): list, create, update, delete. Deliberately separate from
@@ -30,14 +31,33 @@ export async function createWorkspaceRoleNative(
   app: App,
   cookie: string,
   workspaceId: string,
-  body: { role?: unknown; permission?: unknown },
+  body: {
+    role?: unknown;
+    permission?: unknown;
+    capabilities?: unknown;
+    description?: unknown;
+    rank?: unknown;
+    cloneFromRoleId?: unknown;
+  },
+  stepUp?: StepUpOption,
 ): Promise<Response> {
+  // Elevated: the route spends a one-use proof bound to exactly this body.
+  const proof = await stepUpHeaders(
+    app,
+    cookie,
+    stepUp,
+    "workspace_role_create",
+    {
+      workspaceId,
+      ...body,
+    },
+  );
   return csrfRequest(
     app,
     `/api/workspace/${workspaceId}/roles`,
     {
       method: "POST",
-      headers: { "content-type": "application/json", cookie },
+      headers: { "content-type": "application/json", cookie, ...proof },
       body: JSON.stringify(body),
     },
     cookie,
@@ -49,14 +69,36 @@ export async function updateWorkspaceRoleNative(
   cookie: string,
   workspaceId: string,
   roleId: string,
-  body: { permission?: unknown },
+  body: {
+    permission?: unknown;
+    capabilities?: unknown;
+    name?: unknown;
+    description?: unknown;
+    rank?: unknown;
+    expectedVersion?: unknown;
+    confirmSelfEdit?: unknown;
+  },
+  stepUp?: StepUpOption,
 ): Promise<Response> {
+  // `confirmSelfEdit` only acknowledges a warning and is not part of the proof binding.
+  const { confirmSelfEdit: _confirm, ...bound } = body;
+  const proof = await stepUpHeaders(
+    app,
+    cookie,
+    stepUp,
+    "workspace_role_update",
+    {
+      workspaceId,
+      roleId,
+      ...bound,
+    },
+  );
   return csrfRequest(
     app,
     `/api/workspace/${workspaceId}/roles/${roleId}`,
     {
       method: "PATCH",
-      headers: { "content-type": "application/json", cookie },
+      headers: { "content-type": "application/json", cookie, ...proof },
       body: JSON.stringify(body),
     },
     cookie,
@@ -104,4 +146,78 @@ export function approveWorkspaceRoleDeletion(
   pending: PendingDeletionBody,
 ): Promise<Response> {
   return approvePendingDeletionAsCookie(app, cookie, pending);
+}
+
+export async function getWorkspaceRoleNative(
+  app: App,
+  cookie: string,
+  workspaceId: string,
+  roleId: string,
+): Promise<Response> {
+  return app.request(`/api/workspace/${workspaceId}/roles/${roleId}`, {
+    method: "GET",
+    headers: { cookie },
+  });
+}
+
+export async function listWorkspaceRoleHoldersNative(
+  app: App,
+  cookie: string,
+  workspaceId: string,
+  roleId: string,
+): Promise<Response> {
+  return app.request(`/api/workspace/${workspaceId}/roles/${roleId}/holders`, {
+    method: "GET",
+    headers: { cookie },
+  });
+}
+
+export async function getWorkspaceRoleHistoryNative(
+  app: App,
+  cookie: string,
+  workspaceId: string,
+  roleId: string,
+): Promise<Response> {
+  return app.request(`/api/workspace/${workspaceId}/roles/${roleId}/history`, {
+    method: "GET",
+    headers: { cookie },
+  });
+}
+
+export async function previewWorkspaceRoleNative(
+  app: App,
+  cookie: string,
+  workspaceId: string,
+  roleId: string,
+  body: { capabilities: unknown },
+): Promise<Response> {
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/roles/${roleId}/preview`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(body),
+    },
+    cookie,
+  );
+}
+
+export async function reassignWorkspaceRoleNative(
+  app: App,
+  cookie: string,
+  workspaceId: string,
+  roleId: string,
+  body: { toRoleId?: unknown; userIds?: unknown },
+): Promise<Response> {
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/roles/${roleId}/reassign`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(body),
+    },
+    cookie,
+  );
 }

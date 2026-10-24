@@ -38,7 +38,6 @@ describe("bounded work-item search query", () => {
     "epic",
     "organisation",
     "sla.state",
-    "cf.severity",
   ])("returns 422 naming recognised-but-unavailable field %s", (field) => {
     let caught: { status?: number; message?: string } | undefined;
     try {
@@ -51,6 +50,60 @@ describe("bounded work-item search query", () => {
     }
     expect(caught?.status).toBe(422);
     expect(caught?.message).toContain(`unavailable: ${field}`);
+  });
+
+  it("accepts cf.<key> filters structurally (CF-10) and rejects malformed ones with 400", () => {
+    for (const filter of [
+      { field: "cf.severity", op: "eq", value: "high" },
+      { field: "cf.cost", op: "gte", value: 5 },
+      { field: "cf.tags", op: "in", value: ["a", "b"] },
+      { field: "cf.note", op: "is_set", value: false },
+    ])
+      expect(
+        validateWorkItemSearchQuery({ entity: "work_item", filter }).filter,
+      ).toEqual(filter);
+    for (const filter of [
+      { field: "cf.bad key", op: "eq", value: "x" },
+      { field: "cf.x", op: "like", value: "x" },
+      { field: "cf.x", op: "is_set", value: "yes" },
+      { field: "cf.x", op: "in", value: [] },
+      { field: "cf.x", op: "eq", value: { nested: true } },
+    ])
+      expect(() =>
+        validateWorkItemSearchQuery({ entity: "work_item", filter }),
+      ).toThrowError(/cf\./);
+  });
+
+  it("round-trips the cf.<key> text grammar, including neq and is_set", () => {
+    for (const text of [
+      "cf.severity:high",
+      "cf.cost:>=5 AND cf.cost:<100",
+      "cf.severity:!=low",
+      "cf.tags:contains(a)",
+      "cf.severity:in(high,low)",
+      "cf.note:is_set",
+      "cf.note:not_set",
+      'cf.note:"is_set"',
+      'cf.note:"!= odd"',
+    ]) {
+      const ast = parseFilterText(text);
+      expect(parseFilterText(printFilterText(ast))).toEqual(ast);
+    }
+    expect(parseFilterText("cf.note:is_set")).toEqual({
+      field: "cf.note",
+      op: "is_set",
+      value: true,
+    });
+    expect(parseFilterText('cf.note:"is_set"')).toEqual({
+      field: "cf.note",
+      op: "eq",
+      value: "is_set",
+    });
+    expect(parseFilterText("cf.severity:!=low")).toEqual({
+      field: "cf.severity",
+      op: "neq",
+      value: "low",
+    });
   });
 
   it("keeps genuinely unknown fields at 400", () => {

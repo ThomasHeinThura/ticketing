@@ -19,6 +19,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
 import {
   invalidatePendingActionsForRequester,
@@ -2781,6 +2782,41 @@ export async function transitionPersonLifecycleInTransaction(
         )
         .returning({ id: schema.apikeyTable.id });
       keysRevoked = keys.length;
+      // TM-8: a deactivated person leaves every team's lead roster so that reactivation never
+      // silently restores lead authority. The `team_member` row itself stays (history, and
+      // the active-roster read already hides an inactive person); the demotion is audited.
+      const demoted = await tx
+        .update(schema.teamMemberTable)
+        .set({ isLead: false })
+        .where(
+          and(
+            eq(schema.teamMemberTable.userId, person.userId),
+            eq(schema.teamMemberTable.isLead, true),
+          ),
+        )
+        .returning({ teamId: schema.teamMemberTable.teamId });
+      for (const { teamId } of demoted) {
+        const [team] = await tx
+          .select({ workspaceId: schema.teamTable.workspaceId })
+          .from(schema.teamTable)
+          .where(eq(schema.teamTable.id, teamId))
+          .limit(1);
+        if (!team) continue;
+        await appendAuditLog(tx, {
+          actorId: null,
+          actorType: "system",
+          workspaceId: team.workspaceId,
+          action: "team.member_updated",
+          entityType: "team",
+          entityId: teamId,
+          before: { personId: person.id, isLead: true },
+          after: {
+            personId: person.id,
+            isLead: false,
+            reason: "person_deactivated",
+          },
+        });
+      }
     }
     const externalIds = discovered
       .filter((grant) => grant.sourceKind !== "direct")

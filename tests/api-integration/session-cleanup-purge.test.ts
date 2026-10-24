@@ -377,6 +377,7 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
       sessionsDeleted: 0,
       notificationReservationsDeleted: 0,
       notificationPreferenceHandoffsDeleted: 1,
+      readNotificationsPurged: 0,
       softDelete: {
         projectsPurged: 0,
         workItemsPurged: 0,
@@ -396,6 +397,7 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
       sessionsDeleted: 0,
       notificationReservationsDeleted: 0,
       notificationPreferenceHandoffsDeleted: 0,
+      readNotificationsPurged: 0,
       softDelete: {
         projectsPurged: 0,
         workItemsPurged: 0,
@@ -525,6 +527,7 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
             sessionsDeleted: 0,
             notificationReservationsDeleted: 0,
             notificationPreferenceHandoffsDeleted: 0,
+            readNotificationsPurged: 0,
             softDelete: {
               projectsPurged: 0,
               workItemsPurged: 0,

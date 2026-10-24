@@ -1,4 +1,5 @@
 import { TaskDeskApiError, type TaskDeskClient } from "../taskdesk/client.js";
+import { explainFailure } from "../utils/mcp-result.js";
 import { isSafeTimestamp, isSafeToken } from "../utils/untrusted.js";
 
 /**
@@ -31,16 +32,23 @@ export async function requestPendingDeletion(
   client: Pick<TaskDeskClient, "json">,
   path: string,
   targetLabel: string,
+  idempotencyKey?: string,
 ): Promise<PendingDeletionResult> {
   let body: unknown;
   try {
-    body = await client.json<unknown>(path, { method: "DELETE" });
+    body = await client.json<unknown>(path, {
+      method: "DELETE",
+      ...(idempotencyKey
+        ? { headers: { "Idempotency-Key": idempotencyKey } }
+        : {}),
+    });
   } catch (error) {
     if (error instanceof TaskDeskApiError) {
       // Keep the server's error text out of the trusted message; it is wrapped on output.
       throw new TaskDeskApiError(
-        `Deletion of ${targetLabel} was not requested. TaskDesk said: ${error.message}`,
+        `Deletion of ${targetLabel} was not requested. ${explainFailure(error.status, error.detail)}`,
         error.detail,
+        error.status,
       );
     }
     const detail = error instanceof Error ? error.message : String(error);

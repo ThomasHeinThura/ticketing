@@ -11,6 +11,7 @@ import {
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { getQuietHours, saveQuietHours } from "./quiet-hours";
 import { notificationPreferenceSchema } from "./response";
 import {
   updatePreferencesBody,
@@ -115,32 +116,42 @@ const notificationPreferences = apiRouter()
       {
         ...preferences,
         canonicalPreferences: await getCanonicalPreferences(c.get("userId")),
+        quietHours: await getQuietHours(c.get("userId")),
       },
       200,
     );
   })
   .openapi(updatePreferencesRoute, async (c) => {
-    const { canonicalPreference, ...legacy } = c.req.valid("json");
-    if (canonicalPreference && Object.keys(legacy).length)
+    const { canonicalPreference, quietHours, ...legacy } = c.req.valid("json");
+    if (
+      (canonicalPreference || quietHours !== undefined) &&
+      (Object.keys(legacy).length ||
+        (canonicalPreference && quietHours !== undefined))
+    )
       throw new HTTPException(400, {
-        message: "Save canonical and legacy preferences separately",
+        message:
+          "Save canonical preferences, quiet hours and legacy preferences separately",
       });
     if (canonicalPreference)
       await saveCanonicalPreference(c.get("userId"), canonicalPreference);
-    const preferences = canonicalPreference
-      ? await getNotificationPreferences(
-          c.get("userId"),
-          c.get("userEmail") || null,
-        )
-      : await updateNotificationPreferences(
-          c.get("userId"),
-          c.get("userEmail") || null,
-          legacy,
-        );
+    if (quietHours !== undefined)
+      await saveQuietHours(c.get("userId"), quietHours);
+    const preferences =
+      canonicalPreference || quietHours !== undefined
+        ? await getNotificationPreferences(
+            c.get("userId"),
+            c.get("userEmail") || null,
+          )
+        : await updateNotificationPreferences(
+            c.get("userId"),
+            c.get("userEmail") || null,
+            legacy,
+          );
     return c.json(
       {
         ...preferences,
         canonicalPreferences: await getCanonicalPreferences(c.get("userId")),
+        quietHours: await getQuietHours(c.get("userId")),
       },
       200,
     );

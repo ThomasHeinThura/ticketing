@@ -97,3 +97,24 @@ export function decryptIdentityClientSecret(
     throw new Error("Identity client secret is unavailable");
   }
 }
+
+/** The 8-byte key id (hex) a stored envelope was written under, or null if it is malformed. */
+export function envelopeKeyId(envelope: Buffer): string | null {
+  if (!Buffer.isBuffer(envelope) || envelope.length < HEADER_BYTES + TAG_BYTES)
+    return null;
+  if (!timingSafeEqual(envelope.subarray(0, MAGIC.length), MAGIC)) return null;
+  return envelope
+    .subarray(MAGIC.length, MAGIC.length + KEY_ID_BYTES)
+    .toString("hex");
+}
+
+/** The key id (hex) new envelopes are written under, or null when no key is configured. */
+export function currentEncryptionKeyId(): string | null {
+  const key = keyFromValue(process.env.TASKDESK_ENCRYPTION_KEY);
+  return key ? keyId(key).toString("hex") : null;
+}
+
+/** Whether `TASKDESK_ENCRYPTION_KEY_PREVIOUS` is still configured. */
+export function previousEncryptionKeyConfigured(): boolean {
+  return keyFromValue(process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS) !== null;
+}

@@ -52,7 +52,9 @@ import {
  * A real browser session (cookie or better-auth bearer session token; both populate
  * `c.get("session")` with `apiKey` absent) is the only credential this middleware accepts.
  */
-export function requireSessionOnly() {
+export function requireSessionOnly(
+  options: { allowImpersonation?: boolean } = {},
+) {
   return async (c: Context, next: Next) => {
     markShadowLegacyAuthorizationUnknown(c);
     if (c.get("apiKey")) {
@@ -72,7 +74,7 @@ export function requireSessionOnly() {
       throw new HTTPException(401, { message: "Unauthorized" });
     }
 
-    if (session.impersonatedBy) {
+    if (session.impersonatedBy && !options.allowImpersonation) {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, {
         message:

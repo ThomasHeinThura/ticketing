@@ -553,6 +553,10 @@ export function PendingActionApproval({
           });
         else await navigate({ to: "/dashboard" });
       }
+      // The role's page no longer exists: return to the roles list.
+      if (executed && action.data?.targetType === "workspace_role") {
+        await navigate({ to: "/agent/settings/roles" });
+      }
       const workItemDeleted =
         executed && action.data?.targetType === "work_item";
       if (workItemDeleted) await leaveDeletedWorkItems(action.data?.targetIds);

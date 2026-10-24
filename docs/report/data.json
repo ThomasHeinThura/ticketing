@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-23T12:15:21.558778+00:00",
+	"generated": "2026-10-24T02:08:53.514Z",
 	"source": "docs/requirements-index.json + Opus source audit (no browser verification implied)",
 	"phases": [
 		{
@@ -184,51 +184,95 @@
 			"name": "Governance",
 			"total": 152,
 			"states": {
-				"implemented_tested": 31,
-				"implemented_untested": 3,
-				"partial": 56,
-				"missing": 62,
-				"external_blocked": 0
+				"implemented_tested": 112,
+				"implemented_untested": 5,
+				"partial": 30,
+				"missing": 4,
+				"external_blocked": 1
 			},
 			"unaudited": 0,
-			"gaps": [],
+			"gaps": [
+				"Elevated routes without step-up: role create/update/reassign, service-key create, member add/role change and project ownership declare elevated: true but only sessionOnly runs; the policy flag is not enforced at runtime (GM-2, AK-7)",
+				"Browser verification blocked for every step-up flow: webhook create/editor/deliveries, impersonation start/banner/exit, user deactivate; SMTP config/test needs a real server (WH-6/8/15, GM-7/11/15)",
+				"Notification digests unreachable and unsent: digest preference writes closed, sealed groups have no sender (NO-5, NO-6); no portal preference controls (NO-21); deep links untested (NO-14)",
+				"Custom fields: no 30-day purge after soft delete and no test of delete/restore (CF-8); cf.<key> not sortable or available as columns (CF-10); create/transition required-field refusal has only logic-level tests (CF-4)",
+				"API keys: Argon2id hashing not implemented (AK-2); personal-key deletion absent (AK-11); no service-key UI, re-attestation or God Mode key list (AK-1, AK-7); last-used recording untested (AK-5)",
+				"MCP: no decide_approval/bulk tools, no log_time, no agent-originated audit marking (MC-4, MC-7, MC-7a); MCP-key credentialType still 'api_key' in work-item/attachment/service-calendar (MC-19)",
+				"Automations: notify/team target (TM-9), create_linked_item, request_approval, set_custom_field and the schedule trigger unavailable; call_webhook (AM-12) and run-retention purge untested",
+				"Webhooks: owner not notified on auto-disable (WH-7); no God Mode rotate-all (WH-13) or security-posture panel (WH-15); redirect and deadline tests skip under the sandbox (WH-5, WH-11)",
+				"Settings UX: inherited indicator, last-changed who/when, History, ?dryRun blast radius and typed-name danger zone exist only on some screens (ST-4..ST-8); project move absent (ST-10)",
+				"Roles: edits to roles referenced by identity provisioning are refused (409 role_in_identity_use) instead of the IP-22 revalidate/retire closure (RL-9); last-holder 409 and rank guards not browser-verified"
+			],
 			"actions": [
-				"Write role.created/updated/deleted audit rows with added/removed capability diff in create/update/delete-workspace-role controllers + integration test",
-				"Add last-active workspace:manage_roles holder guard to update/delete role (and member role change) with integration test",
-				"Route workspace role deletion through pending-action deletion-targets (click-level) and update roles.tsx confirm flow",
-				"Add entity_type/entity_id filter to apps/api/src/audit/schema.ts + repository and a History drawer on settings screens",
-				"Add partial unique index team(workspace_id) WHERE is_cab and team CRUD/membership routes (staff-only, delete refusals) with tests",
-				"Implement custom field definition CRUD API over existing 0098 tables (sections, per-type visibility, options key/label, format-change refusal, soft delete)",
-				"Add feature-flag write routes (instance/workspace/project) honoring locked with 409/422, plus Kaneo settings toggle UI",
-				"Add unit tests for NO-4 self-exclusion and NO-7 urgent digest bypass; implement quiet-hours evaluation in current-eligibility.ts",
-				"Wire roles.tsx to CapabilityMatrix with held-capability disabling and implies auto-tick",
-				"Add notification-retention-purge job in apps/api/src/scheduler (90-day default, instance setting) with PostgreSQL integration test",
-				"Add PATCH /api/notification/{id}/unread + inbox mentions/assignments tabs and canonical /agent deep links with comment anchor; extend notification-dropdown.test.ts",
-				"Replace plain fetch in notification-preferences/delivery.ts with pinned-lookup undici dispatcher re-checking connected IP; enforce https unless NODE_ENV=development; add delivery-ssrf tests",
-				"Route API-key deletion through pending-action (typed name + step-up) and add capability picker defaulting to read set in create-api-key-dialog.tsx",
-				"Add apikey extension columns (is_mcp, person_id CHECK, ip_allowlist, last_used_ip) via drizzle migration; record last-used IP in verify-api-key.ts",
-				"In packages/mcp/src/tools/register.ts remove/redirect delete_* tools to pending-action creation, wrap user content in untrusted delimiters, add Idempotency-Key header on writes, and create tests/mcp/injection.test.ts",
-				"Scaffold automation schema (automation, automation_run) and a depth-guarded outbox consumer behind feature.automations with default-disabled rules"
+				"Consume a PA-15 step-up proof (or add operation keys) on role create/update/reassign and POST /api/workspaces/{id}/api-keys, or record an owner decision that these stay session-only; add HTTP tests",
+				"Have Thomas complete the password step-up for webhook create, impersonation and deactivate in the browser, then verify editor, deliveries, redelivery, banner, exit and auto-exit",
+				"Add HTTP/DB integration tests for custom-field CRUD (create/format-change 409/option-in-use/soft-delete pending action/restore) and the CF-4 create + transition refusal, plus a custom_field purge job after 30 days",
+				"Add tests for NO-14 link resolution (links.ts + getWorkItemNotificationHref), AK-5 last-used recording, AM-12 call_webhook and the automation_run 30-day purge",
+				"Run tests/api/webhook/webhook-ssrf-guard.test.ts outside the sandbox so the redirect, 2xx and deadline cases execute (WH-5, WH-10, WH-11)",
+				"Decide digest sender scope (NO-5/NO-6) and portal preference controls (NO-21); either build or record as carried",
+				"Browser-check the post-browser-pass changes: role description text, quiet-hours editor, portal custom fields, request-type 'Maps to', API-key table clipping"
 			],
 			"review": {
 				"verdict": "not started",
+				"note": "Wave 1 and 2 built: API keys + MCP, roles on canonical store, teams, custom fields, webhooks, automations, feature flags, God Mode health/settings, impersonation, notifications. Counts below are still the pre-wave audit and will be re-audited before the Opus review."
+			},
+			"gates": {
+				"pass": 8,
+				"fail": 2,
+				"not_run": 3,
+				"note": "pass: API unit 1635, web unit 2322, permissions 108/108, typecheck, web build, events, raw-elements, openapi, i18n, policy. integration 4141 pass / 5 fail (being fixed). fail: contrast tokens (pre-existing), 3 stale ci-script tests. not run: browser checks of P4 screens, bundle budget, Trivy"
+			}
+		},
+		{
+			"id": "P5",
+			"name": "Planning & knowledge",
+			"total": 91,
+			"states": {
+				"implemented_tested": 0,
+				"implemented_untested": 0,
+				"partial": 13,
+				"missing": 78,
+				"external_blocked": 0
+			},
+			"unaudited": 0,
+			"gaps": [
+				"No P5 tables exist: none of cycle, cycle_snapshot, module, estimate, estimate_point, time_activity, running_timer, hourly_rate, cost_type, cost_entry, budget, available_hours, metric_snapshot, dashboard, dashboard_widget, kb_*, deflection_event, service, service_dependency, change_detail, change_service, change_freeze, release in apps/api/drizzle (latest 0147)",
+				"Only scaffolding exists: P5 capabilities (packages/permissions/src/capabilities.ts) and default-off feature flags (packages/permissions/src/features.ts) plus nullable work_item.cycle_id/module_id/estimate_point_id/service_id and checklist_item.release_id columns; none lifts a requirement above partial",
+				"Time tracking is legacy Kaneo time_entry (task_id/user_id, seconds) with no own/any policy, activity, billable, timer table or UI; name collides with data-model §9 time_entry (TC-1..7)",
+				"No reporting engine: no metrics-snapshot job, report routes, export job, chart component or dashboards; RP-18 rests on role grants only (RP-1..18)",
+				"No knowledge base or deflection on agent, portal request form or triage (KB-1..17)",
+				"Change management: CAB gating and risk/rollback guards exist in the domain and are tested, but runtime passes changeRiskLevel null, has no change satellite store, seeded workflow has no CAB transition, and there are no freezes, services or releases (CH-1..6, SVC-1..5, REL-1..5)",
+				"No P5 web screens: apps/web/src/routes and apps/web/src/lib/routes.ts have no cycles, modules, timesheet, budget, rates, reports, dashboard, kb or service-management paths (docs/screens.md P5 rows all open)",
+				"Pages has no requirement ids and no behavior spec (docs/features.md); feature.pages flag exists only"
+			],
+			"actions": [
+				"Now (only lane allowed before the P4 review passes): write the missing contracts — Pages behavior; customer invitations CP-11/12/13; typed-domain SSO CP-17/18, IP-9/IP-29 — for Thomas's approval",
+				"After P4 review passes: coordinator lands P5 schema wave 0 in reserved migrations 0148-0152 on the scratch database only, renaming drizzle-kit's generated prefix (next idx is 146) to the reserved number",
+				"Pending Thomas: rename legacy Kaneo time_entry to task_time_entry (0066 task_activity precedent) and create canonical work-item time_entry (integer minutes, activity, billable, person, date)",
+				"After P4 review passes: cycles/modules/estimates API with overlap refusal, date-derived status, completion policy and estimate-change preview, plus the contract's unit tests",
+				"After P4 review passes: time entries v2 — orOwner(person_id) policy, backdate window, running_timer start/stop with 12 h cap and timer-sweeper, task Time section and Kaneo table-based weekly timesheet",
+				"After P4 review passes: report core envelope (scope, window, as-of, null-with-sample, buckets, empty explanation), reach filter, customer-403 tests on every /api/reports route, then tier-1 reports over existing SLA/throughput/ageing/workload/CSAT/escalation data",
+				"After P4 review passes: KB article/version/category/feedback API with customer_visible+published double gate and portal isolation tests; deflection on portal request form and triage",
+				"After P4 review passes: service catalogue + change_detail satellite feeding changeRiskLevel and change.rollback_plan into transition guards; change_freeze with audited elevated override; change calendar on Kaneo calendar"
+			],
+			"review": {
+				"verdict": "not run",
 				"findings": 0,
-				"note": "Starts after P3"
+				"note": "Opus review runs at phase end"
 			},
 			"gates": {
 				"pass": 0,
 				"fail": 0,
 				"not_run": 0,
 				"note": "no gates run yet"
-			},
-			"carry": []
+			}
 		}
 	],
 	"decisions": [
-		"Customer invitations and typed-domain SSO routing have no contract. Write the contract (who can invite, how a customer signs in) or leave for later?",
-		"Holiday dataset for calendar presets (CAL-10/11): which countries and which source?",
-		"P1 carry-over: add the virtualisation dependency and WIP-limit schema now or defer to P7?",
-		"Restart your native Postgres on 62870 (stopped externally at 00:44). All checks used a scratch Postgres on 62871."
+		"Decided 23 Oct: roles on canonical table, PA-15 keys added, holiday dataset + virtualisation approved, customer invitations and typed-domain SSO deferred to P5.",
+		"Standing (recommended): webhook step-up keys beyond impersonation/secrets; membership pointer stays workspace_member.role; service keys get no project reach; managers cannot self-promote.",
+		"Pending: migration 0145 rewrites role data and 0138 un-flags duplicate CAB teams when applied to your live database — tell me when to migrate it.",
+		"Pending: restart native Postgres on 62870 (all checks use scratch 62871)."
 	],
-	"next": "P3 committed and pushed; P4 (governance) is starting."
+	"next": "Fix the 5 integration failures, rerun, re-audit P4 states, check P4 screens in the browser, then run the Opus review."
 }

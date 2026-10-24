@@ -1,6 +1,7 @@
 import { processNextParentEvent } from "../events/outbox-consumer";
 import { immediateNotificationRuntime } from "../notification/immediate-runtime";
 import { processNextNotificationDelivery } from "../notification/outbox-drain";
+import { drainP4Consumers } from "./outbox-drain-p4";
 
 /** Every replica may run: persisted child reservation fences serialize attempts. Parent
  * event consumer state is independent and is never terminalized by one child's result. */
@@ -65,12 +66,16 @@ export async function drainParentEvents() {
   return { processed, delivered, retried, dead, degraded };
 }
 
-/** The registered `outbox-drain` body: parents first, then immediate notification children. */
+/**
+ * The registered `outbox-drain` body: parents first, then immediate notification children, then
+ * the webhook deliveries and automation runs the P4 parent consumers enqueued.
+ */
 export async function drainOutbox() {
   const startedAt = Date.now();
   const parents = await drainParentEvents();
   const children = await drainImmediateNotifications();
-  const degraded = parents.degraded || children.degraded;
+  const consumers = await drainP4Consumers();
+  const degraded = parents.degraded || children.degraded || consumers.degraded;
   if (parents.processed > 0 || children.processed > 0 || degraded) {
     console.log(
       JSON.stringify({
@@ -78,9 +83,10 @@ export async function drainOutbox() {
         durationMs: Date.now() - startedAt,
         parents,
         children,
+        consumers,
         outcome: degraded ? "degraded" : "ok",
       }),
     );
   }
-  return { parents, children, degraded };
+  return { parents, children, consumers, degraded };
 }

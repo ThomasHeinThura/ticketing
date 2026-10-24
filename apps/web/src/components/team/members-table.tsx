@@ -298,7 +298,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                             same rule (see update-workspace-member-role.ts). */}
                         {customRoles.map((r) => (
                           <SelectItem key={r.id} value={r.role}>
-                            {capitalize(r.role)}
+                            {r.name || capitalize(r.role)}
                           </SelectItem>
                         ))}
                       </SelectContent>

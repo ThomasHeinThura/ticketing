@@ -136,6 +136,13 @@ misconfigured away through the role editor.
 - `CP-12` The invitee accepts and signs up through any provider scoped to the customer
   portal — password, email OTP, magic link or SSO.
 - `CP-13` An invitation cannot grant a staff role or `instance:admin`.
+- `CP-20` **Customer invitations reuse the invitation record with a customer scope** (decided 23 Oct). A customer-scope invitation names exactly one customer organisation and the `customer` role; it is created only by a caller holding `member:invite` with reach to that organisation, over a session (never an API key or MCP key, matching the existing invitation routes). The staff invitation flow and its `/agent/invite` accept route are unchanged. `Contract-new`
+- `CP-21` Role is validated twice. At write, a customer-scope invitation whose role is anything other than `customer`, or that names a staff or custom role, `instance:admin`, a team or a workspace-level grant, is refused 422 and nothing is stored. At accept, the stored role and scope are re-read inside the accept transaction and refused if they are no longer a customer-scope invitation to a live organisation, so a row edited, imported or migrated into a staff role cannot be accepted. A staff-scope invitation cannot be accepted on the portal host and a customer-scope invitation cannot be accepted on the agent host; either returns the same generic not-found. `Contract-new`
+- `CP-22` Expiry, resend and revoke. A customer invitation expires after the existing invitation lifetime unless an instance setting overrides it; an expired, accepted or revoked invitation cannot be accepted and the accept page shows one generic "invitation no longer valid" notice that does not say which. Resend issues a fresh accept credential, invalidates the previous one and extends expiry; revoke (the existing `DELETE /api/invitation/{id}` path, same `member:invite` policy) invalidates the credential immediately. An invitation to an address that already has an active membership in that organisation is refused at write. `Contract-new`
+- `CP-23` The accept credential is unguessable, single-use, and stored hash-only; the invitation id alone never grants acceptance. The agent surface lists customer invitations for an organisation with status (pending, accepted, revoked, expired) but never shows the credential after creation. `Contract-new`
+- `CP-24` **Accept flow on the portal host root.** The email link opens `/invite/{id}` on the portal host (screens.md; the legacy `/portal/invite` listing is stale). The page uses the sign-in/up methods of providers scoped to `customer` (`CP-12`): the invitee signs up or signs in, and acceptance succeeds only when the verified address of the resulting customer-portal session equals the invitation email. Acceptance creates the customer person (if none), the organisation membership with the `customer` role and the requested reach, in one transaction with marking the invitation accepted; a second concurrent accept affects exactly one row. An address mismatch, wrong portal, or any non-valid state returns the same generic failure copy. Acceptance never signs the visitor into the agent host and never creates an agent session. `Contract-new`
+- `CP-25` Audit and events. Create, resend, revoke, accept and every refusal (role refused at write, role refused at accept, expired, address mismatch, wrong portal) write an audit row in the existing audit vocabulary naming actor, organisation and invitation id, never the credential or the invitee address in cleartext beyond what the existing invitation audit already stores. Refusals by an anonymous visitor are audited with request metadata only. `Contract-new`
+- `CP-26` Rate limits. Create is limited per inviter and per organisation, resend has a per-invitation cooldown, and anonymous accept/lookup attempts fall under the anonymous limit class (`IP-29`); a limited response is the same shape as any other failure on that page. Exact values are instance configuration, not hard-coded. `Contract-new`
 - `CP-14` A first-time customer sees a brief, dismissible orientation — where to raise a
   request, where to find status — not a modal wall.
 - `CP-16` **Request visibility inside a customer organisation** (decided 2026-09-05). Every
@@ -176,6 +183,9 @@ misconfigured away through the role editor.
   their existing contract holds. This bounded local method does not claim the complete
   CP-18/IP-29 SSO flow, change portal cookie/session/Host/Origin authority, add an endpoint
   or enable a provider by default.
+- `CP-27` **Typed-domain route.** The portal sign-in email step may call one anonymous route, `POST /api/portal/sign-in/home-realm`, admitted on the portal host only. It reads the **domain part only** of the typed address, resolves at most one customer connection through `domain_bindings` (`IP-9`), and returns either "start this organisation's OIDC flow" (the existing initiation path with single-use state per `IP-9`) or "continue with local methods". It never returns a list, an organisation name, a connection id, discovery configuration or claim mapping. Anything else, including a malformed address, returns the "continue with local methods" shape. `Contract-new`
+- `CP-28` **No account enumeration.** The local part of the address is discarded: it is not looked up, stored, logged or audited, and the response never depends on whether a person or account exists for the address. The route performs no write and creates no person, membership or session. Disclosure is limited to what [ADR 0014](design-and-decisions.md#0014-limited-home-realm-disclosure) accepts (whether the domain has an SSO binding and the IdP's public redirect destination); no stronger non-enumeration claim is made and none is tested. Anonymous rate limits apply to the route. `Contract-new`
+- `CP-29` **Failure copy.** Every SSO failure on the portal (callback error, collision denial under `IP-9`, JIT refusal, inactive person, state expired or replayed) shows one generic localized notice with a way back to the sign-in page; it does not say which check failed, whether an account exists, or which organisation was selected. Detail goes to the audit trail. `Contract-new`
 - `CP-15` A customer may **withdraw their own submission** at any point before it is
   triaged — raised in error, no longer needed, or superseded by another request. Withdrawal
   is a submission status (`withdrawn`), not a deletion: it remains visible in "My requests"
@@ -408,7 +418,7 @@ The provider table and `portal_scope` semantics are defined by
 P3 implementation adds the Drizzle table/migration and reloadable, portal-scoped auth pair.
 Customer local sign-in is enabled only by stored customer-scope provider rows and remains
 closed without an already admitted active customer identity. Account creation and invitation
-acceptance remain closed pending the CP-11/CP-12 adapter contract. CP-18/IP-29 also need an
+acceptance remain closed until `CP-20`..`CP-26` are implemented and verified. CP-18/IP-29 also need an
 exact email-first discovery route contract before the UI can route typed domains to
 organisation SSO without inventing a public endpoint.
 Per-request visibility was decided 2026-09-05 (`CP-16`); organisation SSO is specified by
@@ -733,6 +743,8 @@ has not been granted. These are target contracts, not implemented tables.
   change scope. The agent login page may list its instance-level providers
   ([customer-portal.md](feature-contracts-p3.md#customer-portal) `CP-18`,
   [auth-and-identity.md](#pending-01-architectureauth-and-identity-per-portal-binding)).
+
+- `IP-35` The typed-domain route of `CP-27` is the only unauthenticated home-realm entry point. Its state binding follows `IP-9`, its disclosure follows `IP-29` and ADR 0014, and its audit rows carry the selected connection id server-side only. A typed address never grants admission, creates a person or changes scope, and the route is closed while no customer connection with a domain binding is enabled (it then returns the "continue with local methods" shape). `Contract-new`
 
 <a id="identity-provisioning-scim-endpoint"></a>
 #### SCIM endpoint

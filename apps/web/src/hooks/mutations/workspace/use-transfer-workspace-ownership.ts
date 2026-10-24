@@ -4,6 +4,7 @@ import transferWorkspaceOwnership from "@/fetchers/workspace/transfer-workspace-
 type TransferOwnershipRequest = {
   workspaceId: string;
   newOwnerUserId: string;
+  stepUpToken?: string;
 };
 
 // S5 (issue #6, retrofit plan §3): repoints this off the former

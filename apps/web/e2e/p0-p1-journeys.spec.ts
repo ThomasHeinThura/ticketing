@@ -54,6 +54,9 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
           manageServiceCalendars: true,
           shareSavedViews: true,
           manageWorkspaceSettings: true,
+          manageRoles: true,
+          manageWebhooks: true,
+          manageCustomFields: true,
         }),
       }),
     );

@@ -1,0 +1,276 @@
+{
+	"verdict": "fail",
+	"summary": "FAIL (P4 round 1). Two high findings block the pass.\nH1: role assignment is rank-only. A manager or lead can self-assign, or invite into, a low-rank custom role that carries capabilities they lack, for example an Admin clone at the default rank 30. That gives them workspace:manage_roles and api_key:manage. This is privilege escalation with no tests.\nH2: webhook signing secrets use the single-key notification cipher, which the secrets-rekey job and Health ignore. Following the documented GM-12 rotation breaks every webhook immediately, and Health then says removing the old key is safe, after which the secrets are unrecoverable.\nMediums:\n- M1: webhook, impersonation and rotate-secrets step-up proofs are not spent inside the write transaction.\n- M2: the automation effective-role rank is not re-checked on edit or enable.\n- M3: the GM-9 guard is a regex denylist that leaves the team CAB flag open.\n- M4: 0138 silently rewrites CAB and duplicate team data.\n- M5 and M6: purges miss legal holds.\n- M7: custom-field edits are unaudited.\n- M8: quiet hours are bypassed by the legacy delivery path.\n- M9: UI capability gating is wrong.\n- M10: some failing gates come from P4 itself (check:env on safe-http.ts, contrast pairs for two P4-edited files; inventory possibly P5).\nWhat holds:\n- The SSRF guard: guarded lookup, post-connect remoteAddress check, no redirects, https-only outside development.\n- PA-15 binding: route, body hash, session and person, one use.\n- Role create and update, service-key create and ownership transfer spend their proof in the write transaction.\n- Service-key principal: own workspace only, workspace-tier subset, no person, no instance authority, cannot approve.\n- The idempotency secret list, now including workspace api-keys.\n- 0145 refuses external grants on owner/admin carriers and never re-widens narrowed system rows.\n- Webhook delivery reach (WH-14) and outbox consumer failure handling.\n- check:ui:raw-elements and i18n are clean.\nConditions to pass in round 2: fix H1, H2 and M1-M4 with tests; fix or owner-accept M5-M10; browser re-verify the screens fixed after the first browser pass.\nCounts: 0 critical, 2 high, 10 medium, 9 low.",
+	"findings": [
+		{
+			"id": "P4R1-H1",
+			"severity": "high",
+			"area": "security / roles (RL-3, RL-14, permissions.md Roles 'Assign a role')",
+			"file:line": "apps/api/src/workspace/role-assignment-guard.ts:21-56; apps/api/src/workspace/role-service.ts:477-479 (default rank min(30, callerRank-1), also for cloneFromRoleId); apps/api/src/workspace/controllers/update-workspace-member-role.ts:83; apps/api/src/workspace/controllers/invite-workspace-member.ts:111; apps/api/src/workspace/controllers/add-workspace-member.ts:74",
+			"claim": "Assigning a role to a person checks rank only, never the role's capabilities against the assigner's. The contract ('you cannot grant beyond your own authority', RL-3, listed for every role action including assignment) is enforced on role edit but not on add, change or invite. No test covers assertMayAssignRole at all. The route gate is passed by non-admins. PATCH /api/workspace/{id}/members/{userId}/role runs requireWorkspacePermission({member:['update']}). workspaceRoleAuthority answers seeded manager/lead and every custom role from canonical role.capabilities (utils/workspace-member-roles.ts:265-299), and legacy-statements.ts:33 maps member:update to workspace:manage_members, which manager holds. Neither the handler (workspace/index.ts:1128-1140) nor the controller refuses a self role change.",
+			"failure_scenario": "An admin clones Admin into 'Integrations' or 'Ops'. A clone gets the default rank 30 but keeps every admin capability, including workspace:manage_roles, api_key:manage and workspace:update.\n- A manager (rank 60, workspace:manage_members) PATCHes their own membership to that role. The target rank 30 and their current rank 60 both pass the check, so they now hold workspace:manage_roles and api_key:manage. From there they can create roles and service keys.\n- A lead (rank 50, member:invite) can instead invite an address they control with that role.\nThis is privilege escalation that P4 introduced: manager and lead became real roles in P4, and the rank-only guard is new in P4.",
+			"recommended_fix": "In assertMayAssignRole, also require that the expanded closure of the target role's capabilities is a subset of the actor's current capabilities, reusing capabilitiesBeyond from role-service. Apply it on add, role change, invite creation and invitation acceptance. Consider refusing self role changes. Add integration tests for: manager self-assigns a low-rank powerful role; lead invites with it; equal-rank peer. Also consider making a clone inherit min(source rank, caller rank - 1) instead of 30."
+		},
+		{
+			"id": "P4R1-H2",
+			"severity": "high",
+			"area": "data safety / secrets (GM-12..GM-14, WH-1, WH-13)",
+			"file:line": "apps/api/src/webhook/repository.ts:174,291-299,326-337; apps/api/src/notification-preferences/secrets.ts:13-20,82-115; apps/api/src/secrets/rekey.ts:20-28; apps/api/src/instance/health/classify.ts:35-60",
+			"claim": "P4 stores webhook signing secrets with the notification-preferences 'enc:v1' helper. That helper uses only TASKDESK_ENCRYPTION_KEY: no previous-key fallback and no key id. The secrets-rekey job and the Health encryption check cover only instance_plugin_config and identity_connection.",
+			"failure_scenario": "An operator follows the documented GM-12 procedure: the new key goes in TASKDESK_ENCRYPTION_KEY and the old one in _PREVIOUS.\n- From that restart, decryptSecret throws for every webhook secret and secretPrevious. webhookSigningSecrets throws 'Webhook secret is unavailable', every delivery fails, and every webhook auto-disables after 24 h.\n- Health then reports rekeyComplete and safeToRemovePreviousKey=true. Once the operator removes the old key, every webhook secret and every stored ntfy/Gotify/webhook notification token is unrecoverable.\n- The notification-token half is pre-existing. The webhook half is new in P4.",
+			"recommended_fix": "Store webhook secrets in the key-id envelope used by identity client secrets: encryptIdentityClientSecret-style, with current and previous key reads. Add webhook.secret, webhook.secret_previous and the notification preference secret columns to the rekey TARGETS and to classifySecrets. Add an integration test that rotates the key and still signs a delivery."
+		},
+		{
+			"id": "P4R1-M1",
+			"severity": "medium",
+			"area": "security / step-up (permissions.md:148, PA-15, GM-2)",
+			"file:line": "apps/api/src/webhook/index.ts:142-159 (consumeWebhookStepUp opens its own db.transaction), :479-498, :517-544, :585-597; apps/api/src/instance/impersonation/index.ts:149-188; apps/api/src/instance/secrets/rotate-secrets.ts:71-97",
+			"claim": "The contract says 'Every elevated route spends its proof inside its own write transaction'. Webhook create, URL change and rotate-secret instead spend the proof in a separate transaction that commits before createWebhook, updateWebhook or rotateWebhookSecret runs. Impersonation start and secrets rotate also commit the consumption before acting. When the method check then fails, they 'return false' and the transaction commits the consumed proof anyway. tests/permissions/elevated-enforcement.test.ts only greps that the consumer identifier appears in the handler, so it cannot detect any of this.",
+			"failure_scenario": "These cases each spend a proof with nothing to show for it:\n- A URL-changing PATCH carries a stale version (409).\n- The webhook insert fails.\n- A password proof is presented by a person with MFA enabled.\nThe audit log then records auth.step_up_consumed with no corresponding change. The atomic 'one proof, one change' guarantee the contract claims does not hold on these four routes.",
+			"recommended_fix": "Route the webhook routes through runWithStepUp and pass spend into the repository transactions, as role and service-key create already do. For impersonation and rotate-secrets, throw inside the transaction on a method mismatch so the consumption rolls back. Strengthen the enforcement test to assert the consumer runs inside the write transaction, for example with a fault-injection integration test."
+		},
+		{
+			"id": "P4R1-M2",
+			"severity": "medium",
+			"area": "security / automations (AM-3, 'Set a rule's effective role: only at or below your own rank')",
+			"file:line": "apps/api/src/automation/index.ts:553-554 (rank checked only when body.effectiveRoleId is present); :583-627 (enable re-validates definition and role existence, not the caller's rank)",
+			"claim": "The rank ceiling on the effective role is checked only when the role itself is changed. A PATCH that rewrites conditions or actions, and the enable route, never compare the stored effective role with the editor's rank.",
+			"failure_scenario": "An admin saves a project rule with effective role 'admin' (rank 80). A manager (rank 60, holds project:manage_settings) or a custom role holding project:manage_settings PATCHes the rule's actions and conditions, for example call_webhook, transition or assign on every matching item, and enables it. The actions then run with the rank-80 role's capabilities, above the editor's own rank. The built-in lead and project-lead do not hold project:manage_settings, so they cannot do this. The editor gains the higher role's capability set without ever passing the save-time rank check the contract calls 'the important one'.",
+			"recommended_fix": "On any behaviour-changing PATCH, and on enable and dry-run, require roleWithinCallerRank for the existing effective role. Otherwise refuse with effective_role_above_your_rank. Add an integration test."
+		},
+		{
+			"id": "P4R1-M3",
+			"severity": "medium",
+			"area": "security / impersonation (GM-9)",
+			"file:line": "apps/api/src/instance/impersonation/guard.ts:12-45",
+			"claim": "GM-9 is enforced with a path-regex denylist (DURABLE_RESOURCE). Any route it does not name is open to an impersonation session. Enumerating the policy registry shows these allowed:\n- PATCH /api/teams/{id}, including isCab, which moves CAB decision authority (TM-5)\n- POST /api/teams\n- custom-field and section create/visibility\n- workflow publish, SLA policy publish, request-type publish\n- workspace and project feature overrides Team routes mount teamReach plus requireWorkspaceCapability with no requireSessionOnly. god-mode-p4-operations.test.ts:295-299 shows POST /api/teams succeeding as the target during impersonation, and :463 asserts the guard allows it. PATCH /api/teams/{id} uses the same middleware stack, so an isCab flip is reachable end to end.",
+			"failure_scenario": "During impersonation, an admin flips another team to CAB (PATCH /api/teams/{id} {isCab:true}). That changes who may decide CAB approvals, an authority edit that GM-9 forbids ('role or membership edits'). The change is attributed to the target user, with only impersonator_id to tell it apart. Every future authority-bearing route is open by default until someone extends the regex.",
+			"recommended_fix": "Make the guard fail closed: an explicit allowlist of ordinary work-item, comment and attachment write families, or a policy flag (impersonationAllowed) that is required on every mutating route. At minimum add /teams to the denied set and test the isCab case. Then record which configuration writes count as 'ordinary' as an owner decision."
+		},
+		{
+			"id": "P4R1-M4",
+			"severity": "medium",
+			"area": "data safety / migration 0138 (TM-5)",
+			"file:line": "apps/api/drizzle/0138_team_governance.sql:7-17",
+			"claim": "The migration silently deletes duplicate team_member rows and clears is_cab on every CAB team except the oldest per workspace. Nothing is refused, recorded or audited, unlike 0145, which raises on unsafe data.",
+			"failure_scenario": "Applied to the live browser database (taskdesk_browser_journey_1022_test, Thomas's data), a workspace with two CAB-flagged teams loses CAB authority for one of them, with no record of which. Pending CAB approvals addressed to members of the un-flagged team become undecidable, per TM-6.",
+			"recommended_fix": "Have the migration RAISE when duplicates or more than one CAB team exist, as 0145 does, or copy the affected rows into a dated audit or backup table first. Run it against a copy of the live database before applying it."
+		},
+		{
+			"id": "P4R1-M5",
+			"severity": "medium",
+			"area": "legal hold / retention (background-jobs.md:33)",
+			"file:line": "apps/api/src/webhook/delivery.ts:575-592; apps/api/src/automation/executor.ts:412-427",
+			"claim": "The 30-day purges of webhook_delivery and automation_run delete rows with no legal-hold check. background-jobs.md:33 says 'Retention obeys person, source, recipient and resource-owner legal holds'. webhook_delivery.request_body carries work-item titles, actors and project names.",
+			"failure_scenario": "An organisation is placed under legal hold. The hourly opportunistic purge still hard-deletes its 30-day-old delivery bodies and automation run records.",
+			"recommended_fix": "Join the hold scope (the workspace's organisation and the project's organisation via project_id) into both purges, as notification/retention.ts does, or record an owner decision that these tables are exempt operational logs."
+		},
+		{
+			"id": "P4R1-M6",
+			"severity": "medium",
+			"area": "legal hold / custom-field purge (CF-8)",
+			"file:line": "apps/api/src/scheduler/custom-field-purge.ts:34-48; apps/api/src/custom-field/repository.ts:1094-1112",
+			"claim": "The hold scope uses the denormalised custom_field_value.project_id. That column is written only on insert: the ON CONFLICT update path never refreshes it and a work-item move never touches it. custom_field_value.organisation_id is never written, so that UNION branch is dead.",
+			"failure_scenario": "A work item moves from project A to project B. B's organisation is then placed under hold. A soft-deleted field with a value on that item passes its 30-day window, and the purge hard-deletes the values while the hold is open.",
+			"recommended_fix": "Derive the project and organisation from the live work_item row by joining on entity_id, as WORK_ITEM_UNDER_OPEN_HOLD does, or keep project_id current on move and conflict-update. Add a test."
+		},
+		{
+			"id": "P4R1-M7",
+			"severity": "medium",
+			"area": "audit / integration (WI-6, GM-1, CF audit)",
+			"file:line": "apps/api/src/work-item/controllers/update-work-item.ts:192-196; apps/api/src/work-item/activity.ts:270-285 (DIFFABLE_FIELDS has no custom_field); apps/api/src/custom-field/repository.ts:652-660,710-723",
+			"claim": "Changing a custom-field value through PATCH writes no activity row, no audit row and no work_item.updated event. The updated/custom_field activity pair is registered but never emitted. The custom_field.updated audit records only {name,key}, so a customerVisible flip (internal to customer-visible), an option change, or a condition or section change leaves no trace.",
+			"failure_scenario": "A staff member changes an internal field to customer-visible, or edits a value. There is no history, no audit trail and no realtime update for watchers.",
+			"recommended_fix": "Diff old and new values per key inside applyWorkItemFieldValues and emit updated/custom_field activity, with visibility from customerVisible, plus the outbox event. Record full before/after attribute diffs in custom_field.updated."
+		},
+		{
+			"id": "P4R1-M8",
+			"severity": "medium",
+			"area": "notifications (NO-3)",
+			"file:line": "apps/api/src/notification/controllers/create-notification.ts:69; apps/api/src/notification-preferences/delivery.ts:389-592; callers apps/api/src/notification/index.ts:194-307 (task.* subscribers), scheduler/due-date-reminders.ts",
+			"claim": "Quiet hours apply only on the P4 fanout and drain path. The live legacy path (createNotification -> deliverNotification) still sends email, ntfy, Gotify and webhook immediately, without quiet hours or a preference link. It is used by the task.* event subscribers and the due-date reminder job, so NO-3 is not met across all external delivery.",
+			"failure_scenario": "A user with quiet hours 22:00-07:00 receives a due-date reminder push at 02:00.",
+			"recommended_fix": "Route legacy producers through the fanout and outbox path, or apply evaluateQuietHours and defer in deliverNotification. Then downgrade NO-3 to partial until this is done."
+		},
+		{
+			"id": "P4R1-M9",
+			"severity": "medium",
+			"area": "UI / access gating (AGENTS.md UI bar)",
+			"file:line": "apps/web/src/components/settings/workspace-settings-frame.tsx:97-126; apps/web/src/lib/project-settings-navigation.ts:45-54; apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/features.tsx:12-31; .../$projectId/automations.tsx:40",
+			"claim": "The UI gates do not match the API capabilities:\n- The Webhooks, Custom fields, Teams and Roles nav entries and pages are gated on workspace:manage_settings. The APIs need webhook:manage, custom_field:manage and workspace:manage_roles.\n- The project Features and Automations nav entries show for every member.\n- The Features page has no permission check, so a 403 renders as a generic 'could not be loaded' error with Retry.\n- Project automations renders a blank pane (return null) when the project does not resolve.",
+			"failure_scenario": "With custom roles (P4's own feature), a user sees nav entries and buttons that 403, or the reverse: a webhook:manage holder without manage_settings has no navigation and sees a read-only alert. A project member clicks Features and gets a misleading error.",
+			"recommended_fix": "Expose the per-capability flags (webhook:manage, custom_field:manage, workspace:manage_roles, project:manage_settings) to the client and gate nav and pages on them. Map 403 to the existing access-denied Alert. Render a not-found Alert in place of null. Re-verify in the browser."
+		},
+		{
+			"id": "P4R1-M10",
+			"severity": "medium",
+			"area": "gates / honesty (AGENTS.md 'a new gate failure is fixed, never exempted')",
+			"file:line": "apps/api/src/webhook/safe-http.ts:45,229,265,312 (check:env); packages/ui/src/styles/pairs.json entries 177/178 for apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx and 235/236 for apps/web/src/components/work-item/create-work-item-dialog-form.tsx (check:contrast); docs/screens.md (check:inventory 140 vs 141 rows)",
+			"claim": "The evidence packet calls the failing gates 'not from P4'. Re-running them shows several are caused by P4 changes:\n- check:env fails only on the new safe-http.ts.\n- check:contrast reports stale pair entries for two files P4 rewrote or edited.\n- check:inventory fails after docs/screens.md edits. The working tree also holds P5 rows, so this one may be partly P5 rather than P4.\ncheck:vocabulary (attachment_object_gc, absent from data-model.md at HEAD) is genuinely pre-existing.",
+			"failure_scenario": "The phase closes with new gate failures attributed to earlier phases.",
+			"recommended_fix": "Route the env reads in safe-http.ts through a literal NODE_ENV read or the configuration module. Update pairs.json for the two P4 files. Fix the screens.md total. Re-run all four gates and record the results honestly."
+		},
+		{
+			"id": "P4R1-L1",
+			"severity": "low",
+			"area": "UI / webhook editor",
+			"file:line": "apps/web/src/components/webhook/webhook-editor.tsx:266-267,449-455",
+			"claim": "WebhookForm is keyed on id:version. Toggling Active or Re-own bumps the version and remounts the form.",
+			"failure_scenario": "Unsaved name, URL or event edits are silently discarded when the user flips the status switch.",
+			"recommended_fix": "Key the form on the id only and reset it explicitly after a save, or disable the status controls while the form is dirty."
+		},
+		{
+			"id": "P4R1-L2",
+			"severity": "low",
+			"area": "audit fidelity",
+			"file:line": "apps/api/src/webhook/index.ts:129 (callerActor actorIp from raw x-forwarded-for); apps/api/src/instance/impersonation/index.ts:215",
+			"claim": "The audit actor IP for webhook writes and impersonation.started is the raw X-Forwarded-For header, not the trust-depth-resolved client IP (api-key/enforce.ts clientIpForContext).",
+			"failure_scenario": "A caller can write any IP into the audit row of an elevated action.",
+			"recommended_fix": "Use clientIpForContext / resolveClientIp."
+		},
+		{
+			"id": "P4R1-L3",
+			"severity": "low",
+			"area": "migrations bookkeeping",
+			"file:line": "apps/api/drizzle/meta/_journal.json idx 144-147; apps/api/drizzle/meta/0142_snapshot.json, 0147_snapshot.json; no meta/0158_snapshot.json",
+			"claim": "The migration bookkeeping is out of step:\n- 0147 is journalled before 0145 and 0146.\n- 0158 has no snapshot; 0147_snapshot already contains 0158's CHECK.\n- 0142_snapshot sits in the prevId chain with no SQL file and no journal entry.\nThe schema and snapshot contents agree, but the files no longer describe the order that actually ran.",
+			"failure_scenario": "A future drizzle-kit generate or check, or a reviewer bisecting migrations, sees a snapshot that runs ahead of its journal entry.",
+			"recommended_fix": "Regenerate a 0158 snapshot, or document in data-model.md that 0147_snapshot is post-0158, and record why 0142 is skipped."
+		},
+		{
+			"id": "P4R1-L4",
+			"severity": "low",
+			"area": "notifications / retention",
+			"file:line": "apps/api/src/notification/retention.ts:65-75; apps/api/src/database/repositories/notification-delivery.repository.ts:104-109",
+			"claim": "Retention deletes read inbox rows without checking for pending external children. The child claim INNER JOINs the inbox row, so a deleted row orphans its child.",
+			"failure_scenario": "With a short retention setting, a child deferred by quiet hours whose inbox row was read and purged stays pending forever, and nothing reports it.",
+			"recommended_fix": "Skip inbox rows that have a non-terminal child, or terminalise the children before deleting."
+		},
+		{
+			"id": "P4R1-L5",
+			"severity": "low",
+			"area": "teams / reach design (TM-3 vs TM-4)",
+			"file:line": "apps/api/src/team/index.ts:104-117; docs/technical/feature-contracts-p4.md:326-333,352-354",
+			"claim": "A team lead may add any staff member to the team (TM-3). When the team owns projects (TM-4), that grants project reach without project:manage_members, the capability TM-4 requires for reach changes. The contract also contradicts itself: the table says the owning team is set with project:manage_settings, while TM-4 and the code use project:manage_members.",
+			"failure_scenario": "A lead extends reach to an owned project for someone the project's managers never approved.",
+			"recommended_fix": "Owner decision: either require project:manage_members on every owned project for roster changes to an owning team, or accept it and record why. Fix the contract table."
+		},
+		{
+			"id": "P4R1-L6",
+			"severity": "low",
+			"area": "automations / permissions",
+			"file:line": "apps/api/src/automation/index.ts:673-684 (deleteRoute calls authoriseRuleScope with projectId: null); apps/api/src/automation/access.ts:95-103",
+			"claim": "Deleting a project rule is authorised as a workspace rule, so it requires workspace:manage_settings. The contract says project:manage_settings.",
+			"failure_scenario": "A project manager without workspace settings rights cannot delete their own project's rule. This fails closed.",
+			"recommended_fix": "Pass the rule's projectId to authoriseRuleScope."
+		},
+		{
+			"id": "P4R1-L7",
+			"severity": "low",
+			"area": "UI / secret hygiene",
+			"file:line": "apps/web/src/hooks/mutations/api-key/use-create-api-key.ts:5-14",
+			"claim": "The created key's plaintext stays in the React Query MutationCache until the route unmounts plus gcTime.",
+			"failure_scenario": "The secret stays readable in memory longer than needed.",
+			"recommended_fix": "Call mutation.reset() after copying the key into dialog state."
+		},
+		{
+			"id": "P4R1-L8",
+			"severity": "low",
+			"area": "custom fields / non-compliant report",
+			"file:line": "apps/api/src/custom-field/repository.ts:1151-1180",
+			"claim": "The report scans limit*4 items, ordered lexically by key, and filters for missing values in JS.",
+			"failure_scenario": "When the first 200 items are compliant, the report understates the gap after a field is made required.",
+			"recommended_fix": "Push the empty-value predicate into SQL and order by project and number."
+		},
+		{
+			"id": "P4R1-L9",
+			"severity": "low",
+			"area": "permissions / automations (permissions.md automation:manage)",
+			"file:line": "apps/api/src/automation/access.ts:110-113; docs/technical/permissions.md:87; docs/technical/feature-contracts-p4.md (Automations Permissions table)",
+			"claim": "The automation:manage capability ('Rules at project scope') is granted to manager and lead in 0145 but enforced nowhere: grep finds it only in a role-preview label. Project rules are gated on project:manage_settings, following the P4 contract table. The two contracts disagree.",
+			"failure_scenario": "A custom role given automation:manage expecting to manage project rules gets 403. A role without automation:manage but with project:manage_settings manages rules. The capability picker shows a capability that does nothing.",
+			"recommended_fix": "Owner decision: either enforce automation:manage (plus project:manage_settings or workspace:manage_settings per scope) or remove it from the vocabulary through the AK-12 two-phase rename. Align permissions.md with feature-contracts-p4.md."
+		}
+	],
+	"requirements": [
+		{
+			"id": "RL-3",
+			"state": "partial",
+			"note": "Refusal is enforced on role create and edit only. Role assignment (add, change, invite) checks rank, not capabilities, so a manager can self-assign a low-rank role holding capabilities they lack (P4R1-H1). Assignment has no tests."
+		},
+		{
+			"id": "AM-3",
+			"state": "partial",
+			"note": "The effective-role rank ceiling is not re-checked when actions or conditions are edited or the rule is enabled (P4R1-M2)."
+		},
+		{
+			"id": "GM-9",
+			"state": "partial",
+			"note": "Regex denylist. PATCH /api/teams/{id} (isCab), team create and other configuration writes are open to impersonation (P4R1-M3). CSRF-issuer opening reviewed: token bound to the impersonation session id and origin-checked; acceptable, but record the owner decision the audit marks pending."
+		},
+		{
+			"id": "GM-12",
+			"state": "partial",
+			"note": "Webhook secrets and notification secrets are not readable under the previous key (P4R1-H2)."
+		},
+		{
+			"id": "GM-14",
+			"state": "partial",
+			"note": "Health reports safeToRemovePreviousKey while webhook and notification secrets are still under the old key (P4R1-H2)."
+		},
+		{
+			"id": "NO-3",
+			"state": "partial",
+			"note": "The legacy deliverNotification path (task.* subscribers, due-date reminders) bypasses quiet hours (P4R1-M8)."
+		},
+		{
+			"id": "GM-2",
+			"state": "partial",
+			"note": "Agree with partial. In addition, the webhook, impersonation and rotate-secrets proofs are not spent inside the write transaction (P4R1-M1)."
+		},
+		{
+			"id": "RL-8",
+			"state": "implemented_tested",
+			"note": "browser_verified should be false: the audit's own gap says the post-approval fixes were not re-verified in a browser."
+		},
+		{
+			"id": "RL-13",
+			"state": "implemented_tested",
+			"note": "browser_verified should be false: the compare view was seen before the description fix."
+		},
+		{
+			"id": "AK-7",
+			"state": "partial",
+			"note": "The audit gap text is stale. Service-key create now spends service_key_create (api-key/index.ts:244, tested in step-up-workspace-operations.test.ts). The remaining gaps are re-attestation and the God Mode key list."
+		},
+		{
+			"id": "CF-8",
+			"state": "partial",
+			"note": "The audit gap text is stale. scheduler/custom-field-purge.ts and tests/api-integration/custom-field-purge.test.ts exist. Still partial because of the hold-scope defect (P4R1-M6)."
+		},
+		{
+			"id": "TM-5",
+			"state": "implemented_untested",
+			"note": "Agree. Migration 0138 also silently clears is_cab on live data (P4R1-M4)."
+		}
+	],
+	"carry_to_later_phases": [
+		"Digest sender (NO-5/NO-6): groups are sealed but never sent. canonical-preferences.ts forces digest 'off', so the gap is latent. Keep the digest write closed until a sender exists.",
+		"Assignment, unassignment and transition email children are created with channels attached but are always 'destination_unresolved' in immediate-runtime.ts:34-39. They back off forever and Health cannot see them. This predates P4; pass channels: [] for unsupported kinds.",
+		"God Mode sections still absent (GM-1/GM-4/GM-5/GM-6): Plugins, Jobs, Deliveries, Storage, Organisations, Branding, MCP usage. No schema-generated plugin forms.",
+		"AK-2 Argon2id hashing, AK-12 capability rename/alias mechanism, AK-7 re-attestation and God Mode service-key list, AK-11 personal-key deletion, no service-key UI (AK-1).",
+		"WH-7 owner notification on auto-disable; WH-13 'Rotate all webhook secrets' incident action; WH-15 security-posture panel; WH-14 named history-reach test.",
+		"CF-10 sort, table columns and groupBy; CF-4 intake skips required-field enforcement on creation (needs an owner decision); template customFieldValues never applied.",
+		"RL-9 IP-22 closure for roles referenced by identity provisioning (currently refused with 409).",
+		"The API-key rate limiter and the preference-handoff limiter are per process (per replica).",
+		"After P4 deploys, the first daily cleanup purges read notifications older than 90 days on the live database (0143 backfills read_at from updated_at). This is expected behaviour; tell Thomas before deploying."
+	],
+	"unverified": [
+		"No server was run and no database was touched. The API integration suite (305 files, 4204 tests) was not re-run. I read only the summary lines of the coordinator's log at scratchpad p4-full-integration3.log.",
+		"Re-ran only read-only gates: check:ui:raw-elements, check:ui and check:i18n pass; check:policy, check:skips and check:events pass; apps/api test:permissions gives 115/115. Under turbo, check:route-policy failed only on a sandbox EPERM writing /tmp. check:openapi could not run because tsx IPC binding is blocked by the sandbox. Web build, typecheck and unit suites were not re-run.",
+		"No browser checks by this reviewer. Per the packet, webhook create, impersonation (banner and exit), user deactivate, the SMTP/email-on-end path and the rotate-secrets dialog were never browser-verified. Screens fixed after the first browser pass (roles descriptions and compare, RL-8 post-approval navigation, inbox row overlap) were not re-verified. Kaneo look-and-feel parity of the new settings screens is not confirmed by this review.",
+		"The SSRF socket-level cases (redirect not followed, 2xx-only, deadline, the remoteAddress re-check) skip under the sandbox (listen EPERM), so WH-10 and WH-11 have only unit and lookup-level evidence.",
+		"The packages/mcp tool rewrite was skimmed only. Thin-client behaviour and the feature.mcp 404 were not traced end to end.",
+		"Custom-field, notification and web UI areas were reviewed by delegated read-only reviewers. I re-opened every carried finding at its cited file:line. That covers retention.ts:65-75, notification-delivery.repository.ts:100-112, the custom-field/repository.ts:1094-1112 conflict path and :1148-1182, and the webhook-editor and use-create-api-key lines, which were read only at the cited lines. Delegated claims I did not carry were dropped, for example 'set_custom_field has no executor': it is refused at save as action_unavailable."
+	]
+}

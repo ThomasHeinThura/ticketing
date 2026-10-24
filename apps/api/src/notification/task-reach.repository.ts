@@ -190,16 +190,10 @@ export function projectReachPredicate(userId: string, executor: Executor = db) {
         ),
       ),
   );
-  const legacyReadableRoles = Object.entries(BUILT_IN_ROLES)
-    .filter(
-      ([key, role]) =>
-        key !== "instance_admin" &&
-        role.scope === "workspace" &&
-        expandCapabilities(role.capabilities, {
-          tier: roleScopeTier("workspace"),
-        }).has("work_item:read"),
-    )
-    .map(([key]) => key);
+  // The `workspace_member.role` key points at a canonical workspace-scope `role` row (owner
+  // decision, 23 Oct): `owner` stays compiled, every other key reads its row's capabilities. A
+  // custom row squatting on a built-in key is never trusted as that built-in (issue #318).
+  const builtInKeys = Object.keys(BUILT_IN_ROLES);
   const legacyWorkspaceRoleCanRead = exists(
     executor
       .select({ id: schema.workspaceUserTable.id })
@@ -208,20 +202,36 @@ export function projectReachPredicate(userId: string, executor: Executor = db) {
         and(
           eq(schema.workspaceUserTable.userId, userId),
           eq(schema.workspaceUserTable.workspaceId, projectTable.workspaceId),
-          sql`${schema.workspaceUserTable.role} in (${sql.join(
-            legacyReadableRoles.map((key) => sql`${key}`),
-            sql`, `,
-          )})`,
           sql`not exists (select 1 from ${schema.workspaceUserTable} duplicate_member
           where duplicate_member.user_id = ${userId}
           and duplicate_member.workspace_id = ${projectTable.workspaceId}
           and duplicate_member.id <> ${schema.workspaceUserTable.id})`,
-          sql`(${schema.workspaceUserTable.role} = 'owner' or exists (
-          select 1 from ${schema.workspaceRoleTable} legacy_role
-          where legacy_role.workspace_id = ${projectTable.workspaceId}
-          and legacy_role.role = ${schema.workspaceUserTable.role}
-          and legacy_role.is_system = true
-        ))`,
+          or(
+            eq(schema.workspaceUserTable.role, "owner"),
+            exists(
+              executor
+                .select({ id: schema.roleTable.id })
+                .from(schema.roleTable)
+                .where(
+                  and(
+                    eq(schema.roleTable.scope, "workspace"),
+                    eq(schema.roleTable.workspaceId, projectTable.workspaceId),
+                    eq(schema.roleTable.key, schema.workspaceUserTable.role),
+                    or(
+                      eq(schema.roleTable.isSystem, true),
+                      sql`${schema.roleTable.key} not in (${sql.join(
+                        builtInKeys.map((key) => sql`${key}`),
+                        sql`, `,
+                      )})`,
+                    ),
+                    storedTaskRead(
+                      schema.roleTable.capabilities,
+                      roleScopeTier("workspace"),
+                    ),
+                  ),
+                ),
+            ),
+          ),
         ),
       ),
   );

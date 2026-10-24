@@ -7,7 +7,15 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@taskdesk/ui";
-import { Bell, FileClock, Shield, Users } from "lucide-react";
+import {
+  Activity,
+  Bell,
+  FileClock,
+  Settings,
+  Shield,
+  ToggleRight,
+  Users,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsSidebar from "@/components/SettingsSidebar";
@@ -17,6 +25,18 @@ export function InstanceSettingsFrame({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const items = [
+    {
+      title: t("godModeHealth:title"),
+      path: routes.godModeHealth.path,
+      icon: Activity,
+      // The landing page: its path is the prefix of every other God Mode page.
+      exact: true,
+    },
+    {
+      title: t("godModeSettings:title"),
+      path: routes.godModeGeneral.path,
+      icon: Settings,
+    },
     {
       title: t("navigation:workspaceSwitcher.instanceUsers"),
       path: routes.godModeUsers.path,
@@ -33,7 +53,12 @@ export function InstanceSettingsFrame({ children }: { children: ReactNode }) {
       icon: Bell,
     },
     {
-      title: t("common:navigation.auditLog"),
+      title: t("featureFlags:page.godModeTitle"),
+      path: routes.godModeFeatures.path,
+      icon: ToggleRight,
+    },
+    {
+      title: t("common:navigation.auditLog", { defaultValue: "Audit log" }),
       path: routes.godModeAudit.path,
       icon: FileClock,
     },
@@ -56,7 +81,9 @@ export function InstanceSettingsFrame({ children }: { children: ReactNode }) {
                     className={cn(
                       "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground",
                       (pathname === item.path ||
-                        pathname.startsWith(`${item.path}/`)) &&
+                        pathname === `${item.path}/` ||
+                        (!("exact" in item) &&
+                          pathname.startsWith(`${item.path}/`))) &&
                         "bg-sidebar-accent text-sidebar-accent-foreground",
                     )}
                   >

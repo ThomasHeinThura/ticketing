@@ -5,7 +5,10 @@ import { HTTPException } from "hono/http-exception";
 import type db from "../database";
 import { schema } from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
-import { projectAncestryFor } from "../utils/project-ancestry";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
 import {
   commentAccess,
   loadCommentCaller,
@@ -128,12 +131,19 @@ async function readable(
     target.item.workspaceId,
     target.item.projectId,
   );
+  const ownerTeamId = await projectOwnerTeamFor(
+    executor,
+    identity,
+    target.item.workspaceId,
+    target.item.projectId,
+  );
   return (
     reaches(identity, {
       workspaceId: target.item.workspaceId,
       projectId: target.item.projectId,
       organisationId: target.project.organisationId,
       ancestorProjectIds,
+      ownerTeamId,
     }) &&
     can(identity, "work_item:read", "work_item", {
       workspaceId: target.item.workspaceId,

@@ -31,6 +31,7 @@ const SECRET_BEARING_ROUTES: readonly RegExp[] = [
   /\/metrics-token\/rotate$/,
   /^\/api\/auth(\/|$)/,
   /^\/api\/me\/(api-keys?|mfa|totp|backup)/,
+  /^\/api\/workspaces\/[^/]+\/api-keys/,
   /\/attachments\/presign$/,
   /\/invitations?(\/|$)/,
 ];

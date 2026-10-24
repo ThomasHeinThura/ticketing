@@ -22,10 +22,19 @@ import {
   type AuthenticatedApiKey,
   resolveRequestIdentity,
 } from "../../permissions/resolve-request-identity";
-import { loadAncestorIdsByProject } from "../../project/hierarchy.repository";
+import {
+  loadAncestorIdsByProject,
+  loadOwnerTeamIdsByProject,
+} from "../../project/hierarchy.repository";
 import { evaluateProjectRead } from "../../utils/has-project-reach";
 import { decorateWorkItemRows } from "../decorate-rows";
 import { workItemPolicies } from "../policy";
+import {
+  CUSTOM_FIELD_FILTER_KEY,
+  type CustomFieldFilterDefinitions,
+  customFieldClause,
+  loadCustomFieldFilterDefinitions,
+} from "./custom-field-filter";
 import type { SearchFilter, WorkItemSearchQuery } from "./query";
 
 const priorityRank = sql<number>`case ${schema.workItemTable.priority} when 'low' then 1 when 'medium' then 2 when 'high' then 3 when 'urgent' then 4 else null end`;
@@ -40,15 +49,23 @@ const sortExpr = (field: string): SQL =>
 const priorityRankValue = (v: string) =>
   ["low", "medium", "high", "urgent"].indexOf(v) + 1;
 
-function filterSql(filter: SearchFilter, personId: string, now: Date): SQL {
+function filterSql(
+  filter: SearchFilter,
+  personId: string,
+  now: Date,
+  customFields: CustomFieldFilterDefinitions,
+): SQL {
   if ("clauses" in filter) {
     const children = filter.clauses.map((node) =>
-      filterSql(node, personId, now),
+      filterSql(node, personId, now, customFields),
     );
     return filter.op === "and" ? and(...children)! : or(...children)!;
   }
   const { field, op, value } = filter;
   const w = schema.workItemTable;
+  // CF-10: a custom-field value, matched through EXISTS over this workspace's field.
+  if (CUSTOM_FIELD_FILTER_KEY.test(field))
+    return customFieldClause(filter, customFields, personId);
   if (field === "state.group") {
     const sub = db
       .select({ id: schema.stateTable.id })
@@ -222,7 +239,7 @@ export async function searchWorkItems(input: {
 }) {
   const { userId, workspaceId, query, limit } = input;
   const access = await resolveWorkItemSearchAccess(input);
-  const { personId, projectIds } = access;
+  const { personId, projectIds, customFields } = access;
   const hash = createHash("sha256")
     .update(
       JSON.stringify({ query, projectScopeId: input.projectScopeId ?? null }),
@@ -257,7 +274,9 @@ export async function searchWorkItems(input: {
   if (input.projectScopeId)
     conditions.push(eq(w.projectId, input.projectScopeId));
   if (query.filter)
-    conditions.push(filterSql(query.filter, personId, new Date()));
+    conditions.push(
+      filterSql(query.filter, personId, new Date(), customFields),
+    );
   if (decoded) {
     const expr = sortExpr(field);
     const value = decoded.value;
@@ -493,6 +512,8 @@ export async function resolveWorkItemSearchAccess(input: {
   const searchPolicy = workItemPolicies["POST /api/work-items/search"];
   // PR-2: inherited project membership, read at call time (one query).
   const ancestorsByProject = await loadAncestorIdsByProject(db, [workspaceId]);
+  // TM-4 / reach step 5.
+  const ownerTeams = await loadOwnerTeamIdsByProject(db, [workspaceId]);
   const projectIds = projectRows
     .filter((p) => {
       const decision = evaluateProjectRead(
@@ -504,7 +525,7 @@ export async function resolveWorkItemSearchAccess(input: {
           workspaceId: p.workspaceId,
           organisationId: p.organisationId,
           ancestorProjectIds: ancestorsByProject.get(p.id) ?? [],
-          ownerTeamId: null,
+          ownerTeamId: ownerTeams.get(p.id) ?? null,
         },
       );
       return decision?.reachable && decision.capable;
@@ -541,9 +562,16 @@ export async function resolveWorkItemSearchAccess(input: {
     !can(identity, "workspace:read", "workspace", { workspaceId })
   )
     throw new HTTPException(422, { message: "Filter field unavailable: type" });
+  // CF-10: every `cf.<key>` must name a live field of THIS workspace, on every run of a
+  // saved view too (a deleted field is a 422, never an unfiltered result).
+  const customFields = await loadCustomFieldFilterDefinitions(
+    workspaceId,
+    query.filter,
+  );
   return {
     identity,
     personId: person.id,
     projectIds,
+    customFields,
   };
 }

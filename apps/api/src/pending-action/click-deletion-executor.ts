@@ -61,6 +61,12 @@ export type RegisteredDeletionTarget = {
   /** Refuse API-key origins at request time as well as through the route policy. */
   sessionOnly: boolean;
   notFound: string;
+  /**
+   * Registered route whose project-scoped policy governs targets that load with a `projectId`;
+   * `routeKey`'s policy then governs only the project-less (workspace) targets. For rows that
+   * are owned either by a workspace or by one project (project-scoped automations).
+   */
+  projectPolicyRouteKey?: string;
   /** Load and lock the target in the module's own lock order; undefined when gone/out of scope. */
   load: (
     tx: PendingActionTransaction,

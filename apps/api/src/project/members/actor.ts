@@ -8,6 +8,7 @@ import {
 import {
   findLiveProject,
   loadProjectAncestorIds,
+  loadProjectOwnerTeamIdFor,
 } from "../hierarchy.repository";
 import { callerRankInProject } from "./roster";
 import type { RosterActor } from "./service";
@@ -54,7 +55,12 @@ export async function assertCanManageProspectiveParent(
           input.workspaceId,
           parent.id,
         ),
-        ownerTeamId: null,
+        ownerTeamId: await loadProjectOwnerTeamIdFor(
+          db,
+          identity,
+          input.workspaceId,
+          parent.id,
+        ),
       })
     : null;
   if (!parent || !decision?.reachable) {

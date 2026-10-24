@@ -4,7 +4,9 @@ import type { Context } from "hono";
 import db, { schema } from "../database";
 import {
   loadAncestorIdsByProject,
+  loadOwnerTeamIdsByProject,
   loadProjectAncestorIdsFor,
+  loadProjectOwnerTeamIdFor,
 } from "../project/hierarchy.repository";
 import {
   hasProjectReadCapability,
@@ -43,6 +45,11 @@ export async function callerReach(c: Context, userId: string) {
     return loadProjectAncestorIdsFor(c, db, identity, workspaceId, projectId);
   }
 
+  // TM-4 / reach step 5: skipped without a query when the caller is on no team.
+  function ownerTeamOf(workspaceId: string, projectId: string) {
+    return loadProjectOwnerTeamIdFor(db, identity, workspaceId, projectId);
+  }
+
   async function facts(row: ReachRow) {
     if (row.organisationId !== undefined) {
       return {
@@ -51,7 +58,7 @@ export async function callerReach(c: Context, userId: string) {
         organisationId: row.organisationId,
         workItemId: row.id,
         ancestorProjectIds: await ancestorsOf(row.workspaceId, row.projectId),
-        ownerTeamId: null,
+        ownerTeamId: await ownerTeamOf(row.workspaceId, row.projectId),
       };
     }
     let organisationId = organisations.get(row.workspaceId);
@@ -70,7 +77,7 @@ export async function callerReach(c: Context, userId: string) {
       organisationId,
       workItemId: row.id,
       ancestorProjectIds: await ancestorsOf(row.workspaceId, row.projectId),
-      ownerTeamId: null,
+      ownerTeamId: await ownerTeamOf(row.workspaceId, row.projectId),
     };
   }
 
@@ -106,6 +113,7 @@ export async function callerReach(c: Context, userId: string) {
       const ancestorsByProject = await loadAncestorIdsByProject(db, [
         ...workspaceIds,
       ]);
+      const ownerTeams = await loadOwnerTeamIdsByProject(db, [...workspaceIds]);
       return rows
         .filter((row) =>
           reaches(identity, {
@@ -113,7 +121,7 @@ export async function callerReach(c: Context, userId: string) {
             workspaceId: row.workspaceId,
             organisationId: row.organisationId,
             ancestorProjectIds: ancestorsByProject.get(row.id) ?? [],
-            ownerTeamId: null,
+            ownerTeamId: ownerTeams.get(row.id) ?? null,
           }),
         )
         .map((row) => row.id);
