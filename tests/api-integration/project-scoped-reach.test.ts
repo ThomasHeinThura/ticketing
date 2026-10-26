@@ -24,6 +24,7 @@ import { costTypeTable } from "../../apps/api/src/database/schema-p5-time";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
+import { grantProjectRole } from "./helpers/fixtures";
 import { setTimeFlags } from "./helpers/p5-time";
 import { ensureAgentSession } from "./helpers/pending-deletion";
 import { projectKey } from "./helpers/project-key";
@@ -55,6 +56,8 @@ type Case = {
   /** Put the data into the state this route's success path needs. */
   prepare?: (world: ProjectWorld, ids: Ids) => Promise<void>;
   successStatus?: number;
+  /** Search POSTs are read operations despite their transport method. */
+  readOnly?: boolean;
   /** Session-only route: every API key is refused with 403, outsiders included. */
   apiKeyRefused?: boolean;
   call: (app: App, world: ProjectWorld, ids: Ids) => Promise<Response>;
@@ -69,6 +72,25 @@ const SECRET_MARKERS = [
 ];
 
 const WRITES: Case[] = [
+  {
+    matrixKey: "PATCH /api/projects/{projectId}/settings/inheritance",
+    call: (app, _w, i) =>
+      json(app, "PATCH", `/api/projects/${i.projectId}/settings/inheritance`, {
+        expectedProjectVersion: 1,
+        expectedWorkspaceVersion: 1,
+        slaPolicy: { mode: "inherit" },
+      }),
+  },
+  {
+    matrixKey: "PATCH /api/projects/{projectId}/state-set",
+    call: (app, _w, i) =>
+      json(app, "PATCH", `/api/projects/${i.projectId}/state-set`, {
+        expectedProjectVersion: 1,
+        expectedWorkspaceVersion: 1,
+        mode: "inherit",
+      }),
+  },
+
   {
     matrixKey: "PUT /api/project/{id}",
     call: (app, _w, i) =>
@@ -300,11 +322,16 @@ const WRITES: Case[] = [
   },
   {
     // AM: `feature.automations` is off by default, so a caller that passes reach and
-    // `project:manage_settings` is refused by the handler with 409 feature_disabled, a status
+    // `automation:manage` is refused by the handler with 409 feature_disabled, a status
     // distinct from the matrix's 404/403, which is what proves the gates ran before any write.
     // `{key}` accepts the project id as well as its slug.
     matrixKey: "POST /api/projects/{key}/automations",
     successStatus: 409,
+    prepare: async (w, i) => {
+      await grantProjectRole(w.projectAdmin.user.id, i.projectId, [
+        "automation:manage",
+      ]);
+    },
     call: async (app, w, i) => {
       const [role] = await db
         .select({ id: schema.roleTable.id })
@@ -468,6 +495,11 @@ const READS: Case[] = [
       json(a, "GET", `/api/projects/${i.projectId}/assignable`),
   },
   {
+    matrixKey: "GET /api/projects/{projectId}/settings/inheritance",
+    call: (app, _w, i) =>
+      json(app, "GET", `/api/projects/${i.projectId}/settings/inheritance`),
+  },
+  {
     matrixKey: "GET /api/projects/{projectId}/states",
     call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/states`),
   },
@@ -523,6 +555,19 @@ const READS: Case[] = [
     matrixKey: "GET /api/projects/{projectId}/work-items",
     call: (a, _w, i) =>
       json(a, "GET", `/api/projects/${i.projectId}/work-items`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/work-items/combined",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/work-items/combined`),
+  },
+  {
+    matrixKey: "POST /api/projects/{projectId}/work-items/combined",
+    readOnly: true,
+    call: (a, _w, i) =>
+      json(a, "POST", `/api/projects/${i.projectId}/work-items/combined`, {
+        query: { entity: "work_item" },
+      }),
   },
   {
     matrixKey: "GET /api/task/tasks/{projectId}",
@@ -736,7 +781,7 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
           ?.enabled,
       ).not.toBe("D");
 
-      const taskResponseJson = deferred<void>();
+      let taskResponseReturned = false;
       const observedApp = new Proxy(app, {
         get(target, property, receiver) {
           if (property !== "request")
@@ -744,12 +789,7 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
           return async (...args: Parameters<App["request"]>) => {
             const response = await target.request(...args);
             if (String(args[0]) === "/api/task/" + world.project.id) {
-              const parseJson = response.json.bind(response);
-              response.json = async () => {
-                const body = await parseJson();
-                taskResponseJson.resolve();
-                return body;
-              };
+              taskResponseReturned = true;
             }
             return response;
           };
@@ -790,15 +830,12 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
       expect(waitingActivity.task_fk_lock).toBe(true);
       expect(waitingActivity.activity_insert_lock).toBe(true);
       expect(waitingActivity.created_activity_insert).toBe(true);
-      await waitForSignal(
-        taskResponseJson.promise,
-        "actual POST task response JSON completion",
-      );
-      // Drain promise continuations after the real response body is decoded. With the old
-      // helper this makes its immediate return observable; with the proposed helper the
-      // created-activity row is still held at the owned gate.
+      // The required history insert is in the task transaction. While the trigger owns the
+      // advisory gate, the HTTP response must remain pending with that insert; fixture
+      // construction may return only after the activity commits.
       await new Promise<void>((resolve) => setImmediate(resolve));
       expect(seedSettled).toBe(false);
+      expect(taskResponseReturned).toBe(false);
 
       const unlock = await control.query("SELECT pg_advisory_unlock($1, $2)", [
         ADVISORY_CLASS,
@@ -812,6 +849,7 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
         "seedProjectRows after its created activity commits",
       );
       expect(ids.taskId).toBeTruthy();
+      expect(taskResponseReturned).toBe(true);
       const notification = await waitForSignal(
         activityNotification.promise,
         "actual created-activity commit after gate release",
@@ -826,6 +864,11 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
         ),
       });
       expect(activity).toBeDefined();
+      expect(
+        await db.query.taskTable.findFirst({
+          where: eq(schema.taskTable.id, ids.taskId),
+        }),
+      ).toMatchObject({ id: ids.taskId, projectId: world.project.id });
 
       await resetTestDatabase();
       expect(
@@ -970,7 +1013,8 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
   }
 
   for (const route of [...WRITES, ...READS]) {
-    const isRead = route.matrixKey.startsWith("GET ");
+    const isRead =
+      route.readOnly === true || route.matrixKey.startsWith("GET ");
     describe(route.matrixKey, () => {
       it("a same-workspace caller outside project reach gets the matrix's 404 byte-identical to a missing project, and writes nothing", async () => {
         const { world, app, ids } = await arrange(route);
@@ -1031,7 +1075,9 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
         );
         const memberKey = await makeApiKey(
           world.projectAdmin.user.id,
-          PROJECT_KEY_SCOPE,
+          route.matrixKey === "POST /api/projects/{key}/automations"
+            ? { ...PROJECT_KEY_SCOPE, automation: ["manage"] }
+            : PROJECT_KEY_SCOPE,
         );
         const readKey = await makeApiKey(
           world.projectAdmin.user.id,

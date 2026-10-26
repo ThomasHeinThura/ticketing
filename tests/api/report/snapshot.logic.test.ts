@@ -22,7 +22,9 @@ import {
   mergeUse,
   runsOf,
   SNAPSHOT_BACKFILL_DAYS_PER_RUN,
+  SNAPSHOT_FAMILY_VERSION,
   SNAPSHOT_LOOKBACK_DAYS,
+  SNAPSHOT_METRICS,
   SNAPSHOT_RETENTION_DAYS,
   splitForSnapshots,
   utcDayStart,
@@ -32,6 +34,24 @@ const NOW = new Date("2026-10-24T09:30:00.000Z");
 const at = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 
 describe("which part of a window is read from snapshots (RP-9)", () => {
+  it("publishes coverage only for the complete versioned report fact family", () => {
+    expect(SNAPSHOT_FAMILY_VERSION).toBe(2);
+    expect(SNAPSHOT_METRICS).toEqual([
+      "sla_resolution",
+      "sla_first_response",
+      "throughput",
+      "item_created",
+      "item_resolved",
+      "sla_due_outcome",
+      "satisfaction_rating",
+      "time_logged",
+      "cost_entry",
+      "escalation_started",
+      "kb_deflection",
+      "cycle_completion",
+    ]);
+  });
+
   it("keeps the current day and a partial edge live, and whole closed days stored", () => {
     const window = resolveWindow({ window: "30" }, NOW);
     if (!window.ok) throw new Error("window");
@@ -211,6 +231,11 @@ describe("the CSV states what it is built from", () => {
     },
     asOf: "2026-10-24T09:30:00.000Z",
     boundary: "live",
+    sources: {
+      metricSnapshot: false,
+      cycleSnapshot: false,
+      liveComponents: ["selected_period"],
+    },
     snapshot: null,
     filters: {},
     options: {},
@@ -228,9 +253,9 @@ describe("the CSV states what it is built from", () => {
     ...overrides,
   });
 
-  it("names the stored period and a cut at the row cap, and says nothing when there is neither", () => {
+  it("states source provenance, the stored period and a cut at the row cap", () => {
     const plain = reportToCsv(envelope({}));
-    expect(plain).not.toContain("# Source");
+    expect(plain).toContain("# Sources: live components: selected period");
     expect(plain).not.toContain("# Truncated");
     const csv = reportToCsv(
       envelope({
@@ -241,11 +266,20 @@ describe("the CSV states what it is built from", () => {
           computedAt: "2026-10-24T09:00:00.000Z",
           through: "2026-10-24T00:00:00.000Z",
         },
+        sources: {
+          metricSnapshot: true,
+          cycleSnapshot: false,
+          liveComponents: ["current_period"],
+        },
         truncated: true,
       }),
     );
     expect(csv).toContain(
-      "# Source: 28 closed day(s) from stored daily snapshots up to 2026-10-24; the rest is computed live",
+      "# Sources: daily report snapshots; live components: current or partial period",
+    );
+    expect(csv).toContain(
+      // Snapshot coverage ends at an exclusive midnight; CSV names the last stored day.
+      "# Source: 28 closed day(s) from stored daily snapshots up to 2026-10-23; the rest is computed live",
     );
     expect(csv).toContain("# Truncated: this report stops at 1 rows");
     // The data header still follows the preamble.

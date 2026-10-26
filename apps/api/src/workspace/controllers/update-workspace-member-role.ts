@@ -1,4 +1,8 @@
 import { and, eq } from "drizzle-orm";
+import {
+  captureWorkspaceServiceKeyAuthority,
+  markServiceKeysForAuthorityLoss,
+} from "../../api-key/authority-loss";
 import { appendAuditLog } from "../../audit/audit-writer";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
@@ -93,6 +97,12 @@ async function updateWorkspaceMemberRole(
       });
     }
 
+    const authorityBefore = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      userId,
+      workspaceId,
+    );
+
     await tx
       .update(schema.workspaceUserTable)
       .set({ role })
@@ -104,6 +114,16 @@ async function updateWorkspaceMemberRole(
       );
 
     await syncWorkspaceAdminReach(tx, workspaceId, userId);
+    const authorityAfter = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      userId,
+      workspaceId,
+    );
+    await markServiceKeysForAuthorityLoss(tx, {
+      before: authorityBefore,
+      after: authorityAfter,
+      now: new Date(),
+    });
 
     // Every role change is an audited membership change (before/after), not only one that moves
     // admin reach (`syncWorkspaceAdminReach` writes its own row for that).

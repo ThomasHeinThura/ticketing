@@ -5,5 +5,5 @@ import { z } from "../openapi";
 // not a JSON object (`400`).
 export const patchSettingsBody = z.record(z.string(), z.unknown()).openapi({
   description:
-    "A partial object of whitelisted settings keys (`density`, `layout.<projectId>`). A `null` value clears that key.",
+    "A partial object of whitelisted settings keys (`density`, `layout.<projectId>`, `listGroups.<projectId>`, `columns.<projectId>`, `columnWidths.<projectId>`). A `null` value clears that key.",
 });

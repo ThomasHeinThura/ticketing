@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { schema } from "../database";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -33,6 +34,27 @@ export const cannedResponseDeletionTarget: RegisteredDeletionTarget = {
       summary: { cannedResponseId: row.id, name: row.name },
       version: registeredDeletionFingerprint(row),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [row] = await tx
+      .select({
+        id: schema.cannedResponseTable.id,
+        workspaceId: schema.cannedResponseTable.workspaceId,
+      })
+      .from(schema.cannedResponseTable)
+      .where(eq(schema.cannedResponseTable.id, id))
+      .limit(1);
+    return row
+      ? {
+          id: row.id,
+          workspaceId: row.workspaceId,
+          projectId: null,
+          organisationId: null,
+        }
+      : undefined;
   },
   execute: async (tx, { loaded }) => {
     const [deleted] = await tx

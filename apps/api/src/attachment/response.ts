@@ -21,6 +21,7 @@ export const attachmentSchema = z
     customerVisible: z.boolean(),
     uploadedBy: z.string().nullable(),
     canDelete: z.boolean(),
+    canRestore: z.boolean(),
     createdAt: responseTimestamp,
     deletedAt: nullableResponseTimestamp,
   })

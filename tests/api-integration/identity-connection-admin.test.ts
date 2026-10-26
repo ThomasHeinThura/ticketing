@@ -2,7 +2,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { eq, inArray, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { auth } from "../../apps/api/src/auth";
+import {
+  auth,
+  authForHost,
+  getConfiguredAgentOrigin,
+  reloadAuthConfiguration,
+} from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import {
   decryptIdentityClientSecret,
@@ -20,7 +25,10 @@ import {
   ensureStaffPersonForUser,
 } from "../../apps/api/src/utils/seed-internal-organisation";
 import * as nativeAuthorization from "../../apps/api/src/ws";
-import { mockAuthenticatedSession } from "./helpers/auth";
+import {
+  mockAuthenticatedSession,
+  rebindMockAuthenticatedSession,
+} from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
@@ -124,7 +132,7 @@ async function setupAdmin() {
     .where(eq(schema.personTable.userId, admin.id))
     .limit(1);
   if (!person) throw new Error("Identity administrator person was not created");
-  mockAuthenticatedSession(admin);
+  const sessionSpy = mockAuthenticatedSession(admin);
   await db.insert(schema.sessionTable).values({
     id: `session-${admin.id}`,
     token: `token-${admin.id}`,
@@ -145,6 +153,7 @@ async function setupAdmin() {
     admin,
     person,
     sessionCookie: `__Host-tdk_agent_session=token-${admin.id}`,
+    sessionSpy,
   };
 }
 
@@ -362,6 +371,78 @@ afterEach(() => {
 });
 
 describe("identity connection administration", () => {
+  it("keeps active session spies across auth reloads and stops rebinding after restore", async () => {
+    const { sessionCookie, sessionSpy } = await setupAdmin();
+    const app = createApp().app;
+    const originalAuth = auth;
+    const connectionId = `reload-mock-${randomUUID()}`;
+    await createConnection(connectionId, false);
+    await reloadAuthConfiguration();
+    expect(auth).not.toBe(originalAuth);
+    rebindMockAuthenticatedSession();
+    const selectedAuth = authForHost(new URL(getConfiguredAgentOrigin()).host);
+    expect(selectedAuth).toBe(auth);
+
+    const [connection] = await db
+      .select({ configVersion: schema.identityConnectionTable.configVersion })
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, connectionId))
+      .limit(1);
+    if (!connection) throw new Error("Reload connection fixture is missing");
+
+    const binding = {
+      kind: "operation",
+      operation: "identity_connection_configure",
+      connectionId,
+      request: {
+        configVersion: connection.configVersion,
+        maxRoleRank: 1,
+      },
+    };
+
+    sessionSpy.mockResolvedValueOnce(null);
+    await expect(
+      csrfRequest(
+        app,
+        "/api/me/step-up/challenges",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(binding),
+        },
+        sessionCookie,
+      ),
+    ).rejects.toThrow("CSRF issuer returned 401");
+    expect(sessionSpy).toHaveBeenCalledTimes(1);
+
+    const challenge = await csrfRequest(
+      app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(binding),
+      },
+      sessionCookie,
+    );
+    expect(challenge.status).toBe(200);
+    expect(sessionSpy).toHaveBeenCalled();
+
+    vi.restoreAllMocks();
+    await expect(
+      csrfRequest(
+        app,
+        "/api/me/step-up/challenges",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(binding),
+        },
+        sessionCookie,
+      ),
+    ).rejects.toThrow("CSRF issuer returned 401");
+  });
+
   it("lists only safe connection-scoped event summaries in stable cursor pages", async () => {
     const { sessionCookie } = await setupAdmin();
     const app = createApp().app;
@@ -408,6 +489,15 @@ describe("identity connection administration", () => {
         detail: {},
         actorType: "oidc",
         createdAt: timestamp,
+      },
+      {
+        id: "event-history-unattributed",
+        identityConnectionId: null,
+        kind: "auth.failed",
+        outcome: "failed",
+        detail: { reason: "credential_unrecognized" },
+        actorType: "scim",
+        createdAt: new Date("2026-10-06T10:00:00.000Z"),
       },
     ]);
     await db.execute(sql`

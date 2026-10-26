@@ -477,8 +477,11 @@ function CanonicalMenuActions({
           canAct && deletion.canRequest
             ? () => {
                 if (busy.current || mutation.isPending) return;
+                const returnFocusAnchor = keyboardAnchor;
                 onClose();
-                void deletion.requestDeletion();
+                void deletion.requestDeletion(() =>
+                  returnFocusAnchor?.isConnected ? returnFocusAnchor : false,
+                );
               }
             : undefined
         }

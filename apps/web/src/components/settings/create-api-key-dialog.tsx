@@ -35,12 +35,13 @@ import {
   Separator,
   Switch,
 } from "@taskdesk/ui";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { describeCapability } from "@/components/settings/roles/capability-model";
 import useCreateApiKey from "@/hooks/mutations/api-key/use-create-api-key";
+import { authClient } from "@/lib/auth-client";
 import { toast } from "@/lib/toast";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 
@@ -80,6 +81,14 @@ export const WRITE_CAPABILITY_GROUPS = CAPABILITY_GROUPS.map((group) => ({
   ),
 })).filter(({ capabilities }) => capabilities.length > 0);
 
+/** Instance write capabilities are offered only for explicitly opted-in admin personal keys. */
+export const INSTANCE_WRITE_CAPABILITIES = capabilitiesInGroup(
+  "Instance",
+).filter((capability) => {
+  const action = capability.split(":")[1] ?? "";
+  return !action.startsWith("read") && !action.endsWith("_read");
+});
+
 type CreateApiKeyDialogProps = {
   open: boolean;
   onClose: () => void;
@@ -92,8 +101,11 @@ export function CreateApiKeyDialog({
   onSuccess,
 }: CreateApiKeyDialogProps) {
   const { t } = useTranslation();
+  const { data: session } = authClient.useSession();
+  const isInstanceAdmin = session?.user?.role === "admin";
   const { mutateAsync: createApiKey, reset: resetCreatedKey } =
     useCreateApiKey();
+  const capabilitySwitchId = useId();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [writeCapabilities, setWriteCapabilities] = useState<
     ReadonlySet<Capability>
@@ -187,7 +199,16 @@ export function CreateApiKeyDialog({
         // Omitted means the read-only default; ticked writes are added to it by the server's
         // own read set, never trusted from here (the API re-validates every name).
         ...(data.allowWrites && writeCapabilities.size > 0
-          ? { capabilities: [...READ_CAPABILITIES, ...writeCapabilities] }
+          ? {
+              capabilities: [
+                ...READ_CAPABILITIES,
+                ...[...writeCapabilities].filter(
+                  (capability) =>
+                    capabilityTier(capability) === "workspace" ||
+                    isInstanceAdmin,
+                ),
+              ],
+            }
           : {}),
       });
 
@@ -403,7 +424,10 @@ export function CreateApiKeyDialog({
                                 className="flex items-center justify-between gap-6"
                               >
                                 <div className="space-y-0.5 flex-1 min-w-0">
-                                  <Label className="text-sm font-medium">
+                                  <Label
+                                    htmlFor={`${capabilitySwitchId}-${capability}`}
+                                    className="text-sm font-medium"
+                                  >
                                     {describeCapability(capability)}
                                   </Label>
                                   <p className="text-xs text-muted-foreground">
@@ -411,6 +435,7 @@ export function CreateApiKeyDialog({
                                   </p>
                                 </div>
                                 <Switch
+                                  id={`${capabilitySwitchId}-${capability}`}
                                   checked={writeCapabilities.has(capability)}
                                   onCheckedChange={() =>
                                     toggleWriteCapability(capability)
@@ -422,6 +447,46 @@ export function CreateApiKeyDialog({
                           </div>
                         ),
                       )}
+                      {isInstanceAdmin &&
+                        INSTANCE_WRITE_CAPABILITIES.length > 0 && (
+                          <>
+                            <Separator />
+                            <div className="space-y-4">
+                              <p className="text-sm font-medium">
+                                {t(
+                                  "settings:apiKey.createDialog.capabilityGroups.Instance",
+                                  { defaultValue: "Instance" },
+                                )}
+                              </p>
+                              {INSTANCE_WRITE_CAPABILITIES.map((capability) => (
+                                <div
+                                  key={capability}
+                                  className="flex items-center justify-between gap-6"
+                                >
+                                  <div className="space-y-0.5 flex-1 min-w-0">
+                                    <Label
+                                      htmlFor={`${capabilitySwitchId}-${capability}`}
+                                      className="text-sm font-medium"
+                                    >
+                                      {describeCapability(capability)}
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground">
+                                      {capability}
+                                    </p>
+                                  </div>
+                                  <Switch
+                                    id={`${capabilitySwitchId}-${capability}`}
+                                    checked={writeCapabilities.has(capability)}
+                                    onCheckedChange={() =>
+                                      toggleWriteCapability(capability)
+                                    }
+                                    disabled={isSubmitting}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
                     </div>
                   </ScrollArea>
                 </>

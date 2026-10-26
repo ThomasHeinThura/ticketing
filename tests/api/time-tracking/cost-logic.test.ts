@@ -3,6 +3,8 @@ import {
   type AvailableHoursRow,
   availableHoursOn,
   availableMinutes,
+  committedForecast,
+  committedMinorForBudget,
   costEntryAmountMinor,
   newlyReachedThresholds,
   resolveCostRate,
@@ -32,6 +34,122 @@ describe("cost entry amounts (TC-13)", () => {
       source: "cost_type",
     });
     expect(resolveCostRate(undefined, null)).toBeNull();
+  });
+});
+
+describe("committed work forecast (TC-17)", () => {
+  const periodStart = "2026-10-01";
+  const periodEnd = "2026-10-31";
+  it("subtracts all logged minutes, floors remaining at zero and keeps currencies separate", () => {
+    const result = committedForecast(
+      [
+        {
+          dueDate: "2026-10-10",
+          estimatedMinutes: 120,
+          loggedMinutes: 60,
+          assigneeId: "p1",
+          rate: { rateMinor: 6000, currency: "EUR" },
+        },
+        {
+          dueDate: "2026-10-11",
+          estimatedMinutes: 30,
+          loggedMinutes: 60,
+          assigneeId: "p1",
+          rate: { rateMinor: 6000, currency: "EUR" },
+        },
+        {
+          dueDate: "2026-10-12",
+          estimatedMinutes: 60,
+          loggedMinutes: 0,
+          assigneeId: "p2",
+          rate: { rateMinor: 12_000, currency: "USD" },
+        },
+        {
+          dueDate: "2026-11-01",
+          estimatedMinutes: 120,
+          loggedMinutes: 0,
+          assigneeId: "p1",
+          rate: { rateMinor: 6000, currency: "EUR" },
+        },
+      ],
+      periodStart,
+      periodEnd,
+    );
+    expect(result.byCurrency).toEqual([
+      { currency: "EUR", amountMinor: 6000, taskCount: 2 },
+      { currency: "USD", amountMinor: 12_000, taskCount: 1 },
+    ]);
+    expect(committedMinorForBudget(result, "EUR")).toBeNull();
+  });
+
+  it("reports mutually exclusive UNKNOWN reasons and known remaining minutes", () => {
+    const result = committedForecast(
+      [
+        {
+          dueDate: null,
+          estimatedMinutes: 120,
+          loggedMinutes: 30,
+          assigneeId: "p1",
+          rate: { rateMinor: 6000, currency: "EUR" },
+        },
+        {
+          dueDate: "2026-10-10",
+          estimatedMinutes: null,
+          loggedMinutes: 0,
+          assigneeId: "p1",
+          rate: { rateMinor: 6000, currency: "EUR" },
+        },
+        {
+          dueDate: "2026-10-11",
+          estimatedMinutes: 90,
+          loggedMinutes: 30,
+          assigneeId: null,
+          rate: null,
+        },
+        {
+          dueDate: "2026-10-12",
+          estimatedMinutes: 30,
+          loggedMinutes: 0,
+          assigneeId: "p2",
+          rate: null,
+        },
+      ],
+      periodStart,
+      periodEnd,
+    );
+    expect(result.unknown).toEqual({
+      taskCount: 4,
+      reasons: { unscheduled: 1, nonTime: 1, unassigned: 1, unrated: 1 },
+      knownRemainingMinutes: 180,
+    });
+    expect(committedMinorForBudget(result, "EUR")).toBeNull();
+  });
+
+  it("returns zero only when the in-period forecast is complete and empty", () => {
+    expect(
+      committedMinorForBudget(
+        committedForecast([], periodStart, periodEnd),
+        "EUR",
+      ),
+    ).toBe(0);
+    expect(
+      committedMinorForBudget(
+        committedForecast(
+          [
+            {
+              dueDate: "2026-10-10",
+              estimatedMinutes: 60,
+              loggedMinutes: 60,
+              assigneeId: "p1",
+              rate: { rateMinor: 6000, currency: "EUR" },
+            },
+          ],
+          periodStart,
+          periodEnd,
+        ),
+        "EUR",
+      ),
+    ).toBe(0);
   });
 });
 

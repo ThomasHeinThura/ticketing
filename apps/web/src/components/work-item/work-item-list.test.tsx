@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   getWorkItem: vi.fn().mockResolvedValue({}),
   preloadRoute: vi.fn().mockResolvedValue(undefined),
   navigate: vi.fn().mockResolvedValue(undefined),
+  restore: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -29,10 +31,50 @@ vi.mock("@tanstack/react-router", () => ({
     navigate: mocks.navigate,
   }),
 }));
+vi.mock("@tanstack/react-virtual", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@tanstack/react-virtual")>();
+  return {
+    ...actual,
+    useVirtualizer: ((options: Parameters<typeof actual.useVirtualizer>[0]) => {
+      const endIndex = Math.min(options.count - 1, 10);
+      const indexes =
+        endIndex < 0
+          ? []
+          : (options.rangeExtractor ?? actual.defaultRangeExtractor)({
+              startIndex: 0,
+              endIndex,
+              overscan: 8,
+              count: options.count,
+              lanes: 1,
+            });
+      return {
+        getVirtualItems: () =>
+          indexes.map((index) => ({
+            index,
+            start: index * 42,
+            end: (index + 1) * 42,
+            key: options.getItemKey?.(index) ?? index,
+            size: 42,
+            lane: 0,
+          })),
+        getTotalSize: () => options.count * 42,
+        scrollToIndex: vi.fn(),
+        measureElement: vi.fn(),
+        measure: vi.fn(),
+      } as unknown as ReturnType<typeof actual.useVirtualizer>;
+    }) as typeof actual.useVirtualizer,
+  };
+});
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, options?: string | Record<string, unknown>) =>
+      typeof options === "string"
+        ? options
+        : typeof options?.defaultValue === "string"
+          ? options.defaultValue
+          : key,
   }),
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
@@ -50,6 +92,18 @@ vi.mock("@/components/work-item/load-work-item-detail", () => ({
 }));
 vi.mock("@/fetchers/work-item/get-work-item", () => ({
   default: mocks.getWorkItem,
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    isCheckingPermissions: false,
+    canUpdateTasks: () => true,
+    canAssignTasks: () => false,
+    canTransitionTasks: () => false,
+    canSetPriorityTasks: () => false,
+  }),
+}));
+vi.mock("@/hooks/mutations/work-item/use-restore-work-item", () => ({
+  default: () => ({ mutateAsync: mocks.restore, isPending: false }),
 }));
 
 function renderWithQueryClient(ui: React.ReactElement) {
@@ -118,6 +172,79 @@ describe("WorkItemList", () => {
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
+  it("renders selected custom-field values with envelope names and hides inherited values", async () => {
+    const row = {
+      ...workItem,
+      archivedAt: "2026-10-01T00:00:00.000Z",
+      customFieldValues: { constructor: "asset-42", empty_value: null },
+    };
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[row]}
+        isLoading={false}
+        isError={false}
+        columns={["cf.constructor", "cf.empty_value"]}
+        customFieldColumns={[
+          {
+            key: "constructor",
+            name: "Asset tag",
+            format: "text",
+            options: [],
+          },
+          {
+            key: "empty_value",
+            name: "Optional value",
+            format: "text",
+            options: [],
+          },
+        ]}
+      />,
+    );
+    expect(await screen.findByText("Asset tag")).toBeInTheDocument();
+    expect(screen.getByText("asset-42")).toBeInTheDocument();
+    expect(
+      screen.getByText("workItems:list.customFieldNotSet"),
+    ).toBeInTheDocument();
+  });
+
+  it("resolves custom user values only from the row's project and never renders raw person IDs", () => {
+    const row = {
+      ...workItem,
+      archivedAt: "2026-10-01T00:00:00.000Z",
+      customFieldValues: { owner: "person-secret-id" },
+    };
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[row]}
+        isLoading={false}
+        isError={false}
+        columns={["cf.owner"]}
+        customFieldColumns={[
+          {
+            key: "owner",
+            name: "Owner",
+            format: "user",
+            options: [],
+          },
+        ]}
+        customFieldPeople={[
+          {
+            projectId: "other-project",
+            personId: "person-secret-id",
+            name: "Wrong project name",
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByText("workItems:list.customFieldPersonUnavailable"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("person-secret-id")).toBeNull();
+    expect(screen.queryByText("Wrong project name")).toBeNull();
+  });
+
   it("preloads detail code and data when a reachable row receives pointer intent", async () => {
     renderWithQueryClient(
       <WorkItemList
@@ -178,6 +305,36 @@ describe("WorkItemList", () => {
     expect(mocks.preloadRoute).not.toHaveBeenCalled();
     expect(mocks.loadDetail).not.toHaveBeenCalled();
     expect(mocks.getWorkItem).not.toHaveBeenCalled();
+  });
+
+  it("shows deleted rows as read-only with a restore action for update-capable viewers", async () => {
+    const deleted = {
+      ...workItem,
+      deletedAt: "2026-10-20T00:00:00.000Z",
+      version: 4,
+    };
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[deleted]}
+        isLoading={false}
+        isError={false}
+        canBulkAssign
+      />,
+    );
+
+    expect(screen.queryByRole("link", { name: "PROJ-123" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Fix the thing" })).toBeNull();
+    expect(screen.getByText("Deleted")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+    await waitFor(() =>
+      expect(mocks.restore).toHaveBeenCalledWith({
+        key: "PROJ-123",
+        version: 4,
+        projectId: "proj_1",
+      }),
+    );
+    expect(mocks.preloadRoute).not.toHaveBeenCalled();
   });
 
   it("renders the loading skeleton state", () => {
@@ -255,7 +412,7 @@ describe("WorkItemList", () => {
     expect(screen.getByText("workItems:list.unassigned")).toBeInTheDocument();
   });
 
-  it("renders all 500 rows and repeated empty-field labels", () => {
+  it("bounds the rendered rows for a large result while keeping the table data available", async () => {
     const workItems = Array.from({ length: 500 }, (_, index) => ({
       ...workItem,
       id: `wi_${index + 1}`,
@@ -275,21 +432,33 @@ describe("WorkItemList", () => {
       />,
     );
 
-    const table = screen.getByTestId("work-item-list-populated");
-    expect(table.tagName).toBe("TABLE");
-    expect(table.querySelectorAll("thead tr, tbody tr")).toHaveLength(501);
-    expect(table.querySelectorAll(".work-item-list-cell-content")).toHaveLength(
-      1_500,
+    let table = await screen.findByTestId("work-item-list-populated");
+    await act(async () => {
+      await vi.dynamicImportSettled();
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-list-populated")).toHaveAttribute(
+        "data-virtualized-table",
+        "true",
+      ),
     );
-    expect(table.querySelectorAll("a[data-work-item-key]")).toHaveLength(1_000);
-    const countCellText = (label: string) =>
-      Array.from(table.querySelectorAll("td")).filter(
-        (cell) => cell.textContent?.trim() === label,
-      ).length;
-    expect(countCellText("workItems:list.noDueDate")).toBe(500);
-    expect(countCellText("workItems:list.unassigned")).toBe(500);
-    expect(countCellText("medium")).toBe(375);
-    expect(countCellText("workItems:list.noPriority")).toBe(125);
+    table = screen.getByTestId("work-item-list-populated");
+    expect(table.tagName).toBe("TABLE");
+    const renderedRows = table.querySelectorAll(
+      "tbody tr[data-virtual-row-id]",
+    );
+    console.info(
+      "virtual rows",
+      renderedRows.length,
+      renderedRows[0]?.getAttribute("data-index"),
+      renderedRows[renderedRows.length - 1]?.getAttribute("data-index"),
+    );
+    expect(renderedRows.length).toBeGreaterThan(0);
+    expect(renderedRows.length).toBeLessThan(100);
+    expect(
+      table.querySelector('[data-virtual-row-id="wi_1"]'),
+    ).toBeInTheDocument();
+    expect(table.querySelector('[data-virtual-row-id="wi_500"]')).toBeNull();
   }, 15_000);
 
   it("#310: renders the resolved assignee name when present", () => {
@@ -437,8 +606,13 @@ describe("WorkItemList", () => {
       />,
     );
 
-    const titleHeader = screen.getByRole("button", { name: /title/i });
-    titleHeader.click();
+    const titleColumn = screen
+      .getAllByRole("columnheader")
+      .find((header) =>
+        header.textContent?.includes("workItems:list.columnTitle"),
+      );
+    if (!titleColumn) throw new Error("Expected the Title column header.");
+    within(titleColumn).getByRole("button").click();
     expect(onSortChange).toHaveBeenCalledWith("title", "asc");
   });
 
@@ -506,9 +680,61 @@ describe("WorkItemList", () => {
         />,
       );
       const [state, priority] = screen.getAllByRole("columnheader");
-      expect(state).not.toHaveAttribute("aria-sort");
-      expect(state?.querySelector("button")).toBeNull();
+      expect(state).toHaveAttribute("aria-sort", "none");
+      expect(state?.querySelector("button")).not.toBeNull();
       expect(priority).toHaveAttribute("aria-sort", "descending");
+    });
+
+    it("appends and toggles secondary sorts with a modifier click", () => {
+      const onSortsChange = vi.fn();
+      const { rerender } = renderWithQueryClient(
+        <WorkItemList
+          {...baseProps}
+          columns={["priority", "state"]}
+          sort="priority"
+          dir="desc"
+          sorts={[{ field: "priority", order: "desc" }]}
+          onSortsChange={onSortsChange}
+          workItems={[workItem]}
+          isLoading={false}
+          isError={false}
+        />,
+      );
+      const stateHeader = screen.getByRole("columnheader", {
+        name: /workItems:list.columnState/u,
+      });
+      const stateButton = within(stateHeader).getByRole("button");
+      fireEvent.click(stateButton, { shiftKey: true });
+      expect(onSortsChange).toHaveBeenLastCalledWith([
+        { field: "priority", order: "desc" },
+        { field: "state", order: "asc" },
+      ]);
+      rerender(
+        <WorkItemList
+          {...baseProps}
+          columns={["priority", "state"]}
+          sort="priority"
+          dir="desc"
+          sorts={[
+            { field: "priority", order: "desc" },
+            { field: "state", order: "asc" },
+          ]}
+          onSortsChange={onSortsChange}
+          workItems={[workItem]}
+          isLoading={false}
+          isError={false}
+        />,
+      );
+      const updatedStateHeader = screen.getByRole("columnheader", {
+        name: /workItems:list.columnState/u,
+      });
+      fireEvent.click(within(updatedStateHeader).getByRole("button"), {
+        metaKey: true,
+      });
+      expect(onSortsChange).toHaveBeenLastCalledWith([
+        { field: "priority", order: "desc" },
+        { field: "state", order: "desc" },
+      ]);
     });
 
     it("marks a malformed state or assignee name as unavailable instead of blank", () => {
@@ -601,6 +827,33 @@ describe("WorkItemList: canonical and filtered pagination", () => {
       ),
     );
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+  it("restarts from the first page when a compact sort cursor has changed", () => {
+    const onRestartFromFirstPage = vi.fn();
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+        hasMore
+        isLoadMoreError
+        isCursorChanged
+        onRestartFromFirstPage={onRestartFromFirstPage}
+        onLoadMore={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("workItems:list.cursorChanged"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("work-item-list-load-more")).toBeNull();
+    fireEvent.click(
+      within(screen.getByTestId("work-item-list-page-error")).getByRole(
+        "button",
+        { name: "workItems:list.reload" },
+      ),
+    );
+    expect(onRestartFromFirstPage).toHaveBeenCalledOnce();
   });
   it("shows nothing extra when there is no further page or no way to load one", () => {
     const { rerender } = renderWithQueryClient(

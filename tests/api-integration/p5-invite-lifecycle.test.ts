@@ -5,8 +5,9 @@
  * the customer person and membership and consumes the invitation in one step.
  */
 import { createHash } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { runCustomerInvitationDeliveryJob } from "../../apps/api/src/customer-invitation/delivery/worker";
 import { acceptCustomerInvitation } from "../../apps/api/src/customer-invitation/service";
 import db, { schema } from "../../apps/api/src/database";
 import { grantCustomerOrganisationMembership } from "./helpers/approval-fixtures";
@@ -101,6 +102,7 @@ describe("create (CP-20, CP-23)", () => {
       body: { email: "New.Person@Example.test" },
     });
     expect(response.status).toBe(201);
+    await runCustomerInvitationDeliveryJob();
     const body = (await response.json()) as Record<string, unknown>;
     const credential = credentialFor("new.person@example.test");
     expect(text(body)).not.toContain(credential);
@@ -358,6 +360,74 @@ describe("create (CP-20, CP-23)", () => {
     });
     expect(over.status).toBe(429);
   });
+
+  it("uses the configured lifetime and serializes the per-inviter creation quota", async () => {
+    await db
+      .update(schema.instanceSettingTable)
+      .set({
+        invitationLifetimeHours: 3,
+        customerInvitationCreateWindowMinutes: 30,
+        customerInvitationPerInviterLimit: 1,
+        customerInvitationPerOrganisationLimit: 10,
+      })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+
+    const send = (email: string) =>
+      w.call(w.owner.user, w.base(), {
+        method: "POST",
+        body: { email },
+      });
+    const responses = await Promise.all([
+      send("configured-a@example.test"),
+      send("configured-b@example.test"),
+    ]);
+    expect(responses.map((response) => response.status).sort()).toEqual([
+      201, 429,
+    ]);
+
+    const [created] = responses.filter((response) => response.status === 201);
+    if (!created) throw new Error("configured invitation was not created");
+    const body = (await created.json()) as { id: string };
+    const row = await w.rowOf(body.id);
+    const lifetimeMs = (row?.expiresAt.getTime() ?? 0) - Date.now();
+    expect(lifetimeMs).toBeGreaterThan(2.9 * 3_600_000);
+    expect(lifetimeMs).toBeLessThanOrEqual(3 * 3_600_000);
+  });
+
+  it("enforces the configured organisation quota independently of the inviter quota", async () => {
+    await db
+      .update(schema.instanceSettingTable)
+      .set({
+        customerInvitationPerInviterLimit: 10,
+        customerInvitationPerOrganisationLimit: 1,
+      })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+
+    expect(
+      (
+        await w.call(w.owner.user, w.base(), {
+          method: "POST",
+          body: { email: "org-cap-a@example.test" },
+        })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await w.call(w.owner.user, w.base(w.otherOrg.id), {
+          method: "POST",
+          body: { email: "org-cap-other@example.test" },
+        })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await w.call(w.owner.user, w.base(), {
+          method: "POST",
+          body: { email: "org-cap-b@example.test" },
+        })
+      ).status,
+    ).toBe(429);
+  });
 });
 
 describe("list (CP-23)", () => {
@@ -466,6 +536,7 @@ describe("resend (CP-22)", () => {
       { method: "POST" },
     );
     expect(response.status).toBe(200);
+    await runCustomerInvitationDeliveryJob();
     const fresh = credentialFor("again@example.test", sent.id);
     expect(fresh).not.toBe(sent.credential);
     const row = await w.rowOf(sent.id);
@@ -481,6 +552,24 @@ describe("resend (CP-22)", () => {
 
   it("has a per-invitation cooldown", async () => {
     const sent = await w.invite("cool@example.test");
+    const response = await w.call(
+      w.owner.user,
+      `${w.base()}/${sent.id}/resend`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(429);
+  });
+
+  it("uses the configured cooldown", async () => {
+    const sent = await w.invite("configured-cooldown@example.test");
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ customerInvitationResendCooldownSeconds: 120 })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    await db
+      .update(schema.invitationTable)
+      .set({ lastSentAt: new Date(Date.now() - 90_000) })
+      .where(eq(schema.invitationTable.id, sent.id));
     const response = await w.call(
       w.owner.user,
       `${w.base()}/${sent.id}/resend`,
@@ -554,9 +643,7 @@ describe("revoke through the existing pending-action route (CP-22)", () => {
     expect(audit[0]?.organisationId).toBe(w.org.id);
   });
 
-  it("a lead, who holds member:invite, can create but not revoke: the shared revoke route still runs the legacy invitation:cancel check (admin and owner only)", async () => {
-    // Known discrepancy, reported rather than patched here: `DELETE /api/invitation/{id}` is the
-    // staff route CP-22 reuses, and its middleware is the legacy `invitation: ["cancel"]` check.
+  it("lets a reachable lead request and approve revoke, invalidating the credential", async () => {
     const { addMember } = await import("./helpers/reach-world");
     const lead = await addMember(w.workspaceId, "lead");
     const { grantProjectRole } = await import("./helpers/fixtures");
@@ -576,14 +663,34 @@ describe("revoke through the existing pending-action route (CP-22)", () => {
       }),
       201,
     );
+    await runCustomerInvitationDeliveryJob();
+    const customer = await admittedCustomer("leadinvite@example.test");
     const request = await w.call(lead.user, `/api/invitation/${created.id}`, {
       method: "DELETE",
     });
-    expect(request.status).toBe(403);
+    expect(request.status).toBe(202);
+    const pending = (await request.json()) as PendingDeletionBody;
     expect((await w.rowOf(created.id))?.status).toBe("pending");
+    expect((await w.rowOf(created.id))?.credentialHash).not.toBeNull();
+    await ensureAgentSession(lead.user.id);
+    const approved = await approvePendingDeletion(w.app, lead.user.id, pending);
+    expect(approved.status).toBe(200);
+    expect(await w.rowOf(created.id)).toMatchObject({
+      status: "canceled",
+      credentialHash: null,
+    });
+    expect(
+      (
+        await accept(
+          customer.user,
+          created.id,
+          credentialFor("leadinvite@example.test"),
+        )
+      ).status,
+    ).toBe(404);
   });
 
-  it("is refused for a member without member:invite and another tenant", async () => {
+  it("denies a member without member:invite and a caller from another tenant", async () => {
     const sent = await w.invite("norevoke@example.test");
     for (const user of [w.member.user, w.foreign.user]) {
       const response = await w.call(user, `/api/invitation/${sent.id}`, {
@@ -593,10 +700,92 @@ describe("revoke through the existing pending-action route (CP-22)", () => {
     }
     expect((await w.rowOf(sent.id))?.status).toBe("pending");
   });
+
+  it("denies a lead without reach to the invitation's organisation", async () => {
+    const { addMember } = await import("./helpers/reach-world");
+    const lead = await addMember(w.workspaceId, "lead");
+    const { grantProjectRole } = await import("./helpers/fixtures");
+    const [orgProject] = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.organisationId, w.org.id));
+    await grantProjectRole(lead.user.id, orgProject?.id as string, [
+      "project:read",
+    ]);
+    await ensureAgentSession(lead.user.id);
+    const sent = await w.invite("other-org-revoke@example.test", w.otherOrg.id);
+    const request = await w.call(lead.user, `/api/invitation/${sent.id}`, {
+      method: "DELETE",
+    });
+    expect(request.status).toBe(404);
+    expect((await w.rowOf(sent.id))?.status).toBe("pending");
+  });
+
+  it("invalidates a pending request if member:invite is removed before approval", async () => {
+    const { addMember } = await import("./helpers/reach-world");
+    const lead = await addMember(w.workspaceId, "lead");
+    const { grantProjectRole } = await import("./helpers/fixtures");
+    const [orgProject] = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.organisationId, w.org.id));
+    await grantProjectRole(lead.user.id, orgProject?.id as string, [
+      "project:read",
+    ]);
+    await ensureAgentSession(lead.user.id);
+    const created = await w.json<{ id: string }>(
+      await w.call(lead.user, w.base(), {
+        method: "POST",
+        body: { email: "revoked-capability@example.test" },
+      }),
+      201,
+    );
+    const request = await w.call(lead.user, `/api/invitation/${created.id}`, {
+      method: "DELETE",
+    });
+    expect(request.status).toBe(202);
+    const pending = (await request.json()) as PendingDeletionBody;
+
+    const [leadRole] = await db
+      .select({
+        id: schema.roleTable.id,
+        capabilities: schema.roleTable.capabilities,
+      })
+      .from(schema.roleTable)
+      .where(
+        and(
+          eq(schema.roleTable.scope, "workspace"),
+          eq(schema.roleTable.workspaceId, w.workspaceId),
+          eq(schema.roleTable.key, "lead"),
+        ),
+      );
+    if (!leadRole) throw new Error("expected the workspace lead role");
+    await db
+      .update(schema.roleTable)
+      .set({
+        capabilities: (leadRole.capabilities as string[]).filter(
+          (capability) => capability !== "member:invite",
+        ),
+      })
+      .where(eq(schema.roleTable.id, leadRole.id));
+
+    await ensureAgentSession(lead.user.id);
+    const approved = await approvePendingDeletion(w.app, lead.user.id, pending);
+    expect(approved.status).toBe(409);
+    const action = await db
+      .select()
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, pending.pendingActionId));
+    expect(action[0]).toMatchObject({
+      state: "invalidated",
+      invalidationReason: "capability_removed",
+    });
+    expect((await w.rowOf(created.id))?.status).toBe("pending");
+  });
 });
 
 describe("accept (CP-21, CP-23, CP-24, CP-25)", () => {
-  it("consumes the invitation and records who accepted it", async () => {
+  it("consumes the invitation and records customer-grant provenance and the effective projection", async () => {
     const sent = await w.invite("welcome@example.test");
     const customer = await admittedCustomer("welcome@example.test");
     const response = await accept(customer.user, sent.id, sent.credential);
@@ -609,12 +798,92 @@ describe("accept (CP-21, CP-23, CP-24, CP-25)", () => {
       acceptedPersonId: customer.personId,
     });
     expect(row?.acceptedAt).not.toBeNull();
+    const [inviterPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, w.owner.user.id));
+    const [membership] = await db
+      .select()
+      .from(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, customer.personId as string),
+          eq(schema.membershipTable.scope, "organisation"),
+          eq(schema.membershipTable.scopeId, w.org.id),
+        ),
+      );
+    const [grant] = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(schema.membershipGrantTable.personId, customer.personId as string),
+          eq(schema.membershipGrantTable.scope, "organisation"),
+          eq(schema.membershipGrantTable.scopeId, w.org.id),
+          eq(schema.membershipGrantTable.sourceKind, "direct"),
+          isNull(schema.membershipGrantTable.revokedAt),
+        ),
+      );
+    expect(inviterPerson).toBeDefined();
+    expect(grant).toMatchObject({
+      membershipId: membership?.id,
+      personId: customer.personId,
+      scope: "organisation",
+      scopeId: w.org.id,
+      roleId: membership?.roleId,
+      sourceKind: "direct",
+      directOrigin: "admin",
+      grantedByPersonId: inviterPerson?.id,
+      seesAll: false,
+    });
+    // Startup's provenance preflight requires every effective membership to be backed by an
+    // active source grant; this acceptance path must not create a grantless row.
+    const grantlessMemberships = await db
+      .select({ id: schema.membershipTable.id })
+      .from(schema.membershipTable)
+      .leftJoin(
+        schema.membershipGrantTable,
+        and(
+          eq(
+            schema.membershipGrantTable.membershipId,
+            schema.membershipTable.id,
+          ),
+          isNull(schema.membershipGrantTable.revokedAt),
+        ),
+      )
+      .where(
+        and(
+          eq(schema.membershipTable.personId, customer.personId as string),
+          eq(schema.membershipTable.scope, "organisation"),
+          eq(schema.membershipTable.scopeId, w.org.id),
+          isNull(schema.membershipGrantTable.id),
+        ),
+      );
+    expect(grantlessMemberships).toEqual([]);
     const audit = await db
       .select()
       .from(schema.auditLogTable)
       .where(eq(schema.auditLogTable.action, "invitation.redeemed"));
     expect(audit).toHaveLength(1);
     expect(text(audit)).not.toContain(sent.credential);
+    const membershipAudit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "membership.changed"),
+          eq(schema.auditLogTable.entityId, customer.personId as string),
+        ),
+      );
+    expect(membershipAudit).toHaveLength(1);
+    expect(membershipAudit[0]).toMatchObject({
+      actorId: w.owner.user.id,
+      organisationId: w.org.id,
+      after: {
+        source: "customer_invitation",
+        grantedByPersonId: inviterPerson?.id,
+      },
+    });
   });
 
   it("is single use: a second accept, even with the same credential, is refused", async () => {

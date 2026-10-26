@@ -65,6 +65,12 @@ export type ReportEnvelope = {
   asOf: string;
   /** `RP-9`: where the numbers came from; `snapshot` is closed days only, `mixed` adds a live current day. */
   boundary: "live" | "snapshot" | "mixed";
+  /** Historical source families and live components; absent on older stored dashboard payloads. */
+  sources?: {
+    metricSnapshot: boolean;
+    cycleSnapshot: boolean;
+    liveComponents: string[];
+  };
   snapshot: {
     closedDays: number;
     uncoveredDays: number;
@@ -117,7 +123,7 @@ export type ReportCatalogue = {
 
 /** `RP-12`: one thing behind a number: a work item, a time entry (hours only) or a knowledge base article. */
 export type DrillItem = {
-  kind: "work_item" | "time_entry" | "article";
+  kind: "work_item" | "time_entry" | "cost_entry" | "article";
   key: string;
   title: string;
   projectKey: string | null;
@@ -127,6 +133,7 @@ export type DrillItem = {
   person?: string | null;
   hours?: number | null;
   workItemKey?: string | null;
+  currency?: string | null;
 };
 
 /** `RP-10`: an export that was queued for the background job. */

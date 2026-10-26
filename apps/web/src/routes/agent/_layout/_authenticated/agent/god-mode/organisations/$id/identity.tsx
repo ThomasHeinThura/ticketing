@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
 import { IdentityConnectionEditor } from "@/components/god-mode/identity-connection-editor";
 import { IdentityConnectionEvents } from "@/components/god-mode/identity-connection-events";
+import { OrganisationCustomerVisibilityCard } from "@/components/god-mode/organisation-customer-visibility-card";
 import { ScimPanel } from "@/components/god-mode/scim-panel";
 import PageTitle from "@/components/page-title";
 import { identityAdminFailureKind } from "@/fetchers/god-mode/identity-admin-error";
@@ -84,6 +85,8 @@ function OrganisationIdentityRoute() {
             {t("organisation.description")}
           </p>
         </header>
+
+        <OrganisationCustomerVisibilityCard organisationId={id} />
 
         {query.isPending ? (
           <div

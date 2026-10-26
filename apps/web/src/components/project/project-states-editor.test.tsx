@@ -1,12 +1,45 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mocks } = vi.hoisted(() => ({
   mocks: {
     canManage: true,
     states: [] as Array<Record<string, unknown>>,
+    inheritance: {
+      projectId: "p1",
+      workspaceId: "w1",
+      projectVersion: 3,
+      workspaceVersion: 4,
+      slaPolicy: {
+        mode: "inherit",
+        overrideId: null,
+        effectiveId: null,
+        effectiveName: null,
+        source: "none",
+      },
+      serviceCalendar: {
+        mode: "inherit",
+        overrideId: null,
+        effectiveId: null,
+        effectiveName: null,
+        source: "none",
+      },
+      states: {
+        mode: "override",
+        activeTemplateIds: ["a"],
+        workspaceTemplateIds: ["a", "b"],
+      },
+    },
     updateState: vi.fn(),
     invalidate: vi.fn(),
+    setQueryData: vi.fn(),
+    inheritStateSet: vi.fn(),
     onDragEnd: undefined as ((event: unknown) => void) | undefined,
     sensors: undefined as unknown,
   },
@@ -33,7 +66,16 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
+  useQueryClient: () => ({
+    invalidateQueries: mocks.invalidate,
+    setQueryData: mocks.setQueryData,
+  }),
+  useQuery: () => ({
+    data: mocks.inheritance,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
@@ -58,6 +100,17 @@ vi.mock("@/hooks/mutations/project/use-update-project-state", () => ({
   default: () => ({ mutateAsync: mocks.updateState }),
 }));
 vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/fetchers/project-settings-inheritance", () => ({
+  getProjectSettingsInheritance: vi.fn(async () => mocks.inheritance),
+  inheritProjectStateSet: mocks.inheritStateSet,
+  WorkspaceSettingsError: class extends Error {
+    status: number;
+    constructor(status: number) {
+      super();
+      this.status = status;
+    }
+  },
+}));
 
 import ProjectStatesEditor from "./project-states-editor";
 
@@ -77,6 +130,8 @@ beforeEach(() => {
   ];
   mocks.updateState.mockReset().mockResolvedValue({});
   mocks.invalidate.mockReset().mockResolvedValue(undefined);
+  mocks.inheritStateSet.mockReset().mockResolvedValue(mocks.inheritance);
+  mocks.setQueryData.mockReset();
 });
 afterEach(cleanup);
 
@@ -127,5 +182,25 @@ describe("project states editor reorder (PR-17)", () => {
         draggable: "common:a11y.dnd.instructions",
       },
     });
+  });
+
+  it("syncs the concrete state membership to the workspace set with both CAS versions", async () => {
+    render(<ProjectStatesEditor projectId="p1" workspaceId="w1" />);
+    await waitFor(() =>
+      expect(screen.getByTestId("project-state-inheritance")).toHaveTextContent(
+        "settings:projectInheritance.workspaceSet",
+      ),
+    );
+    const useButton = screen.getByRole("button", {
+      name: "settings:projectInheritance.useWorkspace",
+    });
+    fireEvent.click(useButton);
+    await waitFor(() =>
+      expect(mocks.inheritStateSet).toHaveBeenCalledWith({
+        projectId: "p1",
+        expectedProjectVersion: 3,
+        expectedWorkspaceVersion: 4,
+      }),
+    );
   });
 });

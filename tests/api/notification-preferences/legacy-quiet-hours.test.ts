@@ -4,6 +4,23 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const outbound = vi.hoisted(() => ({
+  sendWebhookRequest: vi.fn(async () => ({
+    statusCode: 204,
+    durationMs: 0,
+    responseBody: "",
+    error: null,
+    success: true,
+  })),
+}));
+
+vi.mock("../../../apps/api/src/webhook/safe-http", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../../../apps/api/src/webhook/safe-http")
+  >()),
+  sendWebhookRequest: outbound.sendWebhookRequest,
+}));
+
 const state = vi.hoisted(() => ({
   holds: [] as Array<{ id: string; until: Date }>,
   quiet: {
@@ -75,21 +92,36 @@ import {
 } from "../../../apps/api/src/notification-preferences/delivery";
 
 describe("legacy delivery honours quiet hours (NO-3)", () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  let originalNodeEnv: string | undefined;
+  let originalPrivateOverride: string | undefined;
 
   beforeEach(() => {
     vi.useFakeTimers();
+    originalNodeEnv = process.env.NODE_ENV;
+    originalPrivateOverride =
+      process.env.KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS;
+    process.env.NODE_ENV = "development";
     process.env.KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS = "true";
-    fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation(async () => new Response("{}", { status: 200 }));
+    outbound.sendWebhookRequest.mockClear();
+    outbound.sendWebhookRequest.mockResolvedValue({
+      statusCode: 204,
+      durationMs: 0,
+      responseBody: "",
+      error: null,
+      success: true,
+    });
     state.quiet = { start: "22:00", end: "07:00", timezone: "UTC" };
     state.holds = [];
   });
   afterEach(() => {
-    fetchSpy.mockRestore();
     vi.useRealTimers();
-    delete process.env.KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS;
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+    if (originalPrivateOverride === undefined)
+      delete process.env.KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS;
+    else
+      process.env.KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS =
+        originalPrivateOverride;
   });
 
   it("decides defer inside the window (crossing midnight), send outside, withhold when malformed", async () => {
@@ -112,7 +144,7 @@ describe("legacy delivery honours quiet hours (NO-3)", () => {
   it("sends nothing at 02:00, persists the hold (no timer), and delivers on a later run", async () => {
     vi.setSystemTime(new Date("2026-03-01T02:00:00Z"));
     await deliverNotification("notif-1");
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(outbound.sendWebhookRequest).not.toHaveBeenCalled();
     // Durable hold until the window end; nothing is left in-process to lose on restart.
     expect(state.holds).toEqual([
       { id: "notif-1", until: new Date("2026-03-01T07:00:00Z") },
@@ -122,13 +154,13 @@ describe("legacy delivery honours quiet hours (NO-3)", () => {
     // Simulated restart: a later scheduler run re-enters delivery once the window has ended.
     vi.setSystemTime(new Date("2026-03-01T07:01:00Z"));
     await deliverNotification("notif-1");
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(outbound.sendWebhookRequest).toHaveBeenCalledTimes(1);
     expect(state.holds).toHaveLength(1);
   });
 
   it("delivers immediately outside quiet hours", async () => {
     vi.setSystemTime(new Date("2026-03-01T12:00:00Z"));
     await deliverNotification("notif-1");
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(outbound.sendWebhookRequest).toHaveBeenCalledTimes(1);
   });
 });

@@ -209,7 +209,7 @@ export function ServiceCalendarEditorView({
           >
             <legend className="sr-only">{t("editor.editableLegend")}</legend>
             <div className="space-y-6">
-              <CalendarDetailsCard form={form} />
+              <CalendarDetailsCard form={form} isNew={isNew} />
               <WeeklyCoverCard
                 windows={state.windows}
                 windowIds={state.windowIds}

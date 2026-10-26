@@ -195,7 +195,7 @@ function levelFeatureView(
 
 export async function listWorkspaceFeatures(
   workspaceId: string,
-  executor = db,
+  executor: Pick<typeof db, "select"> = db,
 ) {
   const [instanceRows, rows] = await Promise.all([
     readInstanceRows(executor),

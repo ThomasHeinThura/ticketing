@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useLocation } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -17,8 +17,11 @@ import {
   Input,
   Textarea,
 } from "@taskdesk/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import PdfPreviewDialog, {
+  type PdfPreviewAttachment,
+} from "@/components/attachments/pdf-preview-dialog";
 import {
   PortalActionAlert,
   PortalRaisePriority,
@@ -31,11 +34,15 @@ import {
   downloadPortalSubmissionAttachment,
   getPortalSubmission,
   getPortalSubmissionAttachments,
+  portalSubmissionAttachmentDownloadPath,
+  portalSubmissionAttachmentPreviewPath,
   presignPortalSubmissionAttachment,
   replyPortalSubmission,
   withdrawPortalSubmission,
 } from "@/fetchers/intake";
 import { usePortalRequestActions } from "@/hooks/mutations/portal/use-portal-request-actions";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
+import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 import { submissionAnswerRows } from "@/lib/intake-validation";
 import {
   customerStatusKey,
@@ -49,11 +56,28 @@ export const Route = createFileRoute("/submissions/$ref")({
 });
 
 function PortalSubmissionPage() {
-  const { t } = useTranslation();
+  const { i18n } = useTranslation();
+  const { ref } = Route.useParams();
+  return (
+    <TerminologyProvider
+      audience="customer"
+      locale={i18n.resolvedLanguage ?? i18n.language}
+      portalSelector={{ submissionRef: ref }}
+    >
+      <PortalSubmissionContent />
+    </TerminologyProvider>
+  );
+}
+
+function PortalSubmissionContent() {
+  const { t } = usePortalTranslation();
   const { portalUserId } = Route.useRouteContext();
   const { ref } = Route.useParams();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [body, setBody] = useState("");
+  const [previewAttachment, setPreviewAttachment] =
+    useState<PdfPreviewAttachment>();
   const page = useQuery({
     queryKey: ["portal", portalUserId, "submission", ref],
     queryFn: () => getPortalSubmission(ref),
@@ -175,6 +199,17 @@ function PortalSubmissionPage() {
       }
     | undefined;
   const state = record?.submission?.state;
+  useEffect(() => {
+    const rawHash = location.hash || window.location.hash;
+    const hash = rawHash.startsWith("#") ? rawHash : `#${rawHash}`;
+    const match = /^#comment-([A-Za-z0-9_-]{1,128})$/u.exec(hash);
+    if (!match || !record?.messages?.some((message) => message.id === match[1]))
+      return;
+    const target = document.getElementById(`comment-${match[1]}`);
+    if (!target) return;
+    target.scrollIntoView?.({ block: "center" });
+    target.focus({ preventScroll: true });
+  }, [location.hash, record?.messages]);
   // CP-16: a colleague who can view the request cannot act on it.
   const requester = record?.isRequester !== false;
   const canWithdraw = requester && record?.canWithdraw === true;
@@ -223,7 +258,6 @@ function PortalSubmissionPage() {
         <div>
           <h1 className="font-semibold text-2xl">
             {t("portal:intake.submissionTitle", {
-              defaultValue: "Request {{ref}}",
               ref,
             })}
           </h1>
@@ -425,7 +459,12 @@ function PortalSubmissionPage() {
             )}
             <ol className="flex flex-col gap-3">
               {record.messages?.map((message) => (
-                <li key={message.id}>
+                <li
+                  key={message.id}
+                  id={`comment-${message.id}`}
+                  tabIndex={-1}
+                  className="scroll-m-4 rounded-md focus-visible:outline-2 focus-visible:outline-ring"
+                >
                   <Card>
                     <CardHeader>
                       <CardDescription>
@@ -532,20 +571,53 @@ function PortalSubmissionPage() {
                         })}
                       </Button>
                     ) : (
-                      <Button
-                        variant="outline"
-                        disabled={download.isPending}
-                        onClick={() =>
-                          download.mutate({
-                            id: file.id,
-                            filename: file.filename,
-                          })
-                        }
-                      >
-                        {t("portal:intake.download", {
-                          defaultValue: "Download",
-                        })}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {file.state === "ready" &&
+                        file.mimeType?.trim().toLowerCase() ===
+                          "application/pdf" ? (
+                          <Button
+                            variant="outline"
+                            aria-label={t(
+                              "workItems:detail.attachments.pdfPreviewOpen",
+                              { name: file.filename },
+                            )}
+                            onClick={() =>
+                              setPreviewAttachment({
+                                id: file.id,
+                                filename: file.filename,
+                                previewPath:
+                                  portalSubmissionAttachmentPreviewPath(
+                                    ref,
+                                    file.id,
+                                  ),
+                                downloadPath:
+                                  portalSubmissionAttachmentDownloadPath(
+                                    ref,
+                                    file.id,
+                                  ),
+                              })
+                            }
+                          >
+                            {t("workItems:detail.attachments.pdfPreviewOpen", {
+                              name: file.filename,
+                            })}
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          disabled={download.isPending}
+                          onClick={() =>
+                            download.mutate({
+                              id: file.id,
+                              filename: file.filename,
+                            })
+                          }
+                        >
+                          {t("portal:intake.download", {
+                            defaultValue: "Download",
+                          })}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -612,6 +684,12 @@ function PortalSubmissionPage() {
           )}
         </>
       )}
+      <PdfPreviewDialog
+        attachment={previewAttachment}
+        onOpenChange={(open) => {
+          if (!open) setPreviewAttachment(undefined);
+        }}
+      />
     </main>
   );
 }

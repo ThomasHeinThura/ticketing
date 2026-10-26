@@ -36,6 +36,10 @@ export const attachmentPolicies = {
     portal: "customer",
     predicate: "own_submission",
   },
+  "GET /api/portal/submissions/{ref}/attachments/{id}/preview": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
   "GET /api/submissions/{ref}/attachments": {
     capability: "intake:triage",
     scope: "workspace",
@@ -43,6 +47,12 @@ export const attachmentPolicies = {
     reach: "required",
   },
   "GET /api/submissions/{ref}/attachments/{id}": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/submissions/{ref}/attachments/{id}/preview": {
     capability: "intake:triage",
     scope: "workspace",
     scopeSource: "row",
@@ -81,9 +91,27 @@ export const attachmentPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  "GET /api/attachments/{id}/preview": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
 
   // AT-7: explicit requester-confirmed soft deletion.
   "DELETE /api/attachments/{id}": {
+    capability: "attachment:delete_any",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+    orOwner: {
+      predicate: "row.person_id === identity.personId",
+      capability: "attachment:delete_own",
+    },
+  },
+  // AT-7: restore an attachment during its one-day soft-delete window. Reuses the
+  // same delete-any or uploader+delete-own authority as the original action.
+  "POST /api/attachments/{id}/restore": {
     capability: "attachment:delete_any",
     scope: "work_item",
     scopeSource: "row",

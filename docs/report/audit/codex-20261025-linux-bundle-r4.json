@@ -1,0 +1,6 @@
+{
+	"containerId": "b992163de5785ae88fd6938c3c9f60016d0b4c1e7c3e37ce883ed9358e04f6d2",
+	"image": "sha256:bfe1853f2d223fc3fd94cf7ee730f138977999b38bb002bca44d921c0eaf6e2e",
+	"exitCode": 1,
+	"output": "G11 agent initial bundle: 263.3 KB gzip / 350 KB budget (9 assets)\nG11 agent work-list initial route graph: 350.4 KB gzip / 350 KB budget (53 assets)"
+}

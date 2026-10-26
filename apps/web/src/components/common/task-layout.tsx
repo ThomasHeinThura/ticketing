@@ -138,7 +138,7 @@ export function TaskPageFrame({
 }) {
   const compact = useIsMobile(1024);
   return (
-    <Layout className="flex flex-col lg:flex-row">
+    <Layout className="flex h-svh max-h-svh min-h-0 flex-col overflow-hidden lg:flex-row">
       <div className="flex min-h-0 flex-1 flex-col">
         {header}
         {notice}
@@ -153,7 +153,7 @@ export function TaskPageFrame({
           </div>
         </Layout.Content>
       </div>
-      <div className="hidden border-l border-border/80 bg-card lg:flex lg:h-full lg:overflow-y-auto">
+      <div className="hidden min-h-0 shrink-0 border-l border-border/80 bg-card lg:flex lg:h-full lg:overflow-hidden">
         {!compact ? rightSidebar : null}
       </div>
     </Layout>

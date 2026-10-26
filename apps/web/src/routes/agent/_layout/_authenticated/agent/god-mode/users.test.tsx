@@ -15,6 +15,11 @@ const mocks = vi.hoisted(() => ({
   changed: (() => {}) as () => void,
   grantAdmin: vi.fn(),
   createProof: vi.fn(),
+  factorStatus: {
+    enabled: true,
+    required: true,
+    availableMethods: ["totp", "backup_code"] as string[],
+  },
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -44,7 +49,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: { enabled: true, required: true } }),
+  useQuery: () => ({ data: mocks.factorStatus }),
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 

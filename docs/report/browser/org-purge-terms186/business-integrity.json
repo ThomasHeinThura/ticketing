@@ -1,0 +1,45 @@
+{
+	"scope": "Complete rows in8 business tables excluding exact own QA organisation/project/work item; other runtime audit/session/job tables intentionally outside this comparison",
+	"comparisons": [
+		{
+			"table": "organisation",
+			"rows": 4,
+			"unchanged": true
+		},
+		{
+			"table": "project",
+			"rows": 5,
+			"unchanged": true
+		},
+		{
+			"table": "work_item",
+			"rows": 33,
+			"unchanged": true
+		},
+		{
+			"table": "person",
+			"rows": 11,
+			"unchanged": true
+		},
+		{
+			"table": "team",
+			"rows": 35,
+			"unchanged": true
+		},
+		{
+			"table": "saved_view",
+			"rows": 6,
+			"unchanged": true
+		},
+		{
+			"table": "submission",
+			"rows": 7,
+			"unchanged": true
+		},
+		{
+			"table": "request_type",
+			"rows": 3,
+			"unchanged": true
+		}
+	]
+}

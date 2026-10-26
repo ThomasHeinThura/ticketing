@@ -8,7 +8,18 @@ export const SNAPSHOT_METRICS = [
   "sla_resolution",
   "sla_first_response",
   "throughput",
+  "item_created",
+  "item_resolved",
+  "sla_due_outcome",
+  "satisfaction_rating",
+  "time_logged",
+  "cost_entry",
+  "escalation_started",
+  "kb_deflection",
+  "cycle_completion",
 ] as const;
+/** Version 2 means every family in SNAPSHOT_METRICS was written for this day. */
+export const SNAPSHOT_FAMILY_VERSION = 2;
 export type SnapshotMetric = (typeof SNAPSHOT_METRICS)[number];
 
 /** Closed days recomputed on every run, so a late SLA flip or a deletion reaches the stored day. */

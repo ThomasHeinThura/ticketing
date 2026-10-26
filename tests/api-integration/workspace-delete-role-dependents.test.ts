@@ -9,7 +9,9 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createServiceApiKey } from "../../apps/api/src/api-key/service";
 import db, { schema } from "../../apps/api/src/database";
+import { apiKeyExtensionTable } from "../../apps/api/src/database/schema";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
 import { createApp } from "../../apps/api/src/index";
 import deleteAccountData, {
@@ -269,6 +271,47 @@ async function seedProvisioningRows(
 }
 
 describe("#180 workspace delete with role-referencing rows", () => {
+  it("revokes the parent service credential before workspace metadata cascades, preserving another workspace's key", async () => {
+    const target = await createWorkspaceViaRoute("Service credential deletion");
+    const other = await createWorkspaceViaRoute(
+      "Independent service credential",
+    );
+    const makeKey = (fixture: typeof target) =>
+      createServiceApiKey(
+        { userId: fixture.owner.user.id },
+        fixture.workspaceId,
+        { name: "Deletion coverage", capabilities: ["workspace:read"] },
+      );
+    const targetKey = await makeKey(target);
+    const otherKey = await makeKey(other);
+    const removal = await deleteWorkspaceThroughApproval(
+      target.app,
+      target.owner.cookie,
+      target.workspaceId,
+    );
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
+    const [credential] = await db
+      .select({ enabled: schema.apikeyTable.enabled })
+      .from(schema.apikeyTable)
+      .where(eq(schema.apikeyTable.id, targetKey.id));
+    expect(credential).toEqual({ enabled: false });
+    expect(
+      await db
+        .select({ id: apiKeyExtensionTable.apikeyId })
+        .from(apiKeyExtensionTable)
+        .where(eq(apiKeyExtensionTable.apikeyId, targetKey.id)),
+    ).toHaveLength(0);
+    const [unrelated] = await db
+      .select({ enabled: schema.apikeyTable.enabled })
+      .from(schema.apikeyTable)
+      .where(eq(schema.apikeyTable.id, otherKey.id));
+    expect(unrelated).toEqual({ enabled: true });
+  });
+
   it("deletes a workspace holding a project-scope role membership (the repro)", async () => {
     const { app, owner, workspaceId } =
       await createWorkspaceViaRoute("Project role");
@@ -820,6 +863,28 @@ describe("#734 account erasure and IdP-provisioned members", () => {
     const wsRole = await createRole(owner.workspace.id, "workspace");
     return { owner, wsRole };
   }
+
+  it("revokes workspace service credentials when account erasure deletes a sole-member workspace", async () => {
+    const { owner } = await soleLegacyMemberWorkspace();
+    await personIdFor(owner.user.id);
+    const key = await createServiceApiKey(
+      { userId: owner.user.id },
+      owner.workspace.id,
+      { name: "Erasure credential", capabilities: ["workspace:read"] },
+    );
+    await deleteAccountData(owner.user.id);
+    const [credential] = await db
+      .select({ enabled: schema.apikeyTable.enabled })
+      .from(schema.apikeyTable)
+      .where(eq(schema.apikeyTable.id, key.id));
+    expect(credential).toEqual({ enabled: false });
+    expect(
+      await db
+        .select({ id: apiKeyExtensionTable.apikeyId })
+        .from(apiKeyExtensionTable)
+        .where(eq(apiKeyExtensionTable.apikeyId, key.id)),
+    ).toHaveLength(0);
+  });
 
   it("stops with a 409 and deletes nothing when another person holds SCIM/OIDC access", async () => {
     const { owner, wsRole } = await soleLegacyMemberWorkspace();

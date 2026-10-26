@@ -6,6 +6,8 @@ import {
   collectContrastSourcePaths,
   composite,
   contrastRatio,
+  declaredBodyBackground,
+  failsContrastThreshold,
   observedPairsInSources,
   observeInheritedForegroundSurfaces,
   probeSurfaceDescriptor,
@@ -71,6 +73,17 @@ describe("G3 contrast inventory and math", () => {
         ),
       );
     }
+  });
+
+  it("reports an actionable error when an inventoried source has no TypeScript project", () => {
+    const missing = `apps/web/src/components/.contrast-missing-source-${process.pid}.tsx`;
+    assert.throws(
+      () =>
+        observeInheritedForegroundSurfaces([missing], new Set(["background"])),
+      new RegExp(
+        `Contrast analysis cannot load source \\"${missing}\\": TypeScript has no default project.*included by its owning tsconfig`,
+      ),
+    );
   });
 
   it("fails closed when a source introduces an unlisted foreground/background pair", () => {
@@ -639,32 +652,38 @@ describe("G3 contrast inventory and math", () => {
 
   it("binds a named global CSS surface to its real JSX ancestor", async () => {
     const sourcePath = `apps/web/src/components/.contrast-global-css-${process.pid}.tsx`;
-    await writeFile(
-      sourcePath,
-      'export function Fixture(){ return <div className="taskdesk-comment-editor-bubble"><span className="text-destructive">Error</span></div>; }',
-    );
-    const theme = await readFile(
-      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
-      "utf8",
-    );
-    const tokenNames = new Set(
-      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
-        (match) => match[1],
-      ),
-    );
-    const result = observeInheritedForegroundSurfaces([sourcePath], tokenNames);
-    const key = "--color-destructive|--color-popover|bg-popover|light";
-    const occurrence = result.uses.occurrences.get(key)?.[0];
-    assert.ok(occurrence);
-    assert.ok(
-      occurrence.chain.some((entry) =>
-        entry.includes(
-          "css:.taskdesk-comment-editor-bubble>background:var(--popover)",
+    try {
+      await writeFile(
+        sourcePath,
+        'import "@/components/task/editor-styles.css"; export function Fixture(){ return <div className="taskdesk-comment-editor-bubble"><span className="text-destructive">Error</span></div>; }',
+      );
+      const theme = await readFile(
+        path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+        "utf8",
+      );
+      const tokenNames = new Set(
+        [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+          (match) => match[1],
         ),
-      ),
-    );
-    assert.equal(result.unresolved.size, 0);
-    await rm(sourcePath, { force: true });
+      );
+      const result = observeInheritedForegroundSurfaces(
+        [sourcePath],
+        tokenNames,
+      );
+      const key = "--color-destructive|--color-popover|bg-popover|light";
+      const occurrence = result.uses.occurrences.get(key)?.[0];
+      assert.ok(occurrence);
+      assert.ok(
+        occurrence.chain.some((entry) =>
+          entry.includes(
+            "css:.taskdesk-comment-editor-bubble>background:var(--popover)",
+          ),
+        ),
+      );
+      assert.equal(result.unresolved.size, 0);
+    } finally {
+      await rm(sourcePath, { force: true });
+    }
   });
 
   it("binds Sidebar badge text and peer states to source-defined opaque surfaces", async () => {
@@ -1067,6 +1086,487 @@ describe("G3 contrast inventory and math", () => {
     } finally {
       await rm(parent, { force: true });
       await rm(child, { force: true });
+    }
+  });
+
+  it("carries a declared route body surface through nested components and rejects unknown call paths", async () => {
+    const suffix = `-${process.pid}`;
+    const leaf = `apps/web/src/components/.contrast-route-leaf${suffix}.tsx`;
+    const wrapper = `apps/web/src/components/.contrast-route-wrapper${suffix}.tsx`;
+    const route = `apps/web/src/routes/.contrast-route-surface${suffix}.tsx`;
+    const unknownCaller = `apps/web/src/components/.contrast-route-unknown${suffix}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        leaf,
+        'export function Leaf(){ return <p className="text-primary">Status</p>; }',
+      );
+      await writeFile(
+        wrapper,
+        `import { Leaf } from "./.contrast-route-leaf${suffix}"; export function Wrapper(){ return <main><Leaf /></main>; }`,
+      );
+      await writeFile(
+        route,
+        `import { Wrapper } from "../components/.contrast-route-wrapper${suffix}"; export const Route = createFileRoute("/contrast-route${suffix}")({ component: () => <Wrapper /> });`,
+      );
+
+      const valid = observeInheritedForegroundSurfaces(
+        [leaf, wrapper, route],
+        tokenNames,
+      );
+      const bodyPair = "--color-primary|--color-background|bg-background|light";
+      assert.equal(valid.unresolved.size, 0);
+      assert.ok(valid.pairs.has(bodyPair));
+      assert.ok(
+        valid.uses.occurrences
+          .get(bodyPair)
+          .some((occurrence) =>
+            occurrence.chain.includes(
+              "apps/web/src/index.css:body>@apply bg-background",
+            ),
+          ),
+      );
+
+      await writeFile(
+        unknownCaller,
+        `import { Leaf } from "./.contrast-route-leaf${suffix}"; export function UnknownCaller(){ return <Leaf />; }`,
+      );
+      const mixedCallers = observeInheritedForegroundSurfaces(
+        [leaf, wrapper, route, unknownCaller],
+        tokenNames,
+      );
+      assert.ok(mixedCallers.unresolved.size > 0);
+
+      await writeFile(
+        route,
+        `import { Wrapper } from "../components/.contrast-route-wrapper${suffix}"; export const Route = createFileRoute("/contrast-route${suffix}")({ component: () => <main className="bg-unregistered"><Wrapper /></main> });`,
+      );
+      const unknownPaint = observeInheritedForegroundSurfaces(
+        [leaf, wrapper, route],
+        tokenNames,
+      );
+      assert.ok(unknownPaint.unresolved.size > 0);
+      assert.equal(unknownPaint.pairs.has(bodyPair), false);
+
+      const noRouteSurface = observeInheritedForegroundSurfaces(
+        [leaf, wrapper],
+        tokenNames,
+      );
+      assert.ok(noRouteSurface.unresolved.size > 0);
+    } finally {
+      await Promise.all(
+        [leaf, wrapper, route, unknownCaller].map((file) =>
+          rm(file, { force: true }),
+        ),
+      );
+    }
+  });
+
+  it("uses the declared body contract only and keeps low-contrast colors below threshold", () => {
+    assert.equal(
+      declaredBodyBackground("body { @apply bg-background; }"),
+      "bg-background",
+    );
+    assert.equal(declaredBodyBackground("body { color: black; }"), undefined);
+    assert.equal(
+      failsContrastThreshold([255, 255, 255], [255, 255, 255], 4.5),
+      true,
+    );
+    assert.equal(
+      failsContrastThreshold([0, 0, 0], [255, 255, 255], 4.5),
+      false,
+    );
+  });
+
+  it("ignores an unreferenced component only when module reachability proves it dead", async () => {
+    const route = `apps/web/src/routes/.contrast-reachability-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        route,
+        'function Unreferenced(){ return <p className="text-primary">Dead</p>; } function Page(){ return <p className="text-primary">Live</p>; } export const Route = createFileRoute("/contrast-reachability")({ component: Page });',
+      );
+      const result = observeInheritedForegroundSurfaces(
+        [route],
+        tokenNames,
+        undefined,
+        { trackReachability: true },
+      );
+      assert.equal(
+        [...result.uses.occurrences.values()]
+          .flat()
+          .some((item) => item.component === "Unreferenced"),
+        false,
+      );
+
+      await writeFile(
+        route,
+        'function Unreferenced(){ return <p className="text-primary">Dead</p>; } function Page(){ return <main className="bg-background"><Unreferenced /><p className="text-primary">Live</p></main>; } export const Route = createFileRoute("/contrast-reachability")({ component: Page });',
+      );
+      const nowReferenced = observeInheritedForegroundSurfaces(
+        [route],
+        tokenNames,
+        undefined,
+        { trackReachability: true },
+      );
+      assert.ok(
+        [...nowReferenced.uses.occurrences.values()]
+          .flat()
+          .some((item) => item.component === "Unreferenced"),
+      );
+    } finally {
+      await rm(route, { force: true });
+    }
+  });
+
+  it("keeps lazy-loaded and unknown dynamic module owners reachable for contrast validation", async () => {
+    const route = `apps/web/src/routes/.contrast-lazy-reach-${process.pid}.tsx`;
+    const component = `apps/web/src/components/.contrast-lazy-reach-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        component,
+        'export default function LazyLeaf(){ return <p className="text-primary">Lazy</p>; }',
+      );
+      await writeFile(
+        route,
+        `import { lazy, Suspense } from "react"; const Deferred = lazy(() => import("../components/.contrast-lazy-reach-${process.pid}")); function Page(){ return <main className="bg-unregistered"><Suspense fallback={null}><Deferred /></Suspense></main>; } export const Route = createFileRoute("/contrast-lazy-reach")({ component: Page });`,
+      );
+      const lazyResult = observeInheritedForegroundSurfaces(
+        [route, component],
+        tokenNames,
+        undefined,
+        { trackReachability: true },
+      );
+      assert.ok(
+        [...lazyResult.unresolved.keys()].some((id) =>
+          id.includes("contrast-lazy-reach"),
+        ),
+      );
+
+      await writeFile(
+        route,
+        `import { lazy, Suspense } from "react"; const moduleName = "../components/.contrast-lazy-reach-${process.pid}"; const Deferred = lazy(() => import(moduleName)); function Page(){ return <main className="bg-unregistered"><Suspense fallback={null}><Deferred /></Suspense></main>; } export const Route = createFileRoute("/contrast-lazy-reach")({ component: Page });`,
+      );
+      const unknownResult = observeInheritedForegroundSurfaces(
+        [route, component],
+        tokenNames,
+        undefined,
+        { trackReachability: true },
+      );
+      assert.ok(
+        [...unknownResult.unresolved.keys()].some((id) =>
+          id.includes("contrast-lazy-reach"),
+        ),
+      );
+    } finally {
+      await Promise.all(
+        [route, component].map((file) => rm(file, { force: true })),
+      );
+    }
+  });
+
+  it("composites Alert and DialogDescription text over their declared variant surfaces", async () => {
+    const route = `apps/web/src/routes/.contrast-alert-dialog-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    const sources = [
+      "packages/ui/src/components/alert.tsx",
+      "packages/ui/src/components/dialog.tsx",
+      route,
+    ];
+    try {
+      await writeFile(
+        route,
+        'import { Alert, AlertDescription, Dialog, DialogContent, DialogDescription, DialogHeader } from "@taskdesk/ui"; function Page(){ return <main className="bg-background"><Dialog open><DialogContent><DialogHeader><DialogDescription>Dialog body</DialogDescription></DialogHeader><Alert><AlertDescription>Default alert</AlertDescription></Alert><Alert variant="error"><AlertDescription>Error alert</AlertDescription></Alert></DialogContent></Dialog></main>; } export const Route = createFileRoute("/contrast-alert-dialog")({ component: Page });',
+      );
+      const result = observeInheritedForegroundSurfaces(sources, tokenNames);
+      assert.equal(result.unresolved.size, 0);
+      assert.ok(
+        result.pairs.has(
+          "--color-muted-foreground|--color-popover|bg-popover|light",
+        ),
+      );
+      assert.ok(
+        result.pairs.has(
+          "--color-muted-foreground|--color-input|dark:bg-input/32|dark|backdrop:bg-popover",
+        ),
+      );
+      assert.ok(
+        result.pairs.has(
+          "--color-muted-foreground|--color-destructive|bg-destructive/4|light|backdrop:bg-popover",
+        ),
+      );
+    } finally {
+      await rm(route, { force: true });
+    }
+  });
+
+  it("traces a returned map renderer through its JSX caller and rejects an unpainted caller", async () => {
+    const fixture = `apps/web/src/components/.contrast-renderer-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        fixture,
+        'function renderNode(){ return <span className="text-primary">Value</span>; } function renderNodes(nodes){ return nodes.map((node) => renderNode()); } function KbArticleContent({ nodes }){ return <article>{renderNodes(nodes)}</article>; } export function Page(){ return <main className="bg-background"><KbArticleContent nodes={[]} /></main>; }',
+      );
+      const painted = observeInheritedForegroundSurfaces([fixture], tokenNames);
+      const pair = "--color-primary|--color-background|bg-background|light";
+      assert.equal(painted.unresolved.size, 0);
+      assert.ok(painted.pairs.has(pair));
+
+      await writeFile(
+        fixture,
+        'function renderNode(){ return <span className="text-primary">Value</span>; } function renderNodes(nodes){ return nodes.map((node) => renderNode()); } function KbArticleContent({ nodes }){ return <article>{renderNodes(nodes)}</article>; } export function Page(){ return <main className="bg-background"><KbArticleContent nodes={[]} /></main>; } export function UnknownPage(){ return <KbArticleContent nodes={[]} />; }',
+      );
+      const mixed = observeInheritedForegroundSurfaces([fixture], tokenNames);
+      assert.ok(mixed.unresolved.size > 0);
+    } finally {
+      await rm(fixture, { force: true });
+    }
+  });
+
+  it("traces a local JSX render-prop helper and its returned row alias only when the prop is rendered", async () => {
+    const host = `apps/web/src/components/.contrast-render-prop-host-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-render-prop-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        host,
+        "export function VirtualizedSortableList({ items, renderItem }) { return <div>{items.map((item, index) => renderItem(item, { index }))}</div>; }",
+      );
+      const source = `import { VirtualizedSortableList } from "./.contrast-render-prop-host-${process.pid}"; function WorkItemKaneoList({ items }){ const renderTaskRow = (task, virtualItem) => { const row = <div className="bg-accent/45 hover:bg-accent/60"><span className="text-foreground">Selected row</span></div>; if (!virtualItem) return row; return <div>{row}</div>; }; return <section className="bg-card"><VirtualizedSortableList items={items} renderItem={(task, virtualItem) => renderTaskRow(task, virtualItem)} /></section>; } export function Page(){ return <main className="bg-background"><WorkItemKaneoList items={[{}]} /></main>; }`;
+      await writeFile(fixture, source);
+      const rendered = observeInheritedForegroundSurfaces(
+        [host, fixture],
+        tokenNames,
+      );
+      assert.equal(rendered.unresolved.size, 0);
+      assert.ok(
+        rendered.pairs.has(
+          "--color-foreground|--color-accent|bg-accent/45|light|backdrop:bg-card",
+        ),
+        [...rendered.pairs].join("\n"),
+      );
+      assert.ok(
+        rendered.pairs.has(
+          "--color-foreground|--color-accent|hover:bg-accent/60|light|backdrop:bg-card",
+        ),
+      );
+
+      await writeFile(
+        host,
+        "export function VirtualizedSortableList({ items, renderItem }) { return <div>{items.map((item) => <span key={item.id}>{item.id}</span>)}</div>; }",
+      );
+      const ignoredProp = observeInheritedForegroundSurfaces(
+        [host, fixture],
+        tokenNames,
+      );
+      assert.equal(ignoredProp.unresolved.size, 0);
+      assert.equal(
+        ignoredProp.pairs.has(
+          "--color-foreground|--color-accent|bg-accent/45|light|backdrop:bg-card",
+        ),
+        false,
+      );
+    } finally {
+      await Promise.all(
+        [host, fixture].map((file) => rm(file, { force: true })),
+      );
+    }
+  });
+
+  it("retains real Kaneo TaskRow selected and hover contexts through WorkItemKaneoList virtualization", async () => {
+    const route = `apps/web/src/routes/.contrast-work-item-renderer-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    const sources = [
+      "packages/ui/src/index.ts",
+      "packages/ui/src/components/fieldset.tsx",
+      "apps/web/src/components/list-view/task-row.tsx",
+      "apps/web/src/components/list-view/list-column-section.tsx",
+      "apps/web/src/components/work-item/virtualization/virtualized-sortable-list.tsx",
+      "apps/web/src/components/work-item/work-item-kaneo-list.tsx",
+      route,
+    ];
+    try {
+      await writeFile(
+        route,
+        'import WorkItemKaneoList from "../components/work-item/work-item-kaneo-list"; function Page(){ return <main className="bg-background"><WorkItemKaneoList projectId="project" workspaceId="workspace" workItems={[]} hasPartialFailure={false} isLoading={false} isError={false} sort="position" dir="asc" onSortChange={() => {}} onRetry={() => {}} /></main>; } export const Route = createFileRoute("/contrast-work-item-renderer")({ component: Page });',
+      );
+      const actual = observeInheritedForegroundSurfaces(
+        sources,
+        tokenNames,
+        undefined,
+        { trackReachability: true },
+      );
+      assert.ok(
+        actual.pairs.has(
+          "--color-foreground|--color-accent|bg-accent/45|light|backdrop:bg-accent/60>bg-card",
+        ),
+      );
+      assert.ok(
+        actual.pairs.has(
+          "--color-foreground|--color-accent|hover:bg-accent/60|light|backdrop:bg-accent/60>bg-card",
+        ),
+      );
+    } finally {
+      await rm(route, { force: true });
+    }
+  });
+
+  it("traces KbArticleContent table cells through renderNode and renderNodes to its route surface", async () => {
+    const route = `apps/web/src/routes/.contrast-kb-route-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    const sources = [
+      "packages/ui/src/components/table.tsx",
+      "apps/web/src/components/kb/kb-article-content.tsx",
+      route,
+    ];
+    try {
+      await writeFile(
+        route,
+        'import { KbArticleContent } from "../components/kb/kb-article-content"; export const Route = createFileRoute("/contrast-kb")({ component: () => <main className="bg-background"><KbArticleContent body={{ content: [] }} /></main> });',
+      );
+      const routed = observeInheritedForegroundSurfaces(sources, tokenNames);
+      const pair =
+        "--color-muted-foreground|--color-background|bg-background|light";
+      assert.equal(
+        [...routed.unresolved.keys()].some((id) => id.includes("TableHead")),
+        false,
+      );
+      assert.ok(routed.pairs.has(pair));
+
+      await writeFile(
+        route,
+        'import { KbArticleContent } from "../components/kb/kb-article-content"; export function Unknown(){ return <KbArticleContent body={{ content: [] }} />; }',
+      );
+      const unpainted = observeInheritedForegroundSurfaces(sources, tokenNames);
+      assert.ok(
+        [...unpainted.unresolved.keys()].some((id) => id.includes("TableHead")),
+      );
+      assert.equal(unpainted.pairs.has(pair), false);
+    } finally {
+      await rm(route, { force: true });
+    }
+  });
+
+  it("binds helper results passed through an object prop only when the consumer renders that property", async () => {
+    const helper = `apps/web/src/components/.contrast-object-helper-${process.pid}.tsx`;
+    const consumer = `apps/web/src/components/.contrast-object-consumer-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        helper,
+        'export function renderIcon(){ return <svg className="text-muted-foreground" />; }',
+      );
+      await writeFile(
+        consumer,
+        `import { renderIcon } from "./.contrast-object-helper-${process.pid}"; function StackedIcons({ items }){ return <span>{items.map((item) => <span key={item.id} className="bg-background">{item.node}</span>)}</span>; } export function Page(){ return <main className="bg-background"><StackedIcons items={[{ id: "one", node: renderIcon() }]} /></main>; }`,
+      );
+      const rendered = observeInheritedForegroundSurfaces(
+        [helper, consumer],
+        tokenNames,
+      );
+      const pair =
+        "--color-muted-foreground|--color-background|bg-background|light";
+      assert.equal(rendered.unresolved.size, 0);
+      assert.ok(rendered.pairs.has(pair));
+
+      await writeFile(
+        consumer,
+        `import { renderIcon } from "./.contrast-object-helper-${process.pid}"; function StackedIcons({ items }){ return <span>{items.map((item) => <span key={item.id} className="bg-background">{item.node}</span>)}</span>; } export function Page(){ return <main className="bg-background"><StackedIcons items={["one"].map((id) => ({ id, node: renderIcon() }))} /></main>; }`,
+      );
+      const mapped = observeInheritedForegroundSurfaces(
+        [helper, consumer],
+        tokenNames,
+      );
+      assert.equal(mapped.unresolved.size, 0);
+      assert.ok(mapped.pairs.has(pair));
+
+      await writeFile(
+        consumer,
+        `import { renderIcon } from "./.contrast-object-helper-${process.pid}"; function StackedIcons({ items }){ return <span>{items.map((item) => <span key={item.id} className="bg-background">{item.id}</span>)}</span>; } export function Page(){ return <main className="bg-background"><StackedIcons items={[{ id: "one", node: renderIcon() }]} /></main>; }`,
+      );
+      const unrendered = observeInheritedForegroundSurfaces(
+        [helper, consumer],
+        tokenNames,
+      );
+      assert.ok(unrendered.unresolved.size > 0);
+    } finally {
+      await Promise.all(
+        [helper, consumer].map((file) => rm(file, { force: true })),
+      );
     }
   });
 
@@ -2140,6 +2640,24 @@ describe("source-bound shared component paint slots", () => {
           ),
         );
         assert.equal(result.unresolved.size, 2);
+      },
+    );
+  });
+  it("follows split menu re-exports to the real highlighted item and popup surface", async () => {
+    await inspectFixture(
+      'import { MenuPopup as MenuContent, MenuItem as MenuOption } from "@taskdesk/ui"; export function Page(){return <MenuContent><MenuOption className="data-highlighted:bg-accent" {...props}><span className="text-foreground">Item</span></MenuOption></MenuContent>;} ',
+      (result) => {
+        assert.equal(result.unresolved.size, 0);
+        assert.ok(
+          result.pairs.has(
+            "--color-foreground|--color-accent|data-highlighted:bg-accent|light|backdrop:bg-popover",
+          ),
+        );
+        assert.ok(
+          result.pairs.has(
+            "--color-foreground|--color-popover|bg-popover|light",
+          ),
+        );
       },
     );
   });

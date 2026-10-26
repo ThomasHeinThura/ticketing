@@ -1,0 +1,20 @@
+{
+	"checks": [
+		{
+			"role": "admin",
+			"origin": "https://ticketing.localhost",
+			"status": 200,
+			"finalPath": "/agent",
+			"secureContext": true,
+			"certificateErrorsIgnored": false
+		},
+		{
+			"role": "customer",
+			"origin": "https://portal.localhost",
+			"status": 200,
+			"finalPath": "/",
+			"secureContext": true,
+			"certificateErrorsIgnored": false
+		}
+	]
+}

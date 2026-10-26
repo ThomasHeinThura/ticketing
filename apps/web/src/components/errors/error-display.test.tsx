@@ -27,6 +27,7 @@ describe("ErrorDisplay", () => {
     expect(open).toHaveBeenCalledWith(
       "https://taskdesk.bimats.com/docs",
       "_blank",
+      "noopener,noreferrer",
     );
   });
 });

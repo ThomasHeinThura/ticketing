@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
-import { itemFilterSql, num, selectRows, tsn, tstz } from "../context";
+import { itemFilterSql, num, selectRows, tsn } from "../context";
 import { countValue, ratePercent, type Sampled, trendOf, utc } from "../logic";
-import { type DailyRow, loadDaily } from "../snapshot.repository";
+import { type DailyRow, loadDaily, loadFactRows } from "../snapshot.repository";
 import type { ReportContext, ReportDefinition, Row } from "../types";
 import {
   cell,
@@ -10,7 +10,8 @@ import {
   emptyBody,
   itemsOf,
   MIN,
-  rowCap,
+  pageLimit,
+  pageRows,
   weekAxis,
   weekKey,
 } from "./shared";
@@ -256,42 +257,99 @@ const slaTrend: ReportDefinition = {
   },
 };
 
-const BREACH_DIMENSIONS = {
-  type: sql`COALESCE(wt.name, '(no type)')`,
-  priority: sql`COALESCE(w.priority, 'none')`,
-  customer: sql`COALESCE(o.name, '(no organisation)')`,
-} as const;
-
 const breachAnalysis: ReportDefinition = {
   key: "breach_analysis",
   category: "promises",
   title: "Breach analysis",
+  pagedExport: true,
   async compute(ctx) {
     const by =
       ctx.options.by === "priority" || ctx.options.by === "customer"
         ? ctx.options.by
         : "type";
-    const label = BREACH_DIMENSIONS[by];
     const metric = metricOf(ctx);
-    const rows = await selectRows<{
-      label: string;
-      breached: string;
-      total: string;
-    }>(sql`SELECT ${label} AS label,
-        count(*) FILTER (WHERE c.state IN ('missed', 'breached')) AS breached,
-        count(*) AS total
-      FROM work_item w
-      JOIN project p ON p.id = w.project_id
-      JOIN work_item_sla_cache c ON c.work_item_id = w.id AND c.metric = ${metric}
-      LEFT JOIN work_item_type wt ON wt.id = w.type_id
-      LEFT JOIN organisation o ON o.id = p.organisation_id
-      WHERE w.workspace_id = ${ctx.workspaceId}
-        AND w.deleted_at IS NULL AND p.deleted_at IS NULL
-        AND ${ctx.reach} AND ${itemFilterSql(ctx)}
-        AND c.state IN ('met', 'missed', 'breached')
-        AND c.due_at >= ${tstz(ctx.window.from)} AND c.due_at < ${tstz(ctx.window.to)}
-      GROUP BY 1 ORDER BY breached DESC, total DESC LIMIT ${rowCap(ctx, 100)}`);
-    const table: Row[] = rows.map((row) => {
+    const facts = await loadFactRows(
+      ctx,
+      "sla_due_outcome",
+      ctx.window.from,
+      ctx.window.to,
+    );
+    const dimensionIds = [
+      ...new Set(
+        facts
+          .map((fact) =>
+            by === "type"
+              ? fact.dimensions.typeId
+              : by === "customer"
+                ? fact.organisation_id
+                : null,
+          )
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const labels = dimensionIds.length
+      ? by === "type"
+        ? await selectRows<{ id: string; name: string }>(
+            sql`SELECT id,name FROM work_item_type WHERE id IN (${sql.join(
+              dimensionIds.map((id) => sql`${id}`),
+              sql`, `,
+            )})`,
+          )
+        : by === "customer"
+          ? await selectRows<{ id: string; name: string }>(
+              sql`SELECT id,name FROM organisation WHERE id IN (${sql.join(
+                dimensionIds.map((id) => sql`${id}`),
+                sql`, `,
+              )})`,
+            )
+          : []
+      : [];
+    const labelById = new Map(labels.map((row) => [row.id, row.name]));
+    const grouped = new Map<
+      string,
+      { label: string; breached: number; total: number }
+    >();
+    for (const fact of facts) {
+      if (
+        fact.dimensions.metric !== metric ||
+        !["met", "missed", "breached"].includes(fact.dimensions.state ?? "")
+      )
+        continue;
+      const id =
+        by === "type"
+          ? fact.dimensions.typeId
+          : by === "customer"
+            ? fact.organisation_id
+            : fact.dimensions.priority;
+      const label = id
+        ? (labelById.get(id) ?? (by === "priority" ? id : `(no ${by})`))
+        : by === "priority"
+          ? "none"
+          : `(no ${by})`;
+      const row = grouped.get(label) ?? { label, breached: 0, total: 0 };
+      const count = fact.measures.count ?? 0;
+      row.total += count;
+      if (
+        fact.dimensions.state === "missed" ||
+        fact.dimensions.state === "breached"
+      )
+        row.breached += count;
+      grouped.set(label, row);
+    }
+    const allRows = [...grouped.values()].sort(
+      (a, b) =>
+        b.breached - a.breached ||
+        b.total - a.total ||
+        a.label.localeCompare(b.label),
+    );
+    const pageInput = ctx.exportPage
+      ? allRows.slice(
+          ctx.exportPage.offset,
+          ctx.exportPage.offset + ctx.exportPage.limit,
+        )
+      : allRows.slice(0, 101);
+    const page = pageRows(ctx, pageInput, 100);
+    const table: Row[] = page.rows.map((row) => {
       const breached = num(row.breached);
       const total = num(row.total);
       return {
@@ -340,7 +398,7 @@ const breachAnalysis: ReportDefinition = {
         col("rate", "Breach rate", "percent"),
       ],
       rows: table,
-      truncated: rows.length >= rowCap(ctx, 100),
+      truncated: page.truncated,
       population: table.reduce((sum, row) => sum + Number(row.total), 0),
       outsideWindow: 0,
       notes: (await policyVersionsChanged(ctx)) ? ["sla_policy_changed"] : [],
@@ -354,6 +412,7 @@ const atRiskNow: ReportDefinition = {
   category: "promises",
   title: "At-risk now",
   live: true,
+  pagedExport: true,
   async compute(ctx) {
     const rows = await selectRows<{
       key: string;
@@ -376,9 +435,10 @@ const atRiskNow: ReportDefinition = {
         AND ${ctx.reach} AND ${itemFilterSql(ctx)}
         AND c.state IN ('at_risk', 'breached')
         AND st."group" NOT IN ('completed', 'cancelled')
-      ORDER BY c.state = 'breached' DESC, c.due_at ASC NULLS LAST
-      LIMIT ${rowCap(ctx, 200)}`);
-    const table: Row[] = rows.map((row) => ({
+      ORDER BY c.state = 'breached' DESC, c.due_at ASC NULLS LAST, w.id, c.metric
+      ${pageLimit(ctx, 200)}`);
+    const page = pageRows(ctx, rows, 200);
+    const table: Row[] = page.rows.map((row) => ({
       key: row.key,
       title: row.title,
       project: row.project_key,
@@ -387,14 +447,14 @@ const atRiskNow: ReportDefinition = {
       state: row.state,
       due: row.due_at ? utc(row.due_at).toISOString() : null,
     }));
-    const breached = rows.filter((row) => row.state === "breached").length;
+    const breached = page.rows.filter((row) => row.state === "breached").length;
     return emptyBody({
       metrics: [
         {
           key: "at_risk",
           label: "At risk",
           unit: "count",
-          ...countValue(rows.length - breached),
+          ...countValue(page.rows.length - breached),
         },
         {
           key: "breached",
@@ -413,8 +473,8 @@ const atRiskNow: ReportDefinition = {
         col("due", "Due", "date"),
       ],
       rows: table,
-      population: rows.length,
-      truncated: rows.length >= rowCap(ctx, 200),
+      population: page.rows.length,
+      truncated: page.truncated,
       notes: [],
       drill: true,
     });

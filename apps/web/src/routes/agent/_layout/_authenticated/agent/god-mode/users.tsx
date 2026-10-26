@@ -37,6 +37,7 @@ import {
   createUserOperationProof,
   getCurrentFactorStatus,
   type InstanceUser,
+  type StepUpMethod,
 } from "@/fetchers/god-mode/instance-users";
 import {
   useInstanceUser,
@@ -91,9 +92,7 @@ function InstanceUsersPage() {
   const [reason, setReason] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [verificationNote, setVerificationNote] = useState("");
-  const [method, setMethod] = useState<"password" | "totp" | "backup_code">(
-    "password",
-  );
+  const [method, setMethod] = useState<StepUpMethod>("password");
   const [secret, setSecret] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -114,7 +113,7 @@ function InstanceUsersPage() {
 
   useEffect(() => {
     if (factor.data) {
-      setMethod(factor.data.enabled ? "totp" : "password");
+      setMethod(factor.data.availableMethods[0] ?? "password");
     }
   }, [factor.data]);
 
@@ -583,7 +582,10 @@ function InstanceUsersPage() {
           onReason={setReason}
           onExpiresAt={setExpiresAt}
           onVerificationNote={setVerificationNote}
-          onMethod={setMethod}
+          onMethod={(value) => {
+            setMethod(value);
+            setSecret("");
+          }}
           onSecret={setSecret}
           onCancel={resetAction}
           onSubmit={() => void runAction(selected.data as InstanceUser, action)}
@@ -802,13 +804,19 @@ function UserActionDialog({
   reason: string;
   expiresAt: string;
   verificationNote: string;
-  method: "password" | "totp" | "backup_code";
+  method: StepUpMethod;
   secret: string;
-  factor: { enabled: boolean; required: boolean } | undefined;
+  factor:
+    | {
+        enabled: boolean;
+        required: boolean;
+        availableMethods: StepUpMethod[];
+      }
+    | undefined;
   onReason: (value: string) => void;
   onExpiresAt: (value: string) => void;
   onVerificationNote: (value: string) => void;
-  onMethod: (value: "password" | "totp" | "backup_code") => void;
+  onMethod: (value: StepUpMethod) => void;
   onSecret: (value: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
@@ -820,10 +828,15 @@ function UserActionDialog({
     action === "impersonate" ||
     (action === "suspend" && user.isInstanceAdmin);
   const factorBlocked =
-    isStepUp && (!factor || (factor.required && !factor.enabled));
+    isStepUp &&
+    (!factor ||
+      factor.availableMethods.length === 0 ||
+      !factor.availableMethods.includes(method));
   const canSubmit =
     !pending &&
-    (!isStepUp || (!factorBlocked && secret.length > 0)) &&
+    (!isStepUp ||
+      (!factorBlocked &&
+        (method === "sso_prompt_login" || secret.length > 0))) &&
     (action !== "reset-mfa" || verificationNote.trim().length >= 12) &&
     (action !== "suspend" || Array.from(reason).length <= 500) &&
     (action !== "impersonate" ||
@@ -924,73 +937,85 @@ function UserActionDialog({
               </p>
             </div>
           )}
-          {isStepUp &&
-            (factor?.enabled ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="step-up-method">
-                    {t("instanceUsers:copy.fc7481906e3b")}
-                  </Label>
-                  <Select
-                    value={method}
-                    onValueChange={(value) =>
-                      onMethod(value === "backup_code" ? "backup_code" : "totp")
-                    }
-                  >
-                    <SelectTrigger id="step-up-method">
-                      <SelectValue>
-                        {method === "backup_code"
-                          ? t("instanceUsers:copy.2a8367498e23")
-                          : t("instanceUsers:copy.2908b4e9c428")}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="totp">
-                        {t("instanceUsers:copy.2908b4e9c428")}
+          {isStepUp && factor && !factorBlocked ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="step-up-method">
+                  {t("instanceUsers:copy.fc7481906e3b")}
+                </Label>
+                <Select
+                  items={factor.availableMethods.map((availableMethod) => ({
+                    value: availableMethod,
+                    label:
+                      availableMethod === "password"
+                        ? t("instanceUsers:copy.19dff4dad0a7")
+                        : availableMethod === "totp"
+                          ? t("instanceUsers:copy.2908b4e9c428")
+                          : availableMethod === "backup_code"
+                            ? t("instanceUsers:copy.2a8367498e23")
+                            : t("identityConnections:stepUp.ssoPromptLogin"),
+                  }))}
+                  value={method}
+                  onValueChange={(value) => {
+                    if (factor.availableMethods.includes(value as StepUpMethod))
+                      onMethod(value as StepUpMethod);
+                  }}
+                >
+                  <SelectTrigger id="step-up-method">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {factor.availableMethods.map((availableMethod) => (
+                      <SelectItem key={availableMethod} value={availableMethod}>
+                        {availableMethod === "password"
+                          ? t("instanceUsers:copy.19dff4dad0a7")
+                          : availableMethod === "totp"
+                            ? t("instanceUsers:copy.2908b4e9c428")
+                            : availableMethod === "backup_code"
+                              ? t("instanceUsers:copy.2a8367498e23")
+                              : t("identityConnections:stepUp.ssoPromptLogin")}
                       </SelectItem>
-                      <SelectItem value="backup_code">
-                        {t("instanceUsers:copy.2a8367498e23")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {method === "sso_prompt_login" ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("identityConnections:stepUp.ssoPromptLoginDescription")}
+                </p>
+              ) : (
                 <div className="space-y-2">
                   <Label htmlFor="step-up-code">
                     {t(
-                      method === "totp"
-                        ? "instanceUsers:dynamic.authenticatorCode"
-                        : "instanceUsers:dynamic.backupCode",
+                      method === "password"
+                        ? "instanceUsers:copy.19dff4dad0a7"
+                        : method === "totp"
+                          ? "instanceUsers:dynamic.authenticatorCode"
+                          : "instanceUsers:dynamic.backupCode",
                     )}
                   </Label>
                   <Input
                     id="step-up-code"
-                    autoComplete="one-time-code"
+                    autoComplete={
+                      method === "password"
+                        ? "current-password"
+                        : "one-time-code"
+                    }
+                    type={method === "password" ? "password" : "text"}
                     value={secret}
                     onChange={(event) => onSecret(event.target.value)}
                   />
                 </div>
-              </>
-            ) : factor && !factor.required ? (
-              <div className="space-y-2">
-                <Label htmlFor="step-up-password">
-                  {t("instanceUsers:copy.19dff4dad0a7")}
-                </Label>
-                <Input
-                  id="step-up-password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={secret}
-                  onChange={(event) => onSecret(event.target.value)}
-                />
-              </div>
-            ) : (
-              <Alert variant="error">
-                <AlertTitle>{t("instanceUsers:copy.02c7fa45ff1a")}</AlertTitle>
-                <AlertDescription>
-                  {t("instanceUsers:copy.d5d49ba4b1bf")}
-                </AlertDescription>
-              </Alert>
-            ))}
+              )}
+            </>
+          ) : isStepUp ? (
+            <Alert variant="error">
+              <AlertTitle>{t("instanceUsers:copy.02c7fa45ff1a")}</AlertTitle>
+              <AlertDescription>
+                {t("instanceUsers:copy.d5d49ba4b1bf")}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {formError && (
             <Alert variant="error" role="alert">
               <AlertTitle>{t("instanceUsers:copy.f169620795e0")}</AlertTitle>

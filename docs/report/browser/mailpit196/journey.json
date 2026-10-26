@@ -1,0 +1,58 @@
+{
+	"recordedAt": "2026-10-26T14:35:38.957Z",
+	"checks": [
+		{
+			"name": "Capture available only in this local deployment",
+			"pass": true
+		},
+		{
+			"name": "Local capture configuration saved",
+			"pass": true
+		},
+		{
+			"name": "Mailpit SMTP connection test passes",
+			"pass": true
+		},
+		{
+			"name": "Saved profile uses fixed local capture",
+			"pass": true
+		}
+	],
+	"outcome": "passed",
+	"health": {
+		"checkedAt": "2026-10-26T14:35:40.722Z",
+		"state": "failing",
+		"checks": [
+			{
+				"key": "database",
+				"state": "ok",
+				"detail": {
+					"latencyMs": 2
+				}
+			},
+			{
+				"key": "secrets_encryption",
+				"state": "failing",
+				"detail": {
+					"keyConfigured": true,
+					"previousKeyConfigured": false,
+					"secretsTotal": 2,
+					"secretsPendingRekey": 1,
+					"expiredInvitationDeliveryEnvelopes": 0,
+					"rekeyComplete": false,
+					"safeToRemovePreviousKey": false
+				}
+			},
+			{
+				"key": "outbox",
+				"state": "ok",
+				"detail": {
+					"outboxDead": 0,
+					"outboxPending": 0,
+					"deliveriesDead": 0,
+					"deliveriesPending": 0
+				}
+			}
+		]
+	}
+}

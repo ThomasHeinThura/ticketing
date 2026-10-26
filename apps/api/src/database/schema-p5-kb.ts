@@ -133,6 +133,10 @@ export const kbArticleTable = pgTable(
     index("kb_article_workspace_state_idx").on(table.workspaceId, table.state),
     index("kb_article_category_idx").on(table.categoryId),
     index("kb_article_project_idx").on(table.projectId),
+    index("kb_article_full_text_idx").using(
+      "gin",
+      sql`(setweight(to_tsvector('simple', coalesce(${table.title}, '')), 'A') || setweight(to_tsvector('simple', coalesce(${table.bodyText}, '')), 'B'))`,
+    ),
     index("kb_article_review_due_idx")
       .on(table.workspaceId, table.reviewDueAt)
       .where(sql.raw("(review_due_at IS NOT NULL)")),
@@ -182,6 +186,10 @@ export const kbArticleVersionTable = pgTable(
     unique("kb_article_version_article_number_unique").on(
       table.articleId,
       table.number,
+    ),
+    index("kb_article_version_full_text_idx").using(
+      "gin",
+      sql`(setweight(to_tsvector('simple', coalesce(${table.title}, '')), 'A') || setweight(to_tsvector('simple', coalesce(${table.bodyText}, '')), 'B'))`,
     ),
     check("kb_article_version_number_positive", sql.raw("number >= 1")),
   ],

@@ -11,6 +11,14 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * reach is enforced exactly as for any work item.
  */
 export const serviceManagementPolicies = {
+  "GET /api/portal/releases": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
+  "GET /api/portal/releases/{id}": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
   "GET /api/service-catalogue/status": {
     capability: "project:read",
     scope: "workspace",

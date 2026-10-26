@@ -1,4 +1,7 @@
-vi.mock("@/lib/format", () => ({ formatDateMedium: () => "Oct 22" }));
+vi.mock("@/lib/format", () => ({
+  formatDateMedium: () => "Oct 22",
+  formatDateTime: () => "Oct 23, 10:00 AM",
+}));
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -14,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   remove: vi.fn(),
+  restore: vi.fn(),
   enqueue: vi.fn(),
   candidates: vi.fn(),
   openPending: vi.fn(),
@@ -48,6 +52,7 @@ vi.mock("react-i18next", () => ({
 vi.mock("@/fetchers/attachment/work-item-attachments", () => ({
   listWorkItemAttachments: mocks.list,
   requestAttachmentDeletion: mocks.remove,
+  restoreWorkItemAttachment: mocks.restore,
 }));
 
 import WorkItemAttachments from "./work-item-attachments";
@@ -71,6 +76,13 @@ const image = {
   mimeType: "image/png",
   canDelete: false,
 };
+const deleted = {
+  ...row,
+  state: "deleted",
+  deletedAt: "2026-10-22T11:00:00Z",
+  canDelete: false,
+  canRestore: true,
+};
 function mount(workspaceId?: string) {
   const client = new QueryClient({
     defaultOptions: {
@@ -90,6 +102,7 @@ function mount(workspaceId?: string) {
 beforeEach(() => {
   mocks.list.mockReset().mockResolvedValue([row]);
   mocks.remove.mockReset();
+  mocks.restore.mockReset().mockResolvedValue({ ...row });
   mocks.enqueue.mockReset();
   mocks.candidates
     .mockReset()
@@ -197,7 +210,7 @@ describe("canonical attachment delete affordance", () => {
 });
 
 describe("AT-8..AT-12 attachment panel", () => {
-  it("renders an image as a thumbnail that opens a lightbox, and other files as downloadable cards with size and uploader", async () => {
+  it("renders images in the lightbox and PDFs with a separate sandbox preview plus the existing download card", async () => {
     mocks.list.mockResolvedValue([row, image]);
     mount();
     const thumbnail = await screen.findByRole("button", {
@@ -211,6 +224,22 @@ describe("AT-8..AT-12 attachment panel", () => {
     expect(link.getAttribute("href")).toContain("/attachments/file-1");
     await waitFor(() =>
       expect(link.textContent).toContain("attachments.uploadedBy:Alice"),
+    );
+    const pdfPreview = screen.getByRole("button", {
+      name: "workItems:detail.attachments.pdfPreviewOpen:Proof.pdf",
+    });
+    fireEvent.click(pdfPreview);
+    const pdfDialog = await screen.findByRole("dialog");
+    const frame = within(pdfDialog).getByTitle(
+      "workItems:detail.attachments.pdfPreviewTitle",
+    );
+    expect(frame).toHaveAttribute("sandbox", "allow-scripts");
+    expect(frame).toHaveAttribute("src", "/pdf-preview.html");
+    expect(frame).toHaveAttribute("referrerpolicy", "origin");
+    fireEvent.click(
+      within(pdfDialog).getByRole("button", {
+        name: "workItems:detail.attachments.closePreview",
+      }),
     );
     fireEvent.click(thumbnail);
     const dialog = await screen.findByRole("dialog");
@@ -258,5 +287,51 @@ describe("AT-8..AT-12 attachment panel", () => {
     expect(
       screen.queryByLabelText("workItems:detail.attachments.add"),
     ).toBeNull();
+  });
+});
+
+describe("AT-7 attachment recovery", () => {
+  it("shows recoverable files only after opting in, avoids deleted download links, and restores through the persisted API", async () => {
+    mocks.list.mockImplementation((_key: string, lifecycle?: string) =>
+      Promise.resolve(lifecycle === "recoverable" ? [deleted] : [row]),
+    );
+    mount();
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "workItems:detail.attachments.recoverDeleted",
+      }),
+    );
+    const restore = await screen.findByRole("button", {
+      name: "workItems:detail.attachments.restore:Proof.pdf",
+    });
+    expect(
+      screen.queryByRole("link", { name: "Proof.pdf" }),
+    ).not.toBeInTheDocument();
+    expect(mocks.list).toHaveBeenCalledWith("HELP-4", "recoverable");
+    fireEvent.click(restore);
+    await waitFor(() =>
+      expect(mocks.restore).toHaveBeenCalledWith("file-1", expect.anything()),
+    );
+    expect(
+      await screen.findByRole("link", { name: "Proof.pdf" }),
+    ).toBeInTheDocument();
+  });
+  it("keeps recoverable rows without current restore authority non-interactive", async () => {
+    mocks.list.mockImplementation((_key: string, lifecycle?: string) =>
+      Promise.resolve(
+        lifecycle === "recoverable" ? [{ ...deleted, canRestore: false }] : [],
+      ),
+    );
+    mount();
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "workItems:detail.attachments.recoverDeleted",
+      }),
+    );
+    expect(await screen.findByText("Proof.pdf")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /attachments.restore/ }),
+    ).toBeNull();
+    expect(screen.queryByRole("link", { name: "Proof.pdf" })).toBeNull();
   });
 });

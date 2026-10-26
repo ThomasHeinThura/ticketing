@@ -1,5 +1,6 @@
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { SERVICE_KEY_REATTEST_OPERATION } from "../auth/step-up-ext";
 import { runWithStepUp, stepUpTokenHeader } from "../auth/step-up-spend";
 import { requireCurrentInstanceAdmin } from "../instance/require-instance-admin";
 import {
@@ -18,6 +19,7 @@ import { requireWorkspaceCapability } from "../utils/require-workspace-capabilit
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { clientIpForContext } from "./enforce";
+import { PERSONAL_KEY_DELETION_ROUTE } from "./personal-key-deletion-target";
 import { listKeysForInstance } from "./repository";
 import {
   apiKeyCreatedSchema,
@@ -28,6 +30,7 @@ import {
   instanceApiKeyListSchema,
   instanceKeyListQuery,
   personalKeyParam,
+  reattestServiceKeyBody,
   workspaceIdParam,
   workspaceKeyParam,
 } from "./schema";
@@ -36,6 +39,7 @@ import {
   createServiceApiKey,
   listMyApiKeys,
   listWorkspaceApiKeys,
+  reattestServiceApiKey,
   revokePersonalApiKey,
   revokeServiceApiKey,
 } from "./service";
@@ -110,6 +114,25 @@ const revokeMyKeyRoute = createRoute({
     200: jsonResponse("The revoked key", apiKeySummarySchema),
     401: errorResponse("Authentication required"),
     404: errorResponse("API key not found"),
+  },
+});
+
+const deleteMyKeyRoute = createRoute({
+  method: "delete",
+  operationId: "deleteMyApiKey",
+  path: "/me/api-keys/{id}",
+  tags: ["API keys"],
+  summary: "Request deletion of a personal API key",
+  description:
+    "Opens a pending action (typed exact name + step-up, `AK-11`); nothing is deleted until the same human requester approves it in the browser. Revocation remains immediate (`AK-6`).",
+  middleware: [requireSessionOnly()] as const,
+  request: { params: personalKeyParam },
+  responses: {
+    202: jsonResponse("Pending deletion", registeredDeletionRequestSchema),
+    401: errorResponse("Authentication required"),
+    403: errorResponse("A browser session is required"),
+    404: errorResponse("API key not found"),
+    409: errorResponse("A deletion of this key is already pending"),
   },
 });
 
@@ -206,6 +229,38 @@ const revokeServiceKeyRoute = createRoute({
   },
 });
 
+const reattestServiceKeyRoute = createRoute({
+  method: "post",
+  operationId: "reattestWorkspaceServiceApiKey",
+  path: "/workspaces/{id}/api-keys/{keyId}/re-attest",
+  tags: ["API keys"],
+  summary: "Re-attest a workspace service key",
+  description:
+    "Elevated PA-15 acknowledgement of transferred workspace ownership. The proof binds the workspace, key and accountability version. The key secret and frozen capability subset remain unchanged.",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("id"),
+    requireWorkspaceMembership,
+    requireWorkspaceCapability("api_key:manage"),
+  ] as const,
+  request: {
+    headers: stepUpTokenHeader,
+    params: workspaceKeyParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: reattestServiceKeyBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The acknowledged service key", apiKeySummarySchema),
+    403: errorResponse(
+      "A browser session, workspace reach, api_key:manage and valid step-up proof are required",
+    ),
+    404: errorResponse("API key not found"),
+    409: errorResponse("The accountability state changed or is not pending"),
+  },
+});
+
 const listInstanceKeysRoute = createRoute({
   method: "get",
   operationId: "listInstanceApiKeys",
@@ -252,6 +307,15 @@ const apiKey = apiRouter<BaseVariables & { workspaceId: string }>()
       c.req.valid("param").id,
     );
     return c.json(revoked, 200);
+  })
+  .openapi(deleteMyKeyRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: PERSONAL_KEY_DELETION_ROUTE,
+      targetType: "api_key",
+      id,
+    });
+    return c.json(pending, 202);
   })
   .openapi(listInstanceKeysRoute, async (c) => {
     await requireCurrentInstanceAdmin(c, "GET", "/api/instance/api-keys");
@@ -309,6 +373,28 @@ const apiKey = apiRouter<BaseVariables & { workspaceId: string }>()
       keyId,
     );
     return c.json(revoked, 200);
+  })
+  .openapi(reattestServiceKeyRoute, async (c) => {
+    const { id, keyId } = c.req.valid("param");
+    const { expectedVersion } = c.req.valid("json");
+    const result = await runWithStepUp(
+      c,
+      {
+        operation: SERVICE_KEY_REATTEST_OPERATION,
+        workspaceId: id,
+        keyId,
+        expectedVersion,
+      },
+      (spend) =>
+        reattestServiceApiKey(
+          { ...requestContext(c), actorIp: clientIpForContext(c) },
+          id,
+          keyId,
+          expectedVersion,
+          spend,
+        ),
+    );
+    return c.json(result, 200);
   });
 
 export default apiKey;

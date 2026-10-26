@@ -992,6 +992,72 @@ describe("F2 -- cannot grant a capability you do not hold yourself (RL-3, S7 blu
 });
 
 describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
+  it("previews a role patch with actual reach counts and leaves data and audit unchanged", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "RoleDryRun");
+    const created = await createWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { role: "editor", permission: { work_item: ["read"] } },
+    );
+    const createdBody = (await created.json()) as {
+      id: string;
+      version: string;
+    };
+    await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "editor",
+    );
+    const before = await roleRows(workspaceId, "editor");
+    const historyBefore = await db
+      .select({ id: schema.auditLogTable.id })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "workspace_role"),
+          eq(schema.auditLogTable.workspaceId, workspaceId),
+          eq(schema.auditLogTable.entityId, createdBody.id),
+        ),
+      );
+
+    const preview = await csrfRequest(
+      app,
+      `/api/workspace/${workspaceId}/roles/${createdBody.id}?dryRun=true`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          cookie: owner.cookie,
+        },
+        body: JSON.stringify({
+          permission: { work_item: ["read", "update"] },
+          expectedVersion: createdBody.version,
+        }),
+      },
+      owner.cookie,
+    );
+    expect(preview.status, await preview.clone().text()).toBe(200);
+    expect(await preview.json()).toMatchObject({
+      affected: { people: 1, workItems: 0, projects: 0 },
+    });
+    expect(await roleRows(workspaceId, "editor")).toEqual(before);
+    const historyAfter = await db
+      .select({ id: schema.auditLogTable.id })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "workspace_role"),
+          eq(schema.auditLogTable.workspaceId, workspaceId),
+          eq(schema.auditLogTable.entityId, createdBody.id),
+        ),
+      );
+    expect(historyAfter).toEqual(historyBefore);
+  });
+
   it("replaces (never merges) the permission set", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);

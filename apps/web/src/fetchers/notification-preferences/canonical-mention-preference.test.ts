@@ -5,7 +5,9 @@ vi.mock("@taskdesk/libs", () => ({ apiFetch: fetch }));
 
 import {
   getEmailLinkHandoff,
+  saveCommentEmailPreference,
   saveMentionEmailPreference,
+  saveTeamNotificationEmailPreference,
 } from "./canonical-mention-preference";
 
 beforeEach(() => fetch.mockReset());
@@ -31,7 +33,7 @@ describe("exact email preference", () => {
   });
   it("writes only the explicit global mention preference", async () => {
     fetch.mockResolvedValue(Response.json({}));
-    await saveMentionEmailPreference(false);
+    await saveMentionEmailPreference({ enabled: false, digest: "hourly" });
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
       canonicalPreference: {
         eventKind: "work_item.mentioned",
@@ -43,10 +45,43 @@ describe("exact email preference", () => {
       },
     });
   });
+  it("persists the selected cadence for low-priority comments", async () => {
+    fetch.mockResolvedValue(Response.json({}));
+    await saveCommentEmailPreference({ enabled: true, digest: "daily" });
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      canonicalPreference: {
+        eventKind: "work_item.commented",
+        channel: "notify.email",
+        scope: "global",
+        scopeId: null,
+        enabled: true,
+        digest: "daily",
+      },
+    });
+  });
   it("preserves denial instead of reporting a save", async () => {
     fetch.mockResolvedValue(Response.json({}, { status: 403 }));
-    await expect(saveMentionEmailPreference(false)).rejects.toMatchObject({
+    await expect(
+      saveMentionEmailPreference({ enabled: false, digest: "off" }),
+    ).rejects.toMatchObject({
       status: 403,
+    });
+  });
+  it("writes the explicit global team notification preference", async () => {
+    fetch.mockResolvedValue(Response.json({}));
+    await saveTeamNotificationEmailPreference({
+      enabled: true,
+      digest: "daily",
+    });
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      canonicalPreference: {
+        eventKind: "automation.notification_sent",
+        channel: "notify.email",
+        scope: "global",
+        scopeId: null,
+        enabled: true,
+        digest: "daily",
+      },
     });
   });
 });

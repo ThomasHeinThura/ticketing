@@ -19,6 +19,25 @@ const manage = {
 } as const;
 
 export const customerInvitationPolicies = {
+  "GET /api/portal/auth-methods": {
+    public: true,
+    reason:
+      "customer-host-only enabled local sign-in flags; no invitation or organisation state",
+  },
+  "POST /api/portal/invitations/{id}/continuation": {
+    public: true,
+    reason:
+      "customer-host-only, anonymous-rate-limited invitation credential handoff; stores only nonce and credential hashes",
+  },
+  "GET /api/portal/invitations/{id}/continuation-result": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
+  "POST /api/portal/invitations/{id}/accept-continuation": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
+
   "GET /api/workspace/{workspaceId}/customer-organisations": manage,
   "GET /api/workspace/{workspaceId}/organisations/{organisationId}/invitations":
     manage,

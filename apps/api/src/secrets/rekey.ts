@@ -1,4 +1,6 @@
 import { sql } from "drizzle-orm";
+import { reencryptDeliveryEnvelope } from "../customer-invitation/delivery/envelope";
+import { purgeExpiredCustomerInvitationEnvelopes } from "../customer-invitation/delivery/repository";
 import db from "../database";
 import {
   currentEncryptionKeyId,
@@ -53,6 +55,97 @@ const TEXT_TARGETS: readonly TextTarget[] = [
 ];
 
 const BATCH_SIZE = 100;
+function deliveryEnvelopeHeader(currentId: Buffer): string {
+  return Buffer.concat([Buffer.from("TDK1", "ascii"), currentId]).toString(
+    "base64url",
+  );
+}
+
+async function countInvitationDeliveryEnvelopes(
+  currentId: Buffer | null,
+  expired = false,
+): Promise<number> {
+  const result = await db.execute(sql`
+    SELECT count(*)::int AS n
+      FROM customer_invitation_delivery
+     WHERE envelope IS NOT NULL
+       AND ${expired ? sql`expires_at <= now()` : sql`expires_at > now()`}
+       ${currentId && !expired ? sql`AND left(envelope, 16) <> ${deliveryEnvelopeHeader(currentId)}` : sql``}
+  `);
+  return Number((result.rows[0] as { n: number | string }).n);
+}
+
+async function rekeyInvitationDeliveryEnvelopes(
+  currentId: Buffer,
+  outcome: { rekeyed: number; failed: number; raced: number },
+) {
+  const currentHeader = deliveryEnvelopeHeader(currentId);
+  const skipped = new Set<string>();
+  while (true) {
+    const skipClause =
+      skipped.size === 0
+        ? sql``
+        : sql`AND NOT (id = ANY(${Array.from(skipped)}::text[]))`;
+    const page = await db.execute(sql`
+      SELECT id, invitation_id, credential_hash, envelope
+        FROM customer_invitation_delivery
+       WHERE envelope IS NOT NULL
+         AND expires_at > now()
+         AND left(envelope, 16) <> ${currentHeader}
+         ${skipClause}
+       ORDER BY id
+       LIMIT ${BATCH_SIZE}
+    `);
+    const rows = page.rows as Array<{
+      id: string;
+      invitation_id: string;
+      credential_hash: string;
+      envelope: string;
+    }>;
+    if (rows.length === 0) return;
+    for (const row of rows) {
+      const live = await db.execute(sql`
+        SELECT 1
+          FROM customer_invitation_delivery
+         WHERE id = ${row.id}
+           AND envelope = ${row.envelope}
+           AND invitation_id = ${row.invitation_id}
+           AND credential_hash = ${row.credential_hash}
+           AND expires_at > now()
+      `);
+      if (live.rows.length === 0) continue;
+      let next: string;
+      try {
+        // Revalidate JSON/AAD bindings before re-encrypting; expired rows are never decrypted.
+        next = reencryptDeliveryEnvelope({
+          deliveryId: row.id,
+          invitationId: row.invitation_id,
+          credentialHash: row.credential_hash,
+          envelope: row.envelope,
+        });
+      } catch {
+        skipped.add(row.id);
+        outcome.failed += 1;
+        continue;
+      }
+      const updated = await db.execute(sql`
+        UPDATE customer_invitation_delivery
+           SET envelope = ${next}, updated_at = clock_timestamp()
+         WHERE id = ${row.id}
+           AND envelope = ${row.envelope}
+           AND invitation_id = ${row.invitation_id}
+           AND credential_hash = ${row.credential_hash}
+           AND expires_at > now()
+        RETURNING id
+      `);
+      if (updated.rows.length === 1) outcome.rekeyed += 1;
+      else {
+        outcome.raced += 1;
+        skipped.add(row.id);
+      }
+    }
+  }
+}
 
 /** `enc:v2:` + base64url(`TDK1` + key id): the header every v2 value under `keyId` starts with. */
 function textSecretHeader(currentId: Buffer): string {
@@ -113,6 +206,8 @@ export type RekeyProgress = {
   /** Hex id of the key new envelopes are written under; null when none is configured. */
   currentKeyId: string | null;
   previousKeyConfigured: boolean;
+  /** Expired invitation credentials still encrypted in rows awaiting the next cleanup pass. */
+  expiredInvitationDeliveryEnvelopes: number;
   /** Rows holding a secret, per table. */
   total: {
     plugins: number;
@@ -159,6 +254,9 @@ export async function getSecretsRekeyProgress(): Promise<RekeyProgress> {
     identityTotal,
     textPending,
     textTotal,
+    deliveryPending,
+    deliveryLiveTotal,
+    deliveryExpired,
   ] = await Promise.all([
     count(TARGETS[0] as Target, currentId),
     count(TARGETS[1] as Target, currentId),
@@ -166,25 +264,31 @@ export async function getSecretsRekeyProgress(): Promise<RekeyProgress> {
     countAll(TARGETS[1] as Target),
     sumText("needsPreviousKey"),
     sumText("all"),
+    countInvitationDeliveryEnvelopes(currentId),
+    countInvitationDeliveryEnvelopes(null),
+    countInvitationDeliveryEnvelopes(null, true),
   ]);
   return {
     currentKeyId: currentHex,
     previousKeyConfigured: previousEncryptionKeyConfigured(),
+    expiredInvitationDeliveryEnvelopes: deliveryExpired,
     total: {
       plugins: pluginsTotal,
       identityConnections: identityTotal,
-      textSecrets: textTotal,
+      textSecrets: textTotal + deliveryLiveTotal + deliveryExpired,
     },
     pending: {
       plugins,
       identityConnections: identity,
-      textSecrets: textPending,
+      textSecrets: textPending + deliveryPending,
     },
     complete:
       currentHex !== null &&
       plugins === 0 &&
       identity === 0 &&
-      textPending === 0,
+      textPending === 0 &&
+      deliveryPending === 0 &&
+      deliveryExpired === 0,
   };
 }
 
@@ -309,6 +413,7 @@ export async function runSecretsRekey(): Promise<RekeyOutcome> {
   const currentHex = currentEncryptionKeyId();
   if (!currentHex) throw new Error("TASKDESK_ENCRYPTION_KEY is required");
   const currentId = Buffer.from(currentHex, "hex");
+  await purgeExpiredCustomerInvitationEnvelopes();
   const plugins = { rekeyed: 0, failed: 0, raced: 0 };
   const identity = { rekeyed: 0, failed: 0, raced: 0 };
   await rekeyTarget(TARGETS[0] as Target, currentId, plugins);
@@ -316,6 +421,7 @@ export async function runSecretsRekey(): Promise<RekeyOutcome> {
   const text = { rekeyed: 0, failed: 0, raced: 0 };
   for (const target of TEXT_TARGETS)
     await rekeyTextTarget(target, currentId, text);
+  await rekeyInvitationDeliveryEnvelopes(currentId, text);
   return {
     rekeyed: {
       plugins: plugins.rekeyed,

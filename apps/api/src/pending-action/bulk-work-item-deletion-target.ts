@@ -452,6 +452,7 @@ export async function approveBulkWorkItemDeletion(
         token: input.stepUpToken ?? "",
         personId: input.requesterPersonId,
         sessionId: input.sessionId,
+        userId: input.userId,
         pendingActionId: row.id,
       });
       if (!proof) {

@@ -27,8 +27,9 @@ export type MentionCandidate = {
 export async function findWorkItemMentionContext(
   executor: DbTransaction,
   workItemId: string,
+  options: { allowArchivedForRead?: true } = {},
 ): Promise<WorkItemMentionContext | null> {
-  return findWorkItemMentionContextQuery(executor, workItemId);
+  return findWorkItemMentionContextQuery(executor, workItemId, options);
 }
 
 export async function classifyWorkItemMentionPeople(

@@ -4,9 +4,19 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Alert, AlertDescription, Button } from "@taskdesk/ui";
+import { Link, useNavigate } from "@tanstack/react-router";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@taskdesk/ui";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { SubmissionQueueTable } from "@/components/intake/submission-queue-table";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { SavedViewEditor } from "@/components/saved-view/saved-view-editor";
@@ -33,16 +43,20 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import type {
   SavedViewUrlSearch,
+  WorkItemSearchColumn,
   WorkItemSearchSortField,
+  WorkItemSort,
   WorkItemSortDirection,
   WorkItemSortField,
 } from "@/lib/routes";
+import { routes } from "@/lib/routes";
 import { savedViewKeys } from "@/lib/saved-view-keys";
 import {
   cloneSavedViewName,
   isExecutableSavedViewQuery,
   isSavedViewLayout,
   isSavedViewSnapshotComplete,
+  retainSelectedCustomFieldSorts,
   savedViewDefinitionMatches,
   savedViewQueryDocument,
   savedViewSort,
@@ -86,6 +100,7 @@ export default function SavedViewDetail({
   onOpenView: (id: string, search: SavedViewUrlSearch) => void;
 }) {
   const { t } = useTranslation("savedViews");
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -181,6 +196,13 @@ export default function SavedViewDetail({
   const storedQueryExecutable = view
     ? isExecutableSavedViewQuery(view.query)
     : true;
+  const isSubmissionView = Boolean(
+    view?.query &&
+      typeof view.query === "object" &&
+      !Array.isArray(view.query) &&
+      (view.query as Record<string, unknown>).entity === "submission",
+  );
+  const isPairedQueueView = Boolean(view?.queuePairId);
   const layoutIsSupported =
     effective.layout === "list" ||
     effective.layout === "table" ||
@@ -189,11 +211,15 @@ export default function SavedViewDetail({
   const canRun = Boolean(
     viewSettled &&
       layoutIsSupported &&
+      (effective.scope !== "project" || !isSubmissionView) &&
       effective.workspaceId &&
       ((view && storedQueryExecutable) || isFallback),
   );
   const unsupported = Boolean(
-    view && (!storedQueryExecutable || !layoutIsSupported),
+    view &&
+      ((!storedQueryExecutable && !isPairedQueueView) ||
+        !layoutIsSupported ||
+        (isSubmissionView && view.scope !== "workspace")),
   );
 
   const projectsQuery = useGetProjects(
@@ -212,11 +238,14 @@ export default function SavedViewDetail({
     effective.scope === "project" && !project && !projectPending;
 
   const definitionMatches = Boolean(
-    view && savedViewDefinitionMatches(view, effective),
+    view && (isSubmissionView || savedViewDefinitionMatches(view, effective)),
   );
-  const sort: WorkItemSearchSortField =
-    savedViewSort(effective)?.field ?? "key";
-  const dir: WorkItemSortDirection = savedViewSort(effective)?.order ?? "asc";
+  const sorts: WorkItemSort[] = savedViewSort(effective) ?? [
+    { field: "key", order: "asc" },
+  ];
+  const sort: WorkItemSearchSortField = sorts[0]
+    .field as WorkItemSearchSortField;
+  const dir: WorkItemSortDirection = sorts[0].order;
 
   const { filterMode: _mode, item: _item, ...runIdentity } = effective;
   const results = useInfiniteQuery({
@@ -230,20 +259,24 @@ export default function SavedViewDetail({
     ],
     enabled: canRun && !projectUnavailable && !projectPending,
     initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) =>
+    queryFn: async ({ pageParam }) =>
       definitionMatches
         ? runSavedView({ id, cursor: pageParam })
-        : runSavedViewUrlQuery({
-            workspaceId: effective.workspaceId as string,
-            filter: effective.filter,
-            ...(effective.scope === "project" && project
-              ? { projectSlug: project.slug }
-              : {}),
-            sort: effective.sort,
-            dir: effective.dir,
-            columns: effective.columns,
-            cursor: pageParam,
-          }),
+        : {
+            entity: "work_item" as const,
+            ...(await runSavedViewUrlQuery({
+              workspaceId: effective.workspaceId as string,
+              filter: effective.filter,
+              ...(effective.scope === "project" && project
+                ? { projectSlug: project.slug }
+                : {}),
+              sort: effective.sort,
+              dir: effective.dir,
+              sorts: effective.sorts,
+              columns: effective.columns,
+              cursor: pageParam,
+            })),
+          },
     getNextPageParam: (last) =>
       last.hasMore ? (last.nextCursor ?? undefined) : undefined,
   });
@@ -309,12 +342,37 @@ export default function SavedViewDetail({
     },
   });
 
-  const allItems = results.data?.pages.flatMap((page) => page.items) ?? [];
+  const allItems =
+    results.data?.pages.flatMap((page) =>
+      page.entity === "work_item" ? page.items : [],
+    ) ?? [];
+  const allSubmissions =
+    results.data?.pages.flatMap((page) =>
+      page.entity === "submission" ? page.submissions : [],
+    ) ?? [];
   const total = definitionMatches
     ? countQuery.data
     : results.data?.pages[0]?.total;
   const updateSearch = (changes: Partial<SavedViewUrlSearch>) =>
     onReplaceSearch({ ...effective, ...changes });
+  const openSubmission = (ref: string, stateValue: string) => {
+    const states = [
+      "new",
+      "clarifying",
+      "accepted",
+      "declined",
+      "duplicate",
+      "withdrawn",
+    ] as const;
+    const state = states.find((candidate) => candidate === stateValue) ?? "new";
+    void navigate({
+      href: routes.intakeQueue.build({
+        state,
+        ...(view?.queuePairId ? { queue: view.queuePairId } : {}),
+        ref,
+      }),
+    });
+  };
   const handleSortChange = (
     nextSort: WorkItemSortField,
     nextDir: WorkItemSortDirection,
@@ -322,7 +380,28 @@ export default function SavedViewDetail({
     updateSearch({
       sort: nextSort === "position" ? "key" : nextSort,
       dir: nextDir,
+      sorts: undefined,
     });
+  const handleSortsChange = (nextSorts: WorkItemSort[]) =>
+    updateSearch({
+      sort: nextSorts[0]?.field ?? "key",
+      dir: nextSorts[0]?.order ?? "asc",
+      sorts: nextSorts.length > 1 ? nextSorts : undefined,
+    });
+  const handleColumnsChange = (columns: WorkItemSearchColumn[]) => {
+    const currentSorts = effective.sorts ?? sorts;
+    const nextSorts = retainSelectedCustomFieldSorts(currentSorts, columns);
+    const primary = nextSorts[0] ?? {
+      field: "key" as const,
+      order: "asc" as const,
+    };
+    updateSearch({
+      columns,
+      sort: primary.field,
+      dir: primary.order,
+      sorts: nextSorts.length > 1 ? nextSorts : undefined,
+    });
+  };
   const cancelEditing = () => {
     if (stored) onReplaceSearch(stored);
     setIsEditing(false);
@@ -344,11 +423,12 @@ export default function SavedViewDetail({
     clone.isPending ||
     actionsBlocked ||
     !cloneLayout ||
+    isSubmissionView ||
     (view ? !storedQueryExecutable : !isFallback) ||
     !viewSettled;
   const showModifiedNotice =
     Boolean(view) && !definitionMatches && !unsupported && snapshotComplete;
-  const queryEditable = !unsupported;
+  const queryEditable = !unsupported && !isSubmissionView && !isPairedQueueView;
 
   return (
     <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
@@ -382,7 +462,7 @@ export default function SavedViewDetail({
           >
             {t("clone")}
           </Button>
-          {view ? (
+          {view && !isSubmissionView && !isPairedQueueView ? (
             <Button
               variant="outline"
               aria-pressed={isEditing}
@@ -446,6 +526,34 @@ export default function SavedViewDetail({
           {t("layoutUnavailable")}
         </p>
       ) : null}
+      {view && isPairedQueueView && view.queuePairId ? (
+        <Alert
+          variant="info"
+          role="status"
+          data-testid="saved-view-paired-queue"
+        >
+          <AlertDescription className="flex flex-wrap items-center gap-3">
+            <span>
+              {t("pairedQueueDescription", {
+                defaultValue:
+                  "This saved view is part of a paired intake queue.",
+              })}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              render={
+                <Link
+                  to={routes.intakeQueue.path}
+                  search={{ state: "new", queue: view.queuePairId }}
+                />
+              }
+            >
+              {t("openIntakeQueue", { defaultValue: "Open intake queue" })}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
       {!view && viewSettled && !layoutIsSupported && snapshotComplete ? (
         <p
           role="alert"
@@ -468,6 +576,7 @@ export default function SavedViewDetail({
           onTeamChange={setTeamAudienceId}
           canShare={canShare}
           canManageSettings={canManageSettings}
+          workspaceId={workspaceId}
           currentVisibility={
             view.visibility === "private" ||
             view.visibility === "team" ||
@@ -481,33 +590,66 @@ export default function SavedViewDetail({
               ? {
                   sort,
                   dir,
+                  sorts,
                   filter: effective.filter ?? "",
                   filterMode: search.filterMode ?? "visual",
                   columns: effective.columns,
-                  onSortChange: (nextSort, nextDir) =>
-                    updateSearch({ sort: nextSort, dir: nextDir }),
+                  onSortChange: handleSortChange,
+                  onSortsChange: handleSortsChange,
                   onFilterModeChange: (mode) =>
                     updateSearch({ filterMode: mode }),
                   onFilterApply: (filter) =>
                     updateSearch({ filter: filter || undefined }),
-                  onColumnsChange: (columns) => updateSearch({ columns }),
+                  onColumnsChange: handleColumnsChange,
                 }
               : undefined
           }
         />
       ) : null}
-      {canRun && !projectUnavailable ? (
+      {canRun && isSubmissionView && !projectUnavailable ? (
+        allSubmissions.length ? (
+          <SubmissionQueueTable
+            rows={allSubmissions}
+            onOpenSubmission={(ref) => {
+              const row = allSubmissions.find(
+                (candidate) => candidate.ref === ref,
+              );
+              openSubmission(ref, row?.submission.state ?? "new");
+            }}
+          />
+        ) : (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>
+                {t("emptySubmissionsTitle", {
+                  defaultValue: "No matching submissions",
+                })}
+              </EmptyTitle>
+              <EmptyDescription>
+                {t("emptySubmissionsDescription", {
+                  defaultValue: "No submissions match this saved view.",
+                })}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )
+      ) : null}
+      {canRun && !isSubmissionView && !projectUnavailable ? (
         <WorkItemList
           workItems={allItems}
           hasPartialFailure={
-            results.data?.pages.some((page) => page.hasPartialFailure) ?? false
+            results.data?.pages.some(
+              (page) => page.entity === "work_item" && page.hasPartialFailure,
+            ) ?? false
           }
           isLoading={results.isLoading || projectPending}
           isError={results.isError}
           isFiltered
           sort={sort}
           dir={dir}
+          sorts={effective.sorts ?? sorts}
           onSortChange={handleSortChange}
+          onSortsChange={handleSortsChange}
           onRetry={() => void results.refetch()}
           columns={effective.columns}
         />

@@ -33,6 +33,7 @@ import {
 } from "@/components/god-mode/step-up-fields";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { WorkspaceProjectDefaultsPanel } from "@/components/settings/workspace-project-defaults-panel";
 import useDeleteWorkspace from "@/hooks/mutations/workspace/use-delete-workspace";
 import useTransferWorkspaceOwnership from "@/hooks/mutations/workspace/use-transfer-workspace-ownership";
 import useUpdateWorkspace from "@/hooks/mutations/workspace/use-update-workspace";
@@ -109,6 +110,7 @@ function RouteComponent() {
   const openPendingAction = useOpenPendingAction();
   const { mutateAsync: deleteWorkspace, isPending: isDeleting } =
     useDeleteWorkspace();
+  const deleteWorkspaceButtonRef = useRef<HTMLButtonElement>(null);
   const { mutateAsync: transferOwnership, isPending: isTransferring } =
     useTransferWorkspaceOwnership();
   // Ownership transfer is elevated: it spends a fresh, single-use verification bound to this
@@ -288,6 +290,9 @@ function RouteComponent() {
 
   const handleDeleteWorkspace = useCallback(async () => {
     if (!workspace?.id) return;
+    const deleteTrigger = deleteWorkspaceButtonRef.current;
+    const finalFocus = () =>
+      deleteTrigger?.isConnected ? deleteTrigger : false;
 
     try {
       // The in-place approval dialog is the single confirmation (PA-3). Deletion is
@@ -296,7 +301,7 @@ function RouteComponent() {
       const pendingAction = await deleteWorkspace({
         workspaceId: workspace.id,
       });
-      await openPendingAction(pendingAction);
+      await openPendingAction({ ...pendingAction, finalFocus });
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -430,6 +435,10 @@ function RouteComponent() {
           </div>
         </div>
 
+        {workspace?.id ? (
+          <WorkspaceProjectDefaultsPanel workspaceId={workspace.id} />
+        ) : null}
+
         {isOwner ? (
           <div className="space-y-6">
             <div className="space-y-1">
@@ -546,6 +555,7 @@ function RouteComponent() {
                   </p>
                 </div>
                 <Button
+                  ref={deleteWorkspaceButtonRef}
                   variant="ghost"
                   size="sm"
                   className="text-destructive hover:text-destructive transition-colors"
@@ -620,7 +630,7 @@ function RouteComponent() {
                   !canTransferOwnership ||
                   isTransferring ||
                   transferStepUp.busy ||
-                  !transferStepUp.secret
+                  !transferStepUp.canRun
                 }
                 onClick={() => void handleTransferOwnership()}
               >

@@ -40,6 +40,9 @@ const base = {
   lastUsedIp: null,
   disabledAt: null,
   disabledReason: null,
+  ownedByWorkspaceAdmins: false,
+  requiresReattestation: false,
+  accountabilityVersion: 1,
 };
 
 beforeEach(() => {
@@ -83,17 +86,19 @@ describe("InstanceApiKeysPanel", () => {
           workspaceName: "Acme",
           workspaceId: "ws-1",
           createdByFormerMember: true,
+          ownedByWorkspaceAdmins: true,
+          requiresReattestation: true,
         },
       ],
     });
     renderPanel();
     expect(await screen.findByText("Alex Doe")).toBeInTheDocument();
     expect(screen.getByText("Service key of Acme")).toBeInTheDocument();
+    expect(screen.getByText("Created by a former member")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Created by a former member, owned by workspace administrators",
-      ),
+      screen.getByText("Owned by workspace administrators"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Re-attestation required")).toBeInTheDocument();
   });
 
   it("says so when the caller is not an instance administrator", async () => {

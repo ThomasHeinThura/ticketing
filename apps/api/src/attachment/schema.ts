@@ -17,6 +17,10 @@ export const workItemKeyParam = z.object({
     .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
 });
 
+export const attachmentListQuery = z.object({
+  lifecycle: z.enum(["live", "recoverable"]).optional().default("live"),
+});
+
 // `POST /api/work-items/{key}/attachments/presign` (`attachments.md` AT-2). `size` and
 // `contentType` are validated against the God Mode-configurable
 // `attachment_max_bytes`/`attachment_allowed_extensions` before a URL is minted --

@@ -241,7 +241,7 @@ invoked by normal application startup or production deployment.
 ### Stages
 
 ```dockerfile
-FROM node:24-bookworm-slim AS base          # glibc: pg, sharp and native addons build cleanly; alpine is an option later
+FROM node:24.22.1-trixie-slim AS base          # glibc: pg, sharp and native addons build cleanly; alpine is an option later
 RUN corepack enable && corepack prepare pnpm@10 --activate
 
 FROM base AS deps
@@ -259,7 +259,7 @@ RUN pnpm turbo build --filter=@taskdesk/api --filter=@taskdesk/web
 #   web: vite build ×2 → apps/web/dist/agent, apps/web/dist/portal
 RUN pnpm deploy --filter=@taskdesk/api --prod /out/api   # pruned production node_modules
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:24.22.1-trixie-slim AS runtime
 RUN groupadd -r taskdesk && useradd -r -g taskdesk -d /app taskdesk
 WORKDIR /app
 COPY --from=build --chown=taskdesk:taskdesk /out/api ./
@@ -271,7 +271,7 @@ USER taskdesk
 ENV NODE_ENV=production TASKDESK_PORT=5173
 EXPOSE 5173
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s \
-  CMD wget --spider -q http://127.0.0.1:5173/api/public/health/live || exit 1
+  CMD ["node", "/app/healthcheck.mjs"]
 ENTRYPOINT ["./entrypoint.sh"]
 LABEL org.opencontainers.image.version=$VERSION org.opencontainers.image.revision=$GIT_SHA \
       org.opencontainers.image.created=$BUILD_TIME org.opencontainers.image.source=https://github.com/<org>/taskdesk \
@@ -289,9 +289,14 @@ LABEL org.opencontainers.image.version=$VERSION org.opencontainers.image.revisio
    credential is present in this process's own environment at all; refuse to start if the
    application connection turns out to be a superuser or owns anything (migrations.md,
    issue #296)
-4. if TASKDESK_ROLE != jobs: start the HTTP listener (API + both bundles by Host header)
-5. if TASKDESK_ROLE != web:  start the scheduler
-6. readiness true
+4. `web` and `all` start the HTTP/API and WebSocket listeners plus the metrics listener;
+   `jobs` starts no HTTP, WebSocket, or metrics listener, but initializes the adapter for
+   outbox and control-message publishing
+5. `jobs` and `all` start the general scheduler and manual-run worker; `web` does not
+6. `web` and `all` run the minute-cadence customer-invitation delivery poller. Its keys are
+   held only in that process and are destroyed on shutdown; general jobs replicas cannot
+   claim its rows
+7. readiness true on HTTP-serving roles
 ```
 
 Step 2 and step 3 never both run in the same process: migrations and the database role/grant bootstrap run in a
@@ -303,13 +308,21 @@ twice: once with `TASKDESK_ROLE=migrate` and the owner URL, then normally with t
 application URL only — see [configuration-reference.md](configuration.md)'s
 Local development section for the exact two commands.
 
-`HEALTHCHECK` calls `/api/public/health/live` — process up, touches no dependency — so a
-Postgres blip never restarts a healthy container; readiness is the load balancer's concern.
+`HEALTHCHECK` uses `/api/public/health/live` on `web` and `all`, and a fixed Unix socket at
+`/tmp/taskdesk-liveness.sock` on `jobs`. Both checks report process liveness only and touch
+no dependency, so a Postgres blip never restarts a healthy container; readiness is the load
+balancer's concern. Jobs liveness accepts `ping\n` and returns the fixed `pong\n` response
+within the 1.5-second probe deadline; it does not expose an API, WebSocket, or metrics
+listener.
 
-It is a `wget` one-liner, the same shape kaneo uses, and deliberately **not** a
-`dist/healthcheck.js`: the build declares two esbuild entries (`index`, `cli`), so a third
-output nothing produces would leave the container permanently `unhealthy` — and
-`up -d --wait` blocks on exactly that ([deployment.md](#deployment)).
+The image copies `deploy/healthcheck.mjs` directly to `/app/healthcheck.mjs` and invokes
+the existing Node runtime. This removes the Wget package without introducing an
+unproduced build entry. Serving roles use fixed loopback HTTP, the configured application
+port and a 1.5-second deadline; only HTTP 200 succeeds. Jobs uses the fixed local Unix
+socket and ping response above. Invalid ports, redirects, connection errors and timeouts
+fail quietly. The exact copied file and endpoint behavior are tested; final image health
+is also checked by `up -d --wait`
+([deployment.md](#deployment)).
 
 Migrations run in the isolated migration invocation before serving, under an advisory lock; the ordering and two-phase
 rule for destructive changes are in
@@ -328,7 +341,7 @@ dist/cli.js …`), never against the database from elsewhere.
 
 `esbuild --packages=external` leaves `pg` and any native addon to `node_modules`, which
 `pnpm deploy --prod` prunes correctly. If `sharp` (image thumbnails) is adopted, it is the
-one package that needs the glibc base — which is why the base is `bookworm-slim`, not
+one package that needs the glibc base — which is why the base is `trixie-slim`, not
 alpine, until measured otherwise.
 
 <a id="container-image-multi-arch-signing-size"></a>
@@ -669,7 +682,7 @@ is terminated differ, and both are infrastructure concerns, never application co
 
 | Endpoint | Semantics |
 | --- | --- |
-| `/api/public/health/live` | The process is up. **Touches no dependency**. Anonymous |
+| `/api/public/health/live` | Serving process is up. **Touches no dependency**. Anonymous; jobs use the image's local Unix-socket liveness probe |
 | `/api/public/health/ready` | Database reachable, migrations applied. Anonymous |
 | `/api/instance/health/deep` | Dependency/plugin diagnostics require instance-admin policy; listing the endpoint does not establish availability ([observability.md](safety-and-runtime.md#observability)) |
 
@@ -2636,7 +2649,7 @@ Marketplace packaging depends on a feature-complete distribution, verified image
 
 - **Workload/chart shape:** the retained single-Deployment/replicaCount/existing-secret compatibility table and the target web/jobs/secret values are different contracts. Rendering one does not prove the other. Reconcile explicitly before claiming Helm/Compose parity; never expose the migration owner credential to serving containers.
 - **Migration timing:** older prose said migrations ran inside application startup. The isolated one-shot migration role before serving is the governing credential-separation requirement. Legacy frontier SQL is not a universal repair for a newer schema/provenance model.
-- **Local mail:** an optional capture inbox is not automatically configured as the sender. Use actual persisted SMTP administration; production notify/webhook/import destinations cannot use a private-address bypass. A local synthetic receiver is evidence only for that authorized test path.
+- **Local mail (Thomas,26 October):** the single local Compose stack may expose the fixed Mailpit capture mode only with `TASKDESK_LOCAL_MAILPIT_CAPTURE=true` and both approved `.localhost` HTTPS origins. An instance administrator selects and enables the persisted capture setting; it uses only `mailpit:1025`, no credentials/TLS, and clears prior SMTP credentials. Public deployments cannot activate this mode. An optional capture inbox is not automatically configured as the sender. Use actual persisted SMTP administration; production notify/webhook/import destinations cannot use a private-address bypass. A local synthetic receiver is evidence only for that authorized test path.
 - **Promotion/topology:** old automatic UAT diagrams, example domains and historical hop counts do not authorize deployment or establish the Technexus proxy chain. Follow local-first verification, then the selected source/signature/digest and actual topology evidence; retain current owner-selected hosts and proxy settings.
 - **Capacity:** resource tables are targets and contain different envelopes (aggregate service limits versus application-host shorthand). The 2-vCPU functional SIT host is not performance evidence. Preserve all budgets and measure on the relevant hardware; do not alter thresholds to claim a pass.
 - **Restore isolation versus provider checks:** an isolated drill has no outbound route and must not send restored mail/webhooks to real recipients. Real-provider verification requires a separately authorized protected target or injected synthetic provider; record which checks are blocked by isolation rather than disabling it or claiming them passed.

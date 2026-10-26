@@ -28,10 +28,11 @@ class StepUpUnavailableError extends Error {
  * refused when none is enabled. Shared by every route that spends a proof.
  */
 export function proofMethodAcceptable(
-  authMethod: "password" | "totp" | "backup_code",
+  authMethod: "password" | "totp" | "backup_code" | "sso_prompt_login",
   factor: { required: boolean; enabled: boolean },
 ): boolean {
-  if (authMethod === "password") return !(factor.required || factor.enabled);
+  if (authMethod === "password" || authMethod === "sso_prompt_login")
+    return !(factor.required || factor.enabled);
   return factor.enabled;
 }
 
@@ -71,7 +72,12 @@ export async function runWithStepUp<T>(
       { token, personId: factor.personId, sessionId: session.id },
       input,
     );
-    if (!proof || !proofMethodAcceptable(proof.authMethod, factor))
+    const currentFactor = await loadLocalFactorState(userId, tx);
+    if (
+      !proof ||
+      currentFactor.personId !== factor.personId ||
+      !proofMethodAcceptable(proof.authMethod, currentFactor)
+    )
       throw new StepUpUnavailableError();
     await appendStepUpAudit(tx, {
       action: "auth.step_up_consumed",

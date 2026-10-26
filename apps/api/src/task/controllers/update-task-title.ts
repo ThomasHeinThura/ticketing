@@ -2,6 +2,8 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
+import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
+import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
 import { insertTaskActivity, updateTaskRow } from "../repository";
 
@@ -10,11 +12,13 @@ async function updateTaskTitle({
   id,
   title,
   currentUserId,
+  apiKeyId,
 }: {
   identity: ResolvedIdentity;
   id: string;
   title: string;
   currentUserId: string;
+  apiKeyId?: string | null;
 }) {
   const { existingTask, updatedTask } = await db.transaction(async (tx) => {
     const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
@@ -32,6 +36,21 @@ async function updateTaskTitle({
         message: "Failed to update task title",
       });
     }
+
+    const workspaceId = await getProjectWorkspaceId(task.projectId, tx);
+    await recordLegacyTaskCompatibilityEvent(tx, {
+      kind: "task.title_changed",
+      taskId: task.id,
+      projectId: task.projectId,
+      workspaceId,
+      identity,
+      apiKeyId,
+      payload: {
+        oldTitle: existingTask.title,
+        newTitle: task.title,
+        type: "title_changed",
+      },
+    });
 
     const activity = await insertTaskActivity(tx, identity, {
       taskId: task.id,

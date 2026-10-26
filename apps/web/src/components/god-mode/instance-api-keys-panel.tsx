@@ -114,6 +114,16 @@ export function InstanceApiKeysPanel() {
                           {t("settings:serviceKeys.formerMember")}
                         </Badge>
                       ) : null}
+                      {key.ownedByWorkspaceAdmins ? (
+                        <Badge variant="outline" className="w-fit">
+                          {t("settings:serviceKeys.ownershipTransferred")}
+                        </Badge>
+                      ) : null}
+                      {key.requiresReattestation ? (
+                        <Badge variant="warning" className="w-fit">
+                          {t("settings:serviceKeys.reattestationRequired")}
+                        </Badge>
+                      ) : null}
                     </div>
                   ) : (
                     (key.ownerName ??

@@ -1,0 +1,48 @@
+{
+	"recordedAt": "2026-10-25T22:22:46.630979+00:00",
+	"scope": "NO-12\u201316/18 customer inbox; transactional native notification invalidation",
+	"implementation": [
+		"0185 AFTER INSERT notification trigger; PostgreSQL commit-only userId hint",
+		"Dedicated HTTP-process LISTEN with validation, local-only reauthorized sockets, bounded reconnect and reconnect invalidation",
+		"Browser portal/user socket opens refetch persisted inbox without polling",
+		"Independent scoped locale backend uses full catalogs for non-grouped portal builds; regression exercises absent agent loaders"
+	],
+	"checks": [
+		{
+			"name": "Real PostgreSQL trigger commit/rollback/coalescing",
+			"passed": 3,
+			"total": 3,
+			"database": "dedicated integration test database; never runtime copy reset"
+		},
+		{
+			"name": "Listener and user/Redis shutdown regression",
+			"passed": 12,
+			"total": 12
+		},
+		{
+			"name": "Locale isolation/term/provider/client hook regression",
+			"passed": 17,
+			"total": 17
+		},
+		{
+			"name": "Current permission suite",
+			"passed": 118,
+			"total": 118
+		},
+		{
+			"name": "API typecheck",
+			"result": "all five configs pass"
+		},
+		{
+			"name": "Trusted HTTPS real customer comment journey",
+			"result": "18 scoped assertions pass; one additional owned public QA comment; no reload; read/unread persistence, URL-backed unread filter, exact comment link",
+			"evidence": "../browser/portal-notifications186/journey.json"
+		}
+	],
+	"limits": [
+		"Formal phase reviews remain0/3 per phase; no acceptance inferred.",
+		"Initial six viewport/theme screenshots captured before lazy shell fully rendered; complete-shell recapture is required.",
+		"Final bundle gate currently fails narrowly (work-list350004/350000 bytes; portal200925/200000); fixes being verified without budget changes.",
+		"Final full API/web/Linux/scanner/phase browser matrix remain pending."
+	]
+}

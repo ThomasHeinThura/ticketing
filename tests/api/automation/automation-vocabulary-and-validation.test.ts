@@ -10,6 +10,7 @@ import {
   DRY_RUN_CANDIDATE_CAP,
   DRY_RUN_DEFAULT_WINDOW_DAYS,
   DRY_RUN_MAX_WINDOW_DAYS,
+  isAutomationEventTrigger,
 } from "../../../apps/api/src/automation/constants";
 import {
   clampWindowDays,
@@ -21,6 +22,7 @@ import {
   validatePlaceholders,
 } from "../../../apps/api/src/automation/placeholders";
 import { validateRuleDefinition } from "../../../apps/api/src/automation/validation";
+import { WEBHOOK_EVENT_KEYS } from "../../../apps/api/src/webhook/constants";
 
 const AVAILABLE = new Set<string>(BUILTIN_ACTION_TYPES);
 
@@ -66,6 +68,20 @@ describe("AM-13 there is no delete action", () => {
 });
 
 describe("action parsing", () => {
+  it("keeps automation notification events out of automation and webhook triggers", () => {
+    expect(isAutomationEventTrigger("automation.notification_sent")).toBe(
+      false,
+    );
+    expect(WEBHOOK_EVENT_KEYS).not.toContain("automation.notification_sent");
+    expect(
+      validateRuleDefinition({
+        trigger: "automation.notification_sent",
+        conditions: [],
+        actions: [{ type: "notify", teamId: "tm", title: "x", body: "y" }],
+      }).ok,
+    ).toBe(false);
+  });
+
   it("accepts the supported actions with their parameters", () => {
     expect(
       parseAction({ type: "assign", assigneeId: "p1" }, 0, AVAILABLE).ok,
@@ -88,6 +104,18 @@ describe("action parsing", () => {
     expect(
       parseAction({ type: "call_webhook", webhookId: "w1" }, 0, AVAILABLE).ok,
     ).toBe(true);
+    expect(
+      parseAction(
+        {
+          type: "notify",
+          teamId: "team1",
+          title: "{{work_item.key}} needs attention",
+          body: "{{work_item.title}}",
+        },
+        0,
+        AVAILABLE,
+      ).ok,
+    ).toBe(true);
   });
 
   it("refuses unknown fields, bad values and a missing type", () => {
@@ -98,6 +126,18 @@ describe("action parsing", () => {
     expect(
       parseAction({ type: "set_priority", priority: "critical" }, 0, AVAILABLE)
         .ok,
+    ).toBe(false);
+    expect(
+      parseAction(
+        {
+          type: "notify",
+          teamId: "team1",
+          title: "Hello",
+          body: "{{unknown.path}}",
+        },
+        0,
+        AVAILABLE,
+      ).ok,
     ).toBe(false);
     expect(
       parseAction({ type: "set_due_date", dueInDays: -1 }, 0, AVAILABLE).ok,

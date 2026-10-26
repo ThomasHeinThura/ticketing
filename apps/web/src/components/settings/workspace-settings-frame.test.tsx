@@ -96,7 +96,9 @@ describe("WorkspaceSettingsFrame", () => {
     // General, labels and the 14 gated entries: roles, canned responses, templates, calendars,
     // SLA policies, request types, workflows, teams, time activities, rates, custom fields,
     // customer invitations, automations and webhooks.
-    expect(hrefs).toHaveLength(16);
+    expect(hrefs).toContain("/dashboard/settings/workspace/features");
+    expect(hrefs).toContain("/dashboard/settings/workspace/terminology");
+    expect(hrefs).toHaveLength(18);
   });
 
   it("gates Roles, Webhooks and Custom fields on the capability their API enforces (M9)", () => {

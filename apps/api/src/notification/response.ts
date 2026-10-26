@@ -36,12 +36,30 @@ export const notificationSchema = z
       description:
         "The key of the work item the notification is about (directly, or through its comment or approval), for deep links (NO-14); null when it has none.",
     }),
+    deepLink: z
+      .discriminatedUnion("type", [
+        z.object({ type: z.literal("webhook"), id: z.string() }),
+        z.object({ type: z.literal("api_key"), id: z.string() }),
+      ])
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          "Typed resource deep link for supported events. Webhook and API key links are emitted only for their owner auto-disable notices.",
+      }),
     createdAt: responseTimestamp,
     updatedAt: responseTimestamp,
   })
   .openapi("Notification");
 
 export const notificationListSchema = z.array(notificationSchema);
+
+export const notificationInboxSchema = z.object({
+  data: z.array(notificationSchema),
+  unreadCount: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+  nextCursor: z.string().nullable(),
+});
 
 export const bulkResultSchema = z
   .object({ success: z.boolean() })

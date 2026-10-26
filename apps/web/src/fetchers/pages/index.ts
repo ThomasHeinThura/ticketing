@@ -17,6 +17,9 @@ export type PageSummary = {
   updatedBy: PagePerson | null;
   createdAt: string;
   updatedAt: string;
+  /** Present only in the update-capability recovery listing. */
+  deletedAt?: string;
+  purgeAfter?: string;
 };
 
 export type PageList = { pages: PageSummary[]; canEdit: boolean };
@@ -113,7 +116,10 @@ const base = (projectKey: string) => `/projects/${enc(projectKey)}/pages`;
 
 export const pageKeys = {
   all: ["pages"] as const,
-  list: (projectKey: string) => ["pages", "list", projectKey] as const,
+  list: (projectKey: string, deletedOnly = false) =>
+    deletedOnly
+      ? (["pages", "list", projectKey, "deleted"] as const)
+      : (["pages", "list", projectKey] as const),
   detail: (projectKey: string, id: string) =>
     ["pages", "detail", projectKey, id] as const,
   versions: (projectKey: string, id: string) =>
@@ -122,8 +128,15 @@ export const pageKeys = {
     ["pages", "version", projectKey, id, number] as const,
 };
 
-export const getPages = (projectKey: string) =>
-  request<PageList>(base(projectKey), {}, "Failed to load pages");
+export const getPages = (
+  projectKey: string,
+  options: { deletedOnly?: boolean } = {},
+) =>
+  request<PageList>(
+    `${base(projectKey)}${options.deletedOnly ? "?deletedOnly=true" : ""}`,
+    {},
+    "Failed to load pages",
+  );
 
 export const createPage = (
   projectKey: string,
@@ -193,3 +206,11 @@ export async function requestPageDeletion(projectKey: string, id: string) {
     "Failed to request the page deletion",
   );
 }
+
+/** PG-7: restore a soft-deleted page inside its 30-day window. */
+export const undeletePage = (projectKey: string, id: string) =>
+  request<Page>(
+    `${base(projectKey)}/${enc(id)}/undelete`,
+    { method: "POST" },
+    "Failed to restore the page",
+  );

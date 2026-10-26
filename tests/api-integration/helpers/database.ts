@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { Client } from "pg";
 import db, { getDatabasePool } from "../../../apps/api/src/database";
 import { migrateWithMembershipProvenanceCutover } from "../../../apps/api/src/database/migrate-membership-provenance";
+import { assertDisposableTestDatabaseUrl } from "./disposable-database";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = resolve(currentDir, "../../../apps/api/drizzle");
@@ -12,7 +13,7 @@ let migrationPromise: Promise<void> | null = null;
 let ensuredDatabaseConnectionString: string | null = null;
 
 function getDatabaseName(connectionString: string) {
-  return new URL(connectionString).pathname.replace(/^\//, "");
+  return assertDisposableTestDatabaseUrl(connectionString);
 }
 
 function getAdminDatabaseUrl(connectionString: string) {
@@ -70,6 +71,15 @@ async function ensureTestDatabaseExists() {
 }
 
 export async function ensureTestDatabaseMigrated() {
+  // Check every invocation, including a cached migration, before any reset can run.
+  assertDisposableTestDatabaseUrl(process.env.TASKDESK_DATABASE_URL ?? "");
+  const actualConnection = getDatabasePool().options.connectionString;
+  if (typeof actualConnection !== "string") {
+    throw new Error(
+      "Integration fixtures require a PostgreSQL connection string",
+    );
+  }
+  assertDisposableTestDatabaseUrl(actualConnection);
   if (!migrationPromise) {
     migrationPromise = (async () => {
       await ensureTestDatabaseExists();

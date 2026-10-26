@@ -49,5 +49,8 @@ export * from "./sla/policy.js";
 export * from "./sla/scan.js";
 export * from "./sla/sla.js";
 export * from "./sla/types.js";
+export * from "./terminology.js";
+export * from "./terminology-defaults.generated.js";
+export * from "./webhook-secret-rotation.js";
 export * from "./workflow/types.js";
 export * from "./workflow/workflow.js";

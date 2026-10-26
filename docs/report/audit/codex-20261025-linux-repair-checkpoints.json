@@ -1,0 +1,53 @@
+{
+	"recordedAt": "2026-10-25T09:02:56.092028+00:00",
+	"formalPhaseReview": false,
+	"runs": [
+		{
+			"checkpoint": "LinuxR7",
+			"filesPassed": 15,
+			"filesFailed": 2,
+			"testsPassed": 409,
+			"testsFailed": 2,
+			"finding": "Two Valkey tests stopped before networking because runner omitted explicit /0 URL path; runner corrected without weakening guard."
+		},
+		{
+			"checkpoint": "LinuxR8",
+			"filesPassed": 1,
+			"filesFailed": 1,
+			"testsPassed": 15,
+			"testsFailed": 1,
+			"finding": "Auth configuration reload passed; cross-process WS child exceeded unchanged15s startup guard."
+		},
+		{
+			"checkpoint": "LinuxR9 diagnostic helper",
+			"filesPassed": 1,
+			"filesFailed": 0,
+			"testsPassed": 14,
+			"testsFailed": 0,
+			"finding": "Real cross-process Valkey delivery/revocation passed; bounded secret-free child startup phase diagnostics retained. Earlier startup timeout cause not proven; resource contention remains a hypothesis."
+		},
+		{
+			"checkpoint": "Full Linux R10 snapshot",
+			"filesPassed": 394,
+			"filesFailed": 1,
+			"testsPassed": 5226,
+			"testsFailed": 1,
+			"durationSeconds": 2026.25,
+			"finding": "Only failure: a custom time-drill fixture expected45minutes roundedto0.8hours. The API correctly returns exact0.75hours; fixture updated."
+		},
+		{
+			"checkpoint": "Scoped Linux R11 drill correction",
+			"filesPassed": 1,
+			"filesFailed": 0,
+			"testsPassed": 11,
+			"testsFailed": 0,
+			"durationSeconds": 12.41,
+			"finding": "Fresh isolated database, R10 image with only the corrected drill fixture mounted read-only. All11drill cases pass. This scoped run does not replace a future full run after newCF/requeue slices."
+		}
+	],
+	"limits": [
+		"Scoped reruns do not replace the required full integration run on the final tree.",
+		"No production WS change, threshold increase, test disabling or acceptance inferred.",
+		"Dedicated task-owned Docker databases and authenticated Valkey; no protected or audit database reset."
+	]
+}

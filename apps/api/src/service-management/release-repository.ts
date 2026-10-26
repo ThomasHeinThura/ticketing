@@ -14,6 +14,7 @@ import {
 } from "../database/schema";
 import {
   changeDetailTable,
+  type PublishedReleaseSnapshot,
   releaseTable,
   serviceReleaseChecklistItemTable,
   serviceTable,
@@ -380,11 +381,41 @@ export async function updateRelease(
       throw new VersionConflictError(before.version);
     const status = input.status ?? before.status;
     const publishToPortal = input.publishToPortal ?? before.publishToPortal;
-    // REL-5: a release reaches the portal only when switched on AND released.
-    const publishedAt =
-      publishToPortal && status === "released"
-        ? (before.publishedAt ?? new Date())
-        : null;
+    // REL-5: persist a customer-facing snapshot only when switched on AND released.
+    // Later edits to the operational release cannot alter already published copy.
+    const isPublished = publishToPortal && status === "released";
+    const publication = isPublished
+      ? { publishedAt: before.publishedAt ?? new Date() }
+      : null;
+    const publishedAt = publication?.publishedAt ?? null;
+    let portalSnapshot: PublishedReleaseSnapshot | null = isPublished
+      ? before.portalSnapshot
+      : null;
+    if (publication && !portalSnapshot) {
+      const [service] = await tx
+        .select({ name: serviceTable.name })
+        .from(serviceTable)
+        .where(
+          and(
+            eq(serviceTable.id, before.serviceId),
+            eq(serviceTable.workspaceId, workspaceId),
+          ),
+        )
+        .limit(1);
+      if (!service)
+        throw new HTTPException(404, { message: "Release not found" });
+      portalSnapshot = {
+        version: 1,
+        name: input.name ?? before.name,
+        serviceName: service.name,
+        plannedDate:
+          input.plannedDate !== undefined
+            ? input.plannedDate
+            : before.plannedDate,
+        notes: before.notes,
+        publishedAt: publication.publishedAt.toISOString(),
+      };
+    }
     if (input.changeKeys) {
       const workItemIds = await resolveChangeKeys(
         tx,
@@ -411,13 +442,14 @@ export async function updateRelease(
         status,
         publishToPortal,
         publishedAt,
+        portalSnapshot,
         version: before.version + 1,
         updatedAt: new Date(),
       })
       .where(eq(releaseTable.id, id));
     await auditIfRegistered(tx, {
       action:
-        publishedAt && !before.publishedAt
+        portalSnapshot && !before.portalSnapshot
           ? "release.published"
           : "release.updated",
       workspaceId,

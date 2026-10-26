@@ -10,8 +10,12 @@ import {
 import {
   Activity,
   Bell,
+  Bot,
   FileClock,
+  FileInput,
+  HardDrive,
   KeyRound,
+  Plug,
   Settings,
   Shield,
   ToggleRight,
@@ -49,8 +53,48 @@ export function InstanceSettingsFrame({ children }: { children: ReactNode }) {
       icon: Shield,
     },
     {
+      title: t("godModeOrganisations:title"),
+      path: routes.godModeOrganisations.path,
+      icon: Users,
+    },
+    {
       title: t("notificationProvider:title"),
       path: routes.notificationProvider.path,
+      icon: Bell,
+    },
+    {
+      title: t("godModeWebhooks:title"),
+      path: routes.godModeWebhooks.path,
+      icon: Shield,
+    },
+    {
+      title: t("godModeJobs:title"),
+      path: routes.godModeJobs.path,
+      icon: FileClock,
+    },
+    {
+      title: t("godModePlugins:title"),
+      path: routes.godModePlugins.path,
+      icon: Plug,
+    },
+    {
+      title: t("godModeStorage:title"),
+      path: routes.godModeStorage.path,
+      icon: HardDrive,
+    },
+    {
+      title: t("godModeMcpUsage:title"),
+      path: routes.godModeMcpUsage.path,
+      icon: Bot,
+    },
+    {
+      title: t("godModeImports:title"),
+      path: routes.godModeImports.path,
+      icon: FileInput,
+    },
+    {
+      title: t("godModeDeliveries:title"),
+      path: routes.godModeDeliveries.path,
       icon: Bell,
     },
     {

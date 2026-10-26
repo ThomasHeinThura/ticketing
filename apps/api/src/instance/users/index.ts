@@ -8,6 +8,7 @@ import {
   consumeInstanceAdminGrantProof,
   consumeInstanceAdminSuspendProof,
 } from "../../auth/step-up-service";
+import { proofMethodAcceptable } from "../../auth/step-up-spend";
 import db, { schema } from "../../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../../openapi";
 import {
@@ -435,7 +436,7 @@ const routes = apiRouter()
         targetRole: target.role,
       });
       if (target.role === "admin") {
-        const factor = await loadLocalFactorState(c.get("userId"));
+        const factor = await loadLocalFactorState(c.get("userId"), tx);
         const [actor] = await lockAdminUser(tx, c.get("userId"));
         const actorPerson = actor
           ? await lockActiveStaffPerson(tx, factor.personId, actor.id)
@@ -465,13 +466,7 @@ const routes = apiRouter()
             pendingActionAuditFailures: 0,
           };
         }
-        if (
-          (proof.authMethod === "password" &&
-            (factor.required || factor.enabled)) ||
-          ((proof.authMethod === "totp" ||
-            proof.authMethod === "backup_code") &&
-            !factor.enabled)
-        ) {
+        if (!proofMethodAcceptable(proof.authMethod, factor)) {
           throw new HTTPException(403, { message: "step_up_unavailable" });
         }
         await appendStepUpAudit(tx, {
@@ -665,6 +660,8 @@ const routes = apiRouter()
     let outcome: "granted" | "already_admin" | "denied";
     try {
       outcome = await db.transaction(async (tx) => {
+        const currentFactor = await loadLocalFactorState(c.get("userId"), tx);
+        if (currentFactor.personId !== factor.personId) return "denied";
         await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
         const [setup] = await lockSetupCompletion(tx);
         if (!setup?.completedAt)
@@ -711,13 +708,7 @@ const routes = apiRouter()
           });
           return "denied" as const;
         }
-        if (
-          (proof.authMethod === "password" &&
-            (factor.required || factor.enabled)) ||
-          ((proof.authMethod === "totp" ||
-            proof.authMethod === "backup_code") &&
-            !factor.enabled)
-        ) {
+        if (!proofMethodAcceptable(proof.authMethod, currentFactor)) {
           throw new HTTPException(403, { message: "step_up_unavailable" });
         }
         await appendStepUpAudit(tx, {

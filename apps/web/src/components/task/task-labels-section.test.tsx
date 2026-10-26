@@ -34,8 +34,14 @@ describe("TaskLabelsSection", () => {
   it("loads workspace label options once for all task label controls", () => {
     mocks.useGetLabelsByWorkspace.mockReturnValue({
       data: [
-        { id: "label-1", name: "Bug", color: "red", taskId: null },
-        { id: "label-2", name: "Urgent", color: "orange", taskId: null },
+        { id: "label-1", name: "Bug", color: "red", key: null, taskId: null },
+        {
+          id: "label-2",
+          name: "Urgent",
+          color: "orange",
+          key: null,
+          taskId: null,
+        },
       ],
     });
 
@@ -48,6 +54,7 @@ describe("TaskLabelsSection", () => {
           {
             id: "task-label-1",
             name: "Bug",
+            key: null,
             color: "red",
             taskId: "task-1",
             workspaceId: "workspace-1",
@@ -57,6 +64,7 @@ describe("TaskLabelsSection", () => {
           {
             id: "task-label-2",
             name: "Urgent",
+            key: null,
             color: "orange",
             taskId: "task-1",
             workspaceId: "workspace-1",

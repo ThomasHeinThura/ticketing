@@ -7,7 +7,7 @@ import {
   getSystemTransitionExecutor,
   type SystemTransitionExecutor,
 } from "../workflow/system-transition";
-import { withJobLease } from "./leader-lock";
+import { assertJobExecutionOwned, withJobLease } from "./leader-lock";
 
 /**
  * `WF-19` scheduled-transition executor (every minute). A `pending` row whose `due_at` has
@@ -148,6 +148,7 @@ export async function runScheduledTransitions(
     const rows = due.filter((row) => !skip.has(row.id)).slice(0, BATCH_SIZE);
     if (rows.length === 0) break;
     for (const row of rows) {
+      await assertJobExecutionOwned();
       handled++;
       try {
         const result = await executor({

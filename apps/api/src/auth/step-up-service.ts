@@ -13,6 +13,7 @@ import {
   type OidcGroupMappingUpdateRequest,
 } from "../identity/oidc-group-mapping-contract";
 import { withTotpSessionEnrollment } from "../pending-action/credential-invalidation";
+import { loadLocalFactorState } from "./local-factor-service";
 import {
   consumeOperationProofRecord,
   consumePendingActionProofRecord,
@@ -405,7 +406,9 @@ export async function consumeRotationProof(
     sessionId: string;
     version: number;
   },
-): Promise<{ authMethod: "password" | "totp" | "backup_code" } | null> {
+): Promise<{
+  authMethod: "password" | "totp" | "backup_code" | "sso_prompt_login";
+} | null> {
   return consumeOperationProof(tx, {
     ...input,
     operation: STEP_UP_OPERATION,
@@ -423,7 +426,9 @@ export async function consumeMfaResetProof(
     userId: string;
     verificationNote: string;
   },
-): Promise<{ authMethod: "password" | "totp" | "backup_code" } | null> {
+): Promise<{
+  authMethod: "password" | "totp" | "backup_code" | "sso_prompt_login";
+} | null> {
   return consumeOperationProof(tx, {
     ...input,
     version: 1,
@@ -436,7 +441,9 @@ export async function consumeMfaResetProof(
 export async function consumeInstanceAdminGrantProof(
   tx: StepUpTransaction,
   input: { token: string; personId: string; sessionId: string; userId: string },
-): Promise<{ authMethod: "password" | "totp" | "backup_code" } | null> {
+): Promise<{
+  authMethod: "password" | "totp" | "backup_code" | "sso_prompt_login";
+} | null> {
   return consumeOperationProof(tx, {
     ...input,
     version: 1,
@@ -455,7 +462,9 @@ export async function consumeInstanceAdminSuspendProof(
     userId: string;
     request: { reason?: string; expiresAt?: string | null };
   },
-): Promise<{ authMethod: "password" | "totp" | "backup_code" } | null> {
+): Promise<{
+  authMethod: "password" | "totp" | "backup_code" | "sso_prompt_login";
+} | null> {
   return consumeOperationProof(tx, {
     ...input,
     version: 1,
@@ -471,19 +480,27 @@ export async function consumePendingActionProof(
     token: string;
     personId: string;
     sessionId: string;
+    userId: string;
     pendingActionId: string;
   },
-): Promise<{ id: string } | null> {
+): Promise<{ id: string; authMethod: string } | null> {
   if (!/^[A-Za-z0-9_-]{43}$/u.test(input.token)) return null;
   const raw = Buffer.from(input.token, "base64url");
   if (raw.length !== 32 || raw.toString("base64url") !== input.token)
     return null;
   const tokenHash = sha256(raw);
+  const factor = await loadLocalFactorState(input.userId, tx);
+  if (factor.personId !== input.personId) return null;
   return consumePendingActionProofRecord(tx, {
     tokenHash,
     personId: input.personId,
     sessionId: input.sessionId,
     pendingActionId: input.pendingActionId,
+    isAuthMethodAllowed: (authMethod) =>
+      authMethod === "password" || authMethod === "sso_prompt_login"
+        ? !factor.required && !factor.enabled
+        : (authMethod === "totp" || authMethod === "backup_code") &&
+          factor.enabled,
   });
 }
 
@@ -596,7 +613,9 @@ export async function consumeOperationProof(
     route: string;
     body: Buffer;
   },
-): Promise<{ authMethod: "password" | "totp" | "backup_code" } | null> {
+): Promise<{
+  authMethod: "password" | "totp" | "backup_code" | "sso_prompt_login";
+} | null> {
   if (!/^[A-Za-z0-9_-]{43}$/u.test(input.token)) return null;
   const raw = Buffer.from(input.token, "base64url");
   if (raw.length !== 32 || raw.toString("base64url") !== input.token)

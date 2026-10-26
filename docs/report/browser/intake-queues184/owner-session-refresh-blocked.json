@@ -1,0 +1,12 @@
+{
+	"method": "Ordinary owner login over strict HTTPS using the private audit credential record; no TLS bypass",
+	"result": "blocked",
+	"observations": [
+		"The existing owner-state.json redirected to the sign-in page.",
+		"An initial ordinary sign-in probe returned HTTP 200 but did not establish an authenticated /api/workspace session.",
+		"A subsequent request-matched sign-in attempt returned HTTP 429. Login attempts stopped at that point."
+	],
+	"changes": "No password, account, membership, role, or instance configuration changed.",
+	"pending": "Refresh the owned owner state after the auth rate limit clears, then verify UI duplicate links and the queue post-fix journey.",
+	"apiEvidence": "iq5-duplicate-suggestions.json"
+}

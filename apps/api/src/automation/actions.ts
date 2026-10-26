@@ -22,6 +22,7 @@ export const BUILTIN_ACTION_TYPES = [
   "add_watcher",
   "call_webhook",
   "post_comment",
+  "notify",
   "transition",
 ] as const;
 
@@ -35,7 +36,6 @@ export const POST_COMMENT_MAX_LENGTH = 5000;
  * type from this list into the available set.
  */
 export const UNAVAILABLE_ACTION_TYPES = [
-  "notify",
   "create_linked_item",
   "request_approval",
   "set_custom_field",
@@ -64,6 +64,7 @@ export type AutomationAction =
       body: string;
       visibility: "public" | "internal";
     }
+  | { type: "notify"; teamId: string; title: string; body: string }
   | { type: "transition"; toStateTemplateId: string };
 
 /**
@@ -82,6 +83,8 @@ export function requiredCapability(action: AutomationAction): Capability {
     case "add_watcher":
       return "work_item:update";
     case "call_webhook":
+      return "work_item:read";
+    case "notify":
       return "work_item:read";
     case "post_comment":
       return action.visibility === "public"
@@ -247,6 +250,42 @@ export function parseAction(
         ok: true,
         action: { type, body, visibility: record.visibility },
       };
+    }
+    case "notify": {
+      const extra = onlyKeys(record, ["type", "teamId", "title", "body"]);
+      if (extra) return fail("invalid", extra);
+      if (!ID(record.teamId)) return fail("invalid", "notify requires teamId");
+      const title = record.title;
+      const body = record.body;
+      if (
+        typeof title !== "string" ||
+        title.trim().length === 0 ||
+        title.length > 160 ||
+        title.includes("\u0000")
+      )
+        return fail(
+          "invalid",
+          "notify requires a title of 1 to 160 characters",
+        );
+      if (
+        typeof body !== "string" ||
+        body.trim().length === 0 ||
+        body.length > POST_COMMENT_MAX_LENGTH ||
+        body.includes("\u0000")
+      )
+        return fail(
+          "invalid",
+          `notify requires a text body of 1 to ${POST_COMMENT_MAX_LENGTH} characters`,
+        );
+      const checked = validatePlaceholders(`${title}\n${body}`, "staff");
+      if (checked.problems.length > 0)
+        return fail(
+          "invalid",
+          checked.problems
+            .map((problem) => `{{${problem.path}}}: ${problem.reason}`)
+            .join("; "),
+        );
+      return { ok: true, action: { type, teamId: record.teamId, title, body } };
     }
     case "transition": {
       const extra = onlyKeys(record, ["type", "toStateTemplateId"]);

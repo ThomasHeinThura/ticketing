@@ -1,12 +1,19 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
+import { workItemTable } from "../../database/schema";
+import { logTaskDesk } from "../../instance/observability/runtime";
 import {
   deleteStorageObject,
   finalizeStorageObject,
   getObjectSizeAndHeader,
   toFinalAttachmentObjectKey,
 } from "../../storage";
+import {
+  recordReopenRequested,
+  requestCustomerReopen,
+} from "../../workflow/customer-reopen";
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
 import {
   deletePendingSubmissionAttachment,
@@ -107,7 +114,27 @@ export async function completeSubmissionAttachment(input: {
           finalKey,
           error: "Attachment changed before upload completion",
         };
-      return { attachment: ready, finalKey };
+      // An accepted submission's work item is the only upload parent that can trigger
+      // WF-21. Keep the durable customer request beside the ready attachment so a process
+      // failure after commit still leaves evidence for staff. The shared system transition
+      // runs after commit, through requestCustomerReopen, just as it does for a reply.
+      let reopenWorkItemId: string | null = null;
+      if (acceptedParentId) {
+        const [parent] = await tx
+          .select({ resolvedAt: workItemTable.resolvedAt })
+          .from(workItemTable)
+          .where(eq(workItemTable.id, acceptedParentId))
+          .limit(1);
+        if (parent?.resolvedAt) {
+          reopenWorkItemId = acceptedParentId;
+          await recordReopenRequested(tx, {
+            workspaceId: input.workspaceId,
+            workItemId: acceptedParentId,
+            source: "upload",
+          });
+        }
+      }
+      return { attachment: ready, finalKey, reopenWorkItemId };
     })
     .catch(async (error: unknown) => {
       if (error instanceof HTTPException && error.status === 400) {
@@ -120,6 +147,21 @@ export async function completeSubmissionAttachment(input: {
   if ("error" in result) {
     await deleteStorageObject(result.finalKey).catch(() => {});
     throw new HTTPException(400, { message: result.error });
+  }
+  if (result.reopenWorkItemId) {
+    try {
+      await requestCustomerReopen({
+        workItemId: result.reopenWorkItemId,
+        source: "upload",
+      });
+    } catch {
+      logTaskDesk({
+        module: "jobs",
+        message: "jobs.failure",
+        level: "error",
+        result: "degraded",
+      });
+    }
   }
   return result.attachment;
 }

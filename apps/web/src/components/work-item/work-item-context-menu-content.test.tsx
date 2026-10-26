@@ -216,7 +216,7 @@ function row(): WorkItemDetailRow {
     customFields: [],
   } as WorkItemDetailRow;
 }
-function mount() {
+function mount(keyboardAnchor?: HTMLElement) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -228,6 +228,7 @@ function mount() {
           itemKey="HELP-7"
           workspaceId="workspace"
           projectId="project"
+          keyboardAnchor={keyboardAnchor}
           open
           onClose={close}
         />
@@ -322,6 +323,29 @@ it("copies the canonical permanent link without touching browser view state", as
     `${window.location.origin}/agent/work-items/HELP-7`,
   );
   expect(mocks.openPending).not.toHaveBeenCalled();
+});
+it("returns keyboard context-menu focus to its original anchor after requesting deletion", async () => {
+  const keyboardAnchor = document.createElement("button");
+  keyboardAnchor.textContent = "Work item keyboard anchor";
+  document.body.append(keyboardAnchor);
+  const { close } = mount(keyboardAnchor);
+
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Delete request" }),
+  );
+
+  await waitFor(() =>
+    expect(mocks.openPending).toHaveBeenCalledWith({
+      pendingActionId: "pending-7",
+      finalFocus: expect.any(Function),
+    }),
+  );
+  const finalFocus = mocks.openPending.mock.calls[0]?.[0]?.finalFocus as
+    | (() => HTMLElement | false)
+    | undefined;
+  expect(finalFocus?.()).toBe(keyboardAnchor);
+  expect(close).toHaveBeenCalledOnce();
+  keyboardAnchor.remove();
 });
 it("uses only the actor-offered transition template and never a fake state alias", async () => {
   mount();
@@ -464,6 +488,7 @@ it("requests pending deletion, retains cached item and opens real confirmation",
   await waitFor(() =>
     expect(mocks.openPending).toHaveBeenCalledWith({
       pendingActionId: "pending-7",
+      finalFocus: expect.any(Function),
     }),
   );
   expect(mocks.deletion).toHaveBeenCalledWith("HELP-7", expect.anything());

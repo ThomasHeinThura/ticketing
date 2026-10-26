@@ -1,0 +1,43 @@
+{
+	"kind": "read_only_advice_not_phase_review",
+	"date": "2026-10-25",
+	"modelRole": "Sol advisor medium",
+	"conclusion": "No P0-P5 exit or P6 implementation yet; current source and scoped test evidence cannot establish phase acceptance.",
+	"acceptedBoundaries": {
+		"PA-15": "Unsupported SSO-only step-up fails closed; availability hold.",
+		"SLA-9 WF-17 WF-18": "Reopened resolution-clock continuity explicitly held for this release.",
+		"SV-17": "Team-lead shared-view editing held.",
+		"SV-10": "Meilisearch conditional on measured Postgres benchmark miss; SV-5 benchmark itself required.",
+		"PA-1a": "Recorded immediate-removal exemptions.",
+		"WI-22": "Retain parent_id until purge during recovery window.",
+		"PR-2": "Evaluate inherited project authority at read time.",
+		"CA-5": "Neutral Kaneo composer approved."
+	},
+	"expiredDeferrals": [
+		"AS-10 from P1 to P5",
+		"CP-11 CP-12 CP-13 CP-17 CP-18 to P5",
+		"WI-3 WI-8 custom fields to P4",
+		"WI-24 cycle/module bulk to P5"
+	],
+	"next": "Reconcile stale carries, close actual authority/event/deletion/identity gaps, complete integrated feature paths and final local gates/browser evidence before fresh independent phase reviews.",
+	"sources": [
+		"docs/technical/design-and-decisions.md:3465",
+		"docs/technical/design-and-decisions.md:3491",
+		"docs/technical/safety-and-runtime.md:2841",
+		"docs/technical/feature-contracts-p2.md:427",
+		"docs/technical/feature-contracts-p1.md:1010",
+		"docs/technical/feature-contracts-p1.md:1875"
+	],
+	"followupTechnicalConflicts": [
+		{
+			"requirement": "EV-1 EV-2",
+			"status": "owner choice requested; not a phase review",
+			"finding": "Legacy compatibility keys are published but not accepted by native outbox. A strict compatibility writer can use real task ids and existing keys without enabling native external delivery; compound mapping must be settled. Full task-to-work-item migration is the alternative."
+		},
+		{
+			"requirement": "IP-7 IP-24",
+			"status": "open design constraint; attributed failures repaired",
+			"finding": "Unknown/rotated credentials have no verifiable connection yet provisioning_event requires a connection FK. Current recorders log unbound failures and suppress ledger rows after10 per connection/minute, so every-failure persistence is incomplete. Nullable instance-only failure rows plus durable ingress limits is a proposal, not implemented or approved."
+		}
+	]
+}

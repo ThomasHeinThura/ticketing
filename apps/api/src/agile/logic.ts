@@ -370,6 +370,12 @@ export type CycleSummary = {
   cancelled: Bucket;
   /** ES-5: reported rather than counted as zero. */
   unestimated: { count: number; share: number };
+  /** Present when reading a frozen snapshot; date-catchup snapshots do not reconstruct end-date facts. */
+  snapshot?: {
+    capturedAt: string;
+    basis: "completion_action" | "date_catchup";
+    endDateSummary: "known_at_action" | "unknown";
+  };
 };
 
 function emptyBucket(): Bucket {
@@ -456,13 +462,14 @@ export type VelocityInput = {
   completedAt: Date;
   unit: ScopeUnit;
   completedPoints: number;
+  historicalPointsKnown?: boolean;
 };
 export type Velocity =
   | { status: "ok"; unit: ScopeUnit; value: number; cycles: number }
   | {
       status: "insufficient_data";
       cycles: number;
-      reason: "fewer_than_three" | "mixed_units";
+      reason: "fewer_than_three" | "mixed_units" | "late_snapshot";
     };
 
 export const VELOCITY_WINDOW = 3;
@@ -481,6 +488,12 @@ export function computeVelocity(history: readonly VelocityInput[]): Velocity {
       status: "insufficient_data",
       cycles: recent.length,
       reason: "fewer_than_three",
+    };
+  if (recent.some((entry) => entry.historicalPointsKnown === false))
+    return {
+      status: "insufficient_data",
+      cycles: recent.length,
+      reason: "late_snapshot",
     };
   const unit = recent[0]?.unit ?? "count";
   if (recent.some((entry) => entry.unit !== unit))

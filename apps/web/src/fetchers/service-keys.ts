@@ -70,6 +70,29 @@ export async function revokeServiceKey(
   return (await response.json()) as ApiKey;
 }
 
+/** Elevated acknowledgement, bound to the current accountability version. */
+export async function reattestServiceKey(
+  workspaceId: string,
+  keyId: string,
+  expectedVersion: number,
+  stepUpToken: string,
+): Promise<ApiKey> {
+  const response = await apiFetch(
+    getApiUrl(`${base(workspaceId)}/${encodeURIComponent(keyId)}/re-attest`),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        [STEP_UP_HEADER]: stepUpToken,
+      },
+      body: JSON.stringify({ expectedVersion }),
+    },
+  );
+  await ensureOk(response, "Failed to re-attest the service key");
+  return (await response.json()) as ApiKey;
+}
+
 /**
  * AK-11: deleting a service key only opens a typed-name + step-up pending action; nothing is
  * deleted until the requester approves it in the browser.

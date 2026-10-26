@@ -1,0 +1,39 @@
+{
+	"recordedAt": "2026-10-25",
+	"scope": "P0 EV-1/EV-2/EV-5 focused verification; not phase acceptance",
+	"sourceChanges": false,
+	"automated": {
+		"legacyFanoutReplayIntegration": { "passed": 140, "failed": 0 },
+		"notificationAudienceReachIntegration": { "passed": 30, "failed": 0 },
+		"eventNotificationWebhookUnit": { "passed": 107, "failed": 0 },
+		"database": "dedicated test database only"
+	},
+	"browser": {
+		"strictTls": true,
+		"ownedFixture": {
+			"origin": "owned customer portal submission SUB-3",
+			"resultingWorkItem": "HELP-21",
+			"submissionAcceptance": "accepted through staff triage UI"
+		},
+		"comments": {
+			"internalPostHttp": 200,
+			"publicPostHttp": 200,
+			"customerReloadShowsPublic": true,
+			"customerReloadHidesInternal": true
+		},
+		"staffMention": {
+			"postedThroughRealComposer": true,
+			"recipient": "owned SIT Audit member account",
+			"mentionsInboxShowsHelp21": true
+		},
+		"reachRevocationBrowser": "not run; task/workspace reach revocation is covered by focused integration suites"
+	},
+	"screenshots": [
+		"../screens/codex-20261025-events-help21-customer-public-only.png",
+		"../screens/codex-20261025-events-help21-member-mention-inbox.png"
+	],
+	"limitations": [
+		"The browser journey verified one owned staff-to-customer and staff-mention path, not every legacy producer.",
+		"No phase acceptance or universal producer certification is inferred."
+	]
+}

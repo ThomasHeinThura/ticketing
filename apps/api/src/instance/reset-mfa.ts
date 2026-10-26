@@ -6,6 +6,7 @@ import type { LocalFactorState } from "../auth/local-factor-service";
 import { loadLocalFactorState } from "../auth/local-factor-service";
 import { appendStepUpAudit } from "../auth/step-up-audit";
 import { consumeMfaResetProof } from "../auth/step-up-service";
+import { proofMethodAcceptable } from "../auth/step-up-spend";
 import db, { schema } from "../database";
 import { isRuntimeSmtpConfigured } from "../notification-provider/runtime";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
@@ -122,6 +123,12 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
   try {
     transactionResult = await db.transaction(async (tx) => {
       await lockPendingActionLifecycle(tx);
+      const currentActorFactor = await loadLocalFactorState(
+        c.get("userId"),
+        tx,
+      );
+      if (currentActorFactor.personId !== actorFactor.personId)
+        return { kind: "denied" as const };
       const proof = await consumeMfaResetProof(tx, {
         token: c.req.valid("header")["x-taskdesk-step-up-token"],
         personId: actorFactor.personId,
@@ -139,12 +146,7 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
         });
         return { kind: "denied" as const };
       }
-      if (
-        (proof.authMethod === "password" &&
-          (actorFactor.required || actorFactor.enabled)) ||
-        ((proof.authMethod === "totp" || proof.authMethod === "backup_code") &&
-          !actorFactor.enabled)
-      ) {
+      if (!proofMethodAcceptable(proof.authMethod, currentActorFactor)) {
         throw new StepUpRejection(403, "step_up_unavailable");
       }
       const [current] = await tx

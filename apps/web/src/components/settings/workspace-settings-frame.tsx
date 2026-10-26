@@ -11,6 +11,7 @@ import {
   CalendarDays,
   Clock,
   Inbox,
+  Languages,
   LayoutTemplate,
   MessageSquareText,
   PiggyBank,
@@ -32,6 +33,7 @@ import SettingsSidebar from "@/components/SettingsSidebar";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { getInitials } from "@/lib/get-initials";
+import { routes } from "@/lib/routes";
 
 export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -67,6 +69,18 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       url: "/dashboard/settings/workspace/general",
       icon: Settings,
       visible: true,
+    },
+    {
+      title: t("settings:workspaceFeatures.title"),
+      url: routes.workspaceFeatures.path,
+      icon: SlidersHorizontal,
+      visible: canSettings,
+    },
+    {
+      title: t("settings:terminology.title", { defaultValue: "Terminology" }),
+      url: routes.workspaceTerminology.path,
+      icon: Languages,
+      visible: canSettings,
     },
     {
       title: t("settings:workspaceRoles.title", { defaultValue: "Roles" }),

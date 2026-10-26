@@ -1,0 +1,17 @@
+{
+	"name": "work-item-create-board-list-table-detail-reload",
+	"method": "Real browser UI mutation on isolated copy; new audit record only; no mocked requests",
+	"menu": [
+		"Copy link",
+		"Priority",
+		"Status",
+		"Due date",
+		"Assignee",
+		"Archive",
+		"Move to project...",
+		"Delete..."
+	],
+	"buttons": [],
+	"outcome": "inspected",
+	"screenshot": "docs/report/screens/codex-20261025-archive-inspect.png"
+}

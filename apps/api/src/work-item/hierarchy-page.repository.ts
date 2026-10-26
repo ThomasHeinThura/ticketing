@@ -18,8 +18,11 @@ export type HierarchyScope = {
   projectId: string;
   parentId: string;
 };
-const visibleItem = () =>
-  and(isNull(workItemTable.deletedAt), isNull(workItemTable.archivedAt));
+const visibleItem = (allowArchivedForRead = false) =>
+  and(
+    isNull(workItemTable.deletedAt),
+    ...(allowArchivedForRead ? [] : [isNull(workItemTable.archivedAt)]),
+  );
 
 // Match canonical list/detail privacy: a linked user's name is exposed only on this workspace's roster.
 function scopedAssigneeName(executor: Executor) {
@@ -41,6 +44,7 @@ export async function findHierarchyPageParentQuery(
   identity: ResolvedIdentity,
   key: string,
   workspaceId: string,
+  options: { allowArchivedForRead?: true } = {},
 ) {
   const [row] = await executor
     .select({
@@ -68,7 +72,7 @@ export async function findHierarchyPageParentQuery(
       and(
         eq(workItemTable.key, key),
         eq(workItemTable.workspaceId, workspaceId),
-        visibleItem(),
+        visibleItem(options.allowArchivedForRead),
         isNull(projectTable.deletedAt),
         currentProjectReachPredicate(
           identity,
@@ -87,6 +91,7 @@ export async function findHierarchyAncestorQuery(
   executor: Executor,
   scope: HierarchyScope,
   id: string,
+  allowArchivedForRead = false,
 ) {
   const [row] = await executor
     .select({
@@ -112,7 +117,7 @@ export async function findHierarchyAncestorQuery(
         eq(workItemTable.id, id),
         eq(workItemTable.workspaceId, scope.workspaceId),
         eq(workItemTable.projectId, scope.projectId),
-        visibleItem(),
+        visibleItem(allowArchivedForRead),
       ),
     )
     .limit(1);

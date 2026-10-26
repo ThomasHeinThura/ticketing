@@ -1,4 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
+import {
+  captureWorkspaceServiceKeyAuthority,
+  markServiceKeysForAuthorityLoss,
+} from "../../api-key/authority-loss";
 import type { StepUpExecutor } from "../../auth/repository";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
@@ -131,6 +135,17 @@ async function transferWorkspaceOwnership(
       throw new AmbiguousMembershipError();
     }
 
+    const callerAuthorityBefore = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      callerId,
+      workspaceId,
+    );
+    const incomingAuthorityBefore = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      newOwnerUserId,
+      workspaceId,
+    );
+
     await beforeWrite?.(tx);
 
     await tx
@@ -159,6 +174,28 @@ async function transferWorkspaceOwnership(
     await lockPersonsInOrder(tx, [newOwnerUserId, callerId]);
     await syncWorkspaceAdminReach(tx, workspaceId, newOwnerUserId);
     await syncWorkspaceAdminReach(tx, workspaceId, callerId);
+
+    const callerAuthorityAfter = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      callerId,
+      workspaceId,
+    );
+    const incomingAuthorityAfter = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      newOwnerUserId,
+      workspaceId,
+    );
+    const now = new Date();
+    await markServiceKeysForAuthorityLoss(tx, {
+      before: callerAuthorityBefore,
+      after: callerAuthorityAfter,
+      now,
+    });
+    await markServiceKeysForAuthorityLoss(tx, {
+      before: incomingAuthorityBefore,
+      after: incomingAuthorityAfter,
+      now,
+    });
 
     return {
       workspaceId,

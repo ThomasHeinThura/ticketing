@@ -13,9 +13,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * authority-granting, so every route declares `elevated`. Creation and deletion are elevated
  * and session-only. Listing and revoking mint no authority and say so.
  *
- * `DELETE /api/me/api-keys/{id}` (personal key deletion, `AK-11`) is NOT registered: the
- * registered-deletion mechanism only supports capability policies scoped to a workspace or
- * project, and a personal key has neither. See the P4 handback, "decisions needed".
+ * Personal-key deletion is a session-only self route (`AK-11`). The registered target binds
+ * the key row's persisted person id to this same human; personal MCP keys follow the same rule.
  */
 const selfNoPersonParam = {
   exempt: "no_person_parameter",
@@ -38,6 +37,13 @@ export const apiKeyPolicies = {
     authenticated: true,
     self: true,
     personParam: selfNoPersonParam,
+  },
+  "DELETE /api/me/api-keys/{id}": {
+    authenticated: true,
+    self: true,
+    personParam: selfNoPersonParam,
+    elevated: true,
+    sessionOnly: true,
   },
   "GET /api/workspaces/{id}/api-keys": {
     capability: "api_key:manage",
@@ -86,5 +92,13 @@ export const apiKeyPolicies = {
     elevated: false,
     elevationExemptionReason:
       "revocation only removes authority from a credential; the row stays for audit (AK-6)",
+  },
+  "POST /api/workspaces/{id}/api-keys/{keyId}/re-attest": {
+    capability: "api_key:manage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    elevated: true,
+    sessionOnly: true,
   },
 } as const satisfies PolicyMap;

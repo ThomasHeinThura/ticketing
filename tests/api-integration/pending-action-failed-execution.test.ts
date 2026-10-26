@@ -375,6 +375,12 @@ describe("pending-action failed execution and requester notification", () => {
   it.each(["api", "mcp"] as const)(
     "PA-4: notifies the requester of a %s-origin request naming the key and target",
     async (origin) => {
+      if (origin === "mcp") {
+        await db.insert(schema.instanceFeatureFlagTable).values({
+          featureKey: "feature.mcp",
+          enabled: true,
+        });
+      }
       await insertDeleteKey(
         `pa-failed-key-${origin}`,
         "ci-bot",

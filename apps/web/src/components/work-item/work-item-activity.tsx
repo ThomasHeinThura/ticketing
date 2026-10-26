@@ -56,7 +56,7 @@ import {
   WorkItemFileDropOverlay,
 } from "./work-item-attachments-intake";
 import WorkItemAttachmentLightbox from "./work-item-attachments-lightbox";
-import { isInlineImage } from "./work-item-attachments-tile";
+import { isInlineImage, isPdfPreview } from "./work-item-attachments-tile";
 import {
   useAttachmentsPanelMounted,
   useWorkItemUploads,
@@ -241,6 +241,7 @@ function WorkItemActivity({
   filter,
   focusedComment,
   onFilterChange,
+  readOnly = false,
 }: {
   workItemKey: string;
   workspaceId: string;
@@ -248,6 +249,7 @@ function WorkItemActivity({
   filter: ActivityFilter;
   focusedComment?: string;
   onFilterChange: (filter: ActivityFilter) => void;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const permissions = useWorkspacePermission(workspaceId);
@@ -313,7 +315,7 @@ function WorkItemActivity({
       : undefined;
   // AT-10/AT-11: files dropped or pasted anywhere on the detail attach to the work item.
   const canAttachToItem =
-    !isCheckingPermissions && permissions.canCreateAttachments();
+    !readOnly && !isCheckingPermissions && permissions.canCreateAttachments();
   const sectionRef = useRef<HTMLElement>(null);
   const { dragging, bounds: dropBounds } = useWorkItemFileIntake({
     anchorRef: sectionRef,
@@ -427,6 +429,9 @@ function WorkItemActivity({
       <WorkItemFileDropOverlay active={dragging} bounds={dropBounds} />
       <WorkItemAttachmentLightbox
         images={previewImages}
+        pdfs={readyAttachments.filter((attachment) =>
+          isPdfPreview(attachment.mimeType),
+        )}
         openId={previewId}
         onOpenChange={(open) => {
           if (!open) setPreviewId(null);
@@ -466,11 +471,13 @@ function WorkItemActivity({
         </Select>
       </div>
 
-      <WorkItemCommentComposer
-        workItemKey={workItemKey}
-        workspaceId={workspaceId}
-        defaultVisibility={defaultVisibility}
-      />
+      {!readOnly ? (
+        <WorkItemCommentComposer
+          workItemKey={workItemKey}
+          workspaceId={workspaceId}
+          defaultVisibility={defaultVisibility}
+        />
+      ) : null}
       {!panelMounted ? <WorkItemUploadList uploads={itemUploads} /> : null}
 
       {activity.isError && (
@@ -540,7 +547,7 @@ function WorkItemActivity({
           if (isComment(row)) {
             const isDeleted = Boolean(row.deletedAt);
             const body = row.body;
-            const isEditing = editing === row.id;
+            const isEditing = !readOnly && editing === row.id;
             return (
               <TimelineItem
                 key={row.id}
@@ -583,6 +590,7 @@ function WorkItemActivity({
                     }
                     actions={
                       !isDeleted &&
+                      !readOnly &&
                       !isEditing &&
                       (row.canEdit === true || row.canDelete === true) ? (
                         <>
@@ -621,7 +629,7 @@ function WorkItemActivity({
                           <WorkItemCommentDelete
                             workItemKey={workItemKey}
                             commentId={row.id}
-                            canDelete={row.canDelete === true}
+                            canDelete={!readOnly && row.canDelete === true}
                           />
                         </>
                       ) : undefined

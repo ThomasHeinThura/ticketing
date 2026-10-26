@@ -1,0 +1,131 @@
+{
+	"recordedAt": "2026-10-26T04:39:55.678Z",
+	"strictTls": true,
+	"scope": "Own QA 51-record import with human-owner browser approval; no unrelated records modified",
+	"checks": [
+		{
+			"name": "Own audit admin session",
+			"pass": true
+		},
+		{
+			"name": "Feature update persisted",
+			"pass": true
+		},
+		{
+			"name": "Scoped MCP key created through authenticated API",
+			"pass": true
+		},
+		{
+			"name": "Plaintext key retained privately only",
+			"pass": true
+		},
+		{
+			"name": "Resume only own key and import run",
+			"pass": true
+		},
+		{
+			"name": "Read real destination types",
+			"pass": true
+		},
+		{
+			"name": "Real destination task type exists",
+			"pass": true
+		},
+		{
+			"name": "Key reads owned run",
+			"pass": true
+		},
+		{
+			"name": "Preview succeeds",
+			"pass": true
+		},
+		{
+			"name": "Preview contains 51 rows",
+			"pass": true
+		},
+		{
+			"name": "Preview has no rejected rows",
+			"pass": true
+		},
+		{
+			"name": "51-record execution requires approval202",
+			"pass": true
+		},
+		{
+			"name": "Owner reads exact pending action",
+			"pass": true
+		},
+		{
+			"name": "Pending summary contains no source payload",
+			"pass": true
+		},
+		{
+			"name": "Approval 375 light fits page",
+			"pass": true
+		},
+		{
+			"name": "Approval 768 light fits page",
+			"pass": true
+		},
+		{
+			"name": "Approval 1440 light fits page",
+			"pass": true
+		},
+		{
+			"name": "Approval 375 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "Approval 768 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "Approval 1440 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "Wrong count blocked with password present",
+			"pass": true
+		},
+		{
+			"name": "Missing password blocked with exact count",
+			"pass": true
+		},
+		{
+			"name": "Exact count and proof enable approval",
+			"pass": true
+		},
+		{
+			"name": "Browser owner approval succeeds",
+			"pass": true
+		},
+		{
+			"name": "No browser JavaScript errors",
+			"pass": true
+		},
+		{
+			"name": "Fresh persisted import report",
+			"pass": true
+		},
+		{
+			"name": "New transport key replays committed chunk",
+			"pass": false
+		},
+		{
+			"name": "Feature update persisted",
+			"pass": true
+		}
+	],
+	"screenshots": [
+		"bulk-approval-375-light.png",
+		"bulk-approval-768-light.png",
+		"bulk-approval-1440-light.png",
+		"bulk-approval-375-dark.png",
+		"bulk-approval-768-dark.png",
+		"bulk-approval-1440-dark.png"
+	],
+	"outcome": "failed",
+	"failurePhase": "persisted effects and replay",
+	"featureRestored": true,
+	"failureExplanation": "Owner approval and persisted51-record creation passed. Replay assertion incorrectly expected an undocumented replayed boolean; real API returns committed outcome/counts. Verify ledger and unchanged persisted counts instead."
+}

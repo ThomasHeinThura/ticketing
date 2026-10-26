@@ -1,0 +1,62 @@
+{
+	"recordedAt": "2026-10-26T02:48:46.070938+00:00",
+	"scope": "Import prerequisite storage, cleanup and source integration; not full P6 acceptance",
+	"runtimeMigrationCount": 190,
+	"sourceMigrationCount": 191,
+	"deployed": false,
+	"formalReviewRoundsUsed": 0,
+	"rehearsal": "codex-20261026-import-prerequisite-rehearsal.json",
+	"checks": [
+		{
+			"check": "import persistence and cleanup PostgreSQL",
+			"passed": 7,
+			"failed": 0,
+			"covers": [
+				"destination tenant/source foreign keys",
+				"chunk bounds and hash checks",
+				"project purge retires destination and redacts staged rows",
+				"actual soft-delete purge hook",
+				"workspace cascade",
+				"expired preview cleanup",
+				"live approval retention and cancelled approval cleanup"
+			]
+		},
+		{
+			"check": "hierarchy purge regression PostgreSQL",
+			"passed": 4,
+			"failed": 0
+		},
+		{
+			"check": "workspace deletion and account erasure PostgreSQL",
+			"passed": 34,
+			"failed": 0
+		},
+		{
+			"check": "purge unit regression",
+			"passed": 19,
+			"failed": 0
+		},
+		{
+			"check": "import schemas, cleanup, outbox and scheduler focused unit checkpoint",
+			"passed": 18,
+			"failed": 0
+		},
+		{
+			"check": "MCP tools and injection focused checkpoint",
+			"passed": 46,
+			"failed": 0
+		},
+		{
+			"check": "API source TypeScript checkpoint",
+			"passed": true
+		}
+	],
+	"limitations": [
+		"Checks are scoped checkpoints during continued source edits.",
+		"API routes are not mounted until the real approval adapter is complete.",
+		"Approval source type errors are fixed; final wiring and integrated verification remain pending.",
+		"Import UI and >50 records/links approval have not been browser-verified.",
+		"No source191 runtime deployment, phase sign-off, commit or PR."
+	],
+	"failedAttempts": "The initial project-purge fixture omitted purgeAfter and was ineligible; corrected fixture now exercises the real hook. Original failure logs retained; no retention threshold changed."
+}

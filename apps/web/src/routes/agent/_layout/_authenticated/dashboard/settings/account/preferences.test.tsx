@@ -69,6 +69,34 @@ describe("preferences page density setter (#673)", () => {
     );
     expect(document.documentElement).not.toHaveClass("compact-mode");
 
+    for (const label of [
+      "theme",
+      "language",
+      "firstDayOfWeek",
+      "defaultView",
+      "density",
+    ]) {
+      expect(
+        screen.getByRole("combobox", {
+          name: `settings:preferencesPage.${label}`,
+        }),
+      ).toBeInTheDocument();
+    }
+    for (const label of [
+      "sidebarDefault",
+      "taskNumbers",
+      "assignees",
+      "dueDates",
+      "labels",
+      "priority",
+    ]) {
+      expect(
+        screen.getByRole("switch", {
+          name: `settings:preferencesPage.${label}`,
+        }),
+      ).toBeInTheDocument();
+    }
+
     fireEvent.click(screen.getByTestId("density-select"));
     pick(
       await screen.findByRole("option", {

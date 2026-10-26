@@ -21,6 +21,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { FeatureDisabledError, getModules } from "@/fetchers/agile";
+import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import { formatCalendarDate, MODULE_STATE_VARIANT } from "./agile-format";
 import { FeatureOff } from "./feature-off";
 import { ModuleForecastText } from "./module-forecast";
@@ -67,7 +68,12 @@ export function ModulesList({ projectKey }: { projectKey: string }) {
     <div className="mx-auto flex max-w-4xl flex-col gap-4 p-4">
       <PageTitle title={t("modules.pageTitle")} />
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-semibold text-lg">{t("modules.title")}</h1>
+        <h1
+          className="font-semibold text-lg"
+          title={getDefaultAgentTerm(i18n, "module", 2)}
+        >
+          {t("modules.title")}
+        </h1>
         {meta.canManage ? (
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus aria-hidden="true" />

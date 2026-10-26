@@ -1,6 +1,7 @@
 import { processNextParentEvent } from "../events/outbox-consumer";
 import { immediateNotificationRuntime } from "../notification/immediate-runtime";
 import { processNextNotificationDelivery } from "../notification/outbox-drain";
+import { assertJobExecutionOwned } from "./leader-lock";
 import { drainP4Consumers } from "./outbox-drain-p4";
 
 /** Every replica may run: persisted child reservation fences serialize attempts. Parent
@@ -11,6 +12,9 @@ export async function drainImmediateNotifications() {
   const runtime = immediateNotificationRuntime();
   const started = Date.now();
   for (; processed < 100 && Date.now() - started < 20_000; processed++) {
+    // Each call claims and completes one independently fenced delivery. Do not
+    // interrupt the provider/claim completion pair once it has started.
+    await assertJobExecutionOwned();
     try {
       const result = await processNextNotificationDelivery(runtime);
       if (result.kind === "idle") break;
@@ -46,6 +50,8 @@ export async function drainParentEvents() {
     Date.now() - started < PARENT_DRAIN_BUDGET_MS;
     processed++
   ) {
+    // Parent claims are independent SKIP LOCKED work units.
+    await assertJobExecutionOwned();
     try {
       const result = await processNextParentEvent();
       if (result.kind === "idle") break;
@@ -73,7 +79,9 @@ export async function drainParentEvents() {
 export async function drainOutbox() {
   const startedAt = Date.now();
   const parents = await drainParentEvents();
+  await assertJobExecutionOwned();
   const children = await drainImmediateNotifications();
+  await assertJobExecutionOwned();
   const consumers = await drainP4Consumers();
   const degraded = parents.degraded || children.degraded || consumers.degraded;
   if (parents.processed > 0 || children.processed > 0 || degraded) {

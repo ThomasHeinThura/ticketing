@@ -1,0 +1,298 @@
+{
+	"kind": "read_only_source_reconciliation",
+	"date": "2026-10-25",
+	"phase": "P0",
+	"formalPhaseReview": false,
+	"reviewRoundsConsumed": 0,
+	"source": {
+		"head": "aea5d5702",
+		"workingTree": "dirty; findings inspect current working files, including uncommitted event bridge, label, notification, task, work-item, view, workspace, and audit edits",
+		"method": "Source and test-assertion inspection only. No build, test, browser, database, or network operation was executed in this audit.",
+		"contracts": [
+			"docs/technical/events.md:115-144",
+			"docs/technical/events.md:159-193"
+		],
+		"auditBaseline": "docs/report/audit/audit-P0.json EV-1, EV-2, EV-5 currentAssessment; older evidence and gap strings are historical, not executable proof"
+	},
+	"scopeBoundary": {
+		"compatibility": "25 October approved strict task bridge uses task.id as taskId and key; task.updated is the single parent for multi-field edits; task.moved is the single parent for compound moves. These are separate from native EVENT_KEYS and may not enter native webhook or automation subscriptions.",
+		"inactive": "task.deleted has no reachable producer because DELETE /api/task/{id} returns 410; task-relation.refresh and notification.created are disposable cache/realtime signals, not semantic domain events; startup column normalization has no synthetic event.",
+		"plugins": "The inherited plugin registry has no registration call in shipped API source. Its legacy broadcast subscribers are therefore not a current integration delivery obligation; removed integration routers stay removed. This does not exempt durable event producers or notification rows that are reachable now."
+	},
+	"producerMatrix": [
+		{
+			"producer": "native work-item create, update, move, assign, unassign, transition, comment/mention, delete",
+			"keys": "work_item.* plus transition SLA events",
+			"status": "transactional parent and eligible canonical notification candidates in inspected paths",
+			"source": [
+				"apps/api/src/work-item/native-event.ts:36-65",
+				"apps/api/src/work-item/controllers/create-work-item.ts:207-226",
+				"apps/api/src/work-item/controllers/update-work-item.ts:305-323",
+				"apps/api/src/work-item/controllers/assign-work-item.ts:274-297",
+				"apps/api/src/work-item/controllers/unassign-work-item.ts:194-216",
+				"apps/api/src/work-item/controllers/transition-work-item.ts:1099-1156",
+				"apps/api/src/work-item/controllers/create-comment.ts:184-245",
+				"apps/api/src/work-item/controllers/delete-work-item.ts:78-100"
+			],
+			"childrenAndReplay": "recordWorkItemEvent uses enqueueNotificationEvent or bare enqueueOutboxEvent, once; fanout writes inbox and delivery children under the caller tx. Parent consumer uses a claim/savepoint and native webhook/automation enqueue by event id. No execution claim for the full producer matrix."
+		},
+		{
+			"producer": "legacy task create and import",
+			"keys": ["task.created"],
+			"status": "compatibility parent in mutation transaction",
+			"source": [
+				"apps/api/src/task/controllers/create-task.ts:62-166",
+				"apps/api/src/task/controllers/import-tasks.ts:123-195",
+				"apps/api/src/events/legacy-task-compatibility.ts:47-89"
+			],
+			"childrenAndReplay": "Optional inherited assignee inbox row is in the transaction via insertLegacyTaskNotification, but is not event-id-linked and has no canonical notification_delivery child. Post-commit publishEvent is only an in-memory hint/plugin call."
+		},
+		{
+			"producer": "legacy task single-field status, title, description, priority, due date, assignee",
+			"keys": [
+				"task.status_changed",
+				"task.title_changed",
+				"task.description_changed",
+				"task.priority_changed",
+				"task.due_date_changed",
+				"task.assignee_changed",
+				"task.unassigned"
+			],
+			"status": "compatibility parent in mutation transaction on change",
+			"source": [
+				"apps/api/src/task/controllers/update-task-status.ts:29-99",
+				"apps/api/src/task/controllers/update-task-title.ts:23-73",
+				"apps/api/src/task/controllers/update-task-description.ts:26-70",
+				"apps/api/src/task/controllers/update-task-priority.ts:24-75",
+				"apps/api/src/task/controllers/update-task-due-date.ts:25-87",
+				"apps/api/src/task/controllers/update-task-assignee.ts:38-166"
+			],
+			"childrenAndReplay": "Required legacy activity and eligible legacy inbox are written in transaction where applicable; inbox lacks parent event id and child delivery. Status no-op parent absence and rollback on outbox failure have focused PostgreSQL assertions, not universal execution proof."
+		},
+		{
+			"producer": "legacy task multi-field update, compound move, bulk item operations",
+			"keys": [
+				"task.updated",
+				"task.moved",
+				"task.status_changed",
+				"task.priority_changed",
+				"task.assignee_changed",
+				"task.unassigned",
+				"task.label_assigned",
+				"task.label_unassigned",
+				"task.due_date_changed"
+			],
+			"status": "compatibility parent per changed task transaction; multi-field and move vocabulary follows approved bridge",
+			"source": [
+				"apps/api/src/task/controllers/update-task.ts:110-179",
+				"apps/api/src/task/controllers/move-task.ts:240-280",
+				"apps/api/src/task/controllers/bulk-update-tasks.ts:273-568",
+				"docs/technical/events.md:115-117"
+			],
+			"childrenAndReplay": "The post-commit EventEmitter publishes extra specific hints for a multi-field update; those are not additional durable parents by approved design. Bulk operations have item transactions and must be verified for each operation/no-op/failure branch; current focused bridge suite does not assert them all."
+		},
+		{
+			"producer": "task-scoped label create, assign, unassign, delete and workspace-label cascade copies",
+			"keys": [
+				"task.label_created",
+				"task.label_assigned",
+				"task.label_unassigned",
+				"task.label_deleted"
+			],
+			"status": "compatibility parents inside task-label and cascade transactions for emitted task effects",
+			"source": [
+				"apps/api/src/label/controllers/create-label.ts:47-76",
+				"apps/api/src/label/controllers/assign-label-to-task.ts:155-199",
+				"apps/api/src/label/controllers/unassign-label-from-task.ts:45-75",
+				"apps/api/src/label/controllers/delete-label.ts:64-83",
+				"apps/api/src/label/controllers/delete-label.ts:127-165",
+				"apps/api/src/task/controllers/bulk-update-tasks.ts:472-515"
+			],
+			"childrenAndReplay": "No notification audience is declared for these compatibility keys. Workspace catalogue-only create/rename has no published task.label_* event; do not fabricate a legacy task id. Label test filenames alone do not prove all cascade/replay branches."
+		},
+		{
+			"producer": "legacy comment create and edit through activity/comment aliases",
+			"keys": ["comment.created", "comment.updated"],
+			"status": "source gap: transaction commits before only in-memory publish; no outbox parent",
+			"source": [
+				"apps/api/src/comment/controllers/create-comment.ts:1",
+				"apps/api/src/comment/controllers/update-comment.ts:1",
+				"apps/api/src/activity/controllers/create-comment.ts:22-68",
+				"apps/api/src/activity/controllers/update-comment.ts:25-62",
+				"apps/api/src/events/index.ts:18-39"
+			],
+			"childrenAndReplay": "Create mention and assignee notifications run after commit through createNotification and have no event id or child; interruption can lose them and replay cannot reconstruct them. Comment publisher includes name and raw comment text, requiring explicit customer-safe projection at any future delivery boundary."
+		},
+		{
+			"producer": "legacy arbitrary activity create",
+			"keys": [],
+			"status": "no declared domain event currently emitted; not evidence for EV-1 event coverage",
+			"source": [
+				"apps/api/src/activity/controllers/create-activity.ts:10-29",
+				"docs/technical/events.md:115-144"
+			],
+			"childrenAndReplay": "The activity row itself commits in a transaction. It has no event or event-derived notification candidate. Do not invent a compatibility key."
+		},
+		{
+			"producer": "legacy time-entry create and update",
+			"keys": ["time-entry.created"],
+			"status": "source gap on create: transaction commits before only in-memory event; update has no published event",
+			"source": [
+				"apps/api/src/time-entry/controllers/create-time-entry.ts:28-68",
+				"apps/api/src/time-entry/controllers/update-time-entry.ts:27",
+				"docs/technical/events.md:144"
+			],
+			"childrenAndReplay": "Optional create inbox is atomic with the time entry via insertLegacyTaskNotification, but no parent id or notification_delivery child links it; the published create event is not replayable. Update is outside declared event vocabulary."
+		},
+		{
+			"producer": "workspace create",
+			"keys": ["workspace.created"],
+			"status": "transactional native parent and owner inbox",
+			"source": [
+				"apps/api/src/workspace/controllers/create-workspace.ts:84-91",
+				"apps/api/src/workspace/controllers/create-workspace.ts:236-268",
+				"apps/api/src/notification/recipient-resolvers.ts:236-287"
+			],
+			"childrenAndReplay": "Owner recipient is resolved and materialized before commit; no external subscription is presumed on creation. Other workspace membership/role changes have no keys in this event catalogue and are not evidence of a missing workspace.created event."
+		},
+		{
+			"producer": "saved-view create, update, pin, approved delete",
+			"keys": [
+				"saved_view.created",
+				"saved_view.updated",
+				"saved_view.pinned",
+				"saved_view.deleted"
+			],
+			"status": "transactional native parents; old blanket in-memory-only audit wording is stale",
+			"source": [
+				"apps/api/src/view/repository.ts:122-166",
+				"apps/api/src/view/controllers/update-view.ts:116-122",
+				"apps/api/src/view/repository.ts:305-316",
+				"apps/api/src/view/repository.ts:365-407",
+				"apps/api/src/view/index.ts:399-426",
+				"apps/api/src/pending-action/deletion-targets.ts:855-920"
+			],
+			"childrenAndReplay": "After-commit publishEvent is a hint. These keys declare no notification audience. Approved deletion writes saved_view.deleted in the same transaction as the delete and pending-action outcome parents."
+		},
+		{
+			"producer": "project/workspace catalogue-label removal that clears canonical work-item labels",
+			"keys": ["work_item.updated"],
+			"status": "transactional native parent per affected canonical work item",
+			"source": [
+				"apps/api/src/label/project-controller.ts:88-112",
+				"apps/api/src/label/controllers/delete-label.ts:127-165",
+				"apps/api/src/work-item/clear-catalogue-label.ts:35-75"
+			],
+			"childrenAndReplay": "Affected canonical work items get internal label-change envelopes. A catalogue row's standalone create/rename has no declared label lifecycle event; do not invent one."
+		},
+		{
+			"producer": "legacy task relation create",
+			"keys": ["task-relation.created"],
+			"status": "source gap: mutation transaction commits before in-memory event",
+			"source": [
+				"apps/api/src/task-relation/controllers/create-task-relation.ts:104-128",
+				"docs/technical/events.md:126-128"
+			],
+			"childrenAndReplay": "No target-model relation key or notification audience is declared; requires an explicitly registered compatibility approach, not a fabricated native work_item event."
+		},
+		{
+			"producer": "native project create/archive",
+			"keys": ["project.created", "project.archived"],
+			"status": "transactional native parents",
+			"source": [
+				"apps/api/src/project/controllers/create-project.ts:251-267",
+				"apps/api/src/project/controllers/archive-project.ts:117-139"
+			],
+			"childrenAndReplay": "No notification audience declared; native parent consumer idempotency rules apply."
+		}
+	],
+	"crossCuttingFindings": [
+		{
+			"id": "EV1-legacy-inbox-child",
+			"classification": "actual_source_gap",
+			"finding": "Legacy task/time-entry notification helper inserts an inbox row in the mutation transaction, but omits event_id, person_id and kind; there is no notification_delivery child linked to the parent. Transactionality alone does not satisfy EV-1's event-derived child and digest clauses.",
+			"evidence": [
+				"apps/api/src/events/legacy-task-effects.ts:42-89",
+				"apps/api/src/notification/inbox.repository.ts:1375-1383",
+				"docs/technical/events.md:159-164"
+			]
+		},
+		{
+			"id": "EV2-legacy-replay",
+			"classification": "actual_source_gap",
+			"finding": "The compatibility parent can be drained once, but legacy inbox rows are not keyed by parent event id. No event-id unique constraint or replay materializer protects these child effects; current test asserts an existing row stays unchanged after a no-op drain, a narrower property than EV-2 universal replay idempotency.",
+			"evidence": [
+				"apps/api/src/events/legacy-task-effects.ts:70-88",
+				"apps/api/src/events/outbox-consumer.ts:199-230",
+				"tests/api-integration/legacy-task-outbox-bridge.test.ts:141-190",
+				"docs/technical/events.md:165-174"
+			]
+		},
+		{
+			"id": "EV5-canonical-projection",
+			"classification": "actual_source_gap",
+			"finding": "Canonical notification fanout has current customer audience/reach and safe generic comment projections, but webhook work_item.updated projection accepts missing or unknown changes[].visibility because it drops only the exact value internal. EV-5/NO-19 requires fail-closed filtering for internal or unclassified change entries. The webhook recipient is a workspace subscription, so this is an external projection weakness rather than proof of a current customer notification leak.",
+			"evidence": [
+				"apps/api/src/webhook/envelope.ts:41-49",
+				"apps/api/src/webhook/envelope.ts:71-102",
+				"apps/api/src/notification/customer-event-audience.ts:4-35",
+				"apps/api/src/notification/native-inbox-reach.ts:77-105",
+				"docs/technical/events.md:50",
+				"docs/technical/events.md:193"
+			]
+		},
+		{
+			"id": "EV5-legacy-boundary",
+			"classification": "scope_limit_and_unverified_matrix",
+			"finding": "The legacy comment publisher carries raw content and a staff display name; legacy comment notifications contain commenter/mentioner names and a comment preview. Current legacy task notification reach predicate is staff-scoped, but this audit did not execute a customer/agent/portal/revocation matrix. Future replay or customer-facing projection must not copy those raw values. Do not equate no active inherited plugin with a universal EV-5 pass.",
+			"evidence": [
+				"apps/api/src/activity/controllers/create-comment.ts:63-101",
+				"apps/api/src/notification/task-reach.repository.ts:60-81",
+				"apps/api/src/notification/task-reach.repository.ts:343-350",
+				"apps/api/src/notification/inbox.repository.ts:761-782",
+				"docs/technical/events.md:193"
+			]
+		}
+	],
+	"staleAuditWording": [
+		{
+			"claim": "No attachDigest implementation, no digest membership",
+			"correction": "attachDigestWindow exists and is the fanout default for enabled nonurgent external channels; this does not cure missing legacy child linkage.",
+			"evidence": [
+				"apps/api/src/notification/fanout.ts:8",
+				"apps/api/src/notification/fanout.ts:153-166",
+				"apps/api/src/notification/digest-writer.ts:86-95"
+			]
+		},
+		{
+			"claim": "No parent outbox consumer or webhook/automation replay",
+			"correction": "Built-in native consumers are registered on default drain; parent claim runs handlers in a savepoint and marks delivered only after success. Compatibility keys are deliberately excluded from webhook/automation consumers.",
+			"evidence": [
+				"apps/api/src/events/outbox-consumer.ts:73-89",
+				"apps/api/src/events/outbox-consumer.ts:199-230",
+				"apps/api/src/webhook/consumer.ts:23-29",
+				"apps/api/src/webhook/consumer.ts:62-67"
+			]
+		},
+		{
+			"claim": "All legacy task/label/view/workspace events are solely fire-and-forget",
+			"correction": "Task and task-label compatibility parents, saved-view parents, and workspace.created are transactional in inspected source. Comment, time-entry and relation publish paths remain uncovered.",
+			"evidence": [
+				"apps/api/src/events/legacy-task-compatibility.ts:47-89",
+				"apps/api/src/view/repository.ts:122-166",
+				"apps/api/src/workspace/controllers/create-workspace.ts:236-268",
+				"apps/api/src/activity/controllers/create-comment.ts:22-68",
+				"apps/api/src/time-entry/controllers/create-time-entry.ts:28-68"
+			]
+		}
+	],
+	"evidenceLimits": {
+		"knownExecutedOutsideThisAudit": "Coordinator reports focused legacy bridge 4 PostgreSQL and 6 unit assertions, plus 11 label unit assertions. Their exact commands/results were not reproduced by this audit.",
+		"testFilesInspected": [
+			"tests/api-integration/legacy-task-outbox-bridge.test.ts:113-190",
+			"tests/api/events/legacy-task-compatibility.test.ts:57-105",
+			"tests/api-integration/notification-fanout-replay.test.ts:54-116"
+		],
+		"pending": "Full final local suite, affected browser journeys on persisted data, universal producer/no-op/failure/replay assertions, customer projection/revocation matrix, and formal end-of-phase independent review. No phase verdict or Thomas acceptance is inferred."
+	}
+}

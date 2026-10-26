@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   getWorkflow: vi.fn(),
   createWorkflow: vi.fn(),
   createWorkflowVersion: vi.fn(),
-  validateWorkflowVersion: vi.fn(),
+  previewWorkflowPublication: vi.fn(),
   publishWorkflowVersion: vi.fn(),
 }));
 
@@ -50,7 +50,7 @@ vi.mock("@/fetchers/workflow", async (importOriginal) => ({
   getWorkflow: mocks.getWorkflow,
   createWorkflow: mocks.createWorkflow,
   createWorkflowVersion: mocks.createWorkflowVersion,
-  validateWorkflowVersion: mocks.validateWorkflowVersion,
+  previewWorkflowPublication: mocks.previewWorkflowPublication,
   publishWorkflowVersion: mocks.publishWorkflowVersion,
 }));
 vi.mock("@/fetchers/service-management", async (importOriginal) => ({
@@ -174,8 +174,9 @@ describe("workflow settings (WF-9)", () => {
     mocks.getWorkflows.mockReset().mockResolvedValue([workflow]);
     mocks.getWorkflow.mockReset().mockResolvedValue(workflow);
     mocks.createWorkflowVersion.mockReset().mockResolvedValue({ number: 3 });
-    mocks.validateWorkflowVersion.mockReset().mockResolvedValue({
+    mocks.previewWorkflowPublication.mockReset().mockResolvedValue({
       valid: false,
+      affected: { people: 3, workItems: 2, projects: 1 },
       unreachableStateTemplateIds: [],
       noOutboundStateTemplateIds: ["tpl-done"],
       rolesWithNoLegalTransition: [],
@@ -201,6 +202,9 @@ describe("workflow settings (WF-9)", () => {
       }),
     );
     const dialog = await screen.findByTestId("workflow-validation");
+    expect(
+      within(dialog).getByText("settings:workflows.validation.impact"),
+    ).toBeVisible();
     const stuck = within(dialog).getByRole("table", {
       name: "settings:workflows.validation.stuckTitle:2",
     });
@@ -212,7 +216,7 @@ describe("workflow settings (WF-9)", () => {
     expect(
       within(dialog).getByText("settings:workflows.validation.noOutbound"),
     ).toBeVisible();
-    expect(mocks.validateWorkflowVersion).toHaveBeenCalledWith({
+    expect(mocks.previewWorkflowPublication).toHaveBeenCalledWith({
       id: "wf-1",
       number: 2,
     });
@@ -256,7 +260,7 @@ describe("workflow settings (WF-9)", () => {
     expect(sent.transitions[0]).not.toHaveProperty("versionId");
     // A saved draft is validated straight away.
     await waitFor(() =>
-      expect(mocks.validateWorkflowVersion).toHaveBeenCalledWith({
+      expect(mocks.previewWorkflowPublication).toHaveBeenCalledWith({
         id: "wf-1",
         number: 3,
       }),

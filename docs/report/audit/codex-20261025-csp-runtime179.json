@@ -1,0 +1,153 @@
+{
+	"recordedAt": "2026-10-25T13:53:29.069948+00:00",
+	"runtimeCheckpoint": 179,
+	"scope": "Real HTTPS response checks; browser interaction and report delivery tested separately.",
+	"records": [
+		{
+			"host": "ticketing.localhost",
+			"path": "/",
+			"attempt": 0,
+			"checks": {
+				"strictTls": true,
+				"status200": true,
+				"policyPresent": true,
+				"nonceMatchesAllScripts": true,
+				"noStore": true,
+				"noEtag": true,
+				"frameBoundary": true,
+				"nosniff": true,
+				"blobImagesOnly": true,
+				"noBlobScripts": true,
+				"reportEndpoint": true
+			}
+		},
+		{
+			"host": "ticketing.localhost",
+			"path": "/",
+			"attempt": 1,
+			"checks": {
+				"strictTls": true,
+				"status200": true,
+				"policyPresent": true,
+				"nonceMatchesAllScripts": true,
+				"noStore": true,
+				"noEtag": true,
+				"frameBoundary": true,
+				"nosniff": true,
+				"blobImagesOnly": true,
+				"noBlobScripts": true,
+				"reportEndpoint": true
+			}
+		},
+		{
+			"host": "ticketing.localhost",
+			"path": "/pdf-preview.html",
+			"attempt": 0,
+			"checks": {
+				"strictTls": true,
+				"status200": true,
+				"policyPresent": true,
+				"nonceMatchesAllScripts": true,
+				"noStore": true,
+				"noEtag": true,
+				"frameBoundary": true,
+				"nosniff": true,
+				"sandboxScriptsOnly": true,
+				"noConnections": true,
+				"noParentReportOnly": true
+			}
+		},
+		{
+			"host": "ticketing.localhost",
+			"path": "/pdf-preview.html",
+			"attempt": 1,
+			"checks": {
+				"strictTls": true,
+				"status200": true,
+				"policyPresent": true,
+				"nonceMatchesAllScripts": true,
+				"noStore": true,
+				"noEtag": true,
+				"frameBoundary": true,
+				"nosniff": true,
+				"sandboxScriptsOnly": true,
+				"noConnections": true,
+				"noParentReportOnly": true
+			}
+		},
+		{
+			"host": "portal.localhost",
+			"path": "/",
+			"attempt": 0,
+			"checks": {
+				"strictTls": true,
+				"status200": true,
+				"policyPresent": true,
+				"nonceMatchesAllScripts": true,
+				"noStore": true,
+				"noEtag": true,
+				"frameBoundary": true,
+				"nosniff": true,
+				"blobImagesOnly": true,
+				"noBlobScripts": true,
+				"reportEndpoint": true
+			}
+		},
+		{
+			"host": "portal.localhost",
+			"path": "/",
+			"attempt": 1,
+			"checks": {
+				"strictTls": true,
+				"status200": true,
+				"policyPresent": true,
+				"nonceMatchesAllScripts": true,
+				"noStore": true,
+				"noEtag": true,
+				"frameBoundary": true,
+				"nosniff": true,
+				"blobImagesOnly": true,
+				"noBlobScripts": true,
+				"reportEndpoint": true
+			}
+		},
+		{
+			"host": "portal.localhost",
+			"path": "/pdf-preview.html",
+			"attempt": 0,
+			"checks": {
+				"strictTls": true,
+				"status200": true,
+				"policyPresent": true,
+				"nonceMatchesAllScripts": true,
+				"noStore": true,
+				"noEtag": true,
+				"frameBoundary": true,
+				"nosniff": true,
+				"sandboxScriptsOnly": true,
+				"noConnections": true,
+				"noParentReportOnly": true
+			}
+		},
+		{
+			"host": "portal.localhost",
+			"path": "/pdf-preview.html",
+			"attempt": 1,
+			"checks": {
+				"strictTls": true,
+				"status200": true,
+				"policyPresent": true,
+				"nonceMatchesAllScripts": true,
+				"noStore": true,
+				"noEtag": true,
+				"frameBoundary": true,
+				"nosniff": true,
+				"sandboxScriptsOnly": true,
+				"noConnections": true,
+				"noParentReportOnly": true
+			}
+		}
+	],
+	"failures": [],
+	"status": "pass"
+}

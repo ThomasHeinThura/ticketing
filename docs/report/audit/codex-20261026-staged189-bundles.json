@@ -1,0 +1,25 @@
+{
+	"recordedAt": "2026-10-26T00:46:22.867Z",
+	"staged": true,
+	"deployed": false,
+	"results": [
+		{
+			"role": "agent",
+			"bytes": 262045,
+			"limit": 350000,
+			"pass": true
+		},
+		{
+			"role": "agent-work-list",
+			"bytes": 349054,
+			"limit": 350000,
+			"pass": true
+		},
+		{
+			"role": "portal",
+			"bytes": 199417,
+			"limit": 200000,
+			"pass": true
+		}
+	]
+}

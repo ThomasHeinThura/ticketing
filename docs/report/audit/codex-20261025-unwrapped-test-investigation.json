@@ -1,0 +1,61 @@
+{
+	"checkedAt": "2026-10-25T02:25:45.407932+00:00",
+	"incident": "One identity integration command launched without dedicated wrapper; interrupted at startup. All test/browser writes paused for inspection.",
+	"resolvedEnvironment": {
+		"databaseUrl": "unset",
+		"migrationUrl": "unset",
+		"CI": "unset",
+		"repositoryEnvFile": "absent",
+		"resolvedDefaultDatabase": "taskdesk_ticketing_v2_test",
+		"resolvedDefaultPort": 5432,
+		"readOnlyDefaultAuthenticationProbe": "28P01 authentication failed"
+	},
+	"protectedDatabase": {
+		"target": "protected_live",
+		"readOnlyTransaction": true,
+		"checkedAt": "2026-10-25T02:23:30.908Z",
+		"migrations": 130,
+		"people": 4,
+		"work_items": 17,
+		"protected_example": 1
+	},
+	"protectedBaselineComparison": [
+		{
+			"table": "work_item",
+			"beforeRows": 17,
+			"afterRows": 17,
+			"exactCopyRowSetMatches": true
+		},
+		{
+			"table": "person",
+			"beforeRows": 4,
+			"afterRows": 4,
+			"exactCopyRowSetMatches": true
+		},
+		{
+			"table": "project",
+			"beforeRows": 1,
+			"afterRows": 1,
+			"exactCopyRowSetMatches": true
+		},
+		{
+			"table": "team",
+			"beforeRows": 1,
+			"afterRows": 1,
+			"exactCopyRowSetMatches": true
+		},
+		{
+			"table": "team_member",
+			"beforeRows": 1,
+			"afterRows": 1,
+			"exactCopyRowSetMatches": true
+		}
+	],
+	"auditCopy": {
+		"migrations": 168,
+		"people": 10,
+		"workItems": 20
+	},
+	"mitigation": "Integration setup and reset/migration helpers now reject the protected live name even with its _test suffix or percent encoding; guard checks actual cached pool target before reset. Agents must still use dedicated wrappers.",
+	"limitations": "No claim that the interrupted command completed tests. Protected core table row sets exactly match the original backup; this comparison does not assert every auxiliary table was compared."
+}

@@ -227,7 +227,13 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
         tolerance: 8,
       },
     }),
-    useSensor(KeyboardSensor),
+    useSensor(KeyboardSensor, {
+      keyboardCodes: {
+        start: ["Space"],
+        end: ["Space", "Enter"],
+        cancel: ["Escape"],
+      },
+    }),
   );
 
   const handleDragStart = (event: DragStartEvent) => {

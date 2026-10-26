@@ -1,0 +1,24 @@
+{
+	"recordedAt": "2026-10-26T02:52:05.323Z",
+	"scope": "Current deployed190 read-only queue labels/layout; prior functional journey retained separately",
+	"strictTls": true,
+	"writesSubmitted": false,
+	"results": [
+		{
+			"width": 375,
+			"theme": "dark",
+			"runStatus": 200,
+			"rawTranslation": [],
+			"overflow": false,
+			"pageErrors": []
+		},
+		{
+			"width": 1440,
+			"theme": "dark",
+			"runStatus": 200,
+			"rawTranslation": [],
+			"overflow": false,
+			"pageErrors": []
+		}
+	]
+}

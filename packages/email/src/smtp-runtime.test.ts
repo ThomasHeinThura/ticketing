@@ -6,7 +6,9 @@ vi.mock("dotenv-mono", () => ({ config: vi.fn() }));
 import {
   bootstrapSmtpConfiguration,
   executeSmtp,
+  openSmtpSocket,
   resolveSmtpConfiguration,
+  SmtpAttemptError,
   type SmtpConfiguration,
   setRuntimeSmtpResolver,
 } from "./smtp-runtime";
@@ -125,6 +127,155 @@ describe("real private SMTP attempts", () => {
       await smtp.received;
       await rejected;
       expect(smtp.messages).toHaveLength(1);
+    } finally {
+      await smtp.close();
+    }
+  });
+  it("classifies an actual SMTP 535 without retaining the reply or password", async () => {
+    const secret = `synthetic-${Date.now()}`;
+    const providerReply = `535 5.7.8 rejected ${secret}`;
+    const sockets = new Set<Socket>();
+    let authSeen = false;
+    const server = net.createServer((socket) => {
+      sockets.add(socket);
+      socket.on("close", () => sockets.delete(socket));
+      socket.on("error", () => {});
+      socket.write("220 synthetic.test ESMTP\r\n");
+      socket.on("data", (chunk) => {
+        for (const line of chunk.toString().split("\r\n")) {
+          if (/^EHLO|^HELO/u.test(line))
+            socket.write("250-synthetic.test\r\n250 AUTH PLAIN LOGIN\r\n");
+          else if (/^AUTH /u.test(line)) {
+            authSeen = true;
+            socket.write(`${providerReply}\r\n`);
+          } else if (line === "QUIT") socket.end("221 bye\r\n");
+        }
+      });
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const address = server.address();
+    if (!address || typeof address === "string")
+      throw new Error("SMTP auth fixture address missing");
+    try {
+      const config: SmtpConfiguration = {
+        options: {
+          host: "127.0.0.1",
+          port: address.port,
+          secure: false,
+          ignoreTLS: true,
+          auth: { user: "synthetic-user", pass: secret },
+        },
+        from: "sender@example.test",
+      };
+      const failure = await executeSmtp(config, null, {
+        deadlineMs: 2000,
+      }).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      expect(authSeen).toBe(true);
+      expect(failure).toBeInstanceOf(SmtpAttemptError);
+      expect(failure).toMatchObject({
+        kind: "failed",
+        ambiguous: false,
+        diagnostic: "authentication",
+        message: "SMTP attempt failed",
+      });
+      expect(String(failure)).not.toContain(secret);
+      expect(String(failure)).not.toContain("535");
+    } finally {
+      for (const socket of sockets) socket.destroy();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+  it("classifies a refused private connection without leaking socket details", async () => {
+    const reserved = net.createServer();
+    await new Promise<void>((resolve) =>
+      reserved.listen(0, "127.0.0.1", resolve),
+    );
+    const address = reserved.address();
+    if (!address || typeof address === "string")
+      throw new Error("SMTP refusal fixture address missing");
+    await new Promise<void>((resolve) => reserved.close(() => resolve()));
+
+    const config: SmtpConfiguration = {
+      options: { host: "127.0.0.1", port: address.port, secure: false },
+      from: "sender@example.test",
+      connect: (signal) =>
+        openSmtpSocket(
+          {
+            host: "127.0.0.1",
+            port: address.port,
+            secure: false,
+          },
+          signal,
+        ),
+    };
+    const failure = await executeSmtp(config, null, { deadlineMs: 2000 }).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    expect(failure).toMatchObject({
+      kind: "failed",
+      ambiguous: false,
+      diagnostic: "connection",
+      message: "SMTP attempt failed",
+    });
+  });
+  it("classifies a TLS handshake failure from an injected private endpoint", async () => {
+    const sockets = new Set<Socket>();
+    const server = net.createServer((socket) => {
+      sockets.add(socket);
+      socket.on("close", () => sockets.delete(socket));
+      socket.on("error", () => {});
+      socket.write("220 plaintext is not TLS\r\n");
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const address = server.address();
+    if (!address || typeof address === "string")
+      throw new Error("SMTP TLS fixture address missing");
+    try {
+      const config: SmtpConfiguration = {
+        options: { host: "127.0.0.1", port: address.port, secure: true },
+        from: "sender@example.test",
+        connect: (signal) =>
+          openSmtpSocket(
+            {
+              host: "127.0.0.1",
+              port: address.port,
+              secure: true,
+              servername: "smtp.example.test",
+            },
+            signal,
+          ),
+      };
+      const failure = await executeSmtp(config, null, {
+        deadlineMs: 2000,
+      }).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      expect(failure).toMatchObject({
+        kind: "failed",
+        ambiguous: false,
+        diagnostic: "tls",
+        message: "SMTP attempt failed",
+      });
+    } finally {
+      for (const socket of sockets) socket.destroy();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+  it("classifies a verification greeting timeout without an ambiguous send", async () => {
+    const smtp = await receiver({ stallGreeting: true });
+    try {
+      await expect(
+        executeSmtp(smtp.config, null, { deadlineMs: 150 }),
+      ).rejects.toMatchObject({ kind: "deadline", ambiguous: false });
     } finally {
       await smtp.close();
     }

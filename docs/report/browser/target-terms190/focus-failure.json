@@ -1,0 +1,9 @@
+{
+	"recordedAt": "2026-10-26",
+	"runtimeMigrationCount": 190,
+	"pageAndDialogTargetTermsRendered": true,
+	"failedCheck": "Escape dismissal did not restore the project delete trigger after waiting for transition",
+	"approvalSubmitted": false,
+	"affectedScope": "Global pending-action controlled dialog; confirmed disabled async project trigger",
+	"repairStatus": "Ref-based handoff source passes62 focused tests; rebuild/browser rerun in progress"
+}

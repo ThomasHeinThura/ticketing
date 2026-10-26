@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
@@ -13,6 +13,91 @@ import { invalidateNativeAuthorization } from "../ws";
 import { retryIdentityGrantClosure } from "./membership-projection";
 import { transitionPersonLifecycleInTransaction } from "./person-lifecycle";
 import { getScimExternalIdentity } from "./repository";
+
+/** Write provisioning only after the caller has revalidated its locked SCIM connection. */
+export async function enqueueScimIdentityProvisioned(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  input: { connectionId: string; personId: string },
+) {
+  const [connection] = await tx
+    .select({
+      portalScope: schema.identityConnectionTable.portalScope,
+      organisationId: schema.identityConnectionTable.organisationId,
+      defaultWorkspaceId: schema.identityConnectionTable.defaultWorkspaceId,
+    })
+    .from(schema.identityConnectionTable)
+    .where(eq(schema.identityConnectionTable.id, input.connectionId))
+    .limit(1);
+  const [person] = await tx
+    .select({
+      organisationId: schema.personTable.organisationId,
+      side: schema.personTable.side,
+    })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.id, input.personId))
+    .limit(1);
+  if (!connection || !person)
+    throw new TypeError("SCIM provisioning scope is unavailable");
+
+  let workspaceId: string | null = null;
+  if (connection.portalScope === "agent") {
+    if (person.side !== "staff")
+      throw new TypeError("SCIM agent identity has an invalid person side");
+    if (connection.defaultWorkspaceId) {
+      const [workspace] = await tx
+        .select({
+          id: schema.workspaceTable.id,
+          organisationId: schema.workspaceTable.organisationId,
+        })
+        .from(schema.workspaceTable)
+        .innerJoin(
+          schema.organisationTable,
+          eq(schema.organisationTable.id, schema.workspaceTable.organisationId),
+        )
+        .where(
+          and(
+            eq(schema.workspaceTable.id, connection.defaultWorkspaceId),
+            eq(schema.organisationTable.isInternal, true),
+            isNull(schema.workspaceTable.deletedAt),
+            isNull(schema.organisationTable.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (workspace && workspace.organisationId === person.organisationId)
+        workspaceId = workspace.id;
+    }
+  } else if (
+    connection.portalScope === "customer" &&
+    (person.side !== "customer" ||
+      connection.organisationId !== person.organisationId)
+  ) {
+    throw new TypeError("SCIM customer identity has an invalid organisation");
+  } else if (connection.portalScope !== "customer") {
+    throw new TypeError("SCIM connection has an invalid portal scope");
+  }
+
+  const now = new Date();
+  await enqueueOutboxEvent(tx, {
+    id: `evt_${createId()}`,
+    kind: "identity.provisioned",
+    occurredAt: now.toISOString(),
+    actor: { type: "system", id: null, name: "TaskDesk SCIM" },
+    scope: eventScope({
+      workspaceId,
+      organisationId: null,
+      projectId: null,
+    }),
+    payload: {
+      identityConnectionId: input.connectionId,
+      personId: input.personId,
+      via: "scim",
+      organisationId: person.organisationId,
+    },
+    causationId: null,
+    depth: 0,
+    originAutomationId: null,
+  });
+}
 
 /** SCIM source wrapper: the shared transition owns person-wide state and grants. */
 export async function setScimIdentityActive(

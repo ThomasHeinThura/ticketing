@@ -1,46 +1,137 @@
 {
-	"generated": "2026-10-24T14:55:38.786882Z",
-	"source": "docs/requirements-index.json + Opus source audit (no browser verification implied)",
+	"generated": "2026-10-26T14:30:35.199383+00:00",
+	"source": "673 indexed clauses: 661 in P0–P5 and 12 in P6. Requirement bars use per-ID assessments. Scoped test and browser passes do not count as whole-clause acceptance; earlier checkpoints are retained in validation_history.",
 	"phases": [
 		{
 			"id": "P0",
 			"name": "Foundation",
-			"total": 21,
+			"total": 22,
 			"states": {
-				"implemented_tested": 12,
-				"implemented_untested": 0,
-				"partial": 6,
+				"implemented_tested": 0,
+				"implemented_untested": 22,
+				"partial": 0,
 				"missing": 0,
-				"external_blocked": 3
+				"external_blocked": 0,
+				"browser_verified": 0
 			},
 			"unaudited": 0,
 			"gaps": [],
 			"actions": [
-				"Route DELETE /api/project/{id} and DELETE /api/workspace/{workspaceId} through createPendingAction (elevated, session-only, typed-name confirmation) and add sessionOnly:true to project/policy.ts; add integration tests mirroring pending-action-comment-deletion.test.ts",
-				"Convert legacy DELETE /api/task/{id} to soft delete via the work-item deletion pending action (or 410 it behind the existing Sunset header) and remove direct S3 deletion from task/controllers/delete-task.ts",
-				"Remove or rewire packages/mcp delete_* tools to the canonical 202 routes and return pendingActionId for polling; add MCP unit tests",
-				"Wrap label, column, canned-response, milestone, prerequisite, document-link, time-entry and workspace-role deletes in pending actions using the generic click-deletion-executor.ts pattern",
-				"Add a 'failed' terminal path in approval executors (catch execution error, mark failed, emit pending_action.executed{outcome:failed}, audit) with a fault-injection test",
-				"Add Idempotency-Key middleware for 202 delete requests and a pending_action.requested notification resolver for api-key/mcp origins via enqueueNotificationEvent",
-				"Add integration tests asserting replay of fan-out hits notification_event_person_unique / notification_delivery_event_recipient_channel_unique without duplicate rows",
-				"Migrate legacy publishEvent callers to recordWorkItemEvent/enqueueOutboxEvent inside their transactions, keeping the in-memory bus for websocket hints only"
+				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "pass_with_conditions",
-				"findings": 7,
-				"note": "round 4 (final): 0 critical, 0 high, 1 medium, 6 low. Rounds: 26/19/15 findings before. AI reviewed, NOT Thomas-accepted; browser verification still owed",
-				"items": []
+				"verdict": "pending",
+				"findings": 0,
+				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
+				"roundsConsumed": 0,
+				"maxTotalRounds": 3
 			},
 			"gates": {
-				"pass": 10,
-				"fail": 1,
-				"not_run": 3,
-				"note": "pass: integration 3836, unit (api 1140, web 1949, mcp 52, perms 267, domain 676, ui 325), typecheck 9/9, lint 0 errors, events, raw-elements, route-policy, gitleaks staged. fail: contrast G3 (pre-existing). not run: browser journeys, bundle budget, Trivy"
+				"pass": 8,
+				"fail": 0,
+				"not_run": 6,
+				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"checks": [
+					{
+						"check": "lint",
+						"status": "pass",
+						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+					},
+					{
+						"check": "typecheck",
+						"status": "pending final all-package run",
+						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
+					},
+					{
+						"check": "all-package unit",
+						"status": "pending final all-package run",
+						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
+					},
+					{
+						"check": "route-policy",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "permission suite",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "tokens and contrast",
+						"status": "pass",
+						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+					},
+					{
+						"check": "full integration",
+						"status": "pending new slices",
+						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
+					},
+					{
+						"check": "work-list bundle budget",
+						"status": "pass",
+						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
+					},
+					{
+						"check": "persisted browser matrix",
+						"status": "pending"
+					},
+					{
+						"check": "image build/scan/boot",
+						"status": "pending final source image and triage",
+						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
+					},
+					{
+						"check": "performance",
+						"status": "pending"
+					},
+					{
+						"check": "tooling",
+						"status": "pass"
+					},
+					{
+						"check": "accessibility fixture",
+						"status": "pass"
+					},
+					{
+						"check": "application and edge security headers",
+						"status": "pass",
+						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+					}
+				]
 			},
-			"states_locked": true,
-			"carry": [
-				"P4: automations runtime, service keys, mcp_destructive",
-				"Instance purge route not mounted"
+			"states_locked": false,
+			"carry": [],
+			"historical_summary": {
+				"states": {
+					"implemented_tested": 12,
+					"implemented_untested": 0,
+					"partial": 6,
+					"missing": 0,
+					"external_blocked": 3
+				},
+				"review": {
+					"verdict": "pass_with_conditions",
+					"findings": 7,
+					"note": "round 4 (final): 0 critical, 0 high, 1 medium, 6 low. Rounds: 26/19/15 findings before. AI reviewed, NOT Thomas-accepted; browser verification still owed",
+					"items": []
+				},
+				"gates": {
+					"pass": 10,
+					"fail": 1,
+					"not_run": 3,
+					"note": "pass: integration 3836, unit (api 1140, web 1949, mcp 52, perms 267, domain 676, ui 325), typecheck 9/9, lint 0 errors, events, raw-elements, route-policy, gitleaks staged. fail: contrast G3 (pre-existing). not run: browser journeys, bundle budget, Trivy"
+				}
+			},
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
+			"audit_sources": ["docs/report/audit/audit-P0.json"],
+			"browser": {
+				"verified": 0,
+				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+			},
+			"current_source_gaps": [],
+			"remaining_summary": [
+				"Full safety/browser matrix and final gates; fresh independent review."
 			]
 		},
 		{
@@ -48,51 +139,156 @@
 			"name": "Core work",
 			"total": 181,
 			"states": {
-				"implemented_tested": 140,
-				"implemented_untested": 0,
-				"partial": 28,
-				"missing": 8,
-				"external_blocked": 5
+				"implemented_tested": 0,
+				"implemented_untested": 180,
+				"partial": 1,
+				"missing": 0,
+				"external_blocked": 0,
+				"browser_verified": 0
 			},
 			"unaudited": 0,
-			"gaps": [],
+			"gaps": [
+				"WI-13: No customer-owned organisation backlog rank path; item rank is staff-only and customer principals fail closed.",
+				"VW-13: Assignee and priority grouping with field-setting drops exist; label and custom-field grouping are absent.",
+				"VW-19: Column choice is URL-addressable, but custom fields are absent from the column type and a per-project per-user persisted choice is unproven.",
+				"VW-20: Only key/title/priority/dueDate sort; state and assignee excluded and modifier-click multi-column sort absent.",
+				"VW-22: State, priority and assignee editors pass persisted reload and responsive checks in both themes; coordinator inspected six hydrated captures. Title, due date and custom-field inline editors remain absent; viewer browser matrix remains pending.",
+				"VW-27: Assignee and module grouping are wired; epic grouping is absent.",
+				"PR-5: Parent-descendant aggregate reporting and combined board are not wired.",
+				"AT-9: PDF is a download card; no sandboxed viewer/iframe or CSP-scoped preview found.",
+				"RH-15: Epic/initiative reporting roll-up not located in current report source; P5 report integration remains to verify.",
+				"SV-10: Current PostgreSQL path passes the unchanged10k-item benchmark at97.4ms p95, so no enablement trigger is present. The optional search.meilisearch plugin itself is not implemented; retain that source gap without claiming PostgreSQL insufficiency."
+			],
 			"actions": [
-				"Route legacy DELETE /api/task/{id} and MCP delete_task through the work-item pending-action deletion (202) or remove them; redirect dashboard task/$taskId_.tsx to the canonical work-item detail",
-				"Convert DELETE /api/projects/{projectId} to a pending action (typed project key + step-up) reusing pending-action/approval-contract.ts and update tests/api-integration/project-delete.test.ts",
-				"Add work-item and project purge job to apps/api/src/scheduler/index.ts honouring purge_after/30-day window, with PostgreSQL integration test",
-				"Add server-side project key validation (^[A-Z]{2,8}$) in apps/api/src/project/schema.ts plus rename confirmation warning in dashboard/settings/projects/$projectId/general.tsx",
-				"Filter watcher.muted in notification/repository.ts listApprovalWatcherPersonIds and create implicit assignee watcher in assign-work-item.ts; add tests",
-				"Add API integration test for bulk 'transition' with one illegal edge (WI-26) in tests/api-integration/work-item-bulk.test.ts",
-				"Add gantt-task-bar drag/resize unit test and calendar drag-to-date via existing dnd-kit + canonical PATCH (VW-26/29)",
-				"Persist list collapsed groups and chosen columns via user-preference whitelist (VW-15/19); add SLA badge to Kaneo TaskRow using work-item-sla",
-				"Wire enqueueNotificationEvent in assign-work-item.ts/unassign-work-item.ts with a resolver for new/previous assignee (actor excluded) and add integration tests in tests/api-integration/work-item-assign.test.ts / work-item-unassign.test.ts",
-				"Enforce is_epic (no parent) in set-work-item-parent.ts and create path, with 422 test in work-item-hierarchy.test.ts",
-				"Extend apps/api/src/search/repository.ts with a workItemTable branch (reach-scoped, title>description weighting, key exact match) and point search-command-menu navigation at /agent canonical work-item routes; add global-search tests",
-				"Add project.default_assignee_id migration + create-time application (AS-11) and request-type override (AS-12); resolve set_assignee \"default\" through it",
-				"Expose person.active/on-project in work-item responses and render \"Name (inactive)\" / \"(no longer on this project)\" via resolveAssigneeDisplayStatus",
-				"Wire CommentEditor in work-item-activity.tsx to canonical attachment presign/complete for paste/drop (CA-15/AT-11) and allow multi-file on detail picker (AT-12)",
-				"Add blocked badge on work-item cards/detail from blocked_by relations with open state (RH-17) and an open-children warning in the transition UI (RH-10)",
-				"Add tests: comment PATCH with visibility is ignored/rejected (CA-4); no activity update/delete route exists (CA-10)"
+				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "pass_with_conditions",
-				"findings": 16,
-				"note": "round 2 of P1: 0 critical, 0 high, 7 medium, 9 low; round 1 had 3 high/20 medium. Round-2 conditions (Q1-Q3,Q5,Q6) fixed and re-tested; AI reviewed, NOT Thomas-accepted",
-				"items": []
+				"verdict": "pending",
+				"findings": 0,
+				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
+				"roundsConsumed": 0,
+				"maxTotalRounds": 3
 			},
 			"gates": {
-				"pass": 10,
-				"fail": 1,
-				"not_run": 2,
-				"note": "pass: integration 3963 (all green after fixes), unit (api 1308, web 2203, mcp 52, perms 277, domain 676, ui 325), typecheck 9/9, lint 0 errors, events, raw-elements, route-policy. fail: contrast G3 (pre-existing, P1 delta zero). browser: board, grouping, sheet, calendar, members, templates, states editor, approval dialog checked; not run: bundle budget, Trivy"
+				"pass": 8,
+				"fail": 0,
+				"not_run": 6,
+				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"checks": [
+					{
+						"check": "lint",
+						"status": "pass",
+						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+					},
+					{
+						"check": "typecheck",
+						"status": "pending final all-package run",
+						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
+					},
+					{
+						"check": "all-package unit",
+						"status": "pending final all-package run",
+						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
+					},
+					{
+						"check": "route-policy",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "permission suite",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "tokens and contrast",
+						"status": "pass",
+						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+					},
+					{
+						"check": "full integration",
+						"status": "pending new slices",
+						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
+					},
+					{
+						"check": "work-list bundle budget",
+						"status": "pass",
+						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
+					},
+					{
+						"check": "persisted browser matrix",
+						"status": "pending"
+					},
+					{
+						"check": "image build/scan/boot",
+						"status": "pending final source image and triage",
+						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
+					},
+					{
+						"check": "performance",
+						"status": "pending"
+					},
+					{
+						"check": "tooling",
+						"status": "pass"
+					},
+					{
+						"check": "accessibility fixture",
+						"status": "pass"
+					},
+					{
+						"check": "application and edge security headers",
+						"status": "pass",
+						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+					}
+				]
 			},
-			"states_locked": true,
+			"states_locked": false,
 			"carry": [
-				"Virtualisation (needs a dependency decision)",
-				"WIP limits (needs schema)",
-				"Multi-column sort, inline edit, dependency arrows",
-				"PDF preview, deleted-file recovery",
-				"Roll-ups, owner team"
+				"SV-10: Current PostgreSQL path passes the unchanged10k-item benchmark at97.4ms p95, so no enablement trigger is present. The optional search.meilisearch plugin itself is not implemented; retain that source gap without claiming PostgreSQL insufficiency."
+			],
+			"historical_summary": {
+				"states": {
+					"implemented_tested": 140,
+					"implemented_untested": 0,
+					"partial": 28,
+					"missing": 8,
+					"external_blocked": 5
+				},
+				"review": {
+					"verdict": "pass_with_conditions",
+					"findings": 16,
+					"note": "round 2 of P1: 0 critical, 0 high, 7 medium, 9 low; round 1 had 3 high/20 medium. Round-2 conditions (Q1-Q3,Q5,Q6) fixed and re-tested; AI reviewed, NOT Thomas-accepted",
+					"items": []
+				},
+				"gates": {
+					"pass": 10,
+					"fail": 1,
+					"not_run": 2,
+					"note": "pass: integration 3963 (all green after fixes), unit (api 1308, web 2203, mcp 52, perms 277, domain 676, ui 325), typecheck 9/9, lint 0 errors, events, raw-elements, route-policy. fail: contrast G3 (pre-existing, P1 delta zero). browser: board, grouping, sheet, calendar, members, templates, states editor, approval dialog checked; not run: bundle budget, Trivy"
+				}
+			},
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
+			"audit_sources": [
+				"docs/report/audit/audit-P1a.json",
+				"docs/report/audit/audit-P1b.json"
+			],
+			"browser": {
+				"verified": 0,
+				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+			},
+			"current_source_gaps": [
+				{
+					"id": "SV-10",
+					"implementation": "partial",
+					"gaps": [
+						"Current PostgreSQL path passes the unchanged10k-item benchmark at97.4ms p95, so no enablement trigger is present. The optional search.meilisearch plugin itself is not implemented; retain that source gap without claiming PostgreSQL insufficiency."
+					]
+				}
+			],
+			"remaining_summary": [
+				"Complete remaining core screen, role, keyboard, flag and Kaneo parity checks on the final build.",
+				"Keep optional search-plugin scope explicit; current PostgreSQL benchmark passes."
 			]
 		},
 		{
@@ -100,203 +296,1187 @@
 			"name": "Service desk",
 			"total": 137,
 			"states": {
-				"implemented_tested": 117,
-				"implemented_untested": 0,
-				"partial": 15,
+				"implemented_tested": 0,
+				"implemented_untested": 136,
+				"partial": 1,
 				"missing": 0,
-				"external_blocked": 5
+				"external_blocked": 0,
+				"browser_verified": 0
 			},
 			"unaudited": 0,
-			"gaps": [],
+			"gaps": [
+				"SLA-9: Contract explicitly holds resolved-pause continuity and disclaims correct reopened resolution metrics for this release; keep incomplete, but do not treat as an unapproved regression.",
+				"RT-9: Type position is editable and group sort is derived from the minimum member position; groups lack an independent manually editable group order.",
+				"IQ-5: Queue now has age column; suggested duplicates still appear in selected detail rather than each queue row.",
+				"IQ-19: Saved-view run path accepts only work_item entity; no pair of submission/work-item saved views presented as a team-owned queue.",
+				"IQ-20: Saved views support team/private visibility, but no composed queue object over the required two entities is exposed in triage.",
+				"IQ-21: Fixed triage URL now carries multiple filters, but no URL-addressable saved queue exists because IQ-19/20 pair is absent."
+			],
 			"actions": [
-				"Add a domain-event outbox consumer job (separate from the notification outbox-drain) that claims unprocessed outbox rows and routes sla.at_risk/sla.breached/submission.replied through materializeNotificationFanout with resolvers; integration test in a dedicated DB (never the live browser DB)",
-				"Implement a scheduled-transition executor job (every minute, leader-locked) that runs due scheduled_transition rows through transitionWorkItem as a system actor; tests/api/scheduler registration and integration tests",
-				"Add a compact SLA badge (Badge + icon + remaining text) to work-item-kaneo-list/board card/triage rows from work_item_sla_cache; render pause reason/since and an at-risk marker in work-item-sla.tsx; extend work-item-sla.test.tsx",
-				"Add instance_setting.clarification_window_days (migration, default 14) and an auto-decline branch in the 15-minute reminder-scan with customer-reopenable state; domain plus integration tests",
-				"Add age and suggested-duplicate count columns to triage.tsx using the existing Table and duplicate endpoint; extend triage.test.tsx",
-				"Add an audit-purge job (configurable retention, writes audit.purged with count, anchors the chain) and a GET work-item reconstruction endpoint over packages/domain/src/audit reconstruct",
-				"Add the SLA escalation path: on sla.breached, walk project stakeholders by escalationOrder with escalationWaitMinutes (no-op when none); integration test",
-				"Expose customer-safe SLA state/due time on portal submission/work-item detail (SLA-21) with an isolation test that no policy internals leak"
+				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "pass_with_conditions",
-				"findings": 14,
-				"note": "2 rounds (round 1: 2 high; round 2: 0 high). AI reviewed, not accepted"
+				"verdict": "pending",
+				"findings": 0,
+				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
+				"roundsConsumed": 0,
+				"maxTotalRounds": 3
 			},
 			"gates": {
-				"pass": 10,
-				"fail": 1,
-				"not_run": 2,
-				"note": "contrast G3 pre-existing; bundle budget and Trivy not run"
+				"pass": 8,
+				"fail": 0,
+				"not_run": 6,
+				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"checks": [
+					{
+						"check": "lint",
+						"status": "pass",
+						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+					},
+					{
+						"check": "typecheck",
+						"status": "pending final all-package run",
+						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
+					},
+					{
+						"check": "all-package unit",
+						"status": "pending final all-package run",
+						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
+					},
+					{
+						"check": "route-policy",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "permission suite",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "tokens and contrast",
+						"status": "pass",
+						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+					},
+					{
+						"check": "full integration",
+						"status": "pending new slices",
+						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
+					},
+					{
+						"check": "work-list bundle budget",
+						"status": "pass",
+						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
+					},
+					{
+						"check": "persisted browser matrix",
+						"status": "pending"
+					},
+					{
+						"check": "image build/scan/boot",
+						"status": "pending final source image and triage",
+						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
+					},
+					{
+						"check": "performance",
+						"status": "pending"
+					},
+					{
+						"check": "tooling",
+						"status": "pass"
+					},
+					{
+						"check": "accessibility fixture",
+						"status": "pass"
+					},
+					{
+						"check": "application and edge security headers",
+						"status": "pass",
+						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+					}
+				]
 			},
-			"states_locked": true,
+			"states_locked": false,
 			"carry": [
-				"P3: customer reopen route, portal notifications, server queue filters",
-				"P4: audit export, retention setting, impersonation",
-				"P5: knowledge-base deflection",
-				"Needs a decision: holiday dataset for calendar presets"
+				"SLA-9: Contract explicitly holds resolved-pause continuity and disclaims correct reopened resolution metrics for this release; keep incomplete, but do not treat as an unapproved regression."
+			],
+			"historical_summary": {
+				"states": {
+					"implemented_tested": 117,
+					"implemented_untested": 0,
+					"partial": 15,
+					"missing": 0,
+					"external_blocked": 5
+				},
+				"review": {
+					"verdict": "pass_with_conditions",
+					"findings": 14,
+					"note": "2 rounds (round 1: 2 high; round 2: 0 high). AI reviewed, not accepted"
+				},
+				"gates": {
+					"pass": 10,
+					"fail": 1,
+					"not_run": 2,
+					"note": "contrast G3 pre-existing; bundle budget and Trivy not run"
+				}
+			},
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
+			"audit_sources": ["docs/report/audit/audit-P2.json"],
+			"browser": {
+				"verified": 0,
+				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+			},
+			"current_source_gaps": [
+				{
+					"id": "SLA-9",
+					"implementation": "partial",
+					"gaps": [
+						"Contract explicitly holds resolved-pause continuity and disclaims correct reopened resolution metrics for this release; keep incomplete, but do not treat as an unapproved regression."
+					]
+				}
+			],
+			"remaining_summary": [
+				"Saved-queue functional journey passes26 checks; deployed192 mobile follow-up passes. Complete remaining intake, SLA, approval role/flag and Kaneo parity cases.",
+				"Run final integration gates and independent review."
 			]
 		},
 		{
 			"id": "P3",
 			"name": "Portal & identity",
-			"total": 53,
+			"total": 64,
 			"states": {
-				"implemented_tested": 34,
-				"implemented_untested": 0,
-				"partial": 9,
+				"implemented_tested": 0,
+				"implemented_untested": 56,
+				"partial": 3,
 				"missing": 0,
-				"external_blocked": 10
+				"external_blocked": 5,
+				"browser_verified": 0
 			},
 			"unaudited": 0,
-			"gaps": [],
+			"gaps": [
+				"CP-5: Default customer wording is rendered, but the required customer-scope terminology overlay is absent from portal code; an instance override from request to case cannot change the portal vocabulary.",
+				"CP-12: New invitee signup is wired only for password; email OTP, magic link and scoped SSO signup/accept are not integrated.",
+				"IP-9: Typed-domain selection, fixed portal handoff and persisted organisation snapshot binding are implemented. Fresh end-to-end mock-issuer journey and real Entra owner validation remain pending; do not claim those browser checks from scoped ledger tests.",
+				"IP-27: Local Entra admission source and mocks inspected; live Entra app-role/removal behavior remains external acceptance.",
+				"IP-13: Local source and mock tests present; real Microsoft Entra provisioning interoperability remains external acceptance.",
+				"IP-31: Local tolerance source inspected; real Entra deviation acceptance remains external.",
+				"IP-32: Local duplicate behavior source inspected; live Entra duplicate retry interoperability remains external.",
+				"IP-18: Explicit authenticated A-session, user-confirmed, audited cross-connection link flow is absent.",
+				"IP-30: No positive TaskDesk-verified address or administrator-confirmed claim flow found for an import placeholder; SSO negative rule is present.",
+				"IP-28: Local group rederivation source present; live Entra group/app-role behavior remains external acceptance.",
+				"CP-24: Portal root invitation and transactional acceptance exist, but new signup via email OTP, magic link or SSO is absent (CP-12).",
+				"CP-26: Exact invitation limit values are hard-coded in CUSTOMER_INVITATION_LIMITS, not instance configuration.",
+				"CP-29: Generic localized failure return and selected-connection/instance-level bounded failure ledger are implemented;35 scoped identity-ledger tests passed. Full portal SSO browser journey against a mock issuer and real Entra owner validation remain pending.",
+				"IP-35: Generic localized failure return and selected-connection/instance-level bounded failure ledger are implemented;35 scoped identity-ledger tests passed. Full portal SSO browser journey against a mock issuer and real Entra owner validation remain pending."
+			],
 			"actions": [
-				"Add portal integration test: internal comment on linked work item absent from GET /api/portal/submissions/{ref} (CP-3)",
-				"Replace portal.intake.accepted copy and requests.description in i18n/en-US.json with customer terminology; add test (CP-5/CP-10)",
-				"Implement organisation-visible portal list/detail branch (customer_visibility='organisation' same org) plus participants read, with 404 cross-org tests (CP-16)",
-				"Write provisioning_event (auth.failed) on SCIM bearer 401 in apps/api/src/identity/scim-authentication.ts; add per-connection rate limit and body-size cap with tests (IP-14/IP-24)",
-				"Add POST /api/portal/requests/{ref}/priority escalate-only (403 on decrease) with activity + notification and portal-cannot-deescalate test (CP-7)",
-				"Expose customer-safe SLA due time/state in findPortalSubmission and render in $ref.tsx (CP-6)",
-				"Add God Mode organisation Identity tab reusing identity-connection-editor for customer scope (CP-17/IP-5)",
-				"Add plugin-health job pinging enabled connections' discovery docs and surfacing in God Mode (IP-25)"
+				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "pass_with_conditions",
-				"findings": 14,
-				"note": "1 round: 0 high, 8 medium (conditions fixed and re-tested). AI reviewed, not accepted. Real Entra cases stay externally blocked"
+				"verdict": "pending",
+				"findings": 0,
+				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
+				"roundsConsumed": 0,
+				"maxTotalRounds": 3
 			},
 			"gates": {
-				"pass": 10,
-				"fail": 1,
-				"not_run": 2,
-				"note": "contrast G3 pre-existing; bundle budget and Trivy not run"
+				"pass": 8,
+				"fail": 0,
+				"not_run": 6,
+				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"checks": [
+					{
+						"check": "lint",
+						"status": "pass",
+						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+					},
+					{
+						"check": "typecheck",
+						"status": "pending final all-package run",
+						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
+					},
+					{
+						"check": "all-package unit",
+						"status": "pending final all-package run",
+						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
+					},
+					{
+						"check": "route-policy",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "permission suite",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "tokens and contrast",
+						"status": "pass",
+						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+					},
+					{
+						"check": "full integration",
+						"status": "pending new slices",
+						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
+					},
+					{
+						"check": "work-list bundle budget",
+						"status": "pass",
+						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
+					},
+					{
+						"check": "persisted browser matrix",
+						"status": "pending"
+					},
+					{
+						"check": "image build/scan/boot",
+						"status": "pending final source image and triage",
+						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
+					},
+					{
+						"check": "performance",
+						"status": "pending"
+					},
+					{
+						"check": "tooling",
+						"status": "pass"
+					},
+					{
+						"check": "accessibility fixture",
+						"status": "pass"
+					},
+					{
+						"check": "application and edge security headers",
+						"status": "pass",
+						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+					}
+				]
 			},
 			"carry": [
-				"Customer invitations (CP-11/12/13) and typed-domain SSO routing (CP-17/18, IP-9/29): contract missing",
-				"Portal notification surface for customers (host guard denies notification routes)",
-				"Real Entra acceptance (IP-13/27/28/31/32): needs a tenant",
-				"P4: webhooks on escalation, organisation pages, add-participant route"
+				"CP-5: Default portal wording uses request language, but portal routes/components do not consume the instance customer-scope terminology overlay; renaming request to case cannot change portal vocabulary.",
+				"CP-12: Invitation-gated password signup and customer-only acceptance exist; the invite page still offers no new-user email OTP, magic-link or scoped SSO signup/accept path. Local OTP/magic sign-in endpoint support does not supply that signup flow.",
+				"IP-27: Local Entra admission source and mocks inspected; live Entra app-role/removal behavior remains external acceptance.",
+				"IP-13: Local source and mock tests present; real Microsoft Entra provisioning interoperability remains external acceptance.",
+				"IP-31: Local tolerance source inspected; real Entra deviation acceptance remains external.",
+				"IP-32: Local duplicate behavior source inspected; live Entra duplicate retry interoperability remains external.",
+				"IP-18: Cross-connection subject/email auto-link refusal is present, but no authenticated A-session, explicit user confirmation and audited cross-connection link flow was found.",
+				"IP-28: Local group rederivation source present; live Entra group/app-role behavior remains external acceptance.",
+				"CP-24: Portal-root invitation acceptance, invited password signup and a fresh customer portal login were exercised on one owned initial-contact journey. CP-12 provider parity remains open: new-user email OTP, magic link and scoped SSO signup/accept are absent. The browser journey does not prove mismatch, wrong-host or concurrent-accept cases."
 			],
-			"states_locked": true
+			"states_locked": false,
+			"historical_summary": {
+				"states": {
+					"implemented_tested": 34,
+					"implemented_untested": 0,
+					"partial": 9,
+					"missing": 0,
+					"external_blocked": 10
+				},
+				"review": {
+					"verdict": "pass_with_conditions",
+					"findings": 14,
+					"note": "1 round: 0 high, 8 medium (conditions fixed and re-tested). AI reviewed, not accepted. Real Entra cases stay externally blocked"
+				},
+				"gates": {
+					"pass": 10,
+					"fail": 1,
+					"not_run": 2,
+					"note": "contrast G3 pre-existing; bundle budget and Trivy not run"
+				}
+			},
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
+			"audit_sources": ["docs/report/audit/audit-P3.json"],
+			"browser": {
+				"verified": 0,
+				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+			},
+			"current_source_gaps": [
+				{
+					"id": "CP-5",
+					"implementation": "partial",
+					"gaps": [
+						"Default portal wording uses request language, but portal routes/components do not consume the instance customer-scope terminology overlay; renaming request to case cannot change portal vocabulary."
+					]
+				},
+				{
+					"id": "CP-12",
+					"implementation": "partial",
+					"gaps": [
+						"Invitation-gated password signup and customer-only acceptance exist; the invite page still offers no new-user email OTP, magic-link or scoped SSO signup/accept path. Local OTP/magic sign-in endpoint support does not supply that signup flow."
+					]
+				},
+				{
+					"id": "IP-27",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Local Entra admission source and mocks inspected; live Entra app-role/removal behavior remains external acceptance."
+					]
+				},
+				{
+					"id": "IP-13",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Local source and mock tests present; real Microsoft Entra provisioning interoperability remains external acceptance."
+					]
+				},
+				{
+					"id": "IP-31",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Local tolerance source inspected; real Entra deviation acceptance remains external."
+					]
+				},
+				{
+					"id": "IP-32",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Local duplicate behavior source inspected; live Entra duplicate retry interoperability remains external."
+					]
+				},
+				{
+					"id": "IP-28",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Local group rederivation source present; live Entra group/app-role behavior remains external acceptance."
+					]
+				},
+				{
+					"id": "CP-24",
+					"implementation": "partial",
+					"gaps": [
+						"Portal-root invitation acceptance, invited password signup and a fresh customer portal login were exercised on one owned initial-contact journey. CP-12 provider parity remains open: new-user email OTP, magic link and scoped SSO signup/accept are absent. The browser journey does not prove mismatch, wrong-host or concurrent-accept cases."
+					]
+				}
+			],
+			"remaining_summary": [
+				"Finish customer terminology, remaining invitation/provider cases and verified-placeholder browser checks.",
+				"Account linking passes scoped API/browser checks; complete the phase role/flag matrix. Real Entra remains with Thomas."
+			]
 		},
 		{
 			"id": "P4",
 			"name": "Governance",
-			"total": 152,
+			"total": 158,
 			"states": {
-				"implemented_tested": 112,
-				"implemented_untested": 5,
-				"partial": 30,
-				"missing": 4,
-				"external_blocked": 1
+				"implemented_tested": 0,
+				"implemented_untested": 139,
+				"partial": 17,
+				"missing": 1,
+				"external_blocked": 1,
+				"browser_verified": 0
 			},
 			"unaudited": 0,
 			"gaps": [
-				"Elevated routes without step-up: role create/update/reassign, service-key create, member add/role change and project ownership declare elevated: true but only sessionOnly runs; the policy flag is not enforced at runtime (GM-2, AK-7)",
-				"Browser verification blocked for every step-up flow: webhook create/editor/deliveries, impersonation start/banner/exit, user deactivate; SMTP config/test needs a real server (WH-6/8/15, GM-7/11/15)",
-				"Notification digests unreachable and unsent: digest preference writes closed, sealed groups have no sender (NO-5, NO-6); no portal preference controls (NO-21); deep links untested (NO-14)",
-				"Custom fields: no 30-day purge after soft delete and no test of delete/restore (CF-8); cf.<key> not sortable or available as columns (CF-10); create/transition required-field refusal has only logic-level tests (CF-4)",
-				"API keys: Argon2id hashing not implemented (AK-2); personal-key deletion absent (AK-11); no service-key UI, re-attestation or God Mode key list (AK-1, AK-7); last-used recording untested (AK-5)",
-				"MCP: no decide_approval/bulk tools, no log_time, no agent-originated audit marking (MC-4, MC-7, MC-7a); MCP-key credentialType still 'api_key' in work-item/attachment/service-calendar (MC-19)",
-				"Automations: notify/team target (TM-9), create_linked_item, request_approval, set_custom_field and the schedule trigger unavailable; call_webhook (AM-12) and run-retention purge untested",
-				"Webhooks: owner not notified on auto-disable (WH-7); no God Mode rotate-all (WH-13) or security-posture panel (WH-15); redirect and deadline tests skip under the sandbox (WH-5, WH-11)",
-				"Settings UX: inherited indicator, last-changed who/when, History, ?dryRun blast radius and typed-name danger zone exist only on some screens (ST-4..ST-8); project move absent (ST-10)",
-				"Roles: edits to roles referenced by identity provisioning are refused (409 role_in_identity_use) instead of the IP-22 revalidate/retire closure (RL-9); last-holder 409 and rank guards not browser-verified"
+				"RL-9: Historical audit gap requiring current-source reconciliation: Takes effect immediately (tested), but the IP-22 closure for roles referenced by identity provisioning is not implemented: such edits are refused with 409 role_in_identity_use instead of revalidating/retiring external grants",
+				"TM-9: Historical audit gap requiring current-source reconciliation: No notify action and no team-targeted notification; needs a catalogued event kind",
+				"CF-10: Historical audit gap requiring current-source reconciliation: Not sortable, not available as table columns, no groupBy, not on GET /api/projects/{id}/work-items; neq also matches unset",
+				"GM-1: Jobs configuration persists with CAS/audit and focused database coverage; responsive controls now pass six browser states. Delivery metadata and real email Plugin catalog are integrated. Generic Plugins/schema forms, Storage, MCP usage, organisation directory and branding still need closure; Delivery requeue/delete are absent.",
+				"GM-2: Policy elevated:true is classification; individual protected handlers spend PA-15 proof, but no generic middleware enforces every elevated route.",
+				"GM-4: Native SMTP meaningful tests now distinguish wrong credentials, unreachable host, TLS verification and deadline through bounded secret-free codes;12 email,18 API integration and5 web mapping tests pass. Broader native plugin catalogue/test administration remains incomplete; do not restore retired integrations. Persisted SMTP browser checks remain pending.",
+				"GM-5: Historical audit gap requiring current-source reconciliation: No Zod-schema-generated plugin settings forms",
+				"GM-6: Historical audit gap requiring current-source reconciliation: Organisation and auth-plugin deletions are not typed-name + step-up pending actions in God Mode",
+				"GM-13: The rotate trigger is on Health; the required God Mode Plugins placement is absent.",
+				"ST-11: Historical audit gap requiring current-source reconciliation: Disable behaviour stated/tested for approvals, intake and automations only",
+				"ST-3: Historical audit gap requiring current-source reconciliation: Inheritance set (SLA policy, service calendar, enabled states) and God Mode project-defaults copy not verified; unchanged in P4",
+				"ST-4: Historical audit gap requiring current-source reconciliation: Only feature flags show an inherited/override indicator; SLA policy, calendar and state-set settings do not",
+				"ST-5: Historical audit gap requiring current-source reconciliation: Most settings screens show no last-changed who/when; God Mode General shows when, not who",
+				"ST-6: Historical audit gap requiring current-source reconciliation: History affordance only on roles (and work items); no History on workspace/project/workflow/team/custom-field/feature screens",
+				"ST-7: Historical audit gap requiring current-source reconciliation: No ?dryRun=true on role PATCH or workflow publish returning {affected:{people,workItems,projects}}",
+				"ST-8: Historical audit gap requiring current-source reconciliation: Typed-name danger zone not uniform across new P4 settings screens (teams, custom fields, automations, roles)",
+				"ST-10: Historical audit gap requiring current-source reconciliation: Cross-workspace project move/remap by key absent",
+				"NO-5: Portal global email comment preference and customer digest delivery now exist; the old prerequisite claim is stale. Coverage that every applicable legacy producer assigns a candidate once in its event transaction remains unresolved under EV-1/NO-8; the new customer integration suites were not executed by this audit.",
+				"NO-8: Current source still has legacy producer paths; a complete single-event transactional coverage map is not established.",
+				"NO-18: Customer inbox reach is implemented; customer external destination coverage remains incomplete. Test file locator(s) copied from historical evidence; decisive assertion was not independently traced in current source.",
+				"NO-20: Historical audit gap requiring current-source reconciliation: No customer-facing templates or test asserting absence of staff names/internal terms",
+				"NO-21: The portal /account controls and API exist for global notify.email work_item.mentioned and work_item.commented only. Other customer-applicable event controls and relevant scope/channel parity with staff preferences remain unimplemented or unproven; the new portal tests were not executed by this audit.",
+				"WH-13: Per-webhook 24-hour rotation exists; the God Mode rotate-all incident action is absent.",
+				"WH-15: Webhook step-up is present; God Mode security-posture panel and sees_all listing are absent.",
+				"AK-7: Workspace service-key creation/list/revoke/deletion UI exists; historical no-UI claim is stale. Re-attestation and complete God Mode service-key administration still need source/test reconciliation.",
+				"AK-12: Historical audit gap requiring current-source reconciliation: No two-phase rename/alias mechanism, data migration or CI check for stored capability strings",
+				"MC-7a: Field-changing MCP tools exist, but log_time and agent-originated audit marking remain absent.",
+				"MC-10: The bulk class is coded but no bulk_create_work_items tool exercises it. Assertion label is a suite heading; inspect individual expect clauses before treating it as behavior coverage.",
+				"MC-17: The direct destructive path uses pending actions; the bulk-operation half has no tool to govern.",
+				"MC-18: The injection scenario is a scripted-fetch test rather than a persisted API/database journey.",
+				"MC-11: Historical audit gap requiring current-source reconciliation: npm publication with provenance/2FA and scope reservation are external"
 			],
 			"actions": [
-				"Consume a PA-15 step-up proof (or add operation keys) on role create/update/reassign and POST /api/workspaces/{id}/api-keys, or record an owner decision that these stay session-only; add HTTP tests",
-				"Have Thomas complete the password step-up for webhook create, impersonation and deactivate in the browser, then verify editor, deliveries, redelivery, banner, exit and auto-exit",
-				"Add HTTP/DB integration tests for custom-field CRUD (create/format-change 409/option-in-use/soft-delete pending action/restore) and the CF-4 create + transition refusal, plus a custom_field purge job after 30 days",
-				"Add tests for NO-14 link resolution (links.ts + getWorkItemNotificationHref), AK-5 last-used recording, AM-12 call_webhook and the automation_run 30-day purge",
-				"Run tests/api/webhook/webhook-ssrf-guard.test.ts outside the sandbox so the redirect, 2xx and deadline cases execute (WH-5, WH-10, WH-11)",
-				"Decide digest sender scope (NO-5/NO-6) and portal preference controls (NO-21); either build or record as carried",
-				"Browser-check the post-browser-pass changes: role description text, quiet-hours editor, portal custom fields, request-type 'Maps to', API-key table clipping"
+				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "pass_with_conditions",
-				"findings": 38,
-				"note": "5 rounds (extra rounds approved by Thomas). R1: 2 high + 10 medium; R2: 5 medium; R3: 1 medium; R4: 1 medium; R5 pass, 0 high/medium, 3 low test gaps. All high/medium fixed and re-tested. Code-reviewed only: no browser verification (scripted sign-in blocked). AI reviewed, not accepted."
+				"verdict": "pending",
+				"findings": 0,
+				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
+				"roundsConsumed": 0,
+				"maxTotalRounds": 3
 			},
 			"gates": {
-				"pass": 11,
-				"fail": 2,
-				"not_run": 2,
-				"note": "pass: full integration 314 files / 4241 tests, API unit 1656, web unit, permissions 115, packages/permissions 277, typecheck api+web, web build, events, raw-elements, openapi, policy, inventory, gitleaks. fail: contrast/tokens (fail at HEAD too), 3 stale ci-script tests. not run: browser checks of P4 screens, Trivy"
+				"pass": 8,
+				"fail": 0,
+				"not_run": 6,
+				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"checks": [
+					{
+						"check": "lint",
+						"status": "pass",
+						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+					},
+					{
+						"check": "typecheck",
+						"status": "pending final all-package run",
+						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
+					},
+					{
+						"check": "all-package unit",
+						"status": "pending final all-package run",
+						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
+					},
+					{
+						"check": "route-policy",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "permission suite",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "tokens and contrast",
+						"status": "pass",
+						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+					},
+					{
+						"check": "full integration",
+						"status": "pending new slices",
+						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
+					},
+					{
+						"check": "work-list bundle budget",
+						"status": "pass",
+						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
+					},
+					{
+						"check": "persisted browser matrix",
+						"status": "pending"
+					},
+					{
+						"check": "image build/scan/boot",
+						"status": "pending final source image and triage",
+						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
+					},
+					{
+						"check": "performance",
+						"status": "pending"
+					},
+					{
+						"check": "tooling",
+						"status": "pass"
+					},
+					{
+						"check": "accessibility fixture",
+						"status": "pass"
+					},
+					{
+						"check": "application and edge security headers",
+						"status": "pass",
+						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+					}
+				]
 			},
 			"carry": [
-				"Browser verification of all P4 screens (needs Thomas sign-in or classifier allow)",
-				"P4R3-L3 partial index for quiet-hours release scan (needs migration)",
-				"P4R3-L6 project nav gated on workspace flag",
-				"Migration journal order 0147 before 0145; missing 0158 snapshot; 0142 snapshot without SQL",
-				"automation:manage not enforced",
-				"R2-L4 non-concurrent audit_log index in 0147",
-				"R2-L6 webhook delivery person-hold",
-				"R2-L8 shared AAD for cursors and secrets",
-				"Before live-DB migrate: check __drizzle_migrations order and local_factor_policy on taskdesk_browser_journey_1022_test"
+				"GM-1: Jobs and Plugins catalog have scoped browser evidence. Storage diagnostics, MCP usage/statistics and safe Delivery retries pass focused tests; their combined-build browser checks remain pending. Generic plugin forms, backend configuration/pinning, organisation directory, branding and Delivery discard remain open.",
+				"GM-4: Native SMTP meaningful tests now distinguish wrong credentials, unreachable host, TLS verification and deadline through bounded secret-free codes;12 email,18 API integration and5 web mapping tests pass. Broader native plugin catalogue/test administration remains incomplete; do not restore retired integrations. Persisted SMTP browser checks remain pending.",
+				"GM-6: Historical audit gap requiring current-source reconciliation: Organisation and auth-plugin deletions are not typed-name + step-up pending actions in God Mode",
+				"ST-11: Historical audit gap requiring current-source reconciliation: Disable behaviour stated/tested for approvals, intake and automations only",
+				"ST-3: Organisation project defaults are now configured in God Mode and copied onto a new project. Exact live workspace inheritance of project SLA policy, service calendar and enabled state set is not established: project creation copies concrete calendar/SLA ids and state rows, while work-item SLA has a workspace fallback.",
+				"ST-4: Historical audit gap requiring current-source reconciliation: Only feature flags show an inherited/override indicator; SLA policy, calendar and state-set settings do not",
+				"ST-5: Historical audit gap requiring current-source reconciliation: Most settings screens show no last-changed who/when; God Mode General shows when, not who",
+				"ST-6: Historical audit gap requiring current-source reconciliation: History affordance only on roles (and work items); no History on workspace/project/workflow/team/custom-field/feature screens",
+				"ST-8: Historical audit gap requiring current-source reconciliation: Typed-name danger zone not uniform across new P4 settings screens (teams, custom fields, automations, roles)",
+				"ST-10: Historical audit gap requiring current-source reconciliation: Cross-workspace project move/remap by key absent",
+				"NO-5: The old claim that preferences allow only digest off is stale: hourly/daily staff and portal preferences, digest-window assignment and customer digest delivery are present. Complete event-time assignment for every applicable reachable producer remains unresolved under NO-8; scoped customer suites were not executed in this reconciliation.",
+				"NO-8: Native fanout writes transactional parent/inbox/delivery rows, but reachable legacy comment, time-entry, relation and task controllers still publish through legacy event paths; universal single-envelope/candidate transactional coverage is not established.",
+				"NO-18: The old inbox-only claim is stale: customer external email and digest paths exist. A complete own-request-only customer recipient matrix, including watcher/approval cases and every applicable event, is not established by the cited focused tests; newer integration suites were not executed in this reconciliation.",
+				"NO-20: The concrete customer work-item terminology leak is repaired. Complete customer event/channel privacy execution and browser evidence remain pending; scoped projection tests do not establish the full clause.",
+				"NO-21: Portal /account global notify.email mention/comment controls persist and have one scoped browser save/reload/restore artifact. Other customer-applicable event, channel and workspace/project-scope controls are not supplied by the portal preference API.",
+				"MC-11: Historical audit gap requiring current-source reconciliation: npm publication with provenance/2FA and scope reservation are external",
+				"GM-T3: Authoritative targetWorkspaceId is now read from current reachable target scope in a PostgreSQL READ ONLY transaction, including registered deletion targets/private views/calendars; stable dialog provider preserves draft/focus. Read integration9/9 and dialog25/25 pass. Target-workspace/typed-name browser journey still pending.",
+				"GM-T5: Default-title helpers and representative major controls are wired without overriding aria-label. Full renamed-control/secondary-screen tooltip and browser accessibility coverage is not established.",
+				"GM-T6: Host-scoped public ETag/304 and save invalidation exist; native SystemCopy read/send-time resolution is tested. Complete legacy/external-channel send-time noun coverage and full browser/admin-save flow remain pending."
+			],
+			"historical_summary": {
+				"states": {
+					"implemented_tested": 112,
+					"implemented_untested": 5,
+					"partial": 30,
+					"missing": 4,
+					"external_blocked": 1
+				},
+				"review": {
+					"verdict": "pass_with_conditions",
+					"findings": 38,
+					"note": "5 rounds (extra rounds approved by Thomas). R1: 2 high + 10 medium; R2: 5 medium; R3: 1 medium; R4: 1 medium; R5 pass, 0 high/medium, 3 low test gaps. All high/medium fixed and re-tested. Code-reviewed only: no browser verification (scripted sign-in blocked). AI reviewed, not accepted."
+				},
+				"gates": {
+					"pass": 11,
+					"fail": 2,
+					"not_run": 2,
+					"note": "pass: full integration 314 files / 4241 tests, API unit 1656, web unit, permissions 115, packages/permissions 277, typecheck api+web, web build, events, raw-elements, openapi, policy, inventory, gitleaks. fail: contrast/tokens (fail at HEAD too), 3 stale ci-script tests. not run: browser checks of P4 screens, Trivy"
+				},
+				"gaps": [
+					"Elevated routes without step-up: role create/update/reassign, service-key create, member add/role change and project ownership declare elevated: true but only sessionOnly runs; the policy flag is not enforced at runtime (GM-2, AK-7)",
+					"Browser verification blocked for every step-up flow: webhook create/editor/deliveries, impersonation start/banner/exit, user deactivate; SMTP config/test needs a real server (WH-6/8/15, GM-7/11/15)",
+					"Notification digests unreachable and unsent: digest preference writes closed, sealed groups have no sender (NO-5, NO-6); no portal preference controls (NO-21); deep links untested (NO-14)",
+					"Custom fields: no 30-day purge after soft delete and no test of delete/restore (CF-8); cf.<key> not sortable or available as columns (CF-10); create/transition required-field refusal has only logic-level tests (CF-4)",
+					"API keys: Argon2id hashing not implemented (AK-2); personal-key deletion absent (AK-11); no service-key UI, re-attestation or God Mode key list (AK-1, AK-7); last-used recording untested (AK-5)",
+					"MCP: no decide_approval/bulk tools, no log_time, no agent-originated audit marking (MC-4, MC-7, MC-7a); MCP-key credentialType still 'api_key' in work-item/attachment/service-calendar (MC-19)",
+					"Automations: notify/team target (TM-9), create_linked_item, request_approval, set_custom_field and the schedule trigger unavailable; call_webhook (AM-12) and run-retention purge untested",
+					"Webhooks: owner not notified on auto-disable (WH-7); no God Mode rotate-all (WH-13) or security-posture panel (WH-15); redirect and deadline tests skip under the sandbox (WH-5, WH-11)",
+					"Settings UX: inherited indicator, last-changed who/when, History, ?dryRun blast radius and typed-name danger zone exist only on some screens (ST-4..ST-8); project move absent (ST-10)",
+					"Roles: edits to roles referenced by identity provisioning are refused (409 role_in_identity_use) instead of the IP-22 revalidate/retire closure (RL-9); last-holder 409 and rank guards not browser-verified"
+				]
+			},
+			"states_locked": false,
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
+			"audit_sources": ["docs/report/audit/audit-P4c.json"],
+			"browser": {
+				"verified": 0,
+				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+			},
+			"current_source_gaps": [
+				{
+					"id": "GM-1",
+					"implementation": "partial",
+					"gaps": [
+						"Jobs and Plugins catalog have scoped browser evidence. Storage diagnostics, MCP usage/statistics and safe Delivery retries pass focused tests; their combined-build browser checks remain pending. Generic plugin forms, backend configuration/pinning, organisation directory, branding and Delivery discard remain open."
+					]
+				},
+				{
+					"id": "GM-4",
+					"implementation": "partial",
+					"gaps": [
+						"Native SMTP meaningful tests now distinguish wrong credentials, unreachable host, TLS verification and deadline through bounded secret-free codes;12 email,18 API integration and5 web mapping tests pass. Broader native plugin catalogue/test administration remains incomplete; do not restore retired integrations. Persisted SMTP browser checks remain pending."
+					]
+				},
+				{
+					"id": "GM-6",
+					"implementation": "partial",
+					"gaps": [
+						"Organisation typed-name/step-up deletion, restore and purge are implemented with scoped API/browser evidence. Identity-connection deletion remains absent; auth-provider deletion coverage still needs completion."
+					]
+				},
+				{
+					"id": "ST-11",
+					"implementation": "partial",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: Disable behaviour stated/tested for approvals, intake and automations only"
+					]
+				},
+				{
+					"id": "ST-3",
+					"implementation": "partial",
+					"gaps": [
+						"Organisation project defaults are now configured in God Mode and copied onto a new project. Exact live workspace inheritance of project SLA policy, service calendar and enabled state set is not established: project creation copies concrete calendar/SLA ids and state rows, while work-item SLA has a workspace fallback."
+					]
+				},
+				{
+					"id": "ST-4",
+					"implementation": "partial",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: Only feature flags show an inherited/override indicator; SLA policy, calendar and state-set settings do not"
+					]
+				},
+				{
+					"id": "ST-5",
+					"implementation": "partial",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: Most settings screens show no last-changed who/when; God Mode General shows when, not who"
+					]
+				},
+				{
+					"id": "ST-6",
+					"implementation": "partial",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: History affordance only on roles (and work items); no History on workspace/project/workflow/team/custom-field/feature screens"
+					]
+				},
+				{
+					"id": "ST-8",
+					"implementation": "partial",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: Typed-name danger zone not uniform across new P4 settings screens (teams, custom fields, automations, roles)"
+					]
+				},
+				{
+					"id": "ST-10",
+					"implementation": "missing",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: Cross-workspace project move/remap by key absent"
+					]
+				},
+				{
+					"id": "NO-5",
+					"implementation": "partial",
+					"gaps": [
+						"The old claim that preferences allow only digest off is stale: hourly/daily staff and portal preferences, digest-window assignment and customer digest delivery are present. Complete event-time assignment for every applicable reachable producer remains unresolved under NO-8; scoped customer suites were not executed in this reconciliation."
+					]
+				},
+				{
+					"id": "NO-8",
+					"implementation": "partial",
+					"gaps": [
+						"Legacy producers now persist their compatibility outbox parent transactionally. Legacy external children still bypass canonical digest-window candidate membership; digest-enabled recipients and full producer/no-op/replay branch evidence remain open."
+					]
+				},
+				{
+					"id": "NO-18",
+					"implementation": "partial",
+					"gaps": [
+						"The old inbox-only claim is stale: customer external email and digest paths exist. A complete own-request-only customer recipient matrix, including watcher/approval cases and every applicable event, is not established by the cited focused tests; newer integration suites were not executed in this reconciliation."
+					]
+				},
+				{
+					"id": "NO-20",
+					"implementation": "partial",
+					"gaps": [
+						"The concrete customer work-item terminology leak is repaired. Complete customer event/channel privacy execution and browser evidence remain pending; scoped projection tests do not establish the full clause."
+					]
+				},
+				{
+					"id": "NO-21",
+					"implementation": "partial",
+					"gaps": [
+						"Portal /account global notify.email mention/comment controls persist and have one scoped browser save/reload/restore artifact. Other customer-applicable event, channel and workspace/project-scope controls are not supplied by the portal preference API."
+					]
+				},
+				{
+					"id": "MC-11",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: npm publication with provenance/2FA and scope reservation are external"
+					]
+				},
+				{
+					"id": "GM-T3",
+					"implementation": "partial",
+					"gaps": [
+						"Authoritative targetWorkspaceId is now read from current reachable target scope in a PostgreSQL READ ONLY transaction, including registered deletion targets/private views/calendars; stable dialog provider preserves draft/focus. Read integration9/9 and dialog25/25 pass. Target-workspace/typed-name browser journey still pending."
+					]
+				},
+				{
+					"id": "GM-T5",
+					"implementation": "partial",
+					"gaps": [
+						"Default-title helpers and representative major controls are wired without overriding aria-label. Full renamed-control/secondary-screen tooltip and browser accessibility coverage is not established."
+					]
+				},
+				{
+					"id": "GM-T6",
+					"implementation": "partial",
+					"gaps": [
+						"Host-scoped public ETag/304 and save invalidation exist; native SystemCopy read/send-time resolution is tested. Complete legacy/external-channel send-time noun coverage and full browser/admin-save flow remain pending."
+					]
+				}
+			],
+			"remaining_summary": [
+				"Finish remaining settings, notification and administration gaps, including cross-workspace project move/remapping.",
+				"Browser-check large-import approval, settings impact previews and webhook recovery; complete role/flag coverage and final gates."
 			]
 		},
 		{
 			"id": "P5",
 			"name": "Planning & knowledge",
-			"total": 91,
+			"total": 99,
 			"states": {
-				"implemented_tested": 62,
-				"implemented_untested": 3,
-				"partial": 22,
-				"missing": 4,
-				"external_blocked": 0
+				"implemented_tested": 0,
+				"implemented_untested": 99,
+				"partial": 0,
+				"missing": 0,
+				"external_blocked": 0,
+				"browser_verified": 0
 			},
 			"unaudited": 0,
-			"gaps": [
-				"Evidence: nothing in P5 is browser-verified (scripted sign-in blocked) and none of the 25 P5 integration suites was run by this audit; 69 implemented_tested items rest on unrun integration tests plus green unit runs. All P5 code is uncommitted.",
-				"Cost tracking: no cost types or cost entries (TC-12, TC-13, TC-14 missing), so budget actuals are time-only (TC-16), committed is always null (TC-17) and 75/90% thresholds raise no notification (TC-18).",
-				"Capacity: no available_hours (TC-20 missing); utilisation and the capacity report use team capacity_days_per_week instead (TC-21, TC-22).",
-				"Reports: no metric_snapshot or hourly job, every period is live (RP-9); no export for tier 3 custom reports or widgets and no queued large-export job (RP-10); drill-down exists on only 12 of 24 tier 1 reports (RP-12).",
-				"Knowledge base authoring: callouts and work item references cannot be inserted in the editor (KB-5, KB-6); owner not settable in the editor (KB-7); matching is a LIKE scan, not a full-text index (KB-9); related and most-viewed/recent ordering untested (KB-15, KB-16).",
-				"Change and release: CAB gating is an opt-in template, not the default (CH-2); low-risk pre-approval edge is not generated (CH-3); releases flagged for the portal have no portal surface (REL-5).",
-				"Velocity counts only cycles closed with the completion action; cycles that end by date have no snapshot and no daily snapshot job exists (CY-9).",
-				"Unindexed requirements: PG-1..8, CP-20..29 and IP-35 have contract ids but no row in docs/requirements-index.json, so no phase counts them; PG-7 undelete has no UI and CP-22/CP-26 invitation limits are hard-coded rather than instance configuration."
-			],
+			"gaps": [],
 			"actions": [
-				"Run the 25 tests/api-integration/p5-*.test.ts on a dedicated scratch _test database (never taskdesk_browser_journey_1022_test) and cite the run here before the P5 phase review.",
-				"Browser-verify P5 screens on persisted data once scripted sign-in is unblocked: cycles (drag from backlog, completion dialog), modules, estimates preview, timesheet/timer reload, budget, rates, reports and dashboards (drag/resize), KB editor and portal deflection, services, changes, freeze override, calendar, releases.",
-				"Build cost types and cost entries (TC-12..14) and then committed (TC-17) and the 75/90% notification (TC-18), or record an owner deferral.",
-				"Decide available_hours (TC-20..22): build per-person capacity or record team capacity as the accepted substitute.",
-				"Reports: decide metric_snapshot (RP-9) or record live-only as an owner decision; add drillItems to the 12 reports without it (RP-12); add export for custom reports and widgets (RP-10).",
-				"KB: add callout and work-item-reference insertion and an owner picker to the editor using Kaneo/packages/ui Tiptap pieces (KB-5..7); add tests for related selection and popular/recent ordering (KB-15, KB-16).",
-				"Service management: add a portal release-notes surface (REL-5); decide whether CAB becomes default and how the low-risk pre-approval edge is authored (CH-2, CH-3); snapshot cycles that end by date for velocity (CY-9)."
+				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "in progress",
-				"findings": 33,
-				"note": "Opus rounds 1-4 each failed (R1: 2 medium + 5 low; R2: 1 medium + 6 low; R3: 2 medium + 7 low; R4: 5 medium + 7 low); every medium found has been fixed and re-tested. Round 5 (owner-approved extra round) is running. Counts are code audit + tests; no screen is browser-verified. Not committed yet."
+				"verdict": "pending",
+				"findings": 0,
+				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
+				"roundsConsumed": 0,
+				"maxTotalRounds": 3
 			},
 			"gates": {
-				"pass": 11,
-				"fail": 2,
-				"not_run": 2,
-				"note": "pass: API unit 1822, web unit 2609, permissions 115, typecheck api+web, web build, check:policy/events/ui:raw-elements/inventory/env, i18n, drizzle drift. Lane integration suites pass (agile 214, time/holds 166, invite 78, pages/features 157, service 58, kb 33, reports 51). fail: check:tokens (fails at HEAD), 3 stale ci-script tests. not run: full integration on final tree (running), browser checks, Trivy"
+				"pass": 8,
+				"fail": 0,
+				"not_run": 6,
+				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"checks": [
+					{
+						"check": "lint",
+						"status": "pass",
+						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+					},
+					{
+						"check": "typecheck",
+						"status": "pending final all-package run",
+						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
+					},
+					{
+						"check": "all-package unit",
+						"status": "pending final all-package run",
+						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
+					},
+					{
+						"check": "route-policy",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "permission suite",
+						"status": "pass",
+						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+					},
+					{
+						"check": "tokens and contrast",
+						"status": "pass",
+						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+					},
+					{
+						"check": "full integration",
+						"status": "pending new slices",
+						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
+					},
+					{
+						"check": "work-list bundle budget",
+						"status": "pass",
+						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
+					},
+					{
+						"check": "persisted browser matrix",
+						"status": "pending"
+					},
+					{
+						"check": "image build/scan/boot",
+						"status": "pending final source image and triage",
+						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
+					},
+					{
+						"check": "performance",
+						"status": "pending"
+					},
+					{
+						"check": "tooling",
+						"status": "pass"
+					},
+					{
+						"check": "accessibility fixture",
+						"status": "pass"
+					},
+					{
+						"check": "application and edge security headers",
+						"status": "pass",
+						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+					}
+				]
 			},
-			"carry": [
-				"Cost entries and budget notifications (TC-12/13/14/18), per-person available hours (TC-20..22)",
-				"Report snapshots RP-9; async CSV for large exports RP-10; drill-down on 12 reports RP-12",
-				"KB editor callouts, work-item references, owner change; full-text index (KB-5/6/7/9)",
-				"CAB opt-in only (CH-2/3), portal release page (REL-5), service calendar not used by SLA",
-				"Typed-domain SSO (CP-17/18/27-29, IP-9/29) not built; invitation lifetime/limits hard-coded (CP-22/26)",
-				"Invitation sign-up needs the customer password provider enabled",
-				"PG-1..8, CP-20..29, IP-35 not in requirements-index.json",
-				"Scope-event timestamp ordering under racing cycle adds (low)",
-				"Same-person page move vs approval of its delete can deadlock (500)",
-				"webhook/automation created_by FKs block person deletion (P4)",
-				"Edited-in-place migrations 0148-0154: check any DB that ran earlier versions"
+			"carry": [],
+			"historical_summary": {
+				"states": {
+					"implemented_tested": 62,
+					"implemented_untested": 3,
+					"partial": 22,
+					"missing": 4,
+					"external_blocked": 0
+				},
+				"review": {
+					"verdict": "in progress",
+					"findings": 33,
+					"note": "Opus rounds 1-4 each failed (R1: 2 medium + 5 low; R2: 1 medium + 6 low; R3: 2 medium + 7 low; R4: 5 medium + 7 low); every medium found has been fixed and re-tested. Round 5 (owner-approved extra round) is running. Counts are code audit + tests; no screen is browser-verified. Not committed yet."
+				},
+				"gates": {
+					"pass": 11,
+					"fail": 2,
+					"not_run": 2,
+					"note": "pass: API unit 1822, web unit 2609, permissions 115, typecheck api+web, web build, check:policy/events/ui:raw-elements/inventory/env, i18n, drizzle drift. Lane integration suites pass (agile 214, time/holds 166, invite 78, pages/features 157, service 58, kb 33, reports 51). fail: check:tokens (fails at HEAD), 3 stale ci-script tests. not run: full integration on final tree (running), browser checks, Trivy"
+				},
+				"gaps": [
+					"Evidence: nothing in P5 is browser-verified (scripted sign-in blocked) and none of the 25 P5 integration suites was run by this audit; 69 implemented_tested items rest on unrun integration tests plus green unit runs. All P5 code is uncommitted.",
+					"Cost tracking: no cost types or cost entries (TC-12, TC-13, TC-14 missing), so budget actuals are time-only (TC-16), committed is always null (TC-17) and 75/90% thresholds raise no notification (TC-18).",
+					"Capacity: no available_hours (TC-20 missing); utilisation and the capacity report use team capacity_days_per_week instead (TC-21, TC-22).",
+					"Reports: no metric_snapshot or hourly job, every period is live (RP-9); no export for tier 3 custom reports or widgets and no queued large-export job (RP-10); drill-down exists on only 12 of 24 tier 1 reports (RP-12).",
+					"Knowledge base authoring: callouts and work item references cannot be inserted in the editor (KB-5, KB-6); owner not settable in the editor (KB-7); matching is a LIKE scan, not a full-text index (KB-9); related and most-viewed/recent ordering untested (KB-15, KB-16).",
+					"Change and release: CAB gating is an opt-in template, not the default (CH-2); low-risk pre-approval edge is not generated (CH-3); releases flagged for the portal have no portal surface (REL-5).",
+					"Velocity counts only cycles closed with the completion action; cycles that end by date have no snapshot and no daily snapshot job exists (CY-9).",
+					"Unindexed requirements: PG-1..8, CP-20..29 and IP-35 have contract ids but no row in docs/requirements-index.json, so no phase counts them; PG-7 undelete has no UI and CP-22/CP-26 invitation limits are hard-coded rather than instance configuration."
+				]
+			},
+			"states_locked": false,
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
+			"audit_sources": ["docs/report/audit/audit-P5.json"],
+			"browser": {
+				"verified": 0,
+				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+			},
+			"current_source_gaps": [],
+			"remaining_summary": [
+				"Complete remaining agile, cost, capacity, service/change/release, KB, dashboard and reporting browser cases.",
+				"Refresh integration results and independent review on the final tree."
 			]
 		}
 	],
 	"decisions": [
-		"Decided 23 Oct: roles on canonical table, PA-15 keys added, holiday dataset + virtualisation approved, customer invitations and typed-domain SSO deferred to P5.",
-		"Standing (recommended): webhook step-up keys beyond impersonation/secrets; membership pointer stays workspace_member.role; service keys get no project reach; managers cannot self-promote.",
-		"Pending: migration 0145 rewrites role data and 0138 un-flags duplicate CAB teams when applied to your live database — tell me when to migrate it.",
-		"Pending: restart native Postgres on 62870 (all checks use scratch 62871)."
+		"Approved 25 Oct: additive audit users and scripted browser login on an isolated copy; HTTPS ticketing.localhost and portal.localhost on port 443; Sol audits/reviews, Luna implementation; up to three new review rounds per phase; commit, PR and merge after passing gates/review.",
+		"Real Entra acceptance will be performed by Thomas. Typed-domain SSO implementation gaps remain local work and are not excused by missing Entra credentials.",
+		"Live database and existing SIT accounts remain unchanged. Audit database taskdesk_codex_sit_20261025 is an isolated restored copy. Earlier browser captures used a TLS exception; Thomas approved trust and fresh curl/Chromium checks now verify both hosts without exceptions.",
+		"Approved by Thomas 25 Oct: @tanstack/react-virtual v3 dependency for original Kaneo board/list/table virtualization.",
+		"Approved by Thomas 25 Oct: strict transactional legacy-task compatibility outbox bridge using real legacy identifiers and published keys; native webhook/automation consumers unchanged.",
+		"Approved by Thomas 25 Oct: committed-cost forecast uses open leaf estimated minutes minus logged minutes, current applicable rates, due-date budget period; unscheduled/non-time/unassigned/unrated work shown unknown.",
+		"Thomas approved macOS Keychain prompt; fresh default-trust curl verifies agent readiness and portal sign-in200 without explicitCA or insecure mode. Default-trust Chromium checks also passed.",
+		"Thomas approved columnWidths.<projectId>: registered-column width map,64–800px, at most100entries. Persistent widths now pass scoped API and browser checks.",
+		"Thomas approved client-reported MCP tool/error statistics on 25 Oct. Label them separately from server-recorded API attempts. Store no arguments, prompts, results or raw errors; never use reported statistics for permissions, billing or automatic key disabling. Implementation and verification pending.",
+		"Approved 25 Oct: invitation email queue may retain a purpose-bound encrypted acceptance credential for at most 15 minutes, erased after sending or invalidation; invitation rows remain hash-only.",
+		"Approved 25 Oct: add pdfjs-dist 6.4.299 for lazy sandboxed PDF preview with existing Kaneo controls and permission checks.",
+		"Approved 25 Oct: CSP may allow only HTTPS YouTube embed URLs with iframe sandbox restrictions; other external frames remain blocked.",
+		"Approved 25 Oct: allow blob images only for existing local upload/avatar previews. Data images, blob scripts, objects and arbitrary frames remain blocked.",
+		"25 Oct: outage retention exception rejected. Invitation delivery must use cryptographic expiry; the prior long-lived-key queue is not approved for deployment.",
+		"25 Oct: label-grouped boards show each card under every assigned label. Moving between labels replaces the source label and preserves the others; dropping into None clears all labels.",
+		"26 Oct: Thomas approved building the shared import prerequisite now to close P4 MCP import-tool dependencies; the rest of P6 remains gated on P0–P5 exit evidence.",
+		"Approved 26 Oct: same-organisation project moves include the linked project hierarchy and explicit team/role/person mappings; unresolved mappings refuse the move. Preserve IDs/data and historical SLA measurements/pinned policy meaning; destination matching policy governs future SLA starts.",
+		"Approved 26 Oct: refuse disabling an inherited workspace state while affected work items still use it; show the affected items for resolution, without silently creating project overrides.",
+		"26 Oct: Thomas requires one active local deployment using only deploy/compose.testing.yml. Superseded native, performance, SSO and image-probe deployments stay down; preserve data and volumes.",
+		"Approved 26 Oct: separate Account, Workspace, Project and God Mode settings pages; remove combined scope tabs and preserve existing deep links.",
+		"Approved 26 Oct: project moves require imports/intake to finish and subscriptions to pause; preserve history/configuration and require destination rebind before resume.",
+		"Approved 26 Oct: fixed local Mailpit capture only for the canonical local HTTPS Compose deployment; standard/public SMTP egress restrictions remain enforced."
 	],
-	"next": "P4 committed and pushed. P5 built; Opus round 5 and the full integration run are in flight; commit and push P5 only if both pass. Browser verification of all P4 and P5 screens still needs a sign-in."
+	"next": "Verify local Mailpit delivery and catalogue journeys; complete project moves and remaining P0–P5 gaps, full gates and independent phase reviews. No owner decision currently pending. Broader P6 follows P0–P5 exits.",
+	"status": "Latest source 196 deployed through one Compose file on both HTTPS hosts. Separate Account/Workspace/Project/God Mode pages and Properties resize/independent scrolling pass 39 browser assertions. P0–P5 full verification and independent reviews remain unfinished.",
+	"validation_runs": [
+		{
+			"check": "Deployment",
+			"result": "One Compose file/project, five healthy/running services and completed migration job; source196-properties-scroll image. All 1,667 deployed artifacts hash-verified; six strict-TLS endpoints pass. Business counts preserved; protected database untouched. Unused wget removed; refreshed scan confirms wget absent: 0 critical, 42 high. Disposition remains open."
+		},
+		{
+			"check": "Properties and separate settings",
+			"result": "Deployed: 39 browser assertions pass at 375/768/1440 in light/dark, desktop independent scrolling, pointer/keyboard resizing, Escape rollback and inner-content width. Separate Account/Workspace/Project/God Mode headings and no combined scope tabs verified. Focused settings/resize 42 tests and frame/properties regression 57 tests pass; combined build, web types and raw-UI gate pass. Full phase review pending."
+		},
+		{
+			"check": "Catalogue follow-up",
+			"result": "Calendar, label and SLA catalogue journey completes: resumed pass 100 checks, 24 new captures. Stable-key validation, persistence, rename and read-only editing checked across three widths and both themes. Earlier partial pass retained; one intermittent session-check error remains unexplained and open. No full phase acceptance."
+		},
+		{
+			"check": "Passing checkpoints",
+			"result": "Source 196: 42 lifecycle/digest PostgreSQL checks, 226 project-reach cases, 118 permissions, 33 focused UI tests and 212 approval-contract assertions pass. An additional nine-case deletion retry suite passes after tightening transaction-only retries. API/web application and API-test types pass. These do not replace final full suites."
+		},
+		{
+			"check": "Wave194",
+			"result": "Historical checkpoint: signed-provider account linking passed23 browser flow checks plus20 saved-screen checks; admin key creation/scope picker/non-admin denial passed37. Parallel194 runtimes are now stopped. Catalogue controls and51-link approval browser work remain pending."
+		},
+		{
+			"check": "Latest browser evidence",
+			"result": "Source 196: identity-deletion journey 58 checks across 375/768/1440px in light/dark; five cancellations, one password-confirmed execution, non-admin denial, SCIM/session revocation and history/person preservation. Danger-action layout 20 checks, all 19 captures inspected. Login/agent/settings/portal smoke 10 checks pass. This is scoped evidence, not full phase acceptance."
+		},
+		{
+			"check": "Queue browser follow-up",
+			"result": "Deployed192 read-only queue checks at375/1440dark pass with no raw labels, page overflow or JS errors. Mobile summary width repair is visible and inspected. Earlier26-check functional journey remains scoped evidence."
+		},
+		{
+			"check": "Settings impact and identity",
+			"result": "Role/workflow impact previews pass six width/theme states without applying changes. Account linking preserves the original session and grants, creates one linked identity/account, audits without subject/email and rejects replay. Imported-placeholder email-claim browser work remains pending."
+		},
+		{
+			"check": "Import prerequisite",
+			"result": "Deployed192:51-record owner approval passes all six width/theme states. Wrong count/missing proof blocked; fresh password approval creates51 distinct targets/links. Retry preserves totals and mappings. Temporary key revoked and original MCP flag restored. Run-management/non-admin checks also pass. No full P6 sign-off."
+		},
+		{
+			"check": "Open gates",
+			"result": "Project-move executor and historical SLA-origin schema/readers remain unbuilt. Owner approved finish/pause and explicit rebind. Local Mailpit capability is built and deployed; actual delivery remains unverified. Catalogue/bulk-link/placeholder journeys, full integration/browser coverage, security disposition and independent reviews remain open. Current image scan after wget removal: 0 critical/42 high (seven unique high CVEs, no fixed versions reported); 18 secret-scan findings classified with zero confirmed credential exposures, raw scan still fails and independent disposition pending. God Mode Health currently flags one expired invitation delivery envelope awaiting cleanup; investigate worker cleanup and recheck."
+		},
+		{
+			"check": "Reviews and shipping",
+			"result": "Reviews 0/3 per phase. No new commit/push/PR/merge; HEAD aea5d5702. Verified 2,487-file predeployment source checkpoint, decoded database/attachment backups and immutable image snapshots preserve rollback. Real Entra remains Thomas-owned."
+		},
+		{
+			"check": "P6 goals",
+			"result": "Plan approved: durable/resumable imports; CSV, Jira/JSM, Azure DevOps, Plane, Planner and Power Apps adapters; Kaneo wizard; reconciliation, cutover and rollback rehearsal. Only the shared P4 import prerequisite has started."
+		},
+		{
+			"check": "User decisions",
+			"result": "Pending: move projects only after running imports/intake finish and subscriptions pause/rebind, or support running moves; and approve fixed local Mailpit capture, or use public SMTP. Production SMTP private-address protection remains enforced. Fourth failed phase reviews still require approval."
+		}
+	],
+	"p6_goal": {
+		"status": "Shared prerequisite deployed192; bulk owner approval, replay and run-management browser checks pass. Broader P6 remains pending.",
+		"target": "Thomas requested completion on 25 October; target missed. P6 remains gated on P0–P5 exit evidence.",
+		"goals": [
+			"G1 durable staged import framework and provenance",
+			"G2 CSV then Jira/JSM, ADO, Plane, Planner, Power Apps adapters",
+			"G3 reconciled interruption/resume/rerun and cutover/restore rehearsal",
+			"G4 original Kaneo wizard and bounded MCP mappings"
+		],
+		"next": "Finish P0–P5 implementation gaps, full browser/gates and independent reviews before broader adapters, wizard and cutover."
+	},
+	"validation_history": [
+		{
+			"check": "Targeted integration repairs",
+			"result": "Separate scoped passing runs: automation 1; cost drill 11; saved views 32; legacy atomicity 3 + related task/time 141; hard purge 9; module 13; portal home-realm 5 (rerun after OpenAPI registration); deletion impact/key 92; customer upload reopen 3; legacy delivery recovery related suites 73; webhook owner notification 9; comment/digest integration 23. Final-tree full integration still pending."
+		},
+		{
+			"check": "Targeted units and tooling",
+			"result": "Full CI tooling run: 1,363 passed, 20 skipped (1,383 total), zero failures. Dependency alias regression 21/21 and contrast analyzer 80/80 included. Contrast gate passes 393 pairs. Scoped repair unit results are retained separately; no phase browser acceptance inferred."
+		},
+		{
+			"check": "Browser",
+			"result": "Six seeded audit roles signed in through real UI. Route smoke: 46 admin routes x 2 themes desktop, 19 enabled P5 routes x desktop/mobile. Cycle/page create+reload passed; module null-description fix now passed real browser retest. Audit-created HELP-19 passed create, board/list/table/detail/reload, keyboard title edit, internal comment, priority edit and state transition with reload. These are scoped journeys; complete role/theme/width/feature-off/parity matrix and independent review pending. Persisted repair matrix36/36 across six routes, three widths and two themes (36 distinct screenshots); portal preference save/reload/restore passed. Enter simultaneously starting drag/opening detail was caught; repair18 focused tests passed and canonical sensor follow-up is in progress. Whole-phase sign-off remains pending. Personal-key deletion completed through typed owner name/TOTP and HTTP200 approval; two completed server reads confirm physical absence. CP-16 save/reload/restore plus six responsive/theme captures pass8 checks; all six captures inspected. Combined drag/bulk Escape fix137focused tests passes, persisted retest pending. CP-16 light/dark captures were finalized with persisted application theme preferences before navigation; all6 captures were visually inspected. Full keyboard matrix remains pending the latest bulk-shortcut repair."
+		},
+		{
+			"check": "Scanners",
+			"result": "Current source Gitleaks:4712files/79.10MB,2 deterministic fixture findings inspected, no suppression. Full-history10 findings separately retained; staged scan required. Source dependency scan1LOW KaTeX. Latest Node24.22.1/trixie+OS-patch shipping image unfiltered0critical44high63medium67low, zero fixable HIGH/CRITICAL; runtime applicability triage remains open."
+		},
+		{
+			"check": "Runtime",
+			"result": "HTTPS SIT restored: agent readiness and portal sign-in200 using explicit local CA. Audit copy remains164 migrations,10 people,20 items; original customer records preserved. OS trust stillawaits Keychain approval. Disposable reset fixtures now run on a separate task-owned PostgreSQL18 container using existing test-globalSetup durability settings; this is not crash-durability or performance evidence."
+		},
+		{
+			"check": "Consolidated repair-wave checks",
+			"result": "Twelve-package unit and nine-package typecheck wave passed before latest KB/CAB/cancellation/UTC/editor changes. LinuxR3 full integration:379files374pass5fail;5114tests5105pass9fail. All five failed files plus new UTC regression now pass56/56 on dedicated native repair DB. Final full current-tree run remains required."
+		},
+		{
+			"check": "Current static gates",
+			"result": "Latest native bundles:agent262.6KB,work-list349.7KB,portal195.1KB gzip under unchanged budgets. Pending-opener cold/warm rapidEscape4/4 and ordinary keyboard/drag9/9 pass in real persisted browser with zero writes. Contrast399pairs passed before active KB editor changes; fresh final generators/gates pending."
+		},
+		{
+			"check": "Accessibility fixture gate",
+			"result": "Corrected stale fixture data/selectors and identity route expectation. This exposed serious nested-interactive card/row semantics; original Kaneo controls now use named library Fieldsets with retained keyboard/DnD handlers. Targeted38unit and lint pass; full browser accessibility fixture gate21/21 passes. Persisted repair matrix remains separately recorded; no whole-phase acceptance."
+		},
+		{
+			"check": "Latest KB/CAB/invitation and timezone repairs",
+			"result": "KB20integration+3helper units; fresh-workspace CAB/default-state40integration; lead invitation cancellation32integration. Native server default was Asia/Yangon(+23400s); both app/migration pools now explicitly UTC, preserving old stored values. Dedicated database/report13tests and repaired six-file56tests pass. Snapshot names aligned to migration numbers;0164GIN applied to audit copy165rows,0165failure-attribution schema generated but not yet audit-deployed."
+		},
+		{
+			"check": "Persisted MCP burst, owner inbox and deletion browser",
+			"result": "UI-created read-only MCP fixture:300writeattempt threshold;30denied403+270rate-limited429, nextrequest401afterautodisable. No writes succeeded. Disabled state persisted; owner inbox typedlink targets exactkey, mentions filter excludesrow, UIclickopenspersonalkeymanager. Typedname+TOTP deletion approved;twofreshGETsconfirmabsence. OriginaleffectiveMCPflagrestored; explicitoverride/audithistoryremains. Evidence docs/report/browser/codex-20261025-mcp-burst.json and codex-20261025-mcp-owner-flow.json."
+		},
+		{
+			"check": "Approved closure source and browser checkpoints",
+			"result": "Installed approved @tanstack/react-virtual3.14.22 with MITnotice; focused virtualization132tests pass, large persisted interaction benchmark pending. Bridge24units+3integration+32regressions then person/APIkey attribution fix6units+4integrationpass. TC17approvedforecast32integration+17logic+10UI pass; root consolidated TSC caught nullable UI formatting, corrected and rechecked successfully. CY9actualcapture/unknownhistoricalprovenance27integration+41logic+4UI pass. KBperson-IDownerbugfoundinbrowserandfixed:21integration and4persistedbrowserchecks pass; defaultTLS trustworksforagentandportal. Idle rate-counter cleanup23integrationpass. Finalwhole-treegate/browseracceptancepending."
+		},
+		{
+			"result": "Own-page deletion/recovery passed3 persisted browser checks; shared24-target approval registry tests27pass. Tablet header implementation awaiting final responsive retry. Current G11 work-list350.1KB FAILS unchanged350KB budget; menu-only import reduction in progress. Separate clean performance DB and strict-TLS1443 runtime prepared; no benchmark pass claimed.",
+			"check": "Deletion integration browser and tablet header checkpoint"
+		},
+		{
+			"check": "Consolidated unit gate and scoped repairs",
+			"result": "Latest rootunitrun failed: nativeSITmetrics9464 collision in3process-lease cases plus4legacylabel adapterfixtures; fixtureboundary repairedand11labelunits nowpass. Fullfinalisolatedrunpending, webTurbo runcancelled. Nativebundle349.6KBpass;82contrastanalyzerunits passbutactualsourcepreviewstillfails, so no contrastacceptanceclaimed."
+		},
+		{
+			"recordedAt": "2026-10-25T20:15:00Z",
+			"scope": "Queue integration and invitation migration preflight",
+			"result": "113 focused web tests pass; web typecheck passes. Three-copy migration stopped before0183 because the newly accepted owned customer invitation lacks membership grant provenance. Rollback dump created and fully decoded; repair and regression test in progress. No protected database targeted."
+		},
+		{
+			"recordedAt": "2026-10-25T20:18:39.829996+00:00",
+			"scope": "Queue build checkpoint",
+			"result": "Web build/typecheck and API full typecheck pass; 113 focused web and5 PostgreSQL tests pass. Permission suite118/118 after adding exactly5 queue routes to the matrix; existing route/capability decisions unchanged. RawUI and403 contrast pairs pass in both built themes. Bundle agent260.5/350KB, work-list348.6/350KB, portal192.3/200KB; portal graph clean. Invitation provenance repair blocks runtime migration0183; no phase sign-off."
+		},
+		{
+			"recordedAt": "2026-10-25T20:21:42.493798+00:00",
+			"scope": "Invitation provenance and queue migration",
+			"result": "Invitation acceptance now creates direct grant + canonical membership projection transactionally; lifecycle35/35 and full API typecheck pass. The single affected owned QA membership was repaired after exact private invitation/audit/actor linkage checks, preserving role/reach, with an explicit system repair audit. Guarded migration0183 now passes on all3 owned copies to184, each preceded by decoded backup, preserving business/report/saved-view counts. Fullweb2949/2949 passes. Runtime API restart/browser checks pending."
+		},
+		{
+			"recordedAt": "2026-10-25T20:25:05.220532+00:00",
+			"scope": "GM5 persisted browser checkpoint184",
+			"result": "Generated native SMTP schema forms pass strictTLS browser375/768/1440 light/dark,12captures; descriptor excludes config/password metadata, invalidform submits no request, cancel discards draft, persisted provider unchanged. Root visually inspected375dark/1440light. No formalreview/signoff inferred."
+		},
+		{
+			"recordedAt": "2026-10-25T20:29:23.388146+00:00",
+			"scope": "Queue browser and organisation purge discovery",
+			"result": "One private queue created through normal UI with exactly2 persisted saved views; GET/run returned3submissions/7workitems and metadata rename preserved bothfilters. Explicitstateoverride save returned500, underdiagnosis; selector showsrawinternalvalue. Orgpurge backend exists but request/typedname-stepupapprovalUI missing; implementationassigned. Neither flow signedoff."
+		},
+		{
+			"recordedAt": "2026-10-25T20:30:46.648643+00:00",
+			"scope": "Queue override500 cause",
+			"result": "Source diagnosis: submission-only query update was spread into paired work-item update, colliding with per-pair entity uniqueness. Separate per-entity updates and PostgreSQL regression tests assigned; no repeated runtime write used for diagnosis. Existing queue is retained."
+		},
+		{
+			"recordedAt": "2026-10-25T20:32:15.637804+00:00",
+			"scope": "Queue browser repair source checkpoint",
+			"result": "Independent per-entity queue updates now pass7/7 PostgreSQL tests, including unchanged paired query and strict malformed-request rejection without writes. Human-readable selector fixes pass6/6 picker tests. Rebuild and browser rerun pending; prior500 evidence preserved."
+		},
+		{
+			"recordedAt": "2026-10-25T20:52:31.794898+00:00",
+			"scope": "Combined queue/purge/team-notify184",
+			"result": "API5config andweb2config typechecks pass. Build passes G11 agent260.5/350KB, work-list348.7/350KB, portal192.3/200KB andG12purity. APIunits2074pass/10fail: oneobsolete notifyassertion and9schedulerfixture mocks require repair, no finalfullAPIpass. Queuepagination context regression andpicker/triage25tests pass. NativePID65012 andallownedruntimeAPIhashesmatch/6strictTLSreadiness200. Ownerordinarypassword+TOTP login restored; post-fix browser journey running. Newterminology migration0184/source185 prepared, not deployed or applied to runtimecopies."
+		},
+		{
+			"recordedAt": "2026-10-25T21:14:49.756358+00:00",
+			"scope": "Queue post-fix browser checkpoint",
+			"result": "26/26 persisted browser checks pass on existingpairedQAqueue/SUB7, includingactualHELP22/23links, per-entitysavedfilters, staleCAS409, localURLsort, private404, keyboardfocus and375/768/1440lightdark. SourceCancel/Close/Filter/Statuslabelcorrectionsawaitnextbuild. Ordinaryownerpassword+existingTOTPloginrestored; noMFA/rate-limitbypass. RuntimeAPIremains184; terminology185sourceintegrationnotyetdeployed."
+		},
+		{
+			"check": "Integrated custom-field / Storage / MCP checkpoint",
+			"result": "HTTPS deployment175 and all bundle budgets pass. Storage passes six viewport/theme checks and one real write/read/delete probe with cleanup confirmed. CF161 frontend tests, MCP12 database tests and4 usage-panel tests pass; CF and MCP browser journeys are in progress. Full final-tree gates/reviews remain pending.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Local SIT",
+			"result": "Trusted HTTPS on both requested hosts at443. All three owned copies are at186 migrations, each preceded by a fully decoded rollback backup; checked business/report counts are unchanged. Protected live database was never targeted. Rebuilt186 API/web candidate is pending.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Browser passes",
+			"result": "Native title/date edits, narrow cells and Settings tabs pass browser checks. Local SSO, reports/CSV, Jobs and Plugins also pass scoped journeys. Custom columns and delivery retry are now being integrated.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "10,000-item test",
+			"result": "Search passes: 97.4 ms p95 against 100 ms. All 12 exact-key, title and CJK queries are visible, with no errors. The unchanged protocol and prior failures are recorded.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Integration fixes",
+			"result": "Full Linux checkpoint: 5,226 passed, 1 old rounding expectation failed. The corrected drill suite passes 11/11 in Linux. New feature slices need a fresh full run. Real Entra remains external.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Unit and type checks",
+			"result": "Current API2102/2102 and patched web3005/3005 across461files pass. Web two-config typecheck passes; API five-config/permissions118 checkpoints pass at186. Domain742 remains a prior checkpoint; final all-package verification follows remaining slices.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Bundle and contrast",
+			"result": "Latest patched186 build passes G11: agent261929/350000 bytes; work-list348939/350000; portal199964/200000 (36byte headroom). G12 clean. Token/contrast403-pair pass precedes dependency-only/code-loading changes; no styling or pair removal. New source still needs final complete-tree refresh.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Security",
+			"result": "Dependency audit now reports0 findings at every severity after the scoped KaTeX0.18.2 fix; two regression checks and persisted Mermaid task/comment journeys pass. Shipping-image42high findings remain separate and open; staged secret scan pending.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Review and P6",
+			"result": "Fresh formal reviews remain0/3 per phase. Unresolved findings after a third failed round require Thomas approval. P6 is approved but not started; P0–P5 exits remain incomplete.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Custom-field table browser",
+			"result": "Persisted edits, reload, Escape and saved widths pass; eight width/theme captures pass. Broader column, saved-view and permission flows remain pending.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "MCP usage browser",
+			"result": "59/59 checks pass against real SDK calls and persisted records, with six width/theme captures. Client reports remain separate from server counts.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Invitation delivery",
+			"result": "Cryptographic-expiry queue passes156/156 regressions. One initial-contact mail/signup/accept/fresh-login browser journey passes. Grant provenance defect repaired for the exact owned QA membership and covered by35 lifecycle tests; no reseeding.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Migration safety",
+			"result": "Owned audit, performance and SSO copies migrated to186 after verified recoverable dumps with preserved business/aggregate/coverage counts. Source checkpoint individually hash-verifies1950 files. Protected live database remains separate and was never targeted.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "PDF preview",
+			"result": "Strict-TLS work-item, own portal and staff PDF journeys pass; foreign access is denied. Eight main width/theme captures include375px;14current captures inspected. DOCX download bytes/filename match and no PDF preview is offered.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Catalogue and epic grouping",
+			"result": "Catalogue order, portal backlog ranking and epic timeline pass scoped browser checks. Organisation profile/CAS/suspend/unsuspend and inherited calendar/SLA pass at375/768/1440 in both themes. Epic reporting totals/filter/progress/private-view/drill/CSV pass; full phase matrix remains pending.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Current compilation and permissions",
+			"result": "FullAPI183 typecheck passes all5configs; current permissions118/118 pass. Full unit checkpoints remain API2038, web2887 and domain742; final consolidated test run pending after remaining source work.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "26 October closure checkpoint",
+			"result": "Current permissions118/118 and fullAPI typecheck all5configs pass. API/web183 deployed on3ownedcopies; bundle hashes match and6strictTLShealth checks return200. Lifecycle integration13/13 passes; its delete/restore UI is in browser testing. Epic report functional+label-layout rerun passes. Combined-board mouse transition and cross-project rank denial pass after collision fix; final captures are being checked. Orgpurge remains in implementation.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Notification live updates — 26 October",
+			"result": "Fixed and deployed186: a real public QA comment produces one payload-free WebSocket frame and its customer inbox row appears without reload. Read/unread persistence, URL-backed unread filtering and exact comment link pass. Trigger PostgreSQL3/3 and listener/lifecycle12/12 pass. Scoped locale regression17/17 and permissions118/118 pass. Complete-shell captures and final full phase matrix remain pending.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Owned organisation purge — 26 October",
+			"result": "Repeated real browser delete+purge on fresh own QA fixture now passes readable global-dialog labels, exact typed name and fresh password step-up. Verified DB+3file backups;8 unrelated business-table full-row hashes match and audit remains. Desktop scoped evidence only; earlier visual failure retained.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Requirement index completeness",
+			"result": "Added six existing GM-T terminology clauses and the accepted PA-1a exemption from maintained contracts. Normative bullet scan now finds no unindexed ID in indexed P0–P5 sources. Counts:661 P0–P5 plus12 P6; source/audit rows and report totals reconciled. Several terminology clauses remain explicitly partial.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Source189 targeted repair checks",
+			"result": "Permissions118/118; workspace deletion/account erasure30/30; terminology HTTP4/4 and preview unit22/22; service-key re-attestation14/14 plus expanded authority-loss/reattest7/7. Invitation/signup, anonymous rate-limit and HRD suites25/25 pass. Explicit OTP/magic-link/OIDC continuation checks remain pending. These are scoped source checks; runtime remains186.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Source189 staged bundle gate",
+			"result": "Resolved by lazy sign-in provider loading. Deployed189:agent262075/350000,work-list349091/350000,portal199420/200000bytes;G11/G12pass. Earlier failed176/48byte excess retained in logs; no budgets changed.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Migration189 rehearsal",
+			"result": "Restored a fully decoded audit-copy rollback dump into a separate rehearsal database;186→189 succeeds. All166 existing public-table row counts unchanged; person deletion trigger verified. Runtime copies remain186; protected live database untouched. Subsequent three-copy deployment backed up/fully decoded each database, migrated to189 and preserved checked business/report counts. Native and auxiliary APIs match the new hash; all6strict-TLSreadiness endpoints200.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Source189 rollback checkpoint",
+			"result": "2145 source files individually decoded and hash-compared;58,881,408-byte archive and parse-checked binary patch under ignored backups. No commit created. Later source edits require another checkpoint before deployment.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "API source189 full unit checkpoint",
+			"result": "2132/2132 tests across270 files pass with owned SIT API paused for exclusive metrics-port fixtures; strict-TLS readiness restored afterward. Initial live-port run2129pass/3fixture failures retained privately. This checkpoint precedes pending global-dialog/provider coverage changes; final-tree gates still required.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Deployed189 scoped browser and gates",
+			"result": "API2139/2139,web3020/3020,permissions118/118 checkpoints pass;lint8/8packagespasses with29warnings. Explicit OTP/magic-link/OIDC/concurrency integration4/4;pendingread9/9;webhookposture2/2. Real admin browser posture+draftpreview375/768/1440light/dark passes with no writes,overflow or page errors. Full phase browser/review remains pending. Test-library controls repaired9/9;rawUIgatepasses. Contrast source refresh retains403pairs,0removed/added;write completed; all9packages types pass. Full contrast403pairs passes both themes.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Source190 closure wave",
+			"result": "Wave 190 is deployed on all three owned copies after verified backups and migration rehearsal. Checkpoints pass: API 2,142; web 3,025; permissions 118; typechecks across 9 packages; lint; G11/G12. Incident rotation integration: 5/5; signature/proof unit: 28/28; expanded MCP origin/incident integration: 4/4. Target terminology passes browser checks on full-page and dialog views at three widths in both themes. Escape focus was repaired and verified. Own QA project approval, soft delete and API restore pass; eight original business-table hashes stayed unchanged. Restore GUI, full phase coverage and reviews remain pending. New import schema/backend is unverified source.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"check": "Status refresh 26 October",
+			"result": "Live check: both HTTPS hosts return 200; all three owned databases are at migration 190. HEAD remains aea5d5702. Repairs are uncommitted, protected by a verified 2,224-file source checkpoint and decoded artifact/database backups. Reviews: 0/3 per phase; no new commit, PR or merge. Final Linux integration and security image findings remain open.",
+			"archivedAt": "2026-10-26T02:36:30.446599+00:00"
+		},
+		{
+			"recordedAt": "2026-10-26T07:23:59.078006+00:00",
+			"check": "Superseded runtime194 checkpoint",
+			"result": "All three owned copies migrated192→194 after fully decoded rollback dumps; checked business/report counts preserved. API hashes match and all six strict-TLS readiness checks pass. Protected live database never targeted. Historical only: these deployments are now down."
+		}
+	],
+	"crosscutting_gaps": [
+		{
+			"requirement": "Security model: Transport and headers",
+			"status": "verified_scoped",
+			"finding": "Both HTTPS hosts serve complete nonced HTML and enforced sandboxed PDF documents. Mounted static tests pass5/5; runtime responses and anonymous renderer CORS pass. Parent CSP remains report-only as required for its first release."
+		},
+		{
+			"requirement": "Runtime web/jobs roles",
+			"status": "verified_scoped",
+			"finding": "Real isolated web/jobs/all processes pass listener, liveness and shutdown checks. Jobs exposes no HTTP or metrics listener. Final shipping-image and cadence verification remain pending."
+		},
+		{
+			"requirement": "Same-origin web build",
+			"status": "fixed_scoped",
+			"finding": "Build scripts now force same-origin APIs. Real Chromium requests use the HTTPS host; workspace network failures show the existing error panel and Retry recovers, with no false onboarding."
+		}
+	]
 }

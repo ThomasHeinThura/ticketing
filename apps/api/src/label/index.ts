@@ -124,6 +124,8 @@ const createLabelRoute = createRoute({
       "No workspace access, or missing label:create permission",
     ),
     404: errorResponse("Task not found"),
+    409: errorResponse("A label with this key or name already exists"),
+    422: errorResponse("A catalogue key could not be derived"),
   },
 });
 
@@ -275,7 +277,7 @@ const label = apiRouter()
     );
   })
   .openapi(createLabelRoute, async (c) => {
-    const { name, color, workspaceId, taskId } = c.req.valid("json");
+    const { name, color, workspaceId, taskId, key } = c.req.valid("json");
     const userId = c.get("userId");
     return c.json(
       await createLabel(
@@ -285,6 +287,8 @@ const label = apiRouter()
         taskId,
         workspaceId,
         userId,
+        key,
+        c.get("apiKey")?.id,
       ),
       200,
     );
@@ -298,7 +302,13 @@ const label = apiRouter()
     const { taskId } = c.req.valid("json");
     const userId = c.get("userId");
     return c.json(
-      await assignLabelToTask(await requestIdentity(c), id, taskId, userId),
+      await assignLabelToTask(
+        await requestIdentity(c),
+        id,
+        taskId,
+        userId,
+        c.get("apiKey")?.id,
+      ),
       200,
     );
   })
@@ -306,7 +316,12 @@ const label = apiRouter()
     const { id } = c.req.valid("param");
     const userId = c.get("userId");
     return c.json(
-      await unassignLabelFromTask(await requestIdentity(c), id, userId),
+      await unassignLabelFromTask(
+        await requestIdentity(c),
+        id,
+        userId,
+        c.get("apiKey")?.id,
+      ),
       200,
     );
   })

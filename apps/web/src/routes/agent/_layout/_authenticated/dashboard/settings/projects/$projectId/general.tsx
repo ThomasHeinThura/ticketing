@@ -140,6 +140,7 @@ function RouteComponent() {
   const { mutateAsync: updateProject } = useUpdateProject();
   const { mutateAsync: deleteProject, isPending: isDeleting } =
     useDeleteProject();
+  const deleteProjectButtonRef = useRef<HTMLButtonElement>(null);
   const { canManageProjects, canDeleteProjects } = useWorkspacePermission();
   const canEdit = canManageProjects();
   const canDelete = canDeleteProjects();
@@ -403,12 +404,15 @@ function RouteComponent() {
 
   const handleDeleteProject = useCallback(async () => {
     if (!project?.id) return;
+    const deleteTrigger = deleteProjectButtonRef.current;
+    const finalFocus = () =>
+      deleteTrigger?.isConnected ? deleteTrigger : false;
 
     try {
       // The in-place approval dialog is the single confirmation (PA-3). Deletion is only
       // requested: the project stays (and the user stays on it) until the requester approves.
       const pendingAction = await deleteProject({ id: project.id });
-      await openPendingAction(pendingAction);
+      await openPendingAction({ ...pendingAction, finalFocus });
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -731,6 +735,7 @@ function RouteComponent() {
                   </p>
                 </div>
                 <Button
+                  ref={deleteProjectButtonRef}
                   variant="ghost"
                   size="sm"
                   className="text-destructive hover:text-destructive transition-colors"

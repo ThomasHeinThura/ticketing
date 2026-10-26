@@ -73,6 +73,8 @@ export class WorkItemAssigneeConflictError extends Error {
 export type AssignWorkItemInput = {
   assigneeId: string;
   expectedCurrentAssigneeId?: string | null;
+  /** Trusted route metadata derived from the authenticated API-key kind. */
+  auditOrigin?: "mcp";
 };
 
 export type AssignedWorkItem = {
@@ -263,7 +265,10 @@ export async function assignWorkItem(
       entityType: "work_item",
       entityId: item.id,
       before: { assigneeId: previousAssigneeId },
-      after: { assigneeId: input.assigneeId },
+      after: {
+        assigneeId: input.assigneeId,
+        ...(input.auditOrigin ? { origin: input.auditOrigin } : {}),
+      },
     });
 
     // `WI-29`: the new assignee is an implicit watcher (never un-mutes an opt-out).

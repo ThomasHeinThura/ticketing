@@ -10,12 +10,13 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { claimWorkItemNumber } from "../../apps/api/src/work-item/controllers/claim-work-item-number";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
+import { setTestDatabaseTimezone } from "./helpers/database-timezone";
 import {
   createProjectFixture,
   createWorkspaceMember,
@@ -26,14 +27,6 @@ import {
 } from "./helpers/fixtures";
 import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 import { ensureCreationWorkflow } from "./helpers/workflow";
-
-// Set before the pool opens: exercise real PostgreSQL's non-UTC timestamp defaults.
-const previousPgOptions = process.env.PGOPTIONS;
-process.env.PGOPTIONS = "-c timezone=Asia/Yangon";
-afterAll(() => {
-  if (previousPgOptions === undefined) delete process.env.PGOPTIONS;
-  else process.env.PGOPTIONS = previousPgOptions;
-});
 
 // ── Fixture builders for the tables `work-item-schema.test.ts` also builds directly -- ──
 // this file needs the same rows (`work_item_type`, `state_template`, `state`), but reached
@@ -213,8 +206,14 @@ function createWorkItemRequest(
 }
 
 describe("API integration: work item create/read/list (#23)", () => {
+  let restoreDatabaseTimezone: (() => Promise<void>) | undefined;
   beforeEach(async () => {
     await resetTestDatabase();
+    restoreDatabaseTimezone = await setTestDatabaseTimezone("Asia/Yangon");
+  });
+  afterEach(async () => {
+    await restoreDatabaseTimezone?.();
+    restoreDatabaseTimezone = undefined;
   });
 
   it("creates matching UTC creation/update/SLA instants on a non-UTC PostgreSQL session", async () => {

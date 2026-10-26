@@ -334,6 +334,17 @@ export async function installIdentityAdminFixture(
       });
     }
 
+    const organisationIdentity =
+      /^\/api\/instance\/organisations\/([^/]+)\/identity$/u.exec(path);
+    if (organisationIdentity && method === "GET")
+      return json({
+        data:
+          fixture.connections.find(
+            (connection) =>
+              connection.organisationId === organisationIdentity[1],
+          ) ?? null,
+      });
+
     const connectionMatch =
       /^\/api\/instance\/identity-connections(?:\/([^/]+))?(?:\/(.+))?$/u.exec(
         path,

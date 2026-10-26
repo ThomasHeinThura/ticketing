@@ -144,7 +144,9 @@ describe("integration database reset lock acquisition", () => {
             lockUnavailableCalls += 1;
           },
         }),
-      ).rejects.toThrow('Refusing to manage non-test database "taskdesk_prod"');
+      ).rejects.toThrow(
+        "Refusing integration fixtures against a protected or non-test database",
+      );
     } finally {
       process.env.TASKDESK_DATABASE_URL = originalUrl;
     }

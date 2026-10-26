@@ -2,11 +2,31 @@ import { describe, expect, it } from "vitest";
 import {
   parseInstanceAuditSearch,
   parsePortalApprovalsSearch,
+  parsePortalReleasesSearch,
   parsePortalRequestsSearch,
   routes,
 } from "./routes";
 
 describe("portal and audit URL state", () => {
+  it("keeps backlog mode in request links without adding it to release links", () => {
+    const url = new URL(
+      routes.portalRequests.build({ view: "backlog", cursor: "next_1" }),
+      "https://portal.invalid",
+    );
+    expect(
+      parsePortalRequestsSearch(Object.fromEntries(url.searchParams)),
+    ).toEqual({
+      view: "backlog",
+      cursor: "next_1",
+    });
+    expect(routes.portalRequests.build()).toBe("/requests");
+    expect(parsePortalRequestsSearch({ view: "admin" })).toEqual({});
+    expect(
+      parsePortalReleasesSearch({ view: "backlog", cursor: "next_1" }),
+    ).toEqual({
+      cursor: "next_1",
+    });
+  });
   it("round-trips opaque request cursors and approval selection", () => {
     const requests = new URL(
       routes.portalRequests.build({ cursor: "opaque_older-50" }),

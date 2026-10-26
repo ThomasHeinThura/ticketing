@@ -1,7 +1,6 @@
 /**
  * IQ-21: server-side queue filters on GET /api/submissions (requestTypeKey, assignee,
- * olderThanDays), composed with state and cursor paging. WRITTEN, NOT YET RUN: needs the
- * integration database (coordinator runs it).
+ * olderThanDays), composed with state and cursor paging.
  */
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -70,6 +69,12 @@ describe("staff queue server-side filters (IQ-21)", () => {
     expect(unclaimed.body.submissions.map((row) => row.ref).sort()).toEqual(
       [old, fresh].sort(),
     );
+    const claimedQueue = await list(s, "&assignee=claimed&limit=1");
+    expect(claimedQueue.body.submissions.map((row) => row.ref)).toEqual([
+      claimed,
+    ]);
+    expect(claimedQueue.body.meta.total).toBe(1);
+    expect(claimedQueue.body.page.hasMore).toBe(false);
     const mine = await list(s, `&assignee=${requesterPerson?.id}`);
     expect(mine.body.submissions.map((row) => row.ref)).toEqual([claimed]);
 

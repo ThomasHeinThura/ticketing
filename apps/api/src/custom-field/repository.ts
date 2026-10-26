@@ -884,9 +884,10 @@ export async function softDeleteField(
 export async function loadValueMaps(
   executor: Executor,
   workItemIds: readonly string[],
+  allowedFieldIds?: readonly string[],
 ): Promise<Map<string, Record<string, unknown>>> {
   const result = new Map<string, Record<string, unknown>>();
-  if (workItemIds.length === 0) return result;
+  if (workItemIds.length === 0 || allowedFieldIds?.length === 0) return result;
   const rows = await executor
     .select({
       entityId: customFieldValueTable.entityId,
@@ -903,10 +904,15 @@ export async function loadValueMaps(
         inArray(customFieldValueTable.entityId, [...workItemIds]),
         eq(customFieldValueTable.entityType, "work_item"),
         isNull(customFieldTable.deletedAt),
+        ...(allowedFieldIds
+          ? [inArray(customFieldTable.id, [...allowedFieldIds])]
+          : []),
       ),
     );
   for (const row of rows) {
-    const map = result.get(row.entityId) ?? {};
+    const map =
+      result.get(row.entityId) ??
+      (allowedFieldIds ? (Object.create(null) as Record<string, unknown>) : {});
     map[row.key] = row.value;
     result.set(row.entityId, map);
   }

@@ -67,12 +67,12 @@ async function tenantWithCatalogue() {
   const t = await buildTenant("chg", { executable: true });
   await setServiceFlag(t.workspaceId, true);
   await grantProjectRole(t.requester.user.id, t.project.id, ["change:manage"]);
-  const call = (
+  const call = async (
     path: string,
     init: { method?: string; body?: unknown } = {},
-  ) => {
+  ): Promise<Response> => {
     mockAuthenticatedSession(t.requester.user);
-    return t.app.request(path, {
+    return await t.app.request(path, {
       method: init.method ?? "GET",
       headers: json,
       ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
@@ -1068,10 +1068,10 @@ describe("the freeze override is freeze-scoped (CH-4, P5-R5-02, R5-04, R5-10)", 
       "work_item:transition",
       "change:manage",
     ]);
-    const call = (
+    const call = async (
       path: string,
       init: { method?: string; body?: unknown; token?: string | null } = {},
-    ) => {
+    ): Promise<Response> => {
       const requestInit = {
         method: init.method ?? "GET",
         headers: {
@@ -1081,9 +1081,9 @@ describe("the freeze override is freeze-scoped (CH-4, P5-R5-02, R5-04, R5-10)", 
         },
         ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
       };
-      return requestInit.method === "GET"
+      return await (requestInit.method === "GET"
         ? t.app.request(path, requestInit)
-        : csrfRequest(t.app, path, requestInit, user.cookie);
+        : csrfRequest(t.app, path, requestInit, user.cookie));
     };
     const changePath = `/api/work-items/${t.key}/change`;
     const patch = (body: unknown) =>

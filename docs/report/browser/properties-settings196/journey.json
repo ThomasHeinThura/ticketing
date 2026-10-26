@@ -1,0 +1,193 @@
+{
+	"recordedAt": "2026-10-26T14:29:46.514Z",
+	"scope": "Properties scrolling and resizing; separate settings pages. Read-only application records.",
+	"checks": [
+		{
+			"name": "properties 1440 light has bounded scrolling",
+			"pass": true,
+			"detail": {
+				"height": 798,
+				"total": 1337,
+				"overflow": "auto"
+			}
+		},
+		{
+			"name": "properties 1440 light expanded content exceeds panel",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 light reaches lower properties",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 light main page stays fixed while properties scroll",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 light no horizontal page overflow",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 light keyboard widens leftwards",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 light pointer widens",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 light inner properties follows resized panel",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 light Escape restores width",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 dark has bounded scrolling",
+			"pass": true,
+			"detail": {
+				"height": 798,
+				"total": 1337,
+				"overflow": "auto"
+			}
+		},
+		{
+			"name": "properties 1440 dark expanded content exceeds panel",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 dark reaches lower properties",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 dark main page stays fixed while properties scroll",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 dark no horizontal page overflow",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 dark keyboard widens leftwards",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 dark pointer widens",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 dark inner properties follows resized panel",
+			"pass": true
+		},
+		{
+			"name": "properties 1440 dark Escape restores width",
+			"pass": true
+		},
+		{
+			"name": "properties 768 light has bounded scrolling",
+			"pass": true,
+			"detail": {
+				"height": 189,
+				"total": 189,
+				"overflow": "auto"
+			}
+		},
+		{
+			"name": "properties 768 light no horizontal page overflow",
+			"pass": true
+		},
+		{
+			"name": "properties 768 light desktop resizer absent",
+			"pass": true
+		},
+		{
+			"name": "properties 768 dark has bounded scrolling",
+			"pass": true,
+			"detail": {
+				"height": 189,
+				"total": 189,
+				"overflow": "auto"
+			}
+		},
+		{
+			"name": "properties 768 dark no horizontal page overflow",
+			"pass": true
+		},
+		{
+			"name": "properties 768 dark desktop resizer absent",
+			"pass": true
+		},
+		{
+			"name": "properties 375 light has bounded scrolling",
+			"pass": true,
+			"detail": {
+				"height": 209,
+				"total": 209,
+				"overflow": "auto"
+			}
+		},
+		{
+			"name": "properties 375 light no horizontal page overflow",
+			"pass": true
+		},
+		{
+			"name": "properties 375 light desktop resizer absent",
+			"pass": true
+		},
+		{
+			"name": "properties 375 dark has bounded scrolling",
+			"pass": true,
+			"detail": {
+				"height": 209,
+				"total": 209,
+				"overflow": "auto"
+			}
+		},
+		{
+			"name": "properties 375 dark no horizontal page overflow",
+			"pass": true
+		},
+		{
+			"name": "properties 375 dark desktop resizer absent",
+			"pass": true
+		},
+		{
+			"name": "settings Account own heading",
+			"pass": true
+		},
+		{
+			"name": "settings Account no combined scope tabs",
+			"pass": true
+		},
+		{
+			"name": "settings Workspace own heading",
+			"pass": true
+		},
+		{
+			"name": "settings Workspace no combined scope tabs",
+			"pass": true
+		},
+		{
+			"name": "settings Project settings own heading",
+			"pass": true
+		},
+		{
+			"name": "settings Project settings no combined scope tabs",
+			"pass": true
+		},
+		{
+			"name": "settings God Mode own heading",
+			"pass": true
+		},
+		{
+			"name": "settings God Mode no combined scope tabs",
+			"pass": true
+		},
+		{
+			"name": "No JavaScript errors",
+			"pass": true
+		}
+	],
+	"outcome": "passed"
+}

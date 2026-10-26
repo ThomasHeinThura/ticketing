@@ -317,6 +317,7 @@ const legacyTaskDeletionResponseHeaders = {
 
 async function runFullTaskUpdate(input: {
   identity: ResolvedIdentity;
+  apiKeyId?: string | null;
   id: string;
   assertedVersion: number | undefined;
   title: string;
@@ -346,6 +347,7 @@ async function runFullTaskUpdate(input: {
         input.position,
         input.userId,
         input.currentUserId,
+        input.apiKeyId,
       ),
     };
   } catch (error) {
@@ -827,6 +829,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         operation,
         value,
         identity,
+        apiKeyId: c.get("apiKey")?.id,
         userId,
         workspaceId: c.get("workspaceId"),
         reach: (c as unknown as Context).get(
@@ -850,6 +853,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await createTask({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       projectId,
       currentUserId: c.get("userId"),
       userId: userId,
@@ -877,6 +881,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const result = await moveTask({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       taskId: id,
       destinationProjectId,
       destinationStatus,
@@ -916,6 +921,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       position,
       userId,
       currentUserId,
+      apiKeyId: c.get("apiKey")?.id,
     });
     if ("conflict" in result) return c.json(result.conflict, 409);
     return c.json(result.task, 200);
@@ -940,6 +946,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       projectId,
       tasks,
       currentUserId,
+      c.get("apiKey")?.id,
     );
 
     return c.json(result, 200);
@@ -954,6 +961,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskStatus({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       status,
       currentUserId,
@@ -968,6 +976,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskPriority({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       priority,
       currentUserId,
@@ -982,6 +991,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskAssignee({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       userId,
       currentUserId,
@@ -996,6 +1006,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskDueDate({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       dueDate,
       currentUserId,
@@ -1010,6 +1021,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskTitle({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       title,
       currentUserId,
@@ -1162,6 +1174,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskDescription({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       description,
       currentUserId,
@@ -1201,6 +1214,7 @@ export const taskV2 = apiRouter<
     position,
     userId,
     currentUserId: c.get("userId"),
+    apiKeyId: c.get("apiKey")?.id,
   });
   if ("conflict" in result) return c.json(result.conflict, 409);
   return c.json(result.task, 200);

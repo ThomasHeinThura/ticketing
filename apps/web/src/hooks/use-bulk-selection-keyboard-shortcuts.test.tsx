@@ -51,6 +51,29 @@ describe("board bulk-selection keyboard shortcuts", () => {
     input.remove();
   });
 
+  it("leaves Escape available to a focused child input", () => {
+    const clearSelection = vi.fn();
+    renderHook(() =>
+      useBulkSelectionKeyboardShortcuts(true, {
+        selectAll: vi.fn(),
+        clearSelection,
+      }),
+    );
+    const input = document.createElement("input");
+    document.body.append(input);
+    const event = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+
+    act(() => input.dispatchEvent(event));
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(clearSelection).not.toHaveBeenCalled();
+    input.remove();
+  });
+
   it("removes the document listener when the board shortcut owner unmounts", () => {
     useBulkSelectionStore.getState().setAvailableTasks(["task-1"]);
     const { unmount } = renderHook(() => useBulkSelectionKeyboardShortcuts());

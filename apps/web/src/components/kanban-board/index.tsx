@@ -250,6 +250,11 @@ function KanbanBoard({
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: {
+        start: ["Space"],
+        end: ["Space", "Enter"],
+        cancel: ["Escape"],
+      },
     }),
   );
 

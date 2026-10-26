@@ -12,6 +12,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectManageAccess,
+  grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
 import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
@@ -373,6 +374,7 @@ describe("registered legacy click deletions", () => {
       workspaceId: manager.workspace.id,
     });
     await grantProjectManageAccess(manager.user.id, project.id);
+    await grantProjectRole(manager.user.id, project.id, ["automation:manage"]);
     const person = requireRow(
       await db
         .select()

@@ -1,7 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { customFieldTable } from "../database/migration-schema";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -41,6 +42,29 @@ export const customFieldDeletionTarget: RegisteredDeletionTarget = {
       summary: { customFieldId: field.id, key: field.key, name: field.name },
       version: registeredDeletionFingerprint(field),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [field] = await tx
+      .select({
+        id: customFieldTable.id,
+        workspaceId: customFieldTable.workspaceId,
+      })
+      .from(customFieldTable)
+      .where(
+        and(eq(customFieldTable.id, id), isNull(customFieldTable.deletedAt)),
+      )
+      .limit(1);
+    return field
+      ? {
+          id: field.id,
+          workspaceId: field.workspaceId,
+          projectId: null,
+          organisationId: null,
+        }
+      : undefined;
   },
   assertDeletable: async (tx, loaded) => {
     const [field] = await tx

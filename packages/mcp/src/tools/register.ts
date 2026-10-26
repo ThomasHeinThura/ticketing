@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
@@ -10,6 +11,8 @@ import {
 } from "../utils/mcp-result.js";
 import { textToDoc } from "../utils/rich-text.js";
 import {
+  isSafeTimestamp,
+  isSafeToken,
   UNTRUSTED_OUTPUT_NOTICE,
   untrustedContent,
   wrapUntrusted,
@@ -31,17 +34,14 @@ import {
  *   header, so a retry after a timeout returns the original result instead of repeating
  *   the write. The model supplies it (a fresh random value per call would not survive the
  *   retry it exists for).
- * - `MC-7` / `MC-17`: no tool deletes or decides. A destructive tool only asks the
+ * - `MC-7` / `MC-17`: no tool directly deletes or decides. A destructive tool only asks the
  *   canonical route for a pending action; the key's owner approves in the web app.
  * - `MC-15`: output is wrapped as untrusted content at the output boundary (`run`).
  *
  * Not offered, because the API route they would call does not exist yet: `list_my_work`,
- * `create_submission`, `bulk_create_work_items`, `create_import_link`,
- * `get_import_link`. Not offered because the API refuses keys on the route they would call
+ * `create_submission`. Not offered because the API refuses keys on the route they would call
  * (`403 session_required`): `list_workspaces` (`GET /api/workspace` and
- * `GET /api/workspace/{id}/members` are browser-session only) and `decide_approval`
- * (`POST /api/approvals/{id}/decide` is browser-session only until the `mcp_destructive`
- * pending action exists, `PA-14`).
+ * `GET /api/workspace/{id}/members` are browser-session only).
  */
 
 const nonEmptyString = z.string().trim().min(1);
@@ -56,9 +56,12 @@ const idempotencyKeySchema = z
   .describe(
     "Required. A unique id you choose for this change, e.g. a UUID. If you retry the same change (after a timeout, say) send the SAME key and TaskDesk returns the original result instead of doing it twice. Use a NEW key for a different change.",
   );
+const importIdempotencyKeySchema = idempotencyKeySchema.max(200);
 
 const WRITE_NOTICE =
   "This changes data. It needs a key that was created with write access (keys are read-only by default); a read-only key is refused. Not approval-gated, but audited as an agent action and rate limited.";
+const IMPORT_WRITE_NOTICE =
+  "This changes data. It needs a write-enabled key (keys are read-only by default), is audited as an agent action and rate limited. Chunks over 50 records or links require approval by the API key owner in TaskDesk; this tool cannot approve them.";
 
 /**
  * MC-15: every successful tool response passes through `wrapUntrusted` here, at the output
@@ -139,6 +142,118 @@ function writeInit(
   };
 }
 
+function scopedIdempotencyKey(key: string, operation: string): string {
+  const digest = createHash("sha256")
+    .update(`${operation}\0${key}`)
+    .digest("hex");
+  return `mcp-import-${digest}`;
+}
+
+function deterministicChunkId(key: string): string {
+  return createHash("sha256")
+    .update(`bulk_create_work_items:chunk\0${key}`)
+    .digest("hex");
+}
+
+const importItemSchema = z
+  .object({
+    typeId: nonEmptyString,
+    title: nonEmptyString.max(500),
+    description: z.unknown().optional(),
+    priority: prioritySchema.optional(),
+    startDate: isoDateTimeSchema.nullable().optional(),
+    dueDate: isoDateTimeSchema.nullable().optional(),
+    labelIds: z
+      .array(nonEmptyString)
+      .max(100)
+      .refine((ids) => new Set(ids).size === ids.length, "Duplicate labels")
+      .optional(),
+    assigneeId: nonEmptyString.optional(),
+  })
+  .strict();
+
+const importRecordSchema = z
+  .object({
+    sourceType: nonEmptyString.max(80),
+    sourceId: nonEmptyString.max(512),
+    sourceUrl: z
+      .string()
+      .url()
+      .max(2048)
+      .refine((value) => {
+        try {
+          const url = new URL(value);
+          return url.protocol === "https:" && !url.username && !url.password;
+        } catch {
+          return false;
+        }
+      })
+      .optional(),
+    sourceHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .optional(),
+    sourceCreatedAt: isoDateTimeSchema.optional(),
+    sourceAuthorEmail: z.string().email().max(320).optional(),
+    item: importItemSchema,
+  })
+  .strict();
+
+const importRecordsSchema = z
+  .array(importRecordSchema)
+  .min(1)
+  .max(500)
+  .superRefine((records, context) => {
+    const seen = new Set<string>();
+    records.forEach((record, index) => {
+      const key = JSON.stringify([record.sourceType, record.sourceId]);
+      if (seen.has(key))
+        context.addIssue({
+          code: "custom",
+          path: [index, "sourceId"],
+          message: "Duplicate source identity in import chunk",
+        });
+      seen.add(key);
+    });
+  });
+
+const bulkPreviewSchema = z
+  .object({
+    action: z.literal("preview"),
+    idempotencyKey: idempotencyKeySchema,
+    workspaceId: nonEmptyString.max(128),
+    projectId: nonEmptyString.max(128),
+    sourceRef: nonEmptyString.max(200),
+    profileId: nonEmptyString.optional(),
+    records: importRecordsSchema,
+  })
+  .strict();
+
+const bulkExecuteSchema = z
+  .object({
+    action: z.literal("execute"),
+    idempotencyKey: idempotencyKeySchema,
+    runId: nonEmptyString.max(128),
+    chunkId: nonEmptyString.max(128),
+    expectedVersion: z.number().int().positive().safe(),
+    previewDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+    records: importRecordsSchema,
+  })
+  .strict();
+
+const importLinkSchema = z
+  .object({
+    sourceType: nonEmptyString.max(80),
+    sourceId: nonEmptyString.max(512),
+    targetType: z.literal("work_item"),
+    targetId: nonEmptyString.max(128),
+    sourceHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .optional(),
+  })
+  .strict();
+
 type VersionedItem = { version?: unknown };
 
 export function registerTools(
@@ -152,16 +267,43 @@ export function registerTools(
     name: string,
     config: { description?: string },
     cb: unknown,
-  ) =>
-    server.registerTool(
+  ) => {
+    const tracked = async (...args: unknown[]) => {
+      const invocationId = randomUUID();
+      const startedAt = performance.now();
+      let outcome: "success" | "error" = "error";
+      try {
+        const result = await (
+          cb as (...callbackArgs: unknown[]) => Promise<unknown>
+        )(...args);
+        outcome =
+          isRecord(result) && result.isError === true ? "error" : "success";
+        return result;
+      } finally {
+        const durationMs = Math.max(
+          0,
+          Math.min(600_000, Math.floor(performance.now() - startedAt)),
+        );
+        void client
+          .reportToolInvocation({
+            invocationId,
+            toolName: name,
+            durationMs,
+            outcome,
+          })
+          .catch(() => undefined);
+      }
+    };
+    return server.registerTool(
       name,
       {
         ...config,
         description:
           `${config.description ?? ""} ${UNTRUSTED_OUTPUT_NOTICE}`.trim(),
       } as never,
-      cb as never,
-    )) as McpServer["registerTool"];
+      tracked as never,
+    );
+  }) as McpServer["registerTool"];
 
   /** Registers `name` and any older names kept as aliases for two minor releases. */
   const registerWithAliases = (
@@ -210,11 +352,10 @@ export function registerTools(
     "whoami",
     {
       description:
-        "Return the current TaskDesk session and user (GET /api/auth/get-session). Read-only.",
+        "Return the authenticated TaskDesk user's own staff identity and credential type (GET /api/me/identity). Read-only; no session token or permissions are returned.",
       inputSchema: z.object({}),
     },
-    async () =>
-      run(() => client.json("/api/auth/get-session", { method: "GET" })),
+    async () => run(() => client.json("/api/me/identity", { method: "GET" })),
   );
 
   registerTool(
@@ -481,6 +622,42 @@ export function registerTools(
   );
 
   registerTool(
+    "get_import_link",
+    {
+      description:
+        "List source-to-work-item links for one import run (GET /api/imports/{id}/links; needs instance:admin plus work_item:read on the run's project). Read-only. Unreachable targets are returned without target identifiers. Use cursor from the response to continue; at most 100 links are returned per page.",
+      inputSchema: z
+        .object({
+          runId: nonEmptyString.max(128),
+          sourceType: nonEmptyString.max(80).optional(),
+          sourceId: nonEmptyString.max(512).optional(),
+          cursor: nonEmptyString.max(128).optional(),
+          limit: z.number().int().min(1).max(100).optional(),
+        })
+        .strict(),
+    },
+    async (args) => {
+      const query = new URLSearchParams();
+      if (args.sourceType) query.set("sourceType", args.sourceType);
+      if (args.sourceId) query.set("sourceId", args.sourceId);
+      if (args.cursor) query.set("cursor", args.cursor);
+      if (args.limit !== undefined) query.set("limit", String(args.limit));
+      const suffix = query.size > 0 ? `?${query.toString()}` : "";
+      return run(
+        async () =>
+          compact(
+            await client.json(
+              `/api/imports/${enc(args.runId)}/links${suffix}`,
+              { method: "GET" },
+            ),
+            false,
+          ),
+        { paged: true },
+      );
+    },
+  );
+
+  registerTool(
     "get_pending_action",
     {
       description:
@@ -498,6 +675,170 @@ export function registerTools(
   /* ---------------------------------------------------------------- *
    * Write tools (MC-5: idempotencyKey required; MC-7a: audited, bounded)
    * ---------------------------------------------------------------- */
+
+  registerTool(
+    "bulk_create_work_items",
+    {
+      description: `Create work items through the canonical import run and chunk API (POST /api/imports, /dry-run, then /records; needs instance:admin and project work_item:create). ${IMPORT_WRITE_NOTICE} This tool has two explicit actions. First call action "preview" with workspaceId, projectId, sourceRef, and records. Review the row outcomes. To write, call action "execute" with the returned runId, chunkId, runVersion as expectedVersion, previewDigest, and the exact same records. Each POST has a deterministic idempotency key derived from your required idempotencyKey. A chunk holds at most 500 records. More than 50 records returns a pending human approval request; this tool cannot approve it and has no confirm flag. Unsupported source authorship/timestamps are reported as rejected rows.`,
+      inputSchema: z.discriminatedUnion("action", [
+        bulkPreviewSchema,
+        bulkExecuteSchema,
+      ]),
+    },
+    async (args) =>
+      run(async () => {
+        if (args.action === "preview") {
+          const created = await client.json<unknown>(
+            "/api/imports",
+            writeInit(
+              "POST",
+              scopedIdempotencyKey(args.idempotencyKey, "create-run"),
+              {
+                workspaceId: args.workspaceId,
+                projectId: args.projectId,
+                pluginId: "import.mcp",
+                sourceRef: args.sourceRef,
+                ...(args.profileId === undefined
+                  ? {}
+                  : { profileId: args.profileId }),
+              },
+            ),
+          );
+          if (
+            !isRecord(created) ||
+            typeof created.id !== "string" ||
+            !Number.isSafeInteger(created.version) ||
+            (created.version as number) < 1
+          )
+            throw new Error(
+              "TaskDesk did not return a usable import run. The run may exist; check import runs before retrying.",
+            );
+          const chunkId = deterministicChunkId(args.idempotencyKey);
+          const preview = await client.json<unknown>(
+            `/api/imports/${enc(created.id)}/dry-run`,
+            writeInit(
+              "POST",
+              scopedIdempotencyKey(args.idempotencyKey, "preview-chunk"),
+              {
+                chunkId,
+                expectedVersion: created.version,
+                records: args.records,
+              },
+            ),
+          );
+          if (
+            !isRecord(preview) ||
+            preview.runId !== created.id ||
+            preview.chunkId !== chunkId ||
+            typeof preview.previewDigest !== "string" ||
+            !Number.isSafeInteger(preview.runVersion)
+          )
+            throw new Error(
+              "TaskDesk did not return a complete import preview. Do not execute this chunk; inspect the import run before retrying.",
+            );
+          return {
+            action: "preview",
+            status: "previewed_no_items_written",
+            runId: created.id,
+            chunkId,
+            runVersion: preview.runVersion,
+            previewDigest: preview.previewDigest,
+            expiresAt: preview.expiresAt ?? null,
+            counts: preview.counts ?? null,
+            rows: preview.rows ?? [],
+            nextStep:
+              "Review all preview rows. To execute, call bulk_create_work_items with action=execute, this runId/chunkId, runVersion copied to expectedVersion, this previewDigest, and the exact same records. No work items have been written yet.",
+          };
+        }
+
+        const result = await client.json<unknown>(
+          `/api/imports/${enc(args.runId)}/records`,
+          writeInit(
+            "POST",
+            scopedIdempotencyKey(args.idempotencyKey, "execute-chunk"),
+            {
+              chunkId: args.chunkId,
+              expectedVersion: args.expectedVersion,
+              previewDigest: args.previewDigest,
+              records: args.records,
+            },
+          ),
+        );
+        if (!isRecord(result))
+          throw new Error(
+            "TaskDesk returned an unreadable import result. Check the import run before retrying.",
+          );
+        if (result.kind === "pending_approval") {
+          if (typeof result.pendingActionId !== "string")
+            throw new Error(
+              "TaskDesk requested approval but did not return a pending action id. Check the import run before retrying.",
+            );
+          return {
+            status: "pending_human_approval",
+            executed: false,
+            pendingActionId: result.pendingActionId,
+            runId: result.runId,
+            chunkId: result.chunkId,
+            runVersion: result.runVersion,
+            nextStep:
+              "No records were executed by this tool call. The API key owner must approve the pending action in TaskDesk; this MCP tool cannot approve it. After the owner responds, call get_pending_action with this pendingActionId to check the outcome.",
+          };
+        }
+        if (result.kind !== "committed")
+          throw new Error(
+            "TaskDesk returned an unrecognized import result. Check the import run before retrying.",
+          );
+        return compact(
+          {
+            status: "committed",
+            runId: result.runId,
+            chunkId: result.chunkId,
+            runVersion: result.runVersion,
+            counts: result.counts,
+            rows: result.rows,
+          },
+          false,
+        );
+      }),
+  );
+
+  registerTool(
+    "create_import_link",
+    {
+      description: `Create or confirm source identity links to existing work items (POST /api/imports/{id}/links; needs instance:admin and project work_item:create on the import run). ${IMPORT_WRITE_NOTICE} Submit 1–500 links from this run; targetId must be a work item id in the run's project. The operation is idempotent for the same source and target. The tool has no confirm flag.`,
+      inputSchema: z
+        .object({
+          idempotencyKey: importIdempotencyKeySchema,
+          runId: nonEmptyString.max(128),
+          links: z.array(importLinkSchema).min(1).max(500),
+        })
+        .strict(),
+    },
+    async (args) =>
+      run(async () => {
+        const result = await client.json<unknown>(
+          `/api/imports/${enc(args.runId)}/links`,
+          writeInit("POST", args.idempotencyKey, { links: args.links }),
+        );
+        if (isRecord(result) && result.kind === "pending_approval") {
+          if (typeof result.pendingActionId !== "string")
+            throw new Error(
+              "TaskDesk requested approval but did not return a pending action id. Check the import run before retrying.",
+            );
+          return {
+            status: "pending_human_approval",
+            executed: false,
+            pendingActionId: result.pendingActionId,
+            runId: result.runId,
+            chunkId: result.chunkId,
+            runVersion: result.runVersion,
+            nextStep:
+              "No links were created by this tool call. The API key owner must approve the pending action in TaskDesk; this MCP tool cannot approve it. After the owner responds, call get_pending_action with this pendingActionId to check the outcome.",
+          };
+        }
+        return compact(result, false);
+      }),
+  );
 
   registerTool(
     "create_work_item",
@@ -771,6 +1112,52 @@ export function registerTools(
           args.idempotencyKey,
         ),
       ),
+  );
+
+  registerTool(
+    "decide_approval",
+    {
+      description:
+        "Request an approval decision through POST /api/approvals/{id}/decide (needs approval:decide; CAB approvals also need approval:decide_cab and current CAB-team membership). A read-only key is refused. This does not decide the approval yet. TaskDesk creates a pending action that the owner of this API key must approve in the web app within 15 minutes. The pending request is bound to this decision and note; a rejected approval needs its note. You cannot approve this request yourself; poll get_pending_action for the outcome.",
+      inputSchema: z.object({
+        idempotencyKey: idempotencyKeySchema,
+        approvalId: nonEmptyString,
+        action: z.enum(["approve", "reject"]),
+        note: z.string().max(4000).nullable().optional(),
+      }),
+    },
+    async (args) =>
+      run(async () => {
+        const body: Record<string, unknown> = { action: args.action };
+        if (args.note !== undefined) body.note = args.note;
+        const response = await client.json<unknown>(
+          `/api/approvals/${enc(args.approvalId)}/decide`,
+          writeInit("POST", args.idempotencyKey, body),
+        );
+        const record = isRecord(response) ? response : null;
+        if (
+          !record ||
+          !isSafeToken(record.pendingActionId) ||
+          record.action !== "mcp_destructive"
+        ) {
+          throw new Error(
+            "TaskDesk did not confirm a pending approval-decision request. No approval decision was reported; ask the key's owner to check TaskDesk before retrying.",
+          );
+        }
+        const expiresAt = isSafeTimestamp(record.expiresAt)
+          ? record.expiresAt
+          : null;
+        return {
+          status: "pending_human_approval",
+          decided: false,
+          pendingActionId: record.pendingActionId,
+          approvalId: args.approvalId,
+          requestedDecision: args.action,
+          expiresAt,
+          summary: record.summary ?? null,
+          nextStep: `No approval decision has been made. TaskDesk opened pending action ${record.pendingActionId} to ${args.action} approval ${args.approvalId}. The API key owner must approve it in the TaskDesk web app${expiresAt ? ` before ${expiresAt}` : " within 15 minutes"}; poll get_pending_action with this pendingActionId for the outcome.`,
+        };
+      }),
   );
 
   registerTool(

@@ -103,6 +103,7 @@ export async function insertProjectLabel(
       executor
         .select({
           id: sql`${createId()}`.as("id"),
+          key: sql`null`.as("key"),
           name: sql`${name}`.as("name"),
           color: sql`${color}`.as("color"),
           createdAt: sql`now()`.as("created_at"),

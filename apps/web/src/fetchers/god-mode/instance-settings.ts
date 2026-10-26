@@ -7,6 +7,16 @@ export type InstanceSettings = {
   clarificationWindowDays: number;
   reopenWindowDays: number;
   notificationRetentionDays: number;
+  cspMode: "report_only" | "enforce";
+  invitationLifetimeHours: number;
+  customerInvitationCreateWindowMinutes: number;
+  customerInvitationPerInviterLimit: number;
+  customerInvitationPerOrganisationLimit: number;
+  customerInvitationResendCooldownSeconds: number;
+  anonymousRateLimitWindowMs: number;
+  anonymousRateLimitMax: number;
+  mcpWriteCeilingPerMinute: number;
+  apiKeyBurstThreshold: number;
   timezone: string;
   attachmentMaxBytes: number;
   attachmentMaxPerItem: number;

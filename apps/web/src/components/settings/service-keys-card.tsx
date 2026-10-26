@@ -17,6 +17,12 @@ import {
   CardHeader,
   CardPanel,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Frame,
   FramePanel,
   Table,
@@ -29,6 +35,10 @@ import {
 import { Ban, ServerCog, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  FailureAlert,
+  StepUpFields,
+} from "@/components/god-mode/step-up-fields";
 import { ApiKeyCreatedModal } from "@/components/settings/api-key-created-modal";
 import {
   CreateServiceKeyDialog,
@@ -36,10 +46,12 @@ import {
 } from "@/components/settings/create-service-key-dialog";
 import {
   listServiceKeys,
+  reattestServiceKey,
   requestServiceKeyDeletion,
   revokeServiceKey,
 } from "@/fetchers/service-keys";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
@@ -52,6 +64,86 @@ function formatDate(value: string | null) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function ReattestServiceKeyDialog({
+  workspaceId,
+  apiKey,
+  onClose,
+}: {
+  workspaceId: string;
+  apiKey: ApiKey;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const stepUp = useStepUpAction();
+  const reattest = useMutation({
+    mutationFn: async () => {
+      const outcome = await stepUp.run(
+        {
+          operation: "service_key_reattest",
+          workspaceId,
+          keyId: apiKey.id,
+          expectedVersion: apiKey.accountabilityVersion,
+        },
+        (token) =>
+          reattestServiceKey(
+            workspaceId,
+            apiKey.id,
+            apiKey.accountabilityVersion,
+            token,
+          ),
+      );
+      if (!outcome.ok) return undefined;
+      return outcome.value;
+    },
+    onSuccess: async (updated) => {
+      if (!updated) return;
+      toast.success(t("settings:serviceKeys.reattest.success"));
+      onClose();
+      await queryClient.invalidateQueries({
+        queryKey: serviceKeysKey(workspaceId),
+      });
+    },
+    onError: () => toast.error(t("settings:serviceKeys.reattest.failure")),
+  });
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !stepUp.busy) onClose();
+      }}
+    >
+      <DialogContent closeLabel={t("common:actions.close")}>
+        <DialogHeader>
+          <DialogTitle>{t("settings:serviceKeys.reattest.title")}</DialogTitle>
+          <DialogDescription>
+            {t("settings:serviceKeys.reattest.description")}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 px-6">
+          <StepUpFields action={stepUp} idPrefix="service-key-reattest" />
+          <FailureAlert
+            failure={stepUp.failure}
+            title={t("settings:serviceKeys.reattest.failure")}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" disabled={stepUp.busy} onClick={onClose}>
+            {t("settings:serviceKeys.reattest.cancel")}
+          </Button>
+          <Button
+            disabled={stepUp.busy || !stepUp.canRun || reattest.isPending}
+            onClick={() => reattest.mutate()}
+          >
+            {t("settings:serviceKeys.reattest.submit")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 /**
@@ -71,6 +163,7 @@ export function ServiceKeysCard() {
     null,
   );
   const [revoking, setRevoking] = useState<ApiKey | null>(null);
+  const [reattesting, setReattesting] = useState<ApiKey | null>(null);
 
   const query = useQuery({
     queryKey: serviceKeysKey(workspaceId),
@@ -198,6 +291,18 @@ export function ServiceKeysCard() {
                                 {t("settings:serviceKeys.formerMember")}
                               </Badge>
                             )}
+                            {key.ownedByWorkspaceAdmins && (
+                              <Badge variant="outline">
+                                {t("settings:serviceKeys.ownershipTransferred")}
+                              </Badge>
+                            )}
+                            {key.requiresReattestation && (
+                              <Badge variant="warning">
+                                {t(
+                                  "settings:serviceKeys.reattestationRequired",
+                                )}
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -231,6 +336,17 @@ export function ServiceKeysCard() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            {key.requiresReattestation && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setReattesting(key);
+                                }}
+                              >
+                                {t("settings:serviceKeys.reattest.submit")}
+                              </Button>
+                            )}
                             {key.enabled && (
                               <Button
                                 variant="ghost"
@@ -326,6 +442,14 @@ export function ServiceKeysCard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {reattesting ? (
+        <ReattestServiceKeyDialog
+          workspaceId={workspaceId}
+          apiKey={reattesting}
+          onClose={() => setReattesting(null)}
+        />
+      ) : null}
     </>
   );
 }

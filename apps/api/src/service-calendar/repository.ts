@@ -37,7 +37,9 @@ import {
 import { enqueueOutboxEvent } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import { resolveCatalogueKey } from "../label/catalogue-key";
 import { withWorkspaceDeletionAccessLifecycle } from "../pending-action/workspace-access-invalidation";
+import { isUniqueViolation } from "../utils/is-unique-violation";
 import { ServiceCalendarVersionConflictError } from "./errors";
 
 type CalendarActor = {
@@ -65,10 +67,27 @@ export async function assertCalendarUnused(
   const [projectReference] = await tx
     .select({ id: projectTable.id })
     .from(projectTable)
+    .innerJoin(workspaceTable, eq(workspaceTable.id, projectTable.workspaceId))
     .where(
       and(
         eq(projectTable.workspaceId, workspaceId),
-        eq(projectTable.serviceCalendarId, calendarId),
+        or(
+          eq(projectTable.serviceCalendarId, calendarId),
+          and(
+            eq(projectTable.serviceCalendarMode, "inherit"),
+            eq(workspaceTable.defaultServiceCalendarId, calendarId),
+          ),
+        ),
+      ),
+    )
+    .limit(1);
+  const [workspaceReference] = await tx
+    .select({ id: workspaceTable.id })
+    .from(workspaceTable)
+    .where(
+      and(
+        eq(workspaceTable.id, workspaceId),
+        eq(workspaceTable.defaultServiceCalendarId, calendarId),
       ),
     )
     .limit(1);
@@ -82,7 +101,7 @@ export async function assertCalendarUnused(
       ),
     )
     .limit(1);
-  if (projectReference || policyReference) {
+  if (projectReference || workspaceReference || policyReference) {
     throw new HTTPException(409, { message: "service_calendar_in_use" });
   }
 }
@@ -119,10 +138,17 @@ export async function getCalendarUsage(id: string, workspaceId: string) {
   const [projectCount] = await db
     .select({ value: count() })
     .from(projectTable)
+    .innerJoin(workspaceTable, eq(workspaceTable.id, projectTable.workspaceId))
     .where(
       and(
         eq(projectTable.workspaceId, workspaceId),
-        eq(projectTable.serviceCalendarId, id),
+        or(
+          eq(projectTable.serviceCalendarId, id),
+          and(
+            eq(projectTable.serviceCalendarMode, "inherit"),
+            eq(workspaceTable.defaultServiceCalendarId, id),
+          ),
+        ),
       ),
     );
   const versions = await db
@@ -285,6 +311,7 @@ function changedCalendarFields(
 
 function auditSnapshot(calendar: {
   name: string;
+  key: string;
   timezone: string;
   windows: unknown;
   holidays: unknown;
@@ -292,6 +319,7 @@ function auditSnapshot(calendar: {
   return JSON.parse(
     JSON.stringify({
       name: calendar.name,
+      key: calendar.key,
       timezone: calendar.timezone,
       windows: calendar.windows,
       holidays: calendar.holidays,
@@ -449,38 +477,55 @@ export const getCalendar = async (id: string, workspaceId: string) => {
 export async function createCalendar(input: {
   workspaceId: string;
   name: string;
+  key?: string;
   timezone: string;
   windows: unknown;
   holidays: unknown;
   actor: CalendarActor;
 }) {
-  const outcome = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(serviceCalendarTable)
-      .values({
+  const key = resolveCatalogueKey(input.name, input.key);
+  if (!key)
+    throw new HTTPException(422, {
+      message: "A valid catalogue key is required",
+    });
+  let outcome: {
+    row: typeof serviceCalendarTable.$inferSelect;
+    auditFailed: boolean;
+  };
+  try {
+    outcome = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(serviceCalendarTable)
+        .values({
+          workspaceId: input.workspaceId,
+          name: input.name,
+          key,
+          timezone: input.timezone,
+          windows: input.windows,
+          holidays: input.holidays,
+        })
+        .returning();
+      if (!row) throw new Error("Calendar insert returned no row");
+      const auditFailed = await appendCalendarAudit(tx, {
+        ...input.actor,
         workspaceId: input.workspaceId,
-        name: input.name,
-        timezone: input.timezone,
-        windows: input.windows,
-        holidays: input.holidays,
-      })
-      .returning();
-    if (!row) throw new Error("Calendar insert returned no row");
-    const auditFailed = await appendCalendarAudit(tx, {
-      ...input.actor,
-      workspaceId: input.workspaceId,
-      action: "service_calendar.created",
-      entityType: "service_calendar",
-      entityId: row.id,
-      after: auditSnapshot(row),
+        action: "service_calendar.created",
+        entityType: "service_calendar",
+        entityId: row.id,
+        after: auditSnapshot(row),
+      });
+      await appendCalendarEvent(tx, {
+        kind: "service_calendar.created",
+        calendar: row,
+        actor: input.actor,
+      });
+      return { row, auditFailed };
     });
-    await appendCalendarEvent(tx, {
-      kind: "service_calendar.created",
-      calendar: row,
-      actor: input.actor,
-    });
-    return { row, auditFailed };
-  });
+  } catch (error) {
+    if (isUniqueViolation(error, "service_calendar_workspace_key_unique"))
+      throw new HTTPException(409, { message: "catalogue_key_conflict" });
+    throw error;
+  }
   if (outcome.auditFailed) {
     await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
   }

@@ -4,6 +4,7 @@ export const labelSchema = z
   .object({
     id: z.string(),
     name: z.string(),
+    key: z.string().nullable(),
     color: z.string(),
     createdAt: responseTimestamp,
     updatedAt: responseTimestamp,

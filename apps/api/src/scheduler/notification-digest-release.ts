@@ -36,7 +36,15 @@ export async function releaseHeldNotifications(
   for (const { id, lease } of claimed) {
     try {
       // Re-evaluates quiet hours: a changed window re-holds the row under a new marker.
-      await deliverNotification(id);
+      const outcome = await deliverNotification(id);
+      if (outcome === "retry") {
+        degraded = true;
+        continue;
+      }
+      if (outcome === "deferred") {
+        // Delivery replaced the claim with the recipient's next quiet-hours deadline.
+        continue;
+      }
     } catch (error) {
       degraded = true;
       console.error("Held notification release failed", {

@@ -39,7 +39,30 @@ export function canReadNativeInboxCandidate(
     candidate.personId === null ||
     candidate.personId !== identity.personId ||
     candidate.resourceId === null ||
-    candidate.kind === null ||
+    candidate.kind === null
+  ) {
+    return false;
+  }
+
+  if (candidate.resourceType === "webhook") {
+    if (
+      identity.side !== "staff" ||
+      candidate.kind !== "webhook.auto_disabled" ||
+      !isSupportedNotificationResourceEvent("webhook", candidate.kind) ||
+      resource.projectId !== null ||
+      resource.customerVisible ||
+      !resource.staffUrl ||
+      !can(identity, "workspace:read", "workspace", {
+        workspaceId: resource.workspaceId,
+      })
+    )
+      return false;
+    return can(identity, "webhook:manage", "workspace", {
+      workspaceId: resource.workspaceId,
+    });
+  }
+
+  if (
     (candidate.resourceType !== "work_item" &&
       candidate.resourceType !== "comment") ||
     !isSupportedNotificationResourceEvent(
@@ -48,9 +71,8 @@ export function canReadNativeInboxCandidate(
     ) ||
     resource.projectId === null ||
     resource.workItemId === undefined
-  ) {
+  )
     return false;
-  }
 
   if (
     identity.side === "customer" &&
@@ -76,6 +98,8 @@ export function canReadNativeInboxCandidate(
   if (!inCurrentReach) return false;
 
   if (identity.side === "customer") {
+    if (!resource.customerRequestOwnerPersonIds?.includes(identity.personId))
+      return false;
     // Customer read authority is organisation-scoped. The evaluator deliberately does not
     // let an organisation grant satisfy a work-item policy scope; preserve that boundary and
     // check the built-in customer capability at the serving project's organisation instead.

@@ -6,6 +6,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type { WorkItemRow } from "@/types/work-item";
@@ -104,6 +105,22 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("./work-item-list", () => ({
   default: () => <div data-testid="table-fallback">Table fallback</div>,
+}));
+vi.mock("./work-item-inline-fields", () => ({
+  default: ({
+    children,
+  }: {
+    children: (slots: {
+      stateControl: ReactNode;
+      priorityControl: ReactNode;
+      assigneeControl: ReactNode;
+    }) => ReactNode;
+  }) =>
+    children({
+      stateControl: null,
+      priorityControl: null,
+      assigneeControl: null,
+    }),
 }));
 
 function item(key: string, stateId: string): WorkItemRow {
@@ -359,6 +376,13 @@ describe("canonical list uses the shared canonical DnD controller", () => {
     expect(sensors[1].options).toEqual({
       activationConstraint: { delay: 200, tolerance: 8 },
     });
+    expect(sensors[2].options).toMatchObject({
+      keyboardCodes: {
+        start: ["Space"],
+        end: ["Space", "Enter"],
+        cancel: ["Escape"],
+      },
+    });
     expect(sensors[2].options).toHaveProperty("coordinateGetter");
   });
   it("does not persist ranks from a same-project placeholder ordering", async () => {
@@ -518,7 +542,7 @@ describe("canonical list uses the shared canonical DnD controller", () => {
     mocks.canRank = true;
     render(<WorkItemKaneoList {...baseProps()} sort="position" />);
     const title = screen.getByRole("link", { name: "WLP-1 Title WLP-1" });
-    const row = title.closest('[role="button"]');
+    const row = title.closest("fieldset");
     if (!row) throw new Error("missing original row activator");
     (row as HTMLElement).focus();
     fireEvent.keyDown(row, { key: " ", code: "Space" });

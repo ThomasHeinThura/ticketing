@@ -1,0 +1,88 @@
+{
+	"recordedAt": "2026-10-25T20:21:29.989Z",
+	"records": [
+		{
+			"target": "audit",
+			"database": "taskdesk_codex_sit_20261025",
+			"before": {
+				"saved_views": 4,
+				"people": 11,
+				"work_items": 33,
+				"projects": 5,
+				"teams": 35,
+				"aggregates": 2,
+				"coverage": 1,
+				"migrations": 183
+			},
+			"after": {
+				"saved_views": 4,
+				"people": 11,
+				"work_items": 33,
+				"projects": 5,
+				"teams": 35,
+				"aggregates": 2,
+				"coverage": 1,
+				"migrations": 184
+			},
+			"rollbackDump": "backups/codex-sit-20261025/pre-0183-provenance-repaired-audit.dump",
+			"dumpFullyDecoded": true
+		},
+		{
+			"target": "performance",
+			"database": "taskdesk_codex_performance_20261025_test",
+			"before": {
+				"saved_views": 0,
+				"people": 1,
+				"work_items": 10000,
+				"projects": 1,
+				"teams": 1,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 183
+			},
+			"after": {
+				"saved_views": 0,
+				"people": 1,
+				"work_items": 10000,
+				"projects": 1,
+				"teams": 1,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 184
+			},
+			"rollbackDump": "backups/codex-sit-20261025/pre-0183-provenance-repaired-performance.dump",
+			"dumpFullyDecoded": true
+		},
+		{
+			"target": "sso-browser",
+			"database": "taskdesk_codex_sso_browser_20261025_test",
+			"before": {
+				"saved_views": 0,
+				"people": 1,
+				"work_items": 0,
+				"projects": 0,
+				"teams": 0,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 183
+			},
+			"after": {
+				"saved_views": 0,
+				"people": 1,
+				"work_items": 0,
+				"projects": 0,
+				"teams": 0,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 184
+			},
+			"rollbackDump": "backups/codex-sit-20261025/pre-0183-provenance-repaired-sso-browser.dump",
+			"dumpFullyDecoded": true
+		}
+	],
+	"protectedDatabase": "Never targeted; protected live database remains separate on62870",
+	"notes": [
+		"0183 adds nullable paired saved-view metadata, per-entity uniqueness and monotonic update fences. Existing saved-view queries, business records and report facts must remain unchanged.",
+		"Protected live database is never targeted; verified recoverable dumps precede each additive migration."
+	]
+}

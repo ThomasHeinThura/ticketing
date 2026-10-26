@@ -4,6 +4,11 @@ import searchWorkItems from "@/fetchers/work-item/search-work-items";
 import { HttpError } from "@/lib/http-error";
 import type Task from "@/types/task";
 
+type ScheduleTask = Task & {
+  epic: { id: string; key: string; title: string } | null;
+  epicAvailable: boolean;
+};
+
 /** Adapt canonical rows to Kaneo's existing calendar/timeline rendering contract. */
 export async function getScheduleProject(
   projectId: string,
@@ -35,7 +40,7 @@ export async function getScheduleProject(
       followed.add(cursor);
     } while (!signal?.aborted);
   }
-  const tasks = new Map<string, Task>();
+  const tasks = new Map<string, ScheduleTask>();
   const cursors = new Set<string>();
   let cursor: string | undefined;
   do {
@@ -78,6 +83,10 @@ export async function getScheduleProject(
         projectId: item.projectId,
         columnId: item.stateId,
         moduleId: item.moduleId ?? null,
+        epic: item.epic ?? null,
+        // Search/saved-view producers may use this shared list-item shape without resolving
+        // ancestry. Missing projection is unavailable, never inferred as a true None bucket.
+        epicAvailable: item.epicAvailable === true,
         labels: item.labels ?? [],
       });
     }
@@ -93,6 +102,6 @@ export async function getScheduleProject(
     name: project.name,
     slug: project.slug,
     columns: [{ tasks: [...tasks.values()] }],
-    plannedTasks: [] as Task[],
+    plannedTasks: [] as ScheduleTask[],
   };
 }

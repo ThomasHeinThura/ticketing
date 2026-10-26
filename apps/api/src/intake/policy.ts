@@ -1,6 +1,48 @@
 import type { PolicyMap } from "@taskdesk/permissions";
 
 export const intakePolicies = {
+  "GET /api/intake/queues": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "POST /api/intake/queues": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "GET /api/intake/queues/{id}": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "PATCH /api/intake/queues/{id}": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "GET /api/intake/queues/{id}/run": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "GET /api/request-type-groups/order": {
+    capability: "request_type:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "PUT /api/request-type-groups/order": {
+    capability: "request_type:manage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
   "GET /api/request-types": {
     capability: "request_type:read",
     scope: "workspace",
@@ -38,6 +80,14 @@ export const intakePolicies = {
     reach: "required",
   },
   "GET /api/portal/catalogue": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
+  "GET /api/portal/requests/backlog": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
+  "POST /api/portal/requests/rank": {
     portal: "customer",
     predicate: "own_organisation",
   },

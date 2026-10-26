@@ -146,6 +146,17 @@ export function WorkflowValidationDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 px-6" data-testid="workflow-validation">
+          {report ? (
+            <Alert variant="info">
+              <AlertDescription>
+                {t("settings:workflows.validation.impact", {
+                  people: report.affected.people,
+                  workItems: report.affected.workItems,
+                  projects: report.affected.projects,
+                })}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {report?.valid ? (
             <Alert variant="success">
               <AlertTitle>

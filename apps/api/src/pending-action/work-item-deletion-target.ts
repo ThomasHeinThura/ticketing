@@ -120,6 +120,8 @@ export function workItemDeletionSnapshot(target: Target) {
     projectId: target.item.projectId,
     parentId: target.item.parentId,
     childIds: target.children.map((child) => child.id).join(","),
+    requesterId: target.item.requesterId,
+    customerVisibility: target.item.customerVisibility,
   };
 }
 export async function workItemDeletionAccess(
@@ -256,7 +258,11 @@ export async function resolveWorkItemDeletionRequestScope(
       message: access.status === 404 ? "Work item not found" : "Forbidden",
     });
   const [actor] = await tx
-    .select({ userId: schema.personTable.userId, name: schema.userTable.name })
+    .select({
+      userId: schema.personTable.userId,
+      name: schema.userTable.name,
+      displayName: schema.personTable.displayName,
+    })
     .from(schema.personTable)
     .innerJoin(
       schema.userTable,
@@ -273,6 +279,22 @@ export async function resolveWorkItemDeletionRequestScope(
       ))
   )
     throw new HTTPException(403, { message: "Forbidden" });
+  const [customerRequester] = target.item.requesterId
+    ? await tx
+        .select({
+          name: sql<
+            string | null
+          >`coalesce(${schema.personTable.displayName}, ${schema.userTable.name})`,
+          side: schema.personTable.side,
+        })
+        .from(schema.personTable)
+        .leftJoin(
+          schema.userTable,
+          eq(schema.userTable.id, schema.personTable.userId),
+        )
+        .where(eq(schema.personTable.id, target.item.requesterId))
+        .limit(1)
+    : [];
   return {
     ...scope,
     actorName: actor.name,
@@ -281,7 +303,12 @@ export async function resolveWorkItemDeletionRequestScope(
       title: target.item.title,
       projectName: target.project.name,
       childrenAffected: target.children.length,
-      requesterName: actor.name,
+      requestedByName: actor.displayName ?? actor.name,
+      customerRequesterName:
+        customerRequester?.side === "customer" ? customerRequester.name : null,
+      customerVisibility: target.item.customerVisibility,
+      portalRemoval: "removed_on_approval",
+      recoveryDays: 30,
     },
     targetVersions: { [target.item.key]: workItemDeletionSnapshot(target) },
   };

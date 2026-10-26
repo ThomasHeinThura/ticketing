@@ -1,7 +1,13 @@
 import { createId } from "@paralleldrive/cuid2";
 import { type SQL, sql } from "drizzle-orm";
 import db from "../database";
-import { itemFilterSql, num, selectRows, tsn } from "./context";
+import {
+  itemFilterSql,
+  num,
+  selectRows,
+  tsn,
+  withReportExecutor,
+} from "./context";
 import {
   addDays,
   dayFromKey,
@@ -9,12 +15,18 @@ import {
   dayKeysBetween,
   daysToCompute,
   runsOf,
+  SNAPSHOT_FAMILY_VERSION,
   SNAPSHOT_METRICS,
   SNAPSHOT_RETENTION_DAYS,
   type SnapshotMetric,
   splitForSnapshots,
   utcDayStart,
 } from "./snapshot.logic";
+import {
+  earliestSnapshotSourceDay,
+  liveFactRows,
+  type SnapshotFact,
+} from "./snapshot-facts";
 import type { ReportContext } from "./types";
 
 /**
@@ -33,6 +45,8 @@ type LiveRow = {
   day: string;
   priority: string | null;
   type_id: string | null;
+  assignee_id: string | null;
+  requester_id: string | null;
   project_id: string | null;
   organisation_id: string | null;
   a: string;
@@ -63,9 +77,11 @@ async function liveRows(
 ): Promise<LiveRow[]> {
   const settled = settledColumn(metric);
   const projectColumns = scope.perProject
-    ? sql`, p.id AS project_id, p.organisation_id`
-    : sql`, NULL::text AS project_id, NULL::text AS organisation_id`;
-  const group = scope.perProject ? sql`1, 2, 3, 4, 5` : sql`1, 2, 3`;
+    ? sql`, p.id AS project_id, p.organisation_id, w.assignee_id, w.requester_id`
+    : sql`, NULL::text AS project_id, NULL::text AS organisation_id, w.assignee_id, w.requester_id`;
+  const group = scope.perProject
+    ? sql`1, 2, 3, 4, 5, 6, 7`
+    : sql`1, 2, 3, 6, 7`;
   const types = sql`, w.type_id`;
   if (metric === "throughput")
     return selectRows<LiveRow>(sql`SELECT to_char(${settled}, 'YYYY-MM-DD') AS day, w.priority${types}${projectColumns},
@@ -111,46 +127,232 @@ function fold(rows: LiveRow[]): DailyRow[] {
   return [...byKey.values()];
 }
 
+function markSnapshotDay(ctx: ReportContext, key: string, at?: Date) {
+  if (!ctx.snapshots.sources.snapshotDayKeys.has(key)) {
+    ctx.snapshots.sources.snapshotDayKeys.add(key);
+    ctx.snapshots.use.snapshotDays += 1;
+  }
+  if (
+    at &&
+    (!ctx.snapshots.use.computedAt || at > ctx.snapshots.use.computedAt)
+  )
+    ctx.snapshots.use.computedAt = at;
+  const end = addDays(dayFromKey(key), 1);
+  if (!ctx.snapshots.use.throughDay || end > ctx.snapshots.use.throughDay)
+    ctx.snapshots.use.throughDay = end;
+}
+
+function markUncoveredDay(ctx: ReportContext, key: string) {
+  if (!ctx.snapshots.sources.uncoveredDayKeys.has(key)) {
+    ctx.snapshots.sources.uncoveredDayKeys.add(key);
+    ctx.snapshots.use.uncoveredDays += 1;
+  }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Read path: stored closed days, live for the rest
 // ---------------------------------------------------------------------------------------------
 
-/** A filter the stored dimensions cannot answer (`teamId` follows current team membership). */
-export function filtersNeedLive(ctx: ReportContext): boolean {
-  return Boolean(ctx.filters.teamId);
-}
-
-function snapshotFilterSql(ctx: ReportContext): SQL {
+function factFilterSql(ctx: ReportContext, metric: SnapshotMetric): SQL {
   const parts: SQL[] = [];
-  const { projectId, organisationId, typeId, priority } = ctx.filters;
-  if (projectId) parts.push(sql`ms.project_id = ${projectId}`);
-  if (organisationId) parts.push(sql`p.organisation_id = ${organisationId}`);
-  if (typeId) parts.push(sql`ms.dimensions->>'typeId' = ${typeId}`);
-  if (priority) parts.push(sql`ms.dimensions->>'priority' = ${priority}`);
+  const { projectId, organisationId, typeId, priority, teamId } = ctx.filters;
+  if (projectId && metric !== "kb_deflection")
+    parts.push(sql`ms.project_id = ${projectId}`);
+  if (organisationId && metric !== "kb_deflection")
+    parts.push(sql`p.organisation_id = ${organisationId}`);
+  if (
+    typeId &&
+    !["kb_deflection", "cycle_completion", "escalation_started"].includes(
+      metric,
+    )
+  )
+    parts.push(sql`ms.dimensions->>'typeId' = ${typeId}`);
+  if (
+    priority &&
+    !["kb_deflection", "cycle_completion", "escalation_started"].includes(
+      metric,
+    )
+  )
+    parts.push(sql`ms.dimensions->>'priority' = ${priority}`);
+  if (
+    teamId &&
+    !["kb_deflection", "cycle_completion", "escalation_started"].includes(
+      metric,
+    )
+  ) {
+    const dimensionPredicate =
+      metric === "time_logged" || metric === "cost_entry"
+        ? sql`pe.id::text = ms.dimensions->>'personId'`
+        : sql`pe.id::text = ms.dimensions->>'assigneeId'`;
+    parts.push(sql`EXISTS (
+      SELECT 1 FROM team_member tm
+      JOIN team t ON t.id = tm.team_id AND t.workspace_id = ${ctx.workspaceId}
+      JOIN person pe ON pe.user_id = tm.user_id
+      WHERE tm.team_id = ${teamId} AND ${dimensionPredicate})`);
+  }
+  if ((metric === "time_logged" || metric === "cost_entry") && !ctx.readAnyTime)
+    parts.push(sql`ms.dimensions->>'personId' = ${ctx.identity.personId}`);
   return parts.length ? sql.join(parts, sql` AND `) : sql`true`;
 }
 
-async function coveredDays(
-  workspaceId: string,
-  from: Date,
-  to: Date,
-): Promise<Map<string, Date>> {
-  const rows = await selectRows<{ day: string; computed_at: string | Date }>(
-    sql`SELECT to_char(d.period_start AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, d.computed_at
-      FROM metric_snapshot_day d
-      WHERE d.workspace_id = ${workspaceId}
-        AND d.period_start >= ${from.toISOString()}::timestamptz
-        AND d.period_start < ${to.toISOString()}::timestamptz`,
-  );
-  return new Map(rows.map((row) => [row.day, new Date(row.computed_at)]));
-}
-
-async function storedRows(
+/** Reads stored whole days and fills partial/uncovered days from the same live projection. */
+export async function loadFactRows(
   ctx: ReportContext,
   metric: SnapshotMetric,
   from: Date,
   to: Date,
-): Promise<LiveRow[]> {
+  livePurpose?: string,
+): Promise<SnapshotFact[]> {
+  if (metric === "cost_entry" && !ctx.showRates) return [];
+  const live = async (range: { from: Date; to: Date }) => {
+    const result = await liveFactRows(
+      metric,
+      ctx.workspaceId,
+      range.from,
+      range.to,
+      ctx,
+    );
+    if (metric === "cycle_completion" && result.length)
+      ctx.snapshots.sources.cycleSnapshot = true;
+    return result;
+  };
+  const touchesShown = (range: { from: Date; to: Date }) =>
+    range.to > ctx.window.from && range.from < ctx.window.to;
+  const markLive = (range: { from: Date; to: Date }, component: string) => {
+    if (livePurpose) {
+      ctx.snapshots.sources.liveComponents.add(livePurpose);
+      if (touchesShown(range)) ctx.snapshots.use.liveParts = true;
+    } else if (touchesShown(range)) {
+      ctx.snapshots.use.liveParts = true;
+      ctx.snapshots.sources.liveComponents.add(component);
+    } else ctx.snapshots.sources.liveComponents.add("comparison_period");
+  };
+  if (!ctx.snapshots.enabled) {
+    markLive({ from, to }, "selected_period");
+    return live({ from, to });
+  }
+  const split = splitForSnapshots(from, to, ctx.now);
+  const rows: SnapshotFact[] = [];
+  const liveRanges = [...split.live];
+  for (const range of split.live) markLive(range, "current_period");
+  if (split.closed) {
+    const coveredRows = await selectRows<{
+      day: string;
+      computed_at: string | Date;
+      facts:
+        | Array<{
+            projectId: string | null;
+            organisationId: string | null;
+            dimensions: Record<string, string | null>;
+            measures: Record<string, number | string>;
+          }>
+        | string;
+    }>(sql`SELECT to_char(d.period_start AT TIME ZONE 'UTC','YYYY-MM-DD') AS day,
+        d.computed_at,
+        COALESCE(jsonb_agg(jsonb_build_object('projectId',f.project_id,
+          'organisationId',f.organisation_id,'dimensions',f.dimensions,
+          'measures',${ctx.showRates ? sql`f.measures` : sql`(f.measures - 'costMinor') - 'budgetCostMinor'`}))
+          FILTER (WHERE f.id IS NOT NULL),'[]'::jsonb) AS facts
+      FROM metric_snapshot_day d
+      LEFT JOIN LATERAL (
+        SELECT ms.id, ms.project_id, ms.organisation_id, ms.dimensions, ms.measures
+        FROM metric_snapshot ms
+        LEFT JOIN project p ON p.id=ms.project_id AND p.workspace_id=ms.workspace_id
+        WHERE ms.workspace_id=d.workspace_id AND ms.period_start=d.period_start
+          AND ms.grain='day' AND ms.metric_key=${metric}
+          AND (ms.project_id IS NULL OR (p.deleted_at IS NULL AND ${ctx.reach}))
+          AND ${factFilterSql(ctx, metric)}
+      ) f ON true
+      WHERE d.workspace_id=${ctx.workspaceId}
+        AND d.snapshot_version=${SNAPSHOT_FAMILY_VERSION}
+        AND d.period_start >= ${split.closed.from.toISOString()}::timestamptz
+        AND d.period_start < ${split.closed.to.toISOString()}::timestamptz
+      GROUP BY d.period_start,d.computed_at`);
+    const covered = new Map(
+      coveredRows.map((row) => [row.day, new Date(row.computed_at)]),
+    );
+    const keys = dayKeysBetween(split.closed.from, split.closed.to);
+    const missing = keys.filter((key) => !covered.has(key));
+    const read = keys.filter((key) => covered.has(key));
+    if (read.length) {
+      ctx.snapshots.sources.metricSnapshot = true;
+      if (metric === "cycle_completion")
+        ctx.snapshots.sources.cycleSnapshot = true;
+      for (const marker of coveredRows) {
+        if (!read.includes(marker.day)) continue;
+        const facts =
+          typeof marker.facts === "string"
+            ? JSON.parse(marker.facts)
+            : marker.facts;
+        for (const fact of facts)
+          rows.push({
+            day: marker.day,
+            project_id: fact.projectId,
+            organisation_id: fact.organisationId,
+            dimensions: fact.dimensions,
+            measures: Object.fromEntries(
+              Object.entries(fact.measures).map(([key, value]) => [
+                key,
+                num(value),
+              ]),
+            ),
+          });
+      }
+      for (const key of read) {
+        const start = dayFromKey(key);
+        if (!touchesShown({ from: start, to: addDays(start, 1) })) continue;
+        const computedAt = covered.get(key);
+        markSnapshotDay(ctx, key, computedAt);
+      }
+    }
+    for (const key of missing.filter((key) =>
+      touchesShown({ from: dayFromKey(key), to: addDays(dayFromKey(key), 1) }),
+    )) {
+      if (!livePurpose) markUncoveredDay(ctx, key);
+    }
+    if (missing.length) {
+      const shown = missing.some((key) =>
+        touchesShown({
+          from: dayFromKey(key),
+          to: addDays(dayFromKey(key), 1),
+        }),
+      );
+      if (livePurpose) {
+        ctx.snapshots.sources.liveComponents.add(livePurpose);
+        if (shown) ctx.snapshots.use.liveParts = true;
+      } else if (shown) {
+        ctx.snapshots.use.liveParts = true;
+        ctx.snapshots.sources.liveComponents.add("uncovered_days");
+      } else ctx.snapshots.sources.liveComponents.add("comparison_period");
+      liveRanges.push(...runsOf(missing));
+    }
+  }
+  for (const range of liveRanges) rows.push(...(await live(range)));
+  return rows;
+}
+
+function snapshotFilterSql(ctx: ReportContext): SQL {
+  const parts: SQL[] = [];
+  const { projectId, organisationId, typeId, priority, teamId } = ctx.filters;
+  if (projectId) parts.push(sql`ms.project_id = ${projectId}`);
+  if (organisationId) parts.push(sql`p.organisation_id = ${organisationId}`);
+  if (typeId) parts.push(sql`ms.dimensions->>'typeId' = ${typeId}`);
+  if (priority) parts.push(sql`ms.dimensions->>'priority' = ${priority}`);
+  if (teamId)
+    parts.push(sql`EXISTS (
+      SELECT 1 FROM team_member tm
+      JOIN team t ON t.id = tm.team_id AND t.workspace_id = ${ctx.workspaceId}
+      JOIN person pe ON pe.user_id = tm.user_id
+      WHERE tm.team_id = ${teamId} AND pe.id::text = ms.dimensions->>'assigneeId')`);
+  return parts.length ? sql.join(parts, sql` AND `) : sql`true`;
+}
+
+async function storedRowsAndCoverage(
+  ctx: ReportContext,
+  metric: SnapshotMetric,
+  from: Date,
+  to: Date,
+): Promise<{ rows: LiveRow[]; covered: Map<string, Date> }> {
   const measureA = sql.raw(
     metric === "throughput"
       ? "(ms.measures->>'completed')::numeric"
@@ -158,19 +360,33 @@ async function storedRows(
   );
   const measureB =
     metric === "throughput" ? sql`0` : sql`(ms.measures->>'missed')::numeric`;
-  return selectRows<LiveRow>(sql`SELECT to_char(ms.period_start AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day,
-      ms.dimensions->>'priority' AS priority, NULL::text AS type_id,
+  const result = await selectRows<
+    LiveRow & { computed_at: string | Date }
+  >(sql`SELECT
+      to_char(d.period_start AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day,
+      d.computed_at, stored.priority,
+      NULL::text AS type_id, NULL::text AS assignee_id,
       NULL::text AS project_id, NULL::text AS organisation_id,
-      sum(${measureA}) AS a, sum(${measureB}) AS b
-    FROM metric_snapshot ms
-    JOIN metric_snapshot_day d ON d.workspace_id = ms.workspace_id AND d.period_start = ms.period_start
-    JOIN project p ON p.id = ms.project_id AND p.workspace_id = ms.workspace_id
-    WHERE ms.workspace_id = ${ctx.workspaceId}
-      AND ms.metric_key = ${metric} AND ms.grain = 'day'
-      AND ms.period_start >= ${from.toISOString()}::timestamptz
-      AND ms.period_start < ${to.toISOString()}::timestamptz
-      AND p.deleted_at IS NULL AND ${ctx.reach} AND ${snapshotFilterSql(ctx)}
-    GROUP BY 1, 2`);
+      COALESCE(stored.a, 0)::text AS a, COALESCE(stored.b, 0)::text AS b
+    FROM metric_snapshot_day d
+    LEFT JOIN LATERAL (
+      SELECT ms.dimensions->>'priority' AS priority,
+        sum(${measureA}) AS a, sum(${measureB}) AS b
+      FROM metric_snapshot ms
+      JOIN project p ON p.id = ms.project_id AND p.workspace_id = ms.workspace_id
+      WHERE ms.workspace_id = d.workspace_id AND ms.period_start = d.period_start
+        AND ms.metric_key = ${metric} AND ms.grain = 'day'
+        AND p.deleted_at IS NULL AND ${ctx.reach} AND ${snapshotFilterSql(ctx)}
+      GROUP BY 1
+    ) stored ON true
+    WHERE d.workspace_id = ${ctx.workspaceId}
+      AND d.snapshot_version = ${SNAPSHOT_FAMILY_VERSION}
+      AND d.period_start >= ${from.toISOString()}::timestamptz
+      AND d.period_start < ${to.toISOString()}::timestamptz`);
+  return {
+    rows: result,
+    covered: new Map(result.map((row) => [row.day, new Date(row.computed_at)])),
+  };
 }
 
 /**
@@ -196,38 +412,59 @@ export async function loadDaily(
   const touchesShown = (range: { from: Date; to: Date }) =>
     range.to > ctx.window.from && range.from < ctx.window.to;
   const use = ctx.snapshots.use;
-  if (!ctx.snapshots.enabled || filtersNeedLive(ctx)) {
-    if (touchesShown({ from, to })) use.liveParts = true;
+  if (!ctx.snapshots.enabled) {
+    if (touchesShown({ from, to })) {
+      use.liveParts = true;
+      ctx.snapshots.sources.liveComponents.add("current_period");
+    } else {
+      ctx.snapshots.sources.liveComponents.add("comparison_period");
+    }
     return fold(await live({ from, to }));
   }
   const split = splitForSnapshots(from, to, ctx.now);
   const rows: LiveRow[] = [];
   const liveRanges = [...split.live];
-  if (split.live.some(touchesShown)) use.liveParts = true;
+  for (const range of split.live) {
+    if (touchesShown(range)) {
+      use.liveParts = true;
+      ctx.snapshots.sources.liveComponents.add("current_period");
+    } else {
+      ctx.snapshots.sources.liveComponents.add("comparison_period");
+    }
+  }
   if (split.closed) {
-    const covered = await coveredDays(
-      ctx.workspaceId,
+    // Read markers and values in one statement snapshot. Otherwise invalidation could commit
+    // between these reads, leaving us with a removed day classified as covered but no rows.
+    const stored = await storedRowsAndCoverage(
+      ctx,
+      metric,
       split.closed.from,
       split.closed.to,
     );
+    const covered = stored.covered;
     const closedKeys = dayKeysBetween(split.closed.from, split.closed.to);
     const missing = closedKeys.filter((key) => !covered.has(key));
     const read = closedKeys.filter((key) => covered.has(key));
     if (read.length > 0) {
-      rows.push(
-        ...(await storedRows(ctx, metric, split.closed.from, split.closed.to)),
-      );
+      ctx.snapshots.sources.metricSnapshot = true;
+      rows.push(...stored.rows);
       for (const key of read) {
         const start = dayFromKey(key);
         if (!shown(start)) continue;
-        use.snapshotDays += 1;
         const at = covered.get(key);
-        if (at && (!use.computedAt || at > use.computedAt)) use.computedAt = at;
-        const end = addDays(start, 1);
-        if (!use.throughDay || end > use.throughDay) use.throughDay = end;
+        markSnapshotDay(ctx, key, at);
       }
     }
-    use.uncoveredDays += missing.filter((key) => shown(dayFromKey(key))).length;
+    for (const key of missing.filter((key) => shown(dayFromKey(key))))
+      markUncoveredDay(ctx, key);
+    if (missing.length > 0) {
+      if (missing.some((key) => shown(dayFromKey(key)))) {
+        use.liveParts = true;
+        ctx.snapshots.sources.liveComponents.add("uncovered_days");
+      } else {
+        ctx.snapshots.sources.liveComponents.add("comparison_period");
+      }
+    }
     liveRanges.push(...runsOf(missing));
   }
   for (const range of liveRanges) rows.push(...(await live(range)));
@@ -241,9 +478,10 @@ export async function loadDaily(
 export type SnapshotRunStats = { days: number; rows: number };
 
 /**
- * Replaces the snapshot of each listed closed day of one workspace. Each day is one transaction
- * (delete the day, insert its rows, upsert the marker) under an advisory lock, so a second run, or a
- * reader, sees a day whole or not at all, and running it twice leaves exactly the same rows.
+ * Replaces the snapshots of each contiguous range of listed closed days under one workspace fence.
+ * The aggregates are queried after taking the same fence used by source invalidation, and the day
+ * rows and markers are replaced in that transaction. Thus a source mutation either precedes the
+ * fresh aggregate read or waits and invalidates the newly written marker after this transaction.
  */
 export async function writeWorkspaceDays(
   workspaceId: string,
@@ -255,48 +493,92 @@ export async function writeWorkspaceDays(
   const today = utcDayStart(now);
   const closed = keys.filter((key) => dayFromKey(key) < today);
   for (const range of runsOf(closed)) {
-    const perMetric = new Map<SnapshotMetric, LiveRow[]>();
-    for (const metric of SNAPSHOT_METRICS)
-      perMetric.set(
-        metric,
-        await liveRows(metric, workspaceId, range.from, range.to, {
-          extra: sql`true`,
-          perProject: true,
-        }),
+    await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${`metric_snapshot_workspace:${workspaceId}`}))`,
       );
-    for (const key of dayKeysBetween(range.from, range.to)) {
-      const start = dayFromKey(key);
-      const end = addDays(start, 1);
-      const values: SQL[] = [];
-      for (const [metric, rows] of perMetric)
-        for (const row of rows) {
-          if (row.day !== key || !row.project_id) continue;
-          const measures =
+      await withReportExecutor(tx, async () => {
+        const perMetric = new Map<
+          SnapshotMetric,
+          Array<{
+            day: string;
+            project_id: string | null;
+            organisation_id: string | null;
+            dimensions: Record<string, string | null>;
+            measures: Record<string, number>;
+          }>
+        >();
+        for (const metric of SNAPSHOT_METRICS) {
+          if (
+            metric === "sla_resolution" ||
+            metric === "sla_first_response" ||
             metric === "throughput"
-              ? { completed: num(row.a) }
-              : { met: num(row.a), missed: num(row.b) };
-          values.push(
-            sql`(${createId()}, ${workspaceId}, ${start.toISOString()}::timestamptz, ${end.toISOString()}::timestamptz, 'day', ${metric}, ${row.project_id}, ${row.organisation_id}, ${JSON.stringify({ priority: row.priority, typeId: row.type_id })}::jsonb, ${JSON.stringify(measures)}::jsonb, now())`,
-          );
+          ) {
+            const rows = await liveRows(
+              metric,
+              workspaceId,
+              range.from,
+              range.to,
+              {
+                extra: sql`true`,
+                perProject: true,
+              },
+            );
+            perMetric.set(
+              metric,
+              rows.map((row) => {
+                const measures: Record<string, number> =
+                  metric === "throughput"
+                    ? { completed: num(row.a) }
+                    : { met: num(row.a), missed: num(row.b) };
+                return {
+                  day: row.day,
+                  project_id: row.project_id,
+                  organisation_id: row.organisation_id,
+                  dimensions: {
+                    priority: row.priority,
+                    typeId: row.type_id,
+                    assigneeId: row.assignee_id,
+                    requesterId: row.requester_id,
+                  },
+                  measures,
+                };
+              }),
+            );
+          } else {
+            perMetric.set(
+              metric,
+              await liveFactRows(metric, workspaceId, range.from, range.to),
+            );
+          }
         }
-      await db.transaction(async (tx) => {
-        await tx.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtext(${`metric_snapshot:${workspaceId}:${key}`}))`,
-        );
-        await tx.execute(sql`DELETE FROM metric_snapshot
+        for (const key of dayKeysBetween(range.from, range.to)) {
+          const start = dayFromKey(key);
+          const end = addDays(start, 1);
+          const values: SQL[] = [];
+          for (const [metric, rows] of perMetric)
+            for (const row of rows) {
+              if (row.day !== key) continue;
+              values.push(
+                sql`(${createId()}, ${workspaceId}, ${start.toISOString()}::timestamptz, ${end.toISOString()}::timestamptz, 'day', ${metric}, ${row.project_id}, ${row.organisation_id}, ${JSON.stringify(row.dimensions)}::jsonb, ${JSON.stringify(row.measures)}::jsonb, now())`,
+              );
+            }
+          await tx.execute(sql`DELETE FROM metric_snapshot
           WHERE workspace_id = ${workspaceId} AND grain = 'day'
             AND period_start = ${start.toISOString()}::timestamptz`);
-        for (let i = 0; i < values.length; i += 500)
-          await tx.execute(sql`INSERT INTO metric_snapshot
+          for (let i = 0; i < values.length; i += 500)
+            await tx.execute(sql`INSERT INTO metric_snapshot
             (id, workspace_id, period_start, period_end, grain, metric_key, project_id, organisation_id, dimensions, measures, computed_at)
             VALUES ${sql.join(values.slice(i, i + 500), sql`, `)}`);
-        await tx.execute(sql`INSERT INTO metric_snapshot_day (workspace_id, period_start, computed_at)
-          VALUES (${workspaceId}, ${start.toISOString()}::timestamptz, now())
-          ON CONFLICT (workspace_id, period_start) DO UPDATE SET computed_at = now()`);
+          await tx.execute(sql`INSERT INTO metric_snapshot_day (workspace_id, period_start, computed_at, snapshot_version)
+          VALUES (${workspaceId}, ${start.toISOString()}::timestamptz, now(), ${SNAPSHOT_FAMILY_VERSION})
+          ON CONFLICT (workspace_id, period_start) DO UPDATE
+          SET computed_at = now(), snapshot_version = EXCLUDED.snapshot_version`);
+          stats.days += 1;
+          stats.rows += values.length;
+        }
       });
-      stats.days += 1;
-      stats.rows += values.length;
-    }
+    });
   }
   return stats;
 }
@@ -306,19 +588,12 @@ export async function workspaceDaysToWrite(
   workspaceId: string,
   now: Date = new Date(),
 ): Promise<string[]> {
-  const [first] = await selectRows<{ at: string | Date | null }>(
-    sql`SELECT least(min(created_at), min(resolved_at), min(first_response_at)) AS at
-      FROM work_item WHERE workspace_id = ${workspaceId}`,
-  );
-  if (!first?.at) return [];
-  const earliest = new Date(
-    typeof first.at === "string" && !/(Z|[+-]\d\d(:?\d\d)?)$/.test(first.at)
-      ? `${first.at.replace(" ", "T")}Z`
-      : first.at,
-  );
+  const earliest = await earliestSnapshotSourceDay(workspaceId);
+  if (!earliest) return [];
   const covered = await selectRows<{ day: string }>(
     sql`SELECT to_char(period_start AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day
-      FROM metric_snapshot_day WHERE workspace_id = ${workspaceId}`,
+      FROM metric_snapshot_day WHERE workspace_id = ${workspaceId}
+        AND snapshot_version = ${SNAPSHOT_FAMILY_VERSION}`,
   );
   return daysToCompute({
     now,
@@ -327,15 +602,56 @@ export async function workspaceDaysToWrite(
   });
 }
 
-/** Drops days past retention (a pruned day is read live, so this never changes a number). */
+function dayProtectedByHold(alias: "h" | "ms"): SQL {
+  const people = sql`jsonb_each_text(${sql.raw(`${alias}.dimensions`)}) person_dimension`;
+  return sql`EXISTS (
+    SELECT 1 FROM legal_hold lh
+    WHERE lh.lifted_at IS NULL AND (
+      (lh.scope = 'person' AND EXISTS (
+        SELECT 1 FROM ${people}
+        WHERE person_dimension.key IN ('personId','assigneeId','requesterId','creatorId','escalationPersonId')
+          AND person_dimension.value = lh.scope_id))
+      OR (lh.scope = 'organisation' AND (
+        lh.scope_id = ${sql.raw(`${alias}.organisation_id`)}
+        OR lh.scope_id = (SELECT w.organisation_id FROM workspace w WHERE w.id = ${sql.raw(`${alias}.workspace_id`)})
+        OR EXISTS (
+          SELECT 1 FROM ${people}
+          JOIN person held_person ON held_person.id = person_dimension.value
+          WHERE person_dimension.key IN ('personId','assigneeId','requesterId','creatorId','escalationPersonId')
+            AND held_person.organisation_id = lh.scope_id
+        )
+      )
+    )
+  ))`;
+}
+
+/** Drops complete old days only; any day with a held source person's/org facts is kept intact. */
 export async function pruneSnapshots(now: Date = new Date()): Promise<void> {
   const cutoff = addDays(utcDayStart(now), -SNAPSHOT_RETENTION_DAYS);
-  await db.execute(
-    sql`DELETE FROM metric_snapshot WHERE period_start < ${cutoff.toISOString()}::timestamptz`,
-  );
-  await db.execute(
-    sql`DELETE FROM metric_snapshot_day WHERE period_start < ${cutoff.toISOString()}::timestamptz`,
-  );
+  const workspaces = await selectRows<{
+    workspace_id: string;
+  }>(sql`SELECT DISTINCT workspace_id
+    FROM metric_snapshot_day WHERE period_start < ${cutoff.toISOString()}::timestamptz`);
+  for (const { workspace_id: workspaceId } of workspaces) {
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`LOCK TABLE legal_hold IN SHARE MODE`);
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${`metric_snapshot_workspace:${workspaceId}`}))`,
+      );
+      await tx.execute(sql`DELETE FROM metric_snapshot ms
+        WHERE ms.workspace_id=${workspaceId} AND ms.period_start < ${cutoff.toISOString()}::timestamptz
+          AND NOT EXISTS (
+            SELECT 1 FROM metric_snapshot h
+            WHERE h.workspace_id=ms.workspace_id AND h.period_start=ms.period_start
+              AND ${dayProtectedByHold("h")})`);
+      await tx.execute(sql`DELETE FROM metric_snapshot_day d
+        WHERE d.workspace_id=${workspaceId} AND d.period_start < ${cutoff.toISOString()}::timestamptz
+          AND NOT EXISTS (
+            SELECT 1 FROM metric_snapshot h
+            WHERE h.workspace_id=d.workspace_id AND h.period_start=d.period_start
+              AND ${dayProtectedByHold("h")})`);
+    });
+  }
 }
 
 export { dayKey };

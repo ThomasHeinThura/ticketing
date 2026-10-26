@@ -1,0 +1,17 @@
+{
+	"recordedAt": "2026-10-25T08:44:19Z",
+	"migrations": 174,
+	"compiledApiSha256": "cfad287afb786fccfbea27cac0b01a58a64649b4feaa37fa58b4cbd71499dc50",
+	"runtimeCopies": [
+		{
+			"runtime": "performance",
+			"compiledApiSha256": "cfad287afb786fccfbea27cac0b01a58a64649b4feaa37fa58b4cbd71499dc50"
+		},
+		{
+			"runtime": "sso-browser",
+			"compiledApiSha256": "cfad287afb786fccfbea27cac0b01a58a64649b4feaa37fa58b4cbd71499dc50"
+		}
+	],
+	"strictTlsReadiness": "All six agent and portal endpoints returned 200",
+	"scope": "Canonical indexed search, queued Jobs configuration race fix, exact report export snapshot caption; test copies only"
+}

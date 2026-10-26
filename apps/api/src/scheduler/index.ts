@@ -1,6 +1,14 @@
 import { Cron } from "croner";
+import { runCycleSnapshotJob } from "../agile/cycle-snapshot-job";
+import { runCustomerInvitationDeliveryJob } from "../customer-invitation/delivery/worker";
 import { checkIdentityConnectionHealth } from "../identity/connection-health";
 import { sweepExpiredImpersonations } from "../instance/impersonation/finish";
+import {
+  readJobConfigurations,
+  runScheduledJobWithHistory,
+  startJobRunWorker,
+} from "../instance/jobs/runtime";
+import type { ServingRole } from "../runtime-role";
 import {
   cleanupPendingAttachments,
   collectDeletedAttachments,
@@ -8,6 +16,7 @@ import {
 import { runAuditPurgeJob } from "./audit-purge";
 import { runCustomFieldPurgeJob } from "./custom-field-purge";
 import { checkDueDateReminders } from "./due-date-reminders";
+import { runImportPreviewCleanup } from "./import-preview-cleanup";
 import { runNotificationDigest } from "./notification-digest";
 import { runQuietHoursRelease } from "./notification-digest-release";
 import { drainOutbox } from "./outbox-drain";
@@ -40,6 +49,23 @@ const jobs: Cron[] = [];
  */
 const registeredByName = new Map<string, Cron>();
 
+export type RegisteredJobDefinition = {
+  name: string;
+  pattern: string;
+  handler: () => Promise<unknown>;
+  timezone?: string;
+  manualRunAllowed?: boolean;
+  /** Independently controls clock scheduling; manual admission is a separate policy. */
+  onDemand?: true;
+};
+
+let registeredDefinitions: readonly RegisteredJobDefinition[] = [];
+const runtimeConfigurationSignature = new Map<string, string>();
+const runtimeJobEnabled = new Map<string, boolean>();
+let configurationPoll: ReturnType<typeof setInterval> | undefined;
+let stopManualWorker: (() => void) | undefined;
+let schedulerRole: ServingRole = "all";
+
 type JobOutcome = { degraded?: boolean };
 
 // Cron jobs swallow their operational failures (per-item try/catch) so they
@@ -53,7 +79,7 @@ type JobOutcome = { degraded?: boolean };
 function withCheckIn<T>(name: string, fn: () => Promise<T>) {
   return async (): Promise<void> => {
     try {
-      const result = await fn();
+      const result = await runScheduledJobWithHistory(name, fn);
       const degraded = Boolean(
         (result as JobOutcome | null | undefined)?.degraded,
       );
@@ -66,12 +92,8 @@ function withCheckIn<T>(name: string, fn: () => Promise<T>) {
   };
 }
 
-export function initializeScheduler(): void {
-  const definitions: ReadonlyArray<{
-    name: string;
-    pattern: string;
-    handler: () => Promise<unknown>;
-  }> = [
+function createRegisteredJobDefinitions(): ReadonlyArray<RegisteredJobDefinition> {
+  const definitions: ReadonlyArray<RegisteredJobDefinition> = [
     // background-jobs.md's cadence table.
     {
       name: "outbox-drain",
@@ -135,6 +157,11 @@ export function initializeScheduler(): void {
       handler: expirePendingActions,
     },
     {
+      name: "import-preview-cleanup",
+      pattern: "* * * * *",
+      handler: runImportPreviewCleanup,
+    },
+    {
       name: "reminder-scan",
       pattern: "*/15 * * * *",
       handler: runReminderScan,
@@ -169,6 +196,13 @@ export function initializeScheduler(): void {
       handler: () => runMetricsSnapshot(),
     },
     {
+      // CY-9: also snapshots cycles completed by their end date without a UI action.
+      name: "cycle-snapshot",
+      pattern: "15 0 * * *",
+      timezone: "UTC",
+      handler: () => runCycleSnapshotJob(),
+    },
+    {
       // RP-10: renders queued large exports; also started right after one is queued.
       name: REPORT_EXPORT_JOB,
       pattern: "* * * * *",
@@ -181,10 +215,55 @@ export function initializeScheduler(): void {
       handler: () => checkIdentityConnectionHealth(),
     },
   ];
+  return definitions;
+}
 
-  for (const definition of definitions) {
+function createWebPollerDefinitions(): ReadonlyArray<RegisteredJobDefinition> {
+  return [
+    {
+      name: "customer-invitation-delivery",
+      pattern: "* * * * *",
+      handler: runCustomerInvitationDeliveryJob,
+      manualRunAllowed: false,
+    },
+  ];
+}
+
+function createOnDemandJobDefinitions(): ReadonlyArray<RegisteredJobDefinition> {
+  return [
+    {
+      name: SECRETS_REKEY_JOB,
+      onDemand: true,
+      pattern: "0 0 1 1 *",
+      handler: () => runSecretsRekeyJob({ userId: null }),
+      manualRunAllowed: false,
+    },
+  ];
+}
+
+export function initializeScheduler(role: ServingRole = "all"): void {
+  if (jobs.length > 0) return;
+  schedulerRole = role;
+  const definitions = createRegisteredJobDefinitions();
+  const webPollerDefinitions = createWebPollerDefinitions();
+  const onDemandDefinitions = createOnDemandJobDefinitions();
+  registeredDefinitions = [
+    ...definitions,
+    ...webPollerDefinitions,
+    ...onDemandDefinitions,
+  ];
+
+  for (const definition of registeredDefinitions) {
+    const ownedByRole =
+      definition.name === "customer-invitation-delivery"
+        ? role !== "jobs"
+        : role !== "web";
+    if (!ownedByRole) continue;
     const job = new Cron(
       definition.pattern,
+      // Do not let the default cadence fire before persisted disable/override state has
+      // loaded successfully. The refresh below replaces and starts the Cron atomically.
+      { timezone: definition.timezone, paused: true },
       withCheckIn(definition.name, definition.handler),
     );
     jobs.push(job);
@@ -194,25 +273,142 @@ export function initializeScheduler(): void {
   // On-demand jobs (background-jobs.md): registered so God Mode lists them and a lease name
   // exists, but never fired by a clock. The elevated trigger route runs the body directly with
   // the acting administrator, so the audit row names a person.
-  for (const definition of [
-    {
-      name: SECRETS_REKEY_JOB,
-      pattern: "0 0 1 1 *",
-      handler: () => runSecretsRekeyJob({ userId: null }),
-    },
-  ]) {
-    const job = new Cron(
-      definition.pattern,
-      { paused: true },
-      withCheckIn(definition.name, definition.handler),
-    );
-    jobs.push(job);
-    registeredByName.set(definition.name, job);
+  for (const definition of registeredDefinitions) {
+    runtimeJobEnabled.set(definition.name, false);
   }
+  if (role !== "web") {
+    stopManualWorker = startJobRunWorker(
+      (name) =>
+        registeredDefinitions.find(
+          (definition) =>
+            definition.name === name && definition.manualRunAllowed !== false,
+        )?.handler,
+    );
+  }
+  void refreshRegisteredJobConfiguration();
+  configurationPoll = setInterval(() => {
+    void refreshRegisteredJobConfiguration();
+  }, 5_000);
+  configurationPoll.unref?.();
 
-  console.log(
-    "⏰ Scheduler started (outbox drain every 30 seconds, SLA scan every 5 minutes, due-date reminders every 5 minutes, audit purge daily 03:00, session cleanup with soft-delete purge daily 03:15, custom-field purge daily 03:45, pending-action expiry every minute, reminder scan every 15 minutes, scheduled transitions every minute, position rebalance every 5 minutes)",
+  if (role === "web") {
+    console.log(
+      "⏰ Customer invitation delivery poller started (every minute)",
+    );
+  } else {
+    console.log(
+      "⏰ Scheduler started (outbox drain every 30 seconds, SLA scan every 5 minutes, due-date reminders every 5 minutes, audit purge daily 03:00, session cleanup with soft-delete purge daily 03:15, custom-field purge daily 03:45, pending-action expiry every minute, reminder scan every 15 minutes, scheduled transitions every minute, position rebalance every 5 minutes)",
+    );
+  }
+}
+
+async function refreshRegisteredJobConfiguration(): Promise<void> {
+  const configurable = registeredDefinitions.filter(
+    (definition) => definition.onDemand !== true,
   );
+  if (configurable.length === 0) return;
+  try {
+    const configurations = await readJobConfigurations(
+      configurable.map((definition) => definition.name),
+    );
+    for (const definition of configurable) {
+      const config = configurations.get(definition.name);
+      const pattern = config?.pattern ?? definition.pattern;
+      const enabled = config?.enabled ?? true;
+      const signature = `${enabled}\u0000${pattern}\u0000${config?.version ?? 0}`;
+      const unchanged =
+        runtimeConfigurationSignature.get(definition.name) === signature;
+      runtimeConfigurationSignature.set(definition.name, signature);
+      runtimeJobEnabled.set(definition.name, enabled);
+      const ownsJob =
+        definition.name === "customer-invitation-delivery"
+          ? schedulerRole !== "jobs"
+          : schedulerRole !== "web";
+      if (!ownsJob || (unchanged && registeredByName.has(definition.name)))
+        continue;
+
+      let replacement: Cron;
+      try {
+        replacement = new Cron(
+          pattern,
+          { timezone: definition.timezone, paused: !enabled },
+          withCheckIn(definition.name, definition.handler),
+        );
+      } catch {
+        // A malformed persisted override cannot replace the current valid scheduler entry.
+        continue;
+      }
+      const previous = registeredByName.get(definition.name);
+      previous?.stop();
+      if (previous) {
+        registeredByName.delete(definition.name);
+        const index = jobs.indexOf(previous);
+        if (index >= 0) jobs.splice(index, 1);
+      }
+      jobs.push(replacement);
+      registeredByName.set(definition.name, replacement);
+    }
+  } catch {
+    // Keep the last known scheduler configuration on database/configuration failure.
+  }
+}
+
+export type RegisteredJobStatus = {
+  name: string;
+  defaultPattern: string | null;
+  timezone: string | null;
+  enabled: boolean;
+  nextRunAt: Date | null;
+  manualRunAllowed: boolean;
+};
+
+/** Computes a display-only next invocation without starting a scheduler worker. */
+export function nextScheduledAt(
+  pattern: string,
+  timezone?: string | null,
+): Date | null {
+  try {
+    const cron = new Cron(pattern, {
+      timezone: timezone ?? undefined,
+      paused: true,
+    });
+    const next = cron.nextRun() ?? null;
+    cron.stop();
+    return next;
+  } catch {
+    return null;
+  }
+}
+
+/** Exact job names and live schedule state registered in this process. */
+export function registeredJobCatalog(): readonly RegisteredJobStatus[] {
+  const definitions =
+    registeredDefinitions.length > 0
+      ? registeredDefinitions
+      : [
+          ...createRegisteredJobDefinitions(),
+          ...createWebPollerDefinitions(),
+          ...createOnDemandJobDefinitions(),
+        ];
+  return definitions.map((definition) => {
+    const cron = registeredByName.get(definition.name);
+    const enabled =
+      definition.onDemand === true
+        ? true
+        : (runtimeJobEnabled.get(definition.name) ?? true);
+    return {
+      name: definition.name,
+      defaultPattern: definition.onDemand === true ? null : definition.pattern,
+      timezone: definition.timezone ?? null,
+      enabled,
+      nextRunAt:
+        definition.onDemand === true || !enabled
+          ? null
+          : (cron?.nextRun() ??
+            nextScheduledAt(definition.pattern, definition.timezone)),
+      manualRunAllowed: definition.manualRunAllowed !== false,
+    };
+  });
 }
 
 /**
@@ -241,9 +437,17 @@ export function registeredJobByName(name: string): Cron | undefined {
 }
 
 export function shutdownScheduler(): void {
+  if (configurationPoll) clearInterval(configurationPoll);
+  configurationPoll = undefined;
+  stopManualWorker?.();
+  stopManualWorker = undefined;
   for (const job of jobs) {
     job.stop();
   }
   jobs.length = 0;
   registeredByName.clear();
+  registeredDefinitions = [];
+  runtimeConfigurationSignature.clear();
+  runtimeJobEnabled.clear();
+  schedulerRole = "all";
 }

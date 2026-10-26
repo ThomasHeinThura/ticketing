@@ -223,6 +223,7 @@ function ReadOnlyValue({
 export default function WorkItemCustomFields(props: {
   item: WorkItemDetailRow;
   onAccessLost: () => void;
+  readOnly?: boolean;
 }) {
   // No applicable fields: render nothing and mount no hooks (most types have none).
   if ((props.item.customFields ?? []).length === 0) return null;
@@ -232,16 +233,18 @@ export default function WorkItemCustomFields(props: {
 function WorkItemCustomFieldSections({
   item,
   onAccessLost,
+  readOnly = false,
 }: {
   item: WorkItemDetailRow;
   onAccessLost: () => void;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const { canUpdateTasks } = useWorkspacePermission(
     item.workspaceId,
     item.projectId,
   );
-  const canEdit = canUpdateTasks();
+  const canEdit = !readOnly && canUpdateTasks();
   const fields = item.customFields ?? [];
   const [overrides, setOverrides] = useState<Record<string, unknown>>({});
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());

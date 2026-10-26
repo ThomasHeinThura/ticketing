@@ -78,6 +78,27 @@ describe("API integration: workflow publish response and tree", () => {
     const v2Body = (await v2.json()) as { id: string; number: number };
     expect(v2Body.number).toBe(2);
 
+    const preview = await call(
+      "POST",
+      `/api/workflows/${workflow.id}/versions/2/publish?dryRun=true`,
+    );
+    expect(preview.status, await preview.clone().text()).toBe(200);
+    expect(await preview.json()).toMatchObject({
+      affected: { people: 0, workItems: 0, projects: 0 },
+      valid: false,
+      noOutboundStateTemplateIds: [d],
+    });
+    const unpublished = await db
+      .select({ publishedAt: schema.workflowVersionTable.publishedAt })
+      .from(schema.workflowVersionTable)
+      .where(eq(schema.workflowVersionTable.id, v2Body.id));
+    expect(unpublished[0]?.publishedAt).toBeNull();
+    const inactive = await db
+      .select({ activeVersionId: schema.workflowTable.activeVersionId })
+      .from(schema.workflowTable)
+      .where(eq(schema.workflowTable.id, workflow.id));
+    expect(inactive[0]?.activeVersionId).toBeNull();
+
     const published = await call(
       "POST",
       `/api/workflows/${workflow.id}/versions/2/publish`,

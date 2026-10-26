@@ -109,6 +109,17 @@ export async function insertWorkspaceInvitation(
     .returning();
 }
 
+/** Shared CP-22 lifetime for native staff and customer invitations. */
+export async function readInvitationLifetimeHours(executor: Executor) {
+  const [row] = await executor
+    .select({ hours: schema.instanceSettingTable.invitationLifetimeHours })
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
+    .limit(1);
+  if (!row) throw new Error("Invitation runtime settings unavailable");
+  return row.hours;
+}
+
 /** Workspace name used to render the post-commit invitation email. */
 export async function findWorkspaceInvitationWorkspace(workspaceId: string) {
   return await db

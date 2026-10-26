@@ -1,0 +1,36 @@
+{
+	"recordedAt": "2026-10-25T11:39:28.777766+00:00",
+	"apiBundleSha256": "cabd20e96c5150e54d1f213a64259a8f14acb861a05af92f9ed0c09eff944d20",
+	"migrationsApplied": 175,
+	"runtimeTargets": [
+		"audit copy on 443",
+		"10k-item copy on 1443",
+		"synthetic SSO copy on 1444"
+	],
+	"tlsReadiness": {
+		"agentAndPortalEachTarget": 200,
+		"certificateVerification": "default trust; no exceptions"
+	},
+	"bundleBudgetsKB": {
+		"agent": 259.5,
+		"workList": 346.7,
+		"portal": 191.7
+	},
+	"focusedTests": {
+		"customFieldFrontend": 161,
+		"customFieldApiFollowup": 22,
+		"mcpClientRegistration": 35,
+		"mcpRateClassification": 28,
+		"mcpTelemetryAndUsageIntegration": 12,
+		"mcpUsagePanel": 4,
+		"storageAdaptersProbeLimiter": 12,
+		"storagePanel": 2,
+		"storageUsageIntegration": 2
+	},
+	"limitations": [
+		"Focused checks are not the final full-tree gate or independent phase review.",
+		"Worktree now contains subsequent multi-sort, invitation and elevated-route changes that are not in this deployed bundle.",
+		"Storage historical byte availability has no ready attachment rows to sample."
+	],
+	"databaseSafety": "All three runtime copies backed up with fully decoded dumps before additive migration; source/aggregate/coverage counts unchanged. Protected live database remains at130."
+}

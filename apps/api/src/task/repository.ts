@@ -1043,6 +1043,7 @@ export async function addTaskLabelForIdentity(
         executor
           .select({
             id: sql`${sql.param(createId(), labelTable.id)}`.as("id"),
+            key: sql`null`.as("key"),
             name: sql`${sql.param(values.name, labelTable.name)}`.as("name"),
             color: sql`${sql.param(values.color, labelTable.color)}`.as(
               "color",
@@ -1115,6 +1116,7 @@ export async function removeTaskLabelForIdentity(
       deletedId: deleted.id,
       deletedName: deleted.name,
       deletedColor: deleted.color,
+      deletedKey: deleted.key,
       deletedCreatedAt: deleted.createdAt,
       deletedUpdatedAt: deleted.updatedAt,
       deletedTaskId: deleted.taskId,
@@ -1131,6 +1133,7 @@ export async function removeTaskLabelForIdentity(
       id: result.deletedId,
       name: result.deletedName as string,
       color: result.deletedColor as string,
+      key: result.deletedKey as string | null,
       createdAt: result.deletedCreatedAt as Date,
       updatedAt: result.deletedUpdatedAt as Date,
       taskId: result.deletedTaskId as string | null,
@@ -1178,6 +1181,7 @@ export async function insertTaskLabelOnConflictDoNothing(
   const selectedLabel = executor
     .select({
       id: sql`${sql.param(createId(), labelTable.id)}`.as("id"),
+      key: sql`null`.as("key"),
       name: sql`${sql.param(values.name, labelTable.name)}`.as("name"),
       color: sql`${sql.param(values.color, labelTable.color)}`.as("color"),
       createdAt: sql`now()`.as("createdAt"),

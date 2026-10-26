@@ -19,6 +19,7 @@ import {
   projectTable,
   workspaceTable,
 } from "../../database/schema";
+import { importPlaceholderClaimTable } from "../../database/schema-imports";
 import {
   AccountDeletionRetryError,
   currentAccountDeletionTransaction,
@@ -309,7 +310,22 @@ async function deleteAccountDataInTransaction(
   // organisation or a workspace erased with them refuses the whole erasure.
   await refuseIfUnderLegalHold(tx, userId, plan.workspaceIdsToDelete);
 
-  if (accountDeletion) await invalidateAccountDeletionCredentials(userId, tx);
+  if (accountDeletion) {
+    await invalidateAccountDeletionCredentials(userId, tx);
+    // Authored history retains its person ID after account erasure, but not a
+    // verified address copied into private import claim provenance.
+    await tx
+      .delete(importPlaceholderClaimTable)
+      .where(
+        inArray(
+          importPlaceholderClaimTable.personId,
+          tx
+            .select({ id: personTable.id })
+            .from(personTable)
+            .where(eq(personTable.userId, userId)),
+        ),
+      );
+  }
 
   if (plan.workspaceIdsToDelete.length > 0) {
     try {

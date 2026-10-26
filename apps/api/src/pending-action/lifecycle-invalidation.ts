@@ -25,6 +25,42 @@ export async function lockPendingActionLifecycle(tx: PendingActionTransaction) {
 }
 
 /**
+ * Instance actions may bind an organisation in the pending-action row while their event
+ * envelope remains instance-scoped. The event contract has no organisation-only scope.
+ */
+export function pendingActionEventScope(input: {
+  action: string;
+  targetType: string;
+  routeKey: string;
+  targetIds: readonly string[];
+  workspaceId: string | null;
+  projectId: string | null;
+  organisationId: string | null;
+}) {
+  if (
+    input.action === "delete" &&
+    input.targetType === "organisation" &&
+    input.routeKey === "DELETE /api/instance/organisations/{id}" &&
+    input.workspaceId === null &&
+    input.projectId === null &&
+    input.targetIds.length === 1 &&
+    input.organisationId === input.targetIds[0]
+  )
+    return {};
+  if (
+    input.action === "purge" &&
+    input.targetType === "organisation" &&
+    input.routeKey === "POST /api/instance/purge" &&
+    input.workspaceId === null &&
+    input.projectId === null &&
+    input.targetIds.length === 1 &&
+    input.organisationId === input.targetIds[0]
+  )
+    return {};
+  return eventScope(input);
+}
+
+/**
  * Make every outstanding request by a deactivated person terminal in the same
  * transaction as the person-wide lifecycle transition. Callers hold the
  * lifecycle gate and have already locked the person closure.
@@ -57,7 +93,11 @@ export async function invalidatePendingActionsForRequester(
         id: null,
         name: "TaskDesk identity lifecycle",
       },
-      scope: eventScope({
+      scope: pendingActionEventScope({
+        action: row.action,
+        targetType: row.targetType,
+        routeKey: row.routeKey,
+        targetIds: row.targetIds,
         workspaceId: row.workspaceId,
         organisationId: row.organisationId,
         projectId: row.projectId,

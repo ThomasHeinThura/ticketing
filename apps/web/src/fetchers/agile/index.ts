@@ -45,6 +45,11 @@ export type CycleSummary = {
   notStarted: Bucket;
   cancelled: Bucket;
   unestimated: { count: number; share: number };
+  snapshot?: {
+    capturedAt: string;
+    basis: "completion_action" | "date_catchup";
+    endDateSummary: "known_at_action" | "unknown";
+  };
 };
 
 export type Velocity =
@@ -52,7 +57,7 @@ export type Velocity =
   | {
       status: "insufficient_data";
       cycles: number;
-      reason: "fewer_than_three" | "mixed_units";
+      reason: "fewer_than_three" | "mixed_units" | "late_snapshot";
     };
 
 export type Cycle = {

@@ -1,48 +1,25 @@
-import { useLocation, useNavigate } from "@tanstack/react-router";
-import {
-  Button,
-  KbdSequence,
-  SidebarTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-  useIsMobile,
-} from "@taskdesk/ui";
-import {
-  CalendarDays,
-  CalendarRange,
-  FileText,
-  Layers,
-  Repeat,
-  SquareKanban,
-  SquircleDashed,
-} from "lucide-react";
-import { lazy, type ReactNode, Suspense, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import ProjectCrumbSelect from "@/components/common/header/project-crumb-select";
+import ProjectLayoutControlsFallback from "@/components/common/header/project-layout-controls-fallback";
 import WorkspaceCrumbSelect from "@/components/common/header/workspace-crumb-select";
 import Layout from "@/components/common/layout";
-import RealtimeUnavailableNotice from "@/components/common/realtime-unavailable-notice";
+import SidebarToggle from "@/components/common/sidebar-toggle";
+import useGetProject from "@/hooks/queries/project/use-get-project";
+import { afterPrimaryContent } from "@/lib/after-primary-content";
 
+const CanonicalProjectRealtime = lazy(
+  () => import("@/components/common/canonical-project-realtime"),
+);
+const LegacyProjectRealtime = lazy(
+  () => import("@/components/common/legacy-project-realtime"),
+);
 const CreateProjectModal = lazy(
   () => import("@/components/shared/modals/create-project-modal"),
 );
-const MobileProjectNav = lazy(
-  () => import("@/components/common/header/mobile-project-nav"),
-);
-
-import { shortcuts } from "@/constants/shortcuts";
-import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
-import useProjectPagesFeature from "@/hooks/queries/feature-flag/use-project-pages-feature";
-import useGetProject from "@/hooks/queries/project/use-get-project";
-import useGetProjects from "@/hooks/queries/project/use-get-projects";
-import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
-import { useProjectWebSocket } from "@/hooks/use-project-websocket";
-import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { cn } from "@/lib/cn";
-import { buildProjectViewSwitchUrl } from "@/lib/project-layout-navigation";
-import { routes } from "@/lib/routes";
+const loadProjectLayoutControls = () =>
+  import("@/components/common/header/project-layout-controls");
+const ProjectLayoutControls = lazy(loadProjectLayoutControls);
+let projectLayoutControlsReady = false;
 
 type ProjectLayoutProps = {
   projectId: string;
@@ -71,310 +48,80 @@ export default function ProjectLayout({
   realtimeMode = "legacy",
 }: ProjectLayoutProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  const location = useLocation();
   const { data: project } = useGetProject({ id: projectId, workspaceId });
-  const permissions = useWorkspacePermission(workspaceId);
-  const canCreateProject =
-    !permissions.isCheckingPermissions && permissions.canCreateProjects();
-  const { data: workspaceProjects } = useGetProjects({ workspaceId });
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
-
-  const { status: socketStatus } = useProjectWebSocket(
-    realtimeMode === "legacy" ? projectId : "",
+  const [showProjectLayoutControls, setShowProjectLayoutControls] = useState(
+    projectLayoutControlsReady,
   );
 
-  const { features: agileFeatures } = useAgileFeatures(projectId);
-  const pagesOn = useProjectPagesFeature(projectId);
-  const resolvedView =
-    activeView ??
-    (location.pathname.includes("/backlog")
-      ? "backlog"
-      : location.pathname.includes("/cycles")
-        ? "cycles"
-        : location.pathname.includes("/modules")
-          ? "modules"
-          : location.pathname.includes("/pages")
-            ? "pages"
-            : location.pathname.includes("/calendar")
-              ? "calendar"
-              : location.pathname.includes("/gantt")
-                ? "gantt"
-                : "board");
-  const handleNavigateToBacklog = () => {
-    if (project)
-      void navigate({
-        href: buildProjectViewSwitchUrl(
-          "backlog",
-          { workspaceId, projectId, projectKey: project.slug },
-          location.searchStr,
-        ),
-      });
-  };
-  const handleNavigateToBoard = () => {
-    if (project)
-      void navigate({
-        href: buildProjectViewSwitchUrl(
-          "board",
-          { workspaceId, projectId, projectKey: project.slug },
-          location.searchStr,
-        ),
-      });
-  };
-
-  const handleNavigateToCycles = () => {
-    if (project)
-      void navigate({
-        href: routes.projectCycles.build({ projectKey: project.slug }),
-      });
-  };
-  const handleNavigateToPages = () => {
-    if (project)
-      void navigate({
-        href: routes.projectPages.build({ projectKey: project.slug }),
-      });
-  };
-  const handleNavigateToModules = () => {
-    if (project)
-      void navigate({
-        href: routes.projectModules.build({ projectKey: project.slug }),
-      });
-  };
-
-  const handleNavigateToCalendar = () => {
-    navigate({
-      to: buildProjectViewSwitchUrl(
-        "calendar",
-        { workspaceId, projectId },
-        location.searchStr,
-      ),
-    });
-  };
-
-  const handleNavigateToGantt = () => {
-    navigate({
-      to: buildProjectViewSwitchUrl(
-        "gantt",
-        { workspaceId, projectId },
-        location.searchStr,
-      ),
-    });
-  };
-
-  const handleProjectSwitch = (nextProjectId: string) => {
-    const nextProject = workspaceProjects?.find(
-      (candidate) => candidate.id === nextProjectId,
+  // Keep the synchronous Kaneo shell usable, then fetch the larger project controls
+  // after the primary content has rendered. The fixed header keeps its geometry.
+  useEffect(() => {
+    if (projectLayoutControlsReady) return;
+    const abort = new AbortController();
+    afterPrimaryContent({
+      signal: abort.signal,
+      onPrimaryContentReady: () => {
+        void loadProjectLayoutControls().catch(() => {});
+      },
+    }).then(
+      () => {
+        if (abort.signal.aborted) return;
+        projectLayoutControlsReady = true;
+        setShowProjectLayoutControls(true);
+      },
+      () => {},
     );
-    if (!nextProject) return;
-    if (
-      resolvedView === "board" ||
-      resolvedView === "backlog" ||
-      resolvedView === "cycles" ||
-      resolvedView === "modules" ||
-      resolvedView === "pages"
-    ) {
-      void navigate({
-        href:
-          resolvedView === "backlog"
-            ? routes.projectBacklog.build({ projectKey: nextProject.slug })
-            : resolvedView === "cycles"
-              ? routes.projectCycles.build({ projectKey: nextProject.slug })
-              : resolvedView === "pages"
-                ? routes.projectPages.build({ projectKey: nextProject.slug })
-                : resolvedView === "modules"
-                  ? routes.projectModules.build({
-                      projectKey: nextProject.slug,
-                    })
-                  : routes.workItemList.build(
-                      { projectKey: nextProject.slug },
-                      { layout: "board" },
-                    ),
-      });
-      return;
-    }
-    void navigate({
-      to:
-        resolvedView === "calendar"
-          ? "/dashboard/workspace/$workspaceId/project/$projectId/calendar"
-          : "/dashboard/workspace/$workspaceId/project/$projectId/gantt",
-      params: { workspaceId, projectId: nextProjectId },
-    });
-  };
+    return () => abort.abort();
+  }, []);
+
+  const projectLayoutViewLabels = [
+    t("tasks:backlog.title"),
+    t("navigation:projectViews.workItems"),
+    t("navigation:projectViews.calendar"),
+    t("tasks:gantt.title"),
+  ];
 
   return (
     <Layout>
       <Layout.Header className="h-11 border-border/80 px-2">
-        <div className="flex w-full items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <SidebarTrigger
-                    className="-ml-1 h-7 w-7 cursor-pointer text-foreground hover:text-foreground"
-                    toggleLabel={t("common:a11y.toggleSidebar")}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="flex items-center gap-2 text-[10px]">
-                    Toggle sidebar
-                    <KbdSequence
-                      keys={[
-                        shortcuts.sidebar.prefix,
-                        shortcuts.sidebar.toggle,
-                      ]}
-                    />
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
+        <div className="flex w-full min-w-0 items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <SidebarToggle />
             <div className="h-4 w-px shrink-0 bg-border/80" />
-
-            <div className="hidden min-w-0 items-center gap-1 md:flex">
+            <div className="hidden min-w-0 shrink items-center gap-1 md:flex">
               <WorkspaceCrumbSelect />
               <span className="text-foreground text-xs">/</span>
-              <ProjectCrumbSelect
-                workspaceId={workspaceId}
-                projectId={projectId}
-                projectName={project?.name}
-                onSelectProject={handleProjectSwitch}
-                onAddProject={
-                  canCreateProject
-                    ? () => setIsCreateProjectModalOpen(true)
-                    : undefined
-                }
-              />
             </div>
-
-            {isMobile && projectId && workspaceId ? (
-              <div className="md:hidden">
-                <Suspense fallback={null}>
-                  <MobileProjectNav
-                    workspaceId={workspaceId}
-                    projectId={projectId}
-                    activeView={resolvedView}
-                    onSelectBacklog={handleNavigateToBacklog}
-                    onSelectBoard={handleNavigateToBoard}
-                    onSelectCalendar={handleNavigateToCalendar}
-                    onSelectGantt={handleNavigateToGantt}
-                    onSelectCycles={
-                      agileFeatures.cycles ? handleNavigateToCycles : undefined
-                    }
-                    onSelectModules={
-                      agileFeatures.modules
-                        ? handleNavigateToModules
-                        : undefined
-                    }
-                    onSelectPages={pagesOn ? handleNavigateToPages : undefined}
-                    onSelectProject={handleProjectSwitch}
-                    onAddProject={
-                      canCreateProject
-                        ? () => setIsCreateProjectModalOpen(true)
-                        : undefined
-                    }
+            {showProjectLayoutControls ? (
+              <Suspense
+                fallback={
+                  <ProjectLayoutControlsFallback
+                    projectName={project?.name}
+                    showViewSwitcher={showViewSwitcher}
+                    viewLabels={projectLayoutViewLabels}
                   />
-                </Suspense>
-              </div>
-            ) : null}
-
-            {showViewSwitcher && (
-              <div className="hidden h-8 items-center gap-0.5 rounded-lg border border-border/80 bg-background p-0.5 sm:inline-flex">
-                <Button
-                  variant={resolvedView === "backlog" ? "secondary" : "ghost"}
-                  size="xs"
-                  onClick={handleNavigateToBacklog}
-                  className={cn(
-                    "h-6 gap-1.5 rounded-md px-2 text-xs",
-                    resolvedView !== "backlog" && "text-muted-foreground",
-                  )}
-                >
-                  <SquircleDashed className="size-3.5" />
-                  Backlog
-                </Button>
-                <Button
-                  variant={resolvedView === "board" ? "secondary" : "ghost"}
-                  size="xs"
-                  onClick={handleNavigateToBoard}
-                  className={cn(
-                    "h-6 gap-1.5 rounded-md px-2 text-xs",
-                    resolvedView !== "board" && "text-muted-foreground",
-                  )}
-                >
-                  <SquareKanban className="size-3.5" />
-                  {t("navigation:projectViews.workItems")}
-                </Button>
-                <Button
-                  variant={resolvedView === "calendar" ? "secondary" : "ghost"}
-                  size="xs"
-                  onClick={handleNavigateToCalendar}
-                  className={cn(
-                    "h-6 gap-1.5 rounded-md px-2 text-xs",
-                    resolvedView !== "calendar" && "text-muted-foreground",
-                  )}
-                >
-                  <CalendarRange className="size-3.5" />
-                  {t("navigation:projectViews.calendar")}
-                </Button>
-                <Button
-                  variant={resolvedView === "gantt" ? "secondary" : "ghost"}
-                  size="xs"
-                  onClick={handleNavigateToGantt}
-                  className={cn(
-                    "h-6 gap-1.5 rounded-md px-2 text-xs",
-                    resolvedView !== "gantt" && "text-muted-foreground",
-                  )}
-                >
-                  <CalendarDays className="size-3.5" />
-                  Gantt
-                </Button>
-                {agileFeatures.cycles ? (
-                  <Button
-                    variant={resolvedView === "cycles" ? "secondary" : "ghost"}
-                    size="xs"
-                    onClick={handleNavigateToCycles}
-                    className={cn(
-                      "h-6 gap-1.5 rounded-md px-2 text-xs",
-                      resolvedView !== "cycles" && "text-muted-foreground",
-                    )}
-                  >
-                    <Repeat className="size-3.5" />
-                    {t("navigation:projectViews.cycles")}
-                  </Button>
-                ) : null}
-                {agileFeatures.modules ? (
-                  <Button
-                    variant={resolvedView === "modules" ? "secondary" : "ghost"}
-                    size="xs"
-                    onClick={handleNavigateToModules}
-                    className={cn(
-                      "h-6 gap-1.5 rounded-md px-2 text-xs",
-                      resolvedView !== "modules" && "text-muted-foreground",
-                    )}
-                  >
-                    <Layers className="size-3.5" />
-                    {t("navigation:projectViews.modules")}
-                  </Button>
-                ) : null}
-                {pagesOn ? (
-                  <Button
-                    variant={resolvedView === "pages" ? "secondary" : "ghost"}
-                    size="xs"
-                    onClick={handleNavigateToPages}
-                    className={cn(
-                      "h-6 gap-1.5 rounded-md px-2 text-xs",
-                      resolvedView !== "pages" && "text-muted-foreground",
-                    )}
-                  >
-                    <FileText className="size-3.5" />
-                    {t("navigation:projectViews.pages")}
-                  </Button>
-                ) : null}
-              </div>
+                }
+              >
+                <ProjectLayoutControls
+                  projectId={projectId}
+                  workspaceId={workspaceId}
+                  projectName={project?.name}
+                  projectSlug={project?.slug}
+                  showViewSwitcher={showViewSwitcher}
+                  activeView={activeView}
+                  onAddProject={() => setIsCreateProjectModalOpen(true)}
+                />
+              </Suspense>
+            ) : (
+              <ProjectLayoutControlsFallback
+                projectName={project?.name}
+                showViewSwitcher={showViewSwitcher}
+                viewLabels={projectLayoutViewLabels}
+              />
             )}
           </div>
-
           <div className="flex shrink-0 items-center gap-1.5">
             {headerActions}
           </div>
@@ -382,9 +129,13 @@ export default function ProjectLayout({
       </Layout.Header>
 
       {realtimeMode === "canonical" ? (
-        <CanonicalProjectRealtime projectId={projectId} />
+        <Suspense fallback={null}>
+          <CanonicalProjectRealtime projectId={projectId} />
+        </Suspense>
       ) : realtimeMode === "legacy" ? (
-        <RealtimeUnavailableNotice status={socketStatus} />
+        <Suspense fallback={null}>
+          <LegacyProjectRealtime projectId={projectId} />
+        </Suspense>
       ) : null}
       <Layout.Content>{children}</Layout.Content>
 
@@ -397,22 +148,5 @@ export default function ProjectLayout({
         </Suspense>
       ) : null}
     </Layout>
-  );
-}
-
-function CanonicalProjectRealtime({ projectId }: { projectId: string }) {
-  const { status } = useNativeWorkItemRealtime(
-    projectId ? [`project:${projectId}`] : [],
-  );
-  return (
-    <RealtimeUnavailableNotice
-      status={
-        status === "available"
-          ? "live"
-          : status === "unavailable"
-            ? "unavailable"
-            : "connecting"
-      }
-    />
   );
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCustomerDigestSummary,
   buildDigestSummary,
   DIGEST_INBOX_URL,
   DIGEST_MAX_LINES,
@@ -44,5 +45,31 @@ describe("NO-6 digest summary", () => {
     const lines = buildDigestSummary("hourly", known).body.split("\n");
     expect(lines).toHaveLength(DIGEST_MAX_LINES + 1);
     expect(lines.at(-1)).toBe("More kinds of update: 1");
+  });
+
+  it("builds a bounded customer request summary without internal event names", () => {
+    const summary = buildCustomerDigestSummary("hourly", [
+      "work_item.commented",
+      "work_item.commented",
+      "work_item.transitioned",
+      "secret.internal_kind",
+    ]);
+    expect(summary).toEqual({
+      title: "Your hourly request summary: 4 updates",
+      body: "New comments: 2\nRequest updates: 2",
+      url: "/requests",
+    });
+    expect(JSON.stringify(summary)).not.toContain("secret");
+    expect(JSON.stringify(summary)).not.toContain("work_item");
+  });
+
+  it("groups semantically equivalent request events before applying runtime terms", () => {
+    const summary = buildCustomerDigestSummary(
+      "daily",
+      ["work_item.transitioned", "secret.internal_kind"],
+      { singular: "Case", plural: "Cases" },
+    );
+    expect(summary.body).toBe("Case updates: 2");
+    expect(summary.title).toBe("Your daily case summary: 2 updates");
   });
 });

@@ -1,5 +1,6 @@
 import type { client } from "@taskdesk/libs";
 import type { InferResponseType } from "hono/client";
+import type { CustomFieldFormat, CustomFieldOption } from "@/lib/custom-field";
 
 /**
  * One row's wire shape from `GET /api/projects/{projectId}/work-items`
@@ -21,6 +22,19 @@ export type WorkItem = InferResponseType<
 >["data"][number];
 
 export type WorkItemPriority = "low" | "medium" | "high" | "urgent";
+
+export type WorkItemCustomFieldColumn = {
+  key: string;
+  name: string;
+  format: CustomFieldFormat;
+  options: CustomFieldOption[];
+};
+
+export type WorkItemCustomFieldPerson = {
+  projectId: string;
+  personId: string;
+  name: string | null;
+};
 
 const VALID_PRIORITIES: ReadonlySet<string> = new Set([
   "low",
@@ -65,6 +79,8 @@ export type WorkItemField =
 
 export type WorkItemRow = WorkItem & {
   unavailableFields: WorkItemField[];
+  /** Selected, shown values from POST /api/work-items/search only. */
+  customFieldValues?: Record<string, unknown>;
 };
 
 const KEY_SHAPE = /^(.+)-(\d+)$/;

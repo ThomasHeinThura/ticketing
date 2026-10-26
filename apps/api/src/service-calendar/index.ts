@@ -144,6 +144,8 @@ const createRouteDef = createRoute({
     200: jsonResponse("Created calendar", calendarSchema),
     400: errorResponse("Invalid calendar data"),
     403: errorResponse("Missing sla_policy:manage permission"),
+    409: errorResponse("A service calendar with this key already exists"),
+    422: errorResponse("A catalogue key could not be derived"),
   },
 });
 const detailRoute = createRoute({

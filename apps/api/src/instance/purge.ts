@@ -21,9 +21,7 @@ import { getActiveStaffPerson } from "./users/repository";
  * runs only when the requester approves in a browser session with a fresh step-up, through
  * `executeHardPurge` (`./purge-target.ts`), which re-checks the hold under a fence.
  *
- * Not mounted yet. Mounting and approval need coordinator-owned wiring: the policy entry, the
- * route registration in `index.ts`, and the pending-action request-scope, approval-contract and
- * executor branches for `action = 'purge'` (see the P0 implementer report).
+ * Approval is handled by the standard pending-action route and the PA-13 executor.
  */
 
 export const HARD_PURGE_ROUTE_KEY = "POST /api/instance/purge" as const;

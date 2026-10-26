@@ -2,8 +2,10 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
+import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
 import createNotification from "../../notification/controllers/create-notification";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
+import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 import { parseMentionIds } from "../../utils/parse-mentions";
 import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
 import { findUserName, updateTaskRow } from "../repository";
@@ -13,27 +15,57 @@ async function updateTaskDescription({
   id,
   description,
   currentUserId,
+  apiKeyId,
 }: {
   identity: ResolvedIdentity;
   id: string;
   description: string;
   currentUserId: string;
+  apiKeyId?: string | null;
 }) {
-  const { existingTask, updatedTask } = await db.transaction(async (tx) => {
-    const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
-      tx,
-      id,
-      identity,
-    );
-    const updatedTask = await updateTaskRow(tx, identity, id, { description });
-    return { existingTask, updatedTask };
-  });
+  const { existingTask, updatedTask, changed } = await db.transaction(
+    async (tx) => {
+      const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
+        tx,
+        id,
+        identity,
+      );
+      if (existingTask.description === description) {
+        return { existingTask, updatedTask: existingTask, changed: false };
+      }
+      const updatedTask = await updateTaskRow(tx, identity, id, {
+        description,
+      });
+      if (updatedTask) {
+        const workspaceId = await getProjectWorkspaceId(
+          updatedTask.projectId,
+          tx,
+        );
+        await recordLegacyTaskCompatibilityEvent(tx, {
+          kind: "task.description_changed",
+          taskId: updatedTask.id,
+          projectId: updatedTask.projectId,
+          workspaceId,
+          identity,
+          apiKeyId,
+          payload: {
+            oldDescription: existingTask.description,
+            newDescription: updatedTask.description,
+            type: "description_changed",
+          },
+        });
+      }
+      return { existingTask, updatedTask, changed: true };
+    },
+  );
 
   if (!updatedTask) {
     throw new HTTPException(500, {
       message: "Failed to update task description",
     });
   }
+
+  if (!changed) return updatedTask;
 
   await publishEvent("task.description_changed", {
     taskId: updatedTask.id,

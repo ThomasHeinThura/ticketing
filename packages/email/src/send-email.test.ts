@@ -2,11 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const smtp = vi.hoisted(() => ({
   sendMail: vi.fn(async () => ({ messageId: "controlled-message" })),
+  createTransport: vi.fn(),
 }));
 
 vi.mock("dotenv-mono", () => ({ config: vi.fn() }));
 vi.mock("nodemailer", () => ({
-  createTransport: vi.fn(() => smtp),
+  createTransport: (...args: unknown[]) => {
+    smtp.createTransport(...args);
+    return smtp;
+  },
 }));
 vi.mock("./smtp-config", () => ({
   getSmtpTransportOptions: vi.fn(() => ({})),
@@ -25,6 +29,7 @@ import { setRuntimeSmtpResolver } from "./smtp-runtime";
 
 beforeEach(() => {
   smtp.sendMail.mockClear();
+  smtp.createTransport.mockClear();
   vi.stubEnv("SMTP_FROM", "notifications@example.test");
 });
 
@@ -91,6 +96,79 @@ describe("sendNotificationEmail authorization boundary", () => {
         html: expect.stringContaining("The task changed."),
       }),
     );
+  });
+});
+
+describe("sendWorkspaceInvitationEmail worker options", () => {
+  it("forwards a bounded deadline and hashes the stable idempotency key into Message-ID", async () => {
+    setRuntimeSmtpResolver(async () => ({
+      options: { host: "runtime.example.test" },
+      from: "notifications@example.test",
+    }));
+    const key = "customer-invitation-delivery:delivery-01";
+
+    await expect(
+      sendWorkspaceInvitationEmail(
+        "person@example.test",
+        "Invitation",
+        {
+          workspaceName: "Synthetic",
+          inviterName: "Synthetic inviter",
+          inviterEmail: "inviter@example.test",
+          invitationLink: "https://portal.example.test/invite/one#t=secret",
+          to: "person@example.test",
+        },
+        { deadlineMs: 5_000, idempotencyKey: key },
+      ),
+    ).resolves.toEqual({ success: true });
+
+    const transportOptions = smtp.createTransport.mock.calls.at(-1)?.[0] as
+      | Record<string, unknown>
+      | undefined;
+    expect(transportOptions).toMatchObject({
+      connectionTimeout: 5_000,
+      greetingTimeout: 5_000,
+      socketTimeout: 5_000,
+    });
+    const messageOptions = smtp.sendMail.mock.calls.at(-1)?.[0];
+    expect(messageOptions?.messageId).toMatch(
+      /^<[a-f0-9]{64}@taskdesk\.invalid>$/u,
+    );
+    expect(messageOptions?.messageId).not.toContain(key);
+  });
+
+  it("runs the final delivery check before SMTP and skips when it expires", async () => {
+    const sequence: string[] = [];
+    setRuntimeSmtpResolver(async () => {
+      sequence.push("resolveSmtp");
+      return {
+        options: { host: "runtime.example.test" },
+        from: "notifications@example.test",
+      };
+    });
+    const beforeSend = vi.fn(async () => {
+      sequence.push("beforeSend");
+      return false;
+    });
+
+    await expect(
+      sendWorkspaceInvitationEmail(
+        "person@example.test",
+        "Invitation",
+        {
+          workspaceName: "Synthetic",
+          inviterName: "Synthetic inviter",
+          inviterEmail: "inviter@example.test",
+          invitationLink: "https://portal.example.test/invite/one#t=secret",
+          to: "person@example.test",
+        },
+        { deadlineMs: 5_000, beforeSend },
+      ),
+    ).resolves.toEqual({ success: false, reason: "NOT_AUTHORIZED" });
+
+    expect(beforeSend).toHaveBeenCalledTimes(1);
+    expect(sequence).toEqual(["resolveSmtp", "beforeSend"]);
+    expect(smtp.sendMail).not.toHaveBeenCalled();
   });
 });
 

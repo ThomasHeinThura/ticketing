@@ -1,5 +1,16 @@
-const HANDOFF_PATH = "/agent/settings/profile/notifications";
+const HANDOFF_PATHS = new Map<string, "agent" | "customer">([
+  ["/agent/settings/profile/notifications", "agent"],
+  ["/account", "customer"],
+]);
 const DEADLINE_MS = 5000;
+let preferenceHandoffAttempted = false;
+
+/** A non-secret in-memory signal for showing the generic invalid-link message. */
+export function consumeNotificationPreferenceHandoffAttempted() {
+  const attempted = preferenceHandoffAttempted;
+  preferenceHandoffAttempted = false;
+  return attempted;
+}
 
 /** Consume the email fragment before routing, auth redirects, or providers run.
  * The signed capability remains only in this short-lived closure and the POST body.
@@ -11,6 +22,8 @@ export function initializeNotificationPreferenceHandoff(
 ): Promise<void> {
   const fragment = new URLSearchParams(browser.location.hash.slice(1));
   if (!fragment.has("preference_token")) return Promise.resolve();
+  if (browser.location.pathname.replace(/\/$/, "") === "/account")
+    preferenceHandoffAttempted = true;
 
   const tokens = fragment.getAll("preference_token");
   // Remove the whole fragment, including duplicate/invalid capabilities, before
@@ -28,8 +41,11 @@ export function initializeNotificationPreferenceHandoff(
     );
   }
   const token = tokens[0];
+  const audience = HANDOFF_PATHS.get(
+    browser.location.pathname.replace(/\/$/, ""),
+  );
   if (
-    browser.location.pathname.replace(/\/$/, "") !== HANDOFF_PATH ||
+    !audience ||
     tokens.length !== 1 ||
     !token ||
     token.length > 4096 ||
@@ -48,14 +64,17 @@ export function initializeNotificationPreferenceHandoff(
   });
   const exchange = async () => {
     try {
-      const csrf = await fetcher("/api/me/csrf-token", {
-        credentials: "include",
-        cache: "no-store",
-        redirect: "error",
-        referrerPolicy: "no-referrer",
-        headers: { Accept: "application/json" },
-        signal: controller.signal,
-      });
+      const csrf = await fetcher(
+        audience === "agent" ? "/api/me/csrf-token" : "/api/portal/csrf-token",
+        {
+          credentials: "include",
+          cache: "no-store",
+          redirect: "error",
+          referrerPolicy: "no-referrer",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        },
+      );
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -78,16 +97,19 @@ export function initializeNotificationPreferenceHandoff(
       }
       if (controller.signal.aborted) return;
       // The generic public response is deliberately neither decoded nor rendered.
-      await fetcher("/api/public/agent/notification-preference-handoffs", {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        redirect: "error",
-        referrerPolicy: "no-referrer",
-        headers,
-        body: JSON.stringify({ token }),
-        signal: controller.signal,
-      });
+      await fetcher(
+        `/api/public/${audience === "agent" ? "agent" : "portal"}/notification-preference-handoffs`,
+        {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+          redirect: "error",
+          referrerPolicy: "no-referrer",
+          headers,
+          body: JSON.stringify({ token }),
+          signal: controller.signal,
+        },
+      );
     } catch {
       // Invalid/expired links and transport failures reveal no capability details.
     }

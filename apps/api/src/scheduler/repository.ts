@@ -1,5 +1,7 @@
 import { and, between, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
 import db from "../database";
+import type { Executor } from "../database/executor";
+import { executorOrDefault } from "../database/executor";
 import {
   columnTable,
   taskReminderSentTable,
@@ -7,6 +9,21 @@ import {
   userNotificationPreferenceTable,
 } from "../database/schema";
 import { dbNowUtc } from "../utils/db-time";
+
+/** Bounded idle-time cleanup of expired ingress budgets; active budgets remain intact. */
+export async function purgeExpiredRequestRateCounters(): Promise<number> {
+  const result = await db.execute(sql`
+    WITH expired AS (
+      SELECT bucket, key_hash FROM request_rate_limit_counter
+      WHERE expires_at <= clock_timestamp()
+      ORDER BY expires_at, bucket, key_hash
+      LIMIT 1000 FOR UPDATE SKIP LOCKED
+    )
+    DELETE FROM request_rate_limit_counter AS counters USING expired
+    WHERE counters.bucket = expired.bucket AND counters.key_hash = expired.key_hash
+  `);
+  return result.rowCount ?? 0;
+}
 
 /**
  * Query ownership for the scheduler (issue #580): job leases, due-date reminder reads and
@@ -82,8 +99,9 @@ export async function claimJobLease(
   name: string,
   owner: string,
   ttl: string,
+  executor?: Executor,
 ): Promise<boolean> {
-  const claimed = await db.execute(sql`
+  const claimed = await executorOrDefault(executor).execute(sql`
     INSERT INTO job_lease ("name", "owner", "expires_at")
     VALUES (${name}, ${owner}, ${dbNowUtc()} + ${ttl}::interval)
     ON CONFLICT ("name") DO UPDATE
@@ -99,10 +117,43 @@ export async function claimJobLease(
 export async function releaseJobLease(
   name: string,
   owner: string,
+  executor?: Executor,
 ): Promise<void> {
-  await db.execute(
+  await executorOrDefault(executor).execute(
     sql`DELETE FROM job_lease WHERE "name" = ${name} AND "owner" = ${owner};`,
   );
+}
+
+/** True only while the exact owner still holds a live lease for this job. */
+export async function ownsJobLease(
+  name: string,
+  owner: string,
+  executor?: Executor,
+): Promise<boolean> {
+  const result = await executorOrDefault(executor).execute(sql`
+    SELECT 1 FROM job_lease
+     WHERE "name" = ${name} AND "owner" = ${owner}
+       AND "expires_at" > ${dbNowUtc()}
+     LIMIT 1
+  `);
+  return (result.rowCount ?? 0) > 0;
+}
+
+/** Extends a worker-held lease without ever changing its owner. */
+export async function renewJobLease(
+  name: string,
+  owner: string,
+  ttl: string,
+  executor?: Executor,
+): Promise<boolean> {
+  const result = await executorOrDefault(executor).execute(sql`
+    UPDATE job_lease
+       SET "expires_at" = ${dbNowUtc()} + ${ttl}::interval
+     WHERE "name" = ${name} AND "owner" = ${owner}
+       AND "expires_at" > ${dbNowUtc()}
+    RETURNING "name"
+  `);
+  return (result.rowCount ?? 0) > 0;
 }
 
 export type ReminderType = "configured_before" | "overdue";

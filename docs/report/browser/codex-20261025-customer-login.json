@@ -1,0 +1,12 @@
+{
+	"method": "Real Chromium form login using additive audit users; credentials kept private; no bypass",
+	"results": [
+		{
+			"role": "customer",
+			"loginHttp": 200,
+			"finalPath": "/",
+			"body": "Customer portal\nHome\nRequest catalogue\nMy requests\nApprovals\nSign out\nToggle sidebar\nCustomer portal\n/\nHome\nHow can we help?\n\nRaise a request, track progress or review an approval.\n\nNew request\nWelcome to your portal\n\nRaise a new request from the request catalogue. You can follow its progress, reply to our team and see what is due under My requests.\n\nRaise a request\nSee my requests\nGot it\nRecent requests\nView all requests\nReference\tRequest type\tStatus\nSUB-2\tReport a problem\tReceived",
+			"screenshot": "docs/report/screens/codex-20261025-customer-login.png"
+		}
+	]
+}

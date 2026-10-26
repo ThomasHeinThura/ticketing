@@ -10,6 +10,7 @@ import {
 } from "@/fetchers/attachment/work-item-attachments";
 import { enqueueWorkItemUploads } from "@/fetchers/attachment/work-item-upload-queue";
 import getCommentMentionCandidates from "@/fetchers/work-item/get-comment-mention-candidates";
+import useRestoreWorkItemAttachment from "@/hooks/mutations/attachment/use-restore-work-item-attachment";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -17,6 +18,7 @@ import { HttpError } from "@/lib/http-error";
 import WorkItemAttachmentLightbox from "./work-item-attachments-lightbox";
 import WorkItemAttachmentTile, {
   isInlineImage,
+  isPdfPreview,
 } from "./work-item-attachments-tile";
 import {
   registerAttachmentsPanel,
@@ -38,18 +40,24 @@ export function workItemAttachmentsKey(workItemKey: string) {
 export default function WorkItemAttachments({
   workItemKey,
   workspaceId,
+  readOnly = false,
 }: {
   workItemKey: string;
   /** When given, the Add control follows the caller's `attachment:create` capability. */
   workspaceId?: string;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const openPendingAction = useOpenPendingAction();
   const permissions = useWorkspacePermission(workspaceId);
+  const [showRecoverable, setShowRecoverable] = useState(false);
   const canAdd =
-    !workspaceId ||
-    (!permissions.isCheckingPermissions && permissions.canCreateAttachments());
+    !showRecoverable &&
+    !readOnly &&
+    (!workspaceId ||
+      (!permissions.isCheckingPermissions &&
+        permissions.canCreateAttachments()));
   const removalBusy = useRef(false);
   const lifecycle = useIntentLifecycle(workItemKey, () => setError(null));
   const inputRef = useRef<HTMLInputElement>(null);
@@ -57,8 +65,12 @@ export default function WorkItemAttachments({
   const [previewId, setPreviewId] = useState<string | null>(null);
   const queryKey = workItemAttachmentsKey(workItemKey);
   const list = useQuery({
-    queryKey,
-    queryFn: () => listWorkItemAttachments(workItemKey),
+    queryKey: showRecoverable ? [...queryKey, "recoverable"] : queryKey,
+    queryFn: () =>
+      listWorkItemAttachments(
+        workItemKey,
+        showRecoverable ? "recoverable" : "live",
+      ),
   });
   // Person IDs to names: the same reach-filtered source the comment composer mentions from.
   const people = useQuery({
@@ -75,11 +87,18 @@ export default function WorkItemAttachments({
   });
   const uploads = useWorkItemUploads(workItemKey);
   const remove = useMutation({ mutationFn: requestAttachmentDeletion });
+  const restore = useRestoreWorkItemAttachment(workItemKey);
   const currentDeletable = useRef(new Set<string>());
+  const currentRestorable = useRef(new Set<string>());
   const rows = Array.isArray(list.data) ? list.data : [];
   currentDeletable.current = new Set(
     rows
       .filter((row) => row.canDelete === true && row.state === "ready")
+      .map((row) => row.id),
+  );
+  currentRestorable.current = new Set(
+    rows
+      .filter((row) => row.canRestore === true && row.state === "deleted")
       .map((row) => row.id),
   );
 
@@ -123,10 +142,31 @@ export default function WorkItemAttachments({
     }
   }
 
+  async function requestRestore(attachment: WorkItemAttachment) {
+    if (!currentRestorable.current.has(attachment.id)) return;
+    const intent = lifecycle.capture();
+    setError(null);
+    try {
+      await restore.mutateAsync(attachment.id);
+      if (!lifecycle.isCurrent(intent)) return;
+      setShowRecoverable(false);
+    } catch (cause) {
+      if (lifecycle.isCurrent(intent))
+        setError(
+          cause instanceof HttpError && cause.status < 500 && cause.message
+            ? cause.message
+            : t("workItems:detail.attachments.restoreFailed"),
+        );
+    }
+  }
+
   // Comment files belong to their comment's card; the panel lists the item's own files.
   const ready = rows.filter(
     (attachment) =>
       attachment.state === "ready" && (attachment.commentId ?? null) === null,
+  );
+  const recoverable = rows.filter(
+    (attachment) => attachment.state === "deleted",
   );
   const images = useMemo(
     () => ready.filter((attachment) => isInlineImage(attachment.mimeType)),
@@ -173,6 +213,23 @@ export default function WorkItemAttachments({
             />
           </>
         ) : null}
+        {!readOnly ? (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={showRecoverable}
+            onClick={() => {
+              setError(null);
+              setShowRecoverable((current) => !current);
+            }}
+          >
+            {t(
+              showRecoverable
+                ? "workItems:detail.attachments.backToFiles"
+                : "workItems:detail.attachments.recoverDeleted",
+            )}
+          </Button>
+        ) : null}
       </div>
       {error ? (
         <p className="text-destructive-foreground text-sm" role="alert">
@@ -188,6 +245,30 @@ export default function WorkItemAttachments({
         <p className="text-muted-foreground text-sm">
           {t("workItems:detail.attachments.loadFailed")}
         </p>
+      ) : showRecoverable ? (
+        recoverable.length === 0 ? (
+          <p className="text-muted-foreground text-sm" role="status">
+            {t("workItems:detail.attachments.recoverableEmpty")}
+          </p>
+        ) : (
+          <ul className="grid grid-cols-2 gap-2">
+            {recoverable.map((attachment) => (
+              <WorkItemAttachmentTile
+                key={attachment.id}
+                attachment={attachment}
+                uploaderName={uploaderName(attachment.uploadedBy)}
+                onPreview={() => undefined}
+                recoverable
+                onRestore={
+                  attachment.canRestore
+                    ? (row) => void requestRestore(row)
+                    : undefined
+                }
+                restoreDisabled={restore.isPending}
+              />
+            ))}
+          </ul>
+        )
       ) : ready.length === 0 && uploads.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           {t("workItems:detail.attachments.empty")}
@@ -200,7 +281,9 @@ export default function WorkItemAttachments({
               attachment={attachment}
               uploaderName={uploaderName(attachment.uploadedBy)}
               onPreview={(row) => setPreviewId(row.id)}
-              onDelete={(row) => void requestRemoval(row)}
+              onDelete={
+                readOnly ? undefined : (row) => void requestRemoval(row)
+              }
               deleteDisabled={remove.isPending}
             />
           ))}
@@ -208,6 +291,7 @@ export default function WorkItemAttachments({
       )}
       <WorkItemAttachmentLightbox
         images={images}
+        pdfs={ready.filter((attachment) => isPdfPreview(attachment.mimeType))}
         openId={previewId}
         onOpenChange={(open) => {
           if (!open) setPreviewId(null);

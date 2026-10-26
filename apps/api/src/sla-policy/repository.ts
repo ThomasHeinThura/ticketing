@@ -15,6 +15,8 @@ import {
 } from "../database/schema";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import { resolveCatalogueKey } from "../label/catalogue-key";
+import { isUniqueViolation } from "../utils/is-unique-violation";
 import { PolicyVersionConflictError } from "./errors";
 import {
   type PolicyGoalCandidate,
@@ -182,6 +184,7 @@ export async function getPolicyWorkspace(id: string) {
 type PolicyResult = {
   id: string;
   workspaceId: string;
+  key: string;
   name: string;
   description: string | null;
   version: number;
@@ -350,6 +353,7 @@ async function loadPolicyResult(
   return {
     id: policy.id,
     workspaceId: policy.workspaceId,
+    key: policy.key,
     name: policy.name,
     description: policy.description,
     version: policy.version,
@@ -527,6 +531,7 @@ export async function listPolicies(
     return {
       id: policy.id,
       workspaceId: policy.workspaceId,
+      key: policy.key,
       name: policy.name,
       description: policy.description,
       version: policy.version,
@@ -564,6 +569,7 @@ export async function createPolicy(
   input: {
     workspaceId: string;
     name: string;
+    key?: string;
     description?: string | null;
     calendarId: string;
     atRiskThresholdPct: number;
@@ -571,49 +577,63 @@ export async function createPolicy(
   },
   actor: PolicyActor,
 ) {
+  const key = resolveCatalogueKey(input.name, input.key);
+  if (!key)
+    throw new HTTPException(422, {
+      message: "A valid catalogue key is required",
+    });
   const goals = validatePolicyGoals(input.goals);
   await getReferencedConfiguration(input.workspaceId, input.calendarId, goals);
-  const outcome = await db.transaction(async (tx) => {
-    const [policy] = await tx
-      .insert(slaPolicyTable)
-      .values({
-        workspaceId: input.workspaceId,
-        name: input.name,
-        description: input.description ?? null,
-      })
-      .returning();
-    if (!policy) throw new Error("SLA policy insert returned no row");
-    const [draft] = await tx
-      .insert(slaPolicyVersionTable)
-      .values({
-        workspaceId: policy.workspaceId,
-        policyId: policy.id,
-        number: 1,
-        calendarId: input.calendarId,
-        atRiskThresholdPct: input.atRiskThresholdPct,
-      })
-      .returning();
-    if (!draft) throw new Error("SLA policy draft insert returned no row");
-    await replaceDraftGoals(tx, policy.workspaceId, draft.id, goals);
-    const after = await loadPolicyResult(input.workspaceId, policy, tx);
-    if (!after.draftVersion)
-      throw new Error("Created SLA policy draft could not be read");
-    const auditFailed = await appendPolicyAudit(
-      tx,
-      auditInput(
-        actor,
-        input.workspaceId,
-        policy.id,
-        "sla_policy.created",
-        undefined,
-        {
+  let outcome: { policy: PolicyRow; auditFailed: boolean };
+  try {
+    outcome = await db.transaction(async (tx) => {
+      const [policy] = await tx
+        .insert(slaPolicyTable)
+        .values({
+          workspaceId: input.workspaceId,
+          name: input.name,
+          key,
+          description: input.description ?? null,
+        })
+        .returning();
+      if (!policy) throw new Error("SLA policy insert returned no row");
+      const [draft] = await tx
+        .insert(slaPolicyVersionTable)
+        .values({
+          workspaceId: policy.workspaceId,
           policyId: policy.id,
-          versionId: after.draftVersion.id,
-        },
-      ),
-    );
-    return { policy, auditFailed };
-  });
+          number: 1,
+          calendarId: input.calendarId,
+          atRiskThresholdPct: input.atRiskThresholdPct,
+        })
+        .returning();
+      if (!draft) throw new Error("SLA policy draft insert returned no row");
+      await replaceDraftGoals(tx, policy.workspaceId, draft.id, goals);
+      const after = await loadPolicyResult(input.workspaceId, policy, tx);
+      if (!after.draftVersion)
+        throw new Error("Created SLA policy draft could not be read");
+      const auditFailed = await appendPolicyAudit(
+        tx,
+        auditInput(
+          actor,
+          input.workspaceId,
+          policy.id,
+          "sla_policy.created",
+          undefined,
+          {
+            policyId: policy.id,
+            key: policy.key,
+            versionId: after.draftVersion.id,
+          },
+        ),
+      );
+      return { policy, auditFailed };
+    });
+  } catch (error) {
+    if (isUniqueViolation(error, "sla_policy_workspace_key_unique"))
+      throw new HTTPException(409, { message: "catalogue_key_conflict" });
+    throw error;
+  }
   await notifyIfAuditFailed(outcome.auditFailed);
   return getPolicy(outcome.policy.id, input.workspaceId);
 }

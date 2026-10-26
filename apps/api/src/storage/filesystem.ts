@@ -51,6 +51,7 @@ import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
+import { StorageProbeCollisionError } from "./probe-error";
 import {
   type AssetObject,
   applyKeyPrefix,
@@ -143,6 +144,21 @@ export async function assertStorageConfigured(): Promise<FilesystemStorageConfig
   return config;
 }
 
+/** Read-only readiness check; unlike assertStorageConfigured this never creates a directory. */
+export async function getStorageProbeReadiness(): Promise<
+  "configured" | "unavailable"
+> {
+  const config = getFilesystemConfig();
+  try {
+    const stat = await fsp.stat(config.root);
+    if (!stat.isDirectory()) return "unavailable";
+    await fsp.access(config.root, fs.constants.W_OK);
+    return "configured";
+  } catch {
+    return "unavailable";
+  }
+}
+
 export function validateTaskAssetUploadInput(
   contentType: string,
   size: number,
@@ -175,7 +191,7 @@ function assertSafeRelativeKey(key: string): void {
   if (!key) {
     throw new StoragePathError("Empty storage key.");
   }
-  if (key.includes(" ")) {
+  if (key.includes("\0")) {
     throw new StoragePathError("Storage key contains a null byte.");
   }
   if (key.includes("\\")) {
@@ -446,6 +462,7 @@ async function writeStreamToFile(
   webStream: ReadableStream<Uint8Array>,
   destPath: string,
   maxBytes: number,
+  options: { signal?: AbortSignal; exclusivePublish?: boolean } = {},
 ): Promise<void> {
   let total = 0;
   const limiter = new Transform({
@@ -473,6 +490,7 @@ async function writeStreamToFile(
   const tempPath = `${destPath}.upload-${crypto.randomBytes(16).toString("hex")}.tmp`;
 
   let fileHandle: FileHandle | undefined;
+  let exclusivelyPublished = false;
   try {
     fileHandle = await fsp.open(
       tempPath,
@@ -485,14 +503,38 @@ async function writeStreamToFile(
       0o640,
     );
     const writeStream = fileHandle.createWriteStream();
-    await pipeline(nodeStream, limiter, writeStream);
+    if (options.signal) {
+      await pipeline(nodeStream, limiter, writeStream, {
+        signal: options.signal,
+      });
+    } else {
+      await pipeline(nodeStream, limiter, writeStream);
+    }
     await fileHandle.close();
     fileHandle = undefined;
-    // Same filesystem/root, so this is a plain atomic rename, not a copy — see the
-    // ponytail note on `finalizeAttachmentObject` below.
-    await fsp.rename(tempPath, destPath);
+    if (options.signal?.aborted) throw options.signal.reason;
+    if (options.exclusivePublish) {
+      // Probe keys are random and reserved, but exclusive linking also guarantees that a
+      // collision can never replace an object that was already present at the destination.
+      try {
+        await fsp.link(tempPath, destPath);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "EEXIST")
+          throw new StorageProbeCollisionError();
+        throw error;
+      }
+      exclusivelyPublished = true;
+      await fsp.unlink(tempPath);
+    } else {
+      // Same filesystem/root, so this is a plain atomic rename, not a copy — see the
+      // ponytail note on `finalizeAttachmentObject` below.
+      await fsp.rename(tempPath, destPath);
+    }
+    if (options.signal?.aborted) throw options.signal.reason;
   } catch (error) {
     await fsp.unlink(tempPath).catch(() => {});
+    if (options.exclusivePublish && exclusivelyPublished)
+      await fsp.unlink(destPath).catch(() => {});
     if ((error as NodeJS.ErrnoException)?.code === "ELOOP") {
       throw new StoragePathError(
         "Storage path escapes the storage root via a symlink.",
@@ -798,6 +840,66 @@ export async function getObjectSizeAndHeader(
   }
 
   return { contentLength: stat.size, header };
+}
+
+const STORAGE_PROBE_KEY = /^taskdesk-storage-probe-[0-9a-f-]{36}$/u;
+
+function assertStorageProbeKey(key: string) {
+  if (!STORAGE_PROBE_KEY.test(key))
+    throw new StoragePathError("Invalid storage probe key.");
+}
+
+/** Write only the coordinator-owned reserved probe key with a bounded caller payload. */
+export async function writeStorageProbeObject(
+  key: string,
+  bytes: Uint8Array,
+  signal: AbortSignal,
+): Promise<void> {
+  assertStorageProbeKey(key);
+  if (signal.aborted) throw signal.reason;
+  const config = await getCanonicalFilesystemConfig();
+  const candidate = resolveWithinRoot(config.root, key);
+  await assertNoSymlinkEscape(path.dirname(candidate), config.root);
+  const stream = Readable.toWeb(
+    Readable.from([Buffer.from(bytes)]),
+  ) as unknown as ReadableStream<Uint8Array>;
+  await writeStreamToFile(stream, candidate, bytes.byteLength, {
+    signal,
+    exclusivePublish: true,
+  });
+}
+
+/** Read at most `maxBytes` from an owned probe object, with an abortable file stream. */
+export async function readStorageProbeObject(
+  key: string,
+  maxBytes: number,
+  signal: AbortSignal,
+): Promise<Buffer> {
+  assertStorageProbeKey(key);
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || signal.aborted)
+    throw signal.reason ?? new StoragePathError("Invalid storage probe read.");
+  const config = await getCanonicalFilesystemConfig();
+  const candidate = resolveWithinRoot(config.root, key);
+  await assertFileWithinRoot(candidate, config.root);
+  const stat = await fsp.stat(candidate);
+  if (!stat.isFile() || stat.size > maxBytes)
+    throw new StoragePathError("Storage probe object size is invalid.");
+  const bytes = await fsp.readFile(candidate, { signal });
+  if (signal.aborted) throw signal.reason;
+  if (bytes.byteLength > maxBytes)
+    throw new StoragePathError("Storage probe object size is invalid.");
+  return bytes;
+}
+
+/** Filesystem unlink has no OS cancellation primitive; callers must mark an aborted wait unknown. */
+export async function deleteStorageProbeObject(
+  key: string,
+  signal: AbortSignal,
+): Promise<void> {
+  assertStorageProbeKey(key);
+  if (signal.aborted) throw signal.reason;
+  await deleteObject(key);
+  if (signal.aborted) throw signal.reason;
 }
 
 /**

@@ -209,12 +209,22 @@ describe("saved views index", () => {
       "Escalations",
       "Everything open",
     ]);
-    expect(
-      await screen.findByText(/Pinned · .*12 matching work items/u),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(/Visibility: Workspace · 3 matching work items/u),
-    ).toBeInTheDocument();
+    const pinnedSummary = (
+      await screen.findByRole("heading", {
+        name: "Escalations",
+      })
+    ).parentElement?.querySelector("p");
+    expect(pinnedSummary).toHaveTextContent(
+      `Pinned · Visibility: Private · ${translate("savedViews:count_other", { count: 12 })}`,
+    );
+    const workspaceSummary = (
+      await screen.findByRole("heading", {
+        name: "Everything open",
+      })
+    ).parentElement?.querySelector("p");
+    expect(workspaceSummary).toHaveTextContent(
+      `Visibility: Workspace · ${translate("savedViews:count_other", { count: 3 })}`,
+    );
   });
 
   it("links each view with its whole definition in the URL, so the link can be shared (SV-19)", async () => {
@@ -236,9 +246,14 @@ describe("saved views index", () => {
       return 12;
     });
     renderIndex();
-    expect(
-      await screen.findByText(/12 matching work items/u),
-    ).toBeInTheDocument();
+    const pinnedSummary = (
+      await screen.findByRole("heading", {
+        name: "Escalations",
+      })
+    ).parentElement?.querySelector("p");
+    expect(pinnedSummary).toHaveTextContent(
+      translate("savedViews:count_other", { count: 12 }),
+    );
     const row = screen
       .getByRole("heading", { name: "Everything open" })
       .closest("div");

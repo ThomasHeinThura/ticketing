@@ -1,21 +1,24 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { decideOwnPendingAction } from "../../apps/api/src/pending-action/service";
 import { expirePendingActions } from "../../apps/api/src/scheduler/pending-action-expire";
 import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./helpers/database";
+import { setTestDatabaseTimezone } from "./helpers/database-timezone";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
-process.env.PGOPTIONS = "-c timezone=Asia/Yangon";
+let restoreDatabaseTimezone: (() => Promise<void>) | undefined;
 
 beforeEach(async () => {
   await resetTestDatabase();
+  restoreDatabaseTimezone = await setTestDatabaseTimezone("Asia/Yangon");
 });
 
-afterAll(() => {
-  Reflect.deleteProperty(process.env, "PGOPTIONS");
+afterEach(async () => {
+  await restoreDatabaseTimezone?.();
+  restoreDatabaseTimezone = undefined;
 });
 
 async function makeRequester() {
@@ -315,6 +318,19 @@ describe("PA-8 pending-action expiry", () => {
   });
 
   it("uses the eligible expiry indexes and one-shot cutoff on the full schema", async () => {
+    // Independent contract inventory: exact instance targets admitted to expiry.
+    const supportedInstance = `project_id IS NULL AND (
+      (organisation_id IS NULL AND (
+        (action = 'delete' AND target_type = 'user' AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
+        (action = 'user_deactivation' AND target_type = 'person' AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
+        (action = 'delete' AND target_type = 'identity_connection' AND route_key = 'DELETE /api/instance/identity-connections/{id}' AND cardinality(target_ids) = 1)
+      )) OR
+      (organisation_id IS NOT NULL AND organisation_id = target_ids[1] AND cardinality(target_ids) = 1 AND target_type = 'organisation' AND (
+        (action = 'delete' AND route_key = 'DELETE /api/instance/organisations/{id}') OR
+        (action = 'purge' AND route_key = 'POST /api/instance/purge')
+      ))
+    )`;
+
     await db.execute(
       sql.raw(`
       INSERT INTO pending_action (
@@ -364,12 +380,7 @@ describe("PA-8 pending-action expiry", () => {
           SELECT id, expires_at FROM pending_action
           WHERE state = 'pending' AND (
             workspace_id IS NOT NULL OR
-            (workspace_id IS NULL AND project_id IS NULL AND organisation_id IS NULL AND (
-              (action = 'delete' AND target_type = 'user'
-                AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
-              (action = 'user_deactivation' AND target_type = 'person'
-                AND route_key = 'POST /api/instance/users/{id}/deactivate')
-            ))
+            (workspace_id IS NULL AND (${supportedInstance}))
           )
             AND expires_at <= (SELECT clock_timestamp())
             ${cursorPredicate}
@@ -411,14 +422,7 @@ describe("PA-8 pending-action expiry", () => {
       sql.raw(`
       SELECT COALESCE((
         SELECT true FROM pending_action
-        WHERE state = 'pending' AND workspace_id IS NULL AND NOT (
-          project_id IS NULL AND organisation_id IS NULL AND (
-            (action = 'delete' AND target_type = 'user'
-              AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
-            (action = 'user_deactivation' AND target_type = 'person'
-              AND route_key = 'POST /api/instance/users/{id}/deactivate')
-          )
-        ) AND expires_at <= (SELECT clock_timestamp())
+        WHERE state = 'pending' AND workspace_id IS NULL AND NOT (${supportedInstance}) AND expires_at <= (SELECT clock_timestamp())
         ORDER BY expires_at LIMIT 1
       ), false) AS unsupported_due
     `),
@@ -430,14 +434,7 @@ describe("PA-8 pending-action expiry", () => {
       EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SUMMARY)
       SELECT COALESCE((
         SELECT true FROM pending_action
-        WHERE state = 'pending' AND workspace_id IS NULL AND NOT (
-          project_id IS NULL AND organisation_id IS NULL AND (
-            (action = 'delete' AND target_type = 'user'
-              AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
-            (action = 'user_deactivation' AND target_type = 'person'
-              AND route_key = 'POST /api/instance/users/{id}/deactivate')
-          )
-        ) AND expires_at <= (SELECT clock_timestamp())
+        WHERE state = 'pending' AND workspace_id IS NULL AND NOT (${supportedInstance}) AND expires_at <= (SELECT clock_timestamp())
         ORDER BY expires_at LIMIT 1
       ), false)
     `),
@@ -462,14 +459,7 @@ describe("PA-8 pending-action expiry", () => {
       EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SUMMARY)
       SELECT COALESCE((
         SELECT true FROM pending_action
-        WHERE state = 'pending' AND workspace_id IS NULL AND NOT (
-          project_id IS NULL AND organisation_id IS NULL AND (
-            (action = 'delete' AND target_type = 'user'
-              AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
-            (action = 'user_deactivation' AND target_type = 'person'
-              AND route_key = 'POST /api/instance/users/{id}/deactivate')
-          )
-        ) AND expires_at <= (SELECT clock_timestamp())
+        WHERE state = 'pending' AND workspace_id IS NULL AND NOT (${supportedInstance}) AND expires_at <= (SELECT clock_timestamp())
         ORDER BY expires_at LIMIT 1
       ), false)
     `),

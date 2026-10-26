@@ -2,6 +2,7 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
+import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import {
   findRelationBetween,
@@ -19,6 +20,7 @@ async function createTaskRelation(input: {
   targetTaskId: string;
   relationType: string;
   userId: string;
+  apiKeyId?: string | null;
   workspaceId: string;
   canReachTarget: (task: {
     id: string;
@@ -32,6 +34,7 @@ async function createTaskRelation(input: {
     targetTaskId,
     relationType,
     userId,
+    apiKeyId,
     workspaceId,
     canReachTarget,
   } = input;
@@ -117,6 +120,21 @@ async function createTaskRelation(input: {
       workspaceId,
     });
     if (!relation) throw new HTTPException(404, { message: "Task not found" });
+    await recordLegacyTaskCompatibilityEvent(tx, {
+      kind: "task-relation.created",
+      taskId: sourceTaskId,
+      projectId: source.projectId,
+      workspaceId,
+      identity,
+      apiKeyId,
+      payload: {
+        relationId: relation.id,
+        sourceTaskId,
+        targetTaskId,
+        relationType,
+        type: "created",
+      },
+    });
     return { relation, sourceProjectId: source.projectId };
   });
 

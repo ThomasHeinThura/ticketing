@@ -5,7 +5,34 @@ type LinkRow = {
   id: string;
   resourceType: string | null;
   resourceId: string | null;
+  kind?: string | null;
 };
+
+export type NotificationDeepLink =
+  | { type: "webhook"; id: string }
+  | { type: "api_key"; id: string };
+
+/** Webhook notifications are deep-linked only for the retained WH-7 event. */
+export function resolveNotificationDeepLinks(
+  rows: readonly LinkRow[],
+): Map<string, NotificationDeepLink> {
+  const result = new Map<string, NotificationDeepLink>();
+  for (const row of rows) {
+    if (
+      row.kind === "webhook.auto_disabled" &&
+      row.resourceType === "webhook" &&
+      row.resourceId
+    )
+      result.set(row.id, { type: "webhook", id: row.resourceId });
+    if (
+      row.kind === "api_key.auto_disabled" &&
+      row.resourceType === "api_key" &&
+      row.resourceId
+    )
+      result.set(row.id, { type: "api_key", id: row.resourceId });
+  }
+  return result;
+}
 
 /**
  * `NO-14`: the work item a notification is about, so the client can deep-link to the exact

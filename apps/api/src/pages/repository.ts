@@ -1,4 +1,13 @@
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  sql,
+} from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import type { Executor } from "../database/executor";
@@ -67,8 +76,8 @@ export async function personFor(id: string | null) {
   return person(await peopleNames([id]), id);
 }
 
-/** The live pages of a project, without bodies, ordered for a stable tree. */
-export async function listPages(scope: Scope) {
+/** Pages of a project, without bodies; deleted rows are returned only for recovery. */
+export async function listPages(scope: Scope, deletedOnly = false) {
   const rows = await db
     .select({
       id: projectPageTable.id,
@@ -80,21 +89,26 @@ export async function listPages(scope: Scope) {
       updatedBy: projectPageTable.updatedBy,
       createdAt: projectPageTable.createdAt,
       updatedAt: projectPageTable.updatedAt,
+      deletedAt: projectPageTable.deletedAt,
+      purgeAfter: projectPageTable.purgeAfter,
     })
     .from(projectPageTable)
     .where(
       and(
         eq(projectPageTable.workspaceId, scope.workspaceId),
         eq(projectPageTable.projectId, scope.projectId),
-        isNull(projectPageTable.deletedAt),
+        deletedOnly
+          ? isNotNull(projectPageTable.deletedAt)
+          : isNull(projectPageTable.deletedAt),
       ),
     )
     .orderBy(asc(projectPageTable.title), asc(projectPageTable.id));
   const names = await peopleNames(rows.map((row) => row.updatedBy));
-  return rows.map(({ bodyText, updatedBy, ...row }) => ({
+  return rows.map(({ bodyText, updatedBy, deletedAt, purgeAfter, ...row }) => ({
     ...row,
     snippet: snippetOf(bodyText),
     updatedBy: person(names, updatedBy),
+    ...(deletedOnly ? { deletedAt, purgeAfter } : {}),
   }));
 }
 

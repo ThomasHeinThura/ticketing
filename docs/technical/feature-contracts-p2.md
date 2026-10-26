@@ -1979,6 +1979,7 @@ them; register a new audit-only action in the maintained catalogue before implem
 
 | Audit-only action | Written when |
 | --- | --- |
+| `terminology.changed` | An instance or workspace runtime noun override is saved or removed. Record actor, scope/workspace, audience, term key, locale and non-secret before/after forms; no domain event or automation trigger. |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
 | `auth.mfa_enrolled` · `auth.mfa_reset` | Second-factor enrollment and administrator reset (with the required verification note); never record the secret, TOTP, backup codes, or proof |
 | `auth.user_suspended` · `auth.user_unsuspended` | God Mode account suspension changes; record target user id, outcome, and whether a finite expiry was set, but never the ban reason text or exact expiry |
@@ -1988,7 +1989,9 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
 | `project.reach_changed` | `owner_team_id` or `parent_id` changed ([rbac.md](permissions.md#reach)) |
+| `project.restored` | A soft-deleted project is restored inside its 30-day window; record project/workspace ids and whether archive state remains, never project content |
 | `request_type.created` · `request_type.updated` · `request_type.published` · `request_type.unpublished` | Request-type lifecycle. Record safe request type/workspace identifiers and a closed changed-field list; never store the form schema, labels, customer answers, or raw request body. Audit-only; no outbox event. |
+| `request_type.group_order_updated` | Workspace catalogue group ordering changes. Record the workspace identifier, versions, group counts and closed `groupOrder` changed-field marker; never raw group labels or form data. Audit-only; no outbox event. |
 | `submission.claimed` | A triager claims a submission; record submission reference and the actor id. Audit-only; no outbox event. |
 | `submission.duplicate` | A triager links a submission to a same-organisation work item; record submission reference and linked work-item id/key. Audit-only; no outbox event. |
 | `submission.reopened` | A customer reopens their auto-declined submission (`IQ-15`, `CP-8`); record submission reference and the actor id. Audit-only; no outbox event. |
@@ -2002,13 +2005,22 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `instance.local_factor_policy_changed` | Instance local-factor policy changed; record only the selected mode and configured role identifier |
 | `permission.denied` | A 403 or an out-of-reach 404 on a scoped route |
 | `work_item.exported` · `report.exported` · `attachment.downloaded` · `config.exported` · `instance.exported` | Data leaving through a person's hands |
+| `attachment.restored` | An attachment is restored within AT-7's one-day window; record attachment, work-item and workspace ids only, never the filename or storage locator |
 | `bulk.performed` | One summary row per bulk operation (plus one per item) |
 | `import.run` · `job.triggered` | Run-level import audit; a manual job trigger |
-| `api_key.created` · `api_key.revoked` · `webhook.created` · `webhook.deleted` · `webhook.secret_rotated` | Durable-authority lifecycle |
+| `identity.placeholder_claimed` | TaskDesk-verified email claims an imported, userless person; fixed method and person/import-run/organisation IDs only, never an email address |
+| `identity.linked` | Explicit current-session consent after proof of another connection; person and source/target connection/identity IDs only, never email, subject or tokens. No grants or new sessions. |
+| `workspace.project_settings_updated` · `project.settings_updated` | Live project-default/inheritance changes; actor, changed field names, scope IDs and integer versions only. |
+| `state_template.created` · `state_template.updated` | Workspace enabled-state vocabulary changes; template/workspace IDs, changed field names and versions only. |
+| `job.configuration_changed` | Atomic runtime job cadence/enable configuration change; records the actor, registered job name and old/new configuration version. Audit only; not a published domain event. |
+| `instance.delivery.requeued` | Atomic operator retry of a dead event envelope or standalone notification child; records only actor, opaque target, kind, prior state and prior attempt count. Audit only; not a published domain event. |
+| `api_key.created` · `api_key.revoked` · `api_key.reattested` · `api_key.ownership_transferred` · `webhook.created` · `webhook.deleted` · `webhook.secret_rotated` | Durable-authority lifecycle |
 | `automation.enabled` · `automation.disabled` | Rule state |
 | `ai.sent_externally` | A work item's content was sent to an `ai.*` provider |
-| `organisation.created` · `organisation.suspended` · `organisation.deleted` · `legal_hold.placed` · `legal_hold.lifted` | Tenancy lifecycle |
+| `mcp.request` | An MCP request; record API-key id, owner user id and `agentOriginated: true` only, never headers, path/query or body |
+| `organisation.created` · `organisation.updated` · `organisation.suspended` · `organisation.unsuspended` · `organisation.deleted` · `organisation.restored` · `legal_hold.placed` · `legal_hold.lifted` | Tenancy lifecycle |
 | `audit.read` · `audit.exported` · `audit.purged` | `AU-13`; the purge audits itself |
+| `hard_purge.executed` | `PA-13`; record target type/id, removed work-item ids and work-item/comment/attachment/storage-object counts, plus the successful `legalHold: none` and `retention: soft_deleted` checks. Never record work-item or comment content, storage keys, credentials or proof. The pending-action outbox event remains `pending_action.executed`; this audit-only record is written in the purge transaction, so audit failure rolls back the purge. |
 | `instance.restored` | A restore completed ([backup-and-restore.md](#pending-05-operationsbackup-and-restore)) |
 | `pending_action.viewed` | The one pending-action transition that is not an event (`PA-11`) |
 | `sla_policy.created` · `sla_policy.updated` · `sla_policy.published` | SLA policy creation, draft edits and publication |

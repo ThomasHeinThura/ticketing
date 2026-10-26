@@ -2,6 +2,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   Button,
+  Fieldset,
+  FieldsetLegend,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -16,7 +18,7 @@ import {
   GitPullRequest,
 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { memo, useMemo } from "react";
+import { memo, useId, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { cn } from "@/lib/cn";
@@ -25,7 +27,11 @@ import { getInitials } from "@/lib/get-initials";
 import { getPriorityIcon } from "@/lib/priority";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
-import type { TaskCardWorkspaceUser } from "../kanban-board/task-card";
+import {
+  deferKeyboardSensorKey,
+  isDeferredKeyboardSensorEvent,
+  type TaskCardWorkspaceUser,
+} from "../kanban-board/task-card";
 import { TaskLabels } from "../kanban-board/task-labels";
 
 type TaskRowProps = {
@@ -51,6 +57,10 @@ type TaskRowProps = {
   onToggleSelection?: () => void;
   /** Extra row badges (`VW-16`'s SLA badge), shown beside the labels. */
   badges?: ReactNode;
+  /** Canonical work-item inline controls. Legacy TaskRow callers keep their original display. */
+  stateControl?: ReactNode;
+  priorityControl?: ReactNode;
+  assigneeControl?: ReactNode;
 };
 
 function TaskRow({
@@ -67,6 +77,9 @@ function TaskRow({
   isSelected,
   onToggleSelection,
   badges,
+  stateControl,
+  priorityControl,
+  assigneeControl,
   t,
 }: TaskRowProps) {
   const {
@@ -77,6 +90,23 @@ function TaskRow({
     transition,
     isDragging,
   } = useSortable({ id: task.id, disabled: disableDragDrop });
+  const {
+    role: _sortableRole,
+    "aria-pressed": _sortablePressed,
+    "aria-describedby": sortableDescription,
+    ...sortableAttributes
+  } = attributes;
+  const rowAttributes = disableDragDrop ? { tabIndex: 0 } : sortableAttributes;
+  const { onKeyDown: onSortableKeyDown, ...sortableListeners } = disableDragDrop
+    ? {}
+    : (listeners ?? {});
+  const keyboardHintId = useId();
+  const describedBy = [
+    disableDragDrop ? undefined : sortableDescription,
+    keyboardHintId,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const {
     toggleSelection,
@@ -140,6 +170,7 @@ function TaskRow({
   const handleClick = (e: React.MouseEvent) => {
     if (!task) return;
     if (e.defaultPrevented) return;
+    if (isInlineControlTarget(e.target)) return;
 
     if (e.metaKey || e.ctrlKey) {
       e.preventDefault();
@@ -156,12 +187,36 @@ function TaskRow({
     onOpenTask(currentTaskId === task.id ? "" : task.id);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     // Native anchors and controls own their keyboard activation.
     if (e.target !== e.currentTarget) return;
-    if (e.key === "Enter") {
+    if (isDeferredKeyboardSensorEvent(e.nativeEvent)) return;
+    if (e.key === "Enter" && !isDragging) {
       handleClick(e as unknown as React.MouseEvent);
+    } else if (disableDragDrop && e.key === " ") {
+      handleClick(e as unknown as React.MouseEvent);
+      e.preventDefault();
+    } else if (
+      isDragging &&
+      [
+        "Space",
+        "Enter",
+        "Escape",
+        "ArrowUp",
+        "ArrowDown",
+        "ArrowLeft",
+        "ArrowRight",
+      ].includes(e.code)
+    ) {
+      deferKeyboardSensorKey(e.currentTarget, e.nativeEvent);
     }
+  };
+
+  const handleRowKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.target !== e.currentTarget) return;
+    if (isDeferredKeyboardSensorEvent(e.nativeEvent)) return;
+    onSortableKeyDown?.(e);
+    handleKeyDown(e);
   };
 
   return (
@@ -176,22 +231,52 @@ function TaskRow({
         focused && "ring-2 ring-inset ring-ring/50",
       )}
     >
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: false positive for onClick and onKeyDown */}
-      <div
+      <Fieldset
         onClick={handleClick}
-        onKeyDown={handleKeyDown}
         className={cn(
-          "group relative flex items-center gap-3 px-4 py-1.5 transition-colors cursor-pointer",
+          "group relative m-0 flex w-full min-w-0 max-w-none flex-row items-center gap-3 border-0 p-0 px-4 py-1.5 transition-colors cursor-pointer",
           selected ? "bg-accent/45" : "hover:bg-accent/60",
         )}
-        {...(disableDragDrop ? { role: "button", tabIndex: 0 } : attributes)}
-        {...(disableDragDrop ? {} : listeners)}
+        {...rowAttributes}
+        {...sortableListeners}
+        onMouseDown={(event) => {
+          if (!isInlineControlTarget(event.target))
+            sortableListeners.onMouseDown?.(event);
+        }}
+        onTouchStart={(event) => {
+          if (!isInlineControlTarget(event.target))
+            sortableListeners.onTouchStart?.(event);
+        }}
+        onPointerDown={(event) => {
+          if (!isInlineControlTarget(event.target))
+            sortableListeners.onPointerDown?.(event);
+        }}
+        tabIndex={0}
+        aria-describedby={describedBy}
+        data-task-dragging={isDragging ? "true" : undefined}
+        onKeyDown={handleRowKeyDown}
       >
-        {showPriority && (
-          <div className="flex-shrink-0 first:[&_svg]:h-4 first:[&_svg]:w-4">
-            {getPriorityIcon(task.priority ?? "")}
-          </div>
-        )}
+        <FieldsetLegend className="sr-only">
+          {t("common:a11y.taskContainerLabel", {
+            key: `${projectSlug}-${task.number}`,
+            title: task.title,
+          })}
+        </FieldsetLegend>
+        <span id={keyboardHintId} className="sr-only">
+          {t(
+            disableDragDrop
+              ? "common:a11y.taskOpenHint"
+              : "common:a11y.taskOpenAndDragHint",
+          )}
+        </span>
+        {showPriority &&
+          (priorityControl ? (
+            <InlineControlSlot>{priorityControl}</InlineControlSlot>
+          ) : (
+            <div className="flex-shrink-0 first:[&_svg]:h-4 first:[&_svg]:w-4">
+              {getPriorityIcon(task.priority ?? "")}
+            </div>
+          ))}
         {showTaskNumbers && (
           <div className="text-xs font-mono text-muted-foreground flex-shrink-0">
             {projectSlug}-{task.number}
@@ -200,6 +285,9 @@ function TaskRow({
 
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <div className="flex items-center gap-2 justify-between w-full">
+            {stateControl ? (
+              <InlineControlSlot>{stateControl}</InlineControlSlot>
+            ) : null}
             <span className="text-sm text-foreground truncate">
               {taskHref ? (
                 <a
@@ -361,32 +449,46 @@ function TaskRow({
           </div>
         )}
 
-        {showAssignees && (
-          <div className="flex-shrink-0">
-            {task.userId || task.assigneeId ? (
-              <Avatar className="h-6 w-6">
-                <AvatarImage
-                  src={assignee?.user?.image ?? ""}
-                  alt={assignee?.user?.name ?? task.assigneeName ?? ""}
-                />
-                <AvatarFallback className="text-xs font-medium border border-border/30">
-                  {getInitials(assignee?.user?.name ?? task.assigneeName)}
-                </AvatarFallback>
-              </Avatar>
-            ) : (
-              <div
-                className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
-                title={t("tasks:assignee.unassigned")}
-              >
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  ?
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+        {showAssignees &&
+          (assigneeControl ? (
+            <InlineControlSlot>{assigneeControl}</InlineControlSlot>
+          ) : (
+            <div className="flex-shrink-0">
+              {task.userId || task.assigneeId ? (
+                <Avatar className="h-6 w-6">
+                  <AvatarImage
+                    src={assignee?.user?.image ?? ""}
+                    alt={assignee?.user?.name ?? task.assigneeName ?? ""}
+                  />
+                  <AvatarFallback className="text-xs font-medium border border-border/30">
+                    {getInitials(assignee?.user?.name ?? task.assigneeName)}
+                  </AvatarFallback>
+                </Avatar>
+              ) : (
+                <div
+                  className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
+                  title={t("tasks:assignee.unassigned")}
+                >
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    ?
+                  </span>
+                </div>
+              )}
+            </div>
+          ))}
+      </Fieldset>
     </div>
+  );
+}
+
+function InlineControlSlot({ children }: { children: ReactNode }) {
+  return <div data-task-row-inline-control="true">{children}</div>;
+}
+
+function isInlineControlTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("[data-task-row-inline-control]"))
   );
 }
 

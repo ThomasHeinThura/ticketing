@@ -20,6 +20,11 @@ import {
 } from "../notification-preferences/secrets";
 import { DEFAULT_MAX_WEBHOOKS } from "./constants";
 import { buildTestWebhookBody } from "./envelope";
+import {
+  matchesExactWebhookSecretRotationSet,
+  type RotateAllWebhookSecretsBody,
+  rotateAllWebhookSecretsBody,
+} from "./rotate-all";
 
 export type WebhookRow = typeof webhookTable.$inferSelect;
 export type WebhookDeliveryRow = typeof webhookDeliveryTable.$inferSelect;
@@ -36,6 +41,12 @@ export type WebhookActor = {
 export class WebhookVersionConflictError extends Error {
   constructor(readonly currentVersion: number) {
     super("webhook_version_conflict");
+  }
+}
+
+export class WebhookRotationSetConflictError extends Error {
+  constructor() {
+    super("webhook_rotation_set_changed");
   }
 }
 
@@ -373,6 +384,101 @@ export async function rotateWebhookSecret(
   if (outcome.auditFailed)
     await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
   return outcome.row;
+}
+
+/**
+ * WH-13 incident rotation across the exact current webhook set. The exclusive table lock
+ * blocks inserts, updates, and deletes until commit, so no endpoint can be omitted by a
+ * concurrent create/delete or per-row rotation. The supplied secrets stay in request memory
+ * only; each is encrypted before storage, and response/audit material never contains them.
+ */
+export async function rotateAllWebhookSecrets(input: {
+  replacements: RotateAllWebhookSecretsBody;
+  actor: WebhookActor;
+  spend: StepUpSpender;
+}): Promise<{ rotatedAt: Date; rotatedCount: number }> {
+  const replacementsBody = rotateAllWebhookSecretsBody.parse(
+    input.replacements,
+  );
+  const outcome = await db.transaction(async (tx) => {
+    await tx.execute(sql`LOCK TABLE webhook IN EXCLUSIVE MODE`);
+    const current = await tx
+      .select()
+      .from(webhookTable)
+      .orderBy(webhookTable.id)
+      .for("update");
+    const versions = replacementsBody.webhooks.map(
+      ({ webhookId, expectedVersion }) => ({
+        webhookId,
+        expectedVersion,
+      }),
+    );
+    if (
+      !matchesExactWebhookSecretRotationSet(
+        versions,
+        current.map(({ id, version }) => ({ id, version })),
+      )
+    ) {
+      throw new WebhookRotationSetConflictError();
+    }
+
+    const replacements = new Map(
+      replacementsBody.webhooks.map((entry) => [entry.webhookId, entry.secret]),
+    );
+    const encryptedById = new Map<string, string>();
+    for (const row of current) {
+      const secret = replacements.get(row.id);
+      if (!secret) throw new WebhookRotationSetConflictError();
+      const encrypted = encryptSecret(secret);
+      if (!encrypted) throw new Error("Webhook secret could not be stored");
+      encryptedById.set(row.id, encrypted);
+    }
+
+    await input.spend(tx);
+    const now = new Date();
+    let auditFailed = false;
+    for (const row of current) {
+      const encrypted = encryptedById.get(row.id);
+      if (!encrypted) throw new WebhookRotationSetConflictError();
+      const [updated] = await tx
+        .update(webhookTable)
+        .set({
+          secret: encrypted,
+          secretPrevious: row.secret,
+          secretRotatedAt: now,
+          version: row.version + 1,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(webhookTable.id, row.id),
+            eq(webhookTable.version, row.version),
+          ),
+        )
+        .returning({ id: webhookTable.id });
+      if (!updated) throw new WebhookRotationSetConflictError();
+      const rowAuditFailed = await appendAuditSavepoint(tx, {
+        actorId: input.actor.userId,
+        actorType: input.actor.actorType,
+        apiKeyId: input.actor.apiKeyId,
+        actorIp: input.actor.actorIp ?? null,
+        userAgent: input.actor.userAgent ?? null,
+        workspaceId: row.workspaceId,
+        action: "webhook.secret_rotated",
+        entityType: "webhook",
+        entityId: row.id,
+        after: {
+          secretRotatedAt: now.toISOString(),
+          rotationReason: "instance_incident",
+        },
+      });
+      auditFailed ||= rowAuditFailed;
+    }
+    return { rotatedAt: now, rotatedCount: current.length, auditFailed };
+  });
+  if (outcome.auditFailed)
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  return { rotatedAt: outcome.rotatedAt, rotatedCount: outcome.rotatedCount };
 }
 
 export function webhookSigningSecrets(row: WebhookRow): {

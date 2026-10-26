@@ -23,12 +23,12 @@ import {
   Textarea,
 } from "@taskdesk/ui";
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   decidePortalApproval,
   getPortalApprovals,
 } from "@/fetchers/approval/portal-approvals";
 import { HttpError } from "@/lib/http-error";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { parsePortalApprovalsSearch } from "@/lib/routes";
 
 export const Route = createFileRoute("/approvals")({
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/approvals")({
   component: PortalApprovals,
 });
 function PortalApprovals() {
-  const { t } = useTranslation("portal");
+  const { t } = usePortalTranslation("portal");
   const { portalUserId } = Route.useRouteContext();
   const { approval: selectedId } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });

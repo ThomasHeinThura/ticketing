@@ -158,7 +158,7 @@ export class SelfEditConfirmationError extends Error {
 export class RoleInIdentityUseError extends Error {
   constructor() {
     super(
-      "This role is used by identity provisioning (a group mapping or an external grant). Change those references first, then edit the role.",
+      "This role is referenced by identity provisioning and the resulting authority is not permitted for an external grant.",
     );
     this.name = "RoleInIdentityUseError";
   }

@@ -146,10 +146,17 @@ describe("stored value parsers", () => {
     expect(parseCollapsedGroups("a")).toBeUndefined();
   });
 
-  it("accepts only a duplicate-free subset of known columns", () => {
+  it("accepts native and custom columns without duplicates", () => {
     expect(parseTableColumns(["key", "state"])).toEqual(["key", "state"]);
+    expect(parseTableColumns(["key", "cf.constructor"])).toEqual([
+      "key",
+      "cf.constructor",
+    ]);
     expect(parseTableColumns([])).toBeUndefined();
     expect(parseTableColumns(["key", "key"])).toBeUndefined();
-    expect(parseTableColumns(["cf.x"])).toBeUndefined();
+    expect(parseTableColumns(["cf.Bad Key"])).toBeUndefined();
+    expect(
+      parseTableColumns(Array.from({ length: 101 }, (_, i) => `cf.f${i}`)),
+    ).toBeUndefined();
   });
 });

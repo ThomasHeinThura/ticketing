@@ -2,6 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import {
   bootstrapSmtpConfiguration,
   executeSmtp,
+  SmtpAttemptError,
 } from "@taskdesk/email/smtp-runtime";
 import { sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
@@ -20,7 +21,12 @@ import {
   saveEmailProvider,
 } from "./repository";
 import { runtimeSmtpConfiguration } from "./runtime";
-import { type SmtpConfig, smtpConfigurationSchema } from "./schema";
+import {
+  isLocalMailpitCaptureEnabled,
+  isValidMailpitCaptureConfig,
+  type SmtpConfig,
+  smtpConfigurationSchema,
+} from "./schema";
 
 type Actor = { userId: string; personId: string; traceId?: string };
 type Input = { version: number; config?: SmtpConfig; password?: string | null };
@@ -43,7 +49,13 @@ function bootstrapConfig(): SmtpConfig | null {
 }
 export async function getEmailProvider() {
   const row = await readEmailProvider();
-  const config = row ? smtpConfigurationSchema.safeParse(row.config) : null;
+  const parsedConfig = row
+    ? smtpConfigurationSchema.safeParse(row.config)
+    : null;
+  const config =
+    parsedConfig?.success && isValidMailpitCaptureConfig(parsedConfig.data)
+      ? parsedConfig.data
+      : null;
   const bootstrap = row ? null : bootstrapSmtpConfiguration();
   const passwordConfigured = row
     ? row.secrets !== null
@@ -60,9 +72,10 @@ export async function getEmailProvider() {
         ? ("bootstrap" as const)
         : ("unconfigured" as const),
     enabled: row ? row.enabled : bootstrap !== null,
-    config: row ? (config?.success ? config.data : null) : bootstrapConfig(),
+    config: row ? config : bootstrapConfig(),
     passwordConfigured,
     passwordPreview: passwordConfigured ? ("••••••••" as const) : null,
+    localMailpitCaptureAvailable: isLocalMailpitCaptureEnabled(),
   };
 }
 export async function updateEmailProvider(
@@ -82,6 +95,18 @@ export async function updateEmailProvider(
         : undefined);
     if (input.enabled && !config)
       throw new HTTPException(400, { message: "SMTP configuration required" });
+    if (config?.captureToMailpit === true) {
+      const disablingUnchangedCapture =
+        !input.enabled && input.config === undefined;
+      if (!isLocalMailpitCaptureEnabled() && !disablingUnchangedCapture)
+        throw new HTTPException(400, {
+          message: "Local mail capture unavailable",
+        });
+      if (!isValidMailpitCaptureConfig(config))
+        throw new HTTPException(400, {
+          message: "Invalid local mail capture configuration",
+        });
+    }
     // Bootstrap secrets are never silently copied into a newly created runtime row.
     const secrets =
       input.password === undefined
@@ -89,6 +114,10 @@ export async function updateEmailProvider(
         : input.password === null
           ? null
           : encryptIdentityClientSecret(id, input.password);
+    if (config?.captureToMailpit === true && secrets !== null)
+      throw new HTTPException(400, {
+        message: "Clear SMTP credentials before enabling local mail capture",
+      });
     if (input.enabled && config?.username && !secrets)
       throw new HTTPException(400, { message: "SMTP password required" });
     const row = await saveEmailProvider(
@@ -152,12 +181,26 @@ export async function testEmailProvider(input: Input, actor: Actor) {
         : bootstrapConfig());
     if (!config)
       throw new HTTPException(400, { message: "SMTP configuration required" });
+    if (config.captureToMailpit === true) {
+      if (!isLocalMailpitCaptureEnabled())
+        throw new HTTPException(400, {
+          message: "Local mail capture unavailable",
+        });
+      if (!isValidMailpitCaptureConfig(config))
+        throw new HTTPException(400, {
+          message: "Invalid local mail capture configuration",
+        });
+    }
     const password =
       input.password === undefined
         ? row?.secrets
           ? decryptIdentityClientSecret(row.id, row.secrets)
           : null
         : input.password;
+    if (config.captureToMailpit === true && password !== null)
+      throw new HTTPException(400, {
+        message: "Clear SMTP credentials before testing local mail capture",
+      });
     if (config.username && !password)
       throw new HTTPException(400, { message: "SMTP password required" });
     await tx.execute(
@@ -204,7 +247,19 @@ export async function testEmailProvider(input: Input, actor: Actor) {
   try {
     await executeSmtp(selected.smtp, null, { deadlineMs: 10_000 });
     return { verified: true as const };
-  } catch {
-    throw new HTTPException(502, { message: "SMTP verification failed" });
+  } catch (error) {
+    const message =
+      error instanceof SmtpAttemptError
+        ? error.kind === "deadline"
+          ? "smtp_timeout"
+          : error.diagnostic === "authentication"
+            ? "smtp_authentication_failed"
+            : error.diagnostic === "connection"
+              ? "smtp_connection_failed"
+              : error.diagnostic === "tls"
+                ? "smtp_tls_failed"
+                : "smtp_verification_failed"
+        : "smtp_verification_failed";
+    throw new HTTPException(502, { message });
   }
 }

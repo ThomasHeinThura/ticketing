@@ -1,0 +1,22 @@
+{
+	"name": "SIT Audit 20261025 deletion 1792885420472",
+	"phase": "verified persisted deletion",
+	"checks": [
+		{
+			"name": "own key created in preceding UI attempt is persisted",
+			"passed": true
+		},
+		{
+			"name": "registered pending action opens with typed confirmation",
+			"passed": true
+		},
+		{
+			"name": "approval returned HTTP200 after typed owner name and TOTP; two completed fresh list reads confirm physical deletion",
+			"passed": true
+		}
+	],
+	"harnessNotes": [
+		"An initial harness checked row absence before list loading; that assertion was discarded. Final verification awaited completed server reads.",
+		"Approval outcome dialog stays open; an incorrect auto-close assertion was removed from acceptance evidence."
+	]
+}

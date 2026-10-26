@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ next: vi.fn(), runtime: {} }));
+const mocks = vi.hoisted(() => ({
+  next: vi.fn(),
+  assertOwned: vi.fn(),
+  runtime: {},
+}));
+vi.mock("../../../apps/api/src/scheduler/leader-lock", () => ({
+  assertJobExecutionOwned: () => mocks.assertOwned(),
+}));
 vi.mock("../../../apps/api/src/notification/immediate-runtime", () => ({
   immediateNotificationRuntime: () => mocks.runtime,
 }));
@@ -10,7 +17,10 @@ vi.mock("../../../apps/api/src/notification/outbox-drain", () => ({
 
 import { drainImmediateNotifications } from "../../../apps/api/src/scheduler/outbox-drain";
 
-beforeEach(() => mocks.next.mockReset());
+beforeEach(() => {
+  mocks.next.mockReset();
+  mocks.assertOwned.mockReset().mockResolvedValue(undefined);
+});
 afterEach(() => vi.restoreAllMocks());
 describe("immediate child worker bounds", () => {
   it("stops on an idle queue", async () => {
@@ -38,5 +48,16 @@ describe("immediate child worker bounds", () => {
       degraded: true,
     });
     expect(mocks.next).toHaveBeenCalledTimes(1);
+  });
+
+  it("checks ownership before each next independently claimed delivery", async () => {
+    mocks.assertOwned
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("reservation lost"));
+    mocks.next.mockResolvedValue({ kind: "delivered" });
+    await expect(drainImmediateNotifications()).rejects.toThrow(
+      "reservation lost",
+    );
+    expect(mocks.next).toHaveBeenCalledOnce();
   });
 });

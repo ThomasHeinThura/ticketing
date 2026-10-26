@@ -1,7 +1,9 @@
 import {
+  type CollisionDetection,
   closestCorners,
   DndContext,
   DragOverlay,
+  pointerWithin,
   useDroppable,
 } from "@dnd-kit/core";
 import {
@@ -20,7 +22,15 @@ import {
   EmptyTitle,
   Skeleton,
 } from "@taskdesk/ui";
-import { type ReactNode, useCallback } from "react";
+import {
+  type CSSProperties,
+  lazy,
+  type ReactNode,
+  type Ref,
+  Suspense,
+  useCallback,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { ColumnShell } from "@/components/kanban-board/column/column-shell";
@@ -38,13 +48,41 @@ import {
 } from "@/lib/work-item-kaneo-view";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { WorkItemRow } from "@/types/work-item";
+import type {
+  CombinedWorkItemColumn,
+  CombinedWorkItemRow,
+} from "@/types/work-item/combined";
 import ColumnCountBadge from "./column-count-badge";
 import useWorkItemDragDrop from "./use-work-item-drag-drop";
+import type { VirtualizedSortableItem } from "./virtualization/virtualized-sortable-list";
 import { WorkItemBlockedBadge } from "./work-item-blocked-badge";
 import WorkItemContextMenu from "./work-item-context-menu";
 import { WorkItemSlaBadge } from "./work-item-sla-badge";
 
+/** Pointer drops should land in an empty combined column; keyboard keeps Kaneo's corner fallback. */
+export const combinedBoardCollisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  return pointerCollisions.length > 0
+    ? pointerCollisions
+    : closestCorners(args);
+};
+
+const VirtualizedSortableList = lazy(
+  () => import("./virtualization/virtualized-sortable-list"),
+) as unknown as typeof import("./virtualization/virtualized-sortable-list").default;
+
 type ProjectState = { id: string; name: string; group?: string };
+
+function getCombinedSourceProject(
+  item: WorkItemRow,
+): CombinedWorkItemRow["sourceProject"] | undefined {
+  const row = item as CombinedWorkItemRow;
+  return typeof row.sourceProject?.id === "string" &&
+    typeof row.sourceProject.key === "string" &&
+    typeof row.sourceProject.name === "string"
+    ? row.sourceProject
+    : undefined;
+}
 
 /**
  * The project board (`docs/03-features/views.md` `VW-8`-`VW-10`, `VW-14`): one column per
@@ -78,10 +116,18 @@ export default function WorkItemBoard({
   sort = "position",
   dir = "asc",
   wipLimits,
+  combinedColumns,
+  combinedCapabilities,
 }: {
   projectId: string;
   /** `VW-12`: optional work-in-progress limit per state id. */
   wipLimits?: ReadonlyMap<string, number>;
+  /** Template IDs are presentation columns only; items retain their concrete states. */
+  combinedColumns?: CombinedWorkItemColumn[];
+  combinedCapabilities?: ReadonlyMap<
+    string,
+    { canRank: boolean; canTransition: boolean; canBulkAct: boolean }
+  >;
   /** Must match the server query: non-rank sorts retain its cursor order. */
   sort?: WorkItemSortField;
   dir?: WorkItemSortDirection;
@@ -102,6 +148,7 @@ export default function WorkItemBoard({
   onOpenItem?: (key: string) => void;
 }) {
   const { t } = useTranslation();
+  const combined = Boolean(combinedColumns);
   const {
     dragged,
     busy,
@@ -123,6 +170,11 @@ export default function WorkItemBoard({
     canTransition,
     sort,
     dir,
+    combined,
+    canRankForProject: (sourceProjectId) =>
+      combinedCapabilities?.get(sourceProjectId)?.canRank ?? false,
+    canTransitionForProject: (sourceProjectId) =>
+      combinedCapabilities?.get(sourceProjectId)?.canTransition ?? false,
   });
   const describeDnd = useCallback(
     (id: string | number) =>
@@ -131,6 +183,8 @@ export default function WorkItemBoard({
     [workItems, states],
   );
   const dndAccessibility = useDndAccessibility(describeDnd);
+  const [retainFocusId, setRetainFocusId] = useState<string>();
+  const onRetainFocus = useCallback(() => setRetainFocusId(undefined), []);
 
   if (isError || statesError) {
     return (
@@ -177,9 +231,17 @@ export default function WorkItemBoard({
     <DndContext
       accessibility={dndAccessibility}
       sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={startDrag}
-      onDragEnd={endDrag}
+      collisionDetection={
+        combined ? combinedBoardCollisionDetection : closestCorners
+      }
+      onDragStart={(event) => {
+        setRetainFocusId(undefined);
+        startDrag(event);
+      }}
+      onDragEnd={(event) => {
+        if (event.over) setRetainFocusId(String(event.active.id));
+        endDrag(event);
+      }}
       onDragCancel={cancelDrag}
     >
       <WorkItemContextMenu items={workItems ?? []}>
@@ -205,9 +267,15 @@ export default function WorkItemBoard({
             <div className="flex h-full min-w-max gap-4 px-4 py-4 md:px-5">
               {states.map((state) => {
                 const stateItems = itemsByState.get(state.id) ?? [];
-                const selectable = stateItems.filter(
-                  (item) => !item.unavailableFields.includes("key"),
-                );
+                const selectable = stateItems.filter((item) => {
+                  const itemCanBulkAct = combined
+                    ? (combinedCapabilities?.get(item.projectId)?.canBulkAct ??
+                      false)
+                    : canSelect;
+                  return (
+                    itemCanBulkAct && !item.unavailableFields.includes("key")
+                  );
+                });
                 const headingId = `work-item-board-column-${state.id}`;
                 return (
                   <BoardColumn
@@ -215,6 +283,7 @@ export default function WorkItemBoard({
                     state={state}
                     headingId={headingId}
                     disabled={busy || (!canTransition && !canReorder)}
+                    combined={combined}
                     header={
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-2">
@@ -263,6 +332,106 @@ export default function WorkItemBoard({
                         <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
                           {t("workItems:board.emptyColumn")}
                         </p>
+                      ) : stateItems.length > 50 ? (
+                        <Suspense
+                          fallback={
+                            <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
+                              {stateItems.map((item) => (
+                                <BoardCard
+                                  key={item.id}
+                                  item={item}
+                                  state={state}
+                                  busy={busy}
+                                  canSelect={
+                                    combined
+                                      ? canSelect &&
+                                        (combinedCapabilities?.get(
+                                          item.projectId,
+                                        )?.canBulkAct ??
+                                          false)
+                                      : canSelect
+                                  }
+                                  canTransition={
+                                    combined
+                                      ? (combinedCapabilities?.get(
+                                          item.projectId,
+                                        )?.canTransition ?? false)
+                                      : canTransition
+                                  }
+                                  canRank={
+                                    combined
+                                      ? sort === "position" &&
+                                        dir === "asc" &&
+                                        (combinedCapabilities?.get(
+                                          item.projectId,
+                                        )?.canRank ??
+                                          false)
+                                      : canReorder
+                                  }
+                                  selected={selectedKeys.includes(item.key)}
+                                  onSelectionChange={onSelectionChange}
+                                  onOpenItem={onOpenItem}
+                                  sourceProject={
+                                    combined
+                                      ? getCombinedSourceProject(item)
+                                      : undefined
+                                  }
+                                />
+                              ))}
+                            </ul>
+                          }
+                        >
+                          <VirtualizedSortableList
+                            items={stateItems}
+                            getItemId={(item) => item.id}
+                            as="ul"
+                            className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1"
+                            estimateSize={150}
+                            gap={8}
+                            retainFocusId={retainFocusId}
+                            onRetainFocus={onRetainFocus}
+                            renderItem={(item, virtualItem) => (
+                              <BoardCard
+                                key={item.id}
+                                item={item}
+                                state={state}
+                                busy={busy}
+                                canSelect={
+                                  combined
+                                    ? canSelect &&
+                                      (combinedCapabilities?.get(item.projectId)
+                                        ?.canBulkAct ??
+                                        false)
+                                    : canSelect
+                                }
+                                canTransition={
+                                  combined
+                                    ? (combinedCapabilities?.get(item.projectId)
+                                        ?.canTransition ?? false)
+                                    : canTransition
+                                }
+                                canRank={
+                                  combined
+                                    ? sort === "position" &&
+                                      dir === "asc" &&
+                                      (combinedCapabilities?.get(item.projectId)
+                                        ?.canRank ??
+                                        false)
+                                    : canReorder
+                                }
+                                selected={selectedKeys.includes(item.key)}
+                                onSelectionChange={onSelectionChange}
+                                onOpenItem={onOpenItem}
+                                sourceProject={
+                                  combined
+                                    ? getCombinedSourceProject(item)
+                                    : undefined
+                                }
+                                virtualItem={virtualItem}
+                              />
+                            )}
+                          />
+                        </Suspense>
                       ) : (
                         <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
                           {stateItems.map((item) => (
@@ -271,12 +440,37 @@ export default function WorkItemBoard({
                               item={item}
                               state={state}
                               busy={busy}
-                              canSelect={canSelect}
-                              canTransition={canTransition}
-                              canRank={canReorder}
+                              canSelect={
+                                combined
+                                  ? canSelect &&
+                                    (combinedCapabilities?.get(item.projectId)
+                                      ?.canBulkAct ??
+                                      false)
+                                  : canSelect
+                              }
+                              canTransition={
+                                combined
+                                  ? (combinedCapabilities?.get(item.projectId)
+                                      ?.canTransition ?? false)
+                                  : canTransition
+                              }
+                              canRank={
+                                combined
+                                  ? sort === "position" &&
+                                    dir === "asc" &&
+                                    (combinedCapabilities?.get(item.projectId)
+                                      ?.canRank ??
+                                      false)
+                                  : canReorder
+                              }
                               selected={selectedKeys.includes(item.key)}
                               onSelectionChange={onSelectionChange}
                               onOpenItem={onOpenItem}
+                              sourceProject={
+                                combined
+                                  ? getCombinedSourceProject(item)
+                                  : undefined
+                              }
                             />
                           ))}
                         </ul>
@@ -320,6 +514,9 @@ export default function WorkItemBoard({
                 selected={false}
                 onSelectionChange={() => {}}
                 onOpenItem={onOpenItem}
+                sourceProject={
+                  combined ? getCombinedSourceProject(dragged) : undefined
+                }
                 overlay
               />
             </div>
@@ -337,12 +534,14 @@ function BoardColumn({
   header,
   children,
   disabled,
+  combined = false,
 }: {
   state: ProjectState;
   headingId: string;
   header: ReactNode;
   children: ReactNode;
   disabled: boolean;
+  combined?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: state.id,
@@ -354,7 +553,9 @@ function BoardColumn({
       ref={setNodeRef}
       aria-labelledby={headingId}
       data-testid="work-item-board-column"
-      data-state-id={state.id}
+      {...(combined
+        ? { "data-template-id": state.id }
+        : { "data-state-id": state.id })}
       className="m-0 h-full min-h-0 max-w-96 min-w-80 shrink-0 flex-1 border-0 p-0"
     >
       <ColumnShell header={header} isOver={isOver}>
@@ -367,6 +568,7 @@ function BoardColumn({
 /** One Kaneo task card for a canonical row; shared with the grouped board (`VW-13`). */
 export function BoardCard({
   item,
+  sortableId,
   state,
   busy,
   canSelect,
@@ -376,8 +578,12 @@ export function BoardCard({
   onSelectionChange,
   onOpenItem,
   overlay = false,
+  virtualItem,
+  sourceProject,
 }: {
   item: WorkItemRow;
+  /** DnD-only identifier for a card rendered in more than one group. */
+  sortableId?: string;
   state: ProjectState;
   busy: boolean;
   canSelect: boolean;
@@ -387,6 +593,8 @@ export function BoardCard({
   onSelectionChange: (key: string, checked: boolean) => void;
   onOpenItem?: (key: string) => void;
   overlay?: boolean;
+  virtualItem?: VirtualizedSortableItem;
+  sourceProject?: CombinedWorkItemRow["sourceProject"];
 }) {
   const { t } = useTranslation();
   const displayPreferences = useUserPreferencesStore(
@@ -402,12 +610,24 @@ export function BoardCard({
   const actionable = !item.unavailableFields.includes("key");
   return (
     <li
+      ref={virtualItem?.measureRef as Ref<HTMLLIElement> | undefined}
+      data-index={virtualItem?.index}
+      data-virtual-item-id={virtualItem?.id}
       data-testid={
         overlay ? "work-item-drag-overlay-card" : "work-item-board-card"
       }
       data-work-item-key={item.key}
+      style={virtualItem?.style as CSSProperties | undefined}
       className="group/board-card flex flex-col gap-2"
     >
+      {sourceProject ? (
+        <span
+          className="px-1 text-xs text-muted-foreground"
+          data-source-project-id={sourceProject.id}
+        >
+          {sourceProject.key} · {sourceProject.name}
+        </span>
+      ) : null}
       {canSelect ? (
         <div className="flex items-start gap-2">
           <Checkbox
@@ -427,6 +647,7 @@ export function BoardCard({
             ? t("workItems:list.unavailable")
             : item.title,
         }}
+        sortableId={sortableId}
         disableDragDrop={
           overlay || busy || !actionable || (!canTransition && !canRank)
         }

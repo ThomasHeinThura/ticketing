@@ -9,8 +9,11 @@ import usePendingActionDialogStore from "@/store/pending-action-dialog";
 export function useOpenPendingAction() {
   const open = usePendingActionDialogStore((state) => state.open);
   return useCallback(
-    async (action: { pendingActionId: string }) => {
-      open(action.pendingActionId);
+    async (action: {
+      pendingActionId: string;
+      finalFocus?: () => HTMLElement | false;
+    }) => {
+      open(action.pendingActionId, action.finalFocus);
     },
     [open],
   );

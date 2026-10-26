@@ -68,6 +68,18 @@ export const workItemPolicies = {
   // lookup, not trusted from the path alone), so `scopeSource: "row"`, the same reasoning
   // `workspace/policy.ts` uses for `GET /api/workspace/{workspaceId}/invitations`
   // (a compound/collection read scoped by its container's own loaded row).
+  "GET /api/projects/{projectId}/work-items/combined": {
+    capability: "work_item:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/projects/{projectId}/work-items/combined": {
+    capability: "work_item:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
   "GET /api/projects/{projectId}/work-items": {
     capability: "work_item:read",
     scope: "project",
@@ -276,6 +288,12 @@ export const workItemPolicies = {
     reach: "required",
   },
   "POST /api/v2/work-items/{key}/archive": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/v2/work-items/{key}/restore": {
     capability: "work_item:update",
     scope: "work_item",
     scopeSource: "row",

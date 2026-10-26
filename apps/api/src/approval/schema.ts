@@ -19,6 +19,15 @@ export const decideApprovalBody = z
   })
   .strict();
 
+export const mcpApprovalDecisionRequestSchema = z.object({
+  pendingActionId: z.string(),
+  action: z.literal("mcp_destructive"),
+  summary: z.record(z.string(), z.unknown()),
+  confirmation: z.literal("click"),
+  expiresAt: z.string().datetime(),
+  approveUrl: z.string(),
+});
+
 export const approvalResponseSchema = z.object({
   id: z.string(),
   workItemId: z.string(),

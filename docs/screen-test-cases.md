@@ -1,6 +1,8 @@
 # Screen test cases (P0–P5)
 
-Manual and browser test cases per screen. Run on local SIT (agent `http://localhost:1337`, portal `http://portal.localhost:1337`) with seeded data, never on the live `taskdesk_browser_journey_1022_test` database with resetting fixtures. Every screen also gets the **common checks** below. Result column: P pass, F fail, B blocked, blank = not run. Route inventory: [screens.md](screens.md).
+Manual and browser test cases per screen. Run on local SIT (agent `https://ticketing.localhost`, portal `https://portal.localhost`, port 443) with seeded data, never on the live `taskdesk_browser_journey_1022_test` database with resetting fixtures. Every screen also gets the **common checks** below. Result column: P pass, F fail, B blocked, blank = not run. Route inventory: [screens.md](screens.md).
+
+Current scoped execution: [browser evidence](report/browser/) records real UI mutations and reload checks, including work-item editing, cycle/module/page creation and MFA. Blank results below remain unaccepted until the complete row and common checks pass.
 
 ## Common checks (every screen)
 
@@ -18,11 +20,11 @@ Manual and browser test cases per screen. Run on local SIT (agent `http://localh
 
 | Screen | Route | Test | Expected | Result |
 | --- | --- | --- | --- | :-: |
-| Sign in | `/agent/sign-in` | Valid then invalid password | Valid lands on `/agent`; invalid shows error, no account hint | |
+| Sign in | `/auth/sign-in` (legacy `/agent/sign-in`) | Valid then invalid password | Valid lands on `/agent`; invalid shows error, no account hint | |
 | MFA challenge | `/auth/two-factor` | Wrong then right code; backup code | Wrong rejected and rate-limited; right signs in | |
 | MFA enrolment | `/dashboard/settings/account/security` | Enrol TOTP, reload, sign out and in | Code required next sign-in | |
-| Observability / MFA policy | `/god-mode/observability` | Toggle policy as instance admin; as non-admin | Admin saves and audit row written; non-admin 403 | |
-| Delete anything (project, workspace, work item) | any danger zone | Request delete | 202 pending action, requester approves, typed name + step-up for project/workspace | |
+| Observability / MFA policy | `/agent/god-mode/observability` | Toggle policy as instance admin; as non-admin | Admin saves and audit row written; non-admin 403 | |
+| Delete anything (project, workspace, work item) | any danger zone | Request delete | 202 pending action, requester approves, typed project key / workspace name + step-up | |
 | Pending actions | `/agent/settings/profile/pending-actions` | Approve, decline, open detail | State changes; failed executor shows terminal `failed` | |
 
 ## P1 — Work, hierarchy, search
@@ -43,7 +45,7 @@ Manual and browser test cases per screen. Run on local SIT (agent `http://localh
 | Project members | `/agent/projects/{key}/settings/members` | Add roster member; child inherits parent member | Inherited reach and authority shown as inherited | |
 | Project states / labels | `…/settings/states`, `…/labels` | Create, reorder, rename | Persisted | |
 | Workspace members, states, labels, canned responses | `/agent/settings/*` | CRUD each | Persisted; deletes via pending action where required | |
-| Danger zones | `/agent/settings/danger`, `…/settings/danger` | Delete with wrong then right typed name | Wrong blocked; right creates pending action | |
+| Danger zones | `/agent/settings/danger`, `…/settings/danger` | Delete with wrong then right project key / workspace name | Wrong blocked; right creates pending action | |
 | Profile general / appearance | `/agent/settings/profile`, `…/appearance` | Change name, theme, language | Saved after reload | |
 
 ## P2 — Service desk
@@ -51,6 +53,7 @@ Manual and browser test cases per screen. Run on local SIT (agent `http://localh
 | Screen | Route | Test | Expected | Result |
 | --- | --- | --- | --- | :-: |
 | Triage | `/agent/triage?state=new&ref={ref}` | Accept, decline with reason, request clarification | State changes; clarification auto-declines on expiry | |
+| Saved intake queues | `/agent/triage?queue={id}` | Paired filter persistence, CAS, private visibility, responsive labels | Both saved queries remain distinct; stale writes refused; readable mobile table | Earlier26-check functional pass; deployed192375/1440dark labels/layout pass and mobile repair inspected. Remaining common/role/flag cases pending. [Evidence](report/browser/intake-queues192/readonly.json) |
 | Approvals | `/agent/my-work?lens=approvals` | Approve, reject, expired approval | Decision recorded and audited | |
 | Request types | `/agent/settings/request-types?requestTypeId={id}` | Edit form fields, intake window | Portal form reflects change | |
 | SLA policies and editor | `/agent/settings/sla-policies/{id}` | Create policy, attach calendar, breach item | Clock, pause and breach shown; escalation notifies recipients | |
@@ -68,11 +71,11 @@ Manual and browser test cases per screen. Run on local SIT (agent `http://localh
 | Requests | `/requests` | Open own and colleague request (same organisation) | Colleague visible only where organisation visibility is on | |
 | Submission detail | `/submissions/{ref}` | Raise priority up, down; reopen; rate | Escalate-only priority; reopen allowed; rating saved once | |
 | Approval decision | `/approvals?approval={id}` | Approve and reject as customer | Recorded; non-approver refused | |
-| Legacy link | `/portal/requests` | Open | Redirects to `/requests` | |
+| Portal host routing | `/requests` and `/account` | Open and reload on portal host; try agent session | Host-root routes load; staff credentials cannot authorize portal | |
 | Authentication providers | `/agent/god-mode/authentication/{id}` | Add OIDC provider, test | IdP data never grants instance admin | |
 | SCIM | God Mode identity | Rotate token, hit rate limit, health job | Token shown once; limit returns 429 | |
 
-## P4 — Administration (implemented, browser verification pending)
+## P4 — Administration (implementation gaps and browser verification pending)
 
 | Screen | Route | Test | Expected | Result |
 | --- | --- | --- | --- | :-: |
@@ -86,15 +89,17 @@ Manual and browser test cases per screen. Run on local SIT (agent `http://localh
 | Webhooks / editor / deliveries | `/agent/settings/webhooks/{id}/deliveries` | Create, send test, fail endpoint, replay | Signed delivery; failures retried then dead-lettered | |
 | Automations (workspace, project) | `/agent/settings/automations`; project: `/agent/projects/{key}/settings/automations` (redirects to `/dashboard/settings/projects/{id}/automations`) | Create rule, trigger, loop guard | Action runs once; loops stopped | |
 | God Mode home / health | `/agent/god-mode` | Open as instance admin | DB, secrets and outbox health shown | |
+| Webhook security posture / incident rotation | `/agent/god-mode/webhooks` | List full-reach owners; refresh/paginate; enter one distinct replacement secret per current webhook; step-up; change set/version; replay proof | Metadata excludes URLs/secrets/bodies; current instance admin only; rotation all-or-nothing with digest-bound proof and 24h dual signatures | Posture empty state: six width/theme states pass on189; incident rotation source190, browser pending |
 | General settings | `/agent/god-mode/general` | Change retention days, timezone | Saved; last-changed shown | |
 | Feature flags | `/agent/god-mode/features`; project: `/agent/projects/{key}/settings/features` (redirects to `/dashboard/settings/projects/{id}/features`) | Lock at instance, override at project, clear override | Write below lock returns 409; stale version returns 409 | |
-| Notification channels | `/agent/god-mode/notifications` | Configure SMTP, send test | Test email delivered | |
+| Notification channels | `/agent/god-mode/notifications` | Configure SMTP, send test | Test email delivered | Scoped schema-form render/validation/cancel passes375/768/1440 light/dark; provider unchanged. Actual test-send journey remains pending. [Evidence](report/browser/gm5-schema-form/gm5-schema-form-20261026.json) |
+| Customer notifications | `/notifications` (portal host) | Produce public comment; live update; read/unread; unread URL; comment link; bell | Own-request inbox updates without reload or polling; actions persist; exact public comment opens | Scoped186 browser journey passes18 assertions with a real customer cookie and one owned QA comment. Six complete-shell sizes/themes pass, each with one authenticated socket and bell menu. Broader negative/role/flag matrix pending. [Evidence](report/browser/portal-notifications186/journey.json) |
 | Notifications | `/agent/inbox` | Quiet hours, digest, mark unread | Quiet hours defer except SLA breach; read state persists | |
 | Users | `/agent/god-mode/users` | Deactivate user | Removed from rosters; sessions revoked | |
 
-## P5 — Planning, time, knowledge, service management (implemented, browser verification pending)
+## P5 — Planning, time, knowledge, service management (implementation gaps and browser verification pending)
 
-Not browser-verified: scripted sign-in is blocked, so Thomas signs in first. Routes are registered in `apps/web/src/lib/routes.ts`; screen rows are in [screens.md](screens.md). Cost types and cost entries, available hours and typed-domain SSO are not built, so they have no cases here.
+Fresh feature acceptance pending. Scripted sign-in on the audit copy is authorized and has succeeded. Routes are registered in `apps/web/src/lib/routes.ts`; screen rows are in [screens.md](screens.md). Cost types/entries and available hours are built and need browser checks; typed-domain SSO routing is implemented with scoped local tests; real Entra validation is reserved for Thomas.
 
 | Screen | Route | Test | Expected | Result |
 | --- | --- | --- | --- | :-: |
@@ -104,7 +109,7 @@ Not browser-verified: scripted sign-in is blocked, so Thomas signs in first. Rou
 | Timesheet | `/agent/timesheet` | Weekly grid by keyboard, start and stop timer, reload, edit past week | Entries persist; locked period refuses edit | |
 | Time entries | work item section | Add manual entry, edit, delete | Totals update; delete follows pending action where required | |
 | Rates / time activities | `/agent/settings/rates`, `/agent/settings/time-activities` | Set rate, add activity; open as user without rate capability | Rates hidden and 403 for restricted user | |
-| Budget | `/agent/projects/{key}/settings/budget` | Set budget, log time, reload | Actuals are time-only; thresholds shown; no cost entries yet | |
+| Budget | `/agent/projects/{key}/settings/budget` | Set budget, log time, reload | Time and cost actuals reconcile; thresholds shown; currency and rate visibility enforced | |
 | Knowledge base (agent) | `/agent/kb`, `/agent/kb/{id}`, `/agent/kb/{id}/edit` | Create, publish, version, set visibility | Version history kept; draft invisible to customers | |
 | Knowledge base (portal) | `/kb`, `/kb/{id}` and request form | Search; type request title in form | Only customer-visible articles; deflection suggestions appear | |
 | Services / detail | `/agent/service-management/services`, `…/{id}` | Create service with owner team, dependency, link | Persisted; dependency impact shown | |
@@ -118,6 +123,13 @@ Not browser-verified: scripted sign-in is blocked, so Thomas signs in first. Rou
 | Portal accept / sign-up | `/invite/{id}` (portal host) | Accept as new and existing customer | Account linked to organisation; needs customer password provider on | |
 | Pages / editor | `/agent/projects/{key}/pages`, `…/{id}` | Create nested page, edit, move, restore | Tree persists; move respects permission | |
 
+## P6 shared prerequisite (approved for P4)
+
+| Screen | Route | Test | Expected | Result |
+| --- | --- | --- | --- | :-: |
+| Import history/detail | `/agent/god-mode/imports`, `…/{id}` | Create an own run; reload; direct link; Back; selected workspace; non-admin | Persisted run; matching workspace retained in URL; non-admin API/UI denied | Scoped192 pass: creation/persistence, direct detail/Back,375/768/1440 light/dark and non-admin denial. Remaining common/role/empty/error cases pending. [Evidence](report/browser/imports192/journey.json), [denial](report/browser/imports192/non-admin.json) |
+| Large import approval | Profile pending-action dialog/detail | Preview and submit51 records/links; exact count and fresh authentication; retry | No targets before owner approval; exactly-once commit | 51-record owner browser approval passes at375/768/1440 light/dark; wrong count/missing proof blocked; retry leaves51 targets/links and totals unchanged. Temporary key revoked, flag restored.51-link browser approval remains pending. |
+
 ## Not testable yet
 
-P6–P7 screens (import, readiness), and these P4 items: impersonation, plugins, jobs, branding, storage, deliveries and MCP usage pages, terminology. P5 not built: cost types and entries, available hours, typed-domain SSO routing.
+P6 import history/detail is built as the approved P4 prerequisite. The structured wizard, source adapters, cutover and P7 readiness remain unbuilt. P4 pages now have varying implementation and scoped browser evidence; remaining feature/role/flag cases must be checked individually, including terminology and impersonation. Real Entra/provider acceptance remains external; local typed-domain routing is implemented. Cost types live under Rates, available hours under time settings; test their persisted flows.

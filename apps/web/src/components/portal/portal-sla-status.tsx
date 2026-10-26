@@ -1,5 +1,5 @@
 import { Badge } from "@taskdesk/ui";
-import { useTranslation } from "react-i18next";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { describeDue, type PortalSla } from "@/lib/portal-request";
 
 const BADGE = {
@@ -21,7 +21,7 @@ export function PortalSlaStatus({
   sla: PortalSla | null;
   now?: Date;
 }) {
-  const { t, i18n } = useTranslation("portal");
+  const { t, i18n } = usePortalTranslation("portal");
   if (!sla) return null;
   const finished = sla.state === "met" || sla.state === "missed";
   const late = sla.state === "breached" || sla.state === "missed";

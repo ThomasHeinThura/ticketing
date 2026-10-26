@@ -10,7 +10,9 @@ import { Button } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { ImpersonationBanner } from "@/components/god-mode/impersonation-banner";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { authClient } from "@/lib/auth-client";
+import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 
 /**
  * Backoff between get-session retries when the check is rate limited (429) or
@@ -107,18 +109,30 @@ function SessionRouteError({ error }: ErrorComponentProps) {
  */
 function AuthenticatedShell() {
   const { session } = Route.useRouteContext();
+  const { i18n } = useTranslation();
+  const { data: workspace } = useActiveWorkspace();
   const impersonated = Boolean(
     (session?.session as { impersonatedBy?: string | null } | undefined)
       ?.impersonatedBy,
   );
-  if (!impersonated) return <Outlet />;
-  return (
+  const content = !impersonated ? (
+    <Outlet />
+  ) : (
     <div className="flex h-svh flex-col">
       <ImpersonationBanner />
       <div className="relative min-h-0 flex-1 overflow-auto">
         <Outlet />
       </div>
     </div>
+  );
+  return (
+    <TerminologyProvider
+      audience="agent"
+      locale={i18n.resolvedLanguage ?? i18n.language}
+      workspaceId={workspace?.id}
+    >
+      {content}
+    </TerminologyProvider>
   );
 }
 

@@ -13,6 +13,10 @@
 		"./intake": {
 			"types": "./dist/intake/index.d.ts",
 			"default": "./dist/intake/index.js"
+		},
+		"./webhook-secret-rotation": {
+			"types": "./dist/webhook-secret-rotation.d.ts",
+			"default": "./dist/webhook-secret-rotation.js"
 		}
 	},
 	"license": "MIT",

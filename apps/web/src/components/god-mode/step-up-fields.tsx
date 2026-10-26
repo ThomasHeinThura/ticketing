@@ -23,12 +23,15 @@ export function StepUpFields({
   idPrefix: string;
 }) {
   const { t } = useTranslation("identityConnections");
-  const label =
-    action.method === "password"
+  const labelFor = (method: StepUpMethod) =>
+    method === "password"
       ? t("stepUp.password")
-      : action.method === "totp"
+      : method === "totp"
         ? t("stepUp.authenticatorCode")
-        : t("stepUp.backupCode");
+        : method === "backup_code"
+          ? t("stepUp.backupCode")
+          : t("stepUp.ssoPromptLogin");
+  const localMethod = action.method !== "sso_prompt_login";
   return (
     <fieldset className="grid gap-3 rounded-md border p-4 sm:grid-cols-2">
       <legend className="px-1 text-sm font-medium">{t("stepUp.title")}</legend>
@@ -38,17 +41,17 @@ export function StepUpFields({
       <div className="space-y-2">
         <Label htmlFor={`${idPrefix}-method`}>{t("stepUp.method")}</Label>
         <Select
-          items={[
-            { value: "password", label: t("stepUp.password") },
-            { value: "totp", label: t("stepUp.authenticatorCode") },
-            { value: "backup_code", label: t("stepUp.backupCode") },
-          ]}
+          items={action.availableMethods.map((method) => ({
+            value: method,
+            label: labelFor(method),
+          }))}
           disabled={action.busy}
           onValueChange={(value) => {
             if (
               value === "password" ||
               value === "totp" ||
-              value === "backup_code"
+              value === "backup_code" ||
+              value === "sso_prompt_login"
             )
               action.setMethod(value as StepUpMethod);
           }}
@@ -58,30 +61,43 @@ export function StepUpFields({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="password">{t("stepUp.password")}</SelectItem>
-            <SelectItem value="totp">
-              {t("stepUp.authenticatorCode")}
-            </SelectItem>
-            <SelectItem value="backup_code">
-              {t("stepUp.backupCode")}
-            </SelectItem>
+            {action.availableMethods.map((method) => (
+              <SelectItem key={method} value={method}>
+                {labelFor(method)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-secret`}>{label}</Label>
-        <Input
-          autoComplete={
-            action.method === "password" ? "current-password" : "one-time-code"
-          }
-          disabled={action.busy}
-          id={`${idPrefix}-secret`}
-          inputMode={action.method === "totp" ? "numeric" : undefined}
-          onChange={(event) => action.setSecret(event.currentTarget.value)}
-          type={action.method === "password" ? "password" : "text"}
-          value={action.secret}
-        />
-      </div>
+      {localMethod ? (
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-secret`}>
+            {labelFor(action.method)}
+          </Label>
+          <Input
+            autoComplete={
+              action.method === "password"
+                ? "current-password"
+                : "one-time-code"
+            }
+            disabled={action.busy}
+            id={`${idPrefix}-secret`}
+            inputMode={action.method === "totp" ? "numeric" : undefined}
+            onChange={(event) => action.setSecret(event.currentTarget.value)}
+            type={action.method === "password" ? "password" : "text"}
+            value={action.secret}
+          />
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground sm:col-span-2">
+          {t("stepUp.ssoPromptLoginDescription")}
+        </p>
+      )}
+      {action.availableMethods.length === 0 ? (
+        <p className="text-sm text-destructive sm:col-span-2">
+          {t("stepUp.unavailable")}
+        </p>
+      ) : null}
     </fieldset>
   );
 }

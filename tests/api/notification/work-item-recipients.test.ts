@@ -24,6 +24,7 @@ import type {
 } from "../../../apps/api/src/events/outbox";
 import {
   planWorkItemRecipients,
+  resolveCommentEventRecipients,
   resolveWorkItemEventRecipients,
 } from "../../../apps/api/src/notification/work-item-recipients";
 
@@ -218,7 +219,15 @@ function customerIdentity(personId: string, userId: string): ResolvedIdentity {
     memberships: [],
     teamIds: [],
     reach: { kind: "organisation", ids: ["organisation-1"] },
-    authority: [],
+    authority: [
+      {
+        roleKey: "customer",
+        scope: "organisation",
+        scopeId: "organisation-1",
+        rank: 10,
+        capabilities: ["work_item:read"],
+      },
+    ],
   } satisfies ResolvedIdentity;
 }
 
@@ -373,6 +382,143 @@ describe("resolveWorkItemEventRecipients", () => {
       ["new", "Assigned to you"],
       ["old", "Reassigned"],
     ]);
+  });
+
+  it("NO-20: customer transition copy is request-facing while staff copy stays unchanged", async () => {
+    mocks.listWorkItemWatchers.mockResolvedValue([
+      { personId: "staff-watcher", muted: false },
+      { personId: "customer-watcher", muted: false },
+      { personId: "customer-nonowner", muted: false },
+    ]);
+    mocks.findCurrentNotificationResource.mockResolvedValue({
+      workItemId: "item-1",
+      workspaceId: "workspace-1",
+      projectId: "project-1",
+      organisationId: "organisation-1",
+      visibleToPersonIds: null,
+      customerVisible: true,
+      customerRequestOwnerPersonIds: ["customer-watcher"],
+      staffUrl: null,
+    });
+    mocks.findNotificationPerson.mockImplementation(
+      async (_tx, personId: string) => ({
+        userId: `user-${personId}`,
+        side: personId.startsWith("customer-") ? "customer" : "staff",
+        active: true,
+      }),
+    );
+    mocks.resolveIdentity.mockImplementation(
+      async (input: { userId: string }) =>
+        input.userId.startsWith("user-customer-")
+          ? customerIdentity(input.userId.slice(5), input.userId)
+          : staffIdentity("staff-watcher", input.userId),
+    );
+
+    const candidates = await resolveWorkItemEventRecipients(
+      tx,
+      event("work_item.transitioned", {}),
+    );
+
+    expect(
+      candidates.map(({ personId, title, body }) => ({
+        personId,
+        title,
+        body,
+      })),
+    ).toEqual([
+      {
+        personId: "staff-watcher",
+        title: "Watched work item changed state",
+        body: "SUP-1 changed state.",
+      },
+      {
+        personId: "customer-watcher",
+        title: "Request updated",
+        body: "A request you follow has a new status.",
+      },
+    ]);
+    expect(
+      candidates.some(({ personId }) => personId === "customer-nonowner"),
+    ).toBe(false);
+    const customerCopy = candidates.find(
+      ({ personId }) => personId === "customer-watcher",
+    );
+    expect(`${customerCopy?.title} ${customerCopy?.body}`).not.toMatch(
+      /work item|assignee|watcher|internal staff name/iu,
+    );
+  });
+
+  it("NO-20: customer comment copy avoids work-item terminology without changing staff copy", async () => {
+    mocks.execute.mockResolvedValueOnce({
+      rows: [
+        {
+          commentId: "comment-1",
+          visibility: "public",
+          workItemId: "item-1",
+          key: "SUP-1",
+          workspaceId: "workspace-1",
+          projectId: "project-1",
+          assigneeId: "staff-assignee",
+          requesterId: "customer-requester",
+        },
+      ],
+    });
+    mocks.findNotificationPerson.mockImplementation(
+      async (_tx, personId: string) => ({
+        userId: `user-${personId}`,
+        side: personId === "customer-requester" ? "customer" : "staff",
+        active: true,
+      }),
+    );
+    mocks.resolveIdentity.mockImplementation(
+      async (input: { userId: string }) =>
+        input.userId === "user-customer-requester"
+          ? customerIdentity("customer-requester", input.userId)
+          : staffIdentity("staff-assignee", input.userId),
+    );
+    const commentEvent = event("work_item.commented", {
+      commentId: "comment-1",
+      visibility: "public",
+    });
+    commentEvent.scope.organisationId = "organisation-1";
+    commentEvent.actor.name = "Internal Staff Name";
+    mocks.findCurrentNotificationResource.mockResolvedValue({
+      workItemId: "item-1",
+      workspaceId: "workspace-1",
+      projectId: "project-1",
+      organisationId: "organisation-1",
+      visibleToPersonIds: null,
+      customerVisible: true,
+      customerRequestOwnerPersonIds: ["customer-requester"],
+      staffUrl: null,
+    });
+
+    const candidates = await resolveCommentEventRecipients(tx, commentEvent);
+
+    expect(
+      candidates.map(({ personId, title, body }) => ({
+        personId,
+        title,
+        body,
+      })),
+    ).toEqual([
+      {
+        personId: "staff-assignee",
+        title: "New comment",
+        body: "A comment was added to a work item you can reach.",
+      },
+      {
+        personId: "customer-requester",
+        title: "New comment on a request",
+        body: "A request you can view has a new comment.",
+      },
+    ]);
+    const customerCopy = candidates.find(
+      ({ personId }) => personId === "customer-requester",
+    );
+    expect(`${customerCopy?.title} ${customerCopy?.body}`).not.toMatch(
+      /work item|assignee|watcher|internal staff name/iu,
+    );
   });
 
   it("NO-19: a customer-side watcher is never told about an assignment", async () => {

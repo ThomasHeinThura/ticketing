@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const m = vi.hoisted(() => ({
   calls: [] as string[],
+  execute: vi.fn(),
+  txExecute: vi.fn(),
+  purgeOrganisation: vi.fn(),
   listProjects: vi.fn(),
   listItems: vi.fn(),
   lockItem: vi.fn(),
@@ -23,8 +26,9 @@ function paged(ids: string[]) {
 }
 vi.mock("../../../apps/api/src/database", () => ({
   default: {
+    execute: m.execute,
     transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
-      fn({ tx: true }),
+      fn({ tx: true, execute: m.txExecute }),
     ),
   },
 }));
@@ -43,6 +47,20 @@ vi.mock("../../../apps/api/src/scheduler/soft-delete-purge.repository", () => ({
   countRowsRetainedBySharedObject: m.retained,
 }));
 
+vi.mock(
+  "../../../apps/api/src/instance/organisation-purge",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("../../../apps/api/src/instance/organisation-purge")
+      >();
+    return {
+      ...actual,
+      purgeExpiredOrganisation: m.purgeOrganisation,
+    };
+  },
+);
+
 vi.mock("../../../apps/api/src/scheduler/soft-delete-purge-detach", () => ({
   detachChildrenForPurge: m.detach,
   lockWorkItemHierarchyForProject: m.lockHierarchy,
@@ -59,6 +77,9 @@ beforeEach(() => {
   for (const fn of [
     m.listProjects,
     m.listItems,
+    m.execute,
+    m.txExecute,
+    m.purgeOrganisation,
     m.lockItem,
     m.lockProject,
     m.release,
@@ -81,6 +102,12 @@ beforeEach(() => {
   m.retained.mockResolvedValue({ workItems: 0, projects: 0 });
   m.listProjects.mockImplementation(paged([]));
   m.listItems.mockImplementation(paged([]));
+  // The retention selector now reads organisation candidates directly through
+  // the database executor. Keep the repository query live and return no rows
+  // unless a test explicitly supplies a candidate fixture.
+  m.execute.mockResolvedValue({ rows: [] });
+  m.txExecute.mockResolvedValue({ rows: [] });
+  m.purgeOrganisation.mockResolvedValue({ status: "not_found" });
   m.lockItem.mockImplementation(async () => {
     m.calls.push("lock");
     return LOCKED;
@@ -112,7 +139,10 @@ describe("work item purge eligibility under lock", () => {
       return 2;
     });
     await expect(purgeSoftDeletedWorkItem("wi-1")).resolves.toBe("purged");
-    expect(m.detach).toHaveBeenCalledWith({ tx: true }, LOCKED);
+    expect(m.detach).toHaveBeenCalledWith(
+      expect.objectContaining({ tx: true }),
+      LOCKED,
+    );
     expect(m.calls.indexOf("detach")).toBeGreaterThan(m.calls.indexOf("lock"));
     expect(m.calls.indexOf("detach")).toBeLessThan(m.calls.indexOf("delete"));
   });
@@ -122,7 +152,10 @@ describe("work item purge eligibility under lock", () => {
     expect(m.calls.indexOf("hierarchy-lock")).toBeLessThan(
       m.calls.indexOf("lock"),
     );
-    expect(m.lockHierarchy).toHaveBeenCalledWith({ tx: true }, "p-0");
+    expect(m.lockHierarchy).toHaveBeenCalledWith(
+      expect.objectContaining({ tx: true }),
+      "p-0",
+    );
   });
 
   it("leaves a row that moved project between the unlocked read and the row lock", async () => {
@@ -192,6 +225,41 @@ describe("project purge", () => {
 });
 
 describe("batch run", () => {
+  it("queries the live organisation retention selector when no organisations are due", async () => {
+    await expect(purgeSoftDeletedRows()).resolves.toMatchObject({
+      failed: 0,
+      degraded: false,
+    });
+    expect(m.execute).toHaveBeenCalled();
+    const query = m.execute.mock.calls[0]?.[0];
+    expect(query).toBeDefined();
+    expect(query.queryChunks).toBeDefined();
+  });
+
+  it("rechecks a scanned organisation candidate inside its transaction", async () => {
+    m.execute.mockResolvedValueOnce({
+      rows: [
+        {
+          organisation_id: "org-stale",
+          operation_id: "delete-operation-1",
+          generation: 2,
+        },
+      ],
+    });
+    const outcome = await purgeSoftDeletedRows();
+    expect(outcome.skipped).toBe(1);
+    expect(outcome.failed).toBe(0);
+    expect(outcome.degraded).toBe(false);
+    expect(m.purgeOrganisation).toHaveBeenCalledWith(
+      expect.objectContaining({ tx: true }),
+      {
+        organisationId: "org-stale",
+        operationId: "delete-operation-1",
+        generation: 2,
+      },
+    );
+  });
+
   it("purges projects before work items and tallies every outcome", async () => {
     m.listProjects.mockImplementation(paged(["p-1"]));
     m.listItems.mockImplementation(paged(["wi-1", "wi-2", "wi-3"]));

@@ -16,6 +16,9 @@ deploy/local/
 backups/
 .claude/
 .pi/
+.qodo/
+.codex/
+.agents/
 .worktrees/
 
 # Historical snapshots stay local; maintained contracts live under docs/.

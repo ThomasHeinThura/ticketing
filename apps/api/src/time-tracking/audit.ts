@@ -5,6 +5,7 @@ export type TimeActor = {
   userId: string | null;
   actorType: "person" | "api_key" | "system";
   apiKeyId?: string | null;
+  auditOrigin?: "mcp";
 };
 
 /**
@@ -36,6 +37,15 @@ export async function auditTime(
     entityType: input.entityType,
     entityId: input.entityId,
     before: (input.before ?? null) as never,
-    after: (input.after ?? null) as never,
+    after: (input.after
+      ? {
+          ...input.after,
+          ...(input.actor.auditOrigin
+            ? { origin: input.actor.auditOrigin }
+            : {}),
+        }
+      : input.actor.auditOrigin
+        ? { origin: input.actor.auditOrigin }
+        : null) as never,
   });
 }

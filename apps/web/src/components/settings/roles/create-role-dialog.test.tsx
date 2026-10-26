@@ -13,6 +13,11 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   prove: vi.fn(),
   navigate: vi.fn(),
+  factorStatus: {
+    enabled: false,
+    required: false,
+    availableMethods: ["password"] as string[],
+  },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -36,7 +41,7 @@ vi.mock("@/fetchers/god-mode/instance-users", async (importOriginal) => {
     await importOriginal<typeof import("@/fetchers/god-mode/instance-users")>();
   return {
     ...actual,
-    getCurrentFactorStatus: async () => ({ enabled: false, required: false }),
+    getCurrentFactorStatus: async () => mocks.factorStatus,
   };
 });
 vi.mock("@/fetchers/workspace-roles", async (importOriginal) => {
@@ -58,8 +63,10 @@ beforeEach(() => {
 afterEach(cleanup);
 
 function renderDialog() {
+  const client = new QueryClient();
+  client.setQueryData(["god-mode", "step-up-factor"], mocks.factorStatus);
   return render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={client}>
       <CreateRoleDialog
         workspaceId="ws-1"
         roles={[]}

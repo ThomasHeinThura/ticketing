@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -8,6 +8,7 @@ import {
   workflowTable,
   workflowTransitionTable,
   workItemTypeTable,
+  workspaceTable,
 } from "../../database/schema";
 import {
   moveStateToPosition,
@@ -49,14 +50,22 @@ async function activeTransitionFromTemplates(
   return rows.map((row) => row.from);
 }
 
-/** Locks the project row so concurrent state edits on one project serialise. */
+/** Workspace first, matching workspace-template writers; then serialize project edits. */
 async function lockLiveProject(
   tx: Executor,
   projectId: string,
   workspaceId: string,
 ) {
+  const [workspace] = await tx
+    .select({ id: workspaceTable.id })
+    .from(workspaceTable)
+    .where(eq(workspaceTable.id, workspaceId))
+    .for("share")
+    .limit(1);
+  if (!workspace)
+    throw new HTTPException(404, { message: "Project not found" });
   const [project] = await tx
-    .select({ id: projectTable.id })
+    .select({ id: projectTable.id, stateSetMode: projectTable.stateSetMode })
     .from(projectTable)
     .where(
       and(
@@ -68,6 +77,7 @@ async function lockLiveProject(
     .for("update")
     .limit(1);
   if (!project) throw new HTTPException(404, { message: "Project not found" });
+  return project;
 }
 
 /** The workspace's active state templates with whether this project already has an active
@@ -186,6 +196,13 @@ export async function createProjectState(
         isDefault: active.length === 0,
       })
       .returning({ id: stateTable.id });
+    await tx
+      .update(projectTable)
+      .set({
+        stateSetMode: "override",
+        projectSettingsVersion: sql`${projectTable.projectSettingsVersion} + 1`,
+      })
+      .where(eq(projectTable.id, projectId));
     return created;
   });
 }

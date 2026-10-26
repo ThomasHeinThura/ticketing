@@ -122,6 +122,7 @@ This is the retained route inventory. Existing routes are compared in both direc
 | Action | Route |
 | --- | --- |
 | Creating or changing an identity connection (OIDC) or a non-OIDC auth plugin | `POST /api/instance/identity-connections`, `PATCH /api/instance/identity-connections/{id}`; `POST/PATCH /api/instance/plugins/{id}` for `auth.*` |
+| Retiring an identity connection: exact-name pending action with action-bound step-up; current instance administrator, session only | `DELETE /api/instance/identity-connections/{id}` requests202; `POST /api/me/pending-actions/{id}/approve` executes |
 | Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `POST /api/instance/identity-connections/{id}/scim/rotate-token`, `POST /api/instance/identity-connections/{id}/scim/revoke-token` |
 | OIDC mapping administration — every create, edit, enable and disable is unconditionally elevated, session-only and audited, including customer/display-only changes; forbidden authority remains impossible (identity-provisioning.md `IP-6`, `IP-34`) | `POST /api/instance/identity-connections/{id}/oidc-group-mappings`, `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` |
 | Every SCIM administration PATCH is route-wide elevated, session-only and audited, with strict DTO, parent-version CAS and dedicated `scim_admin_update` PA-15 proof. An implementation lacking its verifier fails closed. Forbidden authority remains impossible (identity-provisioning.md `IP-6`, `IP-20`–`IP-22`; api-design.md) | `PATCH /api/instance/identity-connections/{id}/scim` |
@@ -129,9 +130,12 @@ This is the retained route inventory. Existing routes are compared in both direc
 | Approving the canonical `delete` pending action for a `user`, with exact current account email and action-bound step-up | `POST /api/me/pending-actions/{id}/approve` |
 | Resetting another person's second factor | `POST /api/instance/users/{id}/reset-mfa` — requires a mandatory verification note and fresh step-up proof; unavailable when the target has no enabled local second factor |
 | Creating a workspace **service** API key | `POST /api/workspaces/{id}/api-keys` — bounded by the creator's authority |
+| Re-attesting transferred workspace service-key accountability — current `api_key:manage`, version CAS and one-use operation-bound step-up; credential and stored subset remain unchanged | `POST /api/workspaces/{id}/api-keys/{keyId}/re-attest` |
 | Granting `sees_all` on a membership | `PATCH /api/workspaces/{id}/members/{personId}` with `sees_all: true` — never self-grantable; audited as a reach change |
 | Marking a provider "MFA satisfied upstream", or a JIT rule that provisions `side = staff` or a role above `member` | `PATCH /api/instance/identity-connections/{id}` |
 | Deleting a workspace, organisation, project, API key, webhook or identity connection — **typed exact name/key + step-up**, through a pending action | `DELETE /api/workspaces/{id}`, `DELETE /api/instance/organisations/{id}`, `DELETE /api/projects/{projectId}`, `DELETE /api/me/api-keys/{id}`, `DELETE /api/workspaces/{id}/api-keys/{keyId}`, `DELETE /api/webhooks/{id}`, `DELETE /api/instance/identity-connections/{id}`, `DELETE /api/instance/plugins/{id}` for `auth.*` (pending-actions.md) |
+| Restoring an organisation within its retention window — one-use step-up bound to organisation, deletion operation and generation | `POST /api/instance/organisations/{id}/restore` |
+| Incident rotation of every webhook signing secret — instance administrator, exact current versioned set and one-use digest-bound step-up; replacements are write-only | `POST /api/instance/webhooks/rotate-secrets` |
 | Hard purge | `POST /api/instance/purge` (`PA-13`) |
 | Starting an impersonation session | `POST /api/instance/users/{id}/impersonate` |
 | Rotating the encryption key — the key itself is operator-staged via environment variables; this is the re-encryption step | `POST /api/instance/plugins/rotate-secrets` (starts `secrets-rekey` — see runbook) |

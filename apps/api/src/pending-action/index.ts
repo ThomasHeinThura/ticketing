@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { approveImportChunk } from "../imports/pending-action";
 import {
   type ApiKey,
   apiRouter,
@@ -22,6 +23,8 @@ import {
   getPendingActionExecutionTarget,
 } from "./deletion-targets";
 import { withPendingActionFailureOutcome } from "./execution-failure";
+import { approveHardPurge } from "./hard-purge-executor";
+import { approveMcpApprovalDecision } from "./mcp-approval-decision";
 import { approveRelationDeletion } from "./relation-deletion-target";
 import {
   pendingActionApprovalSchema,
@@ -269,7 +272,28 @@ const pendingAction = apiRouter()
                           stepUpToken:
                             c.req.valid("header")["x-taskdesk-step-up-token"],
                         })
-                      : approveSavedViewDeletion(executionInput),
+                      : contract.executor === "hard_purge"
+                        ? approveHardPurge({
+                            ...executionInput,
+                            typedName: c.req.valid("json").typedName,
+                            stepUpToken:
+                              c.req.valid("header")["x-taskdesk-step-up-token"],
+                          })
+                        : contract.executor === "mcp_approval_decision"
+                          ? approveMcpApprovalDecision(executionInput)
+                          : contract.executor === "import_chunk"
+                            ? approveImportChunk({
+                                ...executionInput,
+                                routeKey: executionTarget.routeKey as
+                                  | "POST /api/imports/{id}/records"
+                                  | "POST /api/imports/{id}/links",
+                                typedCount: c.req.valid("json").typedCount,
+                                stepUpToken:
+                                  c.req.valid("header")[
+                                    "x-taskdesk-step-up-token"
+                                  ],
+                              })
+                            : approveSavedViewDeletion(executionInput),
     );
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(

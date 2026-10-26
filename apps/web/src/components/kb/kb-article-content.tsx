@@ -1,6 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@taskdesk/ui";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import "@/components/task/editor-styles.css";
 
 /**
  * Read-only render of an article's Tiptap JSON document (KB-5). The server has already

@@ -203,6 +203,24 @@ export function getPendingActionNotificationHref(
     : null;
 }
 
+/** WH-7 auto-disable notices open the canonical webhook editor route. */
+export function getWebhookNotificationHref(
+  notification: Pick<Notification, "deepLink">,
+): string | null {
+  return notification.deepLink?.type === "webhook" && notification.deepLink.id
+    ? routes.webhookEditor.build({ id: notification.deepLink.id })
+    : null;
+}
+
+/** AK-6 notices open the current user's canonical API key management page. */
+export function getApiKeyNotificationHref(
+  notification: Pick<Notification, "deepLink">,
+): string | null {
+  return notification.deepLink?.type === "api_key" && notification.deepLink.id
+    ? "/dashboard/settings/account/developer"
+    : null;
+}
+
 /**
  * `NO-14`: a work-item, comment or approval notification opens its work item on the canonical
  * `/agent` route, and a comment notification focuses that comment.
@@ -232,6 +250,18 @@ export function useNotificationClick() {
     (notification: Notification) => {
       if (!notification.isRead) {
         markAsRead(notification.id);
+      }
+
+      const webhookHref = getWebhookNotificationHref(notification);
+      if (webhookHref) {
+        void navigate({ href: webhookHref });
+        return;
+      }
+
+      const apiKeyHref = getApiKeyNotificationHref(notification);
+      if (apiKeyHref) {
+        void navigate({ href: apiKeyHref });
+        return;
       }
 
       const pendingActionHref = getPendingActionNotificationHref(notification);
@@ -271,7 +301,9 @@ export function useNotificationClick() {
 const NotificationDropdown = forwardRef<NotificationDropdownRef>(
   (_props, ref) => {
     const { t } = useTranslation();
-    const { data: notifications } = useGetNotifications();
+    const { data: inbox } = useGetNotifications("all");
+    const notifications = inbox?.pages[0]?.data;
+    const unreadCount = inbox?.pages[0]?.unreadCount ?? 0;
     const [isOpen, setIsOpen] = useState(false);
     const [showClearDialog, setShowClearDialog] = useState(false);
 
@@ -280,7 +312,6 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
 
     const handleNotificationClick = useNotificationClick();
 
-    const unreadNotifications = notifications?.filter((n) => !n.isRead) || [];
     const hasNotifications = notifications && notifications.length > 0;
 
     useImperativeHandle(ref, () => ({
@@ -309,11 +340,9 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-4 w-4" />
-                    {unreadNotifications.length > 0 && (
+                    {unreadCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-destructive-strong px-1 text-[9px] font-semibold leading-none text-destructive-strong-foreground ring-2 ring-sidebar transition-[scale,opacity] duration-200 ease-out starting:scale-75 starting:opacity-0 motion-reduce:starting:scale-100">
-                        {unreadNotifications.length > 99
-                          ? "99+"
-                          : unreadNotifications.length}
+                        {unreadCount > 99 ? "99+" : unreadCount}
                       </span>
                     )}
                     <span className="sr-only">
@@ -342,7 +371,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                 <h3 className="font-medium text-sm">
                   {t("notifications:title")}
                 </h3>
-                {unreadNotifications.length > 0 && (
+                {unreadCount > 0 && (
                   <DropdownMenuItem
                     closeOnClick={false}
                     onClick={() => markAllAsRead()}

@@ -9,6 +9,7 @@ import {
   Badge,
   Button,
   Calendar,
+  Fieldset,
   Input,
   Popover,
   PopoverContent,
@@ -1070,6 +1071,7 @@ function LabelsControl({
 type WorkItemPropertiesProps = {
   item: WorkItemDetailRow;
   compact?: boolean;
+  readOnly?: boolean;
   onAccessLost: () => void;
   /** v2 panels (SLA, approvals, metadata) under the property rows. */
   children?: ReactNode;
@@ -1098,6 +1100,7 @@ export default function WorkItemProperties(props: WorkItemPropertiesProps) {
 function WorkItemPropertiesPanel({
   item,
   compact = false,
+  readOnly = false,
   onAccessLost,
   children,
 }: WorkItemPropertiesProps) {
@@ -1114,11 +1117,9 @@ function WorkItemPropertiesPanel({
   };
   return (
     <div
-      className={cn(
-        "flex w-full flex-col gap-2",
-        !compact && "h-full lg:w-72 xl:w-80",
-      )}
+      className={cn("flex w-full flex-col gap-2", !compact && "min-h-full")}
       data-testid="work-item-properties"
+      data-read-only={readOnly || undefined}
     >
       <TaskPropertiesPresentation>
         {!compact ? (
@@ -1155,10 +1156,11 @@ function WorkItemPropertiesPanel({
               <Copy className="size-4" />
             </Button>
           </div>
-          <div
+          <Fieldset
+            disabled={readOnly}
             data-testid="work-item-property-controls"
             className={cn(
-              "flex w-full flex-row flex-wrap items-center gap-1 p-2",
+              "flex w-full max-w-none flex-row flex-wrap items-center gap-1 p-2",
               !compact &&
                 "lg:flex-col lg:items-stretch lg:gap-2 lg:px-3 lg:py-3",
             )}
@@ -1178,10 +1180,11 @@ function WorkItemPropertiesPanel({
             <DateControl {...controlProps} field="startDate" />
             <DateControl {...controlProps} field="dueDate" />
             <WorkItemAgileRows item={item} compact={compact} />
-          </div>
+          </Fieldset>
         </div>
-        <div
-          className="flex flex-col gap-3 p-2 px-3"
+        <Fieldset
+          disabled={readOnly}
+          className="flex max-w-none flex-col gap-3 p-2 px-3"
           data-testid="work-item-labels-group"
         >
           <div className="flex flex-col gap-1">
@@ -1192,10 +1195,10 @@ function WorkItemPropertiesPanel({
               <LabelsControl {...controlProps} />
             </div>
           </div>
-        </div>
-        <div className="px-3">
+        </Fieldset>
+        <Fieldset disabled={readOnly} className="max-w-none gap-0 px-3">
           <WorkItemParentControl {...controlProps} />
-        </div>
+        </Fieldset>
         {children ? (
           <div className="flex flex-col gap-1 px-3 py-2">{children}</div>
         ) : null}

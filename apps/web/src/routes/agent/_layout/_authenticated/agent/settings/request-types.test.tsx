@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   getRequestTypes: vi.fn(),
   getRequestType: vi.fn(),
+  getRequestTypeGroupOrder: vi.fn(),
+  replaceRequestTypeGroupOrder: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -31,6 +33,10 @@ vi.mock("@/fetchers/intake", () => ({
   publishRequestType: vi.fn(),
   saveRequestType: vi.fn(),
   unpublishRequestType: vi.fn(),
+}));
+vi.mock("@/fetchers/intake-group-order", () => ({
+  getRequestTypeGroupOrder: mocks.getRequestTypeGroupOrder,
+  replaceRequestTypeGroupOrder: mocks.replaceRequestTypeGroupOrder,
 }));
 vi.mock("@/hooks/queries/work-item/use-get-work-item-types", () => ({
   default: () => ({ data: [{ id: "wit-1", name: "Task" }], isLoading: false }),
@@ -96,6 +102,18 @@ describe("request type editor", () => {
       requestTypes: [type],
     });
     mocks.getRequestType.mockReset().mockResolvedValue(type);
+    mocks.getRequestTypeGroupOrder.mockReset().mockResolvedValue({
+      groups: ["Accounts", "Support"],
+      version: 3,
+    });
+    mocks.replaceRequestTypeGroupOrder
+      .mockReset()
+      .mockImplementation(
+        async ({ groups, version }: { groups: string[]; version: number }) => ({
+          groups,
+          version: version + 1,
+        }),
+      );
   });
   afterEach(() => cleanup());
 
@@ -153,5 +171,26 @@ describe("request type editor", () => {
     await waitFor(() => expect(mocks.getRequestTypes).toHaveBeenCalledTimes(2));
     expect(await screen.findAllByLabelText("Field key")).not.toHaveLength(0);
     expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  });
+
+  it("saves group order independently with its expected version", async () => {
+    renderPage();
+    const moveSupportUp = await screen.findByRole("button", {
+      name: "Move Support up",
+    });
+    fireEvent.click(moveSupportUp);
+    fireEvent.click(screen.getByRole("button", { name: "Save group order" }));
+
+    await waitFor(() =>
+      expect(mocks.replaceRequestTypeGroupOrder).toHaveBeenCalledWith({
+        workspaceId: "workspace-1",
+        groups: ["Support", "Accounts"],
+        version: 3,
+      }),
+    );
+    expect(await screen.findByText("Group order saved.")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Move Support down" }),
+    ).toBeTruthy();
   });
 });

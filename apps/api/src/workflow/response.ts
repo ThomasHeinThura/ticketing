@@ -69,6 +69,11 @@ export const workflowVersionProjectValidationSchema = z
 export const workflowVersionValidationSchema = z
   .object({
     valid: z.boolean(),
+    affected: z.object({
+      people: z.number().int().nonnegative(),
+      workItems: z.number().int().nonnegative(),
+      projects: z.number().int().nonnegative(),
+    }),
     unreachableStateTemplateIds: z.array(z.string()),
     noOutboundStateTemplateIds: z.array(z.string()),
     rolesWithNoLegalTransition: z.array(z.string()),

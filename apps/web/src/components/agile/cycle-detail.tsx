@@ -51,6 +51,7 @@ import { CompleteCycleDialog } from "./complete-cycle-dialog";
 import { BACKLOG_DRAG_PREFIX, CycleBacklogPanel } from "./cycle-backlog-panel";
 import { CycleFormDialog } from "./cycle-form-dialog";
 import { FeatureOff } from "./feature-off";
+import { ScopeLoggedTime } from "./scope-logged-time";
 import { ScopedWorkSurface } from "./scoped-work-surface";
 
 const DROP_ID = "cycle-dropzone";
@@ -66,7 +67,7 @@ function SummaryTile({ label, value }: { label: string; value: string }) {
 
 /** `CY-7`: scope, completed, in progress and not started in the cycle's unit. */
 export function CycleSummaryTiles({ cycle }: { cycle: CycleDetail }) {
-  const { t } = useTranslation("agile");
+  const { t, i18n } = useTranslation("agile");
   const { summary } = cycle;
   const amount = (bucket: { count: number; points: number }) =>
     summary.unit === "count"
@@ -94,6 +95,19 @@ export function CycleSummaryTiles({ cycle }: { cycle: CycleDetail }) {
           {t("summary.unestimated", {
             count: summary.unestimated.count,
             percent: Math.round(summary.unestimated.share * 100),
+          })}
+        </p>
+      ) : null}
+      {summary.snapshot?.basis === "date_catchup" ? (
+        <p
+          className="text-muted-foreground text-xs"
+          data-testid="snapshot-provenance"
+        >
+          {t("cycles.snapshot.dateCatchup", {
+            date: new Intl.DateTimeFormat(i18n.language, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            }).format(new Date(summary.snapshot.capturedAt)),
           })}
         </p>
       ) : null}
@@ -348,6 +362,11 @@ export function CycleDetailScreen({
       </div>
 
       <CycleSummaryTiles cycle={cycle} />
+      <ScopeLoggedTime
+        workspaceId={workspaceId}
+        projectId={project?.id}
+        scope={{ cycleId }}
+      />
 
       <section aria-label={t("burndown.title")} className="flex flex-col gap-2">
         <h2 className="font-medium text-sm">{t("burndown.title")}</h2>

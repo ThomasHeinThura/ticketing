@@ -16,6 +16,8 @@ export type WorkItemEventInput = {
   workItemId: string;
   key: string;
   workspaceId: string;
+  /** Current organisation scope, when the caller already resolved it authoritatively. */
+  organisationId?: string;
   projectId: string;
   actorId: string | null;
   actorType: ActivityActorType;
@@ -50,6 +52,7 @@ export async function recordWorkItemEvent(
     },
     scope: {
       workspaceId: input.workspaceId,
+      ...(input.organisationId ? { organisationId: input.organisationId } : {}),
       projectId: input.projectId,
     },
     payload: input.payload,

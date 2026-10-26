@@ -52,6 +52,86 @@ export {
 
 export type StorageDriverName = "filesystem" | "s3";
 
+export type StorageProbeAdapter = {
+  driver: StorageDriverName;
+  write(key: string, bytes: Uint8Array, signal: AbortSignal): Promise<void>;
+  read(key: string, maxBytes: number, signal: AbortSignal): Promise<Buffer>;
+  delete(key: string, signal: AbortSignal): Promise<void>;
+};
+
+export type StorageBackendStatus = {
+  source: "bootstrap";
+  driver: StorageDriverName | "unsupported";
+  configuration: "configured" | "incomplete" | "unavailable" | "unsupported";
+  connectivity: "not_checked";
+  probeAvailable: boolean;
+};
+
+/** Binds all probe operations to one driver, even if process configuration changes mid-probe. */
+export function getStorageProbeAdapter(): StorageProbeAdapter {
+  const selected = getStorageDriver();
+  if (selected === "s3") {
+    return {
+      driver: selected,
+      write: s3Driver.writeStorageProbeObject,
+      read: s3Driver.readStorageProbeObject,
+      delete: s3Driver.deleteStorageProbeObject,
+    };
+  }
+  return {
+    driver: selected,
+    write: filesystemDriver.writeStorageProbeObject,
+    read: filesystemDriver.readStorageProbeObject,
+    delete: filesystemDriver.deleteStorageProbeObject,
+  };
+}
+
+/** Returns configuration-only readiness; this deliberately performs no provider network I/O. */
+export async function getStorageBackendStatus(): Promise<StorageBackendStatus> {
+  let selected: StorageDriverName;
+  try {
+    selected = getStorageDriver();
+  } catch {
+    return {
+      source: "bootstrap",
+      driver: "unsupported",
+      configuration: "unsupported",
+      connectivity: "not_checked",
+      probeAvailable: false,
+    };
+  }
+
+  if (selected === "s3") {
+    try {
+      s3Driver.assertStorageConfigured();
+      return {
+        source: "bootstrap",
+        driver: selected,
+        configuration: "configured",
+        connectivity: "not_checked",
+        probeAvailable: true,
+      };
+    } catch {
+      return {
+        source: "bootstrap",
+        driver: selected,
+        configuration: "incomplete",
+        connectivity: "not_checked",
+        probeAvailable: false,
+      };
+    }
+  }
+
+  const configuration = await filesystemDriver.getStorageProbeReadiness();
+  return {
+    source: "bootstrap",
+    driver: selected,
+    configuration,
+    connectivity: "not_checked",
+    probeAvailable: configuration === "configured",
+  };
+}
+
 /**
  * Resolves the active storage driver from `TASKDESK_STORAGE_DRIVER`. Empty/unset defaults to
  * `filesystem` — "a fresh install runs storage.filesystem until an administrator chooses
@@ -187,4 +267,15 @@ export async function finalizeStorageObject(
     return s3Driver.finalizeAttachmentObject(oldKey, newKey);
   }
   return filesystemDriver.finalizeAttachmentObject(oldKey, newKey);
+}
+
+/** A misconfigured backend cannot broaden CSP beyond the application origin. */
+export function getStorageBrowserOrigins(): string[] {
+  try {
+    return getStorageDriver() === "filesystem"
+      ? []
+      : s3Driver.getBrowserStorageOrigins();
+  } catch {
+    return [];
+  }
 }

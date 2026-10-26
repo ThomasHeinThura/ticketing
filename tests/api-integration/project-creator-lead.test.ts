@@ -125,15 +125,17 @@ async function createProject(
   actor: Actor,
   workspaceId = world.workspaceId,
 ) {
+  const slug = projectKey();
   const response = await call(world.app, actor.cookie, "POST", "/api/project", {
     workspaceId,
     name: "P",
     icon: "Folder",
-    slug: projectKey(),
+    slug,
   });
   return {
     status: response.status,
     id: ((response.json as { id?: string } | null)?.id ?? "") as string,
+    slug,
   };
 }
 
@@ -670,7 +672,7 @@ describe("a project's creator holds a project-lead membership", () => {
       world.app,
       world.owner.cookie,
       `/api/project/${doomed.id}`,
-      { typedName: "P" },
+      { typedName: doomed.slug },
     );
     const doomedRows = await creatorGrants(personId, doomed.id);
     expect(doomedRows).toHaveLength(1);
@@ -751,32 +753,57 @@ describe("a project's creator holds a project-lead membership", () => {
     expect(await projectStatus(other, otherManager, theirs.id)).toBe(200);
   });
 
-  it("a creator with no staff person still creates the project (created_by NULL, no grant)", async () => {
+  it("fails closed without a current person actor and rolls project creation back", async () => {
     const world = await newWorld();
     const manager = await addManager(world);
     await db
       .delete(schema.personTable)
       .where(eq(schema.personTable.userId, manager.user.id));
-    const created = await createProjectCtrl(
-      world.workspaceId,
-      "P",
-      "Folder",
-      `np-${randomUUID().slice(0, 8)}`,
-      {
-        kind: "project",
-        supportLevel: null,
-        serviceCalendarId: null,
-        organisationId: null,
-      },
-      manager.user.id,
+    const slug = `np-${randomUUID().slice(0, 8)}`;
+    const before = await Promise.all([
+      db.select().from(schema.projectTable),
+      db.select().from(schema.projectSlugClaimTable),
+      db.select().from(schema.columnTable),
+      db.select().from(schema.stateTable),
+      db.select().from(schema.membershipTable),
+      db.select().from(schema.membershipGrantTable),
+      db.select().from(schema.auditLogTable),
+      db.select().from(schema.outboxTable),
+    ]);
+    await expect(
+      createProjectCtrl(
+        world.workspaceId,
+        "P",
+        "Folder",
+        slug,
+        {
+          kind: "project",
+          supportLevel: null,
+          serviceCalendarId: null,
+          organisationId: null,
+        },
+        manager.user.id,
+      ),
+    ).rejects.toThrow("Could not resolve project-created person actor");
+    const after = await Promise.all([
+      db.select().from(schema.projectTable),
+      db.select().from(schema.projectSlugClaimTable),
+      db.select().from(schema.columnTable),
+      db.select().from(schema.stateTable),
+      db.select().from(schema.membershipTable),
+      db.select().from(schema.membershipGrantTable),
+      db.select().from(schema.auditLogTable),
+      db.select().from(schema.outboxTable),
+    ]);
+    expect(after.map((rows) => rows.length)).toEqual(
+      before.map((rows) => rows.length),
     );
-    expect(created?.createdBy).toBeNull();
     expect(
       await db
-        .select({ id: schema.membershipGrantTable.id })
-        .from(schema.membershipGrantTable)
-        .where(eq(schema.membershipGrantTable.scopeId, created?.id ?? "")),
-    ).toEqual([]);
+        .select()
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.slug, slug)),
+    ).toHaveLength(0);
   });
 
   it("created_by is set null if the creator's person row is erased (ON DELETE SET NULL)", async () => {

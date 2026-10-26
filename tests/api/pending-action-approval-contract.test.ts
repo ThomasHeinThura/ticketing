@@ -37,4 +37,20 @@ describe("pending-action approval contracts", () => {
       }),
     ).toBeUndefined();
   });
+
+  it("keeps personal and service API-key deletion routes distinct", () => {
+    for (const routeKey of [
+      "DELETE /api/me/api-keys/{id}",
+      "DELETE /api/workspaces/{id}/api-keys/{keyId}",
+    ]) {
+      expect(
+        resolvePendingActionApprovalContract({
+          action: "delete",
+          targetType: "api_key",
+          confirmationRequired: "typed_name_step_up",
+          routeKey,
+        }),
+      ).toMatchObject({ executor: "registered_deletion", routeKey });
+    }
+  });
 });

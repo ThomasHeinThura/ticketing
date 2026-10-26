@@ -1,27 +1,33 @@
 import { expandCapabilities } from "@taskdesk/permissions";
 import type { notificationTable } from "../database/schema";
-import { subscribeToEvent } from "../events";
 import {
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
+  type z,
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
 import { requireSessionOnly } from "../utils/require-session-only";
 import clearNotifications from "./controllers/clear-notifications";
 import createNotification from "./controllers/create-notification";
+import getNotificationInbox from "./controllers/get-notification-inbox";
 import getNotifications from "./controllers/get-notifications";
 import markAllNotificationsAsRead from "./controllers/mark-all-notifications-as-read";
 import markAsRead from "./controllers/mark-notification-as-read";
-import { findProjectWorkspaceId, findTaskProjectId } from "./inbox.repository";
+import { decodeNotificationInboxCursor } from "./inbox.repository";
 import {
   bulkResultSchema,
+  notificationInboxSchema,
   notificationListSchema,
   notificationSchema,
 } from "./response";
-import { createNotificationBody, notificationParam } from "./schema";
+import {
+  createNotificationBody,
+  notificationInboxQuery,
+  notificationParam,
+} from "./schema";
 
 type NotificationTransportRow = typeof notificationTable.$inferSelect;
 
@@ -35,6 +41,21 @@ const listNotificationsRoute = createRoute({
     "Get read and unread notifications for the current user. Task notifications are included only while the task is reachable; missing or unreachable task notifications are omitted.",
   responses: {
     200: jsonResponse("List of notifications", notificationListSchema),
+  },
+});
+
+const notificationInboxRoute = createRoute({
+  method: "get",
+  operationId: "getNotificationInbox",
+  path: "/inbox",
+  tags: ["Notifications"],
+  summary: "List the current user's reachable notification inbox",
+  description:
+    "Returns a server-filtered page and the total unread count across the caller's currently reachable notifications. Resource reach is applied before pagination and counting.",
+  request: { query: notificationInboxQuery },
+  responses: {
+    200: jsonResponse("Notification inbox page", notificationInboxSchema),
+    400: errorResponse("Invalid cursor"),
   },
 });
 
@@ -127,7 +148,38 @@ const clearAllRoute = createRoute({
   },
 });
 
-const notification = apiRouter()
+const notificationInbox = apiRouter().openapi(
+  notificationInboxRoute,
+  async (c) => {
+    const query = c.req.valid("query");
+    const cursor = query.cursor
+      ? decodeNotificationInboxCursor(query.cursor)
+      : undefined;
+    if (query.cursor && !cursor) return c.text("Invalid cursor", 400);
+    const apiKey = c.get("apiKey");
+    const credentialCanReadTask =
+      !apiKey ||
+      expandCapabilities(apiKeyCapabilitySubset(apiKey)).has("work_item:read");
+    const response: z.infer<typeof notificationInboxSchema> =
+      await getNotificationInbox({
+        userId: c.get("userId"),
+        credentialCanReadTask,
+        filter: query.filter,
+        limit: query.limit ? Number(query.limit) : 50,
+        ...(cursor ? { cursor } : {}),
+        credential: {
+          ...(apiKey ? { apiKey } : {}),
+          impersonatedBy: (
+            c.get("session") as { impersonatedBy?: string | null } | null
+          )?.impersonatedBy,
+        },
+      });
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.json(response, 200);
+  },
+);
+
+const notificationBase = apiRouter()
   .openapi(listNotificationsRoute, async (c) => {
     const apiKey = c.get("apiKey");
     const credentialCanReadTask =
@@ -191,119 +243,11 @@ const notification = apiRouter()
     c.json(await clearNotifications(c.get("userId")), 200),
   );
 
-subscribeToEvent<{
-  taskId: string;
-  userId: string;
-  currentUserId?: string;
-  title: string;
-  projectId: string;
-}>("task.created", async (data) => {
-  if (data.userId && data.userId !== data.currentUserId) {
-    const project = await findProjectWorkspaceId(data.projectId);
-
-    await createNotification({
-      userId: data.userId,
-      type: "task_created",
-      eventData: {
-        taskTitle: data.title,
-        projectId: data.projectId,
-        workspaceId: project?.workspaceId ?? null,
-      },
-      resourceId: data.taskId,
-      resourceType: "task",
-    });
-  }
-});
-
 // `workspace.created` is no longer handled here: the owner's notification is written in the
 // creation transaction by `enqueueNotificationEvent` (workspace/controllers/create-workspace.ts).
 
-subscribeToEvent<{
-  taskId: string;
-  userId: string;
-  oldStatus: string;
-  newStatus: string;
-  title: string;
-  assigneeId?: string;
-}>("task.status_changed", async (data) => {
-  if (data.assigneeId && data.assigneeId !== data.userId) {
-    const task = await findTaskProjectId(data.taskId);
-
-    const project = task
-      ? await findProjectWorkspaceId(task.projectId)
-      : undefined;
-
-    await createNotification({
-      userId: data.assigneeId,
-      type: "task_status_changed",
-      eventData: {
-        taskTitle: data.title,
-        oldStatus: data.oldStatus,
-        newStatus: data.newStatus,
-        projectId: task?.projectId ?? null,
-        workspaceId: project?.workspaceId ?? null,
-      },
-      resourceId: data.taskId,
-      resourceType: "task",
-    });
-  }
-});
-
-subscribeToEvent<{
-  taskId: string;
-  userId: string;
-  oldAssignee: string | null;
-  newAssignee: string;
-  newAssigneeId: string;
-  title: string;
-}>("task.assignee_changed", async (data) => {
-  if (data.newAssigneeId) {
-    const task = await findTaskProjectId(data.taskId);
-
-    const project = task
-      ? await findProjectWorkspaceId(task.projectId)
-      : undefined;
-
-    await createNotification({
-      userId: data.newAssigneeId,
-      type: "task_assignee_changed",
-      eventData: {
-        taskTitle: data.title,
-        projectId: task?.projectId ?? null,
-        workspaceId: project?.workspaceId ?? null,
-      },
-      resourceId: data.taskId,
-      resourceType: "task",
-    });
-  }
-});
-
-subscribeToEvent<{
-  timeEntryId: string;
-  taskId: string;
-  userId: string;
-  taskOwnerId?: string;
-  taskTitle?: string;
-}>("time-entry.created", async (data) => {
-  if (data.taskOwnerId && data.taskOwnerId !== data.userId) {
-    const task = await findTaskProjectId(data.taskId);
-
-    const project = task
-      ? await findProjectWorkspaceId(task.projectId)
-      : undefined;
-
-    await createNotification({
-      userId: data.taskOwnerId,
-      type: "time_entry_created",
-      eventData: {
-        taskTitle: data.taskTitle ?? null,
-        projectId: task?.projectId ?? null,
-        workspaceId: project?.workspaceId ?? null,
-      },
-      resourceId: data.taskId,
-      resourceType: "task",
-    });
-  }
-});
+const notification = apiRouter()
+  .route("/", notificationInbox)
+  .route("/", notificationBase);
 
 export default notification;

@@ -116,7 +116,8 @@ async function ownerRule(w: World, project: { slug: string }) {
 
 /**
  * The override carries the workspace admin's own rank, so the rank check passes and only the
- * capability subset (RL-3) can refuse.
+ * automation-management capability passes the operation gate, then the capability subset
+ * (RL-3) can refuse.
  */
 async function narrow(w: World, projectId: string) {
   const role = await grantProjectRole(w.admin.user.id, projectId, NARROWED);
@@ -126,8 +127,8 @@ async function narrow(w: World, projectId: string) {
     .where(eq(schema.roleTable.id, role.id));
 }
 
-/** Narrowed: can manage project settings, but holds no comment:create / work_item:assign. */
-const NARROWED = ["project:read", "project:manage_settings"];
+/** Narrowed: can manage project automations, but holds no comment:create / work_item:assign. */
+const NARROWED = ["project:read", "automation:manage"];
 
 async function expectCeiling(w: World, project: { slug: string }) {
   const ruleId = await ownerRule(w, project);
@@ -178,7 +179,7 @@ async function expectCeiling(w: World, project: { slug: string }) {
 }
 
 describe("project rule author ceiling follows the evaluator's scope resolution (P4R4-M1)", () => {
-  it("a project override with manage_settings but no comment:create cannot save, enable or dry-run an admin-role project rule", async () => {
+  it("a project override with automation:manage but no comment:create cannot save, enable or dry-run an admin-role project rule", async () => {
     const w = await world();
     await narrow(w, w.parent.id);
     await expectCeiling(w, w.parent);

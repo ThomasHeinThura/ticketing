@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
-import { dayOf, OPEN, selectRows, tstz } from "../context";
+import { dayOf, num, OPEN, selectRows, timeFrom, tstz } from "../context";
+import { minutesToHours } from "../logic";
 import type { DrillItem, ReportContext, ReportDefinition, Row } from "../types";
 import { burndownCycle } from "./agile";
 import { itemsOf, timeItemsOf } from "./shared";
@@ -43,6 +44,35 @@ function projectOrgOnly(ctx: ReportContext): ReportContext {
 
 function timeDates(ctx: ReportContext) {
   return sql`te.date >= ${dayOf(ctx.window.from)}::date AND te.date <= ${dayOf(new Date(ctx.window.to.getTime() - 1))}::date`;
+}
+
+function projectOrgFilters(ctx: ReportContext) {
+  const { projectId, organisationId } = ctx.filters;
+  return sql`${projectId ? sql`p.id = ${projectId}` : sql`true`}
+    AND ${organisationId ? sql`p.organisation_id = ${organisationId}` : sql`true`}`;
+}
+
+function costEntryFilters(ctx: ReportContext) {
+  const { teamId, typeId, priority } = ctx.filters;
+  return sql`${
+    teamId
+      ? sql`EXISTS (
+          SELECT 1 FROM team_member tm
+          JOIN team t ON t.id = tm.team_id AND t.workspace_id = ${ctx.workspaceId}
+          JOIN person tp ON tp.user_id = tm.user_id
+          WHERE tm.team_id = ${teamId} AND tp.id = ce.person_id)`
+      : sql`true`
+  }
+    AND ${
+      typeId
+        ? sql`EXISTS (SELECT 1 FROM work_item wi WHERE wi.id = ce.work_item_id AND wi.type_id = ${typeId})`
+        : sql`true`
+    }
+    AND ${
+      priority
+        ? sql`EXISTS (SELECT 1 FROM work_item wi WHERE wi.id = ce.work_item_id AND wi.priority = ${priority})`
+        : sql`true`
+    }`;
 }
 
 const PERSON = sql`COALESCE(pe.display_name, u.name, 'Unknown')`;
@@ -173,14 +203,133 @@ const timeLogged: ExtraDrill = {
 };
 
 const costToDeliver: ExtraDrill = {
-  handleOf: (row) => slugOf(row.project),
-  items: (ctx, handle, limit) =>
-    timeItemsOf(
-      ctx,
-      sql`${timeDates(ctx)} AND ${handle === null ? sql`true` : sql`p.slug = ${handle}`}`,
-      sql``,
-      limit,
-    ),
+  handleOf: (row) => text(row._drill) ?? slugOf(row.project),
+  items: async (ctx, handle, limit) => {
+    const budgetId = handle?.startsWith("budget:")
+      ? handle.slice("budget:".length)
+      : null;
+    if (budgetId !== null) {
+      if (!ctx.showRates || budgetId.length === 0) return [];
+      const [budget] = await selectRows<{
+        id: string;
+        project_id: string;
+        currency: string;
+        period_start: string;
+        period_end: string;
+      }>(sql`SELECT b.id, b.project_id, b.currency, b.period_start, b.period_end
+        FROM budget b JOIN project p ON p.id = b.project_id
+        WHERE b.id = ${budgetId} AND b.workspace_id = ${ctx.workspaceId}
+          AND p.deleted_at IS NULL AND ${ctx.reach} AND ${projectOrgFilters(ctx)}
+          AND b.period_start <= ${dayOf(new Date(ctx.window.to.getTime() - 1))}::date
+          AND b.period_end >= ${dayOf(ctx.window.from)}::date`);
+      if (!budget) return [];
+
+      const [timeRows, costRows] = await Promise.all([
+        selectRows<{
+          id: string;
+          date: string;
+          person: string | null;
+          project_key: string | null;
+          work_item_key: string | null;
+          title: string | null;
+          minutes: string;
+          currency: string;
+        }>(sql`SELECT te.id, te.date::text AS date, ${PERSON} AS person,
+            p.slug AS project_key, w.key AS work_item_key,
+            COALESCE(NULLIF(btrim(te.description), ''), w.title) AS title,
+            te.minutes, te.currency
+          ${timeFrom(ctx)}
+          AND te.project_id = ${budget.project_id} AND te.currency = ${budget.currency}
+          AND te.rate_minor IS NOT NULL
+          AND te.date >= ${budget.period_start}::date AND te.date <= ${budget.period_end}::date
+          ORDER BY te.date DESC, te.created_at DESC LIMIT ${limit}`),
+        selectRows<{
+          id: string;
+          date: string;
+          person: string | null;
+          project_key: string | null;
+          work_item_key: string | null;
+          title: string;
+          currency: string;
+        }>(sql`SELECT ce.id, ce.date::text AS date, ${PERSON} AS person,
+            p.slug AS project_key, w.key AS work_item_key,
+            ct.name || CASE WHEN NULLIF(btrim(ce.note), '') IS NULL THEN '' ELSE ' — ' || btrim(ce.note) END AS title,
+            ce.currency
+          FROM cost_entry ce
+          JOIN project p ON p.id = ce.project_id
+          JOIN person pe ON pe.id = ce.person_id
+          LEFT JOIN "user" u ON u.id = pe.user_id
+          LEFT JOIN work_item w ON w.id = ce.work_item_id
+          JOIN cost_type ct ON ct.id = ce.cost_type_id AND ct.workspace_id = ${ctx.workspaceId}
+          WHERE ce.workspace_id = ${ctx.workspaceId} AND p.deleted_at IS NULL
+            AND ${ctx.reach} AND ${projectOrgFilters(ctx)}
+            AND ce.project_id = ${budget.project_id} AND ce.currency = ${budget.currency}
+            AND ce.date >= ${budget.period_start}::date AND ce.date <= ${budget.period_end}::date
+            AND ${ctx.readAnyTime ? sql`true` : sql`ce.person_id = ${ctx.identity.personId}`}
+            AND ${costEntryFilters(ctx)}
+          ORDER BY ce.date DESC, ce.created_at DESC LIMIT ${limit}`),
+      ]);
+      const timeItems: DrillItem[] = timeRows.map((row) => ({
+        kind: "time_entry",
+        key: row.id,
+        title: row.title ?? "",
+        projectKey: row.project_key,
+        state: null,
+        priority: null,
+        date: row.date,
+        person: row.person,
+        hours: minutesToHours(num(row.minutes)),
+        workItemKey: row.work_item_key,
+        currency: row.currency,
+      }));
+      const costs: DrillItem[] = costRows.map((row) => ({
+        kind: "cost_entry",
+        key: row.id,
+        title: row.title,
+        projectKey: row.project_key,
+        state: null,
+        priority: null,
+        date: row.date,
+        person: row.person,
+        workItemKey: row.work_item_key,
+        currency: row.currency,
+      }));
+      return [...timeItems, ...costs]
+        .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
+        .slice(0, limit);
+    }
+
+    const timeRows = await selectRows<{
+      id: string;
+      date: string;
+      person: string | null;
+      project_key: string | null;
+      work_item_key: string | null;
+      title: string | null;
+      minutes: string;
+      currency: string | null;
+    }>(sql`SELECT te.id, te.date::text AS date, ${PERSON} AS person,
+        p.slug AS project_key, w.key AS work_item_key,
+        COALESCE(NULLIF(btrim(te.description), ''), w.title) AS title,
+        te.minutes, te.currency
+      ${timeFrom(ctx)}
+      AND ${timeDates(ctx)}
+      AND ${handle === null ? sql`true` : sql`p.slug = ${handle}`}
+      ORDER BY te.date DESC, te.created_at DESC LIMIT ${limit}`);
+    return timeRows.map((row) => ({
+      kind: "time_entry" as const,
+      key: row.id,
+      title: row.title ?? "",
+      projectKey: row.project_key,
+      state: null,
+      priority: null,
+      date: row.date,
+      person: row.person,
+      hours: minutesToHours(num(row.minutes)),
+      workItemKey: row.work_item_key,
+      currency: row.currency,
+    }));
+  },
 };
 
 const portfolioHealth: ExtraDrill = {

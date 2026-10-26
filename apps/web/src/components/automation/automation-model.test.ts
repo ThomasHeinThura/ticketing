@@ -28,6 +28,12 @@ const rule: Automation = {
   ],
   actions: [
     { type: "assign", assigneeId: "p1" },
+    {
+      type: "notify",
+      teamId: "tm_1",
+      title: "Attention",
+      body: "{{work_item.key}}",
+    },
     { type: "set_due_date", dueInDays: null },
     { type: "transition", toStateKey: "x" },
   ],
@@ -68,6 +74,7 @@ describe("rule drafts round-trip", () => {
     expect(draft.actions.map((entry) => entry.readOnly)).toEqual([
       false,
       false,
+      false,
       true,
     ]);
     expect(isEditableCondition({ field: "organisation", op: "eq" })).toBe(
@@ -100,6 +107,22 @@ describe("draft to JSON", () => {
     expect(make("call_webhook", "w1")).toEqual({
       type: "call_webhook",
       webhookId: "w1",
+    });
+    expect(
+      actionToJson({
+        key: "k",
+        type: "notify",
+        value: "",
+        teamId: "tm_1",
+        title: "Needs attention",
+        body: "{{work_item.key}}",
+        readOnly: false,
+      }),
+    ).toEqual({
+      type: "notify",
+      teamId: "tm_1",
+      title: "Needs attention",
+      body: "{{work_item.key}}",
     });
   });
 
@@ -157,6 +180,18 @@ describe("validateDraft", () => {
       { key: "b", type: "set_priority", value: "", readOnly: false },
     ];
     expect(validateDraft(draft)).toEqual([]);
+    draft.actions = [
+      {
+        key: "n",
+        type: "notify",
+        value: "",
+        teamId: "",
+        title: "",
+        body: "",
+        readOnly: false,
+      },
+    ];
+    expect(validateDraft(draft)).toEqual(["actionValueRequired"]);
   });
 
   it("asks for a condition value unless the operator is about emptiness", () => {

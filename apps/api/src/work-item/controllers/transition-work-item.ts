@@ -34,6 +34,7 @@ import {
   stateTemplateTable,
   workItemSlaCacheTable,
   workItemTable,
+  workspaceTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { enqueueOutboxEvent } from "../../events/outbox";
@@ -76,6 +77,8 @@ import {
 export type TransitionWorkItemInput = {
   toStateTemplateId: string;
   note?: string;
+  /** Trusted route metadata derived from the authenticated API-key kind. */
+  auditOrigin?: "mcp";
 };
 
 export type TransitionedWorkItem = {
@@ -532,6 +535,17 @@ export async function transitionWorkItem(
     (await serviceCatalogueEnabled(ctx.workItem.workspaceId));
   const result = await runTransactionCatchingSlaPauseConflict(fromStateId, () =>
     db.transaction(async (tx) => {
+      // Workspace state-template writers take this workspace row FOR UPDATE before
+      // project/state/item locks. Take the compatible lock before any item lock so a
+      // transition cannot introduce a new reference after an in-use preflight.
+      const [workspace] = await tx
+        .select({ id: workspaceTable.id })
+        .from(workspaceTable)
+        .where(eq(workspaceTable.id, ctx.workItem.workspaceId))
+        .for("share")
+        .limit(1);
+      if (!workspace)
+        throw new HTTPException(404, { message: "Work item not found" });
       await lockRelationGraph(tx, ctx.workItem.workspaceId);
       // B1: lock the row FIRST, before deciding anything guard-shaped. Every fact below is
       // read from THIS locked row, never from `ctx`'s earlier, unlocked read.
@@ -1034,7 +1048,10 @@ export async function transitionWorkItem(
           entityType: "work_item",
           entityId: ctx.workItem.id,
           before: { assigneeId: previousAssigneeId },
-          after: { assigneeId: assigneeIdPatch },
+          after: {
+            assigneeId: assigneeIdPatch,
+            ...(input.auditOrigin ? { origin: input.auditOrigin } : {}),
+          },
         });
         assigneeEventKind =
           assigneeIdPatch === null ? "unassigned" : "assigned";
@@ -1093,6 +1110,7 @@ export async function transitionWorkItem(
           stateId: toStateId,
           assigneeId: updated.assigneeId,
           resolvedAt: updated.resolvedAt?.toISOString() ?? null,
+          ...(input.auditOrigin ? { origin: input.auditOrigin } : {}),
         },
       });
 

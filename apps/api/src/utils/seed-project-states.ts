@@ -1,6 +1,9 @@
 import type db from "../database";
 import { executorOrDefault } from "../database/executor";
-import { DEFAULT_STATE_GROUP } from "./default-state-templates";
+import {
+  DEFAULT_STATE_GROUP,
+  DEFAULT_STATE_TEMPLATES,
+} from "./default-state-templates";
 import {
   findAnyProjectState,
   insertProjectStateRows,
@@ -64,7 +67,11 @@ export async function seedProjectStates(
     return groupDelta !== 0 ? groupDelta : a.key.localeCompare(b.key);
   });
 
+  const configuredDefaultKey = DEFAULT_STATE_TEMPLATES.find(
+    (template) => template.group === DEFAULT_STATE_GROUP,
+  )?.key;
   const defaultTemplate =
+    ordered.find((template) => template.key === configuredDefaultKey) ??
     ordered.find((template) => template.group === DEFAULT_STATE_GROUP) ??
     ordered[0];
 

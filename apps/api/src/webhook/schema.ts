@@ -1,5 +1,8 @@
 import { z } from "../openapi";
 import { WEBHOOK_EVENT_KEYS } from "./constants";
+import { webhookSecretField } from "./secret-contract";
+
+export { webhookSecretField } from "./secret-contract";
 
 const eventKey = z.enum(WEBHOOK_EVENT_KEYS);
 
@@ -10,12 +13,6 @@ const eventsField = z
   .refine((events) => new Set(events).size === events.length, {
     message: "events must not repeat",
   });
-
-/**
- * The signing secret is write-only (`WH-1`: "never returned by the API"). The consumer therefore
- * chooses it and supplies it here; the UI offers a generator, and the value is never echoed.
- */
-export const webhookSecretField = z.string().min(24).max(256);
 
 export const webhookIdParam = z.object({ id: z.string().min(1).max(128) });
 export const deliveryIdParam = z.object({ id: z.string().min(1).max(128) });

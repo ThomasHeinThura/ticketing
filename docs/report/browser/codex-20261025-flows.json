@@ -1,0 +1,91 @@
+{
+	"method": "Real Chromium UI writes on isolated persisted audit copy. Only newly named audit records are modified; TLS exception as documented.",
+	"results": [
+		{
+			"name": "create-cycle-reload",
+			"persisted": true,
+			"outcome": "passed",
+			"finalPath": "/agent/projects/HELP/cycles",
+			"screenshot": "docs/report/screens/codex-20261025-flow-create-cycle-reload.png"
+		},
+		{
+			"name": "create-module-reload",
+			"outcome": "failed",
+			"error": "expect(locator).toBeVisible() failed\n\nLocator: getByText('SIT Audit 20261025 Module', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('SIT Audit 20261025 Module', { exact: true }) with timeout 5000ms\n  - waiting for getByText('SIT Audit 20261025 Module', { exact: true })\n",
+			"finalPath": "/agent/projects/HELP/modules",
+			"screenshot": "docs/report/screens/codex-20261025-flow-create-module-reload.png"
+		},
+		{
+			"name": "create-page-reload",
+			"persisted": true,
+			"outcome": "passed",
+			"finalPath": "/agent/projects/HELP/pages/iro3z5nvl0tueojrosk5bzo1",
+			"screenshot": "docs/report/screens/codex-20261025-flow-create-page-reload.png"
+		},
+		{
+			"name": "inspect-create-work",
+			"buttons": [
+				"TaskDesk Service Desk",
+				"Notifications",
+				"SA",
+				"Search/",
+				"Overview",
+				"Inbox",
+				"My work",
+				"Triage",
+				"Projects",
+				"Saved views",
+				"Members",
+				"Invitations",
+				"Settings",
+				"Projects",
+				"Customer Support Desk",
+				"More",
+				"Toggle sidebar",
+				"TaskDesk Service Desk",
+				"Customer Support Desk",
+				"Backlog",
+				"Tasks",
+				"Calendar",
+				"Gantt",
+				"Cycles",
+				"Modules",
+				"Pages",
+				"Filter",
+				"Task number",
+				"",
+				"Group",
+				"Select items",
+				"Board",
+				"List",
+				"Table",
+				"Create work item",
+				"HELP-2?Provision VPN & analytics access for Acme engineeringAccess",
+				"HELP-14?Temporary original dialog verification",
+				"HELP-15GHTemporary complete creation verificationOct 29",
+				"HELP-16ATTemporary persisted label verificationAccessOct 29",
+				"HELP-17ATTemporary new-label creation verificationLocal verification label1/2Oct 29",
+				"HELP-1?Production SSO certificate rotation & SLA verificationChange window",
+				"HELP-3?Internal database index maintenance reviewChange window",
+				"HELP-4ATRotate production SSO certificate after CAB approvalChange windowCustomer follow-upOct 23Breached",
+				"HELP-7GHInvestigate intermittent analytics refresh failuresCustomer follow-upIncidentOct 26Breached",
+				"HELP-13?Temporary local drag verification",
+				"HELP-5GHVerify certificate chain and sign-in on the customer portalAccessCustomer follow-upOct 24Breached",
+				"HELP-11?Temporary local approval verification",
+				"HELP-12?This is the testOct 31",
+				"HELP-6GHComplete VPN onboarding and publish access guideAccessOct 21Missed"
+			],
+			"headings": [
+				"Customer Support Desk · Work items",
+				"Backlog",
+				"To Do",
+				"In Progress",
+				"Done",
+				"Cancelled"
+			],
+			"outcome": "passed",
+			"finalPath": "/agent/projects/HELP/work",
+			"screenshot": "docs/report/screens/codex-20261025-flow-inspect-create-work.png"
+		}
+	]
+}

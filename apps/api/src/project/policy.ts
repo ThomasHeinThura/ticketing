@@ -179,6 +179,24 @@ export const projectPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  "GET /api/projects/{projectId}/settings/inheritance": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PATCH /api/projects/{projectId}/settings/inheritance": {
+    capability: "project:manage_settings",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PATCH /api/projects/{projectId}/state-set": {
+    capability: "project:manage_settings",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
 
   // VW-8: read the project's active concrete states, including empty board columns.
   // Reach is resolved from the named project row before project:read is enforced.
@@ -288,6 +306,15 @@ export const projectPolicies = {
   // both routes map to the one narrower target capability the runtime does not distinctly
   // enforce.
   "PUT /api/project/{id}/unarchive": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // Restore a soft-deleted project within PR-16's retained recovery window.
+  // This reuses the same project:update authority as archive/unarchive.
+  "PUT /api/project/{id}/restore": {
     capability: "project:update",
     scope: "project",
     scopeSource: "row",

@@ -1,0 +1,705 @@
+{
+	"writeRequests": [
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-1863/rank",
+			"key": "PERF-1863",
+			"operation": "rank",
+			"bodyKeys": ["afterId", "beforeId"],
+			"body": {
+				"beforeId": "a03oizj1k8xx8cnnaxa09dva",
+				"afterId": "a07nduomdh0ox0zm921an8bh"
+			},
+			"beforeId": "a03oizj1k8xx8cnnaxa09dva",
+			"afterId": "a07nduomdh0ox0zm921an8bh",
+			"beforeKey": "PERF-7972",
+			"afterKey": "PERF-6219"
+		},
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"key": "PERF-7972",
+			"operation": "rank",
+			"bodyKeys": ["afterId", "beforeId"],
+			"body": {
+				"beforeId": "a03fohihmsd74wy8dcaiifa8",
+				"afterId": "a07nduomdh0ox0zm921an8bh"
+			},
+			"beforeId": "a03fohihmsd74wy8dcaiifa8",
+			"afterId": "a07nduomdh0ox0zm921an8bh",
+			"beforeKey": "PERF-1863",
+			"afterKey": "PERF-6219"
+		}
+	],
+	"writeResponses": [
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-1863/rank",
+			"status": 200,
+			"contentType": "application/json"
+		},
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"status": 200,
+			"contentType": "application/json"
+		}
+	],
+	"wireRankRequests": [
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-1863/rank",
+			"key": "PERF-1863",
+			"body": {
+				"beforeId": "a03oizj1k8xx8cnnaxa09dva",
+				"afterId": "a07nduomdh0ox0zm921an8bh"
+			},
+			"beforeKey": "PERF-7972",
+			"afterKey": "PERF-6219"
+		},
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"key": "PERF-7972",
+			"body": {
+				"beforeId": "a03fohihmsd74wy8dcaiifa8",
+				"afterId": "a07nduomdh0ox0zm921an8bh"
+			},
+			"beforeKey": "PERF-1863",
+			"afterKey": "PERF-6219"
+		}
+	],
+	"bundleHashes": [
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		}
+	],
+	"artifact": "codex-20261025-keyboard-sensor-retest-final",
+	"fixtureBaselineOrder": ["PERF-7972", "PERF-1863", "PERF-6219"],
+	"target": {
+		"origin": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871,
+		"strictTls": true
+	},
+	"fixture": {
+		"projectSlug": "PERF",
+		"expectedRows": 10000
+	},
+	"checks": [
+		{
+			"name": "strict-TLS fixture owner and live API ID/key map",
+			"pass": true,
+			"rowsMapped": 200,
+			"initialRankOrder": ["PERF-1863", "PERF-7972", "PERF-6219"],
+			"fixtureBaselineOrder": ["PERF-7972", "PERF-1863", "PERF-6219"]
+		},
+		{
+			"name": "board Escape cancellation and idle Enter",
+			"pass": true,
+			"fixtureKey": "PERF-1863",
+			"escapeWrites": 0,
+			"idleEnterOpenedDetail": true
+		},
+		{
+			"name": "board paced persisted keyboard rank",
+			"pass": false,
+			"error": "board fresh GET did not match rank response position/version"
+		},
+		{
+			"name": "board fast persisted keyboard rank",
+			"pass": false,
+			"error": "board fresh GET did not match rank response position/version"
+		},
+		{
+			"name": "list fast persisted keyboard rank",
+			"pass": false,
+			"error": "list fast attempt emitted 0 rank writes"
+		},
+		{
+			"name": "grouped priority keyboard field change and UI restoration",
+			"pass": false,
+			"error": "Timed out: group priority PATCH"
+		},
+		{
+			"name": "browser console/page errors",
+			"pass": true,
+			"count": 0
+		},
+		{
+			"name": "rank order cleanup",
+			"pass": false,
+			"error": "Timed out: rank cleanup POST"
+		}
+	],
+	"traces": [
+		{
+			"layout": "board",
+			"attempt": "paced",
+			"pacing": "paced",
+			"fixtureKey": "PERF-1863",
+			"trace": [
+				{
+					"step": "before-pickup",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [],
+					"focusedKey": null
+				},
+				{
+					"step": "picked-up",
+					"dragging": true,
+					"activeKey": "PERF-1863",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 200,
+						"containerId": "Sortable-2"
+					},
+					"overKey": "PERF-1863",
+					"liveAnnouncements": [
+						"Picked up TaskDeskPerf10k-20261025 #01863 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				},
+				{
+					"step": "after-ArrowDown-1",
+					"dragging": true,
+					"activeKey": "PERF-1863",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 200,
+						"containerId": "Sortable-2"
+					},
+					"overKey": "PERF-7972",
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 is over TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				},
+				{
+					"step": "after-ArrowDown-2",
+					"dragging": true,
+					"activeKey": "PERF-1863",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 200,
+						"containerId": "Sortable-2"
+					},
+					"overKey": "PERF-6219",
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 is over TaskDeskPerf10k-20261025 #06219 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				},
+				{
+					"step": "after-ArrowUp-3",
+					"dragging": true,
+					"activeKey": "PERF-1863",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 200,
+						"containerId": "Sortable-2"
+					},
+					"overKey": "PERF-7972",
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 is over TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				},
+				{
+					"step": "after-drop",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [
+						"PERF-1863 moved to position 2 of 200 in To Do.",
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 was dropped on TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				},
+				{
+					"step": "finally",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [],
+					"focusedKey": null
+				}
+			]
+		},
+		{
+			"layout": "board",
+			"attempt": "fast",
+			"pacing": "fast-no-delays",
+			"fixtureKey": "PERF-7972",
+			"trace": [
+				{
+					"step": "before-pickup",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [],
+					"focusedKey": null
+				},
+				{
+					"step": "after-drop",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [
+						"PERF-7972 moved to position 2 of 200 in To Do.",
+						"TaskDeskPerf10k-20261025 #07972 — 性能測試項目 was dropped on TaskDeskPerf10k-20261025 #01863 — 性能測試項目."
+					],
+					"focusedKey": "PERF-7972"
+				},
+				{
+					"step": "finally",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [],
+					"focusedKey": null
+				}
+			]
+		},
+		{
+			"layout": "list",
+			"attempt": "fast",
+			"pacing": "fast-no-delays",
+			"fixtureKey": "PERF-1863",
+			"trace": [
+				{
+					"step": "before-pickup",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [],
+					"focusedKey": null
+				},
+				{
+					"step": "after-drop",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 was dropped."
+					],
+					"focusedKey": null
+				},
+				{
+					"step": "finally",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 was dropped."
+					],
+					"focusedKey": null
+				}
+			]
+		},
+		{
+			"layout": "grouped",
+			"pacing": "fast-no-delays",
+			"fixtureKey": "PERF-1181",
+			"trace": [
+				{
+					"step": "group-before-pickup",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [],
+					"focusedKey": null
+				},
+				{
+					"step": "group-picked-up",
+					"dragging": true,
+					"activeKey": "PERF-1181",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 59,
+						"containerId": "Sortable-0"
+					},
+					"overKey": "PERF-1181",
+					"liveAnnouncements": [
+						"Picked up TaskDeskPerf10k-20261025 #01181 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1181"
+				}
+			]
+		}
+	],
+	"errors": [],
+	"screenshots": [
+		"codex-20261025-keyboard-sensor-final-board-paced-paced.png",
+		"codex-20261025-keyboard-sensor-final-board-fast-fast.png",
+		"codex-20261025-keyboard-sensor-final-list-fast-fast.png",
+		"codex-20261025-keyboard-sensor-final-grouped-priority-change.png"
+	],
+	"initialRankOrder": ["PERF-1863", "PERF-7972", "PERF-6219"],
+	"idKeyMap": {
+		"a03fohihmsd74wy8dcaiifa8": "PERF-1863",
+		"a03oizj1k8xx8cnnaxa09dva": "PERF-7972",
+		"a07nduomdh0ox0zm921an8bh": "PERF-6219",
+		"a0c03v0fq6mug1plfjy029hk": "PERF-6083",
+		"a0crrhqz1ldohhc3opcbb5cq": "PERF-8204",
+		"a0dh0a7ez8xl2va8aeil53vs": "PERF-1024",
+		"a0djeteqqyaa9raxbd6zqx3x": "PERF-3454",
+		"a0f9c7prpg9hn18h4ysrui43": "PERF-4512",
+		"a0fiu4q56oft81np31sxbwid": "PERF-7275",
+		"a0jst18mupke6y1tb3io7ebd": "PERF-4947",
+		"a0uhcsxlm5n5ve5ugh8t0ma2": "PERF-1291",
+		"a0w4hra593z7wo42z43ukw91": "PERF-4548",
+		"a13e373wobm6whmrfm52kab6": "PERF-1181",
+		"a17bxldgj9zgh23uvj0pw1ts": "PERF-3624",
+		"a1d73pqd80ujl7thl1wh4cxw": "PERF-7933",
+		"a1dizx50uqpnngjnqx61xlmz": "PERF-817",
+		"a1mqz9h5rg85ju03z95xsfbf": "PERF-1536",
+		"a1nbs26re5kt8xwmfnjd6y7m": "PERF-9005",
+		"a1oupa8zeoxhlv4twzan976d": "PERF-7936",
+		"a1ox7rciifb7j89fn3c2kzdt": "PERF-8005",
+		"a1pl7xd7dg2aiea12h4kbt46": "PERF-2429",
+		"a1rjuicc7yxuaccws5yvffif": "PERF-2923",
+		"a1s2lknjayt5ao3jqf9qssna": "PERF-9054",
+		"a1uofb5bll6xvilx85579o8w": "PERF-6856",
+		"a21niodp2oc585dthtszwo9d": "PERF-6791",
+		"a25gas4tvi5n72j0ax0jppwd": "PERF-1235",
+		"a27hau6j326rixk65o9c3739": "PERF-6031",
+		"a2agy3wk684yo5ae21obikxz": "PERF-1900",
+		"a2bws3tcey037lsncco4gt05": "PERF-921",
+		"a2dclphkjq2bo721tt6ag46w": "PERF-9703",
+		"a2ff10u9aw53wvr6rswzqjiz": "PERF-2599",
+		"a2h8m7qzyzc0gf6i33cfaorn": "PERF-5974",
+		"a2nb9srfsgv2dp0f5nlfxnbm": "PERF-6366",
+		"a2nrt70456qtm5u4gcn3ddub": "PERF-7002",
+		"a2qtxqpi6qge1lcbc4ynby8e": "PERF-7118",
+		"a2t8a688b0l2o49d5qguf17x": "PERF-1177",
+		"a30aks2p8tyii63ksu23wizu": "PERF-4442",
+		"a317xonc9la9083pjclmpdhc": "PERF-5854",
+		"a33zou73bmxvrh6mac6ek2nw": "PERF-9239",
+		"a34pijn8cvnwjs88oe848gv8": "PERF-8256",
+		"a37fl1qf8icf6es5wojh6h5l": "PERF-3282",
+		"a380kqv1lxpuh0y529fdcwsy": "PERF-3538",
+		"a38l1c0evjo2mlqcl4i169yh": "PERF-3246",
+		"a3c314hiv4olqdba8u77x0tl": "PERF-5632",
+		"a3cdu1kvhxzcmubthutfm914": "PERF-3836",
+		"a3cz04t0e01jsm3m6pl7hz6w": "PERF-9993",
+		"a3gey0gewrueezlidx2p8uu6": "PERF-1173",
+		"a3hjvhnr3621q1hco8fw6e8o": "PERF-8111",
+		"a3igw2nzqucs34m8hxvnnk5s": "PERF-9700",
+		"a3kl08kxdtae4v7enatovcix": "PERF-2662",
+		"a3lek4nczl3htzggnc8r7mmf": "PERF-9243",
+		"a3mz6oslyc0f8ye968uxzpy9": "PERF-6858",
+		"a3n4o611bk3howc4tmmxptk0": "PERF-9171",
+		"a41kep63aqxao1p13te8tksz": "PERF-9094",
+		"a4aiwmqpb33mt6mkkuanvu6l": "PERF-5404",
+		"a4csrknoo01hvl1wix046skp": "PERF-4215",
+		"a4i7c6qwxenr1gcu5gkw6hvm": "PERF-8177",
+		"a4jr44blycx8b6bd2dk3wnwi": "PERF-8718",
+		"a4oxcjgb83s81uexyairc2we": "PERF-3956",
+		"a4trvh1sssm7dkd1d6lu52vw": "PERF-9545",
+		"a50fnnaggg0yoagsmiizwdrg": "PERF-999",
+		"a51gjnbsr9rqjq9jcp4cn0u8": "PERF-5957",
+		"a552rn7ev0tc2x0u2nqr2g53": "PERF-5293",
+		"a56g9h9ux8fdilvx0wz1xg03": "PERF-1828",
+		"a58gw75ersv5uqdcr6gvumok": "PERF-7225",
+		"a5bvmnsfga7r9x1mvrq53ye6": "PERF-2992",
+		"a5dpy4d2zyocxa1d4lp207vz": "PERF-1895",
+		"a5ixnh6xz06vcj599gdbziun": "PERF-5900",
+		"a5kkyoiyeteq574h143lc8jq": "PERF-3257",
+		"a5t46rmej8irazqqqj14mix4": "PERF-9866",
+		"a5tl59y9snpaighmxsfv2jp1": "PERF-5473",
+		"a5uw4nxwztqzsyl1lu058u9g": "PERF-8881",
+		"a5wb1m8s3j1msk5x8go0zf6v": "PERF-8888",
+		"a5wj55ymcipg1dty70z9gbit": "PERF-6669",
+		"a5xja1ujtf6xsk8bybhyjjb9": "PERF-1754",
+		"a6gf914zzcr8d5jbw0dv1gp5": "PERF-3561",
+		"a6k4ograkras70fggwh9symo": "PERF-971",
+		"a6lg1eidwrybh02esbuxsuxz": "PERF-608",
+		"a6rcrpladg4ysmjbrt1zb9au": "PERF-8141",
+		"a6x5gr0qfedk65ckd1zynqr1": "PERF-6917",
+		"a6x6p47gpvrm9eavkwz4d7bu": "PERF-3448",
+		"a6y1jg1jbblut0kvgp35ju72": "PERF-7630",
+		"a6z8inwhuew18n09dxoc5x5b": "PERF-8218",
+		"a7ddorfzveqtabz3p6zytiif": "PERF-6611",
+		"a7g8ox28bkjr9jfzk8l7uzyd": "PERF-9674",
+		"a7hv263568amf3j13ubwoled": "PERF-1083",
+		"a7m17m66gaciev34wv1s244g": "PERF-3669",
+		"a7snu9uwmj1ypt5nrm0n8k7d": "PERF-5041",
+		"a7srlupq3fxmzh0a1jxv0oe9": "PERF-1339",
+		"a816f13ban9sszgi820d6yv1": "PERF-2519",
+		"a82v0zwhalju1a6vwjm2uokn": "PERF-7952",
+		"a84zgw446g6y0h7j2pv8c5i9": "PERF-3865",
+		"a8ctyfniekkxfazkdzcmudr0": "PERF-4074",
+		"a8jo2alvsf0jnrk8o1o6obus": "PERF-6330",
+		"a8pq3u96be6l6fm8ex1382ji": "PERF-1770",
+		"a8q2n2vbs0uix6jkh7rtfitf": "PERF-5725",
+		"a8x5m7kr1xop3v1q7b9s417q": "PERF-9111",
+		"a8yckh17tz5wmvybpo3prmbl": "PERF-875",
+		"a9918dl88246lihk86r9cn9h": "PERF-9769",
+		"a9dlj6thyzvrbmj0x62xxjbs": "PERF-5161",
+		"a9jkrmaauecrpgp2jxx0fx0w": "PERF-7508",
+		"aa0tngicjhh1bbbsq9u3xsga": "PERF-7038",
+		"aa4ttxzb452e9h82d9ofziq1": "PERF-6146",
+		"aa4tyrt5mb3cmtceaswk3gte": "PERF-9614",
+		"aabp5g54m2vk5zlq2u8sncvo": "PERF-2033",
+		"aafqxzm3xxjbndj9i8kxopfy": "PERF-6744",
+		"aaop619hdai4x8wcia6dj10c": "PERF-5633",
+		"aatboquzeov9z59nbxcbfc4l": "PERF-3932",
+		"aau947t6z96g0scyutryitlo": "PERF-4255",
+		"aauheklxi971mrg89ck0rdqe": "PERF-3344",
+		"aayee4e0cidjxxhefzalax20": "PERF-120",
+		"aazg27gsul71dx868kj83uzm": "PERF-3220",
+		"ab7w5x1gk1zz3vrna9gvez08": "PERF-3701",
+		"ab8j12lk7c6t00yxdb0zj6r6": "PERF-7533",
+		"abaefld64pnil9g64rxl1ap1": "PERF-873",
+		"abbkn5m23efex3h5zn0hidpm": "PERF-792",
+		"abk96ec5g625uyqze13op0lm": "PERF-4264",
+		"abmksnuybcbcd1s3ix5i6jjf": "PERF-4855",
+		"abqmy77e0o5tykcui68ybonv": "PERF-152",
+		"abxzh3yk2exq83nx7p0pxnlt": "PERF-1418",
+		"ac0eu1lo57nylt8baiwlopom": "PERF-110",
+		"ac8yix5qjbxpfxovsm10ylj0": "PERF-6921",
+		"acc04378zsziturcbvvx9spc": "PERF-2994",
+		"acctmabd3m2m1dn73cnbkso1": "PERF-1874",
+		"acdnw9n4fu6l6apvrynnkbww": "PERF-2225",
+		"ach14ksof4s22l2tdafqkl6x": "PERF-4185",
+		"acobgg25gt88d5omqxkto37h": "PERF-3202",
+		"acpdvqgb8rev8dgg0l9d7ip8": "PERF-7923",
+		"acs384k5u74wp9esmyf006lj": "PERF-1938",
+		"acummf7myi2lzafncy1fmk0y": "PERF-8359",
+		"ad76wmcqk0rgym5xaao4k0o9": "PERF-8455",
+		"adbehsjw2pcu8fh1bxghi7lj": "PERF-5939",
+		"adjgbmh18hlxy10il23d8e8c": "PERF-7401",
+		"adlas1mtopm6swya2ivn3764": "PERF-1763",
+		"adsgtn26vg439su7s5sszwkl": "PERF-9972",
+		"adsnruirzukzl0m43co0zma1": "PERF-6636",
+		"ae15t502wxhkcp5bng2onlhr": "PERF-1620",
+		"ae2dx4wwozvacbiuabjwwz28": "PERF-4439",
+		"ae2mskodgeynyel43igdhfei": "PERF-6119",
+		"ae92g1lht6wiglvo0u0fqedw": "PERF-1829",
+		"aeat0ulxzjk7dn2jv9vtur8y": "PERF-6051",
+		"aecr55dw5kssjppb3pe7gme1": "PERF-5981",
+		"aecznyq5qtdzgnddt5x8o6vg": "PERF-2642",
+		"aed4xsimgfpvhzswpdtou9rm": "PERF-3657",
+		"aehcau005sl5tmj6875px4ke": "PERF-8115",
+		"aer40vw3vjgvgkzzlkfod3v6": "PERF-6599",
+		"aexjlaaycaj5bodxuk8ep7ko": "PERF-3179",
+		"af36p7bvtjqkqt0237a2ph4k": "PERF-4746",
+		"af56c80u8p8s06aesm1etpz2": "PERF-8238",
+		"afacbv6e9f82wjl0htjh4tby": "PERF-6735",
+		"afdd8pa8ua5ipk5jjfk2nk3u": "PERF-7999",
+		"afef6uvv2tdc2gcoa7ywy4oq": "PERF-4253",
+		"afg8xb0fz6c854xz5w6tt9rt": "PERF-3195",
+		"afhlf9eu14hrsuwlt499kv84": "PERF-8822",
+		"afj3czjuy2ldohxahjojnz5k": "PERF-929",
+		"afosc927vf3c419b85la9asy": "PERF-8462",
+		"afql18ma8lex4zkugwhqyvc7": "PERF-5540",
+		"afsj8trbym7uwg0xp99j35q8": "PERF-7058",
+		"aftbva0if4452d1srivikhf4": "PERF-139",
+		"afvemn1yqdn5f6dm9i0hua3o": "PERF-4811",
+		"afx3j6a7p8eqbzhlra0bnw4e": "PERF-1728",
+		"agdz5w2kqdghav42v20rh557": "PERF-8263",
+		"agek4r0bno3lolbyss4y5x63": "PERF-7753",
+		"agukvnjnbf14blk27c7qpzpl": "PERF-9803",
+		"agzqrwc70dlzyj0un15jawa8": "PERF-3470",
+		"ah2hbyuumwa6bxu54x4dzl57": "PERF-4414",
+		"ah9ueq8nq9a05ew15igkf80b": "PERF-6133",
+		"ahelydw2oa5pn8uzhhph6izb": "PERF-1133",
+		"ahg2p13zcid0y2mlpmfqj4a6": "PERF-4468",
+		"ahhgn82ghpjoxjrvsn4knnhe": "PERF-8943",
+		"ahje97nsggpjzsg6vfjp74f2": "PERF-6334",
+		"ahuostshwybqvnjxn3t0ixoc": "PERF-1636",
+		"ahvyg06heb2t765816jslwur": "PERF-6786",
+		"ahwog0h8w7wqt866raav3o0j": "PERF-3080",
+		"ahx5uqps9pvf0lgzg8byi82g": "PERF-6113",
+		"ai09564uilta51dwzf5imkjz": "PERF-3425",
+		"ai40yy6rghb6gucohuyksa0t": "PERF-8203",
+		"ai5951oar05g1zmgf84y6xky": "PERF-1477",
+		"air46xcbjtzj3f9k7kce66nq": "PERF-7744",
+		"aiyu7izkq4ddwc1y7cdanquw": "PERF-2245",
+		"aj2oo0o6vyou4820mk56b4zl": "PERF-2509",
+		"aj4p3jcy1ax2lljczkylk9yn": "PERF-8261",
+		"ajcgau9eqnchw70e42d01y73": "PERF-8578",
+		"ajfvvcvn86n5eemfmvjhq613": "PERF-192",
+		"ajgms4yalxosu4hnq0nsjw9j": "PERF-7254",
+		"aji8xb6bu5i5qj4uuaauofev": "PERF-4769",
+		"ajildvzqog6z734jvzsiqn2w": "PERF-1507",
+		"ajlx40f3w14uhp63274u8hpj": "PERF-8361",
+		"ajt0cufxgqm3z6wjv0s90nyz": "PERF-92",
+		"ajupe7tf9ca4ni1ti61ksjq8": "PERF-5811",
+		"ajv7qfvkdcxl4e3uy88xdmbx": "PERF-5188",
+		"ajvvqw3x9tvxbs4v2456tv49": "PERF-6477",
+		"ajx8zwpr1s5rskxolqdkpden": "PERF-5375",
+		"ajyi9ysyb0b7z585h5psdeed": "PERF-4619",
+		"ajyrq6fu2fggipz1nmgjwg3u": "PERF-1749",
+		"ak2w8r9n2s3n8um6um4o97iy": "PERF-5295",
+		"ak3s1w19ohc8ye8wu6s5qcvb": "PERF-312",
+		"ak8t0uz7x8sql1p2y0mtbj8p": "PERF-9957",
+		"akeizwvhg96oa1ugxy6asp39": "PERF-4133",
+		"akig49rmrkiqjv342f7lv0za": "PERF-3219"
+	}
+}

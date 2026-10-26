@@ -1,0 +1,168 @@
+{
+	"artifact": "codex-20261025-keyboard-rank-wire-diagnostic",
+	"target": {
+		"origin": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871,
+		"strictTls": true
+	},
+	"errors": [],
+	"routeRequests": [
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"key": "PERF-7972",
+			"contentType": "application/json",
+			"body": {
+				"beforeId": "a03fohihmsd74wy8dcaiifa8",
+				"afterId": "a07nduomdh0ox0zm921an8bh"
+			}
+		},
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"key": "PERF-7972",
+			"contentType": "application/json",
+			"body": {
+				"beforeId": null,
+				"afterId": "a03fohihmsd74wy8dcaiifa8"
+			}
+		}
+	],
+	"responses": [
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"status": 200,
+			"contentType": "application/json",
+			"responseRequestPath": "/api/work-items/PERF-7972/rank",
+			"json": {
+				"keys": ["key", "position", "version"],
+				"key": "PERF-7972",
+				"position": "2.9960937500",
+				"version": 6
+			}
+		},
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"status": 200,
+			"contentType": "application/json",
+			"responseRequestPath": "/api/work-items/PERF-7972/rank",
+			"json": {
+				"keys": ["key", "position", "version"],
+				"key": "PERF-7972",
+				"position": "1.9921875000",
+				"version": 7
+			}
+		}
+	],
+	"bundleHashes": [
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		}
+	],
+	"originalTopThree": ["PERF-7972", "PERF-1863", "PERF-6219"],
+	"checks": [
+		{
+			"name": "rank request crossed API wire with bound neighbors",
+			"pass": true,
+			"request": {
+				"method": "POST",
+				"path": "/api/work-items/PERF-7972/rank",
+				"key": "PERF-7972",
+				"contentType": "application/json",
+				"body": {
+					"beforeId": "a03fohihmsd74wy8dcaiifa8",
+					"afterId": "a07nduomdh0ox0zm921an8bh"
+				}
+			},
+			"response": {
+				"method": "POST",
+				"path": "/api/work-items/PERF-7972/rank",
+				"status": 200,
+				"contentType": "application/json",
+				"responseRequestPath": "/api/work-items/PERF-7972/rank",
+				"json": {
+					"keys": ["key", "position", "version"],
+					"key": "PERF-7972",
+					"position": "2.9960937500",
+					"version": 6
+				}
+			}
+		},
+		{
+			"name": "fresh API read matches successful rank DTO",
+			"pass": true,
+			"responsePosition": "2.9960937500",
+			"responseVersion": 6,
+			"getPosition": "2.9960937500",
+			"getVersion": 6,
+			"reloadedIndex": 1
+		},
+		{
+			"name": "fixture rank order restored",
+			"pass": true,
+			"originalTopThree": ["PERF-7972", "PERF-1863", "PERF-6219"],
+			"finalTopThree": ["PERF-7972", "PERF-1863", "PERF-6219"]
+		}
+	],
+	"cleanupDone": true
+}

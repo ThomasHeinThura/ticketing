@@ -47,6 +47,7 @@ import { toast } from "@/lib/toast";
 const METRICS = ["first_response", "resolution"] as const;
 const PRIORITIES = ["low", "medium", "high", "urgent"] as const;
 const MAX_TARGET_MINUTES = 2_147_483_647;
+const STABLE_KEY_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/u;
 type Metric = (typeof METRICS)[number];
 type Priority = (typeof PRIORITIES)[number];
 type TargetInput = Record<string, string>;
@@ -122,6 +123,8 @@ export function SlaPolicyEditor({ id }: { id: string }) {
   const updatePolicy = useUpdateSlaPolicy();
   const publishPolicy = usePublishSlaPolicy();
   const [name, setName] = useState("");
+  const [stableKey, setStableKey] = useState("");
+  const [stableKeyError, setStableKeyError] = useState(false);
   const [description, setDescription] = useState("");
   const [calendarId, setCalendarId] = useState("");
   const [threshold, setThreshold] = useState("75");
@@ -161,6 +164,8 @@ export function SlaPolicyEditor({ id }: { id: string }) {
   const hydrate = useCallback((nextPolicy: SlaPolicy) => {
     const version = sourceVersion(nextPolicy);
     setName(nextPolicy.name);
+    setStableKey(nextPolicy.key);
+    setStableKeyError(false);
     setDescription(nextPolicy.description ?? "");
     setCalendarId(version?.calendarId ?? "");
     setThreshold(String(version?.atRiskThresholdPct ?? 75));
@@ -184,6 +189,10 @@ export function SlaPolicyEditor({ id }: { id: string }) {
 
   async function saveDraft(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isNew && !STABLE_KEY_PATTERN.test(stableKey.trim())) {
+      setStableKeyError(true);
+      return;
+    }
     if (!canSubmit) return;
     const data: SlaPolicyInput = {
       name: name.trim(),
@@ -195,7 +204,10 @@ export function SlaPolicyEditor({ id }: { id: string }) {
     try {
       if (isNew) {
         if (!workspace?.id) return;
-        const created = await createPolicy.mutateAsync(data);
+        const created = await createPolicy.mutateAsync({
+          ...data,
+          key: stableKey.trim(),
+        });
         toast.success(t("editor.saved"));
         await navigate({
           to: routes.slaPolicyEditor.path,
@@ -384,6 +396,43 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                   required
                   disabled={!canManage || isCheckingPermissions}
                 />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="sla-policy-key">
+                  {t(
+                    isNew
+                      ? "editor.stableKeyLabel"
+                      : "editor.stableKeyReadOnlyLabel",
+                  )}
+                </FieldLabel>
+                <Input
+                  id="sla-policy-key"
+                  value={isNew ? stableKey : (policy?.key ?? "")}
+                  onChange={(event) => {
+                    setStableKey(event.target.value);
+                    setStableKeyError(false);
+                  }}
+                  maxLength={64}
+                  autoComplete="off"
+                  readOnly={!isNew}
+                  aria-invalid={stableKeyError}
+                  aria-describedby={
+                    stableKeyError ? "sla-policy-key-error" : undefined
+                  }
+                  disabled={isNew && (!canManage || isCheckingPermissions)}
+                />
+                <p className="text-muted-foreground text-xs">
+                  {t("editor.stableKeyHelp")}
+                </p>
+                {stableKeyError ? (
+                  <p
+                    id="sla-policy-key-error"
+                    className="text-destructive text-xs"
+                    role="alert"
+                  >
+                    {t("editor.stableKeyInvalid")}
+                  </p>
+                ) : null}
               </Field>
               <Field>
                 <FieldLabel htmlFor="sla-policy-description">

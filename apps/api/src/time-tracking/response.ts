@@ -178,12 +178,31 @@ export const budgetSchema = z.object({
   /** Minutes valued in other currencies, reported separately and never converted (TC-19). */
   otherCurrencies: z.array(costByCurrencySchema).optional(),
   unpricedMinutes: z.number().int().optional(),
-  /**
-   * TC-17: committed would be estimated remaining work valued at current rates. Estimates in this
-   * product are story points (`estimate`/`estimate_point`), not remaining hours, so there is no
-   * time estimate to value; committed stays null rather than guessed.
-   */
-  committedMinor: z.number().int().nullable(),
+  /** TC-17: scalar only when the full known forecast is in this budget's currency. */
+  committedMinor: z.number().int().nullable().optional(),
+  /** Separate totals retain each applicable current rate's currency; no conversion is implied. */
+  committedByCurrency: z
+    .array(
+      z.object({
+        currency: z.string(),
+        amountMinor: z.number().int(),
+        taskCount: z.number().int(),
+      }),
+    )
+    .optional(),
+  /** Rate-derived unknown totals are omitted from callers without manage_rates. */
+  committedUnknown: z
+    .object({
+      taskCount: z.number().int(),
+      reasons: z.object({
+        unscheduled: z.number().int(),
+        nonTime: z.number().int(),
+        unassigned: z.number().int(),
+        unrated: z.number().int(),
+      }),
+      knownRemainingMinutes: z.number().int(),
+    })
+    .optional(),
   createdAt: responseTimestamp,
 });
 export const budgetResponseSchema = z.object({

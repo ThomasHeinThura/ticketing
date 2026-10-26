@@ -93,7 +93,9 @@ const getWorkItemAuditHistoryRoute = createRoute({
   summary: "Read one entity's audit history",
   description:
     "Audit rows for one entity, newest first (at most 200). Only `type=work_item` is supported; its `id` is the work item key, and reach plus `work_item:read` are enforced exactly as for the work item itself. Each read is audited (AU-13).",
-  middleware: [requireWorkItemReach("id")] as const,
+  middleware: [
+    requireWorkItemReach("id", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: auditEntityParam },
   responses: {
     200: jsonResponse("Audit rows for the entity", auditEntityHistorySchema),
@@ -111,7 +113,9 @@ const reconstructWorkItemRoute = createRoute({
   summary: "Reconstruct a work item at an instant",
   description:
     "Replays the work item's activity journal up to `at` and returns each recorded field's value then (AU-8, AU-9). A field the journal never changed does not appear. `snapshot` is null when `at` precedes the first recorded activity. Never a stored snapshot.",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: workItemKeyParam, query: reconstructQuery },
   responses: {
     200: jsonResponse("Reconstructed state", workItemReconstructionSchema),

@@ -1,16 +1,18 @@
 import { Button } from "@taskdesk/ui";
 import {
+  Eye,
   FileArchive,
   File as FileIcon,
   FileImage,
   FileSpreadsheet,
   FileText,
+  RotateCcw,
   Trash2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { WorkItemAttachment } from "@/fetchers/attachment/work-item-attachments";
 import { getApiUrl } from "@/fetchers/get-api-url";
-import { formatDateMedium } from "@/lib/format";
+import { formatDateMedium, formatDateTime } from "@/lib/format";
 
 export function formatAttachmentSize(size: number) {
   if (size < 1024) return `${size} B`;
@@ -21,6 +23,10 @@ export function formatAttachmentSize(size: number) {
 /** The raster formats every browser renders; SVG is a script vector and never inlined (AT-8). */
 export function isInlineImage(mimeType: string) {
   return /^image\/(png|jpe?g|gif|webp)$/i.test(mimeType);
+}
+
+export function isPdfPreview(mimeType: string) {
+  return mimeType.trim().toLowerCase() === "application/pdf";
 }
 
 /** The API's short-lived redirect: the only way bytes are read, always behind a policy check. */
@@ -40,8 +46,8 @@ function KindIcon({ mimeType }: { mimeType: string }) {
 }
 
 /**
- * AT-8: an image renders as an inline thumbnail that opens the lightbox; everything else
- * is a Kaneo attachment card with icon, filename, size and uploader that downloads.
+ * AT-8: an image opens the lightbox; PDFs keep the download card and add a sandboxed
+ * preview action; every other file remains a downloadable Kaneo attachment card.
  */
 export default function WorkItemAttachmentTile({
   attachment,
@@ -49,12 +55,18 @@ export default function WorkItemAttachmentTile({
   onPreview,
   onDelete,
   deleteDisabled,
+  onRestore,
+  restoreDisabled,
+  recoverable = false,
 }: {
   attachment: WorkItemAttachment;
   uploaderName?: string;
   onPreview: (attachment: WorkItemAttachment) => void;
   onDelete?: (attachment: WorkItemAttachment) => void;
   deleteDisabled?: boolean;
+  onRestore?: (attachment: WorkItemAttachment) => void;
+  restoreDisabled?: boolean;
+  recoverable?: boolean;
 }) {
   const { t } = useTranslation();
   const meta = [
@@ -80,6 +92,65 @@ export default function WorkItemAttachmentTile({
         <Trash2 className="size-4" />
       </Button>
     ) : null;
+  const restore =
+    attachment.canRestore === true && onRestore ? (
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label={t("workItems:detail.attachments.restore", {
+          name: attachment.filename,
+        })}
+        disabled={restoreDisabled}
+        onClick={() => onRestore(attachment)}
+      >
+        <RotateCcw className="size-4" />
+      </Button>
+    ) : null;
+
+  if (recoverable) {
+    const recoveryUntil = attachment.deletedAt
+      ? formatDateTime(
+          new Date(
+            new Date(attachment.deletedAt).getTime() + 24 * 60 * 60 * 1000,
+          ),
+        )
+      : null;
+    const recoveryMeta = [
+      meta,
+      attachment.commentId
+        ? t("workItems:detail.attachments.commentParent")
+        : null,
+      recoveryUntil
+        ? t("workItems:detail.attachments.recoverableUntil", {
+            date: recoveryUntil,
+          })
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return (
+      <li
+        className="col-span-full flex min-w-0 items-center gap-1"
+        data-testid="work-item-attachment"
+        data-kind="recoverable"
+      >
+        <div className="taskdesk-attachment-card min-w-0 max-w-none flex-1">
+          <span className="taskdesk-attachment-card-icon">
+            <KindIcon mimeType={attachment.mimeType} />
+          </span>
+          <span className="taskdesk-attachment-card-content">
+            <span className="taskdesk-attachment-card-title">
+              {attachment.filename}
+            </span>
+            <span className="taskdesk-attachment-card-meta">
+              {recoveryMeta}
+            </span>
+          </span>
+        </div>
+        {restore}
+      </li>
+    );
+  }
 
   if (isInlineImage(attachment.mimeType)) {
     return (
@@ -137,6 +208,18 @@ export default function WorkItemAttachmentTile({
           <span className="taskdesk-attachment-card-meta">{meta}</span>
         </span>
       </a>
+      {isPdfPreview(attachment.mimeType) ? (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t("workItems:detail.attachments.pdfPreviewOpen", {
+            name: attachment.filename,
+          })}
+          onClick={() => onPreview(attachment)}
+        >
+          <Eye className="size-4" />
+        </Button>
+      ) : null}
       {remove}
     </li>
   );

@@ -12,6 +12,7 @@ import {
 } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 import { decorateWorkItemRows } from "../decorate-rows";
+import { resolveWorkItemEpicProjections } from "../epic-projection";
 import {
   DEFAULT_WORK_ITEM_LIST_LIMIT,
   decodeWorkItemCursor,
@@ -47,10 +48,11 @@ import type { ListWorkItemsQuery } from "../schema";
  * fixed allowlist (`schema.ts`'s `listWorkItemsQuery`), so a request naming any other
  * column is a 400, never silently accepted.
  *
- * Bounded queries, no N+1: at most three queries run regardless of how many rows match --
- * one `SELECT ... LEFT/INNER JOIN ...` that resolves state name/category and assignee
- * name for the whole page in one round trip, and one `SELECT count(*)` for
- * `meta.total`. A third bounded query resolves assigned labels for this page only; there is no per-item query.
+ * Bounded queries, no N+1: a fixed number of queries run regardless of how many rows match --
+ * one `SELECT ... LEFT/INNER JOIN ...` resolves state and assignee facts for the page, one
+ * `SELECT count(*)` resolves `meta.total`, and bounded page queries resolve assigned labels
+ * and epic ancestry. Epic ancestry uses one recursive query for the whole page, never one
+ * query per item or ancestor.
  */
 
 const WORK_ITEM_PRIORITY_COLUMN_VALUES = [
@@ -75,9 +77,21 @@ async function buildFilterConditions(
   const conditions: SQL[] = [
     eq(workItemTable.projectId, projectId),
     eq(workItemTable.workspaceId, workspaceId),
-    isNull(workItemTable.archivedAt),
-    isNull(workItemTable.deletedAt),
   ];
+
+  if (query.lifecycle === "active") {
+    conditions.push(
+      isNull(workItemTable.archivedAt),
+      isNull(workItemTable.deletedAt),
+    );
+  } else if (query.lifecycle === "archived") {
+    conditions.push(
+      sql`${workItemTable.archivedAt} IS NOT NULL`,
+      isNull(workItemTable.deletedAt),
+    );
+  } else {
+    conditions.push(sql`${workItemTable.deletedAt} IS NOT NULL`);
+  }
 
   if (query.state) {
     const ids = query.state.split(",").filter((id) => id.length > 0);
@@ -276,10 +290,19 @@ export async function listWorkItems(
     labelsByItem.set(workItemId, assigned);
   }
   const decorate = await decorateWorkItemRows(db, page, (row) => row.workItem);
+  const epicByItem = await resolveWorkItemEpicProjections(
+    projectId,
+    workspaceId,
+    page.map((row) => row.workItem.id),
+  );
   return {
     data: page.map((row) => ({
       labels: labelsByItem.get(row.workItem.id) ?? [],
       ...row.workItem,
+      ...(epicByItem.get(row.workItem.id) ?? {
+        epic: null,
+        epicAvailable: false,
+      }),
       ...decorate(row),
       stateName: row.stateName,
       stateCategory: row.stateCategory,

@@ -1,5 +1,15 @@
 import { createId } from "@paralleldrive/cuid2";
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  lt,
+  notExists,
+  sql,
+} from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import type { Executor } from "../database/executor";
@@ -108,8 +118,9 @@ function summaryItem(fact: ItemFact) {
 }
 
 type StoredSummary = CycleSummary;
+const CYCLE_SNAPSHOT_BATCH_SIZE = 100;
 
-/** A completed cycle reads its frozen completion summary; any other reads live items. */
+/** A cycle with a snapshot reads its frozen summary; otherwise it reads live items. */
 async function summariesFor(
   executor: Executor,
   cycles: CycleRow[],
@@ -117,25 +128,44 @@ async function summariesFor(
 ): Promise<Map<string, CycleSummary>> {
   const result = new Map<string, CycleSummary>();
   const snapshots = new Map<string, StoredSummary>();
-  const withAction = cycles.filter((cycle) => cycle.completedAt);
-  if (withAction.length > 0) {
+  if (cycles.length > 0) {
     const rows = await executor
       .select({
         cycleId: cycleSnapshotTable.cycleId,
         summary: cycleSnapshotTable.summary,
         date: cycleSnapshotTable.date,
+        capturedAt: cycleSnapshotTable.createdAt,
       })
       .from(cycleSnapshotTable)
       .where(
         inArray(
           cycleSnapshotTable.cycleId,
-          withAction.map((cycle) => cycle.id),
+          cycles.map((cycle) => cycle.id),
         ),
       )
-      .orderBy(desc(cycleSnapshotTable.date));
-    for (const row of rows)
-      if (row.summary && !snapshots.has(row.cycleId))
-        snapshots.set(row.cycleId, row.summary as StoredSummary);
+      .orderBy(
+        desc(cycleSnapshotTable.createdAt),
+        desc(cycleSnapshotTable.date),
+      );
+    for (const row of rows) {
+      if (!row.summary || snapshots.has(row.cycleId)) continue;
+      const cycle = cycles.find(({ id }) => id === row.cycleId);
+      if (!cycle) continue;
+      const stored = row.summary as StoredSummary;
+      const basis =
+        cycle.completedAt && row.date === todayUtc(cycle.completedAt)
+          ? "completion_action"
+          : "date_catchup";
+      snapshots.set(row.cycleId, {
+        ...stored,
+        snapshot: stored.snapshot ?? {
+          capturedAt: row.capturedAt.toISOString(),
+          basis,
+          endDateSummary:
+            basis === "completion_action" ? "known_at_action" : "unknown",
+        },
+      });
+    }
   }
   const live = cycles.filter((cycle) => !snapshots.has(cycle.id));
   const facts = live.length
@@ -173,14 +203,156 @@ export async function projectUnit(
   return { unit: scopeUnitFor(estimate?.system ?? null), estimate };
 }
 
-export async function velocityFor(executor: Executor, projectId: string) {
+async function insertCycleSnapshot(
+  executor: Executor,
+  cycleId: string,
+  date: string,
+  unit: ScopeUnit,
+  summary: CycleSummary,
+  capturedAt: Date,
+  basis: "completion_action" | "date_catchup",
+) {
+  const storedSummary: CycleSummary = {
+    ...summary,
+    snapshot: {
+      capturedAt: capturedAt.toISOString(),
+      basis,
+      endDateSummary:
+        basis === "completion_action" ? "known_at_action" : "unknown",
+    },
+  };
+  const [inserted] = await executor
+    .insert(cycleSnapshotTable)
+    .values({
+      cycleId,
+      date,
+      unit,
+      scopePoints: String(
+        unit === "count" ? summary.total.count : summary.total.points,
+      ),
+      completedPoints: String(
+        unit === "count" ? summary.completed.count : summary.completed.points,
+      ),
+      itemCount: summary.total.count,
+      completedCount: summary.completed.count,
+      unestimatedCount: summary.unestimated.count,
+      summary: storedSummary as never,
+    })
+    .onConflictDoNothing({
+      target: [cycleSnapshotTable.cycleId, cycleSnapshotTable.date],
+    })
+    .returning({ cycleId: cycleSnapshotTable.cycleId });
+  return Boolean(inserted);
+}
+
+export type CycleSnapshotBatchResult = {
+  scanned: number;
+  created: number;
+  skipped: number;
+  failed: number;
+  degraded: boolean;
+};
+
+/**
+ * CY-9 backstop for cycles whose inclusive end date has passed without a completion action.
+ * Captures actual current values, explicitly marked as unable to reconstruct end-date facts.
+ * Each cycle is serialized with project and cycle writers, and its snapshot is insert-only.
+ */
+export async function snapshotEndedCycles(
+  now: Date,
+): Promise<CycleSnapshotBatchResult> {
+  const today = todayUtc(now);
+  const candidates = await db
+    .select({ id: cycleTable.id, projectId: cycleTable.projectId })
+    .from(cycleTable)
+    .where(
+      and(
+        isNull(cycleTable.completedAt),
+        lt(cycleTable.endDate, today),
+        notExists(
+          db
+            .select({ cycleId: cycleSnapshotTable.cycleId })
+            .from(cycleSnapshotTable)
+            .where(eq(cycleSnapshotTable.cycleId, cycleTable.id)),
+        ),
+      ),
+    )
+    .orderBy(asc(cycleTable.endDate), asc(cycleTable.id))
+    .limit(CYCLE_SNAPSHOT_BATCH_SIZE);
+  const result: CycleSnapshotBatchResult = {
+    scanned: candidates.length,
+    created: 0,
+    skipped: 0,
+    failed: 0,
+    degraded: false,
+  };
+
+  for (const candidate of candidates) {
+    try {
+      const created = await db.transaction(async (tx) => {
+        // Keep the same lock order as completion and estimate changes.
+        await lockProject(tx, candidate.projectId);
+        const [cycle] = await tx
+          .select()
+          .from(cycleTable)
+          .where(eq(cycleTable.id, candidate.id))
+          .for("update")
+          .limit(1);
+        if (!cycle || cycle.completedAt || cycle.endDate >= today) return false;
+
+        const existing = await tx
+          .select({ cycleId: cycleSnapshotTable.cycleId })
+          .from(cycleSnapshotTable)
+          .where(eq(cycleSnapshotTable.cycleId, cycle.id))
+          .limit(1);
+        if (existing.length > 0) return false;
+
+        const { unit } = await projectUnit(tx, cycle.projectId);
+        const facts = await loadItemFacts(
+          tx,
+          eq(workItemTable.cycleId, cycle.id),
+        );
+        const summary = summariseCycle(facts.map(summaryItem), unit);
+        return insertCycleSnapshot(
+          tx,
+          cycle.id,
+          today,
+          unit,
+          summary,
+          now,
+          "date_catchup",
+        );
+      });
+      if (created) result.created += 1;
+      else result.skipped += 1;
+    } catch (error) {
+      result.failed += 1;
+      result.degraded = true;
+      console.error("Failed to snapshot an ended cycle", {
+        cycleId: candidate.id,
+        error,
+      });
+    }
+  }
+  return result;
+}
+
+export async function velocityFor(
+  executor: Executor,
+  projectId: string,
+  now: Date = new Date(),
+) {
+  const today = todayUtc(now);
   const rows = await executor
     .select({
       cycleId: cycleTable.id,
       completedAt: cycleTable.completedAt,
+      endDate: cycleTable.endDate,
       unit: cycleSnapshotTable.unit,
       completedPoints: cycleSnapshotTable.completedPoints,
       date: cycleSnapshotTable.date,
+      createdAt: cycleSnapshotTable.createdAt,
+      summary: cycleSnapshotTable.summary,
     })
     .from(cycleTable)
     .innerJoin(
@@ -190,20 +362,30 @@ export async function velocityFor(executor: Executor, projectId: string) {
     .where(
       and(
         eq(cycleTable.projectId, projectId),
-        isNotNull(cycleTable.completedAt),
+        sql`(${cycleTable.completedAt} IS NOT NULL OR ${cycleTable.endDate} < ${today}::date)`,
       ),
     )
-    .orderBy(desc(cycleSnapshotTable.date));
+    .orderBy(desc(cycleSnapshotTable.createdAt), desc(cycleSnapshotTable.date));
   const seen = new Set<string>();
   const history = [];
   for (const row of rows) {
-    if (seen.has(row.cycleId) || !row.completedAt) continue;
+    if (seen.has(row.cycleId)) continue;
     seen.add(row.cycleId);
+    const completionDate = row.completedAt
+      ? todayUtc(row.completedAt)
+      : row.endDate;
+    const stored = row.summary as CycleSummary | null;
+    const basis =
+      stored?.snapshot?.basis ??
+      (row.completedAt && row.date === todayUtc(row.completedAt)
+        ? "completion_action"
+        : "date_catchup");
     history.push({
       cycleId: row.cycleId,
-      completedAt: row.completedAt,
+      completedAt: new Date(`${completionDate}T00:00:00.000Z`),
       unit: row.unit as ScopeUnit,
       completedPoints: Number(row.completedPoints),
+      historicalPointsKnown: basis === "completion_action",
     });
   }
   return computeVelocity(history);
@@ -217,7 +399,7 @@ export async function listCycles(scope: ProjectRef, now: Date) {
   return {
     today,
     unit,
-    velocity: await velocityFor(db, scope.projectId),
+    velocity: await velocityFor(db, scope.projectId, now),
     incompletePolicy: (await getAgileSettings(db, scope.projectId))
       .incompletePolicy,
     cycles: rows.map((row) => ({
@@ -661,41 +843,23 @@ export async function completeCycle(
     if (!row) return undefined;
     // CY-9: the frozen snapshot velocity reads, with the full summary so a later move of
     // incomplete items never rewrites what this cycle delivered.
-    await tx
-      .insert(cycleSnapshotTable)
-      .values({
-        cycleId: id,
-        date: today,
+    const existingSnapshot = await tx
+      .select({ cycleId: cycleSnapshotTable.cycleId })
+      .from(cycleSnapshotTable)
+      .where(eq(cycleSnapshotTable.cycleId, id))
+      .limit(1);
+    // A daily end-date snapshot is already the immutable record for a naturally completed
+    // cycle; don't replace it with the later completion action's view of moved work.
+    if (existingSnapshot.length === 0)
+      await insertCycleSnapshot(
+        tx,
+        id,
+        today,
         unit,
-        scopePoints: String(
-          unit === "count" ? summary.total.count : summary.total.points,
-        ),
-        completedPoints: String(
-          unit === "count" ? summary.completed.count : summary.completed.points,
-        ),
-        itemCount: summary.total.count,
-        completedCount: summary.completed.count,
-        unestimatedCount: summary.unestimated.count,
-        summary: summary as never,
-      })
-      .onConflictDoUpdate({
-        target: [cycleSnapshotTable.cycleId, cycleSnapshotTable.date],
-        set: {
-          unit,
-          scopePoints: String(
-            unit === "count" ? summary.total.count : summary.total.points,
-          ),
-          completedPoints: String(
-            unit === "count"
-              ? summary.completed.count
-              : summary.completed.points,
-          ),
-          itemCount: summary.total.count,
-          completedCount: summary.completed.count,
-          unestimatedCount: summary.unestimated.count,
-          summary: summary as never,
-        },
-      });
+        summary,
+        options.now,
+        "completion_action",
+      );
     if (plan.moveItemIds.length > 0) {
       for (const itemId of plan.moveItemIds) {
         await recordEvent(
@@ -798,7 +962,7 @@ export async function cycleDetail(row: CycleRow, now: Date) {
       retrospective: change.retrospective,
     })),
     completionPreview: await completionPreview(db, row, now),
-    velocity: await velocityFor(db, row.projectId),
+    velocity: await velocityFor(db, row.projectId, now),
     discontinuities: await discontinuitiesFor(row),
   };
 }

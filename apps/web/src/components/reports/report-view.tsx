@@ -21,15 +21,24 @@ import { metricText } from "./report-format";
 import { ReportTable } from "./report-table";
 
 /**
- * `RP-9`: where the numbers came from, stated. Closed days read from the hourly snapshots; the
- * current period (and any day not stored yet) is computed live, and the boundary is the date.
+ * `RP-9`: where the numbers came from, stated. Daily and cycle history have different snapshot
+ * boundaries; any live metric components are named separately below.
  */
 function boundaryText(
   report: ReportEnvelope,
   t: (key: string, options?: Record<string, unknown>) => string,
 ): string {
   const snapshot = report.snapshot;
-  if (report.boundary === "live" || !snapshot) return t("reports:context.live");
+  if (!snapshot) {
+    if (report.sources?.cycleSnapshot)
+      return t(
+        report.boundary === "mixed"
+          ? "reports:context.cycleMixed"
+          : "reports:context.cycleSnapshot",
+      );
+    if (report.boundary === "live") return t("reports:context.live");
+    return t("reports:context.sourcesUnknown");
+  }
   // `through` is the end of the last stored day: the day itself is the instant before it.
   const last = snapshot.through
     ? formatDate(new Date(new Date(snapshot.through).getTime() - 1), {
@@ -50,6 +59,36 @@ function boundaryText(
   );
 }
 
+function sourceSummary(
+  report: ReportEnvelope,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const sources = report.sources;
+  if (!sources) return t("reports:context.sourcesUnknown");
+  const historical: string[] = [];
+  if (sources.metricSnapshot)
+    historical.push(t("reports:context.dailySnapshots"));
+  if (sources.cycleSnapshot)
+    historical.push(t("reports:context.cycleSnapshots"));
+  const live = sources.liveComponents.map((component) =>
+    t(`reports:context.liveSource.${component}`, {
+      defaultValue: t("reports:context.liveSource.other"),
+    }),
+  );
+  if (historical.length && live.length)
+    return t("reports:context.sourcesMixed", {
+      historical: historical.join(", "),
+      live: live.join(", "),
+    });
+  if (historical.length)
+    return t("reports:context.sourcesHistorical", {
+      historical: historical.join(", "),
+    });
+  if (live.length)
+    return t("reports:context.sourcesLive", { live: live.join(", ") });
+  return t("reports:context.sourcesUnknown");
+}
+
 /** `RP-3` and `RP-4`: whose numbers these are, over which window, and as of when. */
 export function ReportContextLine({ report }: { report: ReportEnvelope }) {
   const { t } = useTranslation();
@@ -57,6 +96,16 @@ export function ReportContextLine({ report }: { report: ReportEnvelope }) {
     report.scope.kind === "all"
       ? t("reports:context.scopeAll", { count: report.scope.projectCount })
       : t("reports:context.scopeReach", { count: report.scope.projectCount });
+  const windowToDate = new Date(report.window.to);
+  const isCustomExclusiveMidnight =
+    report.window.preset === "custom" &&
+    windowToDate.getUTCHours() === 0 &&
+    windowToDate.getUTCMinutes() === 0 &&
+    windowToDate.getUTCSeconds() === 0 &&
+    windowToDate.getUTCMilliseconds() === 0;
+  const windowTo = isCustomExclusiveMidnight
+    ? new Date(windowToDate.getTime() - 1).toISOString()
+    : report.window.to;
   const window = report.window.live
     ? t("reports:context.windowLive")
     : t("reports:context.window", {
@@ -66,7 +115,7 @@ export function ReportContextLine({ report }: { report: ReportEnvelope }) {
           year: "numeric",
           timeZone: "UTC",
         }),
-        to: formatDate(report.window.to, {
+        to: formatDate(windowTo, {
           month: "short",
           day: "numeric",
           year: "numeric",
@@ -85,6 +134,8 @@ export function ReportContextLine({ report }: { report: ReportEnvelope }) {
       </span>
       <span aria-hidden="true"> · </span>
       <span data-testid="report-boundary">{boundaryText(report, t)}</span>
+      <span aria-hidden="true"> · </span>
+      <span data-testid="report-sources">{sourceSummary(report, t)}</span>
     </p>
   );
 }

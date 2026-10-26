@@ -147,6 +147,42 @@ describe("webhook pipeline", () => {
     await resetTestDatabase();
   });
 
+  it("does not fan an organisation-only identity event out to workspace webhooks", async () => {
+    const { user, workspace } = await createWorkspaceMember();
+    const webhook = await makeWebhook(workspace.id, user.id, {
+      events: ["identity.provisioned"],
+    });
+    const id = `evt_${randomUUID()}`;
+    await db.transaction((tx) =>
+      enqueueOutboxEvent(tx, {
+        id,
+        kind: "identity.provisioned",
+        occurredAt: new Date().toISOString(),
+        actor: { type: "system", id: null, name: "TaskDesk SCIM" },
+        scope: {},
+        payload: {
+          identityConnectionId: "customer-connection",
+          personId: "customer-person",
+          via: "scim",
+          organisationId: "customer-organisation",
+        },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
+      }),
+    );
+    const [row] = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.eventId, id));
+    const envelope = parseParentEnvelope(
+      requireRow(row ? [row] : [], "identity outbox row"),
+    );
+
+    await db.transaction((tx) => enqueueWebhookDeliveries(tx, envelope));
+    expect(await deliveries(webhook.id)).toEqual([]);
+  });
+
   it("queues one delivery per active, subscribed webhook, and a replay adds none (WH-3, EV-2)", async () => {
     const { user, workspace } = await createWorkspaceMember();
     const { project } = await createProjectFixture({

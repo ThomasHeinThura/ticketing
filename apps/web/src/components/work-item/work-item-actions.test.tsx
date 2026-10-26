@@ -43,12 +43,14 @@ function mount(onAccessLost = vi.fn(), variant: "menu" | "delete" = "menu") {
   );
 }
 async function chooseDelete() {
-  fireEvent.click(
-    screen.getByRole("button", { name: "workItems:deletion.actions" }),
-  );
+  const trigger = screen.getByRole("button", {
+    name: "workItems:deletion.actions",
+  });
+  fireEvent.click(trigger);
   fireEvent.click(
     await screen.findByRole("menuitem", { name: "tasks:actions.delete" }),
   );
+  return trigger;
 }
 beforeEach(() => {
   vi.clearAllMocks();
@@ -57,18 +59,40 @@ beforeEach(() => {
 it("opens confirmation for the accepted intent without removing the item locally", async () => {
   mocks.request.mockResolvedValue({ pendingActionId: "pa-4" });
   mount();
-  await chooseDelete();
+  const trigger = await chooseDelete();
   await waitFor(() =>
     expect(mocks.openPending).toHaveBeenCalledWith({
       pendingActionId: "pa-4",
+      finalFocus: expect.any(Function),
     }),
   );
+  const finalFocus = mocks.openPending.mock.calls[0]?.[0]?.finalFocus as
+    | (() => HTMLElement | false)
+    | undefined;
+  expect(finalFocus?.()).toBe(trigger);
   expect(mocks.request).toHaveBeenCalledWith("HELP-4", expect.anything());
 });
 it("hides destructive actions without delete authority", () => {
   mocks.canDelete = false;
   mount();
   expect(screen.queryByRole("button")).not.toBeInTheDocument();
+});
+it("hides destructive actions for an archived work item even when the actor can delete", () => {
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+      }
+    >
+      <WorkItemActions
+        item={{ ...item, archivedAt: "2026-10-20T00:00:00.000Z" }}
+        onAccessLost={vi.fn()}
+      />
+    </QueryClientProvider>,
+  );
+  expect(
+    screen.queryByRole("button", { name: "workItems:deletion.actions" }),
+  ).toBeNull();
 });
 it("handles reach loss without opening a confirmation", async () => {
   const onAccessLost = vi.fn();
@@ -107,7 +131,14 @@ it("uses the same persisted pending-action request from the Kaneo sheet trash bu
   await waitFor(() =>
     expect(mocks.openPending).toHaveBeenCalledWith({
       pendingActionId: "pa-sheet",
+      finalFocus: expect.any(Function),
     }),
+  );
+  const finalFocus = mocks.openPending.mock.calls[0]?.[0]?.finalFocus as
+    | (() => HTMLElement | false)
+    | undefined;
+  expect(finalFocus?.()).toBe(
+    screen.getByRole("button", { name: "tasks:actions.delete" }),
   );
   expect(mocks.request).toHaveBeenCalledWith("HELP-4", expect.anything());
 });

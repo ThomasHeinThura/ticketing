@@ -3,14 +3,17 @@ import {
   Navigate,
   Outlet,
   useLocation,
+  useNavigate,
 } from "@tanstack/react-router";
 import { Skeleton } from "@taskdesk/ui";
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import WorkspaceLayout from "@/components/common/workspace-layout";
+import { ErrorDisplay } from "@/components/errors/error-display";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
+import { parseAgentHomeSearch } from "@/lib/routes";
 
 // `/agent` home is kaneo's own projects page, and every other `/agent/*` page renders inside
 // kaneo's layout (AppSidebar + SidebarInset + breadcrumb header), the same shell as
@@ -38,6 +41,7 @@ const ProjectsPage = lazy(
 // Not split: every /agent page renders inside this shell, so on a direct visit its code
 // must arrive with the entry rather than after the router resolves it (G11 work-list LCP).
 export const Route = createFileRoute("/_layout/_authenticated/agent")({
+  validateSearch: parseAgentHomeSearch,
   component: AgentRootRoute,
   codeSplitGroupings: [],
 });
@@ -62,9 +66,15 @@ function agentSectionTitleKey(pathname: string): string {
 
 function AgentHome() {
   const { t } = useTranslation();
+  const { recovery } = Route.useSearch();
+  const navigate = useNavigate();
   const { data: activeWorkspace, isLoading } = useActiveWorkspace();
-  const { data: workspaces, isLoading: isWorkspacesLoading } =
-    useGetWorkspaces();
+  const {
+    data: workspaces,
+    isLoading: isWorkspacesLoading,
+    error: workspacesError,
+    refetch: refetchWorkspaces,
+  } = useGetWorkspaces();
   const fallback = (
     <WorkspaceLayout title={t("navigation:sidebar.projects")}>
       <div className="flex flex-col gap-4 p-6">
@@ -78,11 +88,30 @@ function AgentHome() {
   const workspace = activeWorkspace ?? workspaces?.[0];
   if (!workspace) {
     if (isLoading || isWorkspacesLoading) return fallback;
+    // Failed discovery is not evidence that this account has no workspace.
+    if (workspacesError)
+      return (
+        <WorkspaceLayout title={t("navigation:sidebar.projects")}>
+          <ErrorDisplay
+            error={workspacesError}
+            onRetry={() => void refetchWorkspaces()}
+          />
+        </WorkspaceLayout>
+      );
     return <Navigate to="/onboarding" />;
   }
   return (
     <Suspense fallback={fallback}>
-      <ProjectsPage workspaceId={workspace.id} />
+      <ProjectsPage
+        workspaceId={workspace.id}
+        recoveryMode={recovery === "deleted"}
+        onRecoveryModeChange={(showDeleted) =>
+          navigate({
+            to: "/agent",
+            search: showDeleted ? { recovery: "deleted" } : {},
+          })
+        }
+      />
     </Suspense>
   );
 }

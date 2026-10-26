@@ -28,7 +28,7 @@ export function formatValue(
   currency?: string,
 ): string {
   if (unit === "percent") return `${value}%`;
-  if (unit === "hours") return `${value} h`;
+  if (unit === "hours") return `${Number(value.toFixed(2))} h`;
   if (unit === "days") return `${value} d`;
   if (unit === "money" && currency) return formatMoney(value, currency);
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
@@ -50,6 +50,14 @@ export function cellText(
   if (isInsufficient(cell))
     return t("reports:notEnoughData", { n: cell.n, needed: cell.needed });
   if (cell === null || cell === undefined || cell === "") return "—";
+  if (column.key === "group" && row._drill === "epic-none")
+    return t("reports:groups.noEpic", { defaultValue: "No epic" });
+  if (column.key === "group" && row._drill === "epic-unavailable")
+    return t("reports:groups.epicUnavailable", {
+      defaultValue: "Epic unavailable",
+    });
+  if (column.key === "inactive" && cell === "Inactive")
+    return t("reports:values.inactive", { defaultValue: "Inactive" });
   if (typeof cell === "number") {
     if (column.kind === "money") {
       const currency = row.currency;
@@ -82,5 +90,9 @@ export function cellText(
 
 /** A header the screen words itself, falling back to the API's English label. */
 export function columnLabel(column: ReportColumn, t: TFunction): string {
-  return t(`reports:columns.${column.key}`, { defaultValue: column.label });
+  const key =
+    column.key === "value" && column.label === "Matching work items"
+      ? "reports:columns.matchingWorkItems"
+      : `reports:columns.${column.key}`;
+  return t(key, { defaultValue: column.label });
 }

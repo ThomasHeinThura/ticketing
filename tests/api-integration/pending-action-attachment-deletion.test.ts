@@ -568,4 +568,42 @@ describe("canonical attachment durable deletion", () => {
       await raw.end();
     }
   });
+  it.each(["work_item", "project"] as const)(
+    "archived %s keeps files readable without offering deletion",
+    async (parent) => {
+      const f = await fixture();
+      mockAuthenticatedSession(f.member.user);
+      const { app } = createApp();
+      if (parent === "work_item") {
+        await db
+          .update(schema.workItemTable)
+          .set({ archivedAt: new Date() })
+          .where(eq(schema.workItemTable.id, f.source.id));
+      } else {
+        await db
+          .update(schema.projectTable)
+          .set({ archivedAt: new Date() })
+          .where(eq(schema.projectTable.id, f.source.projectId));
+      }
+      const listed = await app.request(
+        `/api/work-items/${f.source.key}/attachments`,
+      );
+      expect(listed.status).toBe(200);
+      expect(await listed.json()).toEqual([
+        expect.objectContaining({
+          id: f.relation.id,
+          canDelete: false,
+          canRestore: false,
+        }),
+      ]);
+      const denied = await app.request(`/api/attachments/${f.relation.id}`, {
+        method: "DELETE",
+      });
+      expect(denied.status).toBe(404);
+      expect(await attachment(f.relation.id)).toMatchObject({
+        state: "ready",
+        deletedAt: null,
+      });
+    },
+  );
 });

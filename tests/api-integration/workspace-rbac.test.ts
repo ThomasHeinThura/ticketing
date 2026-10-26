@@ -1396,7 +1396,7 @@ describe("API integration: workspace RBAC enforcement", () => {
         member.user,
         `/api/project/${project.id}`,
         {
-          typedName: project.name,
+          typedName: project.slug,
         },
       );
     });

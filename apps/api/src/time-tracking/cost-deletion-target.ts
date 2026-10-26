@@ -1,5 +1,8 @@
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { costEntryTable } from "../database/schema-p5-time";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -38,6 +41,29 @@ export const costEntryDeletionTarget: RegisteredDeletionTarget = {
       rowFacts: { personId: entry.personId },
       version: registeredDeletionFingerprint(entry),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [entry] = await tx
+      .select({
+        id: costEntryTable.id,
+        workspaceId: costEntryTable.workspaceId,
+        personId: costEntryTable.personId,
+      })
+      .from(costEntryTable)
+      .where(eq(costEntryTable.id, id))
+      .limit(1);
+    return entry
+      ? {
+          id: entry.id,
+          workspaceId: entry.workspaceId,
+          projectId: null,
+          organisationId: null,
+          rowFacts: { personId: entry.personId },
+        }
+      : undefined;
   },
   assertDeletable: async (tx, loaded) => {
     if (!(await costEntryExistsInWorkspace(tx, loaded.id, loaded.workspaceId)))

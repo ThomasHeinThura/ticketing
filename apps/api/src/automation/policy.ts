@@ -3,11 +3,11 @@ import type { PolicyMap } from "@taskdesk/permissions";
 /**
  * Automations (`feature-contracts-p4.md` "Automations", `AM-1`..`AM-13`).
  *
- * The contract names a union capability for the by-id routes ("`project:manage_settings` |
+ * The contract names a union capability for the by-id routes ("`automation:manage` |
  * `workspace:manage_settings`"), which one route policy cannot express: a rule is either a
  * project rule or a workspace rule, decided by the row. The declaration below is the **stricter**
  * workspace authority, and the handlers apply the rule's real scope (`./access.ts`): a project
- * manager who holds `project:manage_settings` on the rule's project may change a project rule,
+ * manager who holds `automation:manage` on the rule's project may change a project rule,
  * a workspace rule needs `workspace:manage_settings`. Declared policy and runtime therefore
  * agree for workspace rules and the runtime is the wider one for project rules; if
  * `TASKDESK_POLICY_ENFORCE` ever enforces this source, project managers would need the policy
@@ -42,7 +42,7 @@ export const automationPolicies = {
     reach: "required",
   },
   "POST /api/projects/{key}/automations": {
-    capability: "project:manage_settings",
+    capability: "automation:manage",
     scope: "project",
     scopeSource: "row",
     reach: "required",

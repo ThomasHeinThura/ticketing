@@ -25,6 +25,7 @@ import {
   useWidgetItems,
 } from "@/hooks/queries/report";
 import type { ReportSearch } from "@/lib/report-search";
+import { formatValue } from "./report-format";
 
 const linkClass =
   "rounded-sm font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -109,8 +110,53 @@ function TimeEntryRows({ items }: { items: DrillItem[] }) {
             </TableCell>
             <TableCell className="max-w-64 truncate">{item.title}</TableCell>
             <TableCell className="text-right tabular-nums">
-              {item.hours ?? "—"}
+              {item.hours == null ? "—" : formatValue(item.hours, "hours")}
             </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+/** Cost entries show their recorded description and currency, never the captured rate or amount. */
+function CostEntryRows({ items }: { items: DrillItem[] }) {
+  const { t } = useTranslation();
+  return (
+    <Table aria-label={t("reports:drill.title")}>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t("reports:drill.date")}</TableHead>
+          <TableHead>{t("reports:drill.person")}</TableHead>
+          <TableHead>{t("reports:drill.project")}</TableHead>
+          <TableHead>{t("reports:drill.workItem")}</TableHead>
+          <TableHead>{t("reports:drill.note")}</TableHead>
+          <TableHead>{t("reports:columns.currency")}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {items.map((item) => (
+          <TableRow key={item.key}>
+            <TableCell className="whitespace-nowrap">
+              {item.date ?? "—"}
+            </TableCell>
+            <TableCell>{item.person ?? "—"}</TableCell>
+            <TableCell>{item.projectKey ?? "—"}</TableCell>
+            <TableCell className="whitespace-nowrap">
+              {item.workItemKey ? (
+                <Link
+                  to="/agent/work-items/$key"
+                  params={{ key: item.workItemKey }}
+                  className={linkClass}
+                >
+                  {item.workItemKey}
+                </Link>
+              ) : (
+                "—"
+              )}
+            </TableCell>
+            <TableCell className="max-w-64 truncate">{item.title}</TableCell>
+            <TableCell>{item.currency ?? "—"}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -159,7 +205,7 @@ type DrillQuery = {
 /**
  * `RP-12`: from a number to the things behind it, under exactly the same window, filters and
  * reach. A metric you cannot interrogate is not trustworthy. The kind of the items says which table
- * is shown: work items, time entries (hours only) or knowledge base articles.
+ * is shown: work items, time entries (hours only), cost entries or knowledge base articles.
  */
 export function DrillItemsDialog({
   items,
@@ -204,6 +250,8 @@ export function DrillItemsDialog({
             </Empty>
           ) : kind === "time_entry" ? (
             <TimeEntryRows items={list} />
+          ) : kind === "cost_entry" ? (
+            <CostEntryRows items={list} />
           ) : kind === "article" ? (
             <ArticleRows items={list} />
           ) : (

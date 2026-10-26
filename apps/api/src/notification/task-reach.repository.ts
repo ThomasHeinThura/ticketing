@@ -380,8 +380,9 @@ export function reachableTaskNotificationPredicate(
 export async function userCanReachTask(
   userId: string,
   taskId: string,
+  executor: Executor = db,
 ): Promise<boolean> {
-  const [row] = await db
+  const [row] = await executor
     .select({ id: taskTable.id })
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
@@ -389,7 +390,7 @@ export async function userCanReachTask(
       and(
         eq(taskTable.id, taskId),
         isNull(projectTable.deletedAt),
-        projectReachPredicate(userId, db),
+        projectReachPredicate(userId, executor),
       ),
     )
     .limit(1);

@@ -237,9 +237,9 @@ export function weeksBetween(from: Date, to: Date): string[] {
 // Median and percentile-free summaries are deliberately absent: RP-2 asks for buckets.
 // ---------------------------------------------------------------------------------------------
 
-/** Whole minutes to hours with one decimal. */
+/** Whole minutes to exact decimal hours; display surfaces choose their own precision. */
 export function minutesToHours(minutes: number): number {
-  return Math.round((minutes / 60) * 10) / 10;
+  return minutes / 60;
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { publishEvent } from "../../events";
-import { deliverNotification } from "../../notification-preferences/delivery";
+import { QUIET_HOURS_HOLD_KEY } from "../../notification-preferences/delivery.repository";
 import {
   findNotificationPreferenceRow,
   insertNotificationRow,
@@ -56,7 +56,10 @@ async function createNotification({
     title: title ?? null,
     content: content ?? null,
     type: type || "info",
-    eventData: eventData ?? null,
+    eventData: {
+      ...(eventData ?? {}),
+      [QUIET_HOURS_HOLD_KEY]: new Date().toISOString(),
+    },
     resourceId: resourceId || null,
     resourceType: resourceType || null,
   });
@@ -65,12 +68,6 @@ async function createNotification({
     await publishEvent("notification.created", {
       notificationId: notification.id,
       userId,
-    });
-    void deliverNotification(notification.id).catch((error) => {
-      console.error("Failed to deliver notification", {
-        notificationId: notification.id,
-        error,
-      });
     });
   }
 

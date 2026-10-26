@@ -21,6 +21,7 @@ export const pendingActionReadSchema = z
     origin: z.enum(["web", "api", "mcp"]),
     targetType: z.string(),
     targetIds: z.array(z.string()),
+    targetWorkspaceId: z.string().nullable(),
     summary: pendingActionSummarySchema,
     confirmation: z.enum([
       "click",

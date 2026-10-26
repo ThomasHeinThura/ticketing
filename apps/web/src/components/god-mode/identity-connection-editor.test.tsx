@@ -1,13 +1,28 @@
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IdentityAdminError } from "@/fetchers/god-mode/identity-admin-error";
-import { renderWithQuery, staffConnection } from "@/test/identity-test-harness";
+import { staffConnection } from "@/test/identity-test-harness";
 import { IdentityConnectionEditor } from "./identity-connection-editor";
 
 const mocks = vi.hoisted(() => ({
   prove: vi.fn(),
   configure: vi.fn(),
   create: vi.fn(),
+  requestDeletion: vi.fn(),
+  openPending: vi.fn(),
+  factorStatus: {
+    enabled: false,
+    required: false,
+    availableMethods: ["password"] as string[],
+  },
 }));
 
 vi.mock("react-i18next", async () => {
@@ -24,7 +39,7 @@ vi.mock("@/fetchers/god-mode/identity-step-up", () => ({
   proveIdentityOperation: (...args: unknown[]) => mocks.prove(...args),
 }));
 vi.mock("@/fetchers/god-mode/instance-users", () => ({
-  getCurrentFactorStatus: async () => ({ enabled: false }),
+  getCurrentFactorStatus: async () => mocks.factorStatus,
 }));
 vi.mock("@/fetchers/god-mode/identity-connections", async (importOriginal) => ({
   ...(await importOriginal<
@@ -32,11 +47,22 @@ vi.mock("@/fetchers/god-mode/identity-connections", async (importOriginal) => ({
   >()),
   configureIdentityConnection: (...args: unknown[]) => mocks.configure(...args),
   createIdentityConnection: (...args: unknown[]) => mocks.create(...args),
+  requestIdentityConnectionDeletion: (...args: unknown[]) =>
+    mocks.requestDeletion(...args),
+}));
+vi.mock("@/hooks/use-open-pending-action", () => ({
+  useOpenPendingAction: () => mocks.openPending,
 }));
 
 beforeEach(() => {
+  mocks.factorStatus = {
+    enabled: false,
+    required: false,
+    availableMethods: ["password"],
+  };
   mocks.prove.mockResolvedValue("proof-token");
   mocks.configure.mockResolvedValue({ ...staffConnection, configVersion: 8 });
+  mocks.requestDeletion.mockResolvedValue({ pendingActionId: "pending-1" });
 });
 afterEach(() => {
   cleanup();
@@ -50,7 +76,7 @@ function enterPassword(value = "placeholder-password") {
 }
 
 function renderEditor(onReload = vi.fn()) {
-  renderWithQuery(
+  renderWithFactor(
     <IdentityConnectionEditor
       connection={staffConnection}
       onReload={onReload}
@@ -59,7 +85,65 @@ function renderEditor(onReload = vi.fn()) {
   return onReload;
 }
 
+function renderWithFactor(ui: ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  client.setQueryData(["god-mode", "step-up-factor"], mocks.factorStatus);
+  const result = render(
+    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+  );
+  return { client, ...result };
+}
+
 describe("IdentityConnectionEditor (edit)", () => {
+  it("supports an SSO-only account when the server advertises prompt-login", async () => {
+    mocks.factorStatus = {
+      enabled: true,
+      required: true,
+      availableMethods: ["sso_prompt_login"],
+    };
+    renderEditor();
+    fireEvent.change(screen.getByLabelText("Connection name"), {
+      target: { value: "Renamed" },
+    });
+    expect(screen.queryByLabelText("Password")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Identity connection saved");
+    expect(mocks.prove).toHaveBeenCalledWith(
+      {
+        operation: "identity_connection_configure",
+        connectionId: "conn-1",
+        request: { configVersion: 7, displayName: "Renamed" },
+      },
+      { method: "sso_prompt_login", secret: "" },
+    );
+    expect(mocks.configure.mock.calls[0]?.[0]).toEqual({
+      id: "conn-1",
+      body: { configVersion: 7, displayName: "Renamed" },
+      token: "proof-token",
+    });
+  });
+
+  it("fails closed when the required factor has no server-authorized method", async () => {
+    mocks.factorStatus = {
+      enabled: true,
+      required: true,
+      availableMethods: [],
+    };
+    renderEditor();
+    fireEvent.change(screen.getByLabelText("Connection name"), {
+      target: { value: "Renamed" },
+    });
+    enterPassword();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText(
+      "Enter the selected verification factor to confirm this change.",
+    );
+    expect(mocks.prove).not.toHaveBeenCalled();
+    expect(mocks.configure).not.toHaveBeenCalled();
+  });
+
   it("binds the exact changed fields and version to the proof and the write, then clears the secret", async () => {
     renderEditor();
     fireEvent.change(screen.getByLabelText("Connection name"), {
@@ -91,6 +175,21 @@ describe("IdentityConnectionEditor (edit)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await screen.findByText("Nothing changed, so nothing was saved.");
     expect(mocks.prove).not.toHaveBeenCalled();
+  });
+
+  it("opens typed-name approval after requesting deletion without changing connection settings", async () => {
+    renderEditor();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete identity connection" }),
+    );
+    await waitFor(() => {
+      expect(mocks.requestDeletion).toHaveBeenCalledWith("conn-1");
+      expect(mocks.openPending).toHaveBeenCalledWith({
+        pendingActionId: "pending-1",
+      });
+    });
+    expect(mocks.prove).not.toHaveBeenCalled();
+    expect(mocks.configure).not.toHaveBeenCalled();
   });
 
   it("requires the verification factor before any request", async () => {
@@ -194,7 +293,7 @@ describe("IdentityConnectionEditor (edit)", () => {
 
   it("offers the claim-mapping repair only for a malformed stored map", async () => {
     cleanup();
-    renderWithQuery(
+    renderWithFactor(
       <IdentityConnectionEditor
         connection={{
           ...staffConnection,
@@ -229,7 +328,7 @@ describe("IdentityConnectionEditor (create)", () => {
   it("creates a disabled staff connection bound to the complete body and reports the new id", async () => {
     mocks.create.mockResolvedValue({ ...staffConnection, id: "new-id" });
     const onCreated = vi.fn();
-    renderWithQuery(
+    renderWithFactor(
       <IdentityConnectionEditor
         connection={null}
         onCreated={onCreated}
@@ -272,7 +371,7 @@ describe("IdentityConnectionEditor (create)", () => {
   });
 
   it("shows field errors and sends nothing for an invalid form", async () => {
-    renderWithQuery(
+    renderWithFactor(
       <IdentityConnectionEditor connection={null} onReload={vi.fn()} />,
     );
     enterPassword();
@@ -285,7 +384,7 @@ describe("IdentityConnectionEditor (create)", () => {
 
   it("forgets a typed client secret from the input and the mutation cache once the write settles, on success", async () => {
     const SECRET = "typed-secret-placeholder";
-    const { client } = renderWithQuery(
+    const { client } = renderWithFactor(
       <IdentityConnectionEditor
         connection={staffConnection}
         onReload={vi.fn()}
@@ -318,7 +417,7 @@ describe("IdentityConnectionEditor (create)", () => {
     mocks.configure.mockRejectedValue(
       new IdentityAdminError(503, "x", "", null),
     );
-    const { client } = renderWithQuery(
+    const { client } = renderWithFactor(
       <IdentityConnectionEditor
         connection={staffConnection}
         onReload={vi.fn()}
@@ -349,7 +448,7 @@ describe("IdentityConnectionEditor (create)", () => {
   it("forgets the client secret after create settles", async () => {
     const SECRET = "typed-secret-placeholder";
     mocks.create.mockResolvedValue({ ...staffConnection, id: "new-id" });
-    const { client } = renderWithQuery(
+    const { client } = renderWithFactor(
       <IdentityConnectionEditor
         connection={null}
         onCreated={vi.fn()}

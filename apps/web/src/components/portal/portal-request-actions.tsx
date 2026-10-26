@@ -16,15 +16,15 @@ import {
 } from "@taskdesk/ui";
 import { Check } from "lucide-react";
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import type { usePortalRequestActions } from "@/hooks/mutations/portal/use-portal-request-actions";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { actionErrorKey, higherPriorities } from "@/lib/portal-request";
 import { getPriorityIcon } from "@/lib/priority";
 
 type Actions = ReturnType<typeof usePortalRequestActions>;
 
 function ActionError({ error }: { error: unknown }) {
-  const { t } = useTranslation("portal");
+  const { t } = usePortalTranslation("portal");
   if (!error) return null;
   const key = actionErrorKey(error);
   return (
@@ -45,7 +45,7 @@ export function PortalRaisePriority({
   current: string | null;
   escalate: Actions["escalate"];
 }) {
-  const { t } = useTranslation("portal");
+  const { t } = usePortalTranslation("portal");
   const [open, setOpen] = useState(false);
   const options = higherPriorities(current);
   if (options.length === 0) return null;
@@ -83,7 +83,7 @@ export function PortalRaisePriority({
 
 /** CP-8: reopen within the window. The API decides eligibility; the button shows only when it says so. */
 export function PortalReopenButton({ reopen }: { reopen: Actions["reopen"] }) {
-  const { t } = useTranslation("portal");
+  const { t } = usePortalTranslation("portal");
   return (
     <Button
       variant="outline"
@@ -109,7 +109,7 @@ export function PortalSatisfaction({
   rate: Actions["rate"];
   existing: { rating: number; comment?: string | null } | null;
 }) {
-  const { t } = useTranslation("portal");
+  const { t } = usePortalTranslation("portal");
   const [rating, setRating] = useState<number | null>(existing?.rating ?? null);
   const [comment, setComment] = useState(existing?.comment ?? "");
   return (

@@ -1,0 +1,4 @@
+ALTER TABLE "request_rate_limit_counter" DROP CONSTRAINT "request_rate_limit_counter_bucket_check";--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD COLUMN "csp_mode" text DEFAULT 'report_only' NOT NULL;--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD CONSTRAINT "instance_setting_csp_mode_allowed" CHECK (csp_mode IN ('report_only', 'enforce'));--> statement-breakpoint
+ALTER TABLE "request_rate_limit_counter" ADD CONSTRAINT "request_rate_limit_counter_bucket_check" CHECK ("request_rate_limit_counter"."bucket" IN ('anonymous_scim_failure', 'scim_connection', 'anonymous_invitation', 'anonymous_csp_report'));

@@ -754,6 +754,7 @@ not met returns `422` naming that field.
 | `state.group` | `eq` string; `in` nonempty string array (1–20). Values: `backlog`, `unstarted`, `started`, `completed`, `cancelled` | `work_item:read` | `state.state_template_id → state_template.group` |
 | `priority` | `eq`, `in` (1–4), `gt`, `gte`, `lt`, `lte`; values `low`, `medium`, `high`, `urgent` in that order | `work_item:read` | `work_item.priority`; comparison uses the declared order, not text collation |
 | `assignee` | `eq` with the literal `@me` | `work_item:read` | Resolved at query time to the authenticated person's `person.id`; no caller-selected person id in v1 |
+| `requester` | `eq` with the literal `@me` (VW-32 search-profile extension) | `work_item:read` | `work_item.requester_id`, resolved to the authenticated person's `person.id` at query time; workspace and project reach still apply |
 | `watcher` | `contains` with the literal `@me` | `work_item:read` | `watcher` rows for the authenticated person with `muted = false` |
 | `dueDate` | `lt`, `lte`, `gt`, `gte`; ISO calendar date or relative day value such as `7d` | `work_item:read` | `work_item.due_date`; `Nd` is a fixed duration of N×24 hours from the request's captured query time, with N from 1–3650; null dates do not match comparisons |
 | `createdAt` | `lt`, `lte`, `gt`, `gte`; ISO calendar date | `work_item:read` | `work_item.created_at`; a date means midnight UTC at the start of that date; null is not applicable |
@@ -2606,6 +2607,12 @@ thing that is hashed or executed.
 - `PA-14` The same mechanism carries the MCP server's other destructive tools —
   `decide_approval`, and any bulk operation above 50 items — with `action =
   'mcp_destructive'` ([mcp-server.md](feature-contracts-p4.md#mcp-server) `MC-7`, `MC-17`).
+  For `decide_approval`, the registered target is `approval_decision` on
+  `POST /api/approvals/{id}/decide`; its canonical payload binds
+  `mcp_decision: { action: 'approve' | 'reject', note: string | null }`. The approval
+  endpoint returns a pending-action id and never executes a decision for an API key.
+  Existing pending-action payload hashes retain their prior shape; this field is included
+  only for this registered target.
 - `PA-15` **Step-up is single-use and bound to one pending action or one explicitly
   registered operation.** `step_up_confirmation` in [data-model.md](data-model.md) owns a
   session/person-bound challenge and confirmation. `POST /api/me/step-up/challenges`
@@ -3720,7 +3727,7 @@ session happened.
 | Filter as an oracle | Filterable fields carry their own read capability; the filter is evaluated **after** identity scoping; `meta.total` counts only rows in reach |
 | XSS | React escapes by default. Rich text is a Tiptap **JSON document, never raw HTML**; sanitised against an allowlist on write **and** normalised on render; importers write through the same domain-layer sanitiser as the API. `dangerouslySetInnerHTML` is banned by lint |
 | Uploads | Extension and MIME allowlist, magic-byte sniff at `complete`, size cap; presigned POST pins key, `content-length-range` and content type; served from a separate origin with `Content-Disposition: attachment`; only `state = 'ready'` rows are served. No malware scanner — accepted residual risk; a future `storage.antivirus` plugin is reserved, not built ([roadmap.md](../roadmap.md)) |
-| SSRF / egress | **One HTTP client for every outbound call** — webhooks, OIDC discovery, SMTP, S3/Azure endpoints, AI providers, OTLP, Sentry, marketplace APIs, and plugin `test()` — resolves and checks the target against private, link-local and metadata ranges (`169.254.169.254`, `fd00:ec2::254`) before connecting and again at connect time; never follows redirects to a new host. The **egress allowlist** is stated once, here, and cited from `WH-12`: in production it is a God Mode-configurable, **default-empty**, per-host list whose every edit is an elevated, audited change, and it may be used **only** by `ai.*` plugins reaching a self-hosted model on a private address; `notify.*`, `webhook` and `import.*` may never target private, link-local or metadata ranges in production, and no God Mode entry can make them. A separate development allowlist relaxes the HTTPS requirement and exists **only** when `NODE_ENV=development`. Plugin `test()` is rate-limited and **audited even when nothing is saved** |
+| SSRF / egress | **One HTTP client for every outbound call** — webhooks, OIDC discovery, SMTP, S3/Azure endpoints, AI providers, OTLP, Sentry, marketplace APIs, and plugin `test()` — resolves and checks the target against private, link-local and metadata ranges (`169.254.169.254`, `fd00:ec2::254`) before connecting and again at connect time; never follows redirects to a new host. The **egress allowlist** is stated once, here, and cited from `WH-12`: in production it is a God Mode-configurable, **default-empty**, per-host list whose every edit is an elevated, audited change, and it may be used **only** by `ai.*` plugins reaching a self-hosted model on a private address; `notify.*`, `webhook` and `import.*` may never target private, link-local or metadata ranges in production, and no God Mode entry can make them. Thomas approved one laptop-only exception (26 Oct): the fixed Mailpit capture profile requires `TASKDESK_LOCAL_MAILPIT_CAPTURE=true`, both canonical local HTTPS origins, and exactly `mailpit:1025` without authentication or TLS. It cannot select another private target and is unavailable at public origins, including when the flag is set. Ordinary SMTP protections remain mandatory. A separate development allowlist relaxes the HTTPS requirement and exists **only** when `NODE_ENV=development`. Plugin `test()` is rate-limited and **audited even when nothing is saved** |
 | Path traversal | Object keys are generated, never derived from user filenames |
 | Mass assignment | Zod schemas are strict; unknown keys rejected, not stripped |
 | ReDoS | User-supplied patterns never compiled to regex |
@@ -3800,6 +3807,12 @@ report-to csp-endpoint
 
 Rolled out `Content-Security-Policy-Report-Only` first for one release, then enforced.
 Reports land at `POST /api/public/csp-report` (rate-limited, `public` with reason).
+
+Thomas approved a narrow frame exception on 25 October 2026: allow only HTTPS `https://www.youtube.com/embed/` frames produced by the existing Kaneo embed component, with iframe sandbox restrictions. Other external frames remain blocked. The baseline `frame-src none` applies without this registered exception.
+
+Thomas also approved `blob:` in `img-src` on 25 October for existing local upload and avatar previews. `data:` images and blob scripts, objects and arbitrary frames remain blocked. This is the only local-image exception to the baseline policy.
+
+The required AT-9 PDF viewer uses the exact same-origin `/pdf-preview.html` frame. It has an enforced CSP and `sandbox="allow-scripts"`, without same-origin permission. Only this constant viewer page uses `X-Frame-Options: SAMEORIGIN`; ordinary pages retain `DENY`. Public renderer modules accept opaque-origin loads. PDF bytes travel from the authorized parent through a nonce-bound channel; the child cannot fetch API or attachment data. Blob workers are permitted only inside this isolated renderer.
 
 <a id="security-model-secrets"></a>
 ### Secrets

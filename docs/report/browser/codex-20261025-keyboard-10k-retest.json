@@ -1,0 +1,49 @@
+{
+	"artifact": "codex-20261025-keyboard-10k-retest",
+	"target": {
+		"origin": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871,
+		"strictTls": true
+	},
+	"fixture": {
+		"projectSlug": "PERF",
+		"expectedRows": 10000
+	},
+	"checks": [
+		{
+			"name": "strict-TLS fixture owner and live API ID/key map",
+			"pass": true,
+			"rowsMapped": 200
+		},
+		{
+			"name": "board Escape cancellation and idle Enter",
+			"pass": true,
+			"fixtureKey": "PERF-1863",
+			"escapeWrites": 0,
+			"idleEnterOpenedDetail": true
+		},
+		{
+			"name": "board persisted keyboard rank repeated",
+			"pass": false,
+			"error": "board attempt 1 emitted 0 rank writes"
+		},
+		{
+			"name": "list persisted keyboard rank drop",
+			"pass": false,
+			"error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-work-item-key=\"PERF-1863\"] [data-task-id]').first() to be visible\u001b[22m\n"
+		},
+		{
+			"name": "grouped priority keyboard field change and UI restoration",
+			"pass": false,
+			"error": "Timed out: group priority PATCH"
+		},
+		{
+			"name": "browser console/page errors",
+			"pass": true,
+			"count": 0
+		}
+	],
+	"errors": [],
+	"screenshots": []
+}

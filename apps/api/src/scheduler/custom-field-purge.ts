@@ -8,7 +8,7 @@ import {
   workItemAttachmentOrganisations,
   workItemPeople,
 } from "../utils/legal-hold-scope";
-import { withJobLease } from "./leader-lock";
+import { assertJobExecutionOwned, withJobLease } from "./leader-lock";
 import { fenceLegalHolds } from "./soft-delete-purge.repository";
 
 /**
@@ -153,6 +153,7 @@ export async function purgeSoftDeletedCustomFields(
     const ids = await listCandidates(db, batch, seen);
     if (ids.length === 0) return outcome;
     for (const id of ids) {
+      await assertJobExecutionOwned();
       if (seen.length >= maxFields) break;
       seen.push(id);
       try {

@@ -50,6 +50,8 @@ import { resolveLabelColor } from "@/lib/label-color";
 import type { LabelCatalogueSearch } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 
+const STABLE_KEY_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/u;
+
 export function LabelCatalogue({
   projectId,
   targetWorkspaceId,
@@ -158,14 +160,17 @@ export function LabelCatalogue({
 
   // Create dialog state
   const [newName, setNewName] = useState("");
+  const [newKey, setNewKey] = useState("");
   const [newColor, setNewColor] = useState("gray");
   const [createError, setCreateError] = useState("");
+  const [createKeyError, setCreateKeyError] = useState("");
 
   // Edit dialog state
   const [editingLabel, setEditingLabel] = useState<{
     id: string;
     name: string;
     color: string;
+    key?: string | null;
   } | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("gray");
@@ -211,8 +216,10 @@ export function LabelCatalogue({
 
   const resetCreate = () => {
     setNewName("");
+    setNewKey("");
     setNewColor("gray");
     setCreateError("");
+    setCreateKeyError("");
   };
 
   const openCreate = () => {
@@ -224,6 +231,7 @@ export function LabelCatalogue({
     const submittedBinding = liveBinding.current;
     if (!submittedBinding) return;
     const trimmed = newName.trim();
+    const stableKey = newKey.trim();
     if (!trimmed) {
       setCreateError(
         t("settings:workspaceLabels.nameRequired", {
@@ -232,12 +240,17 @@ export function LabelCatalogue({
       );
       return;
     }
+    if (!projectId && !STABLE_KEY_PATTERN.test(stableKey)) {
+      setCreateKeyError(t("settings:workspaceLabels.stableKeyInvalid"));
+      return;
+    }
 
     try {
       await createLabel.mutateAsync({
         name: trimmed,
         color: newColor,
         workspaceId,
+        ...(!projectId ? { key: stableKey } : {}),
       });
       if (liveBinding.current !== submittedBinding) return;
       toast.success(
@@ -259,7 +272,12 @@ export function LabelCatalogue({
     }
   };
 
-  const openEdit = (label: { id: string; name: string; color: string }) => {
+  const openEdit = (label: {
+    id: string;
+    name: string;
+    color: string;
+    key?: string | null;
+  }) => {
     setEditingLabel(label);
     setEditName(label.name);
     setEditColor(label.color);
@@ -454,6 +472,7 @@ export function LabelCatalogue({
                                   id: label.id,
                                   name: label.name,
                                   color: label.color,
+                                  key: label.key,
                                 })
                               }
                             >
@@ -545,6 +564,33 @@ export function LabelCatalogue({
                 <p className="text-sm text-destructive">{createError}</p>
               )}
             </div>
+
+            {!projectId ? (
+              <div className="space-y-2">
+                <Label htmlFor="new-label-key">
+                  {t("settings:workspaceLabels.stableKeyLabel")}
+                </Label>
+                <Input
+                  id="new-label-key"
+                  value={newKey}
+                  maxLength={64}
+                  autoComplete="off"
+                  aria-invalid={Boolean(createKeyError)}
+                  onChange={(event) => {
+                    setNewKey(event.target.value);
+                    setCreateKeyError("");
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("settings:workspaceLabels.stableKeyHelp")}
+                </p>
+                {createKeyError ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {createKeyError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <Label>
@@ -638,6 +684,22 @@ export function LabelCatalogue({
                 <p className="text-sm text-destructive">{editError}</p>
               )}
             </div>
+
+            {!projectId ? (
+              <div className="space-y-2">
+                <Label htmlFor="edit-label-key">
+                  {t("settings:workspaceLabels.stableKeyReadOnlyLabel")}
+                </Label>
+                <Input
+                  id="edit-label-key"
+                  value={editingLabel?.key ?? ""}
+                  readOnly
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("settings:workspaceLabels.stableKeyHelp")}
+                </p>
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <Label>

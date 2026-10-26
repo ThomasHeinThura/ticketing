@@ -1,21 +1,12 @@
-import enUS from "@i18n/en-US.json";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@/test/en-translation";
 import ScheduleViewState, { scheduleViewStatus } from "./schedule-view-state";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => {
-      const [namespace, path] = key.split(":");
-      const source = path
-        .split(".")
-        .reduce<unknown>(
-          (accumulator, part) =>
-            (accumulator as Record<string, unknown> | undefined)?.[part],
-          (enUS as Record<string, unknown>)[namespace],
-        );
-      return typeof source === "string" ? source : key;
-    },
+    t: (key: string, options?: Record<string, unknown>) =>
+      translate(key, options),
   }),
 }));
 
@@ -78,7 +69,7 @@ describe("ScheduleViewState", () => {
       />,
     );
     expect(screen.getByTestId("calendar-empty")).toHaveTextContent(
-      "No scheduled tasks",
+      translate("tasks:calendar.noTasks"),
     );
     rerender(
       <ScheduleViewState
@@ -89,7 +80,7 @@ describe("ScheduleViewState", () => {
       />,
     );
     expect(screen.getByTestId("calendar-empty")).toHaveTextContent(
-      "No work items match this filter",
+      translate("workItems:list.emptyFilteredTitle"),
     );
   });
 });

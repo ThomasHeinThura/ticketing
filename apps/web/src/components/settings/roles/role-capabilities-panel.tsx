@@ -28,6 +28,7 @@ import {
 } from "@/components/god-mode/step-up-fields";
 import {
   RoleApiError,
+  type RoleImpactPreview,
   updateRole,
   type WorkspaceRoleDetail,
 } from "@/fetchers/workspace-roles";
@@ -88,6 +89,13 @@ export function RoleCapabilitiesPanel({
   const [confirming, setConfirming] = useState(false);
   const [typedName, setTypedName] = useState("");
 
+  const rolePatch = () => ({
+    capabilities: capabilityClosure(draft.explicit),
+    description: draft.description.trim() || null,
+    ...(isBuiltIn ? {} : { name: draft.name.trim(), rank: Number(draft.rank) }),
+    expectedVersion: role.version,
+  });
+
   const rankNumber = Number(draft.rank);
   const maxRank = Math.max(1, authority.rank - 1);
   const rankValid =
@@ -131,16 +139,27 @@ export function RoleCapabilitiesPanel({
   // bound to exactly this change. A refusal of the write itself (rank guard, stale version, ...)
   // still reaches the role-specific error handling below untouched.
   const stepUp = useStepUpAction();
+  const impactPreview = useMutation({
+    mutationFn: async (): Promise<RoleImpactPreview> => {
+      const result = await updateRole(
+        workspaceId,
+        role.id,
+        {
+          ...rolePatch(),
+          ...(removesOwn ? { confirmSelfEdit: true } : {}),
+        },
+        undefined,
+        { dryRun: true },
+      );
+      if (!("affected" in result)) {
+        throw new Error("Role dry-run returned a mutation result");
+      }
+      return result;
+    },
+  });
   const save = useMutation({
     mutationFn: async () => {
-      const input = {
-        capabilities: capabilityClosure(draft.explicit),
-        description: draft.description.trim() || null,
-        ...(isBuiltIn
-          ? {}
-          : { name: draft.name.trim(), rank: Number(draft.rank) }),
-        expectedVersion: role.version,
-      };
+      const input = rolePatch();
       const outcome = await stepUp.run(
         {
           operation: "workspace_role_update",
@@ -342,7 +361,11 @@ export function RoleCapabilitiesPanel({
           </Button>
           <Button
             disabled={!dirty || !rankValid || !nameValid || save.isPending}
-            onClick={() => setConfirming(true)}
+            onClick={() => {
+              setConfirming(true);
+              impactPreview.reset();
+              impactPreview.mutate();
+            }}
           >
             {t("roles:save.action")}
           </Button>
@@ -360,7 +383,15 @@ export function RoleCapabilitiesPanel({
             <DialogHeader>
               <DialogTitle>{t("roles:save.confirmTitle")}</DialogTitle>
               <DialogDescription>
-                {t("roles:save.immediate", { count: role.holderCount })}
+                {impactPreview.data
+                  ? t("roles:save.impact", {
+                      people: impactPreview.data.affected.people,
+                      workItems: impactPreview.data.affected.workItems,
+                      projects: impactPreview.data.affected.projects,
+                    })
+                  : impactPreview.isError
+                    ? t("common:error.title")
+                    : t("common:empty.loading")}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 px-6">
@@ -403,6 +434,21 @@ export function RoleCapabilitiesPanel({
                   </AlertDescription>
                 </Alert>
               ) : null}
+              {impactPreview.isError ? (
+                <Alert variant="error">
+                  <AlertTitle>{t("common:error.title")}</AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <span>{impactPreview.error.message}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => impactPreview.mutate()}
+                    >
+                      {t("common:actions.retry")}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
               <StepUpFields action={stepUp} idPrefix="save-role" />
               <FailureAlert
                 failure={stepUp.failure}
@@ -425,7 +471,9 @@ export function RoleCapabilitiesPanel({
               <Button
                 disabled={
                   save.isPending ||
-                  !stepUp.secret ||
+                  !impactPreview.data ||
+                  impactPreview.isPending ||
+                  !stepUp.canRun ||
                   (removesOwn && typedName.trim() !== role.name)
                 }
                 onClick={() => save.mutate()}

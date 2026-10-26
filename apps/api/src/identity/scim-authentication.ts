@@ -7,18 +7,37 @@ import {
   lockScimIdentityConnection,
 } from "./repository";
 
-/** IP-24: what an attributable bearer failure carries on `HTTPException.cause`. */
+/** IP-24: bounded bearer-failure attribution on `HTTPException.cause`. */
 export type ScimAuthFailureCause = {
-  connectionId: string;
-  reason: "connection_disabled" | "scim_disabled" | "scope_invalid";
+  connectionId: string | null;
+  reason:
+    | "authorization_invalid"
+    | "credential_unrecognized"
+    | "credential_rotated"
+    | "connection_disabled"
+    | "scim_disabled"
+    | "scope_invalid";
 };
+
+const SCIM_AUTH_FAILURE_REASONS = new Set<ScimAuthFailureCause["reason"]>([
+  "authorization_invalid",
+  "credential_unrecognized",
+  "credential_rotated",
+  "connection_disabled",
+  "scim_disabled",
+  "scope_invalid",
+]);
 
 export function scimAuthFailureCause(
   error: unknown,
 ): ScimAuthFailureCause | null {
   const cause = (error as { cause?: Partial<ScimAuthFailureCause> } | null)
     ?.cause;
-  return cause && typeof cause.connectionId === "string" && cause.reason
+  return cause &&
+    (typeof cause.connectionId === "string" || cause.connectionId === null) &&
+    SCIM_AUTH_FAILURE_REASONS.has(
+      cause.reason as ScimAuthFailureCause["reason"],
+    )
     ? (cause as ScimAuthFailureCause)
     : null;
 }
@@ -44,13 +63,20 @@ export async function lockAndVerifyScimMutation(
     authority.connectionId,
   );
   const [scim] = await lockScimConnection(tx, authority.connectionId);
-  if (!connection?.enabled || !scim?.enabled)
+  if (!connection?.enabled || connection.deletedAt || !scim?.enabled)
     throw new HTTPException(403, { message: "Connection disabled" });
   if (
     !scim.tokenHash ||
     !Buffer.from(scim.tokenHash).equals(authority.tokenHash)
-  )
-    throw new HTTPException(401, { message: "Unauthorized" });
+  ) {
+    throw new HTTPException(401, {
+      message: "Unauthorized",
+      cause: {
+        connectionId: authority.connectionId,
+        reason: "credential_rotated",
+      } satisfies ScimAuthFailureCause,
+    });
+  }
   if (
     connection.portalScope !== authority.portalScope ||
     connection.organisationId !== authority.organisationId
@@ -73,17 +99,39 @@ export async function resolveScimBearer(
   authorization: string | undefined,
 ): Promise<ScimRequestAuthority> {
   const match = authorization?.match(/^Bearer ([A-Za-z0-9_-]{43})$/);
-  if (!match) throw new HTTPException(401, { message: "Unauthorized" });
+  if (!match)
+    throw new HTTPException(401, {
+      message: "Unauthorized",
+      cause: {
+        connectionId: null,
+        reason: "authorization_invalid",
+      } satisfies ScimAuthFailureCause,
+    });
 
   const token = match[1];
-  if (!token) throw new HTTPException(401, { message: "Unauthorized" });
+  if (!token)
+    throw new HTTPException(401, {
+      message: "Unauthorized",
+      cause: {
+        connectionId: null,
+        reason: "authorization_invalid",
+      } satisfies ScimAuthFailureCause,
+    });
   const digest = createHash("sha256").update(token, "utf8").digest();
   const [row] = await getScimIdentityByTokenDigest(digest);
 
-  if (!row) throw new HTTPException(401, { message: "Unauthorized" });
+  if (!row)
+    throw new HTTPException(401, {
+      message: "Unauthorized",
+      cause: {
+        connectionId: null,
+        reason: "credential_unrecognized",
+      } satisfies ScimAuthFailureCause,
+    });
   if (
     !row.enabled ||
     !row.connectionEnabled ||
+    row.connectionDeletedAt !== null ||
     (row.portalScope !== "agent" && row.portalScope !== "customer") ||
     (row.portalScope === "customer" && !row.organisationId)
   ) {
@@ -91,11 +139,12 @@ export async function resolveScimBearer(
     // cause carries only the connection id and a bounded reason, never the token or its digest.
     const cause: ScimAuthFailureCause = {
       connectionId: row.connectionId,
-      reason: !row.connectionEnabled
-        ? "connection_disabled"
-        : !row.enabled
-          ? "scim_disabled"
-          : "scope_invalid",
+      reason:
+        !row.connectionEnabled || row.connectionDeletedAt !== null
+          ? "connection_disabled"
+          : !row.enabled
+            ? "scim_disabled"
+            : "scope_invalid",
     };
     throw new HTTPException(401, { message: "Unauthorized", cause });
   }

@@ -1572,7 +1572,7 @@ describe("API integration: work-item comments (#27)", () => {
   });
 
   it("a narrow owner-bound API key cannot create a comment or mention effects", async () => {
-    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const { app, workItem, creator } = await setupWorkItem("member");
     const recipient = await addWorkspaceMember(creator.workspace.id, "member");
     const recipientPerson = requireRow(
       await db
@@ -1645,7 +1645,7 @@ describe("API integration: work-item comments (#27)", () => {
   });
 
   it("a comment-scoped API key permits only its frozen public-comment subset", async () => {
-    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const { app, workItem, creator } = await setupWorkItem("member");
     const rawKey = await createApiKeyFor(creator.user.id, {
       project: ["read"],
       work_item: ["read"],
@@ -1838,7 +1838,7 @@ describe("API integration: work-item comments (#27)", () => {
   });
 
   it("a concurrent comment tombstone cannot commit between history-parent and version reads", async () => {
-    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const { app, workItem, creator } = await setupWorkItem("member");
     const created = await postComment(app, workItem.key, {
       body: { type: "doc", content: [] },
       visibility: "internal",
@@ -1967,7 +1967,7 @@ describe("API integration: work-item comments (#27)", () => {
   });
 
   it("CA-18: the activity stream names the deleter, who can differ from the author", async () => {
-    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const { app, workItem, creator } = await setupWorkItem("member");
     const live = await postComment(app, workItem.key, {
       body: { type: "doc", content: [] },
       visibility: "internal",
@@ -2479,6 +2479,25 @@ describe("API integration: work-item comments (#27)", () => {
       .set({ customerVisibility: "organisation" })
       .where(eq(schema.workItemTable.id, workItem.id));
 
+    const staffWatcher = await addWorkspaceMember(
+      creator.workspace.id,
+      "member",
+    );
+    const staffWatcherPerson = requireRow(
+      await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, staffWatcher.id))
+        .limit(1),
+      "CA-13 staff watcher person",
+    );
+    await db.insert(schema.watcherTable).values({
+      workItemId: workItem.id,
+      personId: staffWatcherPerson.id,
+      source: "explicit",
+      muted: false,
+    });
+
     const publicCandidates = await app.request(
       `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=public`,
     );
@@ -2545,6 +2564,11 @@ describe("API integration: work-item comments (#27)", () => {
       .from(schema.notificationTable)
       .where(eq(schema.notificationTable.personId, customer.person.id));
     expect(customerNotifications).toEqual([{ kind: "work_item.mentioned" }]);
+    const staffNotifications = await db
+      .select({ kind: schema.notificationTable.kind })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.personId, staffWatcherPerson.id));
+    expect(staffNotifications).toEqual([{ kind: "work_item.commented" }]);
     const foreignNotifications = await db
       .select({ kind: schema.notificationTable.kind })
       .from(schema.notificationTable)
@@ -2584,6 +2608,17 @@ describe("API integration: work-item comments (#27)", () => {
     expect(notificationsAfterInternalComment).toEqual([
       { kind: "work_item.mentioned" },
     ]);
+    const staffNotificationsAfterInternalComment = await db
+      .select({ kind: schema.notificationTable.kind })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.personId, staffWatcherPerson.id));
+    expect(staffNotificationsAfterInternalComment).toHaveLength(2);
+    expect(staffNotificationsAfterInternalComment).toEqual(
+      expect.arrayContaining([
+        { kind: "work_item.commented" },
+        { kind: "work_item.commented" },
+      ]),
+    );
   });
 
   it("CA-17: an omitted body is a write-free no-op after the normal edit checks", async () => {

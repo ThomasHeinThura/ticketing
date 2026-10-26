@@ -21,6 +21,7 @@ const policyVersionSchema = z.object({
 export const slaPolicySchema = z.object({
   id: z.string(),
   workspaceId: z.string(),
+  key: z.string(),
   name: z.string(),
   description: z.string().nullable(),
   version: z.number().int().positive(),
@@ -42,6 +43,7 @@ const slaPolicySummarySchema = z.object({
 export const slaPolicyListItemSchema = z.object({
   id: z.string(),
   workspaceId: z.string(),
+  key: z.string(),
   name: z.string(),
   description: z.string().nullable(),
   version: z.number().int().positive(),

@@ -1,0 +1,87 @@
+{
+	"date": "2026-10-25",
+	"purpose": "Isolated process verification of web, jobs, and all runtime roles",
+	"image": "taskdesk-codex-shipping:20261025-probe174",
+	"imageId": "sha256:f6c6d83d8aac0515b25058dfa01d2dec384dc8c26eb79fea3d5b43f3122858fe",
+	"network": {
+		"name": "taskdesk-codex-rolecheck-20261025",
+		"id": "94bfd9d521aff731f32a5f4e8419ba471837469159cef01f945e76ff4dec1e04",
+		"createdForThisRun": true,
+		"removed": true
+	},
+	"containers": [
+		{
+			"role": "web",
+			"name": "taskdesk-codex-rolecheck-20261025-web",
+			"id": "047a5b3d94710cc5dae488533ebaa7cf2e2474bccb84c70dd6ed9e59ad581fa9",
+			"stateAfterSigterm": "exited",
+			"sigtermExitCode": 0,
+			"apiListener": true,
+			"metricsListener": true,
+			"roleHealthcheck": true
+		},
+		{
+			"role": "jobs",
+			"name": "taskdesk-codex-rolecheck-20261025-jobs",
+			"id": "ba59c30abbeb354b2384543bdd50cda0ecd89c1d3fe7599bd74fc2a53dd8eb1b",
+			"stateAfterSigterm": "exited",
+			"sigtermExitCode": 0,
+			"apiListener": false,
+			"metricsListener": false,
+			"roleHealthcheck": true,
+			"unixSocketPresentBeforeSigterm": true,
+			"unixSocketUnlinkObservedDuringShutdown": true
+		},
+		{
+			"role": "all",
+			"name": "taskdesk-codex-rolecheck-20261025-all",
+			"id": "dff70302408c48548022bb73ce2ff9c2daf00e4c1383b66fa94f5d0e1a599e99",
+			"stateAfterSigterm": "exited",
+			"sigtermExitCode": 0,
+			"apiListener": true,
+			"metricsListener": true,
+			"roleHealthcheck": true
+		}
+	],
+	"probes": {
+		"origin": "separate container on the isolated bridge network",
+		"apiPort": 1341,
+		"metricsPort": 9464,
+		"web": {
+			"apiTcpReachable": true,
+			"healthLiveStatus": 200,
+			"metricsTcpReachable": true,
+			"metricsUnauthenticatedStatus": 401
+		},
+		"jobs": {
+			"apiTcpRefused": true,
+			"metricsTcpRefused": true,
+			"unixSocketPingPong": true
+		},
+		"all": {
+			"apiTcpReachable": true,
+			"healthLiveStatus": 200,
+			"metricsTcpReachable": true,
+			"metricsUnauthenticatedStatus": 401
+		}
+	},
+	"hardening": {
+		"noPublishedPorts": true,
+		"readOnlyRoot": true,
+		"capabilitiesDropped": "ALL",
+		"noNewPrivileges": true,
+		"tmpfsWritablePaths": ["/tmp", "/app/data"],
+		"runtimeBindMountsReadOnly": true
+	},
+	"rawLogs": {
+		"savedPrivately": true,
+		"directoryMode": "0700",
+		"fileMode": "0600",
+		"secretsPrinted": false
+	},
+	"limits": [
+		"The full scheduler cadence was not observed in this run; role ownership is covered by focused unit tests.",
+		"The metrics listener was verified by TCP reachability and its unauthenticated 401 response; authenticated scrape contents were not requested.",
+		"Readiness and browser journeys were not exercised."
+	]
+}

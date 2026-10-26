@@ -13,7 +13,7 @@ export default function WorkspaceCrumbSelect() {
       aria-label={`${t("navigation:sidebar.overview")}: ${workspace?.name ?? t("navigation:workspaceSwitcher.selectWorkspace")}`}
       variant="ghost"
       size="xs"
-      className="h-7 justify-between px-2 text-xs text-foreground"
+      className="h-7 min-w-0 max-w-32 shrink justify-between px-2 text-xs text-foreground"
       onClick={() => {
         navigate({
           to: "/dashboard/workspace/$workspaceId",
@@ -21,7 +21,7 @@ export default function WorkspaceCrumbSelect() {
         });
       }}
     >
-      <span className="truncate text-left">
+      <span className="min-w-0 truncate text-left">
         {workspace?.name || t("navigation:workspaceSwitcher.selectWorkspace")}
       </span>
     </Button>

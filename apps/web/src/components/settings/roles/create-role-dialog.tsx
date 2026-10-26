@@ -121,7 +121,7 @@ export function CreateRoleDialog({
             if (
               name.trim() &&
               rankValid &&
-              stepUp.secret &&
+              stepUp.canRun &&
               !mutation.isPending
             )
               mutation.mutate();
@@ -230,7 +230,7 @@ export function CreateRoleDialog({
                 mutation.isPending ||
                 !name.trim() ||
                 !rankValid ||
-                !stepUp.secret
+                !stepUp.canRun
               }
             >
               {t("roles:create.submit")}

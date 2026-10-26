@@ -1,0 +1,23 @@
+{
+	"phase": "save and persisted reload",
+	"checks": [
+		{
+			"name": "Browser HTTPS succeeds with default certificate verification",
+			"passed": true
+		},
+		{
+			"name": "Active audit workspace member selectable as article owner",
+			"passed": true
+		},
+		{
+			"name": "Library editor slash command authors info callout",
+			"passed": true
+		},
+		{
+			"name": "Owner and callout persist through fresh API read and UI reload",
+			"passed": true
+		}
+	],
+	"fixture": "gjapvcek5wrys7jo3hio4smq",
+	"certificateVerification": "default, no ignoreHTTPSErrors exception"
+}

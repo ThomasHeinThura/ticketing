@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
 import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
@@ -8,13 +9,16 @@ import {
   type Transaction,
 } from "../database/executor";
 import {
+  apikeyTable,
   personTable,
   projectTable,
   savedViewTable,
   teamMemberTable,
   teamTable,
   userPreferenceTable,
+  userTable,
 } from "../database/schema";
+import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 
 export type SavedViewTransaction = Transaction;
 
@@ -82,11 +86,120 @@ export async function teamMemberInWorkspace(
   return Boolean(membership);
 }
 
+export type SavedViewEventActor = {
+  personId: string;
+  userId: string;
+  apiKeyId?: string;
+};
+
+async function savedViewEventActor(
+  tx: SavedViewTransaction,
+  actor: SavedViewEventActor,
+) {
+  if (actor.apiKeyId) {
+    const [apiKey] = await tx
+      .select({ id: apikeyTable.id, name: apikeyTable.name })
+      .from(apikeyTable)
+      .where(eq(apikeyTable.id, actor.apiKeyId))
+      .limit(1);
+    if (!apiKey) throw new Error("Could not resolve saved-view API-key actor");
+    return {
+      type: "api_key" as const,
+      id: apiKey.id,
+      name: apiKey.name ?? "API key",
+    };
+  }
+
+  const [user] = await tx
+    .select({ name: userTable.name })
+    .from(userTable)
+    .where(eq(userTable.id, actor.userId))
+    .limit(1);
+  if (!user) throw new Error("Could not resolve saved-view person actor");
+  return { type: "person" as const, id: actor.personId, name: user.name };
+}
+
+async function enqueueSavedViewEvent(
+  tx: SavedViewTransaction,
+  input: {
+    actor: SavedViewEventActor;
+    kind: "saved_view.created" | "saved_view.updated" | "saved_view.pinned";
+    workspaceId: string;
+    payload: Record<string, unknown>;
+  },
+) {
+  await enqueueOutboxEvent(tx, {
+    id: `evt_${createId()}`,
+    kind: input.kind,
+    occurredAt: new Date().toISOString(),
+    actor: await savedViewEventActor(tx, input.actor),
+    scope: eventScope({
+      workspaceId: input.workspaceId,
+      organisationId: null,
+      projectId: null,
+    }),
+    payload: input.payload,
+    causationId: null,
+    depth: 0,
+    originAutomationId: null,
+  });
+}
+
 export async function insertSavedView(
   values: typeof savedViewTable.$inferInsert,
+  actor: SavedViewEventActor,
 ) {
-  const [view] = await db.insert(savedViewTable).values(values).returning();
-  return materializeSavedView(view);
+  return db.transaction(async (tx) => {
+    const [view] = await tx.insert(savedViewTable).values(values).returning();
+    if (!view) return undefined;
+    await enqueueSavedViewEvent(tx, {
+      actor,
+      kind: "saved_view.created",
+      workspaceId: view.workspaceId,
+      payload: {
+        savedViewId: view.id,
+        workspaceId: view.workspaceId,
+        visibility: view.visibility,
+      },
+    });
+    return materializeSavedView(view);
+  });
+}
+
+/** Insert the two immutable-entity saved-view halves of one IQ-19 queue atomically. */
+export async function insertSavedViewPairInTransaction(
+  tx: SavedViewTransaction,
+  values: readonly [
+    typeof savedViewTable.$inferInsert,
+    typeof savedViewTable.$inferInsert,
+  ],
+  actor: SavedViewEventActor,
+) {
+  const inserted: MaterializedSavedView<typeof savedViewTable.$inferSelect>[] =
+    [];
+  for (const value of values) {
+    const [view] = await tx.insert(savedViewTable).values(value).returning();
+    if (!view) throw new Error("Failed to create paired saved view");
+    await enqueueSavedViewEvent(tx, {
+      actor,
+      kind: "saved_view.created",
+      workspaceId: view.workspaceId,
+      payload: {
+        savedViewId: view.id,
+        workspaceId: view.workspaceId,
+        visibility: view.visibility,
+      },
+    });
+    inserted.push(
+      materializeSavedView(view) as MaterializedSavedView<
+        typeof savedViewTable.$inferSelect
+      >,
+    );
+  }
+  return inserted as [
+    MaterializedSavedView<typeof savedViewTable.$inferSelect>,
+    MaterializedSavedView<typeof savedViewTable.$inferSelect>,
+  ];
 }
 
 export async function findSavedViewById(id: string) {
@@ -225,6 +338,19 @@ export async function updateSavedView(
   return materializeSavedView(view);
 }
 
+export async function enqueueSavedViewUpdatedEvent(
+  tx: SavedViewTransaction,
+  view: { id: string; workspaceId: string },
+  actor: SavedViewEventActor,
+) {
+  await enqueueSavedViewEvent(tx, {
+    actor,
+    kind: "saved_view.updated",
+    workspaceId: view.workspaceId,
+    payload: { savedViewId: view.id, workspaceId: view.workspaceId },
+  });
+}
+
 type PinnedViewMutationResult = {
   pinnedViewIds: string[];
   wasPinned: boolean;
@@ -241,6 +367,7 @@ export async function togglePinnedView(
   personId: string,
   workspaceId: string,
   viewId: string,
+  actor: SavedViewEventActor,
 ) {
   return withSavedViewTransaction(async (tx) => {
     // Serialize on the preference identity, including when the row does not yet
@@ -302,6 +429,17 @@ export async function togglePinnedView(
         value: pinnedViewIds,
       });
     }
+
+    await enqueueSavedViewEvent(tx, {
+      actor,
+      kind: "saved_view.pinned",
+      workspaceId,
+      payload: {
+        savedViewId: viewId,
+        workspaceId,
+        pinned: !wasPinned,
+      },
+    });
 
     return {
       pinnedViewIds,

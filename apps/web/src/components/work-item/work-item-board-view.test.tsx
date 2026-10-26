@@ -1,4 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 import WorkItemBoardView from "./work-item-board-view";
@@ -17,6 +18,8 @@ const state = vi.hoisted(() => ({
   pages: [] as unknown[],
   itemsLoading: false,
   queryProps: undefined as Record<string, unknown> | undefined,
+  combinedPages: undefined as unknown[] | undefined,
+  capabilityGet: vi.fn(),
 }));
 
 vi.mock("@/hooks/queries/agile/use-wip-limits", () => ({
@@ -58,6 +61,25 @@ vi.mock("@/hooks/queries/work-item/use-get-board-work-items", () => ({
     };
   },
 }));
+vi.mock("@/hooks/queries/work-item/use-get-combined-board-work-items", () => ({
+  default: () => ({
+    data: state.combinedPages ? { pages: state.combinedPages } : undefined,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    fetchNextPage: vi.fn(),
+  }),
+}));
+vi.mock("@taskdesk/libs", () => ({
+  client: {
+    capabilities: {
+      $get: (...args: unknown[]) => state.capabilityGet(...args),
+    },
+  },
+}));
 vi.mock("@/hooks/queries/project/use-get-project-states", () => ({
   default: () => ({
     data: [{ id: "s1", name: "Open" }],
@@ -80,18 +102,23 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
 const row = (key: string) => ({ id: `id-${key}`, key, unavailableFields: [] });
 
 function mount(props: Partial<Parameters<typeof WorkItemBoardView>[0]> = {}) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <WorkItemBoardView
-      project={{ id: "proj_1" }}
-      realtimeProjectId="proj_1"
-      realtimeStatus={{ projectId: "proj_1", status: "available" }}
-      onRealtimeAvailabilityChange={vi.fn()}
-      canSelect={false}
-      selectedKeys={[]}
-      onSelectionChange={vi.fn()}
-      onPruneSelection={vi.fn()}
-      {...props}
-    />,
+    <QueryClientProvider client={queryClient}>
+      <WorkItemBoardView
+        project={{ id: "proj_1" }}
+        realtimeProjectId="proj_1"
+        realtimeStatus={{ projectId: "proj_1", status: "available" }}
+        onRealtimeAvailabilityChange={vi.fn()}
+        canSelect={false}
+        selectedKeys={[]}
+        onSelectionChange={vi.fn()}
+        onPruneSelection={vi.fn()}
+        {...props}
+      />
+    </QueryClientProvider>,
   );
 }
 
@@ -107,6 +134,8 @@ beforeEach(() => {
   state.boardProps = undefined;
   state.groupedProps = undefined;
   state.pages = [{ items: [row("WLP-1"), row("WLP-2")] }];
+  state.combinedPages = undefined;
+  state.capabilityGet.mockReset();
   state.itemsLoading = false;
 });
 afterEach(cleanup);
@@ -217,6 +246,26 @@ describe("WorkItemBoardView grouping (VW-13)", () => {
     cleanup();
     mount({ group: "priority" });
     expect(state.groupedProps).toMatchObject({ field: "priority" });
+    cleanup();
+    mount({ group: "label" });
+    expect(state.groupedProps).toMatchObject({ field: "label" });
+    cleanup();
+    mount({
+      group: "cf.customer_impact",
+      customField: {
+        key: "customer_impact",
+        name: "Customer impact",
+        format: "select",
+        options: [{ key: "high", label: "High" }],
+      },
+    });
+    expect(state.queryProps).toMatchObject({
+      columns: ["cf.customer_impact"],
+    });
+    expect(state.groupedProps).toMatchObject({
+      field: "cf.customer_impact",
+      customField: { key: "customer_impact", name: "Customer impact" },
+    });
   });
 
   it("derives each grouped capability from its own flag and grants nothing while loading", () => {
@@ -255,6 +304,82 @@ describe("WorkItemBoardView grouping (VW-13)", () => {
       canUpdate: false,
       canSetPriority: false,
       peopleEnabled: false,
+    });
+  });
+});
+
+describe("combined board capabilities", () => {
+  it("uses each source project's cached capability query and fails closed on errors", async () => {
+    state.combinedPages = [
+      {
+        columns: [
+          {
+            templateId: "todo-template",
+            name: "Todo",
+            group: "unstarted",
+            position: 0,
+          },
+        ],
+        items: [
+          {
+            ...row("HELP-1"),
+            projectId: "child-project",
+            stateId: "child-state",
+            stateTemplateId: "todo-template",
+            sourceProject: {
+              id: "child-project",
+              key: "CHILD",
+              name: "Child project",
+            },
+          },
+        ],
+      },
+    ];
+    state.capabilityGet.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        rankTasks: true,
+        transitionTasks: false,
+        updateTasks: true,
+        assignTasks: false,
+        setPriorityTasks: false,
+        deleteTasks: false,
+      }),
+    });
+    mount({ combined: true, workspaceId: "workspace" });
+
+    await waitFor(() => {
+      expect(state.boardProps?.canRank).toBe(true);
+      expect(state.boardProps?.canTransition).toBe(false);
+    });
+    expect(state.capabilityGet).toHaveBeenCalledWith({
+      query: { workspaceId: "workspace", projectId: "child-project" },
+    });
+    const capabilities = state.boardProps?.combinedCapabilities as Map<
+      string,
+      { canRank: boolean; canTransition: boolean; canBulkAct: boolean }
+    >;
+    expect(capabilities.get("child-project")).toEqual({
+      canRank: true,
+      canTransition: false,
+      canBulkAct: true,
+    });
+    expect(state.boardProps?.combinedColumns).toMatchObject([
+      { templateId: "todo-template", name: "Todo" },
+    ]);
+
+    cleanup();
+    state.capabilityGet.mockResolvedValue({ ok: false });
+    mount({ combined: true, workspaceId: "workspace" });
+    await waitFor(() => expect(state.capabilityGet).toHaveBeenCalled());
+    const failedCapabilities = state.boardProps?.combinedCapabilities as Map<
+      string,
+      { canRank: boolean; canTransition: boolean; canBulkAct: boolean }
+    >;
+    expect(failedCapabilities.get("child-project")).toEqual({
+      canRank: false,
+      canTransition: false,
+      canBulkAct: false,
     });
   });
 });

@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@/test/en-translation";
 import { Route } from "./catalogue";
 
 const mocks = vi.hoisted(() => ({
@@ -33,8 +34,17 @@ vi.mock("@/fetchers/intake", () => ({
   submitPortalRequest: mocks.submit,
 }));
 
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async () => ({
+  ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
   useTranslation: () => ({
+    i18n: {
+      language: "en-US",
+      resolvedLanguage: "en-US",
+      t: (_key: string, options?: { count?: number }) =>
+        translate(
+          `term:customer.request_${options?.count === 1 ? "one" : "other"}`,
+        ),
+    },
     t: (
       _key: string,
       options?: { defaultValue?: string; [key: string]: unknown },

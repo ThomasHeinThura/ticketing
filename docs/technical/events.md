@@ -30,10 +30,13 @@ is a projection of this: `id`, `event` (= `kind`), `occurredAt`, `instance`, `ac
 `originAutomationId`) are never sent outward.
 
 Instance-scoped envelopes use an empty `scope`. Only `pending_action.requested`,
-`pending_action.decided`, `pending_action.executed`, and `identity.deprovisioned` may use it;
+`pending_action.decided`, `pending_action.executed`, `identity.deprovisioned`, `identity.provisioned`, and
+`api_key.auto_disabled` may use it;
 all other event keys require a workspace scope. This lets person deactivation and its
 approval lifecycle remain instance-scoped even when the target has no workspace
-memberships. Instance-scoped events are not visible to workspace-scoped consumers.
+memberships. A personal-key auto-disable notification is scoped to its current owner,
+with no fabricated workspace or external delivery. Instance-scoped events are not visible
+to workspace-scoped consumers. Provisioning uses only the connection's configured agent workspace when available. Customer or unbound provisioning remains instance-scoped, with its organisation in the payload; it is not delivered to workspace webhook subscriptions.
 
 `actor.type` is the reason [`activity`](data-model.md) and [`audit_log`](data-model.md)
 carry `actor_type`: an automation acting, a scheduled job acting and an API key acting are
@@ -107,11 +110,12 @@ distinguishable from a person, in the event, in the activity stream and in the a
 | `identity.request_denied` | A SCIM or OIDC request was refused — forbidden attribute, cross-organisation, failed auth (`IP-4`, `IP-14`, `IP-18`) | — | — | ✅ (instance administrators) | `identityConnectionId`, `reason`, `resource?` |
 | `identity_connection.changed` | A connection or its SCIM settings changed; a token was rotated or revoked (`IP-6`) | — | ✅ | ✅ (instance administrators) | `identityConnectionId`, `changes[]` (keys only, never values) |
 | `import.chunk_completed` | An `import-run` job finished one chunk ([background-jobs.md](background-jobs.md)); a progress frame on the `instance` WebSocket topic, never delivered outward | — | — | — | `importRunId`, `chunk`, `chunks`, `rowsDone`, `rowsTotal` |
+| `automation.notification_sent` | A team-targeted automation notification commits | — | — | ✅ | `key`, `workItemId`, `teamId`, `title`, `body`; workspace/project scoped, automation actor with causation/depth. Staff-only current team members with current work-item reach; preferences and send-time eligibility apply. Never an automation trigger or webhook event. |
 | `automation.run_failed` | An automation action throws | — | — | ✅ | `automationId`, `runId`, `error` |
 
 ## Inherited compatibility vocabulary
 
-These inherited publishers remain supported migration inputs, not a second permanent model.
+These inherited publishers remain supported migration inputs, not a second permanent model. Thomas approved a strict transactional legacy-task bridge on 25 October 2026. Its separate compatibility registry uses the actual opaque `task.id` in payload `taskId` and `key`, with authoritative workspace/project scope; it never invents a canonical `work_item.key`. Multi-field changes use one `task.updated` parent; compound moves use one `task.moved`. Compatibility replay retains the existing legacy side effects; native webhook/automation subscriptions remain native-only. Retired `task.deleted` is recognized for validation but has no active producer (DELETE remains 410); startup column normalization creates no synthetic domain event.
 The first column alone registers emitted identifiers. Other columns explain existing scope.
 
 | Emitted key | Target TaskDesk key | Compatibility status | Migration owner / stage |

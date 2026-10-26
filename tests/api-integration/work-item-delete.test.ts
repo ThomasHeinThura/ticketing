@@ -19,6 +19,7 @@ import {
   grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
+import { createCustomerUser } from "./helpers/p5-invite";
 import { raceProjectArchive } from "./helpers/race-soft-delete";
 import { ensureCreationWorkflow } from "./helpers/workflow";
 
@@ -552,6 +553,38 @@ describe("API integration: work item delete (#23 fourth slice)", () => {
       approveWorkItemDeletion({ ...f.approval, id: pending.pendingActionId }),
     ).rejects.toMatchObject({ status: 409 });
     expect((await f.row())?.deletedAt).toBeNull();
+  });
+  it("summarizes the customer requester separately from the deleting actor and portal effect", async () => {
+    const f = await pendingFixture();
+    await decideOwnPendingAction({
+      id: f.pending.pendingActionId,
+      requesterPersonId: f.person.id,
+      outcome: "cancelled",
+      sessionId: f.approval.sessionId,
+    });
+    const customer = await createCustomerUser({
+      organisationId: f.creator.workspace.organisationId,
+      person: true,
+    });
+    if (!customer.personId)
+      throw new Error("customer requester person missing");
+    await db
+      .update(schema.workItemTable)
+      .set({
+        requesterId: customer.personId,
+        customerVisibility: "organisation",
+      })
+      .where(eq(schema.workItemTable.key, f.item.key));
+
+    const pending = await createPendingAction(f.request);
+    expect(pending.summary).toMatchObject({
+      key: f.item.key,
+      customerRequesterName: customer.user.name,
+      requestedByName: f.creator.user.name,
+      customerVisibility: "organisation",
+      portalRemoval: "removed_on_approval",
+      recoveryDays: 30,
+    });
   });
   it("preserves children and relation rows through the soft-delete restore window", async () => {
     const f = await pendingFixture();

@@ -1,0 +1,7 @@
+{
+	"containerId": "5184e0a07e0978fe15e530ead1ad11c6ee0e13ad3fa3d265293a12edd2dfbaec",
+	"image": "sha256:bbb12518a1925ebd35635b4e422af1b6b0e0bdecd6873d29519f3bde8a4f957b",
+	"exitCode": 0,
+	"output": "G11 agent initial bundle: 259.3 KB gzip / 350 KB budget (9 assets)\nG11 agent work-list initial route graph: 346.4 KB gzip / 350 KB budget (53 assets)\nG11 portal initial bundle: 191.7 KB gzip / 200 KB budget (9 assets)",
+	"scope": "Linux web build with editor CSS extraction; no threshold changes"
+}

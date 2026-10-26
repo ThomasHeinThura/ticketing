@@ -259,16 +259,43 @@ describe("native persisted comment mention to immediate SMTP delivery", () => {
     await mention(f);
     expect(await deliveryRows()).toHaveLength(0);
     expect(await getCanonicalPreferences(f.recipient.user.id)).toMatchObject([
-      { enabled: false, source: "global" },
+      {
+        eventKind: "work_item.mentioned",
+        channel: "notify.email",
+        scope: "global",
+        scopeId: null,
+        enabled: false,
+        digest: "off",
+        source: "global",
+      },
+      {
+        eventKind: "work_item.commented",
+        channel: "notify.email",
+        scope: "global",
+        scopeId: null,
+        enabled: false,
+        digest: "off",
+        source: "default",
+      },
+      {
+        eventKind: "automation.notification_sent",
+        channel: "notify.email",
+        scope: "global",
+        scopeId: null,
+        enabled: false,
+        digest: "off",
+        source: "default",
+      },
     ]);
-    expect(
-      (
-        await db
-          .select()
-          .from(schema.notificationTable)
-          .where(eq(schema.notificationTable.personId, f.person.id))
-      ).length,
-    ).toBe(1);
+    const notificationRows = await db.execute<{ kind: string }>(sql`
+      SELECT kind FROM notification
+       WHERE person_id = ${f.person.id}
+       ORDER BY kind
+    `);
+    // This person becomes a watcher through this mention; they were not a
+    // comment subscriber when it was written. Email preference cannot suppress
+    // their inbox mention or retroactively create a second comment notification.
+    expect(notificationRows.rows).toEqual([{ kind: "work_item.mentioned" }]);
   });
   it.each(["disabled", "quiet_hours", "reach_lost"] as const)(
     "rechecks %s before provider I/O without consuming a provider attempt",

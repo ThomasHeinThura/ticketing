@@ -1,6 +1,7 @@
 import {
   resolveSmtpConfiguration,
   sendWorkspaceInvitationEmail,
+  type WorkspaceInvitationSendOptions,
 } from "@taskdesk/email";
 import { getConfiguredCustomerOrigin } from "../auth";
 import { findUserLocaleByEmail } from "../utils/access-lookups.repository";
@@ -40,7 +41,8 @@ export async function isEmailProviderConfigured(): Promise<boolean> {
  */
 export async function sendCustomerInvitationEmail(
   input: CustomerInvitationMail,
-): Promise<boolean> {
+  options: WorkspaceInvitationSendOptions = {},
+): Promise<boolean | "expired"> {
   try {
     const portalOrigin = getConfiguredCustomerOrigin();
     const user = await findUserLocaleByEmail(input.email);
@@ -64,7 +66,9 @@ export async function sendCustomerInvitationEmail(
         to: input.email,
         copy: getWorkspaceInvitationEmailCopy(locale),
       },
+      options,
     );
+    if (result?.reason === "NOT_AUTHORIZED") return "expired";
     return result?.success !== false;
   } catch {
     return false;

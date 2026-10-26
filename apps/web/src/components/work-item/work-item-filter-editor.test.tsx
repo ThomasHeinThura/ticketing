@@ -48,6 +48,19 @@ afterEach(() => {
 });
 
 describe("work-item filter editor", () => {
+  it("VW-32 keeps requester @me through visual editing, text and apply", async () => {
+    const onApply = vi.fn();
+    render(<StatefulEditor filter="requester:@me" onApply={onApply} />);
+    expect(await screen.findByLabelText("Value for Requester")).toHaveValue(
+      "@me",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Text" }));
+    expect(
+      screen.getByLabelText(translate("workItems:filter.textLabel")),
+    ).toHaveValue("requester:@me");
+    fireEvent.click(screen.getByRole("button", { name: "Apply filter" }));
+    expect(onApply).toHaveBeenCalledWith("requester:@me");
+  });
   it("SV-11: switches nested @me and relative-date filters losslessly between visual and text modes", async () => {
     const onApply = vi.fn();
     render(
@@ -59,12 +72,14 @@ describe("work-item filter editor", () => {
     );
     expect(screen.getByLabelText("Value for Due date")).toHaveValue("7d");
     fireEvent.click(screen.getByRole("button", { name: "Text" }));
-    expect(screen.getByLabelText("Filter work items")).toHaveValue(
-      "AND(assignee:@me,due:>=7d)",
-    );
+    expect(
+      screen.getByLabelText(translate("workItems:filter.textLabel")),
+    ).toHaveValue("AND(assignee:@me,due:>=7d)");
     expect(
       parseWorkItemFilterText(
-        screen.getByLabelText("Filter work items").getAttribute("value") ?? "",
+        screen
+          .getByLabelText(translate("workItems:filter.textLabel"))
+          .getAttribute("value") ?? "",
       ),
     ).toEqual(parseWorkItemFilterText("assignee:@me AND due:>=7d"));
   });
@@ -163,12 +178,29 @@ describe("work-item filter editor", () => {
     render(<StatefulEditor filter="assignee:@me" onApply={onApply} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Text" }));
-    expect(screen.getByLabelText("Filter work items")).toHaveValue(
-      "assignee:@me",
-    );
+    expect(
+      screen.getByLabelText(translate("workItems:filter.textLabel")),
+    ).toHaveValue("assignee:@me");
     fireEvent.click(screen.getByRole("button", { name: "Visual" }));
     fireEvent.click(screen.getByRole("button", { name: "Apply filter" }));
     expect(onApply).toHaveBeenCalledWith("assignee:@me");
+  });
+
+  it("keeps explicit archived/deleted lifecycle selection in filter text", async () => {
+    const onApply = vi.fn();
+    render(<StatefulEditor filter="lifecycle:deleted" onApply={onApply} />);
+
+    expect(
+      await screen.findByRole("combobox", { name: "Value for Lifecycle" }),
+    ).toHaveTextContent("deleted");
+    fireEvent.click(screen.getByRole("button", { name: "Text" }));
+    const textFilter = screen.getByLabelText(
+      translate("workItems:filter.textLabel"),
+    );
+    expect(textFilter).toHaveValue("lifecycle:deleted");
+    expect(
+      parseWorkItemFilterText(textFilter.getAttribute("value") ?? ""),
+    ).toEqual({ field: "lifecycle", op: "eq", value: "deleted" });
   });
 
   it("keeps invalid text in text mode and explains why it cannot switch or apply", () => {
@@ -183,9 +215,12 @@ describe("work-item filter editor", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Filter work items"), {
-      target: { value: "assignee:@me AND" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(translate("workItems:filter.textLabel")),
+      {
+        target: { value: "assignee:@me AND" },
+      },
+    );
     fireEvent.click(screen.getByRole("button", { name: "Visual" }));
     expect(onModeChange).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent(
@@ -214,9 +249,9 @@ describe("work-item filter editor", () => {
       expect(screen.getByTestId("work-item-search-error")).toHaveTextContent(
         `${status}: ${message}`,
       );
-      expect(screen.getByLabelText("Filter work items")).toHaveValue(
-        "label:urgent",
-      );
+      expect(
+        screen.getByLabelText(translate("workItems:filter.textLabel")),
+      ).toHaveValue("label:urgent");
     },
   );
 

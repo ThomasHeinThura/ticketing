@@ -11,6 +11,7 @@ const LEAVES: WorkItemFilter[] = [
   { field: "priority", op: "gte", value: "high" },
   { field: "priority", op: "in", value: ["high", "urgent"] },
   { field: "assignee", op: "eq", value: "@me" },
+  { field: "requester", op: "eq", value: "@me" },
   { field: "watcher", op: "contains", value: "@me" },
   { field: "dueDate", op: "lt", value: "7d" },
   { field: "createdAt", op: "gt", value: "2026-01-01" },
@@ -49,6 +50,19 @@ function textList(values: string[]) {
 }
 
 describe("work-item filter text AST contract", () => {
+  it("VW-32 keeps requester @me in saved filter text without accepting another person", () => {
+    expect(parseWorkItemFilterText("requester:@me")).toEqual({
+      field: "requester",
+      op: "eq",
+      value: "@me",
+    });
+    expect(() => parseWorkItemFilterText("requester:person-other")).toThrow(
+      /requester supports eq @me only/,
+    );
+    expect(() => parseWorkItemFilterText("requester:contains(@me)")).toThrow(
+      /requester supports eq @me only/,
+    );
+  });
   it("round-trips deterministic bounded ASTs with exact group structure and leaf order", () => {
     for (let seed = 1; seed <= 400; seed++) {
       const ast = generatedTree(seed);

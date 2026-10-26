@@ -36,16 +36,15 @@ type IntakeUrlFilters = {
 /** The query parameters `GET /api/submissions` filters by (`IQ-21`), cursor-safe on the server. */
 export type IntakeServerFilters = {
   requestTypeKey?: string;
-  /** `unclaimed` or a person id. */
+  /** `unclaimed`, `claimed` or a person id. */
   assignee?: string;
   olderThanDays?: number;
 };
 
 /**
  * `IQ-21`: split the URL filters into what the server applies (`requestTypeKey`, `assignee`
- * `unclaimed`, `olderThanDays`) and what it has no parameter for, which the client still
- * narrows on the page it received: "claimed" (any person), and a request type id whose key is
- * unknown. `pending` is set while the request type list that resolves the key is not loaded.
+ * `unclaimed`/`claimed`, `olderThanDays`) and what it has no parameter for: a request type id
+ * whose key is unknown. `pending` is set while the request type list that resolves the key is not loaded.
  */
 export function splitIntakeFilters(
   filters: IntakeUrlFilters,
@@ -66,8 +65,7 @@ export function splitIntakeFilters(
     else if (requestTypes === undefined) pending = true;
     else residual.requestType = filters.requestType;
   }
-  if (filters.assignee === "unclaimed") server.assignee = "unclaimed";
-  else if (filters.assignee) residual.assignee = filters.assignee;
+  if (filters.assignee) server.assignee = filters.assignee;
   if (filters.age) {
     server.olderThanDays = Math.round(AGE_THRESHOLD_MS[filters.age] / DAY);
   }

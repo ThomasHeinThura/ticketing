@@ -5,10 +5,18 @@ import { PortalSlaStatus } from "./portal-sla-status";
 vi.mock("react-i18next", async () => {
   const { translate } = await import("@/test/en-translation");
   return {
+    ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
     useTranslation: (namespace: string) => ({
       t: (key: string, options?: Record<string, unknown>) =>
         translate(`${namespace}:${key}`, options),
-      i18n: { language: "en-US" },
+      i18n: {
+        language: "en-US",
+        resolvedLanguage: "en-US",
+        t: (_key: string, options?: { count?: number }) =>
+          translate(
+            `term:customer.request_${options?.count === 1 ? "one" : "other"}`,
+          ),
+      },
     }),
   };
 });

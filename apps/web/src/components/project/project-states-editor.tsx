@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -33,6 +33,11 @@ import {
 import { GripVertical, Plus } from "lucide-react";
 import { type CSSProperties, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  getProjectSettingsInheritance,
+  inheritProjectStateSet,
+  WorkspaceSettingsError,
+} from "@/fetchers/project-settings-inheritance";
 import useCreateProjectState from "@/hooks/mutations/project/use-create-project-state";
 import useUpdateProjectState from "@/hooks/mutations/project/use-update-project-state";
 import useGetProjectStateTemplates from "@/hooks/queries/project/use-get-project-state-templates";
@@ -139,6 +144,16 @@ export default function ProjectStatesEditor({
     refetch,
   } = useGetProjectStates(projectId);
   const { data: templates } = useGetProjectStateTemplates(projectId, canEdit);
+  const inheritanceKey = [
+    "projects",
+    projectId,
+    "settings-inheritance",
+  ] as const;
+  const inheritance = useQuery({
+    queryKey: inheritanceKey,
+    queryFn: () => getProjectSettingsInheritance(projectId),
+    enabled: Boolean(projectId),
+  });
   const { mutateAsync: createState, isPending: isCreating } =
     useCreateProjectState();
   const { mutateAsync: updateState } = useUpdateProjectState();
@@ -151,6 +166,10 @@ export default function ProjectStatesEditor({
   } | null>(null);
   const [templateId, setTemplateId] = useState<string>(NONE);
   const [failure, setFailure] = useState<StateFailure | null>(null);
+  const [inheritanceFailure, setInheritanceFailure] = useState<
+    "forbidden" | "stale" | "generic" | null
+  >(null);
+  const [syncingInheritance, setSyncingInheritance] = useState(false);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
@@ -173,6 +192,9 @@ export default function ProjectStatesEditor({
       }),
       queryClient.invalidateQueries({
         queryKey: ["projects", projectId, "state-templates"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: inheritanceKey,
       }),
     ]);
   };
@@ -288,8 +310,96 @@ export default function ProjectStatesEditor({
     }
   };
 
+  const handleInheritStateSet = async () => {
+    const current = inheritance.data;
+    if (!current || !canEdit || syncingInheritance) return;
+    setInheritanceFailure(null);
+    setSyncingInheritance(true);
+    try {
+      const updated = await inheritProjectStateSet({
+        projectId,
+        expectedProjectVersion: current.projectVersion,
+        expectedWorkspaceVersion: current.workspaceVersion,
+      });
+      queryClient.setQueryData(inheritanceKey, updated);
+      await refresh();
+    } catch (error) {
+      setInheritanceFailure(
+        error instanceof WorkspaceSettingsError && error.status === 409
+          ? "stale"
+          : error instanceof WorkspaceSettingsError && error.status === 403
+            ? "forbidden"
+            : "generic",
+      );
+      if (error instanceof WorkspaceSettingsError && error.status === 403) {
+        void queryClient.invalidateQueries({
+          queryKey: ["workspace-capabilities", workspaceId],
+        });
+      }
+      if (error instanceof WorkspaceSettingsError && error.status === 409) {
+        void inheritance.refetch();
+      }
+    } finally {
+      setSyncingInheritance(false);
+    }
+  };
+
   return (
     <div className="space-y-3" data-testid="project-states-editor">
+      {inheritance.data && (
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-sidebar p-3"
+          data-testid="project-state-inheritance"
+        >
+          <div className="space-y-1">
+            <p className="text-sm font-medium">
+              {t("settings:projectInheritance.states")}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {inheritance.data.states.mode === "inherit"
+                ? t("settings:projectInheritance.projectSet", {
+                    count: inheritance.data.states.activeTemplateIds.length,
+                  })
+                : t("settings:projectInheritance.workspaceSet", {
+                    count: inheritance.data.states.workspaceTemplateIds.length,
+                  })}
+            </p>
+          </div>
+          {canEdit && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={syncingInheritance}
+              onClick={() => void handleInheritStateSet()}
+            >
+              {syncingInheritance
+                ? t("settings:projectInheritance.saving")
+                : t("settings:projectInheritance.useWorkspace")}
+            </Button>
+          )}
+          {inheritanceFailure && (
+            <p role="alert" className="w-full text-xs text-destructive">
+              {t(`settings:projectInheritance.${inheritanceFailure}`)}
+            </p>
+          )}
+        </div>
+      )}
+      {inheritance.isError && (
+        <Alert variant="error" role="alert">
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+            {t("settings:projectInheritance.loadError")}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void inheritance.refetch()}
+            >
+              {t("settings:projectInheritance.retry")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       <DndContext
         accessibility={dndAccessibility}
         sensors={sensors}

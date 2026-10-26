@@ -38,14 +38,16 @@ type Change = { field?: unknown; visibility?: unknown } & Record<
   unknown
 >;
 
-/** `NO-19`: a `work_item.updated` consumer drops `internal` change entries. */
+/** EV-5 / NO-19: only explicitly classified public changes leave the instance. */
 export function visibleChanges(value: unknown): Change[] {
   if (!Array.isArray(value)) return [];
   return value.filter(
     (entry): entry is Change =>
       typeof entry === "object" &&
       entry !== null &&
-      (entry as Change).visibility !== "internal",
+      !Array.isArray(entry) &&
+      typeof (entry as Change).field === "string" &&
+      (entry as Change).visibility === "public",
   );
 }
 

@@ -1,5 +1,5 @@
-import { useMutation } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -14,9 +14,14 @@ import {
   Input,
   Skeleton,
 } from "@taskdesk/ui";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { acceptCustomerInvitation } from "@/fetchers/customer-invitation";
+import {
+  acceptCustomerInvitationContinuation,
+  beginCustomerInvitationContinuation,
+  getCustomerInvitationContinuationResult,
+  getPortalAuthMethods,
+} from "@/fetchers/customer-invitation";
 import { portalAuthClient } from "@/lib/portal-auth-client";
 import { routes } from "@/lib/routes";
 
@@ -29,14 +34,12 @@ export function readInviteCredential(hash: string): string | null {
 type SessionState = "loading" | "signed-in" | "signed-out";
 
 /**
- * Create the account on the portal host and accept in the same request (CP-12): the server checks
- * the credential against the typed address, creates the customer person and membership, and only
- * then returns a session. Resolves "created", "exists" (an account for the address is already
- * there, sign in instead) or "refused" (the one generic notice).
+ * The portal server uses the invitation continuation cookie to gate signup and accept before it
+ * returns a session. Resolves "created", "exists" (an account for the address is already there,
+ * sign in instead) or "refused" (the one generic notice).
  */
 async function createInvitedAccount(input: {
   invitationId: string;
-  credential: string;
   name: string;
   email: string;
   password: string;
@@ -45,11 +48,10 @@ async function createInvitedAccount(input: {
     const result = await portalAuthClient.$fetch("/sign-up/email", {
       method: "POST",
       body: {
+        invitationId: input.invitationId,
         name: input.name,
         email: input.email,
         password: input.password,
-        invitationId: input.invitationId,
-        invitationCredential: input.credential,
       },
     });
     if (!result.error) return "created";
@@ -67,13 +69,21 @@ async function createInvitedAccount(input: {
  */
 export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   const { t } = useTranslation("customerInvitations");
+  const navigate = useNavigate();
   // Read once, then take the fragment out of the address bar and history.
-  const [credential] = useState(() =>
+  const [credential, setCredential] = useState(() =>
     typeof window === "undefined"
       ? null
       : readInviteCredential(window.location.hash),
   );
   const [session, setSession] = useState<SessionState>("loading");
+  const [continuationReady, setContinuationReady] = useState(false);
+  const [continuationFailed, setContinuationFailed] = useState(false);
+  const authMethods = useQuery({
+    queryKey: ["portal", "auth-methods"],
+    queryFn: getPortalAuthMethods,
+    staleTime: 60_000,
+  });
   useEffect(() => {
     if (window.location.hash)
       window.history.replaceState(
@@ -99,29 +109,72 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   }, []);
 
   const accept = useMutation({
-    mutationFn: () =>
-      acceptCustomerInvitation(invitationId, credential as string),
+    mutationFn: async () => {
+      if (credential) {
+        await beginCustomerInvitationContinuation(invitationId, credential);
+        setCredential(null);
+        setContinuationReady(true);
+        await acceptCustomerInvitationContinuation(invitationId);
+        return;
+      }
+      const result =
+        await getCustomerInvitationContinuationResult(invitationId);
+      if (!result.accepted)
+        await acceptCustomerInvitationContinuation(invitationId);
+    },
   });
+  const continuationAcceptStarted = useRef(false);
+  useEffect(() => {
+    if (
+      session !== "signed-in" ||
+      credential ||
+      continuationAcceptStarted.current
+    )
+      return;
+    continuationAcceptStarted.current = true;
+    accept.mutate();
+  }, [accept, credential, session]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const signUp = useMutation({
-    mutationFn: () =>
-      createInvitedAccount({
-        invitationId,
-        credential: credential as string,
-        name,
-        email,
-        password,
-      }),
+    mutationFn: async () => {
+      if (!credential) return "refused" as const;
+      await beginCustomerInvitationContinuation(invitationId, credential);
+      setCredential(null);
+      setContinuationReady(true);
+      return createInvitedAccount({ invitationId, name, email, password });
+    },
   });
   const accountExists = signUp.data === "exists";
-  const refused = accept.isError || signUp.data === "refused" || signUp.isError;
+  const refused =
+    continuationFailed ||
+    accept.isError ||
+    signUp.data === "refused" ||
+    signUp.isError;
   const done = accept.isSuccess || signUp.data === "created";
 
   function submitSignUp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!signUp.isPending) signUp.mutate();
+  }
+
+  async function continueToSignIn() {
+    if (credential) {
+      try {
+        await beginCustomerInvitationContinuation(invitationId, credential);
+        setCredential(null);
+        setContinuationReady(true);
+      } catch {
+        setContinuationFailed(true);
+        return;
+      }
+    }
+    if (!continuationReady && !credential) return;
+    await navigate({
+      to: routes.portalSignIn.path,
+      search: { stage: "email", factor: "totp", invitationId },
+    });
   }
 
   const invalid = (
@@ -132,7 +185,7 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   );
 
   let body: React.ReactNode;
-  if (!credential || refused) body = invalid;
+  if (refused) body = invalid;
   else if (done)
     body = (
       <Alert variant="success">
@@ -155,7 +208,23 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
         </AlertDescription>
       </Alert>
     );
-  else if (session === "signed-out")
+  else if (session === "signed-in" && accept.isPending)
+    body = (
+      <div role="status" aria-label={t("loading")}>
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  else if (session === "signed-in" && credential)
+    body = <p className="text-sm">{t("accept.ready")}</p>;
+  else if (!credential) body = invalid;
+  else if (authMethods.isError) body = invalid;
+  else if (authMethods.isPending)
+    body = (
+      <div role="status" aria-label={t("loading")}>
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  else if (authMethods.data?.password)
     body = (
       <form className="space-y-4" onSubmit={submitSignUp}>
         <p className="text-sm">{t("accept.signUpHint")}</p>
@@ -211,9 +280,9 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   else body = <p className="text-sm">{t("accept.ready")}</p>;
 
   const showSignIn =
-    credential &&
     !refused &&
     !done &&
+    (Boolean(credential) || continuationReady) &&
     (session === "signed-out" || accountExists);
 
   return (
@@ -228,17 +297,12 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
           {showSignIn ? (
             <Button
               variant={accountExists ? "default" : "link"}
-              render={
-                <Link
-                  to="/sign-in"
-                  search={{ stage: "email", factor: "totp" }}
-                />
-              }
+              onClick={() => void continueToSignIn()}
             >
               {accountExists ? t("accept.signIn") : t("accept.haveAccount")}
             </Button>
           ) : null}
-          {credential && !refused && !done && session === "signed-in" ? (
+          {!refused && !done && session === "signed-in" ? (
             <Button disabled={accept.isPending} onClick={() => accept.mutate()}>
               {t("accept.action")}
             </Button>

@@ -1,0 +1,13 @@
+{
+	"observation": "The queue editor showed the literal `common.cancel` in its footer, and the close affordance used the invalid `common.close` key under the intake namespace.",
+	"sourceBeforeFix": {
+		"namespace": "intake",
+		"cancelKey": "common.cancel",
+		"closeKey": "common.close"
+	},
+	"sourceCorrection": {
+		"cancelKey": "common:actions.cancel",
+		"closeKey": "common:actions.close"
+	},
+	"evidence": "An earlier private browser screenshot shows the literal label; the journey recorded failure to find a Cancel button. No locale keys were added."
+}

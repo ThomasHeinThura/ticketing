@@ -5,7 +5,7 @@ import db from "../../database";
 import { dayOf, num, selectRows } from "../context";
 import { countValue, utc } from "../logic";
 import type { ReportContext, ReportDefinition, Row } from "../types";
-import { cell, col, emptyBody, rowCap } from "./shared";
+import { cell, col, emptyBody, pageLimit, pageRows, rowCap } from "./shared";
 
 type CycleChoice = {
   id: string;
@@ -141,36 +141,59 @@ const cycleVelocity: ReportDefinition = {
   category: "agile",
   title: "Cycle velocity",
   live: true,
+  pagedExport: true,
   async compute(ctx) {
-    const rows = await selectRows<{
-      project_id: string;
+    const projectPage = await selectRows<{
+      id: string;
       slug: string;
-      cycle_id: string;
-      completed_at: string | Date;
-      unit: string;
-      completed: string;
-      scope: string;
-      unestimated: string;
-    }>(sql`SELECT c.project_id, p.slug, c.id AS cycle_id, c.completed_at, snap.unit,
-        snap.completed_points AS completed, snap.scope_points AS scope,
-        snap.unestimated_count AS unestimated
-      FROM cycle c
-      JOIN project p ON p.id = c.project_id
-      JOIN LATERAL (
-        SELECT cs.* FROM cycle_snapshot cs WHERE cs.cycle_id = c.id ORDER BY cs.date DESC LIMIT 1
-      ) snap ON true
-      WHERE c.workspace_id = ${ctx.workspaceId} AND p.deleted_at IS NULL
-        AND c.completed_at IS NOT NULL AND ${ctx.reach}
+    }>(sql`SELECT p.id, p.slug
+      FROM project p
+      WHERE p.workspace_id = ${ctx.workspaceId} AND p.deleted_at IS NULL
+        AND ${ctx.reach}
         AND ${ctx.filters.projectId ? sql`p.id = ${ctx.filters.projectId}` : sql`true`}
         AND ${ctx.filters.organisationId ? sql`p.organisation_id = ${ctx.filters.organisationId}` : sql`true`}
-      ORDER BY c.completed_at DESC LIMIT ${rowCap(ctx, 500)}`);
-    const byProject = new Map<string, typeof rows>();
-    for (const row of rows)
-      byProject.set(row.slug, [...(byProject.get(row.slug) ?? []), row]);
+        AND EXISTS (SELECT 1 FROM cycle c JOIN cycle_snapshot cs ON cs.cycle_id = c.id
+          WHERE c.project_id = p.id AND c.completed_at IS NOT NULL)
+      ORDER BY p.slug, p.id ${pageLimit(ctx, 500)}`);
+    const projectResult = pageRows(ctx, projectPage, 500);
+    const projectIds = projectResult.rows.map((project) => project.id);
+    const cycleRows = projectIds.length
+      ? await selectRows<{
+          project_id: string;
+          cycle_id: string;
+          completed_at: string | Date;
+          unit: string;
+          completed: string;
+          unestimated: string;
+          cycle_count: string;
+          position: number;
+        }>(sql`WITH history AS (
+            SELECT c.project_id, c.id AS cycle_id, c.completed_at, snap.unit,
+              snap.completed_points AS completed, snap.unestimated_count AS unestimated,
+              count(*) OVER (PARTITION BY c.project_id) AS cycle_count,
+              row_number() OVER (PARTITION BY c.project_id ORDER BY c.completed_at DESC, c.id DESC) AS position
+            FROM cycle c
+            JOIN LATERAL (
+              SELECT cs.* FROM cycle_snapshot cs WHERE cs.cycle_id = c.id ORDER BY cs.date DESC LIMIT 1
+            ) snap ON true
+            WHERE c.project_id IN (${sql.join(
+              projectIds.map((id) => sql`${id}`),
+              sql`, `,
+            )})
+              AND c.completed_at IS NOT NULL
+          ) SELECT * FROM history WHERE position <= 3 ORDER BY project_id, position`)
+      : [];
+    const byProject = new Map<string, typeof cycleRows>();
+    for (const row of cycleRows)
+      byProject.set(row.project_id, [
+        ...(byProject.get(row.project_id) ?? []),
+        row,
+      ]);
     const table: Row[] = [];
     let singleUnit: string | null = null;
     let mixed = false;
-    for (const [slug, entries] of byProject) {
+    for (const project of projectResult.rows) {
+      const entries = byProject.get(project.id) ?? [];
       const velocity = computeVelocity(
         entries.map((entry) => ({
           cycleId: entry.cycle_id,
@@ -185,16 +208,15 @@ const cycleVelocity: ReportDefinition = {
           : (entries[0]?.unit ?? "count");
       if (singleUnit === null) singleUnit = unit;
       else if (singleUnit !== unit) mixed = true;
-      const recent = entries.slice(0, 3);
       table.push({
-        project: slug,
+        project: project.slug,
         unit,
         velocity:
           velocity.status === "ok"
             ? cell({ value: velocity.value, n: velocity.cycles, needed: 3 })
             : { n: velocity.cycles, needed: 3 },
-        cycles: entries.length,
-        unestimated: recent.reduce(
+        cycles: num(entries[0]?.cycle_count),
+        unestimated: entries.reduce(
           (sum, entry) => sum + num(entry.unestimated),
           0,
         ),
@@ -236,8 +258,8 @@ const cycleVelocity: ReportDefinition = {
         col("unestimated", "Unestimated items, last three", "number"),
       ],
       rows: table,
-      truncated: rows.length >= rowCap(ctx, 500),
-      population: rows.length,
+      truncated: projectResult.truncated,
+      population: table.length,
       notes: mixed ? ["mixed_units"] : [],
     });
   },

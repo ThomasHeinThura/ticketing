@@ -1,0 +1,68 @@
+diff --git a/dist/commonjs/useTranslation.js b/dist/commonjs/useTranslation.js
+index 306d31ce800fa03a636b19ab6995a7b0c2b46a18..b5c236b4bb99d2fc4ed41fbdc872fcd0872338ef 100644
+--- a/dist/commonjs/useTranslation.js
++++ b/dist/commonjs/useTranslation.js	
+@@ -76,13 +76,16 @@ const useTranslation = (ns, props = {}) => {
+     const currentLng = props.lng || i18n.language;
+     const currentRevision = revisionRef.current;
+     const lastSnapshot = snapshotRef.current;
+-    if (lastSnapshot && lastSnapshot.ready === calculatedReady && lastSnapshot.lng === currentLng && lastSnapshot.keyPrefix === keyPrefix && lastSnapshot.revision === currentRevision) {
++    if (lastSnapshot && lastSnapshot.i18n === i18n && lastSnapshot.namespaces === namespaces && lastSnapshot.nsMode === i18nOptions.nsMode && lastSnapshot.ready === calculatedReady && lastSnapshot.lng === currentLng && lastSnapshot.keyPrefix === keyPrefix && lastSnapshot.revision === currentRevision) {
+       return lastSnapshot;
+     }
+     const calculatedT = i18n.getFixedT(currentLng, i18nOptions.nsMode === 'fallback' ? namespaces : namespaces[0], keyPrefix, {
+       scopeNs: namespaces
+     });
+     const newSnapshot = {
++      i18n,
++      namespaces,
++      nsMode: i18nOptions.nsMode,
+       t: calculatedT,
+       ready: calculatedReady,
+       lng: currentLng,
+diff --git a/dist/es/useTranslation.js b/dist/es/useTranslation.js
+index 577e0b8219bc437ce01e5141d111a56e003dc51f..56264f4c599902aa46490653402d90239e038ebd 100644
+--- a/dist/es/useTranslation.js
++++ b/dist/es/useTranslation.js	
+@@ -70,13 +70,16 @@ export const useTranslation = (ns, props = {}) => {
+     const currentLng = props.lng || i18n.language;
+     const currentRevision = revisionRef.current;
+     const lastSnapshot = snapshotRef.current;
+-    if (lastSnapshot && lastSnapshot.ready === calculatedReady && lastSnapshot.lng === currentLng && lastSnapshot.keyPrefix === keyPrefix && lastSnapshot.revision === currentRevision) {
++    if (lastSnapshot && lastSnapshot.i18n === i18n && lastSnapshot.namespaces === namespaces && lastSnapshot.nsMode === i18nOptions.nsMode && lastSnapshot.ready === calculatedReady && lastSnapshot.lng === currentLng && lastSnapshot.keyPrefix === keyPrefix && lastSnapshot.revision === currentRevision) {
+       return lastSnapshot;
+     }
+     const calculatedT = i18n.getFixedT(currentLng, i18nOptions.nsMode === 'fallback' ? namespaces : namespaces[0], keyPrefix, {
+       scopeNs: namespaces
+     });
+     const newSnapshot = {
++      i18n,
++      namespaces,
++      nsMode: i18nOptions.nsMode,
+       t: calculatedT,
+       ready: calculatedReady,
+       lng: currentLng,
+diff --git a/src/useTranslation.js b/src/useTranslation.js
+index 6797b2024d8a3823b7da7c4c3d6cca73a90b7280..ff28b3d7a2754b08a143abe1e254b0c8cf4198a4 100644
+--- a/src/useTranslation.js
++++ b/src/useTranslation.js	
+@@ -92,6 +92,9 @@ export const useTranslation = (ns, props = {}) => {
+     const lastSnapshot = snapshotRef.current;
+     if (
+       lastSnapshot &&
++      lastSnapshot.i18n === i18n &&
++      lastSnapshot.namespaces === namespaces &&
++      lastSnapshot.nsMode === i18nOptions.nsMode &&
+       lastSnapshot.ready === calculatedReady &&
+       lastSnapshot.lng === currentLng &&
+       lastSnapshot.keyPrefix === keyPrefix &&
+@@ -113,6 +116,9 @@ export const useTranslation = (ns, props = {}) => {
+     );
+ 
+     const newSnapshot = {
++      i18n,
++      namespaces,
++      nsMode: i18nOptions.nsMode,
+       t: calculatedT,
+       ready: calculatedReady,
+       lng: currentLng,

@@ -172,6 +172,7 @@ export async function timeWorld() {
         .from(timeActivityTable)
         .where(eq(timeActivityTable.workspaceId, workspaceId));
   if (!dev) throw new Error("activity missing");
+  const defaultActivity = dev;
 
   async function logTime(
     user: User,
@@ -185,7 +186,7 @@ export async function timeWorld() {
         workItemId,
         date: isoDaysAgo(0),
         minutes: 90,
-        activityId: dev.id,
+        activityId: defaultActivity.id,
         ...overrides,
       },
     });

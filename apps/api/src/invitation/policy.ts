@@ -50,15 +50,10 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * Versioning section forbids a breaking removal without a deprecation window once a stable
  * `v2.0.0`+ tag exists (one already does) -- so Thomas's actual decision (2026-09-28) was
  * to keep the OPERATION registered (`deprecated: true`, satisfying the versioning policy --
- * this is not a contract removal) but change its own HANDLER to reuse
- * `cancelInvitationRoute`'s exact middleware chain and then still refuse unconditionally,
- * even for a caller who passes it. That reuse is what makes `capability: "member:invite"`
- * below an HONEST declaration, not a guess: the runtime now genuinely enforces it (same
- * middleware, same capability, same scope resolution as cancel), the handler's own
- * unconditional throw is simply an ADDITIONAL restriction beyond what's declared here, not
- * a mismatch with it -- a caller who is refused for lacking `member:invite` and a caller who
- * has it but still gets refused both see the same class of response (403), so no capability
- * ever actually unlocks real data through this operation again. See
+ * this is not a contract removal) but keep its own session, row-derived workspace,
+ * membership and legacy authority gates before the handler refuses unconditionally, even
+ * for a caller who passes them. The operation remains disabled and returns no invitation
+ * data. See
  * `docs/07-planning/security-reviews/440-runtime-authorization-wiring.md` for the fuller
  * history.
  *
@@ -74,25 +69,12 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * exemption for the same reason that route does: the route names an invitation id, not a
  * person id — the caller IS the person, identified by their own session.
  *
- * **Cancel is different, and is a capability policy.** It is an action a workspace
- * ADMIN/OWNER takes on someone ELSE's still-pending invitation, so it needs the same
- * authority shape as the S5 membership-write routes. `member:invite` is reused rather than a
- * new `member:cancel` capability invented: rbac.md's Members group (`docs/01-architecture/
- * rbac.md`) has exactly two entries, `member:invite` and `member:remove`, and neither is an
- * exact name-for-name match for "revoke a pending invitation" -- `member:invite` is the
- * closer fit (the same authority that may extend an invitation may also withdraw it) and is
- * recorded here as a gap for #7 to resolve, the same way `workspace/policy.ts` already
- * records its own `workspace:manage_members` reuse for two routes with no exact match. The
- * RUNTIME check, `requireWorkspacePermission({ invitation: ["cancel"] })`
- * (`apps/api/src/utils/require-workspace-permission.ts`, called from
- * `apps/api/src/invitation/index.ts`), reads the INHERITED `invitation` resource's `cancel`
- * action -- a DIFFERENT action string from create's `invitation: ["create"]` above, even
- * though both are declared with the same `member:invite` capability name here. The
- * declaration and the runtime check are allowed to diverge in GRANULARITY (one canonical
- * capability standing in for two distinct inherited actions) without disagreeing about WHO
- * holds it: both actions are granted to exactly `admin`/`owner` on the compiled default roles
- * (`legacy-better-auth-access-control.ts`), so no role can invite but not cancel, or cancel
- * but not invite, under the current seed data.
+ * **Cancel is a capability policy.** `member:invite` governs creating and withdrawing
+ * invitations. The DELETE route resolves the invitation's workspace, requires an actual
+ * workspace membership, then checks this canonical capability with
+ * `requireWorkspaceCapability`; pending-action request and approval also revalidate the
+ * registered policy and target reach. This lets any role holding `member:invite` revoke
+ * within its permitted reach without broadening access to other workspaces or organisations.
  *
  * `scopeSource: "row"` for cancel: `workspaceId` is not a path parameter on
  * `DELETE /api/invitation/{id}` at all -- it is resolved by reading the INVITATION's own row
@@ -142,10 +124,8 @@ export const invitationPolicies = {
     sessionOnly: true,
   },
 
-  // Deprecated, permanently disabled -- see this file's own top comment for the full
-  // reasoning. Declared identically to cancel (same middleware chain, same capability),
-  // because that is genuinely what the runtime now enforces; the handler's own
-  // unconditional refusal is an additional restriction on top, not a mismatch with this.
+  // Deprecated, permanently disabled -- see this file's own top comment. Its legacy
+  // authority gate is retained on the disabled route; the handler refuses every caller.
   "GET /api/invitation/{id}": {
     capability: "member:invite",
     scope: "workspace",

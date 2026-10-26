@@ -9,6 +9,7 @@ import {
   projectTable,
   roleTable,
   stateTemplateTable,
+  teamTable,
 } from "../database/schema";
 import { appendAuditSavepoint } from "../events/audit-savepoint";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
@@ -122,19 +123,41 @@ export async function assertActionReferencesValid(
       ),
     ),
   ];
-  if (templateIds.length === 0) return;
-  const rows = await executor
-    .select({ id: stateTemplateTable.id })
-    .from(stateTemplateTable)
+  const teamIds = [
+    ...new Set(
+      actions.flatMap((action) =>
+        action.type === "notify" ? [action.teamId] : [],
+      ),
+    ),
+  ];
+  if (templateIds.length > 0) {
+    const rows = await executor
+      .select({ id: stateTemplateTable.id })
+      .from(stateTemplateTable)
+      .where(
+        and(
+          eq(stateTemplateTable.workspaceId, workspaceId),
+          inArray(stateTemplateTable.id, templateIds),
+        ),
+      );
+    if (rows.length !== templateIds.length)
+      throw new HTTPException(422, {
+        message: "transition names a state outside this workspace",
+      });
+  }
+  if (teamIds.length === 0) return;
+  const teams = await executor
+    .select({ id: teamTable.id })
+    .from(teamTable)
     .where(
       and(
-        eq(stateTemplateTable.workspaceId, workspaceId),
-        inArray(stateTemplateTable.id, templateIds),
+        eq(teamTable.workspaceId, workspaceId),
+        inArray(teamTable.id, teamIds),
       ),
     );
-  if (rows.length !== templateIds.length)
+  if (teams.length !== teamIds.length)
     throw new HTTPException(422, {
-      message: "transition names a state outside this workspace",
+      message: "notify names a team outside this workspace",
     });
 }
 

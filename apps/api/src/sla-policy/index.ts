@@ -98,6 +98,7 @@ const createRouteDef = createRoute({
     200: jsonResponse("Created SLA policy", slaPolicySchema),
     400: errorResponse("Invalid policy request"),
     403: errorResponse("Missing sla_policy:manage permission"),
+    409: errorResponse("An SLA policy with this key already exists"),
     422: errorResponse("Referenced calendar or work-item type is invalid"),
   },
 });

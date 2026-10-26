@@ -1,0 +1,14 @@
+{
+	"recordedAt": "2026-10-25T08:59:02Z",
+	"image": "sha256:f6c6d83d8aac0515b25058dfa01d2dec384dc8c26eb79fea3d5b43f3122858fe",
+	"checkpoint": "Shipping probe174 before later reach/table/plugin source changes",
+	"ready": true,
+	"livenessExit": 0,
+	"user": "taskdesk",
+	"readOnly": true,
+	"capDrop": ["ALL"],
+	"securityOpt": ["no-new-privileges"],
+	"databaseScope": "Existing isolated 10k PERF copy on62871 with application credential; web role only, no scheduler or seeder",
+	"hostBinding": "127.0.0.1:1333",
+	"phaseAccepted": false
+}

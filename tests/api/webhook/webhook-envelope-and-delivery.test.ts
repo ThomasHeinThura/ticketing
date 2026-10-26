@@ -231,7 +231,46 @@ describe("envelope projection", () => {
 
   it("filters changes defensively", () => {
     expect(visibleChanges(undefined)).toEqual([]);
-    expect(visibleChanges([null, 3, { field: "a" }])).toEqual([{ field: "a" }]);
+    expect(visibleChanges([null, 3, { field: "a" }])).toEqual([]);
+    const publicChange = {
+      field: "title",
+      visibility: "public",
+      to: "Visible title",
+    };
+    const changes = [
+      publicChange,
+      { field: "private", to: "INTERNAL_ONLY_VALUE", visibility: "internal" },
+      { field: "unclassified", to: "UNCLASSIFIED_VALUE" },
+      {
+        field: "unknown",
+        to: "UNKNOWN_VISIBILITY_VALUE",
+        visibility: "unknown",
+      },
+      { visibility: "public", to: "MALFORMED_VALUE" },
+      [],
+    ];
+    expect(visibleChanges(changes)).toEqual([publicChange]);
+    const projected = projectWebhookEnvelope(
+      {
+        ...baseEnvelope,
+        kind: "work_item.updated",
+        payload: { key: "SUP-1", changes },
+      },
+      context,
+    );
+    if (projected.kind !== "deliver")
+      throw new Error("expected public change delivery");
+    expect(projected.body.data.details).toEqual({ changes: [publicChange] });
+    expect(
+      projectWebhookEnvelope(
+        {
+          ...baseEnvelope,
+          kind: "work_item.updated",
+          payload: { key: "SUP-1", changes: changes.slice(1) },
+        },
+        context,
+      ),
+    ).toEqual({ kind: "nothing_visible" });
   });
 
   it("makes only same-origin relative links absolute", () => {

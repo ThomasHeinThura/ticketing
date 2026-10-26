@@ -49,12 +49,20 @@ import { customFieldPolicies } from "./custom-field/policy";
 import { customerInvitationPolicies } from "./customer-invitation/policy";
 import { externalLinkPolicies } from "./external-link/policy";
 import { featureFlagPolicies } from "./feature-flag/policy";
+import { accountLinkPolicies } from "./identity/account-link-policy";
+import { identityConnectionDeletionPolicies } from "./identity/connection-deletion-policy";
+import { homeRealmPolicies } from "./identity/home-realm-policy";
+import { importPolicies } from "./imports/policy";
 import { instancePolicies } from "./instance/policy";
 import { intakePolicies } from "./intake/policy";
 import { invitationPolicies } from "./invitation/policy";
 import { kbPolicies } from "./kb/policy";
 import { labelPolicies } from "./label/policy";
+import { mcpTelemetryPolicies } from "./mcp-telemetry/policy";
+import { meIdentityPolicies } from "./me-identity/policy";
 import { notificationPolicies } from "./notification/policy";
+import { portalCanonicalPreferencesPolicies } from "./notification/portal-canonical-preferences-policy";
+import { portalNotificationPolicies } from "./notification/portal-inbox-policy";
 import { preferenceHandoffPolicies } from "./notification/preference-handoff-policy";
 import { notificationPreferencesPolicies } from "./notification-preferences/policy";
 import { notificationProviderPolicies } from "./notification-provider/policy";
@@ -64,18 +72,22 @@ import { pendingActionPolicies } from "./pending-action/policy";
 import { projectPolicies } from "./project/policy";
 import { reportPolicies } from "./report/policy";
 import { searchPolicies } from "./search/policy";
+import { securityHeaderPolicies } from "./security-headers/policy";
 import { serviceCalendarPolicies } from "./service-calendar/policy";
 import { serviceManagementPolicies } from "./service-management/policy";
 import { slaPolicyPolicies } from "./sla-policy/policy";
 import { taskPolicies } from "./task/policy";
 import { taskRelationPolicies } from "./task-relation/policy";
 import { teamPolicies } from "./team/policy";
+import { terminologyPolicies } from "./terminology/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
 import { timeTrackingPolicies } from "./time-tracking/policy";
 import { userPolicies } from "./user/policy";
 import { userPreferencePolicies } from "./user-preference/policy";
 import { viewPolicies } from "./view/policy";
 import { webhookPolicies } from "./webhook/policy";
+import { webhookRotateAllPolicies } from "./webhook/rotate-all-policy";
+import { webhookSecurityPosturePolicies } from "./webhook/security-posture-policy";
 import { workItemPolicies } from "./work-item/policy";
 import { workItemRelationPolicies } from "./work-item-relation/policy";
 import { workflowPolicies } from "./workflow/policy";
@@ -180,6 +192,12 @@ export const platformPolicies = {
   "DELETE /scim/v2/Groups/{id}": {
     delegated: "scim",
     reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+
+  "GET /api/ws/portal/notification": {
+    delegated: "websocket",
+    reason:
+      "customer-host/session-only websocket; exact customer Origin and current customer identity are checked, and only payload-free own notification invalidations are sent",
   },
 
   // The websocket surface. The upgrade handler authenticates the request itself before the
@@ -332,7 +350,12 @@ export const POLICY_SOURCES = [
     name: "apps/api/src/policy-registry.ts (platform)",
     policies: platformPolicies,
   },
+  {
+    name: "apps/api/src/identity/home-realm-policy.ts",
+    policies: homeRealmPolicies,
+  },
   { name: "apps/api/src/instance/policy.ts", policies: instancePolicies },
+  { name: "apps/api/src/imports/policy.ts", policies: importPolicies },
   { name: "apps/api/src/project/policy.ts", policies: projectPolicies },
   { name: "apps/api/src/workspace/policy.ts", policies: workspacePolicies },
   { name: "apps/api/src/invitation/policy.ts", policies: invitationPolicies },
@@ -372,6 +395,11 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/activity/policy.ts", policies: activityPolicies },
   { name: "apps/api/src/approval/policy.ts", policies: approvalPolicies },
   { name: "apps/api/src/intake/policy.ts", policies: intakePolicies },
+  { name: "apps/api/src/terminology/policy.ts", policies: terminologyPolicies },
+  {
+    name: "apps/api/src/notification/portal-inbox-policy.ts",
+    policies: portalNotificationPolicies,
+  },
   {
     name: "apps/api/src/canned-response/policy.ts",
     policies: cannedResponsePolicies,
@@ -392,6 +420,10 @@ export const POLICY_SOURCES = [
     name: "apps/api/src/notification/preference-handoff-policy.ts",
     policies: preferenceHandoffPolicies,
   },
+  {
+    name: "apps/api/src/notification/portal-canonical-preferences-policy.ts",
+    policies: portalCanonicalPreferencesPolicies,
+  },
   { name: "apps/api/src/search/policy.ts", policies: searchPolicies },
   { name: "apps/api/src/user/policy.ts", policies: userPolicies },
   {
@@ -410,6 +442,10 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/config/policy.ts", policies: configPolicies },
   { name: "apps/api/src/audit/policy.ts", policies: auditPolicies },
   { name: "apps/api/src/label/policy.ts", policies: labelPolicies },
+  {
+    name: "apps/api/src/security-headers/policy.ts",
+    policies: securityHeaderPolicies,
+  },
   { name: "apps/api/src/asset/policy.ts", policies: assetPolicies },
   {
     name: "apps/api/src/service-calendar/policy.ts",
@@ -424,6 +460,19 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/workflow/policy.ts", policies: workflowPolicies },
   { name: "apps/api/src/api-key/policy.ts", policies: apiKeyPolicies },
   {
+    name: "apps/api/src/mcp-telemetry/policy.ts",
+    policies: mcpTelemetryPolicies,
+  },
+  { name: "apps/api/src/me-identity/policy.ts", policies: meIdentityPolicies },
+  {
+    name: "apps/api/src/identity/account-link-policy.ts",
+    policies: accountLinkPolicies,
+  },
+  {
+    name: "apps/api/src/identity/connection-deletion-policy.ts",
+    policies: identityConnectionDeletionPolicies,
+  },
+  {
     name: "apps/api/src/custom-field/policy.ts",
     policies: customFieldPolicies,
   },
@@ -431,6 +480,14 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/kb/policy.ts", policies: kbPolicies },
   { name: "apps/api/src/report/policy.ts", policies: reportPolicies },
   { name: "apps/api/src/webhook/policy.ts", policies: webhookPolicies },
+  {
+    name: "apps/api/src/webhook/security-posture-policy.ts",
+    policies: webhookSecurityPosturePolicies,
+  },
+  {
+    name: "apps/api/src/webhook/rotate-all-policy.ts",
+    policies: webhookRotateAllPolicies,
+  },
   { name: "apps/api/src/agile/policy.ts", policies: agilePolicies },
   { name: "apps/api/src/pages/policy.ts", policies: pagesPolicies },
   {

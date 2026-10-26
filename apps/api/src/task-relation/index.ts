@@ -293,6 +293,7 @@ const taskRelation = apiRouter<BaseVariables & { workspaceId: string }>()
         targetTaskId,
         relationType,
         userId: c.get("userId"),
+        apiKeyId: c.get("apiKey")?.id,
         workspaceId: c.get("workspaceId"),
         canReachTarget: async (task) =>
           (await reach.reaches(task)) &&

@@ -12,6 +12,7 @@ import {
   workItemKeyAliasTable,
   workItemLabelTable,
   workItemTable,
+  workspaceTable,
 } from "../../database/schema";
 import {
   costEntryTable,
@@ -180,6 +181,14 @@ export async function moveWorkItem(input: MoveWorkItemInput) {
   const catalogueOn = await serviceCatalogueEnabled(input.workspaceId);
   const result = await runWithParentWriteDeadlockRetry(() =>
     db.transaction(async (tx) => {
+      const [workspace] = await tx
+        .select({ id: workspaceTable.id })
+        .from(workspaceTable)
+        .where(eq(workspaceTable.id, input.workspaceId))
+        .for("share")
+        .limit(1);
+      if (!workspace)
+        throw new HTTPException(404, { message: "Work item not found" });
       const lockIds = [...new Set([pre.projectId, input.target.id])].sort();
       for (const projectId of lockIds)
         await tx.execute(

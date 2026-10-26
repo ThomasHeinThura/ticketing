@@ -46,9 +46,13 @@ export function useStepUpAction() {
     queryFn: getCurrentFactorStatus,
     staleTime: 15_000,
   });
-  const defaultMethod: StepUpMethod = factor.data?.enabled
-    ? "totp"
-    : "password";
+  const availableMethods = factor.data?.availableMethods ?? [];
+  const defaultMethod: StepUpMethod =
+    factor.data?.enabled || factor.data?.required
+      ? (availableMethods.find((method) => method === "totp") ??
+        availableMethods[0] ??
+        "password")
+      : (availableMethods[0] ?? "password");
   const [methodTouched, setMethodTouched] = useState(false);
   const effectiveMethod = methodTouched ? method : defaultMethod;
 
@@ -71,7 +75,10 @@ export function useStepUpAction() {
     options: { writeErrors?: "report" | "rethrow" } = {},
   ): Promise<StepUpResult<T>> {
     if (busyRef.current) return { ok: false };
-    if (!secret) {
+    if (
+      !availableMethods.includes(effectiveMethod) ||
+      (effectiveMethod !== "sso_prompt_login" && !secret)
+    ) {
       setFailure({ kind: "factor_required", currentVersion: null });
       return { ok: false };
     }
@@ -111,6 +118,10 @@ export function useStepUpAction() {
     setSecret,
     busy,
     failure,
+    availableMethods,
+    canRun:
+      availableMethods.includes(effectiveMethod) &&
+      (effectiveMethod === "sso_prompt_login" || secret.length > 0),
     clearFailure: () => setFailure(null),
     run,
   };

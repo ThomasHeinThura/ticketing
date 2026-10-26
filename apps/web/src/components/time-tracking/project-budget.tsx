@@ -55,6 +55,11 @@ function BudgetCard({ budget }: { budget: Budget }) {
     ? 0
     : percentSpent(budget.plannedAmountMinor, actualMinor);
   const hiddenText = t("timeTracking:budget.figuresHidden");
+  const committedMinor = budget.committedMinor ?? null;
+  const hasSeparateCommittedCurrencies =
+    (budget.committedByCurrency?.length ?? 0) > 1 ||
+    (budget.committedByCurrency?.length === 1 &&
+      budget.committedByCurrency[0]?.currency !== budget.currency);
   return (
     <Card data-testid="budget-card">
       <CardHeader>
@@ -130,9 +135,14 @@ function BudgetCard({ budget }: { budget: Budget }) {
               {t("timeTracking:budget.committed")}
             </dt>
             <dd>
-              {budget.committedMinor === null
-                ? t("timeTracking:budget.committedUnavailable")
-                : formatMinor(budget.committedMinor, budget.currency)}
+              {committedMinor === null
+                ? budget.committedUnknown &&
+                  budget.committedUnknown.taskCount > 0
+                  ? t("timeTracking:budget.committedUnknownValue")
+                  : hasSeparateCommittedCurrencies
+                    ? t("timeTracking:budget.committedSeparateCurrencies")
+                    : t("timeTracking:budget.committedUnavailable")
+                : formatMinor(committedMinor, budget.currency)}
             </dd>
           </div>
         </dl>
@@ -144,6 +154,46 @@ function BudgetCard({ budget }: { budget: Budget }) {
                 .join(", "),
             })}
           </p>
+        ) : null}
+        {budget.committedByCurrency &&
+        budget.committedByCurrency.length > 0 &&
+        (budget.committedByCurrency.length > 1 || committedMinor === null) ? (
+          <div className="space-y-1" data-testid="committed-currencies">
+            <p className="text-muted-foreground text-xs">
+              {t("timeTracking:budget.committedByCurrency")}
+            </p>
+            {budget.committedByCurrency.map((row) => (
+              <p className="text-sm tabular-nums" key={row.currency}>
+                {t("timeTracking:budget.committedCurrencyLine", {
+                  amount: formatMinor(row.amountMinor, row.currency),
+                  count: row.taskCount,
+                })}
+              </p>
+            ))}
+          </div>
+        ) : null}
+        {budget.committedUnknown && budget.committedUnknown.taskCount > 0 ? (
+          <div className="space-y-1" data-testid="committed-unknown">
+            <p className="text-muted-foreground text-xs">
+              {t("timeTracking:budget.committedUnknownLine", {
+                count: budget.committedUnknown.taskCount,
+                unscheduled: budget.committedUnknown.reasons.unscheduled,
+                nonTime: budget.committedUnknown.reasons.nonTime,
+                unassigned: budget.committedUnknown.reasons.unassigned,
+                unrated: budget.committedUnknown.reasons.unrated,
+                minutes: formatMinutes(
+                  budget.committedUnknown.knownRemainingMinutes,
+                ),
+              })}
+            </p>
+            {budget.committedUnknown.reasons.unscheduled > 0 ? (
+              <p className="text-muted-foreground text-xs">
+                {t("timeTracking:budget.committedUnscheduled", {
+                  count: budget.committedUnknown.reasons.unscheduled,
+                })}
+              </p>
+            ) : null}
+          </div>
         ) : null}
         {(budget.unpricedMinutes ?? 0) > 0 ? (
           <p className="text-muted-foreground text-xs">

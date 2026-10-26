@@ -1,0 +1,1212 @@
+{
+	"recordedAt": "2026-10-25T06:54:26.799Z",
+	"journey": "VW22 inline controls in the persisted Kaneo table view",
+	"strictTls": true,
+	"fixture": {
+		"workspace": "Codex Cost Cycle 20261025",
+		"workspaceId": "vjsgsgt7jrlia8sln5j3rzhm",
+		"project": "Cost Cycle QA",
+		"projectId": "y8onxgpl4vd25fsgq4dnc2fp",
+		"projectKey": "CCY",
+		"item": "CCY-1",
+		"title": "Cost Cycle QA known estimate"
+	},
+	"inline": {
+		"before": {
+			"state": "To Do",
+			"priority": "no-priority",
+			"assignee": "SIT Audit lead",
+			"title": "Cost Cycle QA known estimate"
+		},
+		"popupOpenedWithoutNavigation": true,
+		"stateForward": {
+			"status": 200,
+			"noteRequired": false,
+			"persistedAfterFreshGetAndReload": true
+		},
+		"stateRestored": {
+			"status": 200,
+			"noteRequired": false,
+			"persistedAfterFreshGetAndReload": true
+		},
+		"priorityForward": {
+			"status": 200,
+			"ifMatchVersionSent": true,
+			"persistedAfterFreshGetAndReload": true
+		},
+		"priorityRestored": {
+			"status": 200,
+			"ifMatchVersionSent": true,
+			"persistedAfterFreshGetAndReload": true
+		},
+		"assignmentToMember": {
+			"status": 200,
+			"confirmationShown": true,
+			"requestBodyPresent": false,
+			"requestBodyKeys": [],
+			"expectedCurrentAssigneeCAS": false,
+			"persistedAfterFreshGetAndReload": true
+		},
+		"assignmentBackToLead": {
+			"status": 200,
+			"confirmationShown": true,
+			"requestBodyPresent": false,
+			"requestBodyKeys": [],
+			"expectedCurrentAssigneeCAS": false,
+			"persistedAfterFreshGetAndReload": true
+		},
+		"assignmentCASObserved": false,
+		"restoredValues": {
+			"state": "To Do",
+			"priority": "no-priority",
+			"assignee": "SIT Audit lead"
+		},
+		"cleanup": {
+			"attempted": true,
+			"failures": []
+		}
+	},
+	"table": {
+		"titleWidth": 381,
+		"hydratedHeaders": [
+			"Key",
+			"Title",
+			"Priority",
+			"Due date",
+			"State",
+			"Assignee"
+		],
+		"persistedTitleWidth": 381,
+		"focusedResize": {
+			"keyboardFocusable": true
+		}
+	},
+	"captures": [
+		{
+			"theme": "light",
+			"viewport": "390x844",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-hydrated-light-390.png",
+			"headerHydrated": true,
+			"headerSkeletons": 0,
+			"workspaceAndProjectCrumbsPresent": true,
+			"activeView": "Tasks",
+			"primaryContentReady": true,
+			"sidebarExpanded": false,
+			"bodyWidth": 390,
+			"bodyOverflow": false,
+			"tableContainerWidth": 372,
+			"tableScrollWidth": 861,
+			"horizontalScrollLocal": true,
+			"headers": ["Key", "Title", "Priority", "Due date", "State", "Assignee"],
+			"rowCount": 4,
+			"screenshotInspected": true,
+			"mobileProjectNavigation": {
+				"accessibleButtonPresent": true,
+				"ariaLabel": "Project navigation",
+				"icon": "lucide-menu",
+				"computedStroke": "oklch(0.269 0 none)",
+				"computedOpacity": 0.8,
+				"visibleAfterLazyHydration": true
+			}
+		},
+		{
+			"theme": "light",
+			"viewport": "768x1000",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-hydrated-light-768.png",
+			"headerHydrated": true,
+			"headerSkeletons": 0,
+			"workspaceAndProjectCrumbsPresent": true,
+			"activeView": "Tasks",
+			"primaryContentReady": true,
+			"sidebarExpanded": true,
+			"bodyWidth": 768,
+			"bodyOverflow": false,
+			"tableContainerWidth": 518,
+			"tableScrollWidth": 861,
+			"horizontalScrollLocal": true,
+			"headers": ["Key", "Title", "Priority", "Due date", "State", "Assignee"],
+			"rowCount": 4,
+			"screenshotInspected": true
+		},
+		{
+			"theme": "light",
+			"viewport": "1440x1000",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-hydrated-light-1440.png",
+			"headerHydrated": true,
+			"headerSkeletons": 0,
+			"workspaceAndProjectCrumbsPresent": true,
+			"activeView": "Tasks",
+			"primaryContentReady": true,
+			"sidebarExpanded": true,
+			"bodyWidth": 1440,
+			"bodyOverflow": false,
+			"tableContainerWidth": 1190,
+			"tableScrollWidth": 1190,
+			"horizontalScrollLocal": false,
+			"headers": ["Key", "Title", "Priority", "Due date", "State", "Assignee"],
+			"rowCount": 4,
+			"screenshotInspected": true
+		},
+		{
+			"theme": "dark",
+			"viewport": "390x844",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-hydrated-dark-390.png",
+			"headerHydrated": true,
+			"headerSkeletons": 0,
+			"workspaceAndProjectCrumbsPresent": true,
+			"activeView": "Tasks",
+			"primaryContentReady": true,
+			"sidebarExpanded": false,
+			"bodyWidth": 390,
+			"bodyOverflow": false,
+			"tableContainerWidth": 372,
+			"tableScrollWidth": 861,
+			"horizontalScrollLocal": true,
+			"headers": ["Key", "Title", "Priority", "Due date", "State", "Assignee"],
+			"rowCount": 4,
+			"screenshotInspected": true,
+			"mobileProjectNavigation": {
+				"accessibleButtonPresent": true,
+				"ariaLabel": "Project navigation",
+				"icon": "lucide-menu",
+				"computedStroke": "oklch(0.97 0 none)",
+				"computedOpacity": 0.8,
+				"visibleAfterLazyHydration": true
+			}
+		},
+		{
+			"theme": "dark",
+			"viewport": "768x1000",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-hydrated-dark-768.png",
+			"headerHydrated": true,
+			"headerSkeletons": 0,
+			"workspaceAndProjectCrumbsPresent": true,
+			"activeView": "Tasks",
+			"primaryContentReady": true,
+			"sidebarExpanded": true,
+			"bodyWidth": 768,
+			"bodyOverflow": false,
+			"tableContainerWidth": 518,
+			"tableScrollWidth": 861,
+			"horizontalScrollLocal": true,
+			"headers": ["Key", "Title", "Priority", "Due date", "State", "Assignee"],
+			"rowCount": 4,
+			"screenshotInspected": true
+		},
+		{
+			"theme": "dark",
+			"viewport": "1440x1000",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-hydrated-dark-1440.png",
+			"headerHydrated": true,
+			"headerSkeletons": 0,
+			"workspaceAndProjectCrumbsPresent": true,
+			"activeView": "Tasks",
+			"primaryContentReady": true,
+			"sidebarExpanded": true,
+			"bodyWidth": 1440,
+			"bodyOverflow": false,
+			"tableContainerWidth": 1190,
+			"tableScrollWidth": 1190,
+			"horizontalScrollLocal": false,
+			"headers": ["Key", "Title", "Priority", "Due date", "State", "Assignee"],
+			"rowCount": 4,
+			"screenshotInspected": true
+		}
+	],
+	"sessionRestore": {
+		"originalWorkspace": "TaskDesk Service Desk",
+		"fixtureWorkspace": {
+			"changed": true
+		},
+		"memberOriginalWorkspace": "TaskDesk Service Desk",
+		"memberFixtureWorkspace": {
+			"changed": true
+		},
+		"themeRestored": true,
+		"restoredWorkspace": "TaskDesk Service Desk",
+		"memberRestoredWorkspace": "TaskDesk Service Desk"
+	},
+	"pageErrors": 0,
+	"consoleErrors": 0,
+	"routeStatuses": [
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/work-items/*",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/work-items/*",
+			"status": 200
+		},
+		{
+			"method": "POST",
+			"path": "/api/work-items/CCY-1/transition",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/work-items/*",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/work-items/*",
+			"status": 200
+		},
+		{
+			"method": "POST",
+			"path": "/api/work-items/CCY-1/transition",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "PATCH",
+			"path": "/api/work-items/CCY-1",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "PATCH",
+			"path": "/api/work-items/CCY-1",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/projects/*/assignable",
+			"status": 200
+		},
+		{
+			"method": "POST",
+			"path": "/api/work-items/CCY-1/assign",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/projects/*/assignable",
+			"status": 200
+		},
+		{
+			"method": "POST",
+			"path": "/api/work-items/CCY-1/assign",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		}
+	],
+	"memberPermission": {
+		"inlineStateIsButton": true,
+		"inlinePriorityIsButton": true,
+		"inlineAssigneeIsButton": true,
+		"viewerDenial": "pending; the saved member session has editable inline controls, so it is not a viewer-only account"
+	},
+	"visualReview": {
+		"baselineScreenshot": "apps/web/e2e/visual.spec.ts-snapshots/work-item-table-linux.png",
+		"finding": "The captured table typography and grid match the Kaneo table pattern. At 1440px the captured session has a blank 240px sidebar region; the baseline shows the expanded sidebar. Sidebar parity remains for coordinator assessment."
+	},
+	"assigneeCAS": "Assignment requests returned 200 and persisted after reload. The Playwright request object exposed no JSON body, so expectedCurrentAssigneeId is not independently verified in this browser evidence. The priority PATCH If-Match header was observed.",
+	"outcome": "passed",
+	"errors": [],
+	"diagnosticCaptures": [
+		{
+			"theme": "light",
+			"viewport": "390x844",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-light-390.png",
+			"viewportWidth": 390,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"bodyOverflow": false,
+			"tableContainer": {
+				"clientWidth": 372,
+				"scrollWidth": 861,
+				"horizontalScrollLocal": true
+			},
+			"visibleColumnHeaders": [
+				"Key",
+				"Title",
+				"Priority",
+				"Due date",
+				"State",
+				"Assignee"
+			],
+			"titleWidth": 381,
+			"resizeHandleFocusable": true,
+			"virtualFocus": true
+		},
+		{
+			"theme": "light",
+			"viewport": "768x1024",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-light-768.png",
+			"viewportWidth": 768,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"bodyOverflow": false,
+			"tableContainer": {
+				"clientWidth": 518,
+				"scrollWidth": 861,
+				"horizontalScrollLocal": true
+			},
+			"visibleColumnHeaders": [
+				"Key",
+				"Title",
+				"Priority",
+				"Due date",
+				"State",
+				"Assignee"
+			],
+			"titleWidth": 381,
+			"resizeHandleFocusable": true,
+			"virtualFocus": true
+		},
+		{
+			"theme": "light",
+			"viewport": "1440x1000",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-light-1440.png",
+			"viewportWidth": 1440,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"bodyOverflow": false,
+			"tableContainer": {
+				"clientWidth": 1190,
+				"scrollWidth": 1190,
+				"horizontalScrollLocal": false
+			},
+			"visibleColumnHeaders": [
+				"Key",
+				"Title",
+				"Priority",
+				"Due date",
+				"State",
+				"Assignee"
+			],
+			"titleWidth": 381,
+			"resizeHandleFocusable": true,
+			"virtualFocus": true
+		},
+		{
+			"theme": "dark",
+			"viewport": "390x844",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-dark-390.png",
+			"viewportWidth": 390,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"bodyOverflow": false,
+			"tableContainer": {
+				"clientWidth": 372,
+				"scrollWidth": 861,
+				"horizontalScrollLocal": true
+			},
+			"visibleColumnHeaders": [
+				"Key",
+				"Title",
+				"Priority",
+				"Due date",
+				"State",
+				"Assignee"
+			],
+			"titleWidth": 381,
+			"resizeHandleFocusable": true,
+			"virtualFocus": true
+		},
+		{
+			"theme": "dark",
+			"viewport": "768x1024",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-dark-768.png",
+			"viewportWidth": 768,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"bodyOverflow": false,
+			"tableContainer": {
+				"clientWidth": 518,
+				"scrollWidth": 861,
+				"horizontalScrollLocal": true
+			},
+			"visibleColumnHeaders": [
+				"Key",
+				"Title",
+				"Priority",
+				"Due date",
+				"State",
+				"Assignee"
+			],
+			"titleWidth": 381,
+			"resizeHandleFocusable": true,
+			"virtualFocus": true
+		},
+		{
+			"theme": "dark",
+			"viewport": "1440x1000",
+			"screenshot": "docs/report/screens/codex-20261025-table-inline-vw22-dark-1440.png",
+			"viewportWidth": 1440,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"bodyOverflow": false,
+			"tableContainer": {
+				"clientWidth": 1190,
+				"scrollWidth": 1190,
+				"horizontalScrollLocal": false
+			},
+			"visibleColumnHeaders": [
+				"Key",
+				"Title",
+				"Priority",
+				"Due date",
+				"State",
+				"Assignee"
+			],
+			"titleWidth": 381,
+			"resizeHandleFocusable": true,
+			"virtualFocus": true
+		}
+	],
+	"hydrationRetest": {
+		"recordedAt": "2026-10-25",
+		"route": "/agent/projects/CCY/work?layout=table&sort=position&dir=asc",
+		"actualUiSelection": "Table",
+		"previousCaptureNote": "Earlier captures showed the fallback project header; retained above as diagnostic evidence.",
+		"sessionRestore": {
+			"workspace": "TaskDesk Service Desk",
+			"theme": "dark"
+		},
+		"mobile390": {
+			"finding": "The earlier light capture preceded the lazy MobileProjectNav mount; the menu was present in both themes after waiting for hydration.",
+			"light": {
+				"ariaLabel": "Project navigation",
+				"x": 54,
+				"y": 16,
+				"width": 28,
+				"height": 28,
+				"iconStroke": "oklch(0.269 0 none)",
+				"opacity": 0.8
+			},
+			"dark": {
+				"ariaLabel": "Project navigation",
+				"x": 54,
+				"y": 16,
+				"width": 28,
+				"height": 28,
+				"iconStroke": "oklch(0.97 0 none)",
+				"opacity": 0.8
+			},
+			"outcome": "Visible foreground-colored menu icon in both themes; no reproducible contrast or hydration defect."
+		}
+	},
+	"inlineTitleDateRetest": {
+		"recordedAt": "2026-10-25T09:24:33.854Z",
+		"strictTls": true,
+		"account": "SIT Audit lead",
+		"fixture": {
+			"workspace": "Codex Cost Cycle 20261025",
+			"projectKey": "CCY",
+			"itemKey": "CCY-1"
+		},
+		"before": {
+			"title": "Cost Cycle QA known estimate",
+			"dueDate": "2026-10-25T00:00:00.000Z",
+			"version": 68
+		},
+		"title": {
+			"detailOpened": true,
+			"sidePaneRouteState": "CCY-1",
+			"escape": {
+				"noPatchSent": true,
+				"persistedTitleUnchanged": true,
+				"focusReturnedToEditTrigger": true
+			},
+			"forward": {
+				"status": 200,
+				"ifMatchPresent": true,
+				"payloadKeys": []
+			},
+			"persistedAfterReload": true,
+			"restore": {
+				"status": 200,
+				"ifMatchPresent": true,
+				"payloadKeys": []
+			},
+			"originalRestored": true
+		},
+		"dueDate": {
+			"forward": {
+				"status": 200,
+				"ifMatchPresent": true,
+				"payloadKeys": []
+			},
+			"changedPersistedAfterReload": true,
+			"clear": {
+				"status": 200,
+				"ifMatchPresent": true,
+				"payloadKeys": []
+			},
+			"clearPersistedAfterReload": true,
+			"restore": {
+				"status": 200,
+				"ifMatchPresent": true,
+				"payloadKeys": []
+			},
+			"originalRestored": true
+		},
+		"captures": [
+			{
+				"theme": "light",
+				"viewport": "390x844",
+				"header": {
+					"hydrated": true,
+					"workspace": true,
+					"project": true,
+					"mobileNavigation": true
+				},
+				"themeApplied": true,
+				"metrics": {
+					"viewport": "390x844",
+					"documentWidth": 390,
+					"bodyWidth": 390,
+					"bodyOverflow": false,
+					"tableClientWidth": 372,
+					"tableScrollWidth": 889
+				},
+				"popupBounds": {
+					"left": 5,
+					"top": 436,
+					"right": 303,
+					"bottom": 797,
+					"width": 298,
+					"height": 361,
+					"opacity": 0.992792,
+					"viewportWidth": 390,
+					"viewportHeight": 844,
+					"intersectsViewport": true,
+					"containedInViewport": true
+				},
+				"titleEditor": "docs/report/screens/codex-20261025-vw22-title-editor-light-390.png",
+				"dueCalendar": "docs/report/screens/codex-20261025-vw22-due-calendar-light-390.png"
+			},
+			{
+				"theme": "light",
+				"viewport": "768x1024",
+				"header": {
+					"hydrated": true,
+					"workspace": true,
+					"project": true,
+					"mobileNavigation": false
+				},
+				"themeApplied": true,
+				"metrics": {
+					"viewport": "768x1024",
+					"documentWidth": 768,
+					"bodyWidth": 768,
+					"bodyOverflow": false,
+					"tableClientWidth": 518,
+					"tableScrollWidth": 889
+				},
+				"popupBounds": {
+					"left": 461.015625,
+					"top": 407.984375,
+					"right": 731.015625,
+					"bottom": 736.984375,
+					"width": 270,
+					"height": 329,
+					"opacity": 0.992775,
+					"viewportWidth": 768,
+					"viewportHeight": 1024,
+					"intersectsViewport": true,
+					"containedInViewport": true
+				},
+				"titleEditor": "docs/report/screens/codex-20261025-vw22-title-editor-light-768.png",
+				"dueCalendar": "docs/report/screens/codex-20261025-vw22-due-calendar-light-768.png"
+			},
+			{
+				"theme": "light",
+				"viewport": "1440x1000",
+				"header": {
+					"hydrated": true,
+					"workspace": true,
+					"project": true,
+					"mobileNavigation": false
+				},
+				"themeApplied": true,
+				"metrics": {
+					"viewport": "1440x1000",
+					"documentWidth": 1440,
+					"bodyWidth": 1440,
+					"bodyOverflow": false,
+					"tableClientWidth": 1190,
+					"tableScrollWidth": 1190
+				},
+				"popupBounds": {
+					"left": 905.703125,
+					"top": 367.984375,
+					"right": 1175.703125,
+					"bottom": 696.984375,
+					"width": 270,
+					"height": 329,
+					"opacity": 0.992802,
+					"viewportWidth": 1440,
+					"viewportHeight": 1000,
+					"intersectsViewport": true,
+					"containedInViewport": true
+				},
+				"titleEditor": "docs/report/screens/codex-20261025-vw22-title-editor-light-1440.png",
+				"dueCalendar": "docs/report/screens/codex-20261025-vw22-due-calendar-light-1440.png"
+			},
+			{
+				"theme": "dark",
+				"viewport": "390x844",
+				"header": {
+					"hydrated": true,
+					"workspace": true,
+					"project": true,
+					"mobileNavigation": true
+				},
+				"themeApplied": true,
+				"metrics": {
+					"viewport": "390x844",
+					"documentWidth": 390,
+					"bodyWidth": 390,
+					"bodyOverflow": false,
+					"tableClientWidth": 372,
+					"tableScrollWidth": 889
+				},
+				"popupBounds": {
+					"left": 5,
+					"top": 435.984375,
+					"right": 303,
+					"bottom": 796.984375,
+					"width": 298,
+					"height": 361,
+					"opacity": 0.992764,
+					"viewportWidth": 390,
+					"viewportHeight": 844,
+					"intersectsViewport": true,
+					"containedInViewport": true
+				},
+				"titleEditor": "docs/report/screens/codex-20261025-vw22-title-editor-dark-390.png",
+				"dueCalendar": "docs/report/screens/codex-20261025-vw22-due-calendar-dark-390.png"
+			},
+			{
+				"theme": "dark",
+				"viewport": "768x1024",
+				"header": {
+					"hydrated": true,
+					"workspace": true,
+					"project": true,
+					"mobileNavigation": false
+				},
+				"themeApplied": true,
+				"metrics": {
+					"viewport": "768x1024",
+					"documentWidth": 768,
+					"bodyWidth": 768,
+					"bodyOverflow": false,
+					"tableClientWidth": 518,
+					"tableScrollWidth": 889
+				},
+				"popupBounds": {
+					"left": 461.015625,
+					"top": 407.984375,
+					"right": 731.015625,
+					"bottom": 736.984375,
+					"width": 270,
+					"height": 329,
+					"opacity": 0.992774,
+					"viewportWidth": 768,
+					"viewportHeight": 1024,
+					"intersectsViewport": true,
+					"containedInViewport": true
+				},
+				"titleEditor": "docs/report/screens/codex-20261025-vw22-title-editor-dark-768.png",
+				"dueCalendar": "docs/report/screens/codex-20261025-vw22-due-calendar-dark-768.png"
+			},
+			{
+				"theme": "dark",
+				"viewport": "1440x1000",
+				"header": {
+					"hydrated": true,
+					"workspace": true,
+					"project": true,
+					"mobileNavigation": false
+				},
+				"themeApplied": true,
+				"metrics": {
+					"viewport": "1440x1000",
+					"documentWidth": 1440,
+					"bodyWidth": 1440,
+					"bodyOverflow": false,
+					"tableClientWidth": 1190,
+					"tableScrollWidth": 1190
+				},
+				"popupBounds": {
+					"left": 905.703125,
+					"top": 367.984375,
+					"right": 1175.703125,
+					"bottom": 696.984375,
+					"width": 270,
+					"height": 329,
+					"opacity": 0.992803,
+					"viewportWidth": 1440,
+					"viewportHeight": 1000,
+					"intersectsViewport": true,
+					"containedInViewport": true
+				},
+				"titleEditor": "docs/report/screens/codex-20261025-vw22-title-editor-dark-1440.png",
+				"dueCalendar": "docs/report/screens/codex-20261025-vw22-due-calendar-dark-1440.png"
+			}
+		],
+		"pageErrors": 0,
+		"consoleErrors": 0,
+		"routeStatuses": [
+			{
+				"method": "GET",
+				"path": "/api/work-items/CCY-1",
+				"status": 200
+			},
+			{
+				"method": "GET",
+				"path": "/api/work-items/CCY-1",
+				"status": 200
+			},
+			{
+				"method": "GET",
+				"path": "/api/work-items/CCY-1",
+				"status": 200
+			},
+			{
+				"method": "GET",
+				"path": "/api/work-items/CCY-1",
+				"status": 200
+			}
+		],
+		"errors": [],
+		"workspaceRestore": {
+			"from": "Codex Cost Cycle 20261025",
+			"to": "Codex Cost Cycle 20261025",
+			"changed": false
+		},
+		"captureOnly": true,
+		"outcome": "passed",
+		"finallyRestored": {
+			"title": true,
+			"dueDate": true
+		},
+		"restoredWorkspace": "Codex Cost Cycle 20261025",
+		"dueCellFixRetest": {
+			"readOnly": true,
+			"strictTls": true,
+			"workspace": "Codex Cost Cycle 20261025",
+			"itemKey": "CCY-4",
+			"captures": [
+				{
+					"theme": "light",
+					"viewport": "390x844",
+					"headerHydrated": true,
+					"noCellSpill": true,
+					"noStateOverlap": true,
+					"geometry": {
+						"cell": {
+							"left": 65,
+							"right": 161,
+							"top": 285.5,
+							"bottom": 338.5,
+							"width": 96,
+							"height": 53
+						},
+						"cellPadding": {
+							"left": "10px",
+							"right": "10px"
+						},
+						"button": {
+							"left": 75,
+							"right": 151,
+							"top": 298,
+							"bottom": 326,
+							"width": 76,
+							"height": 28
+						},
+						"buttonCss": {
+							"minWidth": "0px",
+							"maxWidth": "100%",
+							"width": "76px",
+							"overflow": "visible",
+							"textOverflow": "clip"
+						},
+						"label": {
+							"left": 102,
+							"right": 144,
+							"top": 304,
+							"bottom": 320,
+							"width": 42,
+							"height": 16
+						},
+						"labelCss": {
+							"minWidth": "0px",
+							"maxWidth": "none",
+							"width": "42px",
+							"overflow": "hidden",
+							"textOverflow": "ellipsis"
+						},
+						"labelScrollWidth": 68,
+						"labelClientWidth": 42,
+						"labelText": "No due date",
+						"nextCell": {
+							"left": 161,
+							"right": 257,
+							"top": 285.5,
+							"bottom": 338.5,
+							"width": 96,
+							"height": 53
+						},
+						"nextCellText": "To Do",
+						"hostScroll": {
+							"left": 517,
+							"clientWidth": 372,
+							"scrollWidth": 889
+						}
+					},
+					"popup": {
+						"left": 75,
+						"top": 330,
+						"right": 373,
+						"bottom": 642,
+						"width": 298,
+						"height": 312,
+						"viewportWidth": 390,
+						"viewportHeight": 844,
+						"contained": true,
+						"opacity": 0.992766
+					},
+					"screenshot": "docs/report/screens/codex-20261025-vw22-due-cell-fix-light-390.png"
+				},
+				{
+					"theme": "light",
+					"viewport": "768x1024",
+					"headerHydrated": true,
+					"noCellSpill": true,
+					"noStateOverlap": true,
+					"geometry": {
+						"cell": {
+							"left": 443,
+							"right": 539,
+							"top": 247.5,
+							"bottom": 304.5,
+							"width": 96,
+							"height": 57
+						},
+						"cellPadding": {
+							"left": "10px",
+							"right": "10px"
+						},
+						"button": {
+							"left": 453,
+							"right": 529,
+							"top": 262,
+							"bottom": 290,
+							"width": 76,
+							"height": 28
+						},
+						"buttonCss": {
+							"minWidth": "0px",
+							"maxWidth": "100%",
+							"width": "76px",
+							"overflow": "visible",
+							"textOverflow": "clip"
+						},
+						"label": {
+							"left": 478,
+							"right": 522,
+							"top": 266,
+							"bottom": 286,
+							"width": 44,
+							"height": 20
+						},
+						"labelCss": {
+							"minWidth": "0px",
+							"maxWidth": "none",
+							"width": "44px",
+							"overflow": "hidden",
+							"textOverflow": "ellipsis"
+						},
+						"labelScrollWidth": 79,
+						"labelClientWidth": 44,
+						"labelText": "No due date",
+						"nextCell": {
+							"left": 539,
+							"right": 635,
+							"top": 247.5,
+							"bottom": 304.5,
+							"width": 96,
+							"height": 57
+						},
+						"nextCellText": "To Do",
+						"hostScroll": {
+							"left": 371,
+							"clientWidth": 518,
+							"scrollWidth": 889
+						}
+					},
+					"popup": {
+						"left": 453.21875,
+						"top": 293.90625,
+						"right": 723.21875,
+						"bottom": 577.90625,
+						"width": 270,
+						"height": 284,
+						"viewportWidth": 768,
+						"viewportHeight": 1024,
+						"contained": true,
+						"opacity": 0.992784
+					},
+					"screenshot": "docs/report/screens/codex-20261025-vw22-due-cell-fix-light-768.png"
+				},
+				{
+					"theme": "dark",
+					"viewport": "390x844",
+					"headerHydrated": true,
+					"noCellSpill": true,
+					"noStateOverlap": true,
+					"geometry": {
+						"cell": {
+							"left": 65,
+							"right": 161,
+							"top": 285.5,
+							"bottom": 338.5,
+							"width": 96,
+							"height": 53
+						},
+						"cellPadding": {
+							"left": "10px",
+							"right": "10px"
+						},
+						"button": {
+							"left": 75,
+							"right": 151,
+							"top": 298,
+							"bottom": 326,
+							"width": 76,
+							"height": 28
+						},
+						"buttonCss": {
+							"minWidth": "0px",
+							"maxWidth": "100%",
+							"width": "76px",
+							"overflow": "visible",
+							"textOverflow": "clip"
+						},
+						"label": {
+							"left": 102,
+							"right": 144,
+							"top": 304,
+							"bottom": 320,
+							"width": 42,
+							"height": 16
+						},
+						"labelCss": {
+							"minWidth": "0px",
+							"maxWidth": "none",
+							"width": "42px",
+							"overflow": "hidden",
+							"textOverflow": "ellipsis"
+						},
+						"labelScrollWidth": 68,
+						"labelClientWidth": 42,
+						"labelText": "No due date",
+						"nextCell": {
+							"left": 161,
+							"right": 257,
+							"top": 285.5,
+							"bottom": 338.5,
+							"width": 96,
+							"height": 53
+						},
+						"nextCellText": "To Do",
+						"hostScroll": {
+							"left": 517,
+							"clientWidth": 372,
+							"scrollWidth": 889
+						}
+					},
+					"popup": {
+						"left": 75.015625,
+						"top": 329.984375,
+						"right": 373.015625,
+						"bottom": 641.984375,
+						"width": 298,
+						"height": 312,
+						"viewportWidth": 390,
+						"viewportHeight": 844,
+						"contained": true,
+						"opacity": 0.992779
+					},
+					"screenshot": "docs/report/screens/codex-20261025-vw22-due-cell-fix-dark-390.png"
+				},
+				{
+					"theme": "dark",
+					"viewport": "768x1024",
+					"headerHydrated": true,
+					"noCellSpill": true,
+					"noStateOverlap": true,
+					"geometry": {
+						"cell": {
+							"left": 443,
+							"right": 539,
+							"top": 247.5,
+							"bottom": 304.5,
+							"width": 96,
+							"height": 57
+						},
+						"cellPadding": {
+							"left": "10px",
+							"right": "10px"
+						},
+						"button": {
+							"left": 453,
+							"right": 529,
+							"top": 262,
+							"bottom": 290,
+							"width": 76,
+							"height": 28
+						},
+						"buttonCss": {
+							"minWidth": "0px",
+							"maxWidth": "100%",
+							"width": "76px",
+							"overflow": "visible",
+							"textOverflow": "clip"
+						},
+						"label": {
+							"left": 478,
+							"right": 522,
+							"top": 266,
+							"bottom": 286,
+							"width": 44,
+							"height": 20
+						},
+						"labelCss": {
+							"minWidth": "0px",
+							"maxWidth": "none",
+							"width": "44px",
+							"overflow": "hidden",
+							"textOverflow": "ellipsis"
+						},
+						"labelScrollWidth": 79,
+						"labelClientWidth": 44,
+						"labelText": "No due date",
+						"nextCell": {
+							"left": 539,
+							"right": 635,
+							"top": 247.5,
+							"bottom": 304.5,
+							"width": 96,
+							"height": 57
+						},
+						"nextCellText": "To Do",
+						"hostScroll": {
+							"left": 371,
+							"clientWidth": 518,
+							"scrollWidth": 889
+						}
+					},
+					"popup": {
+						"left": 453.015625,
+						"top": 293.984375,
+						"right": 723.015625,
+						"bottom": 577.984375,
+						"width": 270,
+						"height": 284,
+						"viewportWidth": 768,
+						"viewportHeight": 1024,
+						"contained": true,
+						"opacity": 0.992788
+					},
+					"screenshot": "docs/report/screens/codex-20261025-vw22-due-cell-fix-dark-768.png"
+				}
+			]
+		}
+	},
+	"coordinatorVisualInspection": {
+		"status": "scoped_pass",
+		"screensInspected": 4,
+		"finding": "Due-date controls stay inside the saved 96px cell at 390px and 768px in both themes; calendar remains usable.",
+		"limitation": "Visual inspection of these captures only; independent phase review and complete screen matrix remain pending."
+	}
+}

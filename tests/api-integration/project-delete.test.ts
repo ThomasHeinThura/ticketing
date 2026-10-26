@@ -37,17 +37,17 @@ async function deleteRequest(projectId: string) {
 
 /**
  * `DELETE /api/project/{id}` only requests (202). The soft delete runs when the requester
- * approves with the exact project name plus step-up; `afterRequest` proves nothing
+ * approves with the exact project slug/key plus step-up; `afterRequest` proves nothing
  * changed before that.
  */
 async function deleteProject(
   member: { user: { id: string } },
-  project: { id: string; name: string },
+  project: { id: string; slug: string },
 ) {
   await ensureAgentSession(member.user.id);
   const { app } = createApp();
   return deleteThroughApproval(app, member.user, `/api/project/${project.id}`, {
-    typedName: project.name,
+    typedName: project.slug,
     afterRequest: async () => {
       const untouched = await db.query.projectTable.findFirst({
         where: eq(schema.projectTable.id, project.id),

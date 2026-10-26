@@ -65,6 +65,12 @@ const FILTER_FIELDS: readonly FilterField[] = [
     fixedValue: "@me",
   },
   {
+    id: "requester",
+    labelKey: "requester",
+    operators: ["eq"],
+    fixedValue: "@me",
+  },
+  {
     id: "watcher",
     labelKey: "watcher",
     operators: ["contains"],
@@ -82,6 +88,12 @@ const FILTER_FIELDS: readonly FilterField[] = [
   },
   { id: "project", labelKey: "project", operators: ["eq"] },
   { id: "type", labelKey: "type", operators: ["eq"] },
+  {
+    id: "lifecycle",
+    labelKey: "lifecycle",
+    operators: ["eq"],
+    values: ["active", "archived", "deleted"],
+  },
 ];
 
 const DEFAULT_FILTER_LEAF: WorkItemFilter = {

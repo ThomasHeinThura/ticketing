@@ -13,6 +13,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  Textarea,
 } from "@taskdesk/ui";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -22,6 +23,7 @@ import {
   type Automation,
   AutomationRuleError,
 } from "@/fetchers/automation/automations";
+import { getTeams } from "@/fetchers/team";
 import { listWebhooks } from "@/fetchers/webhook/webhooks";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -59,6 +61,7 @@ type Lists = {
   projectKeys: PickerOption[];
   people: PickerOption[];
   webhooks: PickerOption[];
+  teams: PickerOption[];
 };
 
 function ConditionRow({
@@ -388,6 +391,39 @@ function ActionRow({
             onChange={set}
           />
         );
+      case "notify":
+        return (
+          <div className="grid gap-2">
+            <PickerSelect
+              ariaLabel={t("actions.team")}
+              value={action.teamId ?? ""}
+              options={lists.teams}
+              placeholder={t("actions.pickTeam")}
+              disabled={disabled}
+              onChange={(teamId) => onChange({ ...action, teamId })}
+            />
+            <Input
+              aria-label={t("actions.title")}
+              maxLength={160}
+              value={action.title ?? ""}
+              placeholder={t("actions.title")}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({ ...action, title: event.target.value })
+              }
+            />
+            <Textarea
+              aria-label={t("actions.body")}
+              maxLength={5000}
+              value={action.body ?? ""}
+              placeholder={t("actions.body")}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({ ...action, body: event.target.value })
+              }
+            />
+          </div>
+        );
       default:
         return null;
     }
@@ -408,6 +444,9 @@ function ActionRow({
             ...action,
             type,
             value: type === "set_priority" ? "high" : "",
+            ...(type === "notify"
+              ? { teamId: "", title: "", body: "" }
+              : { teamId: undefined, title: undefined, body: undefined }),
           })
         }
       />
@@ -478,6 +517,13 @@ export function AutomationEditorDialog({
     queryFn: () => listWebhooks(workspaceId),
     retry: false,
   });
+  const needsTeams = draft.actions.some((action) => action.type === "notify");
+  const teams = useQuery({
+    queryKey: ["teams", workspaceId],
+    enabled: needsTeams && Boolean(workspaceId),
+    queryFn: () => getTeams(workspaceId),
+    retry: false,
+  });
 
   const workspaceLabels = (labels.data ?? []).filter(
     (label) => !("projectId" in label) || !label.projectId,
@@ -506,6 +552,10 @@ export function AutomationEditorDialog({
     webhooks: (webhooks.data ?? []).map((webhook) => ({
       value: webhook.id,
       label: webhook.name,
+    })),
+    teams: (teams.data ?? []).map((team) => ({
+      value: team.id,
+      label: team.name,
     })),
   };
 

@@ -10,6 +10,11 @@ import * as auditFailureNotifier from "../../apps/api/src/instance/observability
 import * as observabilityRuntime from "../../apps/api/src/instance/observability/runtime";
 import { withExplicitCredentialMutation } from "../../apps/api/src/pending-action/credential-invalidation";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
+import {
+  enqueueSavedViewUpdatedEvent,
+  updateSavedView,
+  withSavedViewTransaction,
+} from "../../apps/api/src/view/repository";
 import removeWorkspaceMember from "../../apps/api/src/workspace/controllers/remove-workspace-member";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -196,6 +201,19 @@ describe("API integration: saved views", () => {
     expect(auditRow?.after).toMatchObject({
       visibility: "private",
       sharedWithTeamId: null,
+    });
+    const createdEvent = await db.query.outboxTable.findFirst({
+      where: and(
+        eq(schema.outboxTable.kind, "saved_view.created"),
+        eq(schema.outboxTable.workspaceId, member.workspace.id),
+      ),
+    });
+    expect(
+      (createdEvent?.payload as { payload?: unknown } | undefined)?.payload,
+    ).toMatchObject({
+      savedViewId: created.id,
+      workspaceId: member.workspace.id,
+      visibility: "private",
     });
   });
 
@@ -438,6 +456,63 @@ describe("API integration: saved views", () => {
       visibility: "private",
       sharedWithTeamId: null,
     });
+    expect(
+      await db.query.outboxTable.findMany({
+        where: and(
+          eq(schema.outboxTable.kind, "saved_view.updated"),
+          eq(schema.outboxTable.workspaceId, member.workspace.id),
+        ),
+      }),
+    ).toHaveLength(0);
+  });
+
+  it("rolls back a saved-view mutation and its outbox event together", async () => {
+    const member = await createWorkspaceMember();
+    const person = await addPerson(member.user.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const createResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Keep original name",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(createResponse.status).toBe(200);
+    const created = (await createResponse.json()) as { id: string };
+
+    await expect(
+      withSavedViewTransaction(async (tx) => {
+        const updated = await updateSavedView(tx, created.id, {
+          name: "Must roll back",
+        });
+        if (!updated) throw new Error("Saved view disappeared during test");
+        await enqueueSavedViewUpdatedEvent(tx, updated, {
+          personId: person.id,
+          userId: member.user.id,
+        });
+        throw new Error("Force transaction rollback");
+      }),
+    ).rejects.toThrow("Force transaction rollback");
+
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.id, created.id),
+      }),
+    ).toMatchObject({ id: created.id, name: "Keep original name" });
+    expect(
+      await db.query.outboxTable.findMany({
+        where: and(
+          eq(schema.outboxTable.kind, "saved_view.updated"),
+          eq(schema.outboxTable.workspaceId, member.workspace.id),
+        ),
+      }),
+    ).toHaveLength(0);
   });
 
   it("keeps API-key ceilings on view share and workspace-visibility checks", async () => {
@@ -2157,6 +2232,27 @@ describe("API integration: saved views", () => {
       { before: { pinned: false }, after: { pinned: true } },
       { before: { pinned: true }, after: { pinned: false } },
     ]);
+    const pinEvents = await db.query.outboxTable.findMany({
+      where: and(
+        eq(schema.outboxTable.kind, "saved_view.pinned"),
+        eq(schema.outboxTable.workspaceId, member.workspace.id),
+      ),
+    });
+    expect(
+      pinEvents
+        .filter(
+          (event) =>
+            (
+              event.payload as {
+                payload: { savedViewId?: string };
+              }
+            ).payload.savedViewId === created.id,
+        )
+        .map(
+          (event) =>
+            (event.payload as { payload: { pinned: boolean } }).payload.pinned,
+        ),
+    ).toEqual([true, false]);
   });
 
   it("refuses to pin a private view the caller cannot read", async () => {
@@ -2497,6 +2593,19 @@ describe("API integration: saved views", () => {
       visibility: "team",
       sharedWithTeamId: teamId,
     });
+    const updateEvents = await db.query.outboxTable.findMany({
+      where: and(
+        eq(schema.outboxTable.kind, "saved_view.updated"),
+        eq(schema.outboxTable.workspaceId, owner.workspace.id),
+      ),
+    });
+    expect(
+      updateEvents.filter(
+        (event) =>
+          (event.payload as { payload: { savedViewId?: string } }).payload
+            .savedViewId === created.id,
+      ),
+    ).toHaveLength(4);
   });
 
   it("serializes first-time concurrent pins for different views", async () => {

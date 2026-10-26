@@ -48,7 +48,11 @@ vi.mock("react-i18next", async () => {
   };
 });
 vi.mock("@/fetchers/god-mode/instance-users", () => ({
-  getCurrentFactorStatus: async () => ({ enabled: false }),
+  getCurrentFactorStatus: async () => ({
+    enabled: false,
+    required: false,
+    availableMethods: ["password"],
+  }),
 }));
 vi.mock("@/fetchers/god-mode/identity-connections", async (importOriginal) => ({
   ...(await importOriginal<

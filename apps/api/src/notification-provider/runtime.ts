@@ -8,7 +8,12 @@ import {
 import { decryptIdentityClientSecret } from "../identity/client-secret";
 import { isDisallowedAddress } from "../utils/assert-public-destination";
 import { readEmailProvider } from "./repository";
-import { type SmtpConfig, smtpConfigurationSchema } from "./schema";
+import {
+  isLocalMailpitCaptureEnabled,
+  isValidMailpitCaptureConfig,
+  type SmtpConfig,
+  smtpConfigurationSchema,
+} from "./schema";
 
 /** No configurable bypass: notification providers cannot reach private/metadata networks. */
 export function runtimeSmtpConfiguration(
@@ -24,6 +29,32 @@ export function runtimeSmtpConfiguration(
     connect: openSmtpSocket,
   },
 ): SmtpConfiguration {
+  if (config.captureToMailpit === true) {
+    if (
+      !isLocalMailpitCaptureEnabled() ||
+      !isValidMailpitCaptureConfig(config) ||
+      password !== null
+    )
+      throw new Error("SMTP configuration unavailable");
+    return {
+      from: config.fromAddress,
+      ...(config.replyTo ? { replyTo: config.replyTo } : {}),
+      options: {
+        host: "mailpit",
+        port: 1025,
+        secure: false,
+        requireTLS: false,
+        ignoreTLS: true,
+      },
+      connect: async (signal) => {
+        if (signal.aborted) throw new Error("SMTP configuration unavailable");
+        return network.connect(
+          { host: "mailpit", port: 1025, secure: false },
+          signal,
+        );
+      },
+    };
+  }
   if (config.username && !password)
     throw new Error("SMTP credentials unavailable");
   return {

@@ -21,6 +21,7 @@ This maintained contract registers bootstrap environment names for `check:env` a
 | `TASKDESK_MIGRATION_DATABASE_URL` | Application URL fallback for the migration process only | Owner/DDL connection. Set only on `TASKDESK_ROLE=migrate`, never on serving or job processes. Run migrations and role/grant setup before starting the application role. |
 | `TASKDESK_PORT` | `5173` | HTTP bind port. |
 | `TASKDESK_VALKEY_URL` | unset | Shared coordination connection required by the multiple-replica contract. |
+| `TASKDESK_LOCAL_MAILPIT_CAPTURE` | unset | Local Compose capture capability only. Requires exact canonical agent/portal origins `https://ticketing.localhost` and `https://portal.localhost`. Allows the elevated runtime-admin SMTP capture setting to use only fixed `mailpit:1025`, without auth/TLS. Public deployments fail closed even if the flag is set; ordinary SMTP remains public-address checked. Approved by Thomas,26 October. |
 | `TASKDESK_ROLE` | `all` | `web`, `jobs`, `all` or `migrate`; migration exits after setup without serving HTTP. |
 | `TASKDESK_ENCRYPTION_KEY_PREVIOUS` | unset | Previous key during staged re-encryption. Retain both keys until every encrypted row has moved. |
 | `TASKDESK_TRUST_PROXY` | `1` | Exact trusted reverse-proxy hop count; `0` uses the socket address. Measure the deployed topology. Expose the application through the trusted proxy network only. |

@@ -45,6 +45,8 @@ export function useUserWebSocket() {
 
       ws.onopen = () => {
         retriesRef.current = 0;
+        // Recover persisted notifications missed while this socket was disconnected.
+        void queryClient.invalidateQueries({ queryKey: ["notifications"] });
         clearPing();
         pingIntervalRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {

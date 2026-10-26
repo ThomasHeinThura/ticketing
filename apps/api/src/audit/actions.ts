@@ -50,11 +50,13 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "membership.sees_all_granted",
   // `owner_team_id` or `parent_id` changed (rbac.md#reach).
   "project.reach_changed",
+  "project.restored",
   "sla_policy.created",
   "sla_policy.updated",
   "sla_policy.published",
   "request_type.created",
   "request_type.updated",
+  "request_type.group_order_updated",
   "request_type.published",
   "request_type.unpublished",
   "submission.claimed",
@@ -83,15 +85,26 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   // RP-10: a large export was queued for the `report-export` job (nothing has left yet).
   "report.export_requested",
   "attachment.downloaded",
+  "attachment.restored",
   "config.exported",
   "instance.exported",
   // One summary row per bulk operation (plus one per item).
   "bulk.performed",
   // Run-level import audit; a manual job trigger.
   "import.run",
+  "identity.placeholder_claimed",
+  "identity.linked",
+  "workspace.project_settings_updated",
+  "project.settings_updated",
+  "state_template.created",
+  "state_template.updated",
   "job.triggered",
+  "job.configuration_changed",
+  "instance.delivery.requeued",
   // Durable-authority lifecycle.
   "api_key.created",
+  "api_key.reattested",
+  "api_key.ownership_transferred",
   "api_key.revoked",
   "webhook.created",
   "webhook.deleted",
@@ -151,6 +164,7 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "kb_category.deleted",
   "kb.settings_changed",
   "instance.settings_changed",
+  "terminology.changed",
   // P5 time and cost (feature-contracts-p5.md, time-and-cost).
   "time_entry.created",
   "time_entry.updated",
@@ -201,9 +215,14 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "state.wip_limit_changed",
   // A work item's content was sent to an ai.* provider.
   "ai.sent_externally",
+  // MC-4: mark each MCP request as agent-originated without recording request content.
+  "mcp.request",
   // Tenancy lifecycle. legal_hold.* not wired yet — see doc comment above.
   "organisation.created",
+  "organisation.updated",
   "organisation.suspended",
+  "organisation.unsuspended",
+  "organisation.restored",
   "organisation.deleted",
   "legal_hold.placed",
   "legal_hold.lifted",
@@ -211,6 +230,8 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "audit.read",
   "audit.exported",
   "audit.purged",
+  // PA-13 hard purge; the event stream uses pending_action.executed.
+  "hard_purge.executed",
   // A restore completed (backup-and-restore.md).
   "instance.restored",
   "instance.observability_changed",

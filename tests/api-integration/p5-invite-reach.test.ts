@@ -378,6 +378,35 @@ describe("no staff path can see or accept a customer invitation (CP-21)", () => 
       expect(JSON.stringify(await list.json())).not.toContain(sent.id);
   });
 
+  it("keeps public invitation preview public and applies the configured anonymous ceiling", async () => {
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ anonymousRateLimitWindowMs: 60_000, anonymousRateLimitMax: 1 })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    const created = await w.call(
+      w.owner.user,
+      `/api/workspace/${w.workspaceId}/invitations`,
+      {
+        method: "POST",
+        body: {
+          email: "rate-limited-preview@example.test",
+          role: "member",
+        },
+      },
+    );
+    expect(created.status).toBe(200);
+    const sent = (await created.json()) as { id: string };
+    mockAnonymousSession();
+    const path = `/api/invitation/public/${sent.id}`;
+    const first = await w.app.request(path, { headers: JSON_HEADERS });
+    expect(first.status).toBe(200);
+    expect(await first.json()).toMatchObject({ valid: true });
+
+    const limited = await w.app.request(path, { headers: JSON_HEADERS });
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("retry-after")).toMatch(/^[1-9][0-9]*$/u);
+  });
+
   it("does not open agent-side registration for the invited address", async () => {
     await w.invite("register@example.test");
     const { findPendingInvitation } = await import(

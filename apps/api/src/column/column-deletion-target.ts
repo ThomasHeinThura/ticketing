@@ -2,6 +2,7 @@ import { and, count, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { schema } from "../database";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -64,6 +65,42 @@ export const columnDeletionTarget: RegisteredDeletionTarget = {
       },
       version: registeredDeletionFingerprint(column),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [row] = await tx
+      .select({
+        id: schema.columnTable.id,
+        projectId: schema.columnTable.projectId,
+      })
+      .from(schema.columnTable)
+      .where(eq(schema.columnTable.id, id))
+      .limit(1);
+    if (!row) return undefined;
+    const [project] = await tx
+      .select({
+        id: schema.projectTable.id,
+        workspaceId: schema.projectTable.workspaceId,
+        organisationId: schema.projectTable.organisationId,
+      })
+      .from(schema.projectTable)
+      .where(
+        and(
+          eq(schema.projectTable.id, row.projectId),
+          isNull(schema.projectTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    return project
+      ? {
+          id: row.id,
+          workspaceId: project.workspaceId,
+          projectId: project.id,
+          organisationId: project.organisationId,
+        }
+      : undefined;
   },
   assertDeletable: async (tx, loaded) => {
     const [tasks] = await tx

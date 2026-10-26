@@ -3,6 +3,11 @@ import {
   NOTIFICATION_ATTEMPT_LIMIT,
   notificationRetryDelayMs,
 } from "../notification/delivery-primitives";
+import {
+  EVENT_KEYS,
+  isLegacyTaskCompatibilityPayload,
+  LEGACY_TASK_COMPATIBILITY_KEYS,
+} from "./event-keys";
 import type { DomainEventEnvelope } from "./outbox";
 import {
   claimNextPendingParentEvent,
@@ -150,13 +155,19 @@ export function parseParentEnvelope(row: {
   if (
     !payload ||
     typeof payload !== "object" ||
+    Array.isArray(payload) ||
     payload.id !== row.eventId ||
     payload.kind !== row.kind ||
+    (!EVENT_KEYS.has(row.kind) &&
+      !LEGACY_TASK_COMPATIBILITY_KEYS.has(row.kind)) ||
     typeof payload.occurredAt !== "string" ||
     typeof payload.depth !== "number" ||
     !payload.actor ||
     !payload.scope ||
-    typeof payload.payload !== "object"
+    typeof payload.payload !== "object" ||
+    payload.payload === null ||
+    (LEGACY_TASK_COMPATIBILITY_KEYS.has(row.kind) &&
+      !isLegacyTaskCompatibilityPayload(payload.payload, payload.scope))
   ) {
     throw new ParentEnvelopeInvalid();
   }

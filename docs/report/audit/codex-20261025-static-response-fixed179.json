@@ -1,0 +1,57 @@
+{
+	"recordedAt": "2026-10-25T14:24:22.286551+00:00",
+	"runtimeCheckpoint": 179,
+	"status": "pass",
+	"records": [
+		{
+			"host": "ticketing.localhost",
+			"path": "/pdf-preview.html",
+			"bytes": 465,
+			"declaredLength": null,
+			"completeDocument": true,
+			"correctLength": true,
+			"validatorsAbsent": true,
+			"strictTls": true
+		},
+		{
+			"host": "ticketing.localhost",
+			"path": "/",
+			"bytes": 7458,
+			"declaredLength": null,
+			"completeDocument": true,
+			"correctLength": true,
+			"validatorsAbsent": true,
+			"strictTls": true
+		},
+		{
+			"host": "ticketing.localhost",
+			"path": "/assets/pdf-preview/viewer-cnL_De8a.js",
+			"anonymousCors": true
+		},
+		{
+			"host": "portal.localhost",
+			"path": "/pdf-preview.html",
+			"bytes": 465,
+			"declaredLength": null,
+			"completeDocument": true,
+			"correctLength": true,
+			"validatorsAbsent": true,
+			"strictTls": true
+		},
+		{
+			"host": "portal.localhost",
+			"path": "/",
+			"bytes": 1288,
+			"declaredLength": null,
+			"completeDocument": true,
+			"correctLength": true,
+			"validatorsAbsent": true,
+			"strictTls": true
+		},
+		{
+			"host": "portal.localhost",
+			"path": "/assets/pdf-preview/viewer-cnL_De8a.js",
+			"anonymousCors": true
+		}
+	]
+}

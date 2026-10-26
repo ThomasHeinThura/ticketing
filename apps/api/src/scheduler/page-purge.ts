@@ -3,7 +3,7 @@ import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import type { Executor } from "../database/executor";
 import { openHoldOver, pagePeople } from "../utils/legal-hold-scope";
-import { withJobLease } from "./leader-lock";
+import { assertJobExecutionOwned, withJobLease } from "./leader-lock";
 import { fenceLegalHolds } from "./soft-delete-purge.repository";
 
 /**
@@ -140,6 +140,7 @@ export async function purgeSoftDeletedPages(
     const ids = await listCandidates(db, batch, seen);
     if (ids.length === 0) return outcome;
     for (const id of ids) {
+      await assertJobExecutionOwned();
       if (seen.length >= maxPages) break;
       seen.push(id);
       try {

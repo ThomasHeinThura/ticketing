@@ -6,9 +6,8 @@ import {
 } from "@tanstack/react-router";
 import { Alert, AlertDescription, AlertTitle, Button } from "@taskdesk/ui";
 import type { ReactNode } from "react";
-import { useTranslation } from "react-i18next";
-
 import PortalLayout from "@/components/portal/portal-layout";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { portalAuthClient } from "@/lib/portal-auth-client";
 
 // The sign-in and accept-invitation pages are their own frame and are reachable without a session
@@ -55,7 +54,7 @@ function PortalFrame({ children }: { children: ReactNode }) {
 }
 
 function PortalNotFound() {
-  const { t } = useTranslation("portal");
+  const { t } = usePortalTranslation("portal");
   return (
     <PortalFrame>
       <Alert variant="info">
@@ -67,7 +66,7 @@ function PortalNotFound() {
 }
 
 function PortalError({ reset }: { reset: () => void }) {
-  const { t } = useTranslation("portal");
+  const { t } = usePortalTranslation("portal");
   return (
     <PortalFrame>
       <Alert variant="error">

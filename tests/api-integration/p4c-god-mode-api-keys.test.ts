@@ -10,7 +10,9 @@ import {
   createServiceApiKey,
 } from "../../apps/api/src/api-key/service";
 import db, { schema } from "../../apps/api/src/database";
+import { transitionPersonLifecycleInTransaction } from "../../apps/api/src/identity/repository";
 import { createApp } from "../../apps/api/src/index";
+import { lockPendingActionLifecycle } from "../../apps/api/src/pending-action/lifecycle-invalidation";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
@@ -74,19 +76,64 @@ describe("GET /api/instance/api-keys", () => {
 
   it("marks a service key whose creator is no longer active", async () => {
     const w = await world();
-    await db
-      .update(schema.personTable)
-      .set({ active: false })
+    const [creator] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
       .where(eq(schema.personTable.userId, w.other.user.id));
+    if (!creator) throw new Error("Service-key creator person missing");
+    await db.transaction(async (tx) => {
+      await lockPendingActionLifecycle(tx);
+      await transitionPersonLifecycleInTransaction(
+        tx,
+        creator.id,
+        false,
+        "end_memberships",
+        { kind: "administrative" },
+      );
+    });
     mockAuthenticatedSession({ ...w.admin.user, role: "admin" });
     const res = await get("/api/instance/api-keys");
     const body = (await res.json()) as {
-      apiKeys: { id: string; createdByFormerMember: boolean }[];
+      apiKeys: {
+        id: string;
+        createdByFormerMember: boolean;
+        ownedByWorkspaceAdmins: boolean;
+        requiresReattestation: boolean;
+      }[];
+    };
+    expect(body.apiKeys.find((key) => key.id === w.service.id)).toMatchObject({
+      createdByFormerMember: true,
+      ownedByWorkspaceAdmins: true,
+      requiresReattestation: true,
+    });
+
+    // Reactivation restores the human account but not the historical ownership transfer.
+    await db.transaction(async (tx) => {
+      await lockPendingActionLifecycle(tx);
+      await transitionPersonLifecycleInTransaction(
+        tx,
+        creator.id,
+        true,
+        "end_memberships",
+        { kind: "administrative" },
+      );
+    });
+    const afterReactivation = await get("/api/instance/api-keys");
+    const reactivatedBody = (await afterReactivation.json()) as {
+      apiKeys: {
+        id: string;
+        createdByFormerMember: boolean;
+        ownedByWorkspaceAdmins: boolean;
+        requiresReattestation: boolean;
+      }[];
     };
     expect(
-      body.apiKeys.find((key) => key.id === w.service.id)
-        ?.createdByFormerMember,
-    ).toBe(true);
+      reactivatedBody.apiKeys.find((key) => key.id === w.service.id),
+    ).toMatchObject({
+      createdByFormerMember: true,
+      ownedByWorkspaceAdmins: true,
+      requiresReattestation: true,
+    });
   });
 
   it("refuses anyone who is not an instance administrator", async () => {

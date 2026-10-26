@@ -1,9 +1,15 @@
 import { createId } from "@paralleldrive/cuid2";
+import type { NotificationCopyDescriptorV1 } from "@taskdesk/domain";
 import {
   type DbTransaction,
   type DomainEventEnvelope,
   enqueueOutboxEvent,
 } from "../events/outbox";
+import { renderNotificationCopyDescriptor } from "../terminology/notification-copy";
+import {
+  requireTerminologyLocale,
+  resolveTermForm,
+} from "../terminology/service";
 import { notificationDedupeKey } from "./delivery-primitives";
 import { attachDigestWindow } from "./digest-writer";
 import {
@@ -20,6 +26,8 @@ export type NotificationRecipientCandidate = {
   resourceId: string;
   title: string;
   body: string;
+  /** Closed system-authored copy segments; user text remains an opaque literal. */
+  systemCopy?: NotificationCopyDescriptorV1;
   /** Configured, installed `notify.*` channels from the plugin registry. */
   channels: readonly string[];
 };
@@ -125,6 +133,25 @@ export async function materializeNotificationFanout(
     // inbox principal. The current notification API is user-session-backed, so fail
     // closed for this batch rather than invent a recipient account or drop its person id.
     if (!recipient?.active || !recipient.userId) continue;
+    const audience = recipient.side === "customer" ? "customer" : "agent";
+    const workspaceId =
+      "workspaceId" in event.scope && event.scope.workspaceId
+        ? event.scope.workspaceId
+        : null;
+    const rendered = candidate.systemCopy
+      ? await renderNotificationCopyDescriptor(
+          candidate.systemCopy,
+          (termKey, count) =>
+            resolveTermForm({
+              locale: requireTerminologyLocale(recipient.locale ?? "en-US"),
+              audience,
+              termKey,
+              count,
+              workspaceId,
+              executor: tx,
+            }),
+        )
+      : null;
 
     await insertEventInboxRow(tx, {
       id: createId(),
@@ -132,8 +159,11 @@ export async function materializeNotificationFanout(
       personId: candidate.personId,
       eventId: event.id,
       eventKind: event.kind,
-      title: candidate.title,
-      body: candidate.body,
+      title: rendered?.title ?? candidate.title,
+      body: rendered?.body ?? candidate.body,
+      eventData: candidate.systemCopy
+        ? { systemCopy: candidate.systemCopy }
+        : null,
       resourceType: candidate.resourceType,
       resourceId: candidate.resourceId,
     });

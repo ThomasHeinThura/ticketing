@@ -9,6 +9,7 @@ export const searchResultSchema = z
       "person",
       "saved_view",
       "page",
+      "kb_article",
       "project",
       "workspace",
       "comment",

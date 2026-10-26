@@ -9,6 +9,7 @@ import type { RekeyProgress } from "../../../apps/api/src/secrets/rekey";
 const progress = (over: Partial<RekeyProgress>): RekeyProgress => ({
   currentKeyId: "aabbccdd00112233",
   previousKeyConfigured: true,
+  expiredInvitationDeliveryEnvelopes: 0,
   total: { plugins: 2, identityConnections: 1, textSecrets: 3 },
   pending: { plugins: 0, identityConnections: 0, textSecrets: 0 },
   complete: true,
@@ -54,6 +55,19 @@ describe("God Mode health classification", () => {
     expect(
       classifySecrets(progress({ currentKeyId: null, complete: false })).state,
     ).toBe("failing");
+  });
+
+  it("marks expired invitation ciphertext as degraded until cleanup erases it", () => {
+    const check = classifySecrets(
+      progress({
+        expiredInvitationDeliveryEnvelopes: 2,
+        total: { plugins: 0, identityConnections: 0, textSecrets: 2 },
+        complete: false,
+      }),
+    );
+    expect(check.state).toBe("degraded");
+    expect(check.detail.expiredInvitationDeliveryEnvelopes).toBe(2);
+    expect(check.detail.safeToRemovePreviousKey).toBe(false);
   });
 
   it("with no key and no secrets the check is unknown, not ok", () => {

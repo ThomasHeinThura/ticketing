@@ -5,10 +5,16 @@ export type GetProjectsRequest = InferRequestType<
   (typeof client)["project"]["$get"]
 >["query"];
 
-async function getProjects({ workspaceId }: GetProjectsRequest) {
+async function getProjects({
+  workspaceId,
+  includeArchived,
+  includeDeleted,
+}: GetProjectsRequest) {
   if (!workspaceId) return;
 
-  const response = await client.project.$get({ query: { workspaceId } });
+  const response = await client.project.$get({
+    query: { workspaceId, includeArchived, includeDeleted },
+  });
 
   if (!response.ok) {
     const error = await response.text();

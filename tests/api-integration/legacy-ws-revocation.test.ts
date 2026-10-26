@@ -16,10 +16,6 @@ import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  GenericContainer,
-  Wait,
-} from "../../apps/api/node_modules/testcontainers";
 import { sha256 } from "../../apps/api/src/auth/step-up-service";
 import db, { schema } from "../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
@@ -40,6 +36,7 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
+import { startTestValkey } from "./helpers/test-valkey";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import { removeWorkspaceMemberNative } from "./helpers/workspace-membership-write-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
@@ -67,14 +64,6 @@ const WebSocket = apiRequire("ws") as {
 
 type Node = ReturnType<typeof createNodeServer>;
 
-class LoopbackValkeyContainer extends GenericContainer {
-  protected override async beforeContainerCreated(): Promise<void> {
-    this.hostConfig.PortBindings = {
-      ...this.hostConfig.PortBindings,
-      "6379/tcp": [{ HostIp: "127.0.0.1", HostPort: "0" }],
-    };
-  }
-}
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function listening(server: Node["server"]) {
@@ -138,18 +127,33 @@ function startIsolatedApiProcess(valkeyUrl: string) {
     env: { ...process.env, TASKDESK_PORT: "0", TASKDESK_VALKEY_URL: valkeyUrl },
     stdio: ["ignore", "ignore", "ignore", "ipc"],
   });
+  const startedAt = Date.now();
+  let lastPhase: string | undefined;
   const ready = new Promise<number>((resolve, reject) => {
     const timer = setTimeout(
-      () => reject(new Error("API child startup timed out")),
+      () =>
+        reject(
+          new Error(
+            `API child startup timed out after 15000ms (last phase: ${lastPhase ?? "no child phase received"})`,
+          ),
+        ),
       15_000,
     );
     child.once("error", () => {
       clearTimeout(timer);
-      reject(new Error("API child failed to start"));
+      reject(
+        new Error(
+          `API child failed to start (last phase: ${lastPhase ?? "no child phase received"})`,
+        ),
+      );
     });
     child.once("exit", (code) => {
       clearTimeout(timer);
-      reject(new Error(`API child exited before ready (${code ?? "signal"})`));
+      reject(
+        new Error(
+          `API child exited before ready (${code ?? "signal"}; last phase: ${lastPhase ?? "no child phase received"})`,
+        ),
+      );
     });
     child.on("message", (message: unknown) => {
       if (
@@ -158,15 +162,30 @@ function startIsolatedApiProcess(valkeyUrl: string) {
         !("type" in message)
       )
         return;
+      if (
+        message.type === "phase" &&
+        "name" in message &&
+        typeof message.name === "string" &&
+        "elapsedMs" in message &&
+        typeof message.elapsedMs === "number"
+      ) {
+        lastPhase = `${message.name} at ${message.elapsedMs}ms`;
+        return;
+      }
       if (message.type === "startup-error") {
         clearTimeout(timer);
-        reject(new Error("API child reported startup failure"));
+        const phase =
+          "phase" in message && typeof message.phase === "string"
+            ? message.phase
+            : "unknown";
+        reject(new Error(`API child reported startup failure at ${phase}`));
       } else if (
         message.type === "ready" &&
         "port" in message &&
         typeof message.port === "number"
       ) {
         clearTimeout(timer);
+        lastPhase = `ready at ${Date.now() - startedAt}ms`;
         resolve(message.port);
       }
     });
@@ -482,11 +501,8 @@ describe("legacy sockets after access revocation (#632)", () => {
   it("Valkey: delivers and revokes legacy sockets across independent API processes", async () => {
     const originalValkeyUrl = process.env.TASKDESK_VALKEY_URL;
     const sockets: TestSocket[] = [];
-    const valkey = await new LoopbackValkeyContainer("valkey/valkey:9-alpine")
-      .withExposedPorts(6379)
-      .withWaitStrategy(Wait.forListeningPorts())
-      .start();
-    const valkeyUrl = `redis://${valkey.getHost()}:${valkey.getMappedPort(6379)}`;
+    const valkey = await startTestValkey();
+    const valkeyUrl = valkey.url;
     let child: ChildProcess | undefined;
     try {
       process.env.TASKDESK_VALKEY_URL = valkeyUrl;
@@ -691,11 +707,7 @@ describe("legacy sockets after access revocation (#632)", () => {
           if (originalValkeyUrl === undefined)
             delete process.env.TASKDESK_VALKEY_URL;
           else process.env.TASKDESK_VALKEY_URL = originalValkeyUrl;
-          await valkey.stop({
-            timeout: 5_000,
-            remove: true,
-            removeVolumes: true,
-          });
+          await valkey.stop();
         }
       }
     }

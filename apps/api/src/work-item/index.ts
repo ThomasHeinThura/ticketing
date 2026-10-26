@@ -3,6 +3,7 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { clientIpForContext } from "../api-key/enforce";
 import { appendAuditLog } from "../audit/audit-writer";
+import { auditOriginForApiKey } from "../audit/mcp-origin";
 import { applyWorkItemFieldValues } from "../custom-field/repository";
 import db from "../database";
 import {
@@ -79,6 +80,7 @@ import moveWorkItem, {
   authoriseMoveTarget,
 } from "./controllers/move-work-item";
 import rankWorkItem from "./controllers/rank-work-item";
+import { restoreWorkItem } from "./controllers/restore-work-item";
 import setWorkItemParent from "./controllers/set-work-item-parent";
 import transitionWorkItem, {
   NoMatchingTransitionError,
@@ -98,6 +100,7 @@ import {
   findWorkItemMentionContext,
 } from "./mention-access";
 import { requireCommentReach } from "./require-comment-reach";
+import { requireDeletedWorkItemReach } from "./require-deleted-work-item-reach";
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
   assignablePeopleSchema,
@@ -155,6 +158,7 @@ import {
   validateWorkItemSearchQuery,
 } from "./search/query";
 import { searchWorkItems } from "./search/repository";
+import { workItemSearchRequestSchema } from "./search/request-schema";
 import { workItemSlaSchema } from "./sla-response";
 import {
   applyTemplateInTransaction,
@@ -304,7 +308,8 @@ const listWorkItemsRoute = createRoute({
     "filters (`docs/01-architecture/api-design.md`'s collection convention; " +
     "`sort`/`dir` match #306's own URL param names: `key | title | priority | " +
     "dueDate`, `asc | desc`, default `key`/`asc`). Archived and deleted items are " +
-    "excluded by default. Each row also carries the resolved `stateName`, " +
+    "excluded by default; set the explicit `lifecycle` filter to reveal them (WI-21). " +
+    "Each row also carries the resolved `stateName`, " +
     "`stateCategory` and `assigneeName` (#310) alongside the raw ids.",
   middleware: [
     workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
@@ -383,30 +388,7 @@ const searchWorkItemsRoute = createRoute({
       required: true,
       content: {
         "application/json": {
-          schema: z
-            .object({
-              workspaceId: z.string().min(1),
-              query: z
-                .object({
-                  entity: z.string(),
-                  filter: z.unknown().optional(),
-                  sort: z
-                    .array(
-                      z
-                        .object({ field: z.string(), order: z.string() })
-                        .strict(),
-                    )
-                    .max(1)
-                    .optional(),
-                  columns: z.array(z.string()).optional(),
-                  groupBy: z.unknown().optional(),
-                  aggregate: z.unknown().optional(),
-                })
-                .strict(),
-              limit: z.number().int().min(1).max(200).optional(),
-              cursor: z.string().max(4096).nullable().optional(),
-            })
-            .strict(),
+          schema: workItemSearchRequestSchema,
         },
       },
     },
@@ -537,7 +519,9 @@ const getWorkItemRoute = createRoute({
     "Get a single work item by its permanent key, e.g. PROJ-123. The detail response " +
     "includes the project's CA-2 `defaultCommentVisibility`; creating a comment still " +
     "requires the caller to submit an explicit visibility.",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse("The work item", workItemDetailSchema),
@@ -555,7 +539,7 @@ const getWorkItemLabelsRoute = createRoute({
   tags: ["Work items"],
   summary: "List available labels and work-item assignments",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
@@ -584,7 +568,7 @@ const getWorkItemSlaRoute = createRoute({
   tags: ["Work items"],
   summary: "Evaluate a work item's pinned SLA policy version",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
@@ -1180,13 +1164,45 @@ const archiveWorkItemRoute = createRoute({
   },
 });
 
+const restoreWorkItemRoute = createRoute({
+  method: "post",
+  operationId: "restoreWorkItem",
+  path: "/v2/work-items/{key}/restore",
+  tags: ["Work items"],
+  summary: "Restore a soft-deleted work item",
+  description:
+    "Clears the work item's soft-delete marker within WI-21's 30-day recovery window. " +
+    "Requires current project reach, `work_item:update`, and `If-Match`. An archived " +
+    "work item remains archived after its soft deletion is restored.",
+  middleware: [
+    requireDeletedWorkItemReach("key"),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: { params: workItemKeyParam, headers: ifMatchHeader },
+  responses: {
+    200: jsonResponse("The restored work item", workItemSchema),
+    400: errorResponse("Missing or malformed If-Match header"),
+    403: errorResponse("Missing work_item:update permission"),
+    404: errorResponse("Work item not found or out of reach"),
+    409: jsonResponse(
+      "Version conflict or restore-window rejection",
+      z.union([
+        workItemVersionConflictSchema,
+        z.object({ message: z.string() }),
+      ]),
+    ),
+  },
+});
+
 const hierarchyChildrenRoute = createRoute({
   method: "get",
   operationId: "listWorkItemHierarchyChildren",
   path: "/work-items/{key}/children",
   tags: ["Work items"],
   summary: "Page direct children and whole-subtree progress",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: workItemKeyParam, query: hierarchyChildrenQuery },
   responses: {
     200: jsonResponse(
@@ -1211,7 +1227,9 @@ const getWorkItemTreeRoute = createRoute({
     "descendant beneath it, with the requested item's own node flagged `isCurrent`. " +
     "Capped in total size (`truncated: true` when the real subtree is larger than the " +
     "response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse("The hierarchy tree", workItemTreeResponseSchema),
@@ -1320,7 +1338,9 @@ const listWorkItemActivityRoute = createRoute({
     "merged and sorted together, not two separate lists. Optional comment anchors the first page at that scoped comment, including a deleted comment's tombstone; subsequent requests retain comment and its bound cursor. Every row is returned " +
     "regardless of `visibility` -- see the controller's own doc comment for why no " +
     "caller-type filtering is applied yet. A tombstone includes its `deletedBy` actor id.",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: workItemKeyParam, query: listWorkItemActivityQuery },
   responses: {
     200: jsonResponse(
@@ -1496,7 +1516,9 @@ const commentMentionCandidatesRoute = createRoute({
     "List people in this work item's workspace who can be considered for a comment mention. " +
     "Customer candidates are available only for public comments and only when they currently " +
     "reach this work item.",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: {
     params: workItemKeyParam,
     query: commentMentionCandidatesQuery,
@@ -1762,11 +1784,13 @@ const workItem = apiRouter<
     const toExportRows = (rows: typeof firstPage.data) =>
       rows.map((row) => ({
         key: row.key,
+        projectId: row.projectId,
         title: row.title,
         stateName: row.stateName,
         assigneeName: row.assigneeName,
         priority: row.priority,
         dueDate: row.dueDate?.toISOString().slice(0, 10) ?? null,
+        customFieldValues: row.customFieldValues,
       }));
 
     const encoder = new TextEncoder();
@@ -1779,10 +1803,16 @@ const workItem = apiRouter<
 
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
-        controller.enqueue(encoder.encode(workItemsCsvHeader(columns)));
+        controller.enqueue(
+          encoder.encode(
+            workItemsCsvHeader(columns, firstPage.customFieldColumns),
+          ),
+        );
         const firstChunk = workItemsCsvRows(
           toExportRows(firstPage.data),
           columns,
+          firstPage.customFieldColumns,
+          firstPage.customFieldPeople,
         );
         if (firstChunk) controller.enqueue(encoder.encode(firstChunk));
         if (!cursor) controller.close();
@@ -1804,7 +1834,12 @@ const workItem = apiRouter<
           }),
           deadline,
         );
-        const chunk = workItemsCsvRows(toExportRows(page.data), columns);
+        const chunk = workItemsCsvRows(
+          toExportRows(page.data),
+          columns,
+          page.customFieldColumns,
+          page.customFieldPeople,
+        );
         if (chunk) controller.enqueue(encoder.encode(chunk));
         cursor = page.page.hasMore
           ? (page.page.nextCursor ?? undefined)
@@ -1834,7 +1869,9 @@ const workItem = apiRouter<
   })
   .openapi(getWorkItemLabelsRoute, async (c) =>
     c.json(
-      await listWorkItemLabels(c.req.valid("param").key, c.get("workspaceId")),
+      await listWorkItemLabels(c.req.valid("param").key, c.get("workspaceId"), {
+        allowArchivedForRead: true,
+      }),
       200,
     ),
   )
@@ -1898,6 +1935,10 @@ const workItem = apiRouter<
           dueDate,
           labelIds,
           customFields,
+        },
+        {
+          apiKeyId: c.get("apiKey")?.id ?? null,
+          origin: auditOriginForApiKey(c.get("apiKey")),
         },
       );
       return c.json(updated, 200);
@@ -2042,7 +2083,11 @@ const workItem = apiRouter<
         actorId,
         actorType,
         callerPerson?.id ?? null,
-        { assigneeId, expectedCurrentAssigneeId },
+        {
+          assigneeId,
+          expectedCurrentAssigneeId,
+          auditOrigin: auditOriginForApiKey(c.get("apiKey")),
+        },
       );
       return c.json(assigned, 200);
     } catch (error) {
@@ -2353,6 +2398,37 @@ const workItem = apiRouter<
       throw error;
     }
   })
+  .openapi(restoreWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+    try {
+      const restored = await restoreWorkItem(
+        key,
+        workspaceId,
+        Number(ifMatch.replaceAll('"', "")),
+        actorId,
+        actorType,
+      );
+      return c.json(restored, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
+  })
   .openapi(hierarchyChildrenRoute, async (c) => {
     const { key } = c.req.valid("param");
     const userId = c.get("userId");
@@ -2371,7 +2447,7 @@ const workItem = apiRouter<
       identity,
       key,
       c.get("workspaceId"),
-      c.req.valid("query"),
+      { ...c.req.valid("query"), allowArchivedForRead: true },
     );
     return c.json(result, 200);
   })
@@ -2571,6 +2647,7 @@ const workItem = apiRouter<
       cursor,
       limit,
       comment,
+      allowArchivedForRead: true,
       viewer: {
         userId: c.get("userId"),
         apiKey: c.get("apiKey"),
@@ -2701,7 +2778,11 @@ const workItem = apiRouter<
         identity.personId,
         actorId,
         actorType,
-        { toStateTemplateId, note },
+        {
+          toStateTemplateId,
+          note,
+          auditOrigin: auditOriginForApiKey(c.get("apiKey")),
+        },
       );
       return c.json(transitioned, 200);
     } catch (error) {
@@ -2764,7 +2845,11 @@ const workItem = apiRouter<
   .openapi(commentMentionCandidatesRoute, async (c) => {
     const { visibility } = c.req.valid("query");
     const candidates = await db.transaction(async (tx) => {
-      const context = await findWorkItemMentionContext(tx, c.get("workItemId"));
+      const context = await findWorkItemMentionContext(
+        tx,
+        c.get("workItemId"),
+        { allowArchivedForRead: true },
+      );
       if (!context || context.workspaceId !== c.get("workspaceId")) {
         throw new HTTPException(404, { message: "Work item not found" });
       }

@@ -248,6 +248,18 @@ export async function getPortalSubmissionAttachments(ref: string) {
   return response.json();
 }
 
+/** Relative, deterministic API paths for the sandboxed submission PDF viewer. */
+export function portalSubmissionAttachmentPreviewPath(ref: string, id: string) {
+  return `/portal/submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(id)}/preview`;
+}
+
+export function portalSubmissionAttachmentDownloadPath(
+  ref: string,
+  id: string,
+) {
+  return `/portal/submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(id)}`;
+}
+
 export async function getSubmissionAttachments(ref: string) {
   const response = await client.submissions[":ref"].attachments.$get({
     param: { ref },
@@ -257,6 +269,15 @@ export async function getSubmissionAttachments(ref: string) {
       (await response.text()) || "Unable to load submission attachments",
     );
   return response.json();
+}
+
+/** Staff-only submission paths; callers must still use the triage attachment API. */
+export function staffSubmissionAttachmentPreviewPath(ref: string, id: string) {
+  return `/submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(id)}/preview`;
+}
+
+export function staffSubmissionAttachmentDownloadPath(ref: string, id: string) {
+  return `/submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(id)}`;
 }
 
 export async function downloadSubmissionAttachment(input: {

@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -10,12 +10,18 @@ import {
   SelectValue,
   Skeleton,
 } from "@taskdesk/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import updateProjectHealth from "@/fetchers/project/update-health";
+import {
+  getProjectSettingsInheritance,
+  patchProjectSettingsInheritance,
+  WorkspaceSettingsError,
+} from "@/fetchers/project-settings-inheritance";
+import { getServiceCalendars } from "@/fetchers/service-calendar";
+import { getSlaPolicies } from "@/fetchers/sla-policy";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
 import useGetProject from "@/hooks/queries/project/use-get-project";
-import { useServiceCalendars } from "@/hooks/queries/service-calendar/use-service-calendars";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
@@ -38,6 +44,25 @@ import {
 } from "./project-engagement-form";
 
 const NONE = "none";
+const INHERIT = "__inherit__";
+const OVERRIDE_NONE = "__override_none__";
+
+async function listAllPages<T extends { page: { nextCursor: string | null } }>(
+  load: (cursor?: string) => Promise<T>,
+): Promise<T[]> {
+  const pages: T[] = [];
+  const seen = new Set<string>();
+  let cursor: string | undefined;
+  for (let pageIndex = 0; pageIndex < 20; pageIndex += 1) {
+    const page = await load(cursor);
+    pages.push(page);
+    const next = page.page.nextCursor;
+    if (!next || seen.has(next)) break;
+    seen.add(next);
+    cursor = next;
+  }
+  return pages;
+}
 
 function failureOf(error: unknown): EngagementSaveFailure {
   return error instanceof HttpError
@@ -46,9 +71,9 @@ function failureOf(error: unknown): EngagementSaveFailure {
 }
 
 /**
- * Engagement controls on project settings General: kind, support level, service calendar
- * (PR-9) and RAG health. Both writes need `project:update` server-side (`PUT
- * /api/project/{id}` and `PATCH /api/project/{id}/health`); without it the controls render
+ * Engagement controls on project settings General: kind, support level and RAG health. SLA
+ * and calendar inheritance are saved separately through the settings-inheritance API. Both
+ * writes need their own strict server-side capabilities; without them the controls render
  * read-only, and a 403 from the server is still handled. The customer organisation binding
  * is deliberately not here: it is chosen at creation and never changes (#705/#706).
  */
@@ -69,12 +94,6 @@ function ProjectEngagementSettings({
     isError,
     refetch,
   } = useGetProject({ id: projectId, workspaceId });
-  const {
-    data: calendarPage,
-    isLoading: calendarsLoading,
-    isError: calendarsError,
-    refetch: refetchCalendars,
-  } = useServiceCalendars(workspaceId);
   const { mutateAsync: updateProject, isPending: isSaving } =
     useUpdateProject();
 
@@ -144,26 +163,6 @@ function ProjectEngagementSettings({
   const dirty = isEngagementDirty(saved, values);
   const health: ProjectHealth | typeof NONE =
     pendingHealth ?? (isProjectHealth(project.health) ? project.health : NONE);
-
-  const calendars = calendarPage?.data ?? [];
-  const calendarItems = [
-    { value: NONE, label: t("settings:projectGeneral.engagement.none") },
-    ...calendars.map((calendar) => ({
-      value: calendar.id,
-      label: calendar.name,
-    })),
-  ];
-  // A saved calendar missing from the loaded page (for example the list failed, or it sits
-  // beyond the first page) must still display and survive a save, never be silently dropped.
-  if (
-    values.serviceCalendarId &&
-    !calendarItems.some((item) => item.value === values.serviceCalendarId)
-  ) {
-    calendarItems.push({
-      value: values.serviceCalendarId,
-      label: t("settings:projectGeneral.engagement.calendarUnlisted"),
-    });
-  }
 
   const kindItems = ENGAGEMENT_KINDS.map((value) => ({
     value,
@@ -398,78 +397,13 @@ function ProjectEngagementSettings({
             </p>
           )}
         </div>
-
-        <div className="space-y-2">
-          <label
-            htmlFor="project-engagement-calendar"
-            className="text-sm font-medium"
-          >
-            {t("settings:projectGeneral.engagement.serviceCalendar")}
-          </label>
-          <Select
-            items={calendarItems}
-            value={values.serviceCalendarId ?? NONE}
-            disabled={!canEditEngagement || isSaving || calendarsLoading}
-            onValueChange={(value) =>
-              setDraft({
-                ...values,
-                serviceCalendarId:
-                  typeof value === "string" && value !== NONE ? value : null,
-              })
-            }
-          >
-            <SelectTrigger
-              id="project-engagement-calendar"
-              className="w-full"
-              aria-invalid={errors.serviceCalendarId ? true : undefined}
-              aria-describedby={
-                errors.serviceCalendarId
-                  ? "project-engagement-calendar-error"
-                  : undefined
-              }
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {calendarItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.serviceCalendarId && (
-            <p
-              id="project-engagement-calendar-error"
-              role="alert"
-              className="text-xs text-destructive"
-            >
-              {t("settings:projectGeneral.engagement.calendarRequired")}
-            </p>
-          )}
-          {!calendarsLoading && !calendarsError && calendars.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              {t("settings:projectGeneral.engagement.noCalendars")}
-            </p>
-          )}
-          {calendarsError && (
-            <p
-              role="alert"
-              className="flex items-center gap-2 text-xs text-destructive"
-            >
-              {t("settings:projectGeneral.engagement.calendarsError")}
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                onClick={() => void refetchCalendars()}
-              >
-                {t("settings:projectGeneral.engagement.retry")}
-              </Button>
-            </p>
-          )}
-        </div>
       </div>
+
+      <ProjectInheritanceSettings
+        projectId={project.id}
+        workspaceId={workspaceId}
+        canEdit={canEditEngagement}
+      />
 
       {saveFailure && (
         <Alert variant="error" role="alert">
@@ -506,6 +440,356 @@ function ProjectEngagementSettings({
         </div>
       )}
     </section>
+  );
+}
+
+function ProjectInheritanceSettings({
+  projectId,
+  workspaceId,
+  canEdit,
+}: {
+  projectId: string;
+  workspaceId: string;
+  canEdit: boolean;
+}) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const queryKey = ["projects", projectId, "settings-inheritance"] as const;
+  const query = useQuery({
+    queryKey,
+    queryFn: () => getProjectSettingsInheritance(projectId),
+    enabled: Boolean(projectId),
+  });
+  const slaQuery = useQuery({
+    queryKey: ["sla-policies", workspaceId, "project-inheritance-options"],
+    queryFn: async () =>
+      (
+        await listAllPages((cursor) => getSlaPolicies(workspaceId, cursor))
+      ).flatMap((page) => page.data),
+    enabled: Boolean(workspaceId),
+  });
+  const calendarQuery = useQuery({
+    queryKey: ["service-calendars", workspaceId, "project-inheritance-options"],
+    queryFn: async () =>
+      (
+        await listAllPages((cursor) => getServiceCalendars(workspaceId, cursor))
+      ).flatMap((page) => page.data),
+    enabled: Boolean(workspaceId),
+  });
+  const [slaChoice, setSlaChoice] = useState(INHERIT);
+  const [calendarChoice, setCalendarChoice] = useState(INHERIT);
+  const [baseVersions, setBaseVersions] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [failure, setFailure] = useState<
+    "stale" | "forbidden" | "generic" | null
+  >(null);
+
+  const current = query.data;
+  const versionKey = current
+    ? `${projectId}:${current.projectVersion}:${current.workspaceVersion}`
+    : "";
+  useEffect(() => {
+    if (!current || baseVersions === versionKey) return;
+    setSlaChoice(
+      current.slaPolicy.mode === "inherit"
+        ? INHERIT
+        : (current.slaPolicy.overrideId ?? OVERRIDE_NONE),
+    );
+    setCalendarChoice(
+      current.serviceCalendar.mode === "inherit"
+        ? INHERIT
+        : (current.serviceCalendar.overrideId ?? OVERRIDE_NONE),
+    );
+    setBaseVersions(versionKey);
+    setFailure(null);
+  }, [baseVersions, current, versionKey]);
+  useEffect(() => {
+    const errors = [query.error, slaQuery.error, calendarQuery.error];
+    if (
+      errors.some((error) => error instanceof HttpError && error.status === 403)
+    ) {
+      void queryClient.invalidateQueries({
+        queryKey: ["workspace-capabilities", workspaceId],
+      });
+    }
+  }, [
+    query.error,
+    slaQuery.error,
+    calendarQuery.error,
+    queryClient,
+    workspaceId,
+  ]);
+
+  if (query.isLoading || slaQuery.isLoading || calendarQuery.isLoading) {
+    return (
+      <div
+        className="space-y-2"
+        aria-busy="true"
+        data-testid="project-inheritance-loading"
+      >
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-9 w-full" />
+      </div>
+    );
+  }
+  if (query.isError || !current || slaQuery.isError || calendarQuery.isError) {
+    const forbidden = [query.error, slaQuery.error, calendarQuery.error].some(
+      (error) => error instanceof HttpError && error.status === 403,
+    );
+    return (
+      <Alert variant="error" role="alert">
+        <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+          {t(
+            forbidden
+              ? "settings:projectInheritance.forbidden"
+              : "settings:projectInheritance.loadError",
+          )}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              void Promise.all([
+                query.refetch(),
+                slaQuery.refetch(),
+                calendarQuery.refetch(),
+              ])
+            }
+          >
+            {t("settings:projectInheritance.retry")}
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  const slaOptions = slaQuery.data ?? [];
+  const calendarOptions = calendarQuery.data ?? [];
+  const choicesFor = (
+    value: typeof current.slaPolicy,
+    options: Array<{ id: string; name: string }>,
+  ) => {
+    const items = options.map((option) => ({
+      value: option.id,
+      label: option.name,
+    }));
+    if (
+      value.overrideId &&
+      !items.some((item) => item.value === value.overrideId)
+    ) {
+      items.push({
+        value: value.overrideId,
+        label: t("settings:projectInheritance.unlisted"),
+      });
+    }
+    return items;
+  };
+  const slaItems = choicesFor(current.slaPolicy, slaOptions);
+  const calendarItems = choicesFor(current.serviceCalendar, calendarOptions);
+  const choiceFor = (choice: string, inheritedValue: string | null) => {
+    if (choice === INHERIT) {
+      return t("settings:projectInheritance.inheritedFromWorkspace", {
+        value: inheritedValue ?? t("settings:projectInheritance.none"),
+      });
+    }
+    return choice === OVERRIDE_NONE
+      ? t("settings:projectInheritance.none")
+      : undefined;
+  };
+  const isDirty =
+    (slaChoice === INHERIT
+      ? current.slaPolicy.mode !== "inherit"
+      : current.slaPolicy.mode !== "override" ||
+        (slaChoice === OVERRIDE_NONE ? null : slaChoice) !==
+          current.slaPolicy.overrideId) ||
+    (calendarChoice === INHERIT
+      ? current.serviceCalendar.mode !== "inherit"
+      : current.serviceCalendar.mode !== "override" ||
+        (calendarChoice === OVERRIDE_NONE ? null : calendarChoice) !==
+          current.serviceCalendar.overrideId);
+  const save = async () => {
+    if (!isDirty || saving || !canEdit) return;
+    setSaving(true);
+    setFailure(null);
+    try {
+      const result = await patchProjectSettingsInheritance(projectId, {
+        expectedProjectVersion: current.projectVersion,
+        expectedWorkspaceVersion: current.workspaceVersion,
+        ...(slaChoice !==
+        (current.slaPolicy.mode === "inherit"
+          ? INHERIT
+          : (current.slaPolicy.overrideId ?? OVERRIDE_NONE))
+          ? {
+              slaPolicy:
+                slaChoice === INHERIT
+                  ? { mode: "inherit" as const }
+                  : {
+                      mode: "override" as const,
+                      id: slaChoice === OVERRIDE_NONE ? null : slaChoice,
+                    },
+            }
+          : {}),
+        ...(calendarChoice !==
+        (current.serviceCalendar.mode === "inherit"
+          ? INHERIT
+          : (current.serviceCalendar.overrideId ?? OVERRIDE_NONE))
+          ? {
+              serviceCalendar:
+                calendarChoice === INHERIT
+                  ? { mode: "inherit" as const }
+                  : {
+                      mode: "override" as const,
+                      id:
+                        calendarChoice === OVERRIDE_NONE
+                          ? null
+                          : calendarChoice,
+                    },
+            }
+          : {}),
+      });
+      queryClient.setQueryData(queryKey, result);
+      await queryClient.invalidateQueries({
+        queryKey: ["projects", workspaceId, projectId],
+      });
+      setBaseVersions(
+        `${projectId}:${result.projectVersion}:${result.workspaceVersion}`,
+      );
+    } catch (error) {
+      setFailure(
+        error instanceof WorkspaceSettingsError && error.status === 409
+          ? "stale"
+          : error instanceof WorkspaceSettingsError && error.status === 403
+            ? "forbidden"
+            : "generic",
+      );
+      if (error instanceof WorkspaceSettingsError && error.status === 409)
+        void query.refetch();
+      if (error instanceof WorkspaceSettingsError && error.status === 403)
+        void queryClient.invalidateQueries({
+          queryKey: ["workspace-capabilities", workspaceId],
+        });
+    } finally {
+      setSaving(false);
+    }
+  };
+  const selector = (
+    id: string,
+    label: string,
+    choice: string,
+    setChoice: (value: string) => void,
+    inherited: string | null,
+    options: Array<{ value: string; label: string }>,
+  ) => {
+    const items = [
+      { value: INHERIT, label: choiceFor(INHERIT, inherited) ?? "" },
+      { value: OVERRIDE_NONE, label: choiceFor(OVERRIDE_NONE, null) ?? "" },
+      ...options,
+    ];
+    return (
+      <div className="space-y-2">
+        <label htmlFor={id} className="text-sm font-medium">
+          {label}
+        </label>
+        <Select
+          items={items}
+          value={choice}
+          disabled={!canEdit || saving}
+          onValueChange={(value) => {
+            if (typeof value === "string") setChoice(value);
+          }}
+        >
+          <SelectTrigger id={id} className="w-full">
+            <SelectValue>
+              {choiceFor(choice, inherited) ??
+                items.find((item) => item.value === choice)?.label}
+            </SelectValue>
+            <span className="text-xs text-muted-foreground">
+              {t(
+                choice === INHERIT
+                  ? "settings:projectInheritance.override"
+                  : "settings:projectInheritance.useWorkspace",
+              )}
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            {items.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
+  return (
+    <div
+      className="space-y-4 rounded-md border border-border bg-sidebar p-4"
+      data-testid="project-settings-inheritance"
+    >
+      <div className="space-y-1">
+        <h3 className="text-sm font-medium">
+          {t("settings:projectInheritance.title")}
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          {t("settings:projectInheritance.description")}
+        </p>
+      </div>
+      {selector(
+        "project-inherited-sla",
+        t("settings:projectInheritance.slaPolicy"),
+        slaChoice,
+        setSlaChoice,
+        current.slaPolicy.effectiveName,
+        slaItems,
+      )}
+      {selector(
+        "project-inherited-calendar",
+        t("settings:projectInheritance.serviceCalendar"),
+        calendarChoice,
+        setCalendarChoice,
+        current.serviceCalendar.effectiveName,
+        calendarItems,
+      )}
+      <div className="text-xs text-muted-foreground">
+        {t("settings:projectInheritance.effectiveSla", {
+          value:
+            current.slaPolicy.effectiveName ??
+            t("settings:projectInheritance.none"),
+          source: t(
+            `settings:projectInheritance.source.${current.slaPolicy.source}`,
+          ),
+        })}
+        <br />
+        {t("settings:projectInheritance.effectiveCalendar", {
+          value:
+            current.serviceCalendar.effectiveName ??
+            t("settings:projectInheritance.none"),
+          source: t(
+            `settings:projectInheritance.source.${current.serviceCalendar.source}`,
+          ),
+        })}
+      </div>
+      {failure && (
+        <Alert variant="error" role="alert">
+          <AlertDescription>
+            {t(`settings:projectInheritance.${failure}`)}
+          </AlertDescription>
+        </Alert>
+      )}
+      {canEdit && (
+        <Button
+          type="button"
+          size="sm"
+          disabled={!isDirty || saving}
+          onClick={() => void save()}
+        >
+          {saving
+            ? t("settings:projectInheritance.saving")
+            : t("settings:projectInheritance.save")}
+        </Button>
+      )}
+    </div>
   );
 }
 

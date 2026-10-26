@@ -15,8 +15,12 @@ import { Route } from "./$id";
 
 function fillTypedNameAndPassword() {
   fireEvent.change(
-    screen.getByLabelText("pendingActions:registered.confirmName"),
-    { target: { value: "Apollo" } },
+    screen.getByLabelText(
+      mocks.registered === "project"
+        ? "pendingActions:registered.confirmProjectKey"
+        : "pendingActions:registered.confirmName",
+    ),
+    { target: { value: mocks.registered === "project" ? "APOLLO" : "Apollo" } },
   );
   fireEvent.change(
     screen.getByLabelText("pendingActions:dynamic.accountPassword"),
@@ -46,8 +50,14 @@ const mocks = vi.hoisted(() => ({
   loading: false,
   registered: "",
   registeredRedacted: false,
+  targetWorkspaceId: null as string | null,
   navigate: vi.fn(),
   invalidate: vi.fn(),
+  factorStatus: {
+    enabled: false,
+    required: false,
+    availableMethods: ["password"] as string[],
+  },
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -78,7 +88,7 @@ vi.mock("@tanstack/react-query", () => ({
     }
     if (queryKey[0] === "god-mode")
       return {
-        data: { enabled: false, required: false },
+        data: mocks.factorStatus,
         isLoading: false,
         isError: false,
       };
@@ -101,6 +111,22 @@ vi.mock("@tanstack/react-query", () => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ i18n: { language: "en" }, t: (key: string) => key }),
+}));
+vi.mock("@/lib/i18n/terminology-provider", () => ({
+  TerminologyProvider: ({
+    workspaceId,
+    children,
+  }: {
+    workspaceId?: string | null;
+    children: React.ReactNode;
+  }) => (
+    <div
+      data-testid="pending-action-terms"
+      data-workspace-id={workspaceId ?? "instance"}
+    >
+      {children}
+    </div>
+  ),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/fetchers/god-mode/instance-users", () => ({
@@ -129,13 +155,17 @@ function registeredActionFor(id: string) {
     targetType: mocks.registered,
     summary: mocks.registeredRedacted
       ? { redacted: true, targetCount: 1 }
-      : { name: "Apollo", projectName: "Platform" },
+      : {
+          name: mocks.registered === "project" ? "APOLLO" : "Apollo",
+          projectName: "Platform",
+        },
     targetIds: ["target-a"],
     approvalSupported: true,
     confirmation: typed ? "typed_name_step_up" : "click",
     state: "pending",
     origin: "web",
     expiresAt: "2026-10-12T00:00:00.000Z",
+    targetWorkspaceId: mocks.targetWorkspaceId,
   };
 }
 
@@ -265,6 +295,7 @@ function actionFor(id: string) {
     state: mocks.bulkExecuted ? "executed" : "pending",
     origin: "web",
     expiresAt: "2026-10-12T00:00:00.000Z",
+    targetWorkspaceId: mocks.targetWorkspaceId,
   };
 }
 
@@ -315,6 +346,7 @@ describe("pending action detail intent lifecycle", () => {
     mocks.loading = false;
     mocks.registered = "";
     mocks.registeredRedacted = false;
+    mocks.targetWorkspaceId = null;
     mocks.proof.mockReset();
     mocks.approve.mockReset().mockResolvedValue(undefined);
     mocks.cancel.mockReset().mockResolvedValue(undefined);
@@ -712,7 +744,7 @@ describe("pending action detail intent lifecycle", () => {
     expect(mocks.proof).not.toHaveBeenCalled();
   });
 
-  it("requires the exact name and fresh authentication before a project deletion", async () => {
+  it("requires the exact project key and fresh authentication before a project deletion", async () => {
     mocks.registered = "project";
     mocks.proof.mockResolvedValue("proof-for-project");
     render(<Harness />);
@@ -721,7 +753,7 @@ describe("pending action detail intent lifecycle", () => {
     });
     expect(approve).toBeDisabled();
     fireEvent.change(
-      screen.getByLabelText("pendingActions:registered.confirmName"),
+      screen.getByLabelText("pendingActions:registered.confirmProjectKey"),
       {
         target: { value: "apollo" },
       },
@@ -732,16 +764,16 @@ describe("pending action detail intent lifecycle", () => {
     );
     expect(approve).toBeDisabled();
     fireEvent.change(
-      screen.getByLabelText("pendingActions:registered.confirmName"),
+      screen.getByLabelText("pendingActions:registered.confirmProjectKey"),
       {
-        target: { value: "Apollo" },
+        target: { value: "APOLLO" },
       },
     );
     fireEvent.click(approve);
     await waitFor(() =>
       expect(mocks.approve).toHaveBeenCalledWith({
         id: "action-a",
-        typedName: "Apollo",
+        typedName: "APOLLO",
         stepUpToken: "proof-for-project",
       }),
     );
@@ -750,6 +782,48 @@ describe("pending action detail intent lifecycle", () => {
       method: "password",
       secret: "test-only-password",
     });
+  });
+
+  it("uses the API target workspace instead of the active workspace for old approval links", () => {
+    mocks.registered = "project";
+    mocks.targetWorkspaceId = "workspace-target";
+    render(<Harness />);
+
+    const boundary = screen.getByTestId("pending-action-terms");
+    expect(boundary).toHaveAttribute("data-workspace-id", "workspace-target");
+    expect(boundary).not.toHaveAttribute("data-workspace-id", "workspace-1");
+  });
+
+  it("uses instance terms when the API has no safe workspace context", () => {
+    mocks.registered = "project";
+    mocks.targetWorkspaceId = null;
+    render(<Harness />);
+
+    expect(screen.getByTestId("pending-action-terms")).toHaveAttribute(
+      "data-workspace-id",
+      "instance",
+    );
+  });
+
+  it("keeps the full-page typed draft and focus when target context changes", () => {
+    mocks.registered = "project";
+    mocks.targetWorkspaceId = "workspace-target-a";
+    const view = render(<Harness />);
+    const nameInput = screen.getByLabelText(
+      "pendingActions:registered.confirmProjectKey",
+    );
+    fireEvent.change(nameInput, { target: { value: "APOLLO" } });
+    nameInput.focus();
+
+    mocks.targetWorkspaceId = "workspace-target-b";
+    view.rerender(<Harness />);
+
+    expect(screen.getByTestId("pending-action-terms")).toHaveAttribute(
+      "data-workspace-id",
+      "workspace-target-b",
+    );
+    expect(nameInput).toHaveValue("APOLLO");
+    expect(nameInput).toHaveFocus();
   });
 
   it("requires the exact name and fresh authentication before a workspace deletion", async () => {
@@ -911,7 +985,12 @@ describe("pending action detail intent lifecycle", () => {
   it("keeps a redacted registered deletion unapprovable", () => {
     mocks.registered = "project";
     mocks.registeredRedacted = true;
+    mocks.targetWorkspaceId = "workspace-must-not-be-used";
     render(<Harness />);
+    expect(screen.getByTestId("pending-action-terms")).toHaveAttribute(
+      "data-workspace-id",
+      "instance",
+    );
     expect(
       screen.getByText("pendingActions:registered.hidden"),
     ).toBeInTheDocument();

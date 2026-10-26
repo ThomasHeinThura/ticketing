@@ -12,11 +12,15 @@
  */
 export const PORTAL_CLIENT_ROUTE_PATTERNS: readonly string[] = [
   "/",
+  "/account",
+  "/notifications",
   "/catalogue",
   // CP-24: the accept-invitation page. The credential rides in the fragment, never the path.
   "/invite/$id",
   "/kb",
   "/kb/$id",
+  "/releases",
+  "/releases/$id",
   "/approvals",
   // Redirects to /requests on the client; kept because customers bookmark it.
   "/portal/requests",

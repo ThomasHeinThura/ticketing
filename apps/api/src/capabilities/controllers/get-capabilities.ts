@@ -12,6 +12,7 @@ import { CAPABILITY_CHECKS, type CapabilityName } from "../capability-checks";
 export type CapabilityMap = Record<CapabilityName, boolean> & {
   manageServiceCalendars: boolean;
   shareSavedViews: boolean;
+  triageIntake: boolean;
   manageWorkspaceSettings: boolean;
   // Strict canonical checks (rbac.md `work_item:transition`, `work_item:rank`,
   // `project:manage_settings`): never derived from the legacy better-auth statement map,
@@ -53,6 +54,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     results,
     manageServiceCalendars,
     shareSavedViews,
+    triageIntake,
     manageWorkspaceSettings,
     transitionTasks,
     rankTasks,
@@ -97,6 +99,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     ),
     hasServiceCalendarManageCapability(c),
     hasCanonicalCapability(c, "saved_view:share"),
+    hasCanonicalCapability(c, "intake:triage"),
     hasCanonicalCapability(c, "workspace:manage_settings"),
     hasCanonicalCapability(c, "work_item:transition"),
     hasCanonicalCapability(c, "work_item:rank"),
@@ -130,6 +133,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     ...flags,
     manageServiceCalendars,
     shareSavedViews,
+    triageIntake: agentOnly(triageIntake),
     manageWorkspaceSettings,
     transitionTasks,
     rankTasks: agentOnly(rankTasks),
@@ -152,6 +156,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
 async function hasCanonicalCapability(
   c: Context,
   capability:
+    | "intake:triage"
     | "saved_view:share"
     | "workspace:manage_settings"
     | "work_item:transition"

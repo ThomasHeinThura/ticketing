@@ -1,0 +1,59 @@
+{
+	"recordedAt": "2026-10-25T17:15:22.069Z",
+	"environment": "Strict-TLS Chromium, portal.localhost, existing authorized customer session",
+	"scope": "Owned additive WI-13 fixtures SUB-5/HELP-22 and SUB-6/HELP-23 only",
+	"checks": [
+		{
+			"name": "375px backlog controls fit",
+			"metrics": {
+				"viewport": 375,
+				"tableScrollWidth": 307,
+				"tableClientWidth": 307,
+				"pageScrollWidth": 375,
+				"controls": [
+					{
+						"label": "Move earlier",
+						"disabled": true,
+						"visible": true
+					},
+					{
+						"label": "Move later",
+						"disabled": false,
+						"visible": true
+					},
+					{
+						"label": "Move earlier",
+						"disabled": false,
+						"visible": true
+					},
+					{
+						"label": "Move later",
+						"disabled": true,
+						"visible": true
+					}
+				]
+			},
+			"passed": true
+		},
+		{
+			"name": "keyboard move focuses enabled opposite action in moved row",
+			"order": ["SUB-6", "SUB-5"],
+			"focus": {
+				"label": "Move later",
+				"disabled": false,
+				"row": "SUB-6\tHELP-23WI13 QA 20261025 B\t"
+			},
+			"passed": true
+		},
+		{
+			"name": "rank persists after reload",
+			"order": ["SUB-6", "SUB-5"],
+			"passed": true
+		}
+	],
+	"errors": [],
+	"restore": {
+		"order": ["SUB-5", "SUB-6"],
+		"passed": true
+	}
+}

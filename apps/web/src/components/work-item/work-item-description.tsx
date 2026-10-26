@@ -40,9 +40,11 @@ const NOTHING_SAVED = Symbol("nothing-saved");
 export default function WorkItemDescription({
   item,
   onAccessLost,
+  readOnly = false,
 }: {
   item: WorkItemDetailRow;
   onAccessLost: () => void;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -191,7 +193,7 @@ export default function WorkItemDescription({
             if (unsaved.current !== NOTHING_SAVED) save(unsaved.current);
           }, DESCRIPTION_SAVE_DELAY_MS);
         }}
-        readOnly={!canUpdateTasks()}
+        readOnly={readOnly || !canUpdateTasks()}
         placeholder={t("tasks:detail.addDescription")}
         className={TASK_DESCRIPTION_EDITOR_CLASS}
       />

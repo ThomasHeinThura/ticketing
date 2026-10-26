@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -398,6 +398,110 @@ describe("POST /api/work-items/search", () => {
       "high",
       "low",
     ]);
+
+    // VW-32: the same saved literal follows the viewer's person identity, with
+    // ordinary project reach still applied before count/pagination.
+    const [memberPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, member.user.id));
+    const [foreignPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, foreign.user.id));
+    if (!memberPerson || !foreignPerson)
+      throw new Error("Missing requester fixture persons");
+    expect(memberPerson.id).not.toBe(member.user.id);
+    const secondItem = (await secondCreated.json()) as { id: string };
+    const lowItem = (await lowCreated.json()) as { id: string };
+    await db
+      .update(schema.workItemTable)
+      .set({ title: "Stable sort tie", priority: "high" })
+      .where(inArray(schema.workItemTable.id, [item.id, lowItem.id]));
+    await db
+      .update(schema.workItemTable)
+      .set({ title: "Stable sort tie", priority: "low" })
+      .where(eq(schema.workItemTable.id, secondItem.id));
+    const expectedSortIds = [item.id, lowItem.id]
+      .sort((left, right) => left.localeCompare(right))
+      .concat(secondItem.id);
+    const sortQuery = {
+      entity: "work_item",
+      sort: [
+        { field: "priority", order: "desc" },
+        { field: "title", order: "asc" },
+      ],
+    };
+    let sortCursor: string | null = null;
+    const pagedSortIds: string[] = [];
+    do {
+      const pageResponse = await app.request("/api/work-items/search", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: member.workspace.id,
+          query: sortQuery,
+          limit: 1,
+          ...(sortCursor ? { cursor: sortCursor } : {}),
+        }),
+      });
+      expect(pageResponse.status).toBe(200);
+      const page = (await pageResponse.json()) as {
+        data: { id: string }[];
+        page: { nextCursor: string | null; hasMore: boolean };
+        meta: { total: number };
+      };
+      expect(page.meta.total).toBe(3);
+      pagedSortIds.push(...page.data.map((row) => row.id));
+      sortCursor = page.page.nextCursor;
+      if (!page.page.hasMore) break;
+      expect(sortCursor).toEqual(expect.any(String));
+      expect(sortCursor?.length).toBeLessThanOrEqual(2048);
+    } while (sortCursor);
+    expect(pagedSortIds).toEqual(expectedSortIds);
+
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: memberPerson.id })
+      .where(eq(schema.workItemTable.id, item.id));
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: foreignPerson.id })
+      .where(eq(schema.workItemTable.id, secondItem.id));
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: null })
+      .where(eq(schema.workItemTable.id, lowItem.id));
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: memberPerson.id })
+      .where(eq(schema.workItemTable.projectId, hiddenProject.project.id));
+    const requesterQuery = {
+      entity: "work_item",
+      filter: { field: "requester", op: "eq", value: "@me" },
+    };
+    const searchRequester = () =>
+      app.request("/api/work-items/search", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: member.workspace.id,
+          query: requesterQuery,
+        }),
+      });
+    const ownRequested = await searchRequester();
+    expect(ownRequested.status).toBe(200);
+    expect(await ownRequested.json()).toMatchObject({
+      data: [{ id: item.id }],
+      meta: { total: 1 },
+    });
+    mockAuthenticatedSession(foreign.user);
+    const otherRequested = await searchRequester();
+    expect(otherRequested.status).toBe(200);
+    expect(await otherRequested.json()).toMatchObject({
+      data: [{ id: secondItem.id }],
+      meta: { total: 1 },
+    });
   });
 
   it("rejects unknown and unavailable fields and report clauses rather than ignoring them", async () => {
@@ -414,6 +518,21 @@ describe("POST /api/work-items/search", () => {
     expect(
       (await send({ entity: "work_item", groupBy: ["state"] })).status,
     ).toBe(422);
+    expect(
+      (
+        await send({
+          entity: "work_item",
+          sort: [
+            "key",
+            "title",
+            "state",
+            "assignee",
+            "priority",
+            "dueDate",
+          ].map((field) => ({ field, order: "asc" })),
+        })
+      ).status,
+    ).toBe(400);
     expect(
       (
         await send({

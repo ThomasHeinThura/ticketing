@@ -5,6 +5,7 @@ import {
   loadLocale,
   supportedLocales,
 } from "@i18n/resources";
+import type { i18n as I18nInstance } from "i18next";
 import i18n from "i18next";
 import resourcesToBackend from "i18next-resources-to-backend";
 import { initReactI18next } from "react-i18next";
@@ -163,6 +164,64 @@ export function preloadNamespaces(locale: AppLocale): Promise<void> {
   );
 }
 
+/**
+ * Create a runtime-scoped i18next instance with its own backend connector and resource store.
+ * Loaded locale bundles are copied by value; lazy namespaces use the shared immutable group
+ * loaders but are added only to this instance.
+ */
+export async function createScopedI18n(
+  localeInput: string,
+  initialNamespacesOverride?: readonly string[],
+): Promise<I18nInstance> {
+  const locale = resolveLocale(localeInput);
+  const scopedI18n = i18n.createInstance();
+  const initialNamespaces = initialNamespacesOverride
+    ? [...initialNamespacesOverride]
+    : useNamespaceGroups
+      ? [...WORK_ROUTE_I18N_NAMESPACES]
+      : Object.keys(await loadLocaleResources(locale));
+  const loadedResources = i18n.getDataByLanguage(locale);
+  const loadedInitialResources = Object.fromEntries(
+    initialNamespaces.flatMap((namespace) =>
+      loadedResources?.[namespace] === undefined
+        ? []
+        : [[namespace, structuredClone(loadedResources[namespace])]],
+    ),
+  );
+  const seedResources =
+    Object.keys(loadedInitialResources).length > 0
+      ? { [locale]: loadedInitialResources }
+      : undefined;
+
+  await scopedI18n
+    .use(
+      resourcesToBackend((language: string, namespace: string) => {
+        const resolved = isSupportedLocale(language) ? language : defaultLocale;
+        // Portal builds intentionally omit agent group loader tables.
+        if (useNamespaceGroups)
+          return loadNamespaceFromGroups(resolved, namespace);
+        return loadLocaleResources(resolved).then(
+          (resources) => resources[namespace],
+        );
+      }),
+    )
+    .init({
+      lng: locale,
+      fallbackLng: defaultLocale,
+      defaultNS: "common",
+      ns: initialNamespaces,
+      resources: seedResources,
+      partialBundledLanguages: Boolean(seedResources),
+      react: { bindI18nStore: "added" },
+      interpolation: {
+        escapeValue: false,
+        skipOnVariables: true,
+      },
+    });
+
+  return scopedI18n;
+}
+
 const initialLocale = resolveLocale(null, getBrowserLocale());
 
 void i18n
@@ -190,6 +249,7 @@ void i18n
       : {}),
     interpolation: {
       escapeValue: false,
+      skipOnVariables: true,
     },
   })
   .then(() => preloadNamespaces(initialLocale));

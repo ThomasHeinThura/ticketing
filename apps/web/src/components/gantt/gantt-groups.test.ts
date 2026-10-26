@@ -65,4 +65,48 @@ describe("buildGanttRows (VW-27)", () => {
       "2",
     ]);
   });
+
+  it("groups by the server-resolved epic, including an epic root itself", () => {
+    const rows = buildGanttRows(
+      [
+        {
+          id: "child",
+          epic: { id: "epic-a", key: "PRJ-1", title: "Launch" },
+          epicAvailable: true,
+        },
+        {
+          id: "root",
+          epic: { id: "epic-a", key: "PRJ-1", title: "Launch" },
+          epicAvailable: true,
+        },
+        { id: "none", epic: null, epicAvailable: true },
+      ],
+      "epic",
+    );
+
+    expect(
+      rows.map((row) =>
+        row.kind === "group"
+          ? `#${row.name ?? "none"}(${row.count})`
+          : row.task.id,
+      ),
+    ).toEqual(["#Launch(2)", "child", "root", "#none(1)", "none"]);
+  });
+
+  it("keeps unavailable ancestry distinct and places it before the None bucket", () => {
+    const rows = buildGanttRows(
+      [
+        { id: "unavailable", epic: null, epicAvailable: false },
+        { id: "none", epic: null, epicAvailable: true },
+      ],
+      "epic",
+    );
+
+    expect(rows).toMatchObject([
+      { kind: "group", id: "gantt-group:epic:unavailable", unavailable: true },
+      { kind: "task", task: { id: "unavailable" } },
+      { kind: "group", id: GANTT_UNASSIGNED_GROUP_ID },
+      { kind: "task", task: { id: "none" } },
+    ]);
+  });
 });

@@ -19,6 +19,9 @@ export type ApiKey = {
   disabledReason: string | null;
   workspaceId: string | null;
   createdByFormerMember: boolean;
+  ownedByWorkspaceAdmins: boolean;
+  requiresReattestation: boolean;
+  accountabilityVersion: number;
 };
 
 export type CreateApiKeyClientRequest = {

@@ -8,30 +8,28 @@
  * expired sessions accumulate — a retention failure rather than a destructive one, but still
  * the job not doing the thing `background-jobs.md` says it does.
  *
- * One file per direction because the session's `TimeZone` is fixed for the life of the pool
- * that a file uses; the two directions cannot be exercised from one pool. The mechanism, and
- * why `PGOPTIONS` rather than `ALTER DATABASE`, is documented in the sibling file.
+ * One file per direction keeps each test's explicit session-local timezone unambiguous.
+ * The helper changes only pooled session settings after production UTC startup and restores
+ * them after each test; it never changes a database or role default.
  */
 import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import {
   deleteExpiredSessions,
   runSessionCleanup,
 } from "../../apps/api/src/scheduler/session-cleanup";
 import { resetTestDatabase } from "./helpers/database";
+import { setTestDatabaseTimezone } from "./helpers/database-timezone";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 import {
   plantPreferenceHandoff,
   preferenceHandoffExists,
 } from "./helpers/preference-handoff-fixture";
 
-// America/New_York is UTC-04:00 in September, so a UTC wall clock read as local lands four
-// hours in the future.
-process.env.PGOPTIONS = "-c timezone=America/New_York";
-
 const HOUR_MS = 60 * 60 * 1000;
+let restoreDatabaseTimezone: (() => Promise<void>) | undefined;
 
 async function sessionTimeZone() {
   const result = await db.execute<{ timezone: string }>(
@@ -70,10 +68,12 @@ async function sessionExists(sessionId: string) {
 describe("API integration: session-cleanup on a database server behind UTC", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+    restoreDatabaseTimezone = await setTestDatabaseTimezone("America/New_York");
   });
 
-  afterAll(() => {
-    delete process.env.PGOPTIONS;
+  afterEach(async () => {
+    await restoreDatabaseTimezone?.();
+    restoreDatabaseTimezone = undefined;
   });
 
   it("purges only expired UTC handoffs through the real leased job", async () => {

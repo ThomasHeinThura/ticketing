@@ -89,6 +89,39 @@ describe("notification preference email handoff", () => {
     expect(handedOff.json).not.toHaveBeenCalled();
   });
 
+  it("exchanges a portal capability through the customer origin-specific routes", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/account#preference_token=${capability}`,
+    );
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response(200, {
+          token: "portal-csrf",
+          expiresAt: "2026-10-22T12:00:00Z",
+        }),
+      )
+      .mockResolvedValueOnce(response(202, { accepted: true }));
+    await initializeNotificationPreferenceHandoff(window, fetcher);
+    expect(window.location.hash).toBe("");
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "/api/portal/csrf-token",
+      expect.objectContaining({ credentials: "include", cache: "no-store" }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "/api/public/portal/notification-preference-handoffs",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ token: capability }),
+        headers: expect.objectContaining({ "x-taskdesk-csrf": "portal-csrf" }),
+      }),
+    );
+  });
+
   it.each([403, 404, 429, 500])(
     "does not POST when CSRF bootstrap returns %i",
     async (status) => {

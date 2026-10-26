@@ -11,6 +11,7 @@ import {
   inArray,
   isNull,
   lte,
+  notExists,
   type SQL,
   sql,
 } from "drizzle-orm";
@@ -22,11 +23,14 @@ import {
   instanceSettingTable,
   personTable,
   projectTable,
+  stateTable,
+  stateTemplateTable,
   userTable,
   workItemTable,
   workspaceTable,
   workspaceUserTable,
 } from "../database/schema";
+import { estimatePointTable, estimateTable } from "../database/schema-p5-agile";
 import {
   budgetTable,
   hourlyRateTable,
@@ -39,6 +43,11 @@ import { lockLegalHolds } from "../utils/workspace-legal-hold";
 import { runWithParentWriteDeadlockRetry } from "../work-item/parent-write-deadlock-retry";
 import { auditTime, type TimeActor } from "./audit";
 import { evaluateBudgetThresholds } from "./budget-notify";
+import {
+  type CommittedForecast,
+  type CommittedForecastTask,
+  committedForecast,
+} from "./cost-logic";
 import { costEntriesByCurrency } from "./cost-repository";
 import {
   assertTrackingEnabledForProject,
@@ -1643,6 +1652,146 @@ export async function loadReachableProject(
   return project;
 }
 
+async function committedForecastTasks(
+  executor: Executor,
+  workspaceId: string,
+  projectId: string,
+  now: Date,
+): Promise<CommittedForecastTask[]> {
+  const child = aliasedTable(workItemTable, "committed_forecast_child");
+  const rows = await executor
+    .select({
+      dueDate: workItemTable.dueDate,
+      assigneeId: workItemTable.assigneeId,
+      estimateWeight: estimatePointTable.weight,
+      estimateSystem: estimateTable.system,
+      estimateActive: estimateTable.active,
+      estimatePointArchivedAt: estimatePointTable.archivedAt,
+      loggedMinutes: sql<number>`coalesce(sum(${timeEntryTable.minutes}), 0)::int`,
+    })
+    .from(workItemTable)
+    .innerJoin(stateTable, eq(stateTable.id, workItemTable.stateId))
+    .innerJoin(
+      stateTemplateTable,
+      eq(stateTemplateTable.id, stateTable.stateTemplateId),
+    )
+    .leftJoin(
+      estimatePointTable,
+      eq(estimatePointTable.id, workItemTable.estimatePointId),
+    )
+    .leftJoin(
+      estimateTable,
+      eq(estimateTable.id, estimatePointTable.estimateId),
+    )
+    .leftJoin(
+      timeEntryTable,
+      and(
+        eq(timeEntryTable.workItemId, workItemTable.id),
+        eq(timeEntryTable.workspaceId, workspaceId),
+        eq(timeEntryTable.projectId, projectId),
+      ),
+    )
+    .where(
+      and(
+        eq(workItemTable.workspaceId, workspaceId),
+        eq(workItemTable.projectId, projectId),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        inArray(stateTemplateTable.group, ["backlog", "unstarted", "started"]),
+        notExists(
+          executor
+            .select({ id: child.id })
+            .from(child)
+            .where(
+              and(
+                eq(child.parentId, workItemTable.id),
+                isNull(child.deletedAt),
+                isNull(child.archivedAt),
+              ),
+            ),
+        ),
+      ),
+    )
+    .groupBy(
+      workItemTable.id,
+      workItemTable.dueDate,
+      workItemTable.assigneeId,
+      estimatePointTable.weight,
+      estimatePointTable.archivedAt,
+      estimateTable.system,
+      estimateTable.active,
+    );
+
+  const rateRows = await executor
+    .select({
+      personId: hourlyRateTable.personId,
+      projectId: hourlyRateTable.projectId,
+      effectiveFrom: hourlyRateTable.effectiveFrom,
+      rateMinor: hourlyRateTable.rateMinor,
+      currency: hourlyRateTable.currency,
+    })
+    .from(hourlyRateTable)
+    .where(eq(hourlyRateTable.workspaceId, workspaceId));
+  const assigneeIds = [
+    ...new Set(rows.flatMap((row) => (row.assigneeId ? [row.assigneeId] : []))),
+  ];
+  const people = assigneeIds.length
+    ? await executor
+        .select({
+          id: personTable.id,
+          timeZone: personTable.quietHoursTimezone,
+        })
+        .from(personTable)
+        .where(inArray(personTable.id, assigneeIds))
+    : [];
+  const instanceTimeZone = await loadInstanceTimeZone(executor);
+  const currentDateByPerson = new Map(
+    people.map((person) => [
+      person.id,
+      zonedDate(
+        now.getTime(),
+        resolveTimeZone(person.timeZone, instanceTimeZone),
+      ),
+    ]),
+  );
+  const ratesByPerson = new Map<string, RateRow[]>();
+  for (const rate of rateRows) {
+    const rates = ratesByPerson.get(rate.personId) ?? [];
+    rates.push(rate);
+    ratesByPerson.set(rate.personId, rates);
+  }
+
+  return rows.map((row) => {
+    const estimatedMinutes =
+      row.estimateSystem === "time" &&
+      row.estimateActive === true &&
+      row.estimatePointArchivedAt === null &&
+      row.estimateWeight !== null
+        ? Number(row.estimateWeight)
+        : null;
+    const effectiveRate = row.assigneeId
+      ? selectEffectiveRate(
+          ratesByPerson.get(row.assigneeId) ?? [],
+          projectId,
+          currentDateByPerson.get(row.assigneeId) ??
+            now.toISOString().slice(0, 10),
+        )
+      : null;
+    return {
+      dueDate: row.dueDate?.toISOString().slice(0, 10) ?? null,
+      estimatedMinutes,
+      loggedMinutes: row.loggedMinutes,
+      assigneeId: row.assigneeId,
+      rate: effectiveRate
+        ? {
+            rateMinor: effectiveRate.rateMinor,
+            currency: effectiveRate.currency,
+          }
+        : null,
+    };
+  });
+}
+
 export async function listBudgets(
   identity: ResolvedIdentity,
   workspaceId: string,
@@ -1653,6 +1802,7 @@ export async function listBudgets(
    * successive polls of it would reveal a colleague's hourly rate (TC-11), so none is computed.
    */
   withActuals = true,
+  now: Date = new Date(),
 ) {
   const budgets = await executor
     .select()
@@ -1666,6 +1816,7 @@ export async function listBudgets(
     .orderBy(desc(budgetTable.periodStart), asc(budgetTable.name));
   const result = [] as Array<{
     budget: (typeof budgets)[number];
+    committed: CommittedForecast | null;
     actuals: {
       /** TC-16: priced time plus cost entries, in the budget's currency. */
       actualMinor: number;
@@ -1676,11 +1827,19 @@ export async function listBudgets(
       threshold: 75 | 90 | null;
     } | null;
   }>;
+  const tasks = withActuals
+    ? await committedForecastTasks(executor, workspaceId, projectId, now)
+    : null;
   for (const budget of budgets) {
     if (!withActuals) {
-      result.push({ budget, actuals: null });
+      result.push({ budget, actuals: null, committed: null });
       continue;
     }
+    const committed = committedForecast(
+      tasks ?? [],
+      budget.periodStart,
+      budget.periodEnd,
+    );
     const summary = await summarise(
       identity,
       {
@@ -1731,6 +1890,7 @@ export async function listBudgets(
     }
     result.push({
       budget,
+      committed,
       actuals: {
         actualMinor,
         timeMinor,

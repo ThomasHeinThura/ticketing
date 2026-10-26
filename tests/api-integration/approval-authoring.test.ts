@@ -14,6 +14,7 @@ import {
   approvalRows,
   buildTenant,
   request,
+  revokeProjectMembership,
 } from "./helpers/approval-fixtures";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -45,6 +46,20 @@ async function scopedKey(
 
 describe("persisted approval authoring under strict policy", () => {
   beforeEach(resetTestDatabase);
+  it("lists reachable approvals and masks the work item after staff project reach is revoked", async () => {
+    const t = await buildTenant("approval-list-reach");
+    mockAuthenticatedSession(t.approver.user);
+    expect(
+      (await t.app.request(`/api/work-items/${t.key}/approvals`)).status,
+    ).toBe(200);
+    await revokeProjectMembership(t.approverPerson.id, t.project.id);
+    expect(
+      (await t.app.request(`/api/work-items/${t.key}/approvals`)).status,
+    ).toBe(404);
+    expect(
+      (await t.app.request("/api/work-items/UNKNOWN-99999/approvals")).status,
+    ).toBe(404);
+  });
   it("offers only real active workflow gates and persists a request from an eligible CAB candidate", async () => {
     const t = await buildTenant("authoring");
     mockAuthenticatedSession(t.requester.user);

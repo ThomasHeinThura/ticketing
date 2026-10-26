@@ -1,0 +1,453 @@
+{
+	"schemaVersion": 1,
+	"journey": "read-only-native-plugin-schema-form",
+	"strictTls": true,
+	"dimensions": [
+		{
+			"width": 375,
+			"height": 900,
+			"theme": "light",
+			"renderedTheme": "light",
+			"pluginLabels": [
+				{
+					"key": "enabled",
+					"labelKey": "enabled",
+					"control": "switch"
+				},
+				{
+					"key": "config.host",
+					"labelKey": "host",
+					"control": "text"
+				},
+				{
+					"key": "config.port",
+					"labelKey": "port",
+					"control": "number"
+				},
+				{
+					"key": "config.secure",
+					"labelKey": "secure",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.requireTLS",
+					"labelKey": "requireTLS",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.username",
+					"labelKey": "username",
+					"control": "text"
+				},
+				{
+					"key": "config.fromAddress",
+					"labelKey": "fromAddress",
+					"control": "email"
+				},
+				{
+					"key": "config.replyTo",
+					"labelKey": "replyTo",
+					"control": "email"
+				},
+				{
+					"key": "password",
+					"labelKey": "password",
+					"control": "password"
+				}
+			],
+			"catalogDescriptorExcludesConfigValues": true,
+			"actualVisibleLabels": [
+				"Enable email delivery",
+				"SMTP host",
+				"Port",
+				"Use TLS from connection start",
+				"Require TLS before authentication",
+				"Username (optional)",
+				"From address",
+				"Reply-to address (optional)",
+				"Password"
+			],
+			"pluginCapture": "plugins-light-375.png",
+			"settingsCapture": "settings-light-375.png",
+			"providerVersion": 0,
+			"providerSource": "unconfigured",
+			"providerConfigPresent": false,
+			"secretPreviewSafe": true,
+			"providerResponseHasNoPasswordValue": true
+		},
+		{
+			"width": 768,
+			"height": 900,
+			"theme": "light",
+			"renderedTheme": "light",
+			"pluginLabels": [
+				{
+					"key": "enabled",
+					"labelKey": "enabled",
+					"control": "switch"
+				},
+				{
+					"key": "config.host",
+					"labelKey": "host",
+					"control": "text"
+				},
+				{
+					"key": "config.port",
+					"labelKey": "port",
+					"control": "number"
+				},
+				{
+					"key": "config.secure",
+					"labelKey": "secure",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.requireTLS",
+					"labelKey": "requireTLS",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.username",
+					"labelKey": "username",
+					"control": "text"
+				},
+				{
+					"key": "config.fromAddress",
+					"labelKey": "fromAddress",
+					"control": "email"
+				},
+				{
+					"key": "config.replyTo",
+					"labelKey": "replyTo",
+					"control": "email"
+				},
+				{
+					"key": "password",
+					"labelKey": "password",
+					"control": "password"
+				}
+			],
+			"catalogDescriptorExcludesConfigValues": true,
+			"actualVisibleLabels": [
+				"Enable email delivery",
+				"SMTP host",
+				"Port",
+				"Use TLS from connection start",
+				"Require TLS before authentication",
+				"Username (optional)",
+				"From address",
+				"Reply-to address (optional)",
+				"Password"
+			],
+			"pluginCapture": "plugins-light-768.png",
+			"settingsCapture": "settings-light-768.png",
+			"providerVersion": 0,
+			"providerSource": "unconfigured",
+			"providerConfigPresent": false,
+			"secretPreviewSafe": true,
+			"providerResponseHasNoPasswordValue": true
+		},
+		{
+			"width": 1440,
+			"height": 900,
+			"theme": "light",
+			"renderedTheme": "light",
+			"pluginLabels": [
+				{
+					"key": "enabled",
+					"labelKey": "enabled",
+					"control": "switch"
+				},
+				{
+					"key": "config.host",
+					"labelKey": "host",
+					"control": "text"
+				},
+				{
+					"key": "config.port",
+					"labelKey": "port",
+					"control": "number"
+				},
+				{
+					"key": "config.secure",
+					"labelKey": "secure",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.requireTLS",
+					"labelKey": "requireTLS",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.username",
+					"labelKey": "username",
+					"control": "text"
+				},
+				{
+					"key": "config.fromAddress",
+					"labelKey": "fromAddress",
+					"control": "email"
+				},
+				{
+					"key": "config.replyTo",
+					"labelKey": "replyTo",
+					"control": "email"
+				},
+				{
+					"key": "password",
+					"labelKey": "password",
+					"control": "password"
+				}
+			],
+			"catalogDescriptorExcludesConfigValues": true,
+			"actualVisibleLabels": [
+				"Enable email delivery",
+				"SMTP host",
+				"Port",
+				"Use TLS from connection start",
+				"Require TLS before authentication",
+				"Username (optional)",
+				"From address",
+				"Reply-to address (optional)",
+				"Password"
+			],
+			"pluginCapture": "plugins-light-1440.png",
+			"settingsCapture": "settings-light-1440.png",
+			"providerVersion": 0,
+			"providerSource": "unconfigured",
+			"providerConfigPresent": false,
+			"secretPreviewSafe": true,
+			"providerResponseHasNoPasswordValue": true
+		},
+		{
+			"width": 375,
+			"height": 900,
+			"theme": "dark",
+			"renderedTheme": "dark",
+			"pluginLabels": [
+				{
+					"key": "enabled",
+					"labelKey": "enabled",
+					"control": "switch"
+				},
+				{
+					"key": "config.host",
+					"labelKey": "host",
+					"control": "text"
+				},
+				{
+					"key": "config.port",
+					"labelKey": "port",
+					"control": "number"
+				},
+				{
+					"key": "config.secure",
+					"labelKey": "secure",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.requireTLS",
+					"labelKey": "requireTLS",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.username",
+					"labelKey": "username",
+					"control": "text"
+				},
+				{
+					"key": "config.fromAddress",
+					"labelKey": "fromAddress",
+					"control": "email"
+				},
+				{
+					"key": "config.replyTo",
+					"labelKey": "replyTo",
+					"control": "email"
+				},
+				{
+					"key": "password",
+					"labelKey": "password",
+					"control": "password"
+				}
+			],
+			"catalogDescriptorExcludesConfigValues": true,
+			"actualVisibleLabels": [
+				"Enable email delivery",
+				"SMTP host",
+				"Port",
+				"Use TLS from connection start",
+				"Require TLS before authentication",
+				"Username (optional)",
+				"From address",
+				"Reply-to address (optional)",
+				"Password"
+			],
+			"pluginCapture": "plugins-dark-375.png",
+			"settingsCapture": "settings-dark-375.png",
+			"providerVersion": 0,
+			"providerSource": "unconfigured",
+			"providerConfigPresent": false,
+			"secretPreviewSafe": true,
+			"providerResponseHasNoPasswordValue": true
+		},
+		{
+			"width": 768,
+			"height": 900,
+			"theme": "dark",
+			"renderedTheme": "dark",
+			"pluginLabels": [
+				{
+					"key": "enabled",
+					"labelKey": "enabled",
+					"control": "switch"
+				},
+				{
+					"key": "config.host",
+					"labelKey": "host",
+					"control": "text"
+				},
+				{
+					"key": "config.port",
+					"labelKey": "port",
+					"control": "number"
+				},
+				{
+					"key": "config.secure",
+					"labelKey": "secure",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.requireTLS",
+					"labelKey": "requireTLS",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.username",
+					"labelKey": "username",
+					"control": "text"
+				},
+				{
+					"key": "config.fromAddress",
+					"labelKey": "fromAddress",
+					"control": "email"
+				},
+				{
+					"key": "config.replyTo",
+					"labelKey": "replyTo",
+					"control": "email"
+				},
+				{
+					"key": "password",
+					"labelKey": "password",
+					"control": "password"
+				}
+			],
+			"catalogDescriptorExcludesConfigValues": true,
+			"actualVisibleLabels": [
+				"Enable email delivery",
+				"SMTP host",
+				"Port",
+				"Use TLS from connection start",
+				"Require TLS before authentication",
+				"Username (optional)",
+				"From address",
+				"Reply-to address (optional)",
+				"Password"
+			],
+			"pluginCapture": "plugins-dark-768.png",
+			"settingsCapture": "settings-dark-768.png",
+			"providerVersion": 0,
+			"providerSource": "unconfigured",
+			"providerConfigPresent": false,
+			"secretPreviewSafe": true,
+			"providerResponseHasNoPasswordValue": true
+		},
+		{
+			"width": 1440,
+			"height": 900,
+			"theme": "dark",
+			"renderedTheme": "dark",
+			"pluginLabels": [
+				{
+					"key": "enabled",
+					"labelKey": "enabled",
+					"control": "switch"
+				},
+				{
+					"key": "config.host",
+					"labelKey": "host",
+					"control": "text"
+				},
+				{
+					"key": "config.port",
+					"labelKey": "port",
+					"control": "number"
+				},
+				{
+					"key": "config.secure",
+					"labelKey": "secure",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.requireTLS",
+					"labelKey": "requireTLS",
+					"control": "checkbox"
+				},
+				{
+					"key": "config.username",
+					"labelKey": "username",
+					"control": "text"
+				},
+				{
+					"key": "config.fromAddress",
+					"labelKey": "fromAddress",
+					"control": "email"
+				},
+				{
+					"key": "config.replyTo",
+					"labelKey": "replyTo",
+					"control": "email"
+				},
+				{
+					"key": "password",
+					"labelKey": "password",
+					"control": "password"
+				}
+			],
+			"catalogDescriptorExcludesConfigValues": true,
+			"actualVisibleLabels": [
+				"Enable email delivery",
+				"SMTP host",
+				"Port",
+				"Use TLS from connection start",
+				"Require TLS before authentication",
+				"Username (optional)",
+				"From address",
+				"Reply-to address (optional)",
+				"Password"
+			],
+			"pluginCapture": "plugins-dark-1440.png",
+			"settingsCapture": "settings-dark-1440.png",
+			"providerVersion": 0,
+			"providerSource": "unconfigured",
+			"providerConfigPresent": false,
+			"secretPreviewSafe": true,
+			"providerResponseHasNoPasswordValue": true
+		}
+	],
+	"unauthorizedWrites": 0,
+	"providerConfigUnchanged": true,
+	"invalidFormBlockedSave": true,
+	"cancelDiscardedLocalDraft": true,
+	"baselineProvider": {
+		"version": 0,
+		"source": "unconfigured",
+		"enabled": false,
+		"configPresent": false,
+		"configKeys": [],
+		"passwordConfigured": false,
+		"passwordPreviewSafe": true,
+		"noPasswordValueReturned": true
+	}
+}

@@ -197,4 +197,60 @@ describe("account erasure honours legal holds (M1)", () => {
     const hold = await placeHold("organisation", owner.person.organisationId);
     await expectRefusedThenErased(owner, hold.id);
   });
+  it("retains private claim provenance under hold, then erases its email while preserving another workspace's history", async () => {
+    const owner = await setupErasingOwner();
+    const other = await createWorkspaceMember({ role: "owner" });
+    const run = requireRow(
+      await db
+        .insert(schema.importRunTable)
+        .values({
+          workspaceId: other.workspace.id,
+          projectId: null,
+          pluginId: "import.mcp",
+          sourceRef: "erasure-provenance-fixture",
+        })
+        .returning(),
+      "retained import run",
+    );
+    await db.insert(schema.importPlaceholderClaimTable).values({
+      personId: owner.person.id,
+      importRunId: run.id,
+      normalizedEmail: owner.user.email.trim().toLowerCase(),
+      claimedAt: new Date(),
+    });
+    const hold = await placeHold("person", owner.person.id);
+    const refused = await eraseAccount(owner);
+    expect(refused.status).toBe(409);
+    expect(
+      await db
+        .select()
+        .from(schema.importPlaceholderClaimTable)
+        .where(
+          eq(schema.importPlaceholderClaimTable.personId, owner.person.id),
+        ),
+    ).toHaveLength(1);
+    await liftHold(hold.id);
+    const erased = await eraseAccount(owner);
+    expect(erased.status, await erased.clone().text()).toBe(200);
+    expect(
+      await db
+        .select()
+        .from(schema.importPlaceholderClaimTable)
+        .where(
+          eq(schema.importPlaceholderClaimTable.personId, owner.person.id),
+        ),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.importRunTable)
+        .where(eq(schema.importRunTable.id, run.id)),
+    ).toHaveLength(1);
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, other.workspace.id)),
+    ).toHaveLength(1);
+  });
 });

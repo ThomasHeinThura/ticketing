@@ -3,6 +3,7 @@ import { type PropsWithChildren, useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { getBrowserLocale, i18n, resolveLocale } from "@/lib/i18n";
+import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 import queryClient from "@/query-client";
 
 export function PortalApplicationProviders({ children }: PropsWithChildren) {
@@ -16,7 +17,11 @@ export function PortalApplicationProviders({ children }: PropsWithChildren) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider followSystemWhenUnset>
-        <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+        <I18nextProvider i18n={i18n}>
+          <TerminologyProvider audience="customer" locale={locale}>
+            {children}
+          </TerminologyProvider>
+        </I18nextProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

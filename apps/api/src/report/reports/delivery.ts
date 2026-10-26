@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { itemFrom, num, OPEN, selectRows, tsn } from "../context";
+import { itemFrom, OPEN, selectRows, tsn } from "../context";
 import {
   AGE_BUCKETS,
   bucketCounts,
@@ -11,7 +11,7 @@ import {
   trendOf,
   utc,
 } from "../logic";
-import { loadDaily } from "../snapshot.repository";
+import { loadDaily, loadFactRows } from "../snapshot.repository";
 import type { ReportDefinition, Row } from "../types";
 import {
   col,
@@ -35,23 +35,19 @@ const throughput: ReportDefinition = {
   title: "Throughput",
   async compute(ctx) {
     // RP-9: closed days come from the stored snapshots, the current day is live.
-    const daily = await loadDaily(
-      ctx,
-      "throughput",
-      ctx.previous.from,
-      ctx.window.to,
-    );
+    const [currentDaily, previousDaily] = await Promise.all([
+      loadDaily(ctx, "throughput", ctx.window.from, ctx.window.to),
+      loadDaily(ctx, "throughput", ctx.previous.from, ctx.window.from),
+    ]);
     const weeks = weekAxis(ctx);
     const perWeek = new Map<string, number>();
     let current = 0;
-    let before = 0;
-    for (const row of daily) {
+    const before = previousDaily.reduce((sum, row) => sum + row.a, 0);
+    for (const row of currentDaily) {
       const at = new Date(`${row.day}T00:00:00.000Z`);
-      if (at >= ctx.window.from) {
-        current += row.a;
-        const key = weekKey(at);
-        perWeek.set(key, (perWeek.get(key) ?? 0) + row.a);
-      } else before += row.a;
+      current += row.a;
+      const key = weekKey(at);
+      perWeek.set(key, (perWeek.get(key) ?? 0) + row.a);
     }
     return emptyBody({
       metrics: [
@@ -114,15 +110,52 @@ const workMix: ReportDefinition = {
   category: "delivery",
   title: "Work mix",
   async compute(ctx) {
-    const rows = await selectRows<{
-      type_id: string | null;
-      type: string;
-      priority: string | null;
-      n: string;
-    }>(sql`SELECT w.type_id, COALESCE(wt.name, '(no type)') AS type, w.priority, count(*) AS n
-      ${itemFrom(ctx, sql`LEFT JOIN work_item_type wt ON wt.id = w.type_id`)}
-      AND w.created_at >= ${tsn(ctx.window.from)} AND w.created_at < ${tsn(ctx.window.to)}
-      GROUP BY 1, 2, 3`);
+    const facts = await loadFactRows(
+      ctx,
+      "item_created",
+      ctx.window.from,
+      ctx.window.to,
+    );
+    const typeIds = [
+      ...new Set(
+        facts
+          .map((fact) => fact.dimensions.typeId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const typeNames = typeIds.length
+      ? await selectRows<{ id: string; name: string }>(
+          sql`SELECT id,name FROM work_item_type WHERE id IN (${sql.join(
+            typeIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+        )
+      : [];
+    const nameById = new Map(typeNames.map((row) => [row.id, row.name]));
+    const grouped = new Map<
+      string,
+      {
+        type_id: string | null;
+        type: string;
+        priority: string | null;
+        n: number;
+      }
+    >();
+    for (const fact of facts) {
+      const typeId = fact.dimensions.typeId;
+      const type = typeId ? (nameById.get(typeId) ?? "(no type)") : "(no type)";
+      const priority = fact.dimensions.priority;
+      const key = `${typeId ?? ""}|${priority ?? ""}`;
+      const row = grouped.get(key) ?? {
+        type_id: typeId ?? null,
+        type,
+        priority: priority ?? null,
+        n: 0,
+      };
+      row.n += fact.measures.count ?? 0;
+      grouped.set(key, row);
+    }
+    const rows = [...grouped.values()];
     const priorities = ["urgent", "high", "medium", "low", "none"];
     const byType = new Map<
       string,
@@ -131,7 +164,7 @@ const workMix: ReportDefinition = {
     for (const row of rows) {
       const entry = byType.get(row.type) ?? { id: row.type_id, counts: {} };
       const key = row.priority ?? "none";
-      entry.counts[key] = (entry.counts[key] ?? 0) + num(row.n);
+      entry.counts[key] = (entry.counts[key] ?? 0) + row.n;
       byType.set(row.type, entry);
     }
     const table: Row[] = [...byType.entries()]
@@ -194,34 +227,43 @@ const cycleTime: ReportDefinition = {
   category: "delivery",
   title: "Cycle time",
   async compute(ctx) {
-    const rows = await selectRows<{
-      created_at: string | Date;
-      resolved_at: string | Date;
-    }>(sql`SELECT w.created_at, w.resolved_at
-      ${itemFrom(ctx)} AND ${DONE}
-      AND ${resolvedIn(ctx.window.from, ctx.window.to)}`);
-    const durations = rows.map(
-      (row) => utc(row.resolved_at).getTime() - utc(row.created_at).getTime(),
+    const facts = await loadFactRows(
+      ctx,
+      "item_resolved",
+      ctx.window.from,
+      ctx.window.to,
     );
-    const buckets = bucketCounts(durations, DURATION_BUCKETS);
-    const within7 = durations.filter((ms) => ms < 8 * DAY_MS).length;
+    const totals = facts.reduce(
+      (sum, fact) => {
+        for (const [key, value] of Object.entries(fact.measures))
+          sum[key] = (sum[key] ?? 0) + value;
+        return sum;
+      },
+      {} as Record<string, number>,
+    );
+    const resolved = totals.count ?? 0;
+    const buckets = DURATION_BUCKETS.map((bucket) => ({
+      ...bucket,
+      count: totals[bucket.key] ?? 0,
+    }));
+    const within7 = (totals.lt1 ?? 0) + (totals.d1_2 ?? 0) + (totals.d3_7 ?? 0);
     return emptyBody({
       metrics: [
         {
           key: "resolved",
           label: "Items resolved",
           unit: "count",
-          ...countValue(rows.length),
+          ...countValue(resolved),
         },
         {
           key: "within_week",
           label: "Resolved within 7 days",
           unit: "percent",
-          ...ratePercent(within7, rows.length, MIN),
+          ...ratePercent(within7, resolved, MIN),
         },
       ],
       chart:
-        rows.length > 0
+        resolved > 0
           ? {
               type: "bar",
               unit: "count",
@@ -244,7 +286,7 @@ const cycleTime: ReportDefinition = {
         items: bucket.count,
         _drill: bucket.key,
       })),
-      population: rows.length,
+      population: resolved,
       outsideWindow: await countOutside(ctx, "resolved_at", DONE),
       drill: true,
     });

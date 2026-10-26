@@ -17,18 +17,21 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Textarea,
 } from "@taskdesk/ui";
 import { Filter } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import PdfPreviewDialog, {
+  type PdfPreviewAttachment,
+} from "@/components/attachments/pdf-preview-dialog";
 import Layout from "@/components/common/layout";
+import { IntakeQueuePanel } from "@/components/intake/queue-panel";
+import { IntakeQueuePicker } from "@/components/intake/queue-picker";
+import {
+  type StaffSubmissionQueueRow,
+  SubmissionQueueTable,
+} from "@/components/intake/submission-queue-table";
 import {
   TriageFilterChips,
   TriageFilterMenu,
@@ -47,17 +50,21 @@ import {
   getSubmissionAttachments,
   getSubmissions,
   markSubmissionDuplicate,
+  staffSubmissionAttachmentDownloadPath,
+  staffSubmissionAttachmentPreviewPath,
 } from "@/fetchers/intake";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import {
-  formatSubmissionAge,
-  matchesIntakeFilters,
-  splitIntakeFilters,
-} from "@/lib/intake-queue";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { matchesIntakeFilters, splitIntakeFilters } from "@/lib/intake-queue";
 import { submissionAnswerRows } from "@/lib/intake-validation";
-import { parseIntakeSearch } from "@/lib/routes";
+import {
+  type IntakeQueueSearch,
+  parseIntakeSearch,
+  routes,
+} from "@/lib/routes";
+import { savedViewQueryDocument } from "@/lib/saved-view-query";
 
 export const Route = createFileRoute("/_layout/_authenticated/agent/triage")({
   validateSearch: parseIntakeSearch,
@@ -67,26 +74,66 @@ export const Route = createFileRoute("/_layout/_authenticated/agent/triage")({
 function IntakeRoute() {
   const { t } = useTranslation("intake");
   const workspace = useActiveWorkspace();
+  const permissions = useWorkspacePermission(workspace.data?.id);
   const workItemTypes = useGetWorkItemTypes({
     workspaceId: workspace.data?.id,
   });
   const projects = useGetProjects({ workspaceId: workspace.data?.id ?? "" });
-  const { state, ref, cursor, requestType, assignee, age } = Route.useSearch();
+  const {
+    state,
+    ref,
+    cursor,
+    requestType,
+    assignee,
+    age,
+    queue: queuePair,
+    workItemFilter,
+    workItemSorts,
+    workItemColumns,
+    workItemFilterMode,
+  } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const filters = { requestType, assignee, age };
   // Filters and the selected submission live in the URL; a change keeps the rest.
-  const searchWith = (patch: Record<string, string | undefined>) => ({
+  const searchWith = (patch: Partial<IntakeQueueSearch>) => ({
     state,
+    queue: queuePair,
+    workItemFilter,
+    workItemSorts,
+    workItemColumns,
+    workItemFilterMode,
     ref,
     cursor,
     ...filters,
     ...patch,
   });
+  const workItemDefinition = useMemo(() => {
+    if (
+      workItemFilter === undefined &&
+      workItemSorts === undefined &&
+      workItemColumns === undefined
+    )
+      return { query: undefined, invalid: false };
+    try {
+      return {
+        query: savedViewQueryDocument({
+          filter: workItemFilter,
+          sorts: workItemSorts,
+          columns: workItemColumns,
+        }),
+        invalid: false,
+      };
+    } catch {
+      return { query: undefined, invalid: true };
+    }
+  }, [workItemFilter, workItemSorts, workItemColumns]);
   const cache = useQueryClient();
   const [projectId, setProjectId] = useState("");
   const [workItemTypeId, setWorkItemTypeId] = useState("");
   const [declineReason, setDeclineReason] = useState("");
   const [message, setMessage] = useState("");
+  const [previewAttachment, setPreviewAttachment] =
+    useState<PdfPreviewAttachment>();
   // Claim/Accept disable or unmount the focused button; hand focus to the status block.
   const statusRef = useRef<HTMLDivElement>(null);
   const [acceptedItem, setAcceptedItem] = useState<{
@@ -114,7 +161,7 @@ function IntakeRoute() {
     queryKey: ["intake", workspace.data?.id, state, cursor, server],
     queryFn: () =>
       getSubmissions(workspace.data?.id ?? "", state, cursor, server),
-    enabled: Boolean(workspace.data?.id) && !pending,
+    enabled: Boolean(workspace.data?.id) && !pending && !queuePair,
   });
   const detail = useQuery({
     queryKey: ["intake", "submission", ref],
@@ -129,7 +176,12 @@ function IntakeRoute() {
   const duplicateSuggestions = useQuery({
     queryKey: ["intake", "submission", ref, "duplicates"],
     queryFn: () => getDuplicateSuggestions(ref ?? ""),
-    enabled: Boolean(ref && (state === "new" || state === "clarifying")),
+    enabled: Boolean(
+      ref &&
+        ["new", "clarifying"].includes(
+          detail.data?.submission.state ?? state ?? "",
+        ),
+    ),
   });
   const invalidate = async () => {
     await cache.invalidateQueries({ queryKey: ["intake"] });
@@ -234,18 +286,7 @@ function IntakeRoute() {
     setWorkItemTypeId(current?.version?.workItemTypeId ?? "");
     setProjectId(current?.version?.defaultProjectId ?? "");
   }, [current?.version?.workItemTypeId, current?.version?.defaultProjectId]);
-  const rows = (queue.data?.submissions ?? []) as unknown as Array<{
-    ref: string;
-    summary: string;
-    submission: {
-      state: string;
-      createdAt: string;
-      claimedBy: string | null;
-    };
-    requestType: { id: string; name: string };
-    requester: { displayName?: string };
-    organisation: { name: string };
-  }>;
+  const rows = (queue.data?.submissions ?? []) as StaffSubmissionQueueRow[];
   const requestTypeOptions = (
     requestTypeRefs ??
     Array.from(
@@ -277,7 +318,8 @@ function IntakeRoute() {
                 aria-label="Submission status filter"
               >
                 <Filter className="size-3" />
-                {t("status", { defaultValue: "Status" })}: {state}
+                {t("status", { defaultValue: "Status" })}
+                {state ? `: ${state}` : ""}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -315,6 +357,33 @@ function IntakeRoute() {
           requestTypes={requestTypeOptions}
           onChange={changeFilters}
         />
+        {workspace.data?.id && (
+          <IntakeQueuePicker
+            workspaceId={workspace.data.id}
+            queueId={queuePair}
+            canCreate={
+              permissions.canTriageIntake() &&
+              !workItemDefinition.invalid &&
+              !pending &&
+              !residual.requestType
+            }
+            canShare={permissions.canShareSavedViews()}
+            currentSubmissionQuery={
+              state || requestType || assignee || age
+                ? {
+                    entity: "submission",
+                    filter: { ...(state ? { state } : {}), ...server },
+                  }
+                : undefined
+            }
+            currentWorkItemQuery={workItemDefinition.query}
+            onSelect={(id) =>
+              void navigate({
+                search: { queue: id, ...(id ? {} : { state: "new" as const }) },
+              })
+            }
+          />
+        )}
         {!workspace.data?.id && <p role="status">{t("selectWorkspace")}</p>}
         {(detail.isError ||
           attachments.isError ||
@@ -328,7 +397,54 @@ function IntakeRoute() {
             <AlertDescription>{t("actionError")}</AlertDescription>
           </Alert>
         )}
-        {queue.isError ? (
+        {queuePair && pending ? (
+          <p role="status">{t("loading")}</p>
+        ) : queuePair && residual.requestType ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>{t("filters.noMatch")}</EmptyTitle>
+              <EmptyDescription>{t("filters.noMatchHint")}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : queuePair && workspace.data?.id ? (
+          <IntakeQueuePanel
+            workspaceId={workspace.data.id}
+            queueId={queuePair}
+            state={state}
+            requestTypeKey={server.requestTypeKey}
+            assignee={assignee}
+            olderThanDays={server.olderThanDays}
+            workItemQuery={{
+              filter: workItemFilter,
+              sorts: workItemSorts,
+              columns: workItemColumns,
+              filterMode: workItemFilterMode,
+            }}
+            onWorkItemQueryChange={(change) =>
+              void navigate({
+                search: searchWith({
+                  ...("filter" in change
+                    ? { workItemFilter: change.filter }
+                    : {}),
+                  ...("sorts" in change ? { workItemSorts: change.sorts } : {}),
+                  ...("columns" in change
+                    ? { workItemColumns: change.columns }
+                    : {}),
+                  ...("filterMode" in change
+                    ? { workItemFilterMode: change.filterMode }
+                    : {}),
+                }),
+              })
+            }
+            selectedRef={ref}
+            onOpenSubmission={(nextRef) =>
+              void navigate({ search: searchWith({ ref: nextRef }) })
+            }
+            onOpenWorkItem={(key) =>
+              void navigate({ to: routes.workItemDetail.path, params: { key } })
+            }
+          />
+        ) : queue.isError ? (
           <Alert variant="error" role="alert">
             <AlertDescription>{t("actionError")}</AlertDescription>
             <Button variant="outline" onClick={() => void queue.refetch()}>
@@ -361,69 +477,15 @@ function IntakeRoute() {
             </EmptyHeader>
           </Empty>
         ) : (
-          <Table aria-label={t("title")}>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  {t("reference", { defaultValue: "Reference" })}
-                </TableHead>
-                <TableHead>
-                  {t("summary", { defaultValue: "Summary" })}
-                </TableHead>
-                <TableHead>
-                  {t("requestType", { defaultValue: "Request type" })}
-                </TableHead>
-                <TableHead>{t("customer")}</TableHead>
-                <TableHead>
-                  {t("organisation", { defaultValue: "Organisation" })}
-                </TableHead>
-                <TableHead>
-                  {t("submittedAt", { defaultValue: "Submitted" })}
-                </TableHead>
-                <TableHead>{t("age", { defaultValue: "Age" })}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visibleRows.map((row) => (
-                <TableRow
-                  key={row.ref}
-                  data-state={ref === row.ref ? "selected" : undefined}
-                >
-                  <TableCell>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      aria-current={ref === row.ref ? "true" : undefined}
-                      onClick={() =>
-                        void navigate({
-                          search: searchWith({ ref: row.ref }),
-                        })
-                      }
-                      className="h-auto p-0 font-mono"
-                    >
-                      {row.ref}
-                    </Button>
-                  </TableCell>
-                  <TableCell className="whitespace-normal">
-                    {row.summary}
-                  </TableCell>
-                  <TableCell>{row.requestType.name}</TableCell>
-                  <TableCell>
-                    {row.requester.displayName ?? t("customer")}
-                  </TableCell>
-                  <TableCell>{row.organisation.name}</TableCell>
-                  <TableCell>
-                    {new Date(row.submission.createdAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell data-testid="triage-row-age">
-                    {formatSubmissionAge(row.submission.createdAt)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <SubmissionQueueTable
+            rows={visibleRows}
+            selectedRef={ref}
+            onOpenSubmission={(nextRef) =>
+              void navigate({ search: searchWith({ ref: nextRef }) })
+            }
+          />
         )}
-        {queue.data?.page?.hasMore && (
+        {!queuePair && queue.data?.page?.hasMore && (
           <Button
             variant="outline"
             onClick={() =>
@@ -506,13 +568,46 @@ function IntakeRoute() {
                       <span className="min-w-0 wrap-anywhere">
                         {file.filename} · {file.state}
                       </span>
-                      <Button
-                        variant="outline"
-                        onClick={() => download.mutate(file)}
-                        disabled={file.state !== "ready"}
-                      >
-                        Download
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {file.state === "ready" &&
+                        file.mimeType?.trim().toLowerCase() ===
+                          "application/pdf" ? (
+                          <Button
+                            variant="outline"
+                            aria-label={t(
+                              "workItems:detail.attachments.pdfPreviewOpen",
+                              { name: file.filename },
+                            )}
+                            onClick={() =>
+                              setPreviewAttachment({
+                                id: file.id,
+                                filename: file.filename,
+                                previewPath:
+                                  staffSubmissionAttachmentPreviewPath(
+                                    ref ?? "",
+                                    file.id,
+                                  ),
+                                downloadPath:
+                                  staffSubmissionAttachmentDownloadPath(
+                                    ref ?? "",
+                                    file.id,
+                                  ),
+                              })
+                            }
+                          >
+                            {t("workItems:detail.attachments.pdfPreviewOpen", {
+                              name: file.filename,
+                            })}
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          onClick={() => download.mutate(file)}
+                          disabled={file.state !== "ready"}
+                        >
+                          Download
+                        </Button>
+                      </div>
                     </div>
                   ))}
                   {current.submission?.state === "new" ||
@@ -692,6 +787,12 @@ function IntakeRoute() {
           </section>
         )}
       </Layout.Content>
+      <PdfPreviewDialog
+        attachment={previewAttachment}
+        onOpenChange={(open) => {
+          if (!open) setPreviewAttachment(undefined);
+        }}
+      />
     </div>
   );
 }

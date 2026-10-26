@@ -3,6 +3,12 @@ import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import type { ConfirmationKind } from "../../apps/api/src/pending-action/payload";
+import {
+  canonicalPendingActionPayload,
+  hashPendingActionPayload,
+} from "../../apps/api/src/pending-action/payload";
+import { evaluateActionRequiredAccess } from "../../apps/api/src/pending-action/required-access";
 import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -73,6 +79,26 @@ async function createPendingAction(
       .returning(),
     "pending action",
   );
+}
+
+function validDeletePayload(input: {
+  targetType: string;
+  targetIds: string[];
+  routeKey: string;
+  workspaceId: string;
+  confirmationRequired: ConfirmationKind;
+}) {
+  const payload = canonicalPendingActionPayload({
+    action: "delete",
+    target_type: input.targetType,
+    target_ids: input.targetIds,
+    route_key: input.routeKey,
+    workspace_id: input.workspaceId,
+    project_id: null,
+    organisation_id: null,
+    confirmation_required: input.confirmationRequired,
+  });
+  return { payload, payloadHash: hashPendingActionPayload(payload) };
 }
 
 async function ensurePersonFor(
@@ -175,6 +201,7 @@ describe("GET /api/me/pending-actions", () => {
         "state",
         "summary",
         "targetIds",
+        "targetWorkspaceId",
         "targetType",
       ].sort(),
     );
@@ -225,6 +252,153 @@ describe("GET /api/me/pending-actions", () => {
     expect(viewedRows.map((row) => row.entityId).sort()).toEqual(
       [newest.id, tied.id, older.id].sort(),
     );
+  });
+
+  it("returns current reachable workspace context from the nonlocking registered target reader", async () => {
+    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
+    await ensurePersonFor(user.id, workspace.organisationId);
+    const pending = await createPendingAction(user.id, {
+      id: `pa-workspace-read-${randomUUID()}`,
+      action: "delete",
+      targetType: "workspace",
+      targetIds: [workspace.id],
+      credentialId: `session-${user.id}`,
+      routeKey: "DELETE /api/workspace/{workspaceId}",
+      workspaceId: workspace.id,
+      projectId: null,
+      organisationId: null,
+      confirmationRequired: "typed_name_step_up",
+      ...validDeletePayload({
+        targetType: "workspace",
+        targetIds: [workspace.id],
+        routeKey: "DELETE /api/workspace/{workspaceId}",
+        workspaceId: workspace.id,
+        confirmationRequired: "typed_name_step_up",
+      }),
+      payloadSummary: { workspaceId: workspace.id, name: workspace.name },
+    });
+    const decision = await db.transaction(async (tx) => {
+      await tx.execute(sql`set transaction read only`);
+      return evaluateActionRequiredAccess(
+        tx,
+        {
+          requestedByPersonId: pending.requestedByPersonId,
+          credentialType: pending.credentialType,
+          credentialId: pending.credentialId,
+          origin: pending.origin,
+          action: pending.action,
+          targetType: pending.targetType,
+          targetIds: pending.targetIds,
+          routeKey: pending.routeKey,
+          workspaceId: pending.workspaceId,
+          projectId: pending.projectId,
+          organisationId: pending.organisationId,
+          confirmationRequired: pending.confirmationRequired,
+          payload: pending.payload,
+          payloadHash: pending.payloadHash,
+        },
+        { existingPendingAction: true, readOnly: true },
+      );
+    });
+    expect(decision).toEqual({ allowed: true });
+    mockAuthenticatedSession(user);
+    const { app } = createApp();
+    const response = await app.request(`/api/me/pending-actions/${pending.id}`);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      targetWorkspaceId: string | null;
+    };
+    expect(body.targetWorkspaceId).toBe(workspace.id);
+  });
+
+  it("preserves saved-view creator policy in the read-only workspace resolver", async () => {
+    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
+    await ensurePersonFor(user.id, workspace.organisationId);
+    mockAuthenticatedSession(user);
+    const { app } = createApp();
+    const createView = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: workspace.id,
+        name: "GM-T3 read context",
+        scope: "workspace",
+        scopeId: workspace.id,
+        layout: "list",
+        query: { entity: "work_item", filter: { state: "started" } },
+      }),
+    });
+    expect(createView.status).toBe(200);
+    const view = (await createView.json()) as { id: string };
+    const pending = await createPendingAction(user.id, {
+      id: `pa-view-read-${randomUUID()}`,
+      targetType: "saved_view",
+      targetIds: [view.id],
+      credentialId: `session-${user.id}`,
+      routeKey: "DELETE /api/views/{id}",
+      workspaceId: workspace.id,
+      confirmationRequired: "click",
+      ...validDeletePayload({
+        targetType: "saved_view",
+        targetIds: [view.id],
+        routeKey: "DELETE /api/views/{id}",
+        workspaceId: workspace.id,
+        confirmationRequired: "click",
+      }),
+      payloadSummary: { name: "GM-T3 read context" },
+    });
+
+    const response = await app.request(`/api/me/pending-actions/${pending.id}`);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      targetWorkspaceId: string | null;
+    };
+    expect(body.targetWorkspaceId).toBe(workspace.id);
+  });
+
+  it("resolves service-calendar workspace context without taking its approval lock", async () => {
+    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
+    await ensurePersonFor(user.id, workspace.organisationId);
+    const calendar = requireRow(
+      await db
+        .insert(schema.serviceCalendarTable)
+        .values({
+          id: `calendar-${randomUUID()}`,
+          workspaceId: workspace.id,
+          name: "GM-T3 read context",
+          timezone: "UTC",
+          windows: [],
+          holidays: [],
+        })
+        .returning(),
+      "service calendar",
+    );
+    const pending = await createPendingAction(user.id, {
+      id: `pa-calendar-read-${randomUUID()}`,
+      targetType: "service_calendar",
+      targetIds: [calendar.id],
+      credentialId: `session-${user.id}`,
+      routeKey: "DELETE /api/service-calendars/{id}",
+      workspaceId: workspace.id,
+      confirmationRequired: "click",
+      ...validDeletePayload({
+        targetType: "service_calendar",
+        targetIds: [calendar.id],
+        routeKey: "DELETE /api/service-calendars/{id}",
+        workspaceId: workspace.id,
+        confirmationRequired: "click",
+      }),
+      payloadSummary: { name: calendar.name },
+    });
+    mockAuthenticatedSession(user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/me/pending-actions/${pending.id}`);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      targetWorkspaceId: string | null;
+    };
+    expect(body.targetWorkspaceId).toBe(workspace.id);
   });
 
   it("rejects an explicitly empty cursor and limits above the collection maximum", async () => {

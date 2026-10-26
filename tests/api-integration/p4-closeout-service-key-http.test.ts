@@ -7,7 +7,10 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createServiceApiKey } from "../../apps/api/src/api-key/service";
 import db, { schema } from "../../apps/api/src/database";
+import { apiKeyExtensionTable } from "../../apps/api/src/database/schema";
+import { transitionPersonLifecycleInTransaction } from "../../apps/api/src/identity/repository";
 import { createApp } from "../../apps/api/src/index";
+import { lockPendingActionLifecycle } from "../../apps/api/src/pending-action/lifecycle-invalidation";
 import { mockAnonymousSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -40,7 +43,7 @@ async function world(capabilities: string[]) {
         ...(init.headers ?? {}),
       },
     });
-  return { owner, other, project, team, call };
+  return { owner, other, project, team, created, call };
 }
 
 describe("workspace service key on workspace-level routes", () => {
@@ -52,6 +55,44 @@ describe("workspace service key on workspace-level routes", () => {
     expect(own.status, await own.clone().text()).toBe(200);
     const body = (await own.json()) as { id: string }[] | { teams: unknown[] };
     expect(JSON.stringify(body)).toContain(w.team.id);
+  });
+
+  it("keeps working against its stored subset after its creator is deactivated", async () => {
+    const w = await world(["workspace:read"]);
+    const before = await w.call(
+      `/api/teams?workspaceId=${w.owner.workspace.id}`,
+    );
+    expect(before.status, await before.clone().text()).toBe(200);
+
+    const [creator] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, w.owner.user.id));
+    if (!creator) throw new Error("Service-key creator person missing");
+    await db.transaction(async (tx) => {
+      await lockPendingActionLifecycle(tx);
+      await transitionPersonLifecycleInTransaction(
+        tx,
+        creator.id,
+        false,
+        "end_memberships",
+        { kind: "administrative" },
+      );
+    });
+
+    const after = await w.call(
+      `/api/teams?workspaceId=${w.owner.workspace.id}`,
+    );
+    expect(after.status, await after.clone().text()).toBe(200);
+    const [extension] = await db
+      .select({
+        capabilities: apiKeyExtensionTable.capabilities,
+        disabledAt: apiKeyExtensionTable.disabledAt,
+      })
+      .from(apiKeyExtensionTable)
+      .where(eq(apiKeyExtensionTable.apikeyId, w.created.id));
+    expect(extension).toMatchObject({ capabilities: ["workspace:read"] });
+    expect(extension?.disabledAt).toBeNull();
   });
 
   it("works the same way on another workspace-addressed family (custom fields)", async () => {

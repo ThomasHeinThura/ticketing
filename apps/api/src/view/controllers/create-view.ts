@@ -112,17 +112,24 @@ async function createView(
     );
   }
 
-  const inserted = await insertSavedView({
-    workspaceId,
-    createdBy: personId,
-    name: input.name,
-    scope,
-    scopeId,
-    visibility,
-    sharedWithTeamId: visibility === "team" ? sharedWithTeamId : null,
-    layout: input.layout,
-    query: input.query,
-  });
+  const inserted = await insertSavedView(
+    {
+      workspaceId,
+      createdBy: personId,
+      name: input.name,
+      scope,
+      scopeId,
+      visibility,
+      sharedWithTeamId: visibility === "team" ? sharedWithTeamId : null,
+      layout: input.layout,
+      query: input.query,
+    },
+    {
+      personId,
+      userId,
+      apiKeyId: auditActor.apiKeyId ?? undefined,
+    },
+  );
 
   if (!inserted) {
     throw new Error("Failed to create saved view");

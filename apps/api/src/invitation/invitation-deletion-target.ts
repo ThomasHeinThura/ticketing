@@ -1,9 +1,14 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
+import {
+  destroyCustomerInvitationDeliveryKeys,
+  suppressActiveInvitationDeliveries,
+} from "../customer-invitation/delivery/repository";
 import { callerReachesOrganisation } from "../customer-invitation/repository";
 import { schema } from "../database";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -46,10 +51,35 @@ export const invitationDeletionTarget: RegisteredDeletionTarget = {
       version: registeredDeletionFingerprint(row),
     };
   },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [row] = await tx
+      .select({
+        id: schema.invitationTable.id,
+        workspaceId: schema.invitationTable.workspaceId,
+        organisationId: schema.invitationTable.organisationId,
+        scope: schema.invitationTable.scope,
+      })
+      .from(schema.invitationTable)
+      .where(eq(schema.invitationTable.id, id))
+      .limit(1);
+    return row
+      ? {
+          id: row.id,
+          workspaceId: row.workspaceId,
+          projectId: null,
+          organisationId: row.organisationId,
+          summary: { scope: row.scope },
+        }
+      : undefined;
+  },
   // CP-20: a customer invitation is revoked only by a caller who reaches its organisation.
   callerReaches: async (tx, loaded, identity) =>
-    loaded.summary.scope !== "customer" ||
-    (loaded.organisationId !== null &&
+    loaded.summary?.scope !== "customer" ||
+    (loaded.workspaceId !== null &&
+      loaded.organisationId !== null &&
       (await callerReachesOrganisation(
         tx,
         loaded.workspaceId,
@@ -63,6 +93,7 @@ export const invitationDeletionTarget: RegisteredDeletionTarget = {
       });
   },
   execute: async (tx, { loaded, identity }) => {
+    let deliveryIds: string[] = [];
     const [updated] = await tx
       .update(schema.invitationTable)
       // CP-22: revoking a customer invitation also invalidates its accept credential.
@@ -79,7 +110,12 @@ export const invitationDeletionTarget: RegisteredDeletionTarget = {
       throw new HTTPException(409, {
         message: "pending_action_target_changed",
       });
-    if (loaded.summary.scope === "customer")
+    if (loaded.summary.scope === "customer") {
+      deliveryIds = await suppressActiveInvitationDeliveries(
+        tx,
+        loaded.id,
+        "revoked",
+      );
       await appendAuditLog(tx, {
         actorId: identity.userId,
         actorType: "person",
@@ -91,6 +127,10 @@ export const invitationDeletionTarget: RegisteredDeletionTarget = {
         before: null,
         after: { scope: "customer" },
       });
-    return {};
+    }
+    return {
+      afterCommit: async () =>
+        destroyCustomerInvitationDeliveryKeys(deliveryIds),
+    };
   },
 };

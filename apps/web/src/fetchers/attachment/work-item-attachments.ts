@@ -13,11 +13,25 @@ export type WorkItemAttachment = InferResponseType<
 /** `GET /api/work-items/{key}/attachments`. */
 export async function listWorkItemAttachments(
   key: string,
+  lifecycle: "live" | "recoverable" = "live",
 ): Promise<WorkItemAttachment[]> {
-  const response = await workItemAttachments.$get({ param: { key } });
+  const response = await workItemAttachments.$get({
+    param: { key },
+    query: lifecycle === "recoverable" ? { lifecycle } : {},
+  });
   if (!response.ok) {
     throw new HttpError(response.status, "Failed to load attachments");
   }
+  return response.json();
+}
+
+/** AT-7: restore a file only through the policy-checked attachment API. */
+export async function restoreWorkItemAttachment(id: string) {
+  const response = await client.attachments[":id"].restore.$post({
+    param: { id },
+  });
+  if (!response.ok)
+    throw new HttpError(response.status, await readErrorDetail(response));
   return response.json();
 }
 

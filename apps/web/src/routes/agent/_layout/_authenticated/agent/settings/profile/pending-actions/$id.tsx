@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PendingActionApproval } from "@/components/pending-action/pending-action-approval";
+import { PendingActionTerminologyBoundary } from "@/components/pending-action/pending-action-terminology-boundary";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/settings/profile/pending-actions/$id",
@@ -11,5 +12,9 @@ export const Route = createFileRoute(
  */
 function PendingActionDetailRoute() {
   const { id } = Route.useParams();
-  return <PendingActionApproval id={id} layout="page" />;
+  return (
+    <PendingActionTerminologyBoundary id={id}>
+      <PendingActionApproval id={id} layout="page" />
+    </PendingActionTerminologyBoundary>
+  );
 }

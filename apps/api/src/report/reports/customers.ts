@@ -1,13 +1,7 @@
 import { sql } from "drizzle-orm";
-import {
-  itemFilterSql,
-  itemFrom,
-  num,
-  selectRows,
-  tsn,
-  tstz,
-} from "../context";
-import { countValue, ratePercent, trendOf, utc } from "../logic";
+import { num, selectRows, tsn } from "../context";
+import { countValue, ratePercent, trendOf } from "../logic";
+import { loadFactRows } from "../snapshot.repository";
 import type { ReportDefinition, Row } from "../types";
 import {
   cell,
@@ -16,6 +10,7 @@ import {
   emptyBody,
   itemsOf,
   MIN,
+  pageRows,
   weekAxis,
   weekKey,
 } from "./shared";
@@ -30,62 +25,113 @@ const customerPerformance: ReportDefinition = {
   key: "customer_performance",
   category: "customers",
   title: "Performance by customer",
+  pagedExport: true,
   async compute(ctx) {
-    const created = inWindow("w.created_at", ctx);
-    const resolved = inWindow("w.resolved_at", ctx);
-    const rows = await selectRows<{
-      org_id: string | null;
-      org: string;
-      volume: string;
-      resolved: string;
-      met: string;
-      missed: string;
-      fast: string;
-      slow: string;
-      touched: string;
-    }>(sql`SELECT p.organisation_id AS org_id, COALESCE(o.name, ${NO_ORG}) AS org,
-        count(*) FILTER (WHERE ${created}) AS volume,
-        count(*) FILTER (WHERE ${resolved} AND st."group" = 'completed') AS resolved,
-        count(*) FILTER (WHERE ${resolved} AND c.state = 'met') AS met,
-        count(*) FILTER (WHERE ${resolved} AND c.state = 'missed') AS missed,
-        count(*) FILTER (WHERE ${resolved} AND st."group" = 'completed' AND w.resolved_at - w.created_at < interval '3 days') AS fast,
-        count(*) FILTER (WHERE ${resolved} AND st."group" = 'completed' AND w.resolved_at - w.created_at >= interval '14 days') AS slow,
-        count(*) AS touched
-      ${itemFrom(
-        ctx,
-        sql`LEFT JOIN organisation o ON o.id = p.organisation_id
-          LEFT JOIN work_item_sla_cache c ON c.work_item_id = w.id AND c.metric = 'resolution'`,
-      )}
-      AND (${created} OR ${resolved})
-      GROUP BY 1, 2`);
-    const table = rows
-      .map((row) => {
-        const met = num(row.met);
-        const missed = num(row.missed);
-        const attainment = ratePercent(met, met + missed, MIN);
-        return {
-          sort: attainment.value,
-          volumeN: num(row.volume),
-          row: {
-            customer: row.org,
-            volume: num(row.volume),
-            resolved: num(row.resolved),
-            attainment: cell(attainment),
-            fast: num(row.fast),
-            slow: num(row.slow),
-            _drill: row.org_id ?? "none",
-          } as Row,
-        };
-      })
-      // Worst first: the lowest attainment leads; customers without enough data follow, busiest first.
-      .sort((a, b) => {
+    const [createdFacts, resolvedFacts, slaFacts] = await Promise.all([
+      loadFactRows(ctx, "item_created", ctx.window.from, ctx.window.to),
+      loadFactRows(ctx, "item_resolved", ctx.window.from, ctx.window.to),
+      loadFactRows(ctx, "sla_resolution", ctx.window.from, ctx.window.to),
+    ]);
+    const aggregate = new Map<
+      string,
+      {
+        org_id: string | null;
+        volume: number;
+        resolved: number;
+        met: number;
+        missed: number;
+        fast: number;
+        slow: number;
+        touched: number;
+      }
+    >();
+    const get = (orgId: string | null) => {
+      const key = orgId ?? "";
+      const row = aggregate.get(key) ?? {
+        org_id: orgId,
+        volume: 0,
+        resolved: 0,
+        met: 0,
+        missed: 0,
+        fast: 0,
+        slow: 0,
+        touched: 0,
+      };
+      aggregate.set(key, row);
+      return row;
+    };
+    for (const fact of createdFacts) {
+      const row = get(fact.organisation_id);
+      row.volume += fact.measures.count ?? 0;
+      row.touched += fact.measures.count ?? 0;
+    }
+    for (const fact of resolvedFacts) {
+      const row = get(fact.organisation_id);
+      row.resolved += fact.measures.count ?? 0;
+      row.fast += fact.measures.fast ?? 0;
+      row.slow += fact.measures.slow ?? 0;
+      row.touched += fact.measures.count ?? 0;
+    }
+    for (const fact of slaFacts) {
+      const row = get(fact.organisation_id);
+      row.met += fact.measures.met ?? 0;
+      row.missed += fact.measures.missed ?? 0;
+    }
+    const orgIds = [
+      ...new Set(
+        [...aggregate.values()]
+          .map((row) => row.org_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const orgNames = orgIds.length
+      ? await selectRows<{ id: string; name: string }>(
+          sql`SELECT id,name FROM organisation WHERE id IN (${sql.join(
+            orgIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+        )
+      : [];
+    const orgNameById = new Map(orgNames.map((row) => [row.id, row.name]));
+    const rows = [...aggregate.values()].map((row) => ({
+      ...row,
+      org: row.org_id ? (orgNameById.get(row.org_id) ?? NO_ORG) : NO_ORG,
+      volume: String(row.volume),
+      resolved: String(row.resolved),
+      met: String(row.met),
+      missed: String(row.missed),
+      fast: String(row.fast),
+      slow: String(row.slow),
+      touched: String(row.touched),
+    }));
+    const ranked = rows.map((row) => {
+      const met = num(row.met);
+      const missed = num(row.missed);
+      const attainment = ratePercent(met, met + missed, MIN);
+      return {
+        sort: attainment.value,
+        volumeN: num(row.volume),
+        row: {
+          customer: row.org,
+          volume: num(row.volume),
+          resolved: num(row.resolved),
+          attainment: cell(attainment),
+          fast: num(row.fast),
+          slow: num(row.slow),
+          _drill: row.org_id ?? "none",
+        } as Row,
+      };
+    });
+    // Screen ordering stays unchanged; paged exports order in SQL before LIMIT/OFFSET.
+    if (!ctx.exportPage)
+      ranked.sort((a, b) => {
         if (a.sort === null && b.sort === null) return b.volumeN - a.volumeN;
         if (a.sort === null) return 1;
         if (b.sort === null) return -1;
         return a.sort - b.sort;
-      })
-      .slice(0, 200)
-      .map((entry) => entry.row);
+      });
+    const page = pageRows(ctx, ranked, 200);
+    const table = page.rows.map((entry) => entry.row);
     const volume = table.reduce((sum, row) => sum + Number(row.volume), 0);
     return emptyBody({
       metrics: [
@@ -126,6 +172,7 @@ const customerPerformance: ReportDefinition = {
         col("slow", "Resolved after 14 days or more", "number"),
       ],
       rows: table,
+      truncated: page.truncated,
       population: rows.reduce((sum, row) => sum + num(row.touched), 0),
       outsideWindow: await countOutside(ctx, "created_at"),
       drill: true,
@@ -144,36 +191,79 @@ const customerVolumeTrend: ReportDefinition = {
   key: "customer_volume_trend",
   category: "customers",
   title: "Customer volume trend",
+  pagedExport: true,
   async compute(ctx) {
-    const from = ctx.previous.from;
-    const rows = await selectRows<{
-      org_id: string | null;
-      org: string;
-      created_at: string | Date;
-    }>(sql`SELECT p.organisation_id AS org_id, COALESCE(o.name, ${NO_ORG}) AS org, w.created_at
-      ${itemFrom(ctx, sql`LEFT JOIN organisation o ON o.id = p.organisation_id`)}
-      AND w.created_at >= ${tsn(from)} AND w.created_at < ${tsn(ctx.window.to)}`);
-    const current = new Map<string, number>();
-    const previous = new Map<string, number>();
-    const ids = new Map<string, string | null>();
-    const weekly = new Map<string, Map<string, number>>();
-    for (const row of rows) {
-      ids.set(row.org, row.org_id);
-      const at = utc(row.created_at);
-      if (at >= ctx.window.from) {
-        current.set(row.org, (current.get(row.org) ?? 0) + 1);
-        const perWeek = weekly.get(row.org) ?? new Map<string, number>();
-        const key = weekKey(at);
-        perWeek.set(key, (perWeek.get(key) ?? 0) + 1);
-        weekly.set(row.org, perWeek);
-      } else previous.set(row.org, (previous.get(row.org) ?? 0) + 1);
-    }
-    const orgs = [...new Set([...current.keys(), ...previous.keys()])].sort(
-      (a, b) => (current.get(b) ?? 0) - (current.get(a) ?? 0),
-    );
-    const table: Row[] = orgs.slice(0, 200).map((org) => {
-      const now = current.get(org) ?? 0;
-      const before = previous.get(org) ?? 0;
+    const [currentFacts, previousFacts] = await Promise.all([
+      loadFactRows(ctx, "item_created", ctx.window.from, ctx.window.to),
+      loadFactRows(ctx, "item_created", ctx.previous.from, ctx.window.from),
+    ]);
+    const grouped = new Map<
+      string,
+      {
+        org_id: string | null;
+        current: number;
+        previous: number;
+        weeks: Map<string, number>;
+      }
+    >();
+    const add = (
+      fact: (typeof currentFacts)[number],
+      period: "current" | "previous",
+    ) => {
+      const orgId = fact.organisation_id;
+      const row = grouped.get(orgId ?? "") ?? {
+        org_id: orgId,
+        current: 0,
+        previous: 0,
+        weeks: new Map<string, number>(),
+      };
+      const count = fact.measures.count ?? 0;
+      if (period === "current") {
+        row.current += count;
+        const week = weekKey(new Date(`${fact.day}T00:00:00.000Z`));
+        row.weeks.set(week, (row.weeks.get(week) ?? 0) + count);
+      } else row.previous += count;
+      grouped.set(orgId ?? "", row);
+    };
+    for (const fact of currentFacts) add(fact, "current");
+    for (const fact of previousFacts) add(fact, "previous");
+    const orgIds = [
+      ...new Set(
+        [...grouped.values()]
+          .map((row) => row.org_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const orgNames = orgIds.length
+      ? await selectRows<{ id: string; name: string }>(
+          sql`SELECT id,name FROM organisation WHERE id IN (${sql.join(
+            orgIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+        )
+      : [];
+    const orgNameById = new Map(orgNames.map((row) => [row.id, row.name]));
+    const rows = [...grouped.values()]
+      .map((row) => ({
+        org_id: row.org_id,
+        org: row.org_id ? (orgNameById.get(row.org_id) ?? NO_ORG) : NO_ORG,
+        current: String(row.current),
+        previous: String(row.previous),
+        weeks: row.weeks,
+      }))
+      .sort(
+        (a, b) =>
+          num(b.current) - num(a.current) ||
+          String(a.org_id ?? "").localeCompare(String(b.org_id ?? "")) ||
+          a.org.localeCompare(b.org),
+      );
+    const page = pageRows(ctx, rows, 200);
+    const currentTotal = rows.reduce((sum, row) => sum + num(row.current), 0);
+    const previousTotal = rows.reduce((sum, row) => sum + num(row.previous), 0);
+    const top = page.rows.filter((row) => num(row.current) > 0).slice(0, 5);
+    const table: Row[] = page.rows.map((row) => {
+      const now = num(row.current);
+      const before = num(row.previous);
       // A change needs a previous period with enough volume to be a comparison (RP-6).
       const change =
         before >= MIN
@@ -184,25 +274,24 @@ const customerVolumeTrend: ReportDefinition = {
             })
           : cell({ value: null, n: before, needed: MIN });
       return {
-        customer: org,
+        customer: row.org,
         volume: now,
         previous: before,
         change,
-        _drill: ids.get(org) ?? "none",
+        _drill: row.org_id ?? "none",
       };
     });
     const weeks = weekAxis(ctx);
-    const top = orgs.filter((org) => (current.get(org) ?? 0) > 0).slice(0, 5);
     return emptyBody({
       metrics: [
         {
           key: "volume",
           label: "Requests raised",
           unit: "count",
-          ...countValue([...current.values()].reduce((a, b) => a + b, 0)),
+          ...countValue(currentTotal),
           trend: trendOf(
-            countValue([...current.values()].reduce((a, b) => a + b, 0)),
-            countValue([...previous.values()].reduce((a, b) => a + b, 0)),
+            countValue(currentTotal),
+            countValue(previousTotal),
             1,
           ),
         },
@@ -213,10 +302,10 @@ const customerVolumeTrend: ReportDefinition = {
               type: "line",
               unit: "count",
               categories: weeks,
-              series: top.map((org) => ({
-                key: ids.get(org) ?? "none",
-                label: org,
-                values: weeks.map((week) => weekly.get(org)?.get(week) ?? 0),
+              series: top.map((item) => ({
+                key: item.org_id ?? "none",
+                label: item.org,
+                values: weeks.map((week) => item.weeks.get(week) ?? 0),
               })),
             }
           : null,
@@ -227,8 +316,9 @@ const customerVolumeTrend: ReportDefinition = {
         col("change", "Change", "percent"),
       ],
       rows: table,
-      population: [...current.values()].reduce((a, b) => a + b, 0),
-      outsideWindow: [...previous.values()].reduce((a, b) => a + b, 0),
+      truncated: page.truncated,
+      population: currentTotal,
+      outsideWindow: previousTotal,
       drill: true,
     });
   },
@@ -245,55 +335,99 @@ const satisfaction: ReportDefinition = {
   key: "satisfaction",
   category: "customers",
   title: "Satisfaction",
+  pagedExport: true,
   async compute(ctx) {
     const by = ctx.options.by === "request_type" ? "request_type" : "customer";
-    const label =
-      by === "customer"
-        ? sql`COALESCE(o.name, ${NO_ORG})`
-        : sql`COALESCE(rt.name, '(not raised through a request type)')`;
-    // Submissions are not unique per item (link-as-duplicate points a second submission at an
-    // existing item), so by=request_type takes exactly one non-duplicate submission per item;
-    // by=customer does not need the submission at all.
-    const submissionJoin =
-      by === "request_type"
-        ? sql`LEFT JOIN LATERAL (
-            SELECT s.request_type_id FROM submission s
-            WHERE s.work_item_id = w.id AND s.state <> 'duplicate'
-            ORDER BY s.created_at, s.id LIMIT 1
-          ) sub ON true
-          LEFT JOIN request_type rt ON rt.id = sub.request_type_id`
-        : sql``;
-    const rows = await selectRows<{
-      label: string;
-      ratings: string;
-      satisfied: string;
-      s1: string;
-      s2: string;
-      s3: string;
-      s4: string;
-      s5: string;
-    }>(sql`SELECT ${label} AS label, count(DISTINCT sr.id) AS ratings,
-        count(DISTINCT sr.id) FILTER (WHERE sr.score >= 4) AS satisfied,
-        count(DISTINCT sr.id) FILTER (WHERE sr.score = 1) AS s1,
-        count(DISTINCT sr.id) FILTER (WHERE sr.score = 2) AS s2,
-        count(DISTINCT sr.id) FILTER (WHERE sr.score = 3) AS s3,
-        count(DISTINCT sr.id) FILTER (WHERE sr.score = 4) AS s4,
-        count(DISTINCT sr.id) FILTER (WHERE sr.score = 5) AS s5
-      FROM satisfaction_rating sr
-      JOIN work_item w ON w.id = sr.work_item_id
-      JOIN project p ON p.id = w.project_id
-      LEFT JOIN organisation o ON o.id = p.organisation_id
-      ${submissionJoin}
-      WHERE w.workspace_id = ${ctx.workspaceId}
-        AND w.deleted_at IS NULL AND p.deleted_at IS NULL
-        AND ${ctx.reach}
-        AND ${itemFilterSql(ctx)}
-        AND sr.created_at >= ${tstz(ctx.window.from)} AND sr.created_at < ${tstz(ctx.window.to)}
-      GROUP BY 1 ORDER BY count(*) DESC LIMIT 200`);
-    const total = rows.reduce((sum, row) => sum + num(row.ratings), 0);
-    const satisfied = rows.reduce((sum, row) => sum + num(row.satisfied), 0);
+    const facts = await loadFactRows(
+      ctx,
+      "satisfaction_rating",
+      ctx.window.from,
+      ctx.window.to,
+    );
+    const ids = [
+      ...new Set(
+        facts
+          .map((fact) =>
+            by === "customer"
+              ? fact.organisation_id
+              : fact.dimensions.requestTypeId,
+          )
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const labels = ids.length
+      ? by === "customer"
+        ? await selectRows<{ id: string; name: string }>(
+            sql`SELECT id,name FROM organisation WHERE id IN (${sql.join(
+              ids.map((id) => sql`${id}`),
+              sql`, `,
+            )})`,
+          )
+        : await selectRows<{ id: string; name: string }>(
+            sql`SELECT id,name FROM request_type WHERE id IN (${sql.join(
+              ids.map((id) => sql`${id}`),
+              sql`, `,
+            )})`,
+          )
+      : [];
+    const labelById = new Map(labels.map((row) => [row.id, row.name]));
+    const grouped = new Map<
+      string,
+      {
+        id: string | null;
+        label: string;
+        ratings: number;
+        satisfied: number;
+        s1: number;
+        s2: number;
+        s3: number;
+        s4: number;
+        s5: number;
+      }
+    >();
+    for (const fact of facts) {
+      const id =
+        by === "customer"
+          ? fact.organisation_id
+          : fact.dimensions.requestTypeId;
+      const key = id ?? "";
+      const label = id
+        ? (labelById.get(id) ??
+          (by === "customer" ? NO_ORG : "(not raised through a request type)"))
+        : by === "customer"
+          ? NO_ORG
+          : "(not raised through a request type)";
+      const row = grouped.get(key) ?? {
+        id: id ?? null,
+        label,
+        ratings: 0,
+        satisfied: 0,
+        s1: 0,
+        s2: 0,
+        s3: 0,
+        s4: 0,
+        s5: 0,
+      };
+      const score = Number(fact.dimensions.score ?? 0);
+      const count = fact.measures.count ?? 0;
+      row.ratings += count;
+      if (score >= 4) row.satisfied += count;
+      if (score >= 1 && score <= 5)
+        row[`s${score}` as "s1" | "s2" | "s3" | "s4" | "s5"] += count;
+      grouped.set(key, row);
+    }
+    const rows = [...grouped.values()].sort(
+      (a, b) => b.ratings - a.ratings || a.label.localeCompare(b.label),
+    );
+    const page = pageRows(ctx, rows, 200);
+    const scoreKeys = ["s1", "s2", "s3", "s4", "s5"] as const;
+    const total = page.rows.reduce((sum, row) => sum + num(row.ratings), 0);
+    const satisfied = page.rows.reduce(
+      (sum, row) => sum + num(row.satisfied),
+      0,
+    );
     const overall = ratePercent(satisfied, total, MIN);
-    const table: Row[] = rows.map((row) => ({
+    const table: Row[] = page.rows.map((row) => ({
       [by]: row.label,
       ratings: num(row.ratings),
       satisfied: cell(ratePercent(num(row.satisfied), num(row.ratings), MIN)),
@@ -328,12 +462,8 @@ const satisfaction: ReportDefinition = {
                 {
                   key: "ratings",
                   label: "Ratings",
-                  values: ["s1", "s2", "s3", "s4", "s5"].map((key) =>
-                    rows.reduce(
-                      (sum, row) =>
-                        sum + num((row as Record<string, string>)[key]),
-                      0,
-                    ),
+                  values: scoreKeys.map((key) =>
+                    page.rows.reduce((sum, row) => sum + row[key], 0),
                   ),
                 },
               ],
@@ -350,6 +480,7 @@ const satisfaction: ReportDefinition = {
         col("s5", "5", "number"),
       ],
       rows: table,
+      truncated: page.truncated,
       population: total,
       outsideWindow: 0,
     });

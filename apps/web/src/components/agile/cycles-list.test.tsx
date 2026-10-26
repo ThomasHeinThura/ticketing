@@ -10,7 +10,8 @@ vi.mock("@tanstack/react-router", () => ({
     <a href="/">{children}</a>
   ),
 }));
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async () => ({
+  ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
       options ? `${key} ${JSON.stringify(options)}` : key,
@@ -105,6 +106,25 @@ describe("CyclesList", () => {
     expect(screen.getByText("cycles.status.active")).toBeTruthy();
     expect(screen.getByText(/summary.unestimated/)).toBeTruthy();
     expect(screen.getByRole("button", { name: /cycles.create/ })).toBeTruthy();
+  });
+
+  it("explains when the latest-three window includes a late snapshot", async () => {
+    const list = listOf();
+    mocks.getCycles.mockResolvedValue({
+      ...list,
+      meta: {
+        ...list.meta,
+        velocity: {
+          status: "insufficient_data",
+          cycles: 3,
+          reason: "late_snapshot",
+        },
+      },
+    });
+    renderList();
+    expect(
+      await screen.findByText("cycles.velocity.lateSnapshot"),
+    ).toBeTruthy();
   });
 
   it("shows the velocity once three cycles have completed", async () => {

@@ -1,5 +1,5 @@
 import { Badge } from "@taskdesk/ui";
-import { useTranslation } from "react-i18next";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { customerStatusKey } from "@/lib/portal-request";
 
 /**
@@ -13,7 +13,7 @@ export function PortalRequestState({
   state: string;
   customerStatus?: string | null;
 }) {
-  const { t } = useTranslation("portal");
+  const { t } = usePortalTranslation("portal");
   const key = customerStatusKey(customerStatus, state);
   return <Badge variant="outline">{key ? t(key) : state}</Badge>;
 }

@@ -18,15 +18,27 @@ import {
   requireReachContext,
   requireReachFilteredList,
 } from "../utils/reach-filtered-list";
-import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
+import {
+  apiKeyScopeSatisfies,
+  requireApiKeyPermissionScope,
+} from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { suggestDuplicatesForQueueRows } from "./duplicate-suggestions";
 import { parseSubmissionListFilters } from "./list-filters";
 import {
   escalatePortalPriority,
   ratePortalSubmission,
   reopenPortalSubmission,
 } from "./portal-actions";
+import {
+  listPortalBacklog,
+  portalBacklogPageSchema,
+  portalBacklogQuerySchema,
+  rankPortalBacklog,
+  rankPortalBacklogBodySchema,
+  rankPortalBacklogResponseSchema,
+} from "./portal-backlog";
 import { PORTAL_CUSTOMER_STATUSES } from "./portal-status";
 import {
   acceptSubmission,
@@ -644,6 +656,31 @@ const createSubmissionRoute = createRoute({
     422: errorResponse("Form answers do not match the published form"),
   },
 });
+async function duplicateReadableProjectIds(c: Context): Promise<string[]> {
+  if (!apiKeyScopeSatisfies(c.get("apiKey"), { work_item: ["read"] }))
+    return [];
+  const workspaceId = c.get("workspaceId");
+  const reach = listReachOf(c);
+  const reachable = new Set(await reach.reachableProjectIds([workspaceId]));
+  const candidates = (await reach.projectFactsFor([workspaceId])).filter(
+    (project) =>
+      reachable.has(project.id) && !project.deleted && !project.archived,
+  );
+  return (
+    await Promise.all(
+      candidates.map(async (project) =>
+        (await reach.can("work_item:read", {
+          projectId: project.id,
+          workspaceId,
+          organisationId: project.organisationId,
+        }))
+          ? project.id
+          : null,
+      ),
+    )
+  ).filter((id): id is string => id !== null);
+}
+
 const listSubmissionsRoute = createRoute({
   method: "get",
   operationId: "listSubmissions",
@@ -652,6 +689,7 @@ const listSubmissionsRoute = createRoute({
   summary: "List submissions for triage",
   middleware: [
     requestTypeCollectionScope,
+    requireReachFilteredList,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
   ] as const,
@@ -870,6 +908,40 @@ const staffMessageRoute = createRoute({
     ),
     404: errorResponse("Submission not found"),
     409: errorResponse("Submission cannot receive a message"),
+  },
+});
+const portalBacklogRoute = createRoute({
+  method: "get",
+  operationId: "listPortalOrganisationBacklog",
+  path: "/portal/requests/backlog",
+  tags: ["Portal submissions"],
+  summary: "List visible backlog items in the caller's organisation",
+  middleware: [portalOrganisation] as const,
+  request: { query: portalBacklogQuerySchema },
+  responses: {
+    200: jsonResponse("Organisation backlog", portalBacklogPageSchema),
+    400: errorResponse("Invalid backlog cursor"),
+    404: errorResponse("Backlog not found"),
+  },
+});
+const portalBacklogRankRoute = createRoute({
+  method: "post",
+  operationId: "rankPortalOrganisationBacklog",
+  path: "/portal/requests/rank",
+  tags: ["Portal submissions"],
+  summary: "Reorder a visible item within its organisation backlog partition",
+  middleware: [portalOrganisation] as const,
+  request: {
+    body: {
+      required: true,
+      content: { "application/json": { schema: rankPortalBacklogBodySchema } },
+    },
+  },
+  responses: {
+    200: jsonResponse("Backlog rank", rankPortalBacklogResponseSchema),
+    400: errorResponse("Invalid rank neighbours"),
+    404: errorResponse("Backlog item not found"),
+    409: errorResponse("Backlog changed"),
   },
 });
 const portalListRoute = createRoute({
@@ -1163,11 +1235,21 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
       parseCollectionLimit(query.limit),
       parseSubmissionListFilters(query),
     );
+    const duplicates = await suggestDuplicatesForQueueRows(
+      query.workspaceId,
+      result.submissions.map((row) => ({
+        ref: row.ref,
+        summary: row.summary,
+        organisationId: row.organisation.id,
+      })),
+      await duplicateReadableProjectIds(c),
+    );
     return c.json(
       {
         submissions: result.submissions.map((row) => ({
           ref: row.ref,
           summary: row.summary,
+          suggestedDuplicates: duplicates.get(row.ref) ?? [],
           submission: {
             id: row.submission.id,
             number: row.submission.number,
@@ -1290,7 +1372,7 @@ const triageActionRouter = apiRouter<IntakeVariables>()
         suggestions: await suggestDuplicateWorkItems(
           c.req.valid("param").ref,
           c.get("workspaceId"),
-          await listReachOf(c).reachableProjectIds([c.get("workspaceId")]),
+          await duplicateReadableProjectIds(c),
         ),
       },
       200,
@@ -1328,6 +1410,22 @@ const triageActionRouter = apiRouter<IntakeVariables>()
         state: posted.state,
         message: toSubmissionMessage(posted.message),
       },
+      200,
+    );
+  });
+
+const portalBacklogRouter = apiRouter<IntakeVariables>()
+  .openapi(portalBacklogRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    return c.json(
+      await listPortalBacklog(identity.personId, c.req.valid("query").cursor),
+      200,
+    );
+  })
+  .openapi(portalBacklogRankRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    return c.json(
+      await rankPortalBacklog(identity.personId, c.req.valid("json")),
       200,
     );
   });
@@ -1463,6 +1561,7 @@ const router = requestTypeRouter
   .route("/", intakeSubmissionRouter)
   .route("/", triageActionRouter)
   .route("/", portalSubmissionRouter)
+  .route("/", portalBacklogRouter)
   .route("/", portalDetailRouter)
   .route("/", portalMessageRouter)
   .route("/", portalWithdrawRouter)

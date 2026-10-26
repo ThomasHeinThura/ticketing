@@ -7,6 +7,8 @@ import {
 import db from "../../database";
 import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { lockWorkspaceLabelNames } from "../../label/repository";
 import {
   type ActivityActorType,
@@ -143,6 +145,7 @@ export async function updateWorkItem(
   actorId: string,
   actorType: ActivityActorType,
   input: UpdateWorkItemInput,
+  audit: { apiKeyId?: string | null; origin?: "mcp" } = {},
 ) {
   const values: Partial<typeof workItemTable.$inferInsert> = {};
   if (input.title !== undefined) values.title = input.title;
@@ -151,8 +154,8 @@ export async function updateWorkItem(
   if (input.startDate !== undefined) values.startDate = input.startDate;
   if (input.dueDate !== undefined) values.dueDate = input.dueDate;
 
-  const { updated, activityRows, realtimeEvent } = await db.transaction(
-    async (tx) => {
+  const { updated, activityRows, realtimeEvent, auditFailed } =
+    await db.transaction(async (tx) => {
       if (input.labelIds !== undefined)
         await lockWorkspaceLabelNames(tx, workspaceId, []);
       const [locked] = await tx
@@ -321,9 +324,45 @@ export async function updateWorkItem(
             })
           : undefined;
 
-      return { updated, activityRows, realtimeEvent, visibleChanges };
-    },
-  );
+      const auditFailed =
+        activityRows.length > 0
+          ? await appendAuditSavepoint(tx, {
+              actorId,
+              actorType,
+              apiKeyId: audit.apiKeyId ?? null,
+              workspaceId: updated.workspaceId,
+              projectId: updated.projectId,
+              action: "work_item.updated",
+              entityType: "work_item",
+              entityId: updated.id,
+              before: null,
+              after: {
+                changedFields: [
+                  ...new Set(
+                    activityRows
+                      .filter(
+                        (row) =>
+                          row.verb === "updated" &&
+                          typeof row.field === "string",
+                      )
+                      .map((row) => row.field as string),
+                  ),
+                ],
+                ...(audit.origin ? { origin: audit.origin } : {}),
+              },
+            })
+          : false;
+
+      return {
+        updated,
+        activityRows,
+        realtimeEvent,
+        visibleChanges,
+        auditFailed,
+      };
+    });
+
+  if (auditFailed) await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
 
   // `changes: [{ field, from, to }]` per `events.md`'s declared `work_item.updated`
   // payload -- built from the same `activityRows` used for the `activity` table write

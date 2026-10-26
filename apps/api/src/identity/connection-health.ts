@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import db, { schema } from "../database";
 import { loadEntraDiscovery } from "./oidc-provider";
 
@@ -61,7 +61,12 @@ export async function checkIdentityConnectionHealth(
       tenantId: schema.identityConnectionTable.tenantId,
     })
     .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.enabled, true))
+    .where(
+      and(
+        eq(schema.identityConnectionTable.enabled, true),
+        isNull(schema.identityConnectionTable.deletedAt),
+      ),
+    )
     .limit(IDENTITY_HEALTH_MAX_CONNECTIONS);
   const outcome: IdentityHealthOutcome = {
     checked: 0,
@@ -90,6 +95,7 @@ export async function checkIdentityConnectionHealth(
           and(
             inArray(schema.identityConnectionTable.id, ids),
             eq(schema.identityConnectionTable.enabled, true),
+            isNull(schema.identityConnectionTable.deletedAt),
           ),
         );
       outcome[health] += ids.length;

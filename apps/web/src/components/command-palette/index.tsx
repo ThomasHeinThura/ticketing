@@ -17,7 +17,18 @@ import {
   Kbd,
   KbdGroup,
 } from "@taskdesk/ui";
-import { ArrowDownIcon, ArrowUpIcon, CornerDownLeftIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  Bookmark,
+  CornerDownLeftIcon,
+  FileText,
+  FolderKanban,
+  Hash,
+  History,
+  User,
+  Users,
+} from "lucide-react";
 import {
   Fragment,
   lazy,
@@ -29,8 +40,19 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  pushRecentItem,
+  type RecentItem,
+  readRecentItems,
+} from "@/components/search-command-menu/recent-items";
+import {
+  type PaletteEntry,
+  projectSearchGroups,
+  type SearchResultItem,
+} from "@/components/search-command-menu/search-targets";
 import { shortcuts } from "@/constants/shortcuts";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
+import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { authClient } from "@/lib/auth-client";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -53,6 +75,8 @@ type PaletteActionItem = {
   label: string;
   shortcut?: string;
   onRun: () => void;
+  resultType?: PaletteEntry["type"];
+  description?: string;
 };
 
 type PaletteGroup = {
@@ -99,6 +123,15 @@ export function CommandPalette({
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchTerm = query.trim();
+  const searchEnabled = open && searchTerm.length >= 1;
+  const { data: searchResults } = useGlobalSearch({
+    q: searchEnabled ? searchTerm : "",
+    type: "all",
+    workspaceId: workspace?.id,
+    limit: 20,
+  });
   const handledRequest = useRef<number | null>(null);
   useEffect(() => {
     if (!request || handledRequest.current === request.id) return;
@@ -144,6 +177,10 @@ export function CommandPalette({
     onRequestHandled,
   ]);
 
+  useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
+
   const preloadProjectsPage = useCallback(() => {
     if (!workspace?.id) return;
     // TanStack's auto-split route component and its nested React.lazy page are
@@ -183,6 +220,57 @@ export function CommandPalette({
     },
     [onOpenChange],
   );
+
+  const recentItems = useMemo<RecentItem[]>(
+    () => (open && workspace?.id ? readRecentItems(workspace.id) : []),
+    [open, workspace?.id],
+  );
+
+  const searchGroups = useMemo(
+    () =>
+      projectSearchGroups(
+        searchEnabled ? searchTerm : "",
+        (searchResults?.results ?? []) as SearchResultItem[],
+        recentItems,
+        (key) => t(key),
+      ),
+    [searchEnabled, searchTerm, searchResults?.results, recentItems, t],
+  );
+
+  const handleSearchResult = useCallback(
+    (entry: PaletteEntry) => {
+      if (workspace?.id) {
+        pushRecentItem(workspace.id, {
+          type: entry.type,
+          id: entry.id,
+          title: entry.title,
+          description: entry.description,
+          href: entry.href,
+        });
+      }
+      setQuery("");
+      onOpenChange(false);
+      navigate({ to: entry.href as never });
+    },
+    [navigate, onOpenChange, workspace?.id],
+  );
+
+  const getResultIcon = (type: PaletteEntry["type"]) => {
+    switch (type) {
+      case "work_item":
+        return Hash;
+      case "project":
+        return FolderKanban;
+      case "workspace":
+        return Users;
+      case "saved_view":
+        return Bookmark;
+      case "person":
+        return User;
+      default:
+        return FileText;
+    }
+  };
 
   const groupedItems = useMemo<PaletteGroup[]>(
     () => [
@@ -278,6 +366,41 @@ export function CommandPalette({
     [navigate, setTheme, t, workspace?.id, canCreateWorkspace],
   );
 
+  const paletteGroups = useMemo<PaletteGroup[]>(() => {
+    const queryLower = searchEnabled ? searchTerm.toLowerCase() : "";
+    const projectedSearchGroups = searchGroups.map((group) => ({
+      value: `search-${group.value}`,
+      label: group.label,
+      items: group.items.map((entry) => ({
+        value: `search:${entry.type}:${entry.id}`,
+        label: entry.title,
+        description: entry.description,
+        resultType: entry.type,
+        onRun: () => handleSearchResult(entry),
+      })),
+    }));
+    const visibleActionGroups = groupedItems
+      .map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) =>
+            !queryLower ||
+            `${item.label} ${item.value}`.toLowerCase().includes(queryLower),
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
+
+    // Search hits lead when the user is typing; with an empty query, recent
+    // destinations precede the existing action and navigation groups.
+    return [...projectedSearchGroups, ...visibleActionGroups];
+  }, [
+    groupedItems,
+    handleSearchResult,
+    searchEnabled,
+    searchGroups,
+    searchTerm,
+  ]);
+
   const shortcutHandlers = useMemo(() => {
     const handlers = new Map<string, () => void>();
     for (const group of groupedItems) {
@@ -343,12 +466,18 @@ export function CommandPalette({
           blurBackdrop={false}
         >
           <Command
-            items={groupedItems}
+            items={paletteGroups}
             onItemHighlighted={handleItemHighlighted}
+            filter={null}
+            mode="none"
+            value={query}
+            onValueChange={setQuery}
           >
             <CommandInput
               autoFocus={false}
-              placeholder={t("navigation:commandPalette.inputPlaceholder")}
+              placeholder={t("navigation:search.inputPlaceholder")}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
             />
             <CommandPanel>
               <CommandEmpty>
@@ -361,6 +490,36 @@ export function CommandPalette({
                       <CommandGroupLabel>{group.label}</CommandGroupLabel>
                       <CommandCollection>
                         {(item: PaletteActionItem) => {
+                          if (item.resultType) {
+                            const Icon =
+                              group.value === "search-recent"
+                                ? History
+                                : getResultIcon(item.resultType);
+                            return (
+                              <CommandItem
+                                key={item.value}
+                                value={item.value}
+                                onClick={() => runCommand(item.onRun)}
+                                className="flex items-start gap-3 py-3"
+                                aria-label={`${item.resultType}: ${item.label}`}
+                              >
+                                <Icon
+                                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground"
+                                  aria-hidden="true"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-sm font-medium">
+                                    {item.label}
+                                  </div>
+                                  {item.description && (
+                                    <div className="mt-1 truncate text-xs text-muted-foreground">
+                                      {item.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            );
+                          }
                           return (
                             <CommandItem
                               key={item.value}

@@ -31,6 +31,19 @@ const columns = {
   clarificationWindowDays: T.clarificationWindowDays,
   reopenWindowDays: T.reopenWindowDays,
   notificationRetentionDays: T.notificationRetentionDays,
+  cspMode: T.cspMode,
+  invitationLifetimeHours: T.invitationLifetimeHours,
+  customerInvitationCreateWindowMinutes:
+    T.customerInvitationCreateWindowMinutes,
+  customerInvitationPerInviterLimit: T.customerInvitationPerInviterLimit,
+  customerInvitationPerOrganisationLimit:
+    T.customerInvitationPerOrganisationLimit,
+  customerInvitationResendCooldownSeconds:
+    T.customerInvitationResendCooldownSeconds,
+  anonymousRateLimitWindowMs: T.anonymousRateLimitWindowMs,
+  anonymousRateLimitMax: T.anonymousRateLimitMax,
+  mcpWriteCeilingPerMinute: T.mcpWriteCeilingPerMinute,
+  apiKeyBurstThreshold: T.apiKeyBurstThreshold,
   timezone: T.timezone,
   attachmentMaxBytes: T.attachmentMaxBytes,
   attachmentMaxPerItem: T.attachmentMaxPerItem,
@@ -47,7 +60,10 @@ async function readSettings(): Promise<SettingsResponse> {
   if (!row)
     throw new HTTPException(503, { message: "Instance settings unavailable" });
   const { updatedAt, ...settings } = row;
-  return { updatedAt: updatedAt.toISOString(), settings };
+  return settingsResponseSchema.parse({
+    updatedAt: updatedAt.toISOString(),
+    settings,
+  });
 }
 
 const getRoute = createRoute({

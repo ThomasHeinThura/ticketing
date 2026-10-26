@@ -30,9 +30,10 @@ export type ServiceCalendarUsage = InferResponseType<
 export type ServiceCalendarDeletionRequest = { pendingActionId: string };
 export type ServiceCalendarInput = Omit<
   ServiceCalendar,
-  "id" | "workspaceId" | "createdAt" | "updatedAt" | "version"
+  "id" | "workspaceId" | "createdAt" | "updatedAt" | "version" | "key"
 >;
 export type CreateServiceCalendarRequest = ServiceCalendarInput & {
+  key: string;
   workspaceId: string;
 };
 export type UpdateServiceCalendarRequest = {

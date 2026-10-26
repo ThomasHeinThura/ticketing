@@ -3,6 +3,10 @@ import { responseTimestamp, z } from "../openapi";
 export const workspaceMemberSchema = z
   .object({
     id: z.string(),
+    personId: z.string().nullable().optional().openapi({
+      description:
+        "Active staff person identifier, distinct from the login user id.",
+    }),
     name: z.string(),
     email: z.string(),
     image: z.string().nullable(),
@@ -14,6 +18,7 @@ export const workspaceMemberSchema = z
   .openapi("WorkspaceMember");
 
 export const workspaceMemberListSchema = z.array(workspaceMemberSchema);
+export type WorkspaceMember = z.infer<typeof workspaceMemberSchema>;
 
 export const workspaceSummarySchema = z
   .object({

@@ -73,11 +73,70 @@ describe("TaskDeleteButton", () => {
     await waitFor(() =>
       expect(mocks.openPendingAction).toHaveBeenCalledWith({
         pendingActionId: "pa-1",
+        finalFocus: expect.any(Function),
       }),
+    );
+    const finalFocus = mocks.openPendingAction.mock.calls[0]?.[0]?.finalFocus as
+      | (() => HTMLElement | false)
+      | undefined;
+    expect(finalFocus?.()).toBe(
+      screen.getByRole("button", { name: "tasks:delete.action" }),
     );
     expect(mocks.success).not.toHaveBeenCalled();
     expect(onRequested).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("passes the original trigger as a connected-only final-focus target", async () => {
+    mocks.deleteTask.mockResolvedValue({ pendingActionId: "pa-focus" });
+    render(<TaskDeleteButton workItemKey="PROJ-1" />);
+    const trigger = screen.getByRole("button", {
+      name: "tasks:delete.action",
+    });
+    trigger.focus();
+
+    fireEvent.click(trigger);
+    await waitFor(() =>
+      expect(mocks.openPendingAction).toHaveBeenCalledWith({
+        pendingActionId: "pa-focus",
+        finalFocus: expect.any(Function),
+      }),
+    );
+    const finalFocus = mocks.openPendingAction.mock.calls[0]?.[0]?.finalFocus as
+      | (() => HTMLElement | false)
+      | undefined;
+    expect(finalFocus?.()).toBe(trigger);
+  });
+
+  it("rejects a trigger removed by the request callback", async () => {
+    mocks.deleteTask.mockResolvedValue({ pendingActionId: "pa-detached" });
+    let rerender!: (ui: React.ReactNode) => void;
+    const view = render(<TaskDeleteButton workItemKey="PROJ-1" />);
+    rerender = view.rerender;
+    const trigger = screen.getByRole("button", {
+      name: "tasks:delete.action",
+    });
+    view.rerender(
+      <TaskDeleteButton
+        workItemKey="PROJ-1"
+        onRequested={() =>
+          rerender(<TaskDeleteButton workItemKey={undefined} />)
+        }
+      />,
+    );
+    fireEvent.click(trigger);
+
+    await waitFor(() =>
+      expect(mocks.openPendingAction).toHaveBeenCalledWith({
+        pendingActionId: "pa-detached",
+        finalFocus: expect.any(Function),
+      }),
+    );
+    const finalFocus = mocks.openPendingAction.mock.calls[0]?.[0]?.finalFocus as
+      | (() => HTMLElement | false)
+      | undefined;
+    expect(trigger.isConnected).toBe(false);
+    expect(finalFocus?.()).toBe(false);
   });
 
   it("keeps the current view open and reports a failed deletion", async () => {

@@ -1,6 +1,7 @@
 import { agileReports } from "./reports/agile";
 import { customerReports } from "./reports/customers";
 import { deliveryReports } from "./reports/delivery";
+import { inactiveAssigneeReports } from "./reports/inactive-assignees";
 import { kbReports } from "./reports/kb";
 import { leadershipReports } from "./reports/leadership";
 import { peopleReports } from "./reports/people";
@@ -14,6 +15,7 @@ export const REPORTS: readonly ReportDefinition[] = [
   ...customerReports,
   ...deliveryReports,
   ...peopleReports,
+  ...inactiveAssigneeReports,
   ...leadershipReports,
   ...agileReports,
   ...timeReports,

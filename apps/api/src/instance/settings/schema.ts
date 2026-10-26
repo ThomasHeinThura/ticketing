@@ -4,7 +4,7 @@ import { z } from "../../openapi";
 /**
  * The `instance_setting` columns God Mode → General and Storage edit that the data model names.
  * Fields the contract describes only in prose (instance name, support email, terms and privacy
- * URLs, health thresholds, MCP ceilings) have no named column and are not part of this DTO.
+ * URLs, health thresholds) have no named column and are not part of this DTO.
  */
 const extension = z
   .string()
@@ -17,6 +17,16 @@ export const settingsFields = {
   clarificationWindowDays: z.number().int().min(1).max(365),
   reopenWindowDays: z.number().int().min(1).max(365),
   notificationRetentionDays: z.number().int().min(1).max(3650),
+  cspMode: z.enum(["report_only", "enforce"]),
+  invitationLifetimeHours: z.number().int().min(1).max(720),
+  customerInvitationCreateWindowMinutes: z.number().int().min(1).max(1440),
+  customerInvitationPerInviterLimit: z.number().int().min(1).max(10_000),
+  customerInvitationPerOrganisationLimit: z.number().int().min(1).max(10_000),
+  customerInvitationResendCooldownSeconds: z.number().int().min(1).max(86_400),
+  anonymousRateLimitWindowMs: z.number().int().min(60_000).max(86_400_000),
+  anonymousRateLimitMax: z.number().int().min(1).max(10_000),
+  mcpWriteCeilingPerMinute: z.number().int().min(1).max(100),
+  apiKeyBurstThreshold: z.number().int().min(1).max(100_000),
   timezone: z
     .string()
     .trim()
@@ -51,6 +61,16 @@ export const settingsResponseSchema = z.object({
     clarificationWindowDays: z.number().int(),
     reopenWindowDays: z.number().int(),
     notificationRetentionDays: z.number().int(),
+    cspMode: z.enum(["report_only", "enforce"]),
+    invitationLifetimeHours: z.number().int(),
+    customerInvitationCreateWindowMinutes: z.number().int(),
+    customerInvitationPerInviterLimit: z.number().int(),
+    customerInvitationPerOrganisationLimit: z.number().int(),
+    customerInvitationResendCooldownSeconds: z.number().int(),
+    anonymousRateLimitWindowMs: z.number().int(),
+    anonymousRateLimitMax: z.number().int(),
+    mcpWriteCeilingPerMinute: z.number().int(),
+    apiKeyBurstThreshold: z.number().int(),
     timezone: z.string(),
     attachmentMaxBytes: z.number().int(),
     attachmentMaxPerItem: z.number().int(),

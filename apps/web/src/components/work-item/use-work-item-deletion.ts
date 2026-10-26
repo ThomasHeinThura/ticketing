@@ -29,7 +29,7 @@ export function useWorkItemDeletion(
   });
   const canRequest =
     !permission.isCheckingPermissions && permission.canDeleteTasks();
-  async function requestDeletion() {
+  async function requestDeletion(finalFocus?: () => HTMLElement | false) {
     if (!canRequest || mutation.isPending || busy.current) return;
     busy.current = true;
     const intent = lifecycle.capture();
@@ -37,7 +37,7 @@ export function useWorkItemDeletion(
     try {
       const action = await mutation.mutateAsync(item.key);
       if (!lifecycle.isCurrent(intent)) return;
-      await openPendingAction(action);
+      await openPendingAction(finalFocus ? { ...action, finalFocus } : action);
     } catch (error) {
       if (!lifecycle.isCurrent(intent)) return;
       if (error instanceof HttpError && error.status === 404) onAccessLost();

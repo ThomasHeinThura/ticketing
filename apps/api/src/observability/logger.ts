@@ -20,6 +20,7 @@ export const LOG_MESSAGES = [
   "http.request",
   "http.lifecycle_failure",
   "auth.failure",
+  "auth.unknown_key_capability",
   "database.failure",
   "jobs.failure",
   "audit.write_failure",

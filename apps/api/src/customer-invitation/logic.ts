@@ -11,20 +11,25 @@ export const CUSTOMER_INVITATION_ROLE = "customer" as const;
 /** The two values of `invitation.scope`. */
 export const INVITATION_SCOPES = ["staff", "customer"] as const;
 
-/**
- * Defaults for what CP-22 and CP-26 call instance configuration. The instance settings screen does
- * not carry these values yet, so they are named here, in one place, rather than scattered.
- */
+/** CP-22/26 defaults. Runtime enforcement reads the persisted instance settings. */
+export const CUSTOMER_INVITATION_DEFAULTS = {
+  invitationLifetimeHours: 48,
+  customerInvitationCreateWindowMinutes: 60,
+  customerInvitationPerInviterLimit: 20,
+  customerInvitationPerOrganisationLimit: 50,
+  customerInvitationResendCooldownSeconds: 60,
+} as const;
+
+/** Compatibility view for pure helper tests and existing callers; runtime code reads settings. */
 export const CUSTOMER_INVITATION_LIMITS = {
-  /** The existing invitation lifetime (the staff flow uses the same 48 hours). */
-  lifetimeMs: 48 * 60 * 60 * 1000,
-  /** Creates per inviter per window. */
-  perInviter: 20,
-  /** Creates per organisation per window. */
-  perOrganisation: 50,
-  windowMs: 60 * 60 * 1000,
-  /** Minimum gap between two sends of the same invitation. */
-  resendCooldownMs: 60 * 1000,
+  lifetimeMs: CUSTOMER_INVITATION_DEFAULTS.invitationLifetimeHours * 3_600_000,
+  perInviter: CUSTOMER_INVITATION_DEFAULTS.customerInvitationPerInviterLimit,
+  perOrganisation:
+    CUSTOMER_INVITATION_DEFAULTS.customerInvitationPerOrganisationLimit,
+  windowMs:
+    CUSTOMER_INVITATION_DEFAULTS.customerInvitationCreateWindowMinutes * 60_000,
+  resendCooldownMs:
+    CUSTOMER_INVITATION_DEFAULTS.customerInvitationResendCooldownSeconds * 1000,
 } as const;
 
 export type CustomerInvitationStatus =

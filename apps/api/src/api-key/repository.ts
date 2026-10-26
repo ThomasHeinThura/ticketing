@@ -1,3 +1,4 @@
+import { isCapability } from "@taskdesk/permissions";
 import {
   and,
   desc,
@@ -14,11 +15,16 @@ import { type Executor, executorOrDefault } from "../database/executor";
 import {
   apiKeyExtensionTable,
   apikeyTable,
+  instanceSettingTable,
   personTable,
   userTable,
   workspaceTable,
 } from "../database/schema";
 import { type ApiKeyKind, legacyPersonalKeyKind } from "./credential";
+import {
+  MAX_API_KEY_BURST_THRESHOLD,
+  MIN_API_KEY_BURST_THRESHOLD,
+} from "./rate-limit";
 
 export async function loadApiKeyKind(
   apiKeyId: string,
@@ -38,6 +44,23 @@ export async function loadApiKeyKind(
     .where(eq(apiKeyExtensionTable.apikeyId, apiKeyId))
     .limit(1);
   if (!row) return legacyPersonalKeyKind(apiKeyId);
+  const storedCapabilities =
+    Array.isArray(row.capabilities) &&
+    row.capabilities.every((entry) => typeof entry === "string")
+      ? row.capabilities
+      : null;
+  if (storedCapabilities?.some((entry) => !isCapability(entry))) {
+    // Import only after an actual stored anomaly, outside application registry boot.
+    // The closed log event contains no key identifier, secret or untrusted storage value.
+    const { logTaskDesk } = await import("../instance/observability/runtime");
+    logTaskDesk({
+      module: "auth",
+      message: "auth.unknown_key_capability",
+      level: "warn",
+      result: "degraded",
+    });
+  }
+
   return {
     id: apiKeyId,
     kind: row.workspaceId ? "service" : "personal",
@@ -48,12 +71,42 @@ export async function loadApiKeyKind(
     rateLimitPerMinute: row.rateLimitPerMinute,
     disabledAt: row.disabledAt,
     // Malformed storage grants nothing: only an array of strings counts.
-    capabilities:
-      Array.isArray(row.capabilities) &&
-      row.capabilities.every((entry) => typeof entry === "string")
-        ? [...row.capabilities]
-        : null,
+    capabilities: storedCapabilities?.filter(isCapability) ?? null,
   };
+}
+
+/** Read the current, validated instance-wide MCP write ceiling. Storage failures fail closed. */
+export async function loadMcpWriteCeilingPerMinute(): Promise<number> {
+  const [row] = await db
+    .select({ ceiling: instanceSettingTable.mcpWriteCeilingPerMinute })
+    .from(instanceSettingTable)
+    .where(eq(instanceSettingTable.id, "singleton"))
+    .limit(1);
+  if (
+    !row ||
+    !Number.isInteger(row.ceiling) ||
+    row.ceiling < 1 ||
+    row.ceiling > 100
+  )
+    throw new Error("MCP write ceiling unavailable");
+  return row.ceiling;
+}
+
+/** Read the current, validated instance-wide MCP write-attempt auto-disable threshold. */
+export async function loadApiKeyBurstThreshold(): Promise<number> {
+  const [row] = await db
+    .select({ threshold: instanceSettingTable.apiKeyBurstThreshold })
+    .from(instanceSettingTable)
+    .where(eq(instanceSettingTable.id, "singleton"))
+    .limit(1);
+  if (
+    !row ||
+    !Number.isInteger(row.threshold) ||
+    row.threshold < MIN_API_KEY_BURST_THRESHOLD ||
+    row.threshold > MAX_API_KEY_BURST_THRESHOLD
+  )
+    throw new Error("API key burst threshold unavailable");
+  return row.threshold;
 }
 
 const LAST_USED_WRITE_INTERVAL_SECONDS = 60;
@@ -171,7 +224,12 @@ export type StoredApiKey = {
   lastUsedIp: string | null;
   disabledAt: Date | null;
   disabledReason: string | null;
-  creatorActive: boolean | null;
+  adminOwnershipTransferredAt: Date | null;
+  formerCreatorAt: Date | null;
+  reattestationRequiredAt: Date | null;
+  reattestedAt: Date | null;
+  reattestedByPersonId: string | null;
+  accountabilityVersion: number;
 };
 
 const storedKeyColumns = {
@@ -194,7 +252,12 @@ const storedKeyColumns = {
   lastUsedIp: apiKeyExtensionTable.lastUsedIp,
   disabledAt: apiKeyExtensionTable.disabledAt,
   disabledReason: apiKeyExtensionTable.disabledReason,
-  creatorActive: personTable.active,
+  adminOwnershipTransferredAt: apiKeyExtensionTable.adminOwnershipTransferredAt,
+  formerCreatorAt: apiKeyExtensionTable.formerCreatorAt,
+  reattestationRequiredAt: apiKeyExtensionTable.reattestationRequiredAt,
+  reattestedAt: apiKeyExtensionTable.reattestedAt,
+  reattestedByPersonId: apiKeyExtensionTable.reattestedByPersonId,
+  accountabilityVersion: apiKeyExtensionTable.accountabilityVersion,
 };
 
 /**
@@ -208,10 +271,6 @@ function keySelect(executor: Executor) {
     .leftJoin(
       apiKeyExtensionTable,
       eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
-    )
-    .leftJoin(
-      personTable,
-      eq(personTable.id, apiKeyExtensionTable.createdByPersonId),
     );
 }
 
@@ -231,7 +290,12 @@ function toStored(
     lastUsedIp: row.lastUsedIp ?? null,
     disabledAt: row.disabledAt ?? null,
     disabledReason: row.disabledReason ?? null,
-    creatorActive: row.creatorActive ?? null,
+    adminOwnershipTransferredAt: row.adminOwnershipTransferredAt ?? null,
+    formerCreatorAt: row.formerCreatorAt ?? null,
+    reattestationRequiredAt: row.reattestationRequiredAt ?? null,
+    reattestedAt: row.reattestedAt ?? null,
+    reattestedByPersonId: row.reattestedByPersonId ?? null,
+    accountabilityVersion: row.accountabilityVersion ?? 1,
   };
 }
 
@@ -281,10 +345,6 @@ export async function listKeysForInstance(
     .leftJoin(
       apiKeyExtensionTable,
       eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
-    )
-    .leftJoin(
-      personTable,
-      eq(personTable.id, apiKeyExtensionTable.createdByPersonId),
     )
     .leftJoin(userTable, eq(userTable.id, apikeyTable.userId))
     .leftJoin(
@@ -338,6 +398,30 @@ export async function findKeyForWorkspace(
       eq(apiKeyExtensionTable.workspaceId, workspaceId),
     ),
   ).limit(1);
+  return row ? toStored(row) : undefined;
+}
+
+/** Lock one workspace service-key accountability row before re-attestation. */
+export async function lockServiceKeyAccountability(
+  executor: Executor,
+  keyId: string,
+  workspaceId: string,
+): Promise<StoredApiKey | undefined> {
+  const [row] = await executor
+    .select(storedKeyColumns)
+    .from(apikeyTable)
+    .innerJoin(
+      apiKeyExtensionTable,
+      eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+    )
+    .where(
+      and(
+        eq(apikeyTable.id, keyId),
+        eq(apiKeyExtensionTable.workspaceId, workspaceId),
+      ),
+    )
+    .for("update", { of: apiKeyExtensionTable })
+    .limit(1);
   return row ? toStored(row) : undefined;
 }
 
@@ -400,11 +484,12 @@ export async function insertApiKey(
 
 /** Row lock on the key being revoked or deleted, so two revocations serialise. */
 export async function lockApiKey(executor: Executor, keyId: string) {
-  await executor
-    .select({ id: apikeyTable.id })
+  const [row] = await executor
+    .select({ id: apikeyTable.id, enabled: apikeyTable.enabled })
     .from(apikeyTable)
     .where(eq(apikeyTable.id, keyId))
     .for("update");
+  return row;
 }
 
 /** AK-6: revocation is immediate and keeps the row (it is not a deletion). */

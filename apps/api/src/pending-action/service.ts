@@ -1,7 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
 import type { PolicyMap, ResolvedIdentity } from "@taskdesk/permissions";
-import { and, desc, eq, gt, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import {
   assertKeyHasApprover,
@@ -21,7 +21,7 @@ import {
   serviceCalendarTable,
   userTable,
 } from "../database/schema";
-import { enqueueOutboxEvent, eventScope } from "../events/outbox";
+import { enqueueOutboxEvent } from "../events/outbox";
 import { databaseErrorCode } from "../identity/grant-closure-retry";
 import {
   IdentityGrantClosureChangedError,
@@ -33,6 +33,11 @@ import {
 } from "../identity/person-lifecycle";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import {
+  HARD_PURGE_TARGET_TYPES,
+  type HardPurgeTargetType,
+  inspectHardPurgeTarget,
+} from "../instance/purge-target";
 import {
   assertAdminRemovalAllowed,
   lockInstanceAdminSerialization,
@@ -68,14 +73,20 @@ import {
   resolveRegisteredDeletionRequestScope,
 } from "./deletion-targets";
 import { failOnExecutorError } from "./execution-failure";
-import { lockPendingActionLifecycle } from "./lifecycle-invalidation";
+import {
+  lockPendingActionLifecycle,
+  pendingActionEventScope,
+} from "./lifecycle-invalidation";
 import {
   type ConfirmationKind,
   canonicalPendingActionPayload,
   hashPendingActionPayload,
+  MCP_APPROVAL_DECISION_ROUTE,
+  type McpApprovalDecision,
   type PendingActionKind,
   requiredConfirmation,
 } from "./payload";
+import { readPendingActionTargetWorkspace } from "./read-target-workspace";
 import {
   RELATION_DELETION_ROUTE,
   relationDeletionReadSummary,
@@ -107,6 +118,18 @@ export type CreatePendingActionInput = {
   routeKey: keyof PolicyMap;
   targetType: string;
   targetIds: readonly string[];
+  /** PA-14's exact decision intent; accepted only by its registered MCP target. */
+  mcpDecision?: McpApprovalDecision;
+  /** Internal server-side import binding; never accepted from a request body. */
+  importChunk?: {
+    routeKey: "POST /api/imports/{id}/records" | "POST /api/imports/{id}/links";
+    runId: string;
+    chunkId: string;
+    operation: "records" | "links";
+    digest: string;
+    expectedRunVersion: number;
+    recordCount: number;
+  };
   /** Rejected until PA-6 defines a target-version encoding. */
   targetVersions?: Record<string, unknown> | null;
   /** Optional scope assertions. Persisted scope always comes from target rows. */
@@ -127,13 +150,208 @@ export type CreatePendingActionInput = {
  */
 async function bindKeyCredentialOrigin(
   requested: CreatePendingActionInput,
+  executor?: PendingActionTransaction,
 ): Promise<CreatePendingActionInput> {
   if (requested.credentialType !== "api_key" || !requested.credentialId?.trim())
     return requested;
-  const key = await loadApiKeyKind(requested.credentialId);
+  const key = await loadApiKeyKind(requested.credentialId, executor);
   assertKeyHasApprover(key);
   if (requested.origin === "web") return requested;
   return { ...requested, origin: pendingActionOriginForKey(key) };
+}
+
+export type PendingActionRequestResult = {
+  pendingActionId: string;
+  action: PendingActionKind;
+  summary: Record<string, unknown>;
+  confirmation: ConfirmationKind;
+  expiresAt: string;
+  approveUrl: string;
+  auditFailure: boolean;
+};
+
+/**
+ * Create a pending action inside a caller-owned transaction. Import chunks use this so
+ * staging the operation and creating its approval request are one atomic commit.
+ */
+export async function createPendingActionInTransaction(
+  tx: PendingActionTransaction,
+  requested: CreatePendingActionInput,
+): Promise<PendingActionRequestResult> {
+  if (currentImpersonatorId() !== null)
+    throw new HTTPException(403, {
+      message:
+        "impersonation: requesting a deletion is not allowed during an impersonation session",
+    });
+  const input = await bindKeyCredentialOrigin(requested, tx);
+  assertRegisteredRouteKey(input.routeKey);
+  if (input.targetVersions !== undefined && input.targetVersions !== null)
+    throw new TypeError(
+      "Caller-supplied pending-action target versions are not supported",
+    );
+  if (input.credentialType === "api_key" && !input.credentialId?.trim())
+    throw new HTTPException(403, {
+      message: "API-key pending actions require an authenticated key ID",
+    });
+
+  await lockPendingActionLifecycle(tx);
+  const scope = await resolveRequestScope(tx, input);
+  const executionTargetIds = scope.executionTargetIds ?? input.targetIds;
+  const confirmation =
+    scope.confirmationRequired ??
+    requiredConfirmation({
+      action: input.action,
+      targetType: input.targetType,
+      targetCount: executionTargetIds.length,
+    });
+  const payload = canonicalPendingActionPayload({
+    action: input.action,
+    route_key: input.routeKey,
+    target_type: input.targetType,
+    target_ids: executionTargetIds,
+    workspace_id: scope.workspaceId,
+    project_id: scope.projectId,
+    organisation_id: scope.organisationId,
+    confirmation_required: confirmation,
+    ...(input.mcpDecision ? { mcp_decision: input.mcpDecision } : {}),
+  });
+  const now = new Date();
+  const id = createId();
+  const traceId = createId();
+  const expiresAt = new Date(now.getTime() + ACTION_TTL_MS);
+  const [created] = await tx
+    .insert(pendingActionTable)
+    .values({
+      id,
+      requestedByPersonId: input.requesterPersonId,
+      credentialType: input.credentialType,
+      credentialId: input.credentialId,
+      origin: input.origin,
+      action: input.action,
+      targetType: input.targetType,
+      targetIds: payload.target_ids,
+      targetVersions: scope.targetVersions ?? null,
+      payload,
+      routeKey: input.routeKey,
+      payloadHash: hashPendingActionPayload(payload),
+      payloadSummary: scope.summary,
+      workspaceId: scope.workspaceId,
+      projectId: scope.projectId,
+      organisationId: scope.organisationId,
+      confirmationRequired: confirmation,
+      state: "pending",
+      createdAt: now,
+      expiresAt,
+      traceId,
+    })
+    .onConflictDoNothing()
+    .returning({ id: pendingActionTable.id });
+  if (!created) {
+    const [existing] = await tx
+      .select({ id: pendingActionTable.id })
+      .from(pendingActionTable)
+      .where(
+        and(
+          eq(pendingActionTable.requestedByPersonId, input.requesterPersonId),
+          eq(pendingActionTable.action, input.action),
+          eq(pendingActionTable.targetIds, payload.target_ids),
+          eq(pendingActionTable.state, "pending"),
+        ),
+      )
+      .limit(1);
+    if (existing)
+      throw new HTTPException(409, {
+        message: `pending_approval: ${existing.id}`,
+      });
+    throw new HTTPException(409, { message: "pending_action_conflict" });
+  }
+
+  const keyActor =
+    input.credentialType === "api_key" &&
+    input.credentialId &&
+    (input.origin === "api" || input.origin === "mcp")
+      ? await tx
+          .select({ id: apikeyTable.id, name: apikeyTable.name })
+          .from(apikeyTable)
+          .where(eq(apikeyTable.id, input.credentialId))
+          .limit(1)
+          .then(([key]) => key)
+      : undefined;
+  await enqueueNotificationEvent(
+    tx,
+    {
+      id: `evt_${createId()}`,
+      kind: "pending_action.requested",
+      occurredAt: now.toISOString(),
+      actor: keyActor
+        ? { type: "api_key", id: keyActor.id, name: keyActor.name ?? "API key" }
+        : {
+            type: "person",
+            id: input.requesterPersonId,
+            name: scope.actorName,
+          },
+      scope: pendingActionEventScope({
+        action: input.action,
+        targetType: input.targetType,
+        routeKey: input.routeKey,
+        targetIds: executionTargetIds,
+        ...scope,
+      }),
+      payload: {
+        key: id,
+        url: `/agent/settings/profile/pending-actions/${id}`,
+        pendingActionId: id,
+        action: input.action,
+        origin: input.origin,
+        targetType: input.targetType,
+        targetCount: payload.target_ids.length,
+        expiresAt: expiresAt.toISOString(),
+      },
+      causationId: null,
+      depth: 0,
+      originAutomationId: null,
+    },
+    { resolveRecipients: resolvePendingActionEventRecipients },
+  );
+
+  let auditFailure = false;
+  try {
+    await tx.transaction((auditTx) =>
+      appendAuditLog(auditTx, {
+        actorId: input.actorId,
+        actorType: input.actorType,
+        apiKeyId:
+          input.credentialType === "api_key" ? input.credentialId : null,
+        actorIp: input.actorIp,
+        userAgent: input.userAgent,
+        traceId,
+        workspaceId: scope.workspaceId,
+        projectId: scope.projectId,
+        organisationId: scope.organisationId,
+        action: "pending_action.requested",
+        entityType: "pending_action",
+        entityId: id,
+        after: {
+          action: input.action,
+          origin: input.origin,
+          targetType: input.targetType,
+          targetCount: payload.target_ids.length,
+          expiresAt: expiresAt.toISOString(),
+        },
+      }),
+    );
+  } catch {
+    auditFailure = true;
+  }
+  return {
+    pendingActionId: id,
+    action: input.action,
+    summary: scope.summary,
+    confirmation,
+    expiresAt: expiresAt.toISOString(),
+    approveUrl: `/agent/settings/profile/pending-actions/${id}`,
+    auditFailure,
+  };
 }
 
 /** Creates the durable approval and its audit record before returning any 202 response. */
@@ -174,121 +392,101 @@ export async function createPendingAction(requested: CreatePendingActionInput) {
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      created = await db.transaction(async (tx) => {
-        await lockPendingActionLifecycle(tx);
-        const scope = await resolveRequestScope(tx, input);
-        const executionTargetIds = scope.executionTargetIds ?? input.targetIds;
-        conflictTargetIds = [...executionTargetIds].sort();
-        const confirmation = requiredConfirmation({
-          action: input.action,
-          targetType: input.targetType,
-          targetCount: executionTargetIds.length,
-        });
-        const payload = canonicalPendingActionPayload({
-          action: input.action,
-          route_key: input.routeKey,
-          target_type: input.targetType,
-          target_ids: executionTargetIds,
-          workspace_id: scope.workspaceId,
-          project_id: scope.projectId,
-          organisation_id: scope.organisationId,
-          confirmation_required: confirmation,
-        });
-        const payloadHash = hashPendingActionPayload(payload);
-        const [created] = await tx
-          .insert(pendingActionTable)
-          .values({
-            id,
-            requestedByPersonId: input.requesterPersonId,
-            credentialType: input.credentialType,
-            credentialId: input.credentialId,
-            origin: input.origin,
+      const transact = () =>
+        db.transaction(async (tx) => {
+          await lockPendingActionLifecycle(tx);
+          const scope = await resolveRequestScope(tx, input);
+          const executionTargetIds =
+            scope.executionTargetIds ?? input.targetIds;
+          conflictTargetIds = [...executionTargetIds].sort();
+          const confirmation = requiredConfirmation({
             action: input.action,
             targetType: input.targetType,
-            targetIds: payload.target_ids,
-            targetVersions: scope.targetVersions ?? null,
-            payload,
-            routeKey: input.routeKey,
-            payloadHash,
-            payloadSummary: scope.summary,
-            workspaceId: scope.workspaceId,
-            projectId: scope.projectId,
-            organisationId: scope.organisationId,
-            confirmationRequired: confirmation,
-            state: "pending",
-            createdAt: now,
-            expiresAt: new Date(now.getTime() + ACTION_TTL_MS),
-            traceId,
-          })
-          .returning({ id: pendingActionTable.id });
-
-        if (!created) throw new Error("Pending action insert returned no row");
-        // PA-4: an API-key or MCP request is the key's act, not the person's, and the person
-        // is the one notified ("An agent using your key ... asked to delete ..."). Fan-out
-        // never notifies a person actor, so the envelope names the key as the actor.
-        const keyActor =
-          input.credentialType === "api_key" &&
-          input.credentialId &&
-          (input.origin === "api" || input.origin === "mcp")
-            ? await tx
-                .select({ id: apikeyTable.id, name: apikeyTable.name })
-                .from(apikeyTable)
-                .where(eq(apikeyTable.id, input.credentialId))
-                .limit(1)
-                .then(([key]) => key)
-            : undefined;
-        await enqueueNotificationEvent(
-          tx,
-          {
-            id: `evt_${createId()}`,
-            kind: "pending_action.requested",
-            occurredAt: now.toISOString(),
-            actor: keyActor
-              ? {
-                  type: "api_key",
-                  id: keyActor.id,
-                  name: keyActor.name ?? "API key",
-                }
-              : {
-                  type: "person",
-                  id: input.requesterPersonId,
-                  name: scope.actorName,
-                },
-            scope: eventScope(scope),
-            payload: {
-              key: id,
-              url: `/agent/settings/profile/pending-actions/${id}`,
-              pendingActionId: id,
-              action: input.action,
+            targetCount: executionTargetIds.length,
+          });
+          const payload = canonicalPendingActionPayload({
+            action: input.action,
+            route_key: input.routeKey,
+            target_type: input.targetType,
+            target_ids: executionTargetIds,
+            workspace_id: scope.workspaceId,
+            project_id: scope.projectId,
+            organisation_id: scope.organisationId,
+            confirmation_required: confirmation,
+            ...(input.mcpDecision ? { mcp_decision: input.mcpDecision } : {}),
+          });
+          const payloadHash = hashPendingActionPayload(payload);
+          const [created] = await tx
+            .insert(pendingActionTable)
+            .values({
+              id,
+              requestedByPersonId: input.requesterPersonId,
+              credentialType: input.credentialType,
+              credentialId: input.credentialId,
               origin: input.origin,
+              action: input.action,
               targetType: input.targetType,
-              targetCount: payload.target_ids.length,
-              expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
-            },
-            causationId: null,
-            depth: 0,
-            originAutomationId: null,
-          },
-          { resolveRecipients: resolvePendingActionEventRecipients },
-        );
-
-        try {
-          await tx.transaction(async (auditTx) =>
-            appendAuditLog(auditTx, {
-              actorId: input.actorId,
-              actorType: input.actorType,
-              apiKeyId:
-                input.credentialType === "api_key" ? input.credentialId : null,
-              actorIp: input.actorIp,
-              userAgent: input.userAgent,
-              traceId,
+              targetIds: payload.target_ids,
+              targetVersions: scope.targetVersions ?? null,
+              payload,
+              routeKey: input.routeKey,
+              payloadHash,
+              payloadSummary: scope.summary,
               workspaceId: scope.workspaceId,
               projectId: scope.projectId,
               organisationId: scope.organisationId,
-              action: "pending_action.requested",
-              entityType: "pending_action",
-              entityId: id,
-              after: {
+              confirmationRequired: confirmation,
+              state: "pending",
+              createdAt: now,
+              expiresAt: new Date(now.getTime() + ACTION_TTL_MS),
+              traceId,
+            })
+            .returning({ id: pendingActionTable.id });
+
+          if (!created)
+            throw new Error("Pending action insert returned no row");
+          // PA-4: an API-key or MCP request is the key's act, not the person's, and the person
+          // is the one notified ("An agent using your key ... asked to delete ..."). Fan-out
+          // never notifies a person actor, so the envelope names the key as the actor.
+          const keyActor =
+            input.credentialType === "api_key" &&
+            input.credentialId &&
+            (input.origin === "api" || input.origin === "mcp")
+              ? await tx
+                  .select({ id: apikeyTable.id, name: apikeyTable.name })
+                  .from(apikeyTable)
+                  .where(eq(apikeyTable.id, input.credentialId))
+                  .limit(1)
+                  .then(([key]) => key)
+              : undefined;
+          await enqueueNotificationEvent(
+            tx,
+            {
+              id: `evt_${createId()}`,
+              kind: "pending_action.requested",
+              occurredAt: now.toISOString(),
+              actor: keyActor
+                ? {
+                    type: "api_key",
+                    id: keyActor.id,
+                    name: keyActor.name ?? "API key",
+                  }
+                : {
+                    type: "person",
+                    id: input.requesterPersonId,
+                    name: scope.actorName,
+                  },
+              scope: pendingActionEventScope({
+                action: input.action,
+                targetType: input.targetType,
+                routeKey: input.routeKey,
+                targetIds: executionTargetIds,
+                ...scope,
+              }),
+              payload: {
+                key: id,
+                url: `/agent/settings/profile/pending-actions/${id}`,
+                pendingActionId: id,
                 action: input.action,
                 origin: input.origin,
                 targetType: input.targetType,
@@ -297,17 +495,57 @@ export async function createPendingAction(requested: CreatePendingActionInput) {
                   now.getTime() + ACTION_TTL_MS,
                 ).toISOString(),
               },
-            }),
+              causationId: null,
+              depth: 0,
+              originAutomationId: null,
+            },
+            { resolveRecipients: resolvePendingActionEventRecipients },
           );
-        } catch {
-          requestAuditFailure = true;
-        }
-        return {
-          confirmation,
-          summary: scope.summary,
-          auditFailure: requestAuditFailure,
-        };
-      });
+
+          try {
+            await tx.transaction(async (auditTx) =>
+              appendAuditLog(auditTx, {
+                actorId: input.actorId,
+                actorType: input.actorType,
+                apiKeyId:
+                  input.credentialType === "api_key"
+                    ? input.credentialId
+                    : null,
+                actorIp: input.actorIp,
+                userAgent: input.userAgent,
+                traceId,
+                workspaceId: scope.workspaceId,
+                projectId: scope.projectId,
+                organisationId: scope.organisationId,
+                action: "pending_action.requested",
+                entityType: "pending_action",
+                entityId: id,
+                after: {
+                  action: input.action,
+                  origin: input.origin,
+                  targetType: input.targetType,
+                  targetCount: payload.target_ids.length,
+                  expiresAt: new Date(
+                    now.getTime() + ACTION_TTL_MS,
+                  ).toISOString(),
+                },
+              }),
+            );
+          } catch {
+            requestAuditFailure = true;
+          }
+          return {
+            confirmation,
+            summary: scope.summary,
+            auditFailure: requestAuditFailure,
+          };
+        });
+      created =
+        input.action === "delete" &&
+        input.targetType === "identity_connection" &&
+        input.routeKey === "DELETE /api/instance/identity-connections/{id}"
+          ? await retryIdentityGrantClosure(transact)
+          : await transact();
       break;
     } catch (error) {
       if (requestAuditFailure) {
@@ -345,7 +583,10 @@ export async function createPendingAction(requested: CreatePendingActionInput) {
   }
 
   let responseSummary = created.summary;
-  if (input.targetType === "work_item") {
+  if (
+    input.targetType === "work_item" &&
+    (input.action === "delete" || input.action === "bulk_delete")
+  ) {
     const [row] = await db
       .select()
       .from(pendingActionTable)
@@ -533,6 +774,7 @@ export async function getOwnPendingAction(
     result.pendingAction,
     result.requestingKeyName,
     identity,
+    true,
   );
   await auditViewed(
     result.pendingAction.id,
@@ -591,6 +833,14 @@ export async function decideOwnPendingAction(input: {
     const outcome = row.expiresAt <= now ? "expired" : input.outcome;
     const legacyInstanceUserDeactivation =
       isLegacyInstanceUserDeactivation(row);
+    const instanceOrganisationDeletion =
+      row.action === "delete" &&
+      row.targetType === "organisation" &&
+      row.routeKey === "DELETE /api/instance/organisations/{id}" &&
+      row.targetIds.length === 1 &&
+      row.workspaceId === null &&
+      row.projectId === null &&
+      row.organisationId === row.targetIds[0];
     const [actor] = await tx
       .select({
         userId: personTable.userId,
@@ -608,7 +858,17 @@ export async function decideOwnPendingAction(input: {
           row.targetType === "user" &&
           row.routeKey === "POST /api/instance/users/{id}/deactivate"
         ) &&
-        !legacyInstanceUserDeactivation)
+        !legacyInstanceUserDeactivation &&
+        !instanceOrganisationDeletion &&
+        !(
+          row.action === "delete" &&
+          row.targetType === "identity_connection" &&
+          row.routeKey === "DELETE /api/instance/identity-connections/{id}" &&
+          row.targetIds.length === 1 &&
+          row.workspaceId === null &&
+          row.projectId === null &&
+          row.organisationId === null
+        ))
     ) {
       throw new HTTPException(403, {
         message: "Pending-action requester is unavailable",
@@ -643,7 +903,7 @@ export async function decideOwnPendingAction(input: {
         id: input.requesterPersonId,
         name: actor.name,
       },
-      scope: eventScope(row),
+      scope: pendingActionEventScope(row),
       payload: {
         key: row.id,
         url: `/agent/settings/profile/pending-actions/${row.id}`,
@@ -935,6 +1195,7 @@ export async function approveUserDeactivation(input: {
         token: input.stepUpToken,
         personId: input.requesterPersonId,
         sessionId: input.sessionId,
+        userId: input.userId,
         pendingActionId: row.id,
       });
       if (!proof) {
@@ -1311,14 +1572,41 @@ async function toPendingActionRead(
   row: typeof pendingActionTable.$inferSelect,
   requestingKeyName: string | null,
   viewer: ResolvedIdentity,
+  includeTargetWorkspaceId = false,
 ) {
   const publicFields = await publicPendingActionFields(row, db, viewer);
+  const hasValidatedWorkspaceSummary =
+    (row.action === "delete" &&
+      row.targetType === "work_item" &&
+      row.routeKey === WORK_ITEM_DELETION_ROUTE) ||
+    (row.action === "bulk_delete" &&
+      row.targetType === "work_item" &&
+      row.routeKey === BULK_WORK_ITEM_DELETION_ROUTE) ||
+    (row.action === "delete" &&
+      row.targetType === "comment" &&
+      row.routeKey === COMMENT_DELETION_ROUTE) ||
+    (row.action === "delete" &&
+      row.targetType === "attachment" &&
+      row.routeKey === ATTACHMENT_DELETION_ROUTE) ||
+    (row.action === "delete" &&
+      row.targetType === "relation" &&
+      row.routeKey === RELATION_DELETION_ROUTE);
+  const targetWorkspaceId =
+    includeTargetWorkspaceId &&
+    row.workspaceId !== null &&
+    publicFields.approvalSupported &&
+    publicFields.summary.redacted !== true
+      ? hasValidatedWorkspaceSummary
+        ? row.workspaceId
+        : await readPendingActionTargetWorkspace(row, viewer)
+      : null;
   return pendingActionReadSchema.parse({
     id: row.id,
     action: publicFields.action,
     origin: row.origin,
     targetType: publicFields.targetType,
     targetIds: publicFields.targetIds,
+    targetWorkspaceId,
     summary: publicFields.summary,
     confirmation: row.confirmationRequired,
     approvalSupported: publicFields.approvalSupported,
@@ -1520,6 +1808,7 @@ type ResolvedRequestScope = {
   actorName: string;
   summary: Record<string, unknown>;
   targetVersions?: Record<string, unknown> | null;
+  confirmationRequired?: ConfirmationKind;
 };
 
 /**
@@ -1530,6 +1819,31 @@ async function resolveRequestScope(
   tx: PendingActionTransaction,
   input: CreatePendingActionInput,
 ): Promise<ResolvedRequestScope> {
+  if (
+    input.action === "mcp_destructive" &&
+    input.targetType === "approval_decision" &&
+    input.routeKey === MCP_APPROVAL_DECISION_ROUTE &&
+    input.targetIds.length === 1
+  )
+    return resolveMcpApprovalDecisionRequestScope(tx, input);
+
+  if (
+    input.action === "mcp_destructive" &&
+    input.targetType === "import_chunk" &&
+    (input.routeKey === "POST /api/imports/{id}/records" ||
+      input.routeKey === "POST /api/imports/{id}/links") &&
+    input.targetIds.length === 1 &&
+    input.importChunk
+  )
+    return resolveImportChunkRequestScope(tx, input);
+
+  if (
+    input.action === "purge" &&
+    input.routeKey === "POST /api/instance/purge" &&
+    input.targetIds.length === 1
+  )
+    return resolveHardPurgeRequestScope(tx, input);
+
   if (
     input.action === "delete" &&
     input.targetType === "attachment" &&
@@ -1589,6 +1903,459 @@ async function resolveRequestScope(
   throw new HTTPException(400, {
     message: "Pending action target/action/route is unsupported",
   });
+}
+
+async function resolveImportChunkRequestScope(
+  tx: PendingActionTransaction,
+  input: CreatePendingActionInput,
+): Promise<ResolvedRequestScope> {
+  const binding = input.importChunk;
+  const chunkId = input.targetIds[0];
+  if (
+    !binding ||
+    (input.routeKey !== "POST /api/imports/{id}/records" &&
+      input.routeKey !== "POST /api/imports/{id}/links") ||
+    (binding.operation === "records" &&
+      input.routeKey !== "POST /api/imports/{id}/records") ||
+    (binding.operation === "links" &&
+      input.routeKey !== "POST /api/imports/{id}/links") ||
+    !chunkId ||
+    binding.chunkId !== chunkId ||
+    !/^[a-f0-9]{64}$/u.test(binding.digest) ||
+    !Number.isSafeInteger(binding.expectedRunVersion) ||
+    !Number.isSafeInteger(binding.recordCount) ||
+    binding.recordCount <= 50 ||
+    binding.recordCount > 500
+  )
+    throw new HTTPException(409, {
+      message: "pending_action_target_changed",
+    });
+  const [run] = await tx
+    .select()
+    .from(schema.importRunTable)
+    .where(eq(schema.importRunTable.id, binding.runId))
+    .for("update")
+    .limit(1);
+  if (!run?.projectId)
+    throw new HTTPException(404, { message: "Import chunk not found" });
+  const [chunk] = await tx
+    .select()
+    .from(schema.importChunkTable)
+    .where(
+      and(
+        eq(schema.importChunkTable.importRunId, run.id),
+        eq(schema.importChunkTable.chunkId, chunkId),
+      ),
+    )
+    .for("update")
+    .limit(1);
+  if (
+    !chunk ||
+    chunk.state !== "previewed" ||
+    chunk.inputDigest !== binding.digest ||
+    chunk.recordCount !== binding.recordCount ||
+    chunk.expectedRunVersion !== binding.expectedRunVersion ||
+    run.version !== binding.expectedRunVersion ||
+    chunk.report.operation !== binding.operation ||
+    run.state !== "running"
+  )
+    throw new HTTPException(409, {
+      message: "pending_action_target_changed",
+    });
+  const [project] = await tx
+    .select({ organisationId: schema.projectTable.organisationId })
+    .from(schema.projectTable)
+    .where(
+      and(
+        eq(schema.projectTable.id, run.projectId),
+        eq(schema.projectTable.workspaceId, run.workspaceId),
+        isNull(schema.projectTable.archivedAt),
+        isNull(schema.projectTable.deletedAt),
+      ),
+    )
+    .for("share")
+    .limit(1);
+  if (!project)
+    throw new HTTPException(404, { message: "Import chunk not found" });
+  const [requester] = await tx
+    .select({
+      userId: personTable.userId,
+      name: userTable.name,
+      active: personTable.active,
+      side: personTable.side,
+    })
+    .from(personTable)
+    .innerJoin(userTable, eq(userTable.id, personTable.userId))
+    .where(eq(personTable.id, input.requesterPersonId))
+    .limit(1);
+  if (
+    !requester?.active ||
+    requester.side !== "staff" ||
+    requester.userId !== input.actorId
+  )
+    throw new HTTPException(403, { message: "Forbidden" });
+
+  return {
+    workspaceId: run.workspaceId,
+    projectId: run.projectId,
+    organisationId: project.organisationId,
+    actorName: requester.name,
+    summary: {
+      kind: "mcp_import_chunk",
+      operation: binding.operation,
+      recordCount: chunk.recordCount,
+      pluginId: "import.mcp",
+    },
+    targetVersions: {
+      [chunkId]: {
+        runId: run.id,
+        digest: chunk.inputDigest,
+        expectedRunVersion: run.version + 1,
+        recordCount: chunk.recordCount,
+        operation: binding.operation,
+      },
+    },
+    confirmationRequired: "typed_count_step_up",
+  };
+}
+
+async function resolveMcpApprovalDecisionRequestScope(
+  tx: PendingActionTransaction,
+  input: CreatePendingActionInput,
+): Promise<ResolvedRequestScope> {
+  const approvalId = input.targetIds[0] ?? "";
+  const [anchor] = await tx
+    .select({
+      workItemId: schema.approvalTable.workItemId,
+      workspaceId: schema.approvalTable.workspaceId,
+    })
+    .from(schema.approvalTable)
+    .where(eq(schema.approvalTable.id, approvalId))
+    .limit(1);
+  if (!anchor) throw new HTTPException(404, { message: "Approval not found" });
+  const [target] = await tx
+    .select({
+      workItemId: schema.workItemTable.id,
+      workItemKey: schema.workItemTable.key,
+      workItemTitle: schema.workItemTable.title,
+      workspaceId: schema.workItemTable.workspaceId,
+      projectId: schema.workItemTable.projectId,
+      organisationId: schema.projectTable.organisationId,
+      deletedAt: schema.workItemTable.deletedAt,
+      archivedAt: schema.workItemTable.archivedAt,
+      projectDeletedAt: schema.projectTable.deletedAt,
+    })
+    .from(schema.workItemTable)
+    .innerJoin(
+      schema.projectTable,
+      eq(schema.projectTable.id, schema.workItemTable.projectId),
+    )
+    .where(
+      and(
+        eq(schema.workItemTable.id, anchor.workItemId),
+        eq(schema.workItemTable.workspaceId, anchor.workspaceId),
+      ),
+    )
+    .for("update", { of: schema.workItemTable })
+    .limit(1);
+  if (
+    !target ||
+    target.deletedAt ||
+    target.archivedAt ||
+    target.projectDeletedAt
+  )
+    throw new HTTPException(404, { message: "Approval not found" });
+  const [approval] = await tx
+    .select({
+      id: schema.approvalTable.id,
+      workItemId: schema.approvalTable.workItemId,
+      workspaceId: schema.approvalTable.workspaceId,
+      kind: schema.approvalTable.kind,
+      state: schema.approvalTable.state,
+      expiresAt: schema.approvalTable.expiresAt,
+    })
+    .from(schema.approvalTable)
+    .where(
+      and(
+        eq(schema.approvalTable.id, approvalId),
+        eq(schema.approvalTable.workItemId, target.workItemId),
+        eq(schema.approvalTable.workspaceId, target.workspaceId),
+      ),
+    )
+    .for("update")
+    .limit(1);
+  if (approval?.state !== "pending")
+    throw new HTTPException(409, { message: "Approval is no longer pending" });
+  if (approval.expiresAt <= new Date())
+    throw new HTTPException(409, { message: "Approval has expired" });
+  if (
+    target.workspaceId !== input.workspaceId &&
+    input.workspaceId !== undefined
+  ) {
+    throw new HTTPException(404, { message: "Approval not found" });
+  }
+
+  const confirmationRequired = requiredConfirmation({
+    action: input.action,
+    targetType: input.targetType,
+    targetCount: input.targetIds.length,
+  });
+  const payload = canonicalPendingActionPayload({
+    action: input.action,
+    route_key: input.routeKey,
+    target_type: input.targetType,
+    target_ids: input.targetIds,
+    workspace_id: target.workspaceId,
+    project_id: target.projectId,
+    organisation_id: target.organisationId,
+    confirmation_required: confirmationRequired,
+    mcp_decision: input.mcpDecision,
+  });
+  const access = await evaluateActionRequiredAccess(tx, {
+    requestedByPersonId: input.requesterPersonId,
+    credentialType: input.credentialType,
+    credentialId: input.credentialId,
+    origin: input.origin,
+    action: input.action,
+    targetType: input.targetType,
+    targetIds: input.targetIds,
+    routeKey: input.routeKey,
+    workspaceId: target.workspaceId,
+    projectId: target.projectId,
+    organisationId: target.organisationId,
+    confirmationRequired,
+    payload,
+    payloadHash: hashPendingActionPayload(payload),
+  });
+  if (!access.allowed) {
+    throw new HTTPException(
+      access.status === 404 ? 404 : access.status === 409 ? 409 : 403,
+      {
+        message:
+          access.failure === "reach"
+            ? "Approval not found"
+            : access.failure === "unsupported"
+              ? "Approval decision is no longer available"
+              : "Insufficient permissions to request this approval decision",
+      },
+    );
+  }
+  const [requester] = await tx
+    .select({
+      userId: schema.personTable.userId,
+      actorName: schema.userTable.name,
+    })
+    .from(schema.personTable)
+    .innerJoin(
+      schema.userTable,
+      eq(schema.userTable.id, schema.personTable.userId),
+    )
+    .where(eq(schema.personTable.id, input.requesterPersonId))
+    .limit(1);
+  if (!requester || requester.userId !== input.actorId)
+    throw new HTTPException(403, { message: "Forbidden" });
+
+  return {
+    workspaceId: target.workspaceId,
+    projectId: target.projectId,
+    organisationId: target.organisationId,
+    actorName: requester.actorName,
+    summary: {
+      approvalId: approval.id,
+      workItemKey: target.workItemKey,
+      workItemTitle: target.workItemTitle,
+      approvalKind: approval.kind,
+      decision: input.mcpDecision?.action,
+      note: input.mcpDecision?.note,
+    },
+  };
+}
+
+async function resolveHardPurgeRequestScope(
+  tx: PendingActionTransaction,
+  input: CreatePendingActionInput,
+): Promise<ResolvedRequestScope> {
+  const targetId = input.targetIds[0];
+  if (
+    input.action !== "purge" ||
+    input.routeKey !== "POST /api/instance/purge" ||
+    !HARD_PURGE_TARGET_TYPES.includes(
+      input.targetType as HardPurgeTargetType,
+    ) ||
+    !targetId ||
+    input.targetIds.length !== 1
+  )
+    throw new HTTPException(400, {
+      message: "Pending action target/action/route is unsupported",
+    });
+  if (input.origin !== "web" || input.credentialType !== "session")
+    throw new HTTPException(403, { message: "session_required" });
+
+  const targetType = input.targetType as HardPurgeTargetType;
+  const target = { targetType, targetId };
+  if (targetType === "organisation") {
+    const check = await inspectHardPurgeTarget(tx, target);
+    if (check.status === "not_found")
+      throw new HTTPException(404, { message: "Target not found" });
+    if (check.status !== "eligible")
+      throw new HTTPException(409, {
+        message: `hard_purge_${check.status}: ${"reason" in check ? check.reason : "target_changed"}`,
+      });
+    if (
+      (input.workspaceId !== undefined && input.workspaceId !== null) ||
+      (input.projectId !== undefined && input.projectId !== null) ||
+      (input.organisationId !== undefined && input.organisationId !== targetId)
+    )
+      throw new HTTPException(404, { message: "Target not found" });
+
+    const confirmationRequired = requiredConfirmation({
+      action: input.action,
+      targetType: input.targetType,
+      targetCount: 1,
+    });
+    const access = await evaluateActionRequiredAccess(tx, {
+      requestedByPersonId: input.requesterPersonId,
+      credentialType: input.credentialType,
+      credentialId: input.credentialId,
+      origin: input.origin,
+      action: input.action,
+      targetType: input.targetType,
+      targetIds: input.targetIds,
+      routeKey: input.routeKey,
+      workspaceId: null,
+      projectId: null,
+      organisationId: targetId,
+      confirmationRequired,
+    });
+    if (!access.allowed)
+      throw new HTTPException(access.status === 404 ? 404 : 403, {
+        message: access.failure === "reach" ? "Out of reach" : "Forbidden",
+      });
+
+    const [actor] = await tx
+      .select({ userId: personTable.userId, name: userTable.name })
+      .from(personTable)
+      .innerJoin(userTable, eq(userTable.id, personTable.userId))
+      .where(eq(personTable.id, input.requesterPersonId))
+      .limit(1);
+    if (!actor || actor.userId !== input.actorId)
+      throw new HTTPException(403, { message: "Forbidden" });
+    const operationId = check.summary.operationId;
+    const generation = check.summary.generation;
+    if (!operationId || !Number.isSafeInteger(generation))
+      throw new HTTPException(409, { message: "hard_purge_target_changed" });
+    return {
+      workspaceId: null,
+      projectId: null,
+      organisationId: targetId,
+      actorName: actor.name,
+      summary: {
+        ...check.summary,
+        name: check.summary.label ?? targetId,
+        requesterName: actor.name,
+      },
+      targetVersions: {
+        [targetId]: JSON.stringify({ operationId, generation }),
+      },
+    };
+  }
+  // Match execution lock order: hold placement is fenced before the target row.
+  await tx.execute(sql`LOCK TABLE legal_hold IN SHARE MODE`);
+  let workspaceId: string | undefined;
+  let relatedProjectId: string | undefined;
+  if (targetType === "work_item") {
+    const [row] = await tx
+      .select({
+        workspaceId: schema.workItemTable.workspaceId,
+        projectId: schema.workItemTable.projectId,
+      })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, targetId))
+      .for("update")
+      .limit(1);
+    workspaceId = row?.workspaceId;
+    relatedProjectId = row?.projectId;
+  } else {
+    const [row] = await tx
+      .select({
+        workspaceId: schema.projectTable.workspaceId,
+        projectId: schema.projectTable.id,
+      })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, targetId))
+      .for("update")
+      .limit(1);
+    workspaceId = row?.workspaceId;
+    relatedProjectId = row?.projectId;
+  }
+  if (!workspaceId || !relatedProjectId)
+    throw new HTTPException(404, { message: "Target not found" });
+
+  const check = await inspectHardPurgeTarget(tx, target);
+  if (check.status === "not_found")
+    throw new HTTPException(404, { message: "Target not found" });
+  if (check.status !== "eligible")
+    throw new HTTPException(409, {
+      message: `hard_purge_${check.status}: ${check.reason}`,
+    });
+  if (
+    (input.workspaceId !== undefined && input.workspaceId !== workspaceId) ||
+    (input.projectId !== undefined && input.projectId !== null) ||
+    (input.organisationId !== undefined && input.organisationId !== null)
+  )
+    throw new HTTPException(404, { message: "Target not found" });
+
+  const confirmationRequired = requiredConfirmation({
+    action: input.action,
+    targetType: input.targetType,
+    targetCount: 1,
+  });
+  const access = await evaluateActionRequiredAccess(tx, {
+    requestedByPersonId: input.requesterPersonId,
+    credentialType: input.credentialType,
+    credentialId: input.credentialId,
+    origin: input.origin,
+    action: input.action,
+    targetType: input.targetType,
+    targetIds: input.targetIds,
+    routeKey: input.routeKey,
+    workspaceId,
+    projectId: null,
+    organisationId: null,
+    confirmationRequired,
+  });
+  if (!access.allowed)
+    throw new HTTPException(access.status === 404 ? 404 : 403, {
+      message: access.failure === "reach" ? "Out of reach" : "Forbidden",
+    });
+
+  const [actor] = await tx
+    .select({ userId: personTable.userId, name: userTable.name })
+    .from(personTable)
+    .innerJoin(userTable, eq(userTable.id, personTable.userId))
+    .where(eq(personTable.id, input.requesterPersonId))
+    .limit(1);
+  if (!actor || actor.userId !== input.actorId)
+    throw new HTTPException(403, { message: "Forbidden" });
+  const version = JSON.stringify({
+    targetType,
+    targetId,
+    workspaceId,
+    relatedProjectId,
+    summary: check.summary,
+  });
+  return {
+    workspaceId,
+    projectId: null,
+    organisationId: null,
+    actorName: actor.name,
+    summary: {
+      ...check.summary,
+      name: check.summary.label ?? targetId,
+      requesterName: actor.name,
+    },
+    targetVersions: { [targetId]: version },
+  };
 }
 
 async function resolveWorkspaceDeletionRequestScope(
@@ -1683,6 +2450,7 @@ async function resolveWorkspaceDeletionRequestScope(
     requestedByPersonId: input.requesterPersonId,
     credentialType: input.credentialType,
     credentialId: input.credentialId,
+    origin: input.origin,
     action: input.action,
     targetType: input.targetType,
     targetIds: input.targetIds,
@@ -1812,6 +2580,7 @@ async function resolveUserDeactivationScope(
     requestedByPersonId: input.requesterPersonId,
     credentialType: input.credentialType,
     credentialId: input.credentialId,
+    origin: input.origin,
     action: input.action,
     targetType: input.targetType,
     targetIds: input.targetIds,

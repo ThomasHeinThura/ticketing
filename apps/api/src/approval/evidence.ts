@@ -27,7 +27,9 @@ function publish(
 }
 
 /** `/work-items/{key}/approvals`: evidence from the addressed work item. */
-export function approvalWorkItemEvidence() {
+export function approvalWorkItemEvidence(
+  options: { allowArchivedForRead?: true } = {},
+) {
   return async (c: Context, next: Next) => {
     const key = c.req.param("key");
     if (!key) throw new HTTPException(404, { message: "Work item not found" });
@@ -41,7 +43,17 @@ export function approvalWorkItemEvidence() {
         )
       : null;
     if (!identity) throw new HTTPException(403, { message: "Forbidden" });
-    publish(c, await loadApprovalTargetByKey(identity, key));
+    publish(
+      c,
+      await loadApprovalTargetByKey(
+        identity,
+        key,
+        undefined,
+        identity.side === "staff" && options.allowArchivedForRead
+          ? { allowArchivedForRead: true }
+          : {},
+      ),
+    );
     await next();
   };
 }

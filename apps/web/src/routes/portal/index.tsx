@@ -12,15 +12,15 @@ import {
   TableHeader,
   TableRow,
 } from "@taskdesk/ui";
-import { useTranslation } from "react-i18next";
 import { PortalOrientation } from "@/components/portal/portal-orientation";
 import { PortalRequestState } from "@/components/portal/portal-request-state";
 import { getPortalSubmissions } from "@/fetchers/intake";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { routes } from "@/lib/routes";
 
 export const Route = createFileRoute("/")({ component: PortalHome });
 function PortalHome() {
-  const { t } = useTranslation("portal");
+  const { t } = usePortalTranslation("portal");
   const { portalUserId } = Route.useRouteContext();
   const query = useQuery({
     queryKey: ["portal", portalUserId, "recent-submissions"],

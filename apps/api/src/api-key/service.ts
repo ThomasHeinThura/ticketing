@@ -5,10 +5,12 @@ import {
   type Capability,
   type ResolvedIdentity,
 } from "@taskdesk/permissions";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import type { StepUpExecutor } from "../auth/repository";
 import db from "../database";
+import { apiKeyExtensionTable } from "../database/schema";
 import { invalidatePendingActionsForCredential } from "../pending-action/credential-invalidation";
 import {
   lockPendingActionLifecycle,
@@ -31,6 +33,7 @@ import {
   listKeysForUser,
   listKeysForWorkspace,
   lockApiKey,
+  lockServiceKeyAccountability,
 } from "./repository";
 import type { ApiKeySummary } from "./schema";
 import { apiKeySelector, hashApiKeySecretArgon2id } from "./secret-hash";
@@ -196,6 +199,89 @@ export async function listWorkspaceApiKeys(
   workspaceId: string,
 ): Promise<ApiKeySummary[]> {
   return (await listKeysForWorkspace(workspaceId)).map(toApiKeySummary);
+}
+
+/** Acknowledges an accountability transfer without changing the credential or its subset. */
+export async function reattestServiceApiKey(
+  context: KeyRequestContext,
+  workspaceId: string,
+  keyId: string,
+  expectedVersion: number,
+  beforeWrite?: (tx: StepUpExecutor) => Promise<void>,
+): Promise<ApiKeySummary> {
+  const identity = await staffIdentity(context.userId);
+  creatorAuthorityAt(identity, workspaceId);
+
+  return db.transaction(async (tx) => {
+    const current = await lockServiceKeyAccountability(tx, keyId, workspaceId);
+    if (!current)
+      throw new HTTPException(404, { message: "API key not found" });
+    if (current.accountabilityVersion !== expectedVersion)
+      throw new HTTPException(409, {
+        message: "api_key_accountability_changed",
+      });
+    if (current.reattestationRequiredAt === null)
+      throw new HTTPException(409, {
+        message: "api_key_reattestation_not_required",
+      });
+
+    // The proof is bound to this key and version and spent in the same transaction as the
+    // marker update. Re-attestation confirms accountability; it does not rotate the secret or
+    // broaden/recompute the stored capability subset.
+    await beforeWrite?.(tx);
+    const now = new Date();
+    const [updated] = await tx
+      .update(apiKeyExtensionTable)
+      .set({
+        reattestationRequiredAt: null,
+        reattestedAt: now,
+        reattestedByPersonId: identity.personId,
+        accountabilityVersion: current.accountabilityVersion + 1,
+      })
+      .where(
+        and(
+          eq(apiKeyExtensionTable.apikeyId, keyId),
+          eq(apiKeyExtensionTable.workspaceId, workspaceId),
+          eq(
+            apiKeyExtensionTable.accountabilityVersion,
+            current.accountabilityVersion,
+          ),
+          isNotNull(apiKeyExtensionTable.reattestationRequiredAt),
+        ),
+      )
+      .returning({ apikeyId: apiKeyExtensionTable.apikeyId });
+    if (!updated)
+      throw new HTTPException(409, {
+        message: "api_key_accountability_changed",
+      });
+
+    await appendAuditLog(tx, {
+      actorId: context.userId,
+      actorType: "person",
+      actorIp: context.actorIp ?? null,
+      userAgent: context.userAgent ?? null,
+      workspaceId,
+      action: "api_key.reattested",
+      entityType: "api_key",
+      entityId: keyId,
+      before: {
+        reattestationRequiredAt: current.reattestationRequiredAt.toISOString(),
+        accountabilityVersion: current.accountabilityVersion,
+        capabilities: current.capabilities,
+      },
+      after: {
+        reattestationRequiredAt: null,
+        reattestedAt: now.toISOString(),
+        reattestedByPersonId: identity.personId,
+        accountabilityVersion: current.accountabilityVersion + 1,
+        capabilities: current.capabilities,
+      },
+    });
+    const refreshed = await findKeyForWorkspace(tx, keyId, workspaceId);
+    if (!refreshed)
+      throw new Error("Re-attested API key could not be reloaded");
+    return toApiKeySummary(refreshed);
+  });
 }
 
 /** `api_key:manage` held by this identity at this workspace, or 403. */

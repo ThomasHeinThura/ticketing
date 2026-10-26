@@ -4,6 +4,7 @@ import { calendarDataSchema } from "./schema";
 export const calendarSchema = calendarDataSchema.extend({
   id: z.string(),
   workspaceId: z.string(),
+  key: z.string(),
   name: z.string(),
   createdAt: responseTimestamp,
   updatedAt: responseTimestamp,

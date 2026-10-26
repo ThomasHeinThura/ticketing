@@ -1,0 +1,361 @@
+{
+	"sourceHead": "aea5d5702",
+	"branch": "feat/batch1-hierarchy-and-parent-editing",
+	"scope": "Initial P0-P3 discovery against current code, requirements-index, retained contracts and audit-P0/P1a/P1b/P2/P3. This is not a phase sign-off.",
+	"method": "Read source and asserting test code only. No tests, database operations, browser journeys, reviews or deployments were run. Other agents changed unrelated shared-worktree files during this inspection; this file is the only edit from this audit.",
+	"counts": {
+		"note": "The existing audit JSONs and locked report data disagree; these are source counts, not newly adjudicated coverage counts.",
+		"auditImplementedTested": {
+			"P0": 7,
+			"P1": 94,
+			"P2": 105,
+			"P3": 26
+		},
+		"reportImplementedTested": {
+			"P0": 12,
+			"P1": 140,
+			"P2": 117,
+			"P3": 34
+		},
+		"requirementsIndexVerification": "All P0, P2 and P3 rows are unverified; 176 of 181 P1 rows are unverified."
+	},
+	"findings": [
+		{
+			"severity": "high",
+			"ids": ["EV-1"],
+			"classification": "partial remains accurate",
+			"finding": "Legacy task, saved-view and time-entry mutations still publish only through the in-memory EventEmitter after their database write. The subscriber catches and logs asynchronous failures. These events have no same-transaction outbox envelope, so committed changes can lose downstream effects on a crash or subscriber error.",
+			"evidence": [
+				"apps/api/src/events/index.ts:18",
+				"apps/api/src/events/index.ts:47",
+				"apps/api/src/task/controllers/create-task.ts:135",
+				"apps/api/src/view/controllers/create-view.ts:141",
+				"apps/api/src/time-entry/controllers/create-time-entry.ts:43"
+			],
+			"recommendedFix": "Move each reachable legacy mutation to transactional outbox production and use the EventEmitter only for disposable realtime hints. Add rollback and replay assertions."
+		},
+		{
+			"severity": "none",
+			"ids": ["PA-2", "PA-3", "PA-4"],
+			"classification": "partial: one reachable deletion bypasses pending actions",
+			"finding": "DELETE /api/workflow-rule/{id} immediately hard-deletes a rule and returns 200. The route's explanation that a rule has no history does not appear among the retained PA-12 exceptions. Session-only authentication protects the credential boundary but does not provide the required request, summary and approval flow. DELETE /api/notification/clear-all and DELETE /api/user/avatar also perform immediate 200 deletions; their product classification needs an explicit decision or the same mechanism.",
+			"evidence": [
+				"docs/requirements-index.json:PA-2",
+				"apps/api/src/workflow-rule/index.ts:73",
+				"apps/api/src/workflow-rule/repository.ts:71",
+				"apps/api/src/notification/index.ts:115",
+				"apps/api/src/user/index.ts:42"
+			],
+			"recommendedFix": "Route record deletion through a pending action with policy and version rechecks, or record a narrow Thomas-approved contract exception for any self-owned ephemeral resource. Cover the HTTP response and unchanged database row before approval.",
+			"status": "withdrawn_after_contract_check",
+			"resolution": "PA-1a accepted by Thomas 23 Oct explicitly exempts workflow-rule deletion, own avatar and own notification clear-all. Existing gate and CRUD tests cover the exemption. Preserve these behaviors; no product change authorized or necessary.",
+			"resolutionEvidence": [
+				"docs/technical/safety-and-runtime.md:2476",
+				"tests/api-integration/delete-routes-never-immediate.test.ts:64",
+				"tests/api-integration/column-workflow-rule-crud.test.ts:266"
+			]
+		},
+		{
+			"severity": "medium",
+			"ids": ["PA-13"],
+			"classification": "partial, despite implementation file",
+			"finding": "The exceptional hard-purge router exists but is not imported or mounted by createApp; source-only target tests do not show that POST /api/instance/purge is reachable. The report's carry field also says the route is not mounted.",
+			"evidence": [
+				"apps/api/src/instance/purge.ts:41",
+				"apps/api/src/index.ts:1642",
+				"tests/api/instance/hard-purge-check.test.ts:22",
+				"docs/report/data.json:43"
+			],
+			"recommendedFix": "Mount the route with an explicit policy and add an HTTP integration test for session, step-up, legal hold, retention and audit outcomes."
+		},
+		{
+			"severity": "medium",
+			"ids": ["CP-12", "CP-18", "IP-9", "IP-29"],
+			"classification": "CP-12 partial; CP-18/IP-9/IP-29 locally open",
+			"finding": "The later invitation flow supplies password sign-up and signed-in acceptance, but the invite page does not offer new-user sign-up through email OTP, magic link or customer SSO as CP-12 states. Typed-domain home-realm routing is still missing. These are implementation gaps, not the five real-Entra interoperability cases that need an external tenant.",
+			"evidence": [
+				"docs/technical/feature-contracts-p3.md:134",
+				"docs/technical/feature-contracts-p3.md:157",
+				"docs/technical/feature-contracts-p3.md:633",
+				"apps/web/src/components/portal/accept-invitation.tsx:160",
+				"apps/api/src/auth.ts:1325"
+			],
+			"recommendedFix": "Reconcile the current invitation and sign-in behavior with CP-12, implement the already defined limited home-realm route and UI, and keep real-Entra acceptance separately blocked."
+		},
+		{
+			"severity": "medium",
+			"ids": [
+				"EV-2",
+				"PA-4",
+				"PA-6",
+				"PA-11",
+				"WF-19",
+				"SLA-17",
+				"AU-6",
+				"CP-3",
+				"CP-6",
+				"CP-7",
+				"CP-8",
+				"CP-9",
+				"CP-16",
+				"CP-11",
+				"CP-13",
+				"IP-14",
+				"IP-24",
+				"IP-25"
+			],
+			"classification": "Existing item-level audit gaps are stale and need re-adjudication",
+			"finding": "The old audit files still describe missing parent consumers, idempotency middleware, failed pending-action execution, scheduled transitions, SLA escalation, audit purge, portal lifecycle actions and organisation-visible requests. Current files and asserting tests exist for those paths. P5 later added customer invitations. These findings do not prove runtime/browser acceptance, but the old missing and partial descriptions are no longer accurate as written.",
+			"evidence": [
+				"apps/api/src/events/outbox-consumer.ts:68",
+				"apps/api/src/middleware/idempotency.ts:191",
+				"apps/api/src/pending-action/execution-failure.ts:157",
+				"apps/api/src/scheduler/index.ts:111",
+				"apps/api/src/scheduler/index.ts:143",
+				"apps/api/src/scheduler/sla-escalation.ts:29",
+				"tests/api-integration/portal-p3-lifecycle.test.ts:72",
+				"tests/api-integration/p5-invite-reach.test.ts:187",
+				"tests/api/identity/scim-limits.test.ts:1",
+				"tests/api-integration/identity/connection-health-job.test.ts:40"
+			],
+			"recommendedFix": "Reinspect every affected requirement against current assertions and persisted behavior; update each audit item's state, evidence and remaining gap rather than copying old phase totals."
+		},
+		{
+			"severity": "medium",
+			"ids": ["P0", "P1", "P2", "P3"],
+			"classification": "Report provenance and action list stale",
+			"finding": "scripts/report/build-data.mjs computes states from the requirement index and audits, then discards them when states_locked is true. All four phase entries in data.json are locked, so the reported counts differ from the item-level audits. Old action lists still ask for work already present, and feature-contracts-p3.md says customer invitation acceptance is unavailable after invitation code landed. A reader cannot trace the displayed counts or next action to current per-ID evidence.",
+			"evidence": [
+				"scripts/report/build-data.mjs:48",
+				"scripts/report/build-data.mjs:58",
+				"docs/report/data.json:40",
+				"docs/report/data.json:89",
+				"docs/report/data.json:132",
+				"docs/report/data.json:180",
+				"docs/technical/feature-contracts-p3.md:410"
+			],
+			"recommendedFix": "Refresh item-level audits, remove the stale locked-state override, regenerate report data and HTML from the reconciled sources, and update action/carry text. Keep browser verification and Thomas acceptance separate."
+		}
+	],
+	"spotChecks": {
+		"note": "Each entry names an assertion read in the test source, not a test executed. P0's existing audit has only seven implemented_tested rows, so all seven were checked plus three currently supported rows still classified partial in that audit.",
+		"P0": [
+			{
+				"id": "EV-4",
+				"auditState": "implemented_tested",
+				"test": "tests/api/events/event-keys.test.ts:56",
+				"assertion": "Documented and registered event-key sets have no differences."
+			},
+			{
+				"id": "PA-3",
+				"auditState": "implemented_tested",
+				"test": "tests/api-integration/pending-action-service.test.ts:322",
+				"assertion": "The summary is derived from the locked target, not the forged caller summary."
+			},
+			{
+				"id": "PA-6",
+				"auditState": "implemented_tested",
+				"test": "tests/api-integration/pending-action-bulk-work-item-deletion.test.ts:562",
+				"assertion": "Altered approved payload is refused and no rows are deleted."
+			},
+			{
+				"id": "PA-7",
+				"auditState": "implemented_tested",
+				"test": "tests/api-integration/pending-action-bulk-work-item-deletion.test.ts:390",
+				"assertion": "Duplicate pending request is 409; concurrent approvals yield one fulfilled result."
+			},
+			{
+				"id": "PA-8",
+				"auditState": "implemented_tested",
+				"test": "tests/api-integration/pending-action-expire.test.ts:255",
+				"assertion": "Expired action is counted and a decision is recorded."
+			},
+			{
+				"id": "PA-9",
+				"auditState": "implemented_tested",
+				"test": "tests/api-integration/pending-action-service.test.ts:699",
+				"assertion": "Natural session expiry blocks a new request but leaves the existing action pending."
+			},
+			{
+				"id": "PA-15",
+				"auditState": "implemented_tested",
+				"test": "tests/api-integration/pending-action-bulk-work-item-deletion.test.ts:616",
+				"assertion": "Step-up proof binds to exactly one batch and the other remains pending."
+			},
+			{
+				"id": "EV-2",
+				"auditState": "partial",
+				"test": "tests/api-integration/notification-fanout-replay.test.ts:104",
+				"assertion": "Fan-out replay leaves exactly one inbox and one delivery row."
+			},
+			{
+				"id": "PA-4",
+				"auditState": "partial",
+				"test": "tests/api-integration/pending-action-failed-execution.test.ts:392",
+				"assertion": "API/MCP key-origin request creates a requester notification naming key and target."
+			},
+			{
+				"id": "PA-11",
+				"auditState": "partial",
+				"test": "tests/api-integration/pending-action-failed-execution.test.ts:264",
+				"assertion": "Executor fault leaves a terminal failed row, with failed event and audit assertions later in the case."
+			}
+		],
+		"P1": [
+			{
+				"id": "WI-2",
+				"test": "tests/api-integration/work-item-create-read-list.test.ts:367",
+				"assertion": "Concurrent creates succeed with distinct sequential numbers and keys."
+			},
+			{
+				"id": "WI-3",
+				"test": "tests/api-integration/work-item-create-read-list.test.ts:485",
+				"assertion": "Empty title returns 400 and inserts no row; adjacent cases cover length 500/501."
+			},
+			{
+				"id": "WI-7",
+				"test": "tests/api-integration/work-item-update.test.ts:1105",
+				"assertion": "Concurrent same-version writes return one 200 and one 409, with one version increment."
+			},
+			{
+				"id": "WI-9",
+				"test": "tests/api-integration/work-item-transition.test.ts:670",
+				"assertion": "Transition writes the new concrete state and increments version."
+			},
+			{
+				"id": "WI-14",
+				"test": "tests/api-integration/work-item-hierarchy.test.ts:381",
+				"assertion": "Parent write succeeds, increments version and appears in the tree."
+			},
+			{
+				"id": "VW-9",
+				"test": "apps/web/src/components/work-item/work-item-board.test.tsx:408",
+				"assertion": "Mocked cross-column drop calls transition then rank; this is component evidence, not persisted browser evidence."
+			},
+			{
+				"id": "AS-5",
+				"test": "tests/api-integration/work-item-assign.test.ts:495",
+				"assertion": "Off-roster assignee is refused 400 with roster message."
+			},
+			{
+				"id": "AT-2",
+				"test": "tests/api-integration/attachment.test.ts:524",
+				"assertion": "Presign/upload/complete flow returns success and list result is asserted later in the case."
+			},
+			{
+				"id": "RH-7",
+				"test": "tests/api-integration/work-item-hierarchy.test.ts:549",
+				"assertion": "A reparent exceeding maximum depth returns 422 and leaves parent_id null."
+			},
+			{
+				"id": "SV-20",
+				"test": "tests/api-integration/view.test.ts:2089",
+				"assertion": "A per-person pin succeeds and the preference persists."
+			}
+		],
+		"P2": [
+			{
+				"id": "WF-2",
+				"test": "packages/domain/src/workflow/workflow.test.ts:413",
+				"assertion": "Target template resolves only to the project's adopted concrete state."
+			},
+			{
+				"id": "WF-3",
+				"test": "tests/api-integration/work-item-transition.test.ts:1035",
+				"assertion": "Role-gated transition is 409 without role and 200 with it."
+			},
+			{
+				"id": "WF-4",
+				"test": "tests/api-integration/work-item-transition.test.ts:609",
+				"assertion": "Caller without work_item:transition receives 403."
+			},
+			{
+				"id": "SLA-7",
+				"test": "tests/api-integration/work-item-comment.test.ts:454",
+				"assertion": "Requester comment does not set first response; public staff comment does later in case."
+			},
+			{
+				"id": "SLA-14",
+				"test": "tests/api/scheduler/sla-scan-schedule.test.ts:12",
+				"assertion": "Scheduler registration has the five-minute SLA scan pattern and callable handler."
+			},
+			{
+				"id": "SLA-15",
+				"test": "tests/api-integration/sla-scan.test.ts:200",
+				"assertion": "Duplicate/concurrent scans emit the at-risk events exactly once per goal."
+			},
+			{
+				"id": "CAL-2",
+				"test": "tests/api-integration/service-calendar.test.ts:1356",
+				"assertion": "Overlapping calendar windows are rejected 400."
+			},
+			{
+				"id": "RT-6",
+				"test": "tests/api-integration/intake-rt6-snapshot.test.ts:78",
+				"assertion": "Accepting with triager-selected type uses that type rather than the snapshotted default; other snapshot facets need separate evidence."
+			},
+			{
+				"id": "AP-10",
+				"test": "tests/api-integration/approval-tenant-checks.test.ts:288",
+				"assertion": "Two concurrent decisions return 200/409 and produce one decision event."
+			},
+			{
+				"id": "AU-15",
+				"test": "tests/api-integration/audit-log.test.ts:362",
+				"assertion": "Untampered chain verifies; adjacent case detects tampered payload."
+			}
+		],
+		"P3": [
+			{
+				"id": "CP-1",
+				"test": "tests/api-integration/intake-reach-negative.test.ts:114",
+				"assertion": "Owner can read a private submission while anonymous/foreign callers are denied."
+			},
+			{
+				"id": "CP-2",
+				"test": "tests/api-integration/intake-reach-negative.test.ts:131",
+				"assertion": "Another requester/organisation receives 404 for a private ref."
+			},
+			{
+				"id": "CP-15",
+				"test": "tests/api-integration/intake-triage-negative.test.ts:40",
+				"assertion": "Unclaimed withdrawal persists; repeat/reply are refused."
+			},
+			{
+				"id": "CP-19",
+				"test": "tests/api/two-entry-host.test.ts:128",
+				"assertion": "Portal host serves portal shell and excludes agent shell for registered routes."
+			},
+			{
+				"id": "IP-1",
+				"test": "packages/domain/src/identity/identity.test.ts:353",
+				"assertion": "Customer connection needs organisation and agent connection cannot carry one."
+			},
+			{
+				"id": "IP-2",
+				"test": "tests/api-integration/identity/mapping-role-guards.test.ts:187",
+				"assertion": "Valid agent/customer mapping controls pass; unauthorized roles are rejected in adjacent cases."
+			},
+			{
+				"id": "IP-4",
+				"test": "packages/domain/src/identity/identity.test.ts:496",
+				"assertion": "SCIM patch refuses a role authority attribute."
+			},
+			{
+				"id": "IP-7",
+				"test": "tests/api/identity/oidc-token.test.ts:41",
+				"assertion": "Signed token passes and issuer, tenant, audience, nonce and time mismatches fail."
+			},
+			{
+				"id": "IP-11",
+				"test": "tests/api-integration/scim-admin.test.ts:1432",
+				"assertion": "SCIM Users/Groups collection responses use application/scim+json and expected schema."
+			},
+			{
+				"id": "IP-15",
+				"test": "tests/api-integration/scim-admin.test.ts:1328",
+				"assertion": "Deprovisioning revokes session/key and ends direct/external grants."
+			}
+		]
+	}
+}

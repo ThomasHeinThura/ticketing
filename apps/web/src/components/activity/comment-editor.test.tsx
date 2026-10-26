@@ -1,5 +1,6 @@
 import {
   act,
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -29,6 +30,13 @@ import CommentEditor from "@/components/activity/comment-editor";
 const documentWithText = (text: string) => ({
   type: "doc",
   content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+});
+
+afterEach(async () => {
+  cleanup();
+  // Tiptap React defers disposal by one millisecond to survive StrictMode remounts.
+  // Complete that disposal while this file's jsdom window still exists.
+  await new Promise((resolve) => setTimeout(resolve, 1));
 });
 
 describe("CommentEditor lifecycle", () => {

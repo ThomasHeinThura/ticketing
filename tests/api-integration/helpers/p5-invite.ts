@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { expect } from "vitest";
+import { runCustomerInvitationDeliveryJob } from "../../../apps/api/src/customer-invitation/delivery/worker";
 import db, { schema } from "../../../apps/api/src/database";
 import { createApp } from "../../../apps/api/src/index";
-import { sentWorkspaceInvitationEmails } from "../mocks/email";
+import { emailMock, sentWorkspaceInvitationEmails } from "../mocks/email";
 import { mockAuthenticatedSession } from "./auth";
 import {
   createProjectFixture,
@@ -172,6 +173,16 @@ export async function inviteWorld() {
       }),
       201,
     );
+    // This helper is for flows that need the link delivered. Route-only tests call `w.call`
+    // directly and can assert the response commits before this durable worker runs.
+    const priorEmailProvider = emailMock.configured;
+    if (priorEmailProvider === null) emailMock.configured = true;
+    try {
+      if (emailMock.configured === true)
+        await runCustomerInvitationDeliveryJob();
+    } finally {
+      emailMock.configured = priorEmailProvider;
+    }
     return { ...created, credential: credentialFor(email, created.id) };
   }
   async function rowOf(id: string) {

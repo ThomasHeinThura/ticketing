@@ -1,6 +1,6 @@
 import { sendNotificationEmail } from "@taskdesk/email";
 import { sql } from "drizzle-orm";
-import { getConfiguredAgentOrigin } from "../auth";
+import { getConfiguredAgentOrigin, getConfiguredCustomerOrigin } from "../auth";
 import db from "../database";
 import type { ClaimedNotificationDelivery } from "../database/repositories/notification-delivery.repository";
 import type { DbTransaction } from "../events/outbox";
@@ -8,6 +8,7 @@ import { z } from "../openapi";
 import { evaluateCurrentNotificationReachAndPreference } from "./current-eligibility";
 import { NotificationProviderOutcomeAmbiguous } from "./delivery-errors";
 import { configuredMentionChannels } from "./fanout.repository";
+import { legacyTaskNotificationRuntime } from "./legacy-task-runtime";
 import type {
   NotificationEligibility,
   NotificationOutboxRuntime,
@@ -20,10 +21,10 @@ import { resolveNotificationPreference } from "./preferences";
 
 async function emailDestination(tx: DbTransaction, personId: string) {
   const result =
-    await tx.execute(sql`SELECT u.email, u.locale FROM person p JOIN "user" u ON u.id = p.user_id
-    WHERE p.id = ${personId} AND p.active AND p.side = 'staff'`);
+    await tx.execute(sql`SELECT u.email, u.locale, p.side FROM person p JOIN "user" u ON u.id = p.user_id
+    WHERE p.id = ${personId} AND p.active`);
   const row = result.rows[0] as
-    | { email: string; locale: string | null }
+    | { email: string; locale: string | null; side: "staff" | "customer" }
     | undefined;
   return row && z.email().safeParse(row.email).success ? row : null;
 }
@@ -33,7 +34,8 @@ async function current(
 ): Promise<NotificationEligibility> {
   if (
     delivery.channel !== "notify.email" ||
-    delivery.eventKind !== "work_item.mentioned" ||
+    (delivery.eventKind !== "work_item.mentioned" &&
+      delivery.eventKind !== "work_item.commented") ||
     delivery.resourceType !== "comment"
   )
     return { kind: "unresolved", reason: "destination_unresolved" };
@@ -53,7 +55,13 @@ async function current(
   )
     return { kind: "unresolved", reason: eligibility.kind };
   if (eligibility.kind !== "eligible") return eligibility;
-  if (!(await emailDestination(tx, delivery.recipientPersonId)))
+  const destination = await emailDestination(tx, delivery.recipientPersonId);
+  if (!destination)
+    return { kind: "unresolved", reason: "destination_unresolved" };
+  if (
+    destination.side !==
+    (eligibility.projection.audience === "agent" ? "staff" : "customer")
+  )
     return { kind: "unresolved", reason: "destination_unresolved" };
   // The first settings journey edits global mention preferences only. Scoped
   // candidates retain their row and wait for the corresponding settings surface.
@@ -96,11 +104,11 @@ async function selector(
           : null,
   };
 }
-/** Only the native staff comment-mention journey is registered in this slice. */
+/** Immediate staff comment email, including urgent mentions and comments set to no digest. */
 export function immediateNotificationRuntime(
   send = sendNotificationEmail,
 ): NotificationOutboxRuntime {
-  return {
+  const canonicalRuntime: NotificationOutboxRuntime = {
     evaluateCurrentEligibility: current,
     send: async (_channel, projection, options) => {
       const context = await db.transaction(async (tx) => {
@@ -121,12 +129,25 @@ export function immediateNotificationRuntime(
       });
       if (options.signal.aborted)
         throw new Error("Notification attempt cancelled");
+      const audience = context.projection.audience;
+      if (audience !== "agent" && audience !== "customer")
+        throw new Error("Notification audience unavailable");
+      const expectedSide = audience === "agent" ? "staff" : "customer";
+      if (context.destination.side !== expectedSide)
+        throw new Error("Notification recipient side changed");
+      const origin =
+        audience === "agent"
+          ? getConfiguredAgentOrigin()
+          : getConfiguredCustomerOrigin();
+      const preferencePath =
+        audience === "agent"
+          ? "/agent/settings/profile/notifications"
+          : "/account";
       const token = signNotificationPreferenceLink({
-        audience: "agent",
+        audience,
         recipientPersonId: options.delivery.recipientPersonId,
         selector: context.selector,
       });
-      const origin = getConfiguredAgentOrigin();
       const result = await send(
         context.destination.email,
         projection.title,
@@ -134,7 +155,7 @@ export function immediateNotificationRuntime(
           title: context.projection.title,
           message: context.projection.body,
           actionUrl: new URL(context.projection.url, origin).href,
-          preferenceUrl: `${origin}/agent/settings/profile/notifications#preference_token=${token}`,
+          preferenceUrl: `${origin}${preferencePath}#preference_token=${token}`,
           locale: context.destination.locale,
         },
         {
@@ -172,5 +193,16 @@ export function immediateNotificationRuntime(
       });
       if (!result.success) throw new Error("Notification provider unavailable");
     },
+  };
+  const legacyRuntime = legacyTaskNotificationRuntime();
+  return {
+    evaluateCurrentEligibility: (tx, delivery) =>
+      delivery.resourceType === "task"
+        ? legacyRuntime.evaluateCurrentEligibility(tx, delivery)
+        : canonicalRuntime.evaluateCurrentEligibility(tx, delivery),
+    send: (channel, projection, options) =>
+      options.delivery.resourceType === "task"
+        ? legacyRuntime.send(channel, projection, options)
+        : canonicalRuntime.send(channel, projection, options),
   };
 }

@@ -79,19 +79,16 @@ export function parseApiError(error: unknown): ApiError {
 
 export function getCorsTroubleshootingSteps(): string[] {
   return [
-    "common:error.troubleshootingSteps.cors.checkApiRunning",
-    "common:error.troubleshootingSteps.cors.checkApiUrl",
-    "common:error.troubleshootingSteps.cors.verifyCorsOrigins",
-    "common:error.troubleshootingSteps.cors.checkProtocol",
-    "common:error.troubleshootingSteps.cors.checkAccessibility",
+    "common:error.troubleshootingSteps.connection.checkConnection",
+    "common:error.troubleshootingSteps.connection.tryAgain",
+    "common:error.troubleshootingSteps.connection.contactAdministrator",
   ];
 }
 
 export function getNetworkTroubleshootingSteps(): string[] {
   return [
-    "common:error.troubleshootingSteps.network.checkConnection",
-    "common:error.troubleshootingSteps.network.verifyApiRunning",
-    "common:error.troubleshootingSteps.network.tryRefresh",
-    "common:error.troubleshootingSteps.network.checkFirewall",
+    "common:error.troubleshootingSteps.connection.checkConnection",
+    "common:error.troubleshootingSteps.connection.tryAgain",
+    "common:error.troubleshootingSteps.connection.contactAdministrator",
   ];
 }

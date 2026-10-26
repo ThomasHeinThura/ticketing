@@ -6,15 +6,20 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   accept: vi.fn(),
+  beginContinuation: vi.fn(),
+  continuationResult: vi.fn(),
+  getAuthMethods: vi.fn(),
+  navigate: vi.fn(),
   signUp: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => mocks.navigate,
   Link: ({ children }: { children?: React.ReactNode }) => (
     <a href="/">{children}</a>
   ),
@@ -29,7 +34,13 @@ vi.mock("@/lib/portal-auth-client", () => ({
   },
 }));
 vi.mock("@/fetchers/customer-invitation", () => ({
-  acceptCustomerInvitation: (...args: unknown[]) => mocks.accept(...args),
+  acceptCustomerInvitationContinuation: (...args: unknown[]) =>
+    mocks.accept(...args),
+  beginCustomerInvitationContinuation: (...args: unknown[]) =>
+    mocks.beginContinuation(...args),
+  getCustomerInvitationContinuationResult: (...args: unknown[]) =>
+    mocks.continuationResult(...args),
+  getPortalAuthMethods: () => mocks.getAuthMethods(),
 }));
 
 import { AcceptInvitation, readInviteCredential } from "./accept-invitation";
@@ -64,11 +75,42 @@ describe("readInviteCredential", () => {
 });
 
 describe("accept invitation page", () => {
+  beforeEach(() => {
+    mocks.navigate.mockResolvedValue(undefined);
+    mocks.beginContinuation.mockResolvedValue(undefined);
+    mocks.continuationResult.mockResolvedValue({ accepted: false });
+    mocks.getAuthMethods.mockResolvedValue({
+      password: true,
+      magicLink: false,
+      emailOtp: false,
+    });
+  });
+
   it("shows the one generic notice when the link carries no credential", async () => {
     mocks.getSession.mockResolvedValue({ data: { session: {} } });
+    mocks.accept.mockRejectedValue(new Error("invalid continuation"));
     renderPage("");
     expect(await screen.findByText("accept.invalidTitle")).toBeTruthy();
     expect(screen.queryByText("accept.action")).toBeNull();
+  });
+
+  it("acknowledges a provider flow that already accepted without posting again", async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: {} } });
+    mocks.continuationResult.mockResolvedValue({ accepted: true });
+    renderPage("");
+    expect(await screen.findByText("accept.acceptedTitle")).toBeTruthy();
+    expect(mocks.continuationResult).toHaveBeenCalledWith("inv1");
+    expect(mocks.accept).not.toHaveBeenCalled();
+    expect(mocks.beginContinuation).not.toHaveBeenCalled();
+  });
+
+  it("posts acceptance once when the continuation is still pending", async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: {} } });
+    mocks.accept.mockResolvedValue(undefined);
+    renderPage("");
+    expect(await screen.findByText("accept.acceptedTitle")).toBeTruthy();
+    expect(mocks.continuationResult).toHaveBeenCalledWith("inv1");
+    expect(mocks.accept).toHaveBeenCalledTimes(1);
   });
 
   it("removes the credential from the address bar and history", async () => {
@@ -108,14 +150,14 @@ describe("accept invitation page", () => {
     await screen.findByText("accept.createAccount");
     fillAndSubmit();
     await waitFor(() => expect(mocks.signUp).toHaveBeenCalledTimes(1));
+    expect(mocks.beginContinuation).toHaveBeenCalledWith("inv1", CREDENTIAL);
     expect(mocks.signUp).toHaveBeenCalledWith("/sign-up/email", {
       method: "POST",
       body: {
+        invitationId: "inv1",
         name: "New Person",
         email: "new@example.test",
         password: "a-long-password",
-        invitationId: "inv1",
-        invitationCredential: CREDENTIAL,
       },
     });
     expect(await screen.findByText("accept.acceptedTitle")).toBeTruthy();
@@ -158,9 +200,22 @@ describe("accept invitation page", () => {
     renderPage(`#t=${CREDENTIAL}`);
     fireEvent.click(await screen.findByText("accept.action"));
     await waitFor(() =>
-      expect(mocks.accept).toHaveBeenCalledWith("inv1", CREDENTIAL),
+      expect(mocks.beginContinuation).toHaveBeenCalledWith("inv1", CREDENTIAL),
     );
+    expect(mocks.accept).toHaveBeenCalledWith("inv1");
     expect(await screen.findByText("accept.acceptedTitle")).toBeTruthy();
+  });
+
+  it("does not offer password signup when the customer provider is disabled", async () => {
+    mocks.getSession.mockResolvedValue({ data: null });
+    mocks.getAuthMethods.mockResolvedValue({
+      password: false,
+      magicLink: true,
+      emailOtp: false,
+    });
+    renderPage(`#t=${CREDENTIAL}`);
+    expect(await screen.findByText("accept.haveAccount")).toBeTruthy();
+    expect(screen.queryByText("accept.createAccount")).toBeNull();
   });
 
   it("shows the same generic notice for any refusal", async () => {

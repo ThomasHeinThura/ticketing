@@ -9,16 +9,13 @@ import {
 } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { IntakeQueueSearch } from "@/lib/routes";
 import { Route } from "./triage";
 
 const mocks = vi.hoisted(() => ({
-  search: { state: "new" } as {
-    state: string;
-    ref?: string;
-    assignee?: string;
-    age?: string;
-    requestType?: string;
-  },
+  search: { state: "new" } as IntakeQueueSearch,
+  queuePanelProps: undefined as Record<string, unknown> | undefined,
+  queuePickerProps: undefined as Record<string, unknown> | undefined,
   workItemTypes: [] as Array<{ id: string; name: string }>,
   navigate: vi.fn(),
   getSubmissions: vi.fn(),
@@ -32,6 +29,14 @@ const mocks = vi.hoisted(() => ({
   getSubmission: vi.fn(),
   getSubmissionAttachments: vi.fn(),
   markDuplicate: vi.fn(),
+  previewPath: vi.fn(
+    (ref: string, id: string) =>
+      `/submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(id)}/preview`,
+  ),
+  downloadPath: vi.fn(
+    (ref: string, id: string) =>
+      `/submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(id)}`,
+  ),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -40,6 +45,39 @@ vi.mock("@tanstack/react-router", () => ({
     useSearch: () => mocks.search,
   }),
   useNavigate: () => mocks.navigate,
+  Link: ({
+    to,
+    params,
+    children,
+    ...props
+  }: {
+    to: string;
+    params: { key: string };
+    children: React.ReactNode;
+  }) => (
+    <a {...props} href={to.replace("$key", encodeURIComponent(params.key))}>
+      {children}
+    </a>
+  ),
+}));
+
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canTriageIntake: () => true,
+    canShareSavedViews: () => false,
+  }),
+}));
+vi.mock("@/components/intake/queue-picker", () => ({
+  IntakeQueuePicker: (props: Record<string, unknown>) => {
+    mocks.queuePickerProps = props;
+    return null;
+  },
+}));
+vi.mock("@/components/intake/queue-panel", () => ({
+  IntakeQueuePanel: (props: Record<string, unknown>) => {
+    mocks.queuePanelProps = props;
+    return <div data-testid="saved-queue-panel" />;
+  },
 }));
 
 vi.mock("@/fetchers/intake", () => ({
@@ -54,6 +92,8 @@ vi.mock("@/fetchers/intake", () => ({
   getSubmissionAttachments: mocks.getSubmissionAttachments,
   getSubmissions: mocks.getSubmissions,
   markSubmissionDuplicate: mocks.markDuplicate,
+  staffSubmissionAttachmentDownloadPath: mocks.downloadPath,
+  staffSubmissionAttachmentPreviewPath: mocks.previewPath,
 }));
 
 vi.mock("@/hooks/queries/work-item/use-get-work-item-types", () => ({
@@ -113,6 +153,8 @@ function renderTriage() {
 describe("intake triage route", () => {
   beforeEach(() => {
     mocks.search = { state: "new" };
+    mocks.queuePanelProps = undefined;
+    mocks.queuePickerProps = undefined;
     mocks.workItemTypes = [];
     mocks.navigate.mockReset();
     mocks.getRequestTypes.mockReset().mockResolvedValue({
@@ -141,6 +183,67 @@ describe("intake triage route", () => {
 
   afterEach(() => cleanup());
 
+  it("opens a saved pair without injecting the ordinary new-state filter or clearing stored queries", async () => {
+    mocks.search = { queue: "queue-pair-17" };
+    renderTriage();
+    await screen.findByTestId("saved-queue-panel");
+    expect(mocks.getSubmissions).not.toHaveBeenCalled();
+    expect(mocks.queuePanelProps).toMatchObject({
+      queueId: "queue-pair-17",
+      state: undefined,
+    });
+    expect(mocks.queuePickerProps?.currentSubmissionQuery).toBeUndefined();
+    expect(mocks.queuePickerProps?.currentWorkItemQuery).toBeUndefined();
+  });
+
+  it("does not broaden a saved queue when the URL request type cannot be resolved", async () => {
+    mocks.search = {
+      queue: "queue-pair-17",
+      requestType: "removed-request-type",
+    };
+    renderTriage();
+    await waitFor(() => expect(mocks.queuePickerProps?.canCreate).toBe(false));
+    expect(screen.queryByTestId("saved-queue-panel")).not.toBeInTheDocument();
+    expect(mocks.getSubmissions).not.toHaveBeenCalled();
+  });
+
+  it("renders readable duplicate keys as real work-item links on each queue row", async () => {
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [
+        {
+          ref: "SUB-7",
+          summary: "Customer request",
+          submission: { state: "new", createdAt: "2026-10-01T00:00:00Z" },
+          requestType: { name: "Help" },
+          requester: { displayName: "Ada" },
+          organisation: { name: "Northstar" },
+          suggestedDuplicates: [
+            {
+              id: "item-1",
+              key: "HELP-17",
+              title: "Matching request",
+              score: 0.9,
+            },
+          ],
+        },
+      ],
+      page: { hasMore: false, nextCursor: null },
+    });
+    renderTriage();
+    const row = (await screen.findByRole("link", { name: "HELP-17" })).closest(
+      "tr",
+    );
+    expect(row).not.toBeNull();
+    expect(
+      within(row as HTMLElement).getByRole("link", { name: "HELP-17" }),
+    ).toHaveAttribute("href", "/agent/work-items/HELP-17");
+    expect(screen.getByRole("link", { name: "HELP-17" })).toHaveAttribute(
+      "title",
+      "Matching request",
+    );
+    expect(mocks.getDuplicateSuggestions).not.toHaveBeenCalled();
+  });
+
   it("keeps a failed queue distinct from empty and offers retry", async () => {
     renderTriage();
 
@@ -158,6 +261,56 @@ describe("intake triage route", () => {
     expect(
       screen.queryByText("New customer requests will appear here."),
     ).not.toBeInTheDocument();
+  });
+
+  it("previews a ready PDF with the staff triage route and keeps Office download-only", async () => {
+    mocks.search = { state: "new", ref: "SUB-7" };
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [
+        {
+          ref: "SUB-7",
+          summary: "A new request",
+          submission: { state: "new", createdAt: "2026-10-01T00:00:00Z" },
+          requestType: { name: "Access request" },
+          requester: { displayName: "Ada" },
+          organisation: { name: "Northstar" },
+        },
+      ],
+      page: { hasMore: false, nextCursor: null },
+    });
+    mocks.getSubmission.mockReset().mockResolvedValue(detail("new", null));
+    mocks.getSubmissionAttachments.mockReset().mockResolvedValue([
+      {
+        id: "pdf/1",
+        filename: "evidence.pdf",
+        mimeType: "application/pdf",
+        state: "ready",
+      },
+      {
+        id: "doc-1",
+        filename: "notes.docx",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        state: "ready",
+      },
+    ]);
+    mocks.getDuplicateSuggestions
+      .mockReset()
+      .mockResolvedValue({ suggestions: [] });
+    renderTriage();
+
+    const preview = await screen.findByRole("button", {
+      name: "workItems:detail.attachments.pdfPreviewOpen",
+    });
+    expect(
+      screen.queryByRole("button", { name: /pdfPreviewOpen.*notes/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(preview);
+    expect(
+      await screen.findByTitle("workItems:detail.attachments.pdfPreviewTitle"),
+    ).toHaveAttribute("src", "/pdf-preview.html");
+    expect(mocks.previewPath).toHaveBeenCalledWith("SUB-7", "pdf/1");
+    expect(mocks.downloadPath).toHaveBeenCalledWith("SUB-7", "pdf/1");
   });
 
   it("shows the submission age and asks the server to apply the URL filters", async () => {
@@ -240,7 +393,7 @@ describe("intake triage route", () => {
     });
   });
 
-  it("still narrows the loaded page for the claimed filter, which the server has no parameter for", async () => {
+  it("uses server-side claimed filtering", async () => {
     const now = new Date().toISOString();
     const row = (ref: string, claimedBy: string | null) => ({
       ref,
@@ -251,7 +404,7 @@ describe("intake triage route", () => {
       organisation: { name: "Northstar" },
     });
     mocks.getSubmissions.mockReset().mockResolvedValue({
-      submissions: [row("SUB-1", null), row("SUB-2", "p1")],
+      submissions: [row("SUB-2", "p1")],
       page: { hasMore: false, nextCursor: null },
     });
     mocks.search = { state: "new", assignee: "claimed" };
@@ -262,7 +415,7 @@ describe("intake triage route", () => {
       expect.anything(),
       "new",
       undefined,
-      {},
+      { assignee: "claimed" },
     );
   });
 

@@ -1,4 +1,7 @@
-export type { NotificationEmailSendOptions } from "./send-email";
+export type {
+  NotificationEmailSendOptions,
+  WorkspaceInvitationSendOptions,
+} from "./send-email";
 export {
   sendMagicLinkEmail,
   sendNotificationEmail,

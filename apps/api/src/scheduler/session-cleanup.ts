@@ -1,10 +1,12 @@
 import { sql } from "drizzle-orm";
 import db from "../database";
+import { purgeExpiredToolReports } from "../mcp-telemetry/repository";
 import { deleteExpiredPreferenceHandoffs } from "../notification/preference-handoff.repository";
 import { purgeReadNotifications } from "../notification/retention";
 import { withJobLease } from "./leader-lock";
 import {
   purgeExpiredOutboxReservations,
+  purgeExpiredRequestRateCounters,
   purgeExpiredSessions,
 } from "./repository";
 import {
@@ -147,6 +149,8 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
   const startedAt = Date.now();
   // Counted in the structured run line only, so the `SessionCleanupOutcome` shape is unchanged.
   let idempotencyKeysDeleted = 0;
+  let requestRateCountersDeleted = 0;
+  let mcpToolReportsDeleted = 0;
 
   try {
     const outcome = await withJobLease(
@@ -163,7 +167,17 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
         let readNotificationsPurged = 0;
         let retentionFailed = false;
         try {
+          requestRateCountersDeleted = await purgeExpiredRequestRateCounters();
+        } catch {
+          retentionFailed = true;
+        }
+        try {
           readNotificationsPurged = await purgeReadNotifications();
+        } catch {
+          retentionFailed = true;
+        }
+        try {
+          mcpToolReportsDeleted = await purgeExpiredToolReports();
         } catch {
           retentionFailed = true;
         }
@@ -196,6 +210,8 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
         outcome.notificationPreferenceHandoffsDeleted +
         (outcome.readNotificationsPurged ?? 0) +
         idempotencyKeysDeleted +
+        requestRateCountersDeleted +
+        mcpToolReportsDeleted +
         outcome.softDelete.projectsPurged +
         outcome.softDelete.workItemsPurged,
       outcome.degraded ? "degraded" : "ok",

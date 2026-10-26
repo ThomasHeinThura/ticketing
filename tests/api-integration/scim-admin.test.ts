@@ -15,7 +15,10 @@ import {
   lockAndVerifyScimMutation,
   resolveScimBearer,
 } from "../../apps/api/src/identity/scim-authentication";
-import { setScimIdentityActive } from "../../apps/api/src/identity/scim-lifecycle";
+import {
+  enqueueScimIdentityProvisioned,
+  setScimIdentityActive,
+} from "../../apps/api/src/identity/scim-lifecycle";
 import { createApp } from "../../apps/api/src/index";
 import * as observability from "../../apps/api/src/instance/observability/runtime";
 import { lockPendingActionLifecycle } from "../../apps/api/src/pending-action/lifecycle-invalidation";
@@ -1622,6 +1625,153 @@ describe("SCIM administration API", () => {
     expect(await patched.json()).toMatchObject({ title: "Support" });
   });
 
+  it("rolls back a SCIM provisioning event when persisted person scope is invalid", async () => {
+    const { connectionId } = await createScimProtocolFixture();
+    const internal = await ensureInternalOrganisation();
+    const personId = "scim-provisioning-invalid-scope-person";
+    const before = await db
+      .select({ eventId: schema.outboxTable.eventId })
+      .from(schema.outboxTable);
+
+    await expect(
+      db.transaction(async (tx) => {
+        await tx.insert(schema.personTable).values({
+          id: personId,
+          organisationId: internal.id,
+          side: "customer",
+          isPlaceholder: true,
+        });
+        await enqueueScimIdentityProvisioned(tx, { connectionId, personId });
+      }),
+    ).rejects.toThrow("SCIM agent identity has an invalid person side");
+
+    expect(
+      await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.id, personId)),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable),
+    ).toHaveLength(before.length);
+
+    const rollbackPersonId = "scim-provisioning-event-rollback-person";
+    await expect(
+      db.transaction(async (tx) => {
+        await tx.insert(schema.personTable).values({
+          id: rollbackPersonId,
+          organisationId: internal.id,
+          side: "staff",
+          isPlaceholder: true,
+        });
+        await enqueueScimIdentityProvisioned(tx, {
+          connectionId,
+          personId: rollbackPersonId,
+        });
+        throw new Error("rollback after provisioning event");
+      }),
+    ).rejects.toThrow("rollback after provisioning event");
+    expect(
+      await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.id, rollbackPersonId)),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable),
+    ).toHaveLength(before.length);
+  });
+
+  it("uses only a configured live internal workspace for an agent SCIM event", async () => {
+    const { app, token, connectionId } = await createScimProtocolFixture();
+    const internal = await ensureInternalOrganisation();
+    const workspaceId = "scim-provisioning-scope-workspace";
+    await db.insert(schema.workspaceTable).values({
+      id: workspaceId,
+      organisationId: internal.id,
+      name: "SCIM Provisioning Scope",
+      slug: "scim-provisioning-scope",
+      createdAt: new Date(),
+    });
+    await db
+      .update(schema.identityConnectionTable)
+      .set({ defaultWorkspaceId: workspaceId })
+      .where(eq(schema.identityConnectionTable.id, connectionId));
+
+    const user = await createScimProtocolUser(app, token, {
+      externalId: "valid-scope-external",
+      userName: "valid-scope@example.test",
+      displayName: "Valid Scope",
+      email: "valid-scope@example.test",
+      title: undefined,
+      preferredLanguage: undefined,
+    });
+    const [identity] = await db
+      .select({ personId: schema.externalIdentityTable.personId })
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, user.id));
+    if (!identity) throw new Error("SCIM scoped identity missing");
+    const [event] = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "identity.provisioned"),
+          sql`${schema.outboxTable.payload}->'payload'->>'personId' = ${identity.personId}`,
+        ),
+      );
+    expect(event?.payload).toMatchObject({
+      scope: { workspaceId },
+      payload: {
+        identityConnectionId: connectionId,
+        personId: identity.personId,
+        via: "scim",
+        organisationId: internal.id,
+      },
+    });
+
+    await db
+      .update(schema.workspaceTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.workspaceTable.id, workspaceId));
+    const deletedWorkspaceUser = await createScimProtocolUser(app, token, {
+      externalId: "scim-deleted-workspace-external",
+      userName: "scim-deleted-workspace@example.test",
+      displayName: "SCIM Deleted Workspace",
+      email: "scim-deleted-workspace@example.test",
+      title: undefined,
+      preferredLanguage: undefined,
+    });
+    const [deletedWorkspaceIdentity] = await db
+      .select({ personId: schema.externalIdentityTable.personId })
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, deletedWorkspaceUser.id));
+    if (!deletedWorkspaceIdentity)
+      throw new Error("SCIM deleted-workspace identity missing");
+    const [unscopedEvent] = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "identity.provisioned"),
+          sql`${schema.outboxTable.payload}->'payload'->>'personId' = ${deletedWorkspaceIdentity.personId}`,
+        ),
+      );
+    expect(unscopedEvent?.payload).toMatchObject({
+      scope: {},
+      payload: {
+        identityConnectionId: connectionId,
+        personId: deletedWorkspaceIdentity.personId,
+        via: "scim",
+        organisationId: internal.id,
+      },
+    });
+  });
+
   it("authenticates the delegated discovery mount with only its enabled connection bearer", async () => {
     const token = "A".repeat(43);
     await db.insert(schema.identityConnectionTable).values({
@@ -1839,6 +1989,32 @@ describe("SCIM administration API", () => {
       displayName: string;
     };
     expect(provisionedResource.displayName).toBe("Created Person");
+    const [provisionedIdentityRow] = await db
+      .select({ personId: schema.externalIdentityTable.personId })
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, provisionedResource.id));
+    if (!provisionedIdentityRow)
+      throw new Error("SCIM created identity missing");
+    const createdProvisioningEvents = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "identity.provisioned"),
+          sql`${schema.outboxTable.payload}->'payload'->>'personId' = ${provisionedIdentityRow.personId}`,
+        ),
+      );
+    expect(createdProvisioningEvents).toHaveLength(1);
+    expect(createdProvisioningEvents[0]?.payload).toMatchObject({
+      kind: "identity.provisioned",
+      scope: {},
+      payload: {
+        identityConnectionId: CONNECTION_ID,
+        personId: provisionedIdentityRow.personId,
+        via: "scim",
+        organisationId: expect.any(String),
+      },
+    });
 
     const groupCreate = await app.request("/scim/v2/Groups", {
       method: "POST",
@@ -2313,6 +2489,54 @@ describe("SCIM administration API", () => {
     );
     expect(reactivated.status).toBe(200);
     expect(await reactivated.json()).toMatchObject({ active: true });
+    const provisionedEventsAfterReactivation = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "identity.provisioned"),
+          sql`${schema.outboxTable.payload}->'payload'->>'personId' = ${deprovisionedIdentity.personId}`,
+        ),
+      );
+    expect(provisionedEventsAfterReactivation).toHaveLength(2);
+    expect(provisionedEventsAfterReactivation[1]?.payload).toMatchObject({
+      kind: "identity.provisioned",
+      scope: {},
+      payload: {
+        identityConnectionId: CONNECTION_ID,
+        personId: deprovisionedIdentity.personId,
+        via: "scim",
+      },
+    });
+    const repeatedActivePut = await app.request(
+      `/scim/v2/Users/${provisionedResource.id}`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/scim+json",
+        },
+        body: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+          externalId: "created-external",
+          userName: "created@example.test",
+          displayName: "Created Person Updated",
+          emails: [{ value: "created@example.test", primary: true }],
+          active: true,
+        }),
+      },
+    );
+    expect(repeatedActivePut.status).toBe(200);
+    const provisioningEventsAfterNoop = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "identity.provisioned"),
+          sql`${schema.outboxTable.payload}->'payload'->>'personId' = ${deprovisionedIdentity.personId}`,
+        ),
+      );
+    expect(provisioningEventsAfterNoop).toHaveLength(2);
     const [stillNoGrant] = await db
       .select({ id: schema.membershipGrantTable.id })
       .from(schema.membershipGrantTable)

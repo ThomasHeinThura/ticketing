@@ -6,13 +6,13 @@ import {
   AlertTitle,
   Button,
 } from "@taskdesk/ui";
-import { useTranslation } from "react-i18next";
 import { usePortalOrientation } from "@/hooks/use-portal-orientation";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { routes } from "@/lib/routes";
 
 /** CP-14: a brief, dismissible first-visit note (where to raise a request, where to see status); never a modal. */
 export function PortalOrientation({ portalUserId }: { portalUserId: string }) {
-  const { t } = useTranslation("portal");
+  const { t } = usePortalTranslation("portal");
   const { visible, dismiss } = usePortalOrientation(portalUserId);
   if (!visible) return null;
   return (

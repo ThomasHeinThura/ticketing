@@ -130,6 +130,14 @@ const pendingEnvelope = (id: string) => ({
   expiresAt: "2026-10-22T10:15:00.000Z",
   approveUrl: `/me/pending-actions/${id}`,
 });
+const pendingDecisionEnvelope = (id: string) => ({
+  pendingActionId: id,
+  action: "mcp_destructive",
+  summary: { approvalId: "approval-1", decision: "approve" },
+  confirmation: "click",
+  expiresAt: "2026-10-22T10:15:00.000Z",
+  approveUrl: `/me/pending-actions/${id}`,
+});
 
 function createHarness(options: { readOnlyKey?: boolean } = {}) {
   const tools = new Map<string, Tool>();
@@ -145,6 +153,7 @@ function createHarness(options: { readOnlyKey?: boolean } = {}) {
     },
   };
   const client = {
+    reportToolInvocation: async () => undefined,
     json: async (path: string, init?: RequestInit) => {
       const method = (init?.method ?? "GET").toUpperCase();
       calls.push({
@@ -177,6 +186,40 @@ function createHarness(options: { readOnlyKey?: boolean } = {}) {
         seq += 1;
         return pendingEnvelope(`pa-${seq}`);
       }
+      if (method === "POST" && /^\/api\/approvals\/[^/]+\/decide$/.test(path)) {
+        seq += 1;
+        return pendingDecisionEnvelope(`pa-${seq}`);
+      }
+      if (method === "POST" && path === "/api/imports")
+        return { id: "run-mcp", version: 1 };
+      if (method === "POST" && path === "/api/imports/run-mcp/dry-run") {
+        const body = JSON.parse(String(init?.body)) as { chunkId: string };
+        return {
+          runId: "run-mcp",
+          chunkId: body.chunkId,
+          previewDigest: "a".repeat(64),
+          runVersion: 2,
+          expiresAt: "2026-10-22T10:30:00.000Z",
+          counts: {
+            created: 1,
+            updated: 0,
+            skipped: 0,
+            rejected: 0,
+            processed: 1,
+          },
+          rows: [],
+        };
+      }
+      if (method === "POST" && path === "/api/imports/run-mcp/records")
+        return {
+          kind: "pending_approval",
+          pendingActionId: "pa-import-1",
+          runId: "run-mcp",
+          chunkId: "chunk-mcp",
+          runVersion: 3,
+        };
+      if (path === "/api/imports/run-mcp/links")
+        return { runId: "run-mcp", links: [] };
       return {};
     },
   };
@@ -346,7 +389,7 @@ describe("MCP prompt injection (MC-15, MC-17, MC-18, PA-10)", () => {
     }
   });
 
-  it("no tool, given any arguments, reaches a direct-delete or approval route", async () => {
+  it("approval decision tools only open a pending action and never decide directly", async () => {
     const { tools, calls, call } = createHarness();
     const superset = {
       idempotencyKey: KEY,
@@ -385,12 +428,56 @@ describe("MCP prompt injection (MC-15, MC-17, MC-18, PA-10)", () => {
       userId: "u-1",
       q: "q",
       startTime: "2026-10-22T10:00:00.000Z",
+      workItemId: "wi-1",
+      date: "2026-10-22",
+      minutes: 15,
+      activityId: "act-1",
       confirm: true,
       approve: true,
+      approvalId: "approval-1",
+      action: "approve",
     };
 
     expect(tools.size).toBeGreaterThan(20);
     for (const name of tools.keys()) {
+      if (name === "bulk_create_work_items") {
+        const { result, body } = await call(name, {
+          action: "preview",
+          idempotencyKey: KEY,
+          workspaceId: "w-1",
+          projectId: "p-1",
+          sourceRef: "mcp-injection-fixture",
+          records: [
+            {
+              sourceType: "issue",
+              sourceId: "ISSUE-1",
+              item: { typeId: "ty-1", title: "Imported safely" },
+            },
+          ],
+        });
+        expect(result.isError).toBe(false);
+        expect(body.status).toBe("previewed_no_items_written");
+        continue;
+      }
+      if (name === "create_import_link") {
+        await call(name, {
+          idempotencyKey: KEY,
+          runId: "run-mcp",
+          links: [
+            {
+              sourceType: "issue",
+              sourceId: "ISSUE-1",
+              targetType: "work_item",
+              targetId: "wi-1",
+            },
+          ],
+        });
+        continue;
+      }
+      if (name === "get_import_link") {
+        await call(name, { runId: "run-mcp" });
+        continue;
+      }
       await call(name, superset);
     }
     // Every write the harness saw was a single idempotency-keyed canonical call.
@@ -399,13 +486,25 @@ describe("MCP prompt injection (MC-15, MC-17, MC-18, PA-10)", () => {
       (c) => c.method !== "GET" && c.path !== "/api/work-items/search",
     );
     for (const c of changes) {
-      expect(c.headers.get("Idempotency-Key"), c.path).toBe(KEY);
-      expect(c.path, c.path).toMatch(
-        /^\/api\/(work-items|projects|comments)\b/,
-      );
+      if (
+        c.path === "/api/imports" ||
+        c.path.endsWith("/dry-run") ||
+        c.path.endsWith("/records")
+      ) {
+        expect(c.headers.get("Idempotency-Key"), c.path).toMatch(
+          /^mcp-import-[a-f0-9]{64}$/u,
+        );
+      } else {
+        expect(c.headers.get("Idempotency-Key"), c.path).toBe(KEY);
+      }
     }
 
     for (const c of calls) {
+      if (/^\/api\/approvals\//.test(c.path)) {
+        expect(c.path).toMatch(/^\/api\/approvals\/approval-1\/decide$/);
+        expect(c.method).toBe("POST");
+        expect(JSON.parse(c.body ?? "{}")).toEqual({ action: "approve" });
+      }
       expect(c.path).not.toMatch(APPROVAL_ROUTE);
       if (c.method === "DELETE") {
         for (const legacy of LEGACY_DELETE) expect(c.path).not.toMatch(legacy);
@@ -450,7 +549,10 @@ describe("MCP untrusted-by-default output (PA-10)", () => {
         },
       } as never,
       {
-        client: { json: async (p: string, i?: RequestInit) => respond(p, i) },
+        client: {
+          json: async (p: string, i?: RequestInit) => respond(p, i),
+          reportToolInvocation: async () => undefined,
+        },
       } as never,
     );
     return async (name: string, args: Record<string, unknown>) => {
@@ -561,6 +663,31 @@ describe("MCP writes follow the key, not the ticket (MC-7a, MC-16, MC-18)", () =
     }
   });
 
+  it("a read-only key cannot create an import run during preview", async () => {
+    const harness = createHarness({ readOnlyKey: true });
+    const { result, body } = await harness.call("bulk_create_work_items", {
+      action: "preview",
+      idempotencyKey: KEY,
+      workspaceId: "w-1",
+      projectId: "p-1",
+      sourceRef: "mcp-injection-fixture",
+      records: [
+        {
+          sourceType: "issue",
+          sourceId: "ISSUE-1",
+          item: { typeId: "ty-1", title: "Imported safely" },
+        },
+      ],
+    });
+    expect(result.isError).toBe(true);
+    expect(errorParts(body).guidance).toMatch(/read-only/);
+    expect(harness.calls).toHaveLength(1);
+    expect(harness.calls[0]?.path).toBe("/api/imports");
+    expect(harness.calls[0]?.headers.get("Idempotency-Key")).toMatch(
+      /^mcp-import-[a-f0-9]{64}$/u,
+    );
+  });
+
   it("with a write-enabled key each obeyed write is one idempotency-keyed canonical call", async () => {
     const harness = createHarness();
     const { outcomes } = await obey(harness);
@@ -586,14 +713,15 @@ describe("MCP writes follow the key, not the ticket (MC-7a, MC-16, MC-18)", () =
     expect(harness.calls).toHaveLength(0);
   });
 
-  it("there is no tool that decides approvals, purges, or bulk-creates", () => {
+  it("does not offer direct approval decisions or purges, and requires explicit import preview", async () => {
     const { tools } = createHarness();
-    for (const name of [
-      "decide_approval",
-      "bulk_create_work_items",
-      "purge_work_item",
-      "hard_delete_work_item",
-    ])
+    for (const name of ["purge_work_item", "hard_delete_work_item"])
       expect(tools.has(name), name).toBe(false);
+    expect(tools.has("decide_approval")).toBe(true);
+    const bulk = tools.get("bulk_create_work_items");
+    expect(bulk).toBeDefined();
+    expect(() =>
+      bulk?.config.inputSchema?.parse({ action: "execute", confirm: true }),
+    ).toThrow();
   });
 });

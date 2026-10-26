@@ -1,6 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
+import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import { Filter, PanelsTopLeft, Rows3, Table2 } from "lucide-react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+} from "react";
 import {
   lazy,
   Suspense,
@@ -11,13 +16,8 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import GroupControl from "@/components/common/group-control";
 import SortControl from "@/components/common/sort-control";
 import PageTitle from "@/components/page-title";
-import {
-  loadWorkItemCreateDialogShell,
-  preloadWorkItemCreateDialogShell,
-} from "@/components/work-item/work-item-create-dialog-shell-loader";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -33,9 +33,49 @@ import {
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { normalizeCanonicalWorkItemSelection } from "@/lib/project-layout-navigation";
 
-type CreateDialogShellComponent = Awaited<
-  ReturnType<typeof loadWorkItemCreateDialogShell>
->["default"];
+type CreateDialogShellComponent =
+  typeof import("@/components/work-item/work-item-create-dialog-shell")["default"];
+
+function preloadWorkItemCreateDialogShell() {
+  void import("@/components/work-item/work-item-create-dialog-shell-loader")
+    .then(({ preloadWorkItemCreateDialogShell: preload }) => preload())
+    .catch(() => undefined);
+}
+
+function loadWorkItemCreateDialogShell() {
+  return import(
+    "@/components/work-item/work-item-create-dialog-shell-loader"
+  ).then(({ loadWorkItemCreateDialogShell: load }) => load());
+}
+
+type PendingSidePaneOpen = {
+  key: string;
+  opener: HTMLElement;
+  ready: boolean;
+};
+
+function getWorkItemOpener(
+  target: EventTarget | null,
+): HTMLElement | undefined {
+  if (!(target instanceof HTMLElement)) return undefined;
+  const opener = target.closest<HTMLElement>("[data-task-id]");
+  if (!opener) return undefined;
+  const control = target.closest(
+    'button, a, input, textarea, select, [role="button"], [role="link"], [role="textbox"], [contenteditable="true"]',
+  );
+  return control && control !== opener ? undefined : opener;
+}
+
+function isWorkItemDragActive(
+  target: EventTarget | null,
+  opener?: HTMLElement,
+): boolean {
+  const targetElement = target instanceof HTMLElement ? target : undefined;
+  return Boolean(
+    targetElement?.closest('[data-task-dragging="true"]') ||
+      opener?.closest('[data-task-dragging="true"]'),
+  );
+}
 
 type WorkItemsPanelModule =
   typeof import("@/components/work-item/work-items-panel");
@@ -67,6 +107,7 @@ const WorkItemCreateTrigger = lazy(
 const WorkItemBoardView = lazy(
   () => import("@/components/work-item/work-item-board-view"),
 );
+const GroupControl = lazy(() => import("@/components/common/group-control"));
 const BulkAssignToolbar = lazy(
   () => import("@/components/work-item/bulk-assign-toolbar"),
 );
@@ -82,7 +123,11 @@ const WorkItemSidePane = lazy(
   () => import("@/components/work-item/work-item-side-pane"),
 );
 
-import type { WorkItemGroup } from "@/lib/project-board-search";
+import {
+  type ProjectViewGroup,
+  parseWorkItemGroup,
+  type WorkItemGroup,
+} from "@/lib/project-board-search";
 import {
   readProjectLayoutPreference,
   writeProjectLayoutPreference,
@@ -94,6 +139,7 @@ import {
   type WorkItemSearchColumn,
   type WorkItemSortDirection,
   type WorkItemSortField,
+  type WorkItemWorkSearch,
 } from "@/lib/routes";
 
 /**
@@ -126,13 +172,17 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     layout,
     sort,
     dir,
+    sorts,
     filter,
     filterMode,
     columns: urlColumns,
     item,
     group: urlGroup,
+    combined,
   } = Route.useSearch();
   const group: WorkItemGroup = urlGroup ?? "state";
+  const combinedActive = combined === "descendants" && group === "state";
+  const combinedGroupMismatch = combined === "descendants" && group !== "state";
   const isFiltered = !!filter?.trim();
   const boardSort = isFiltered && sort === "position" ? "key" : sort;
   const boardDir = isFiltered && sort === "position" ? "asc" : dir;
@@ -152,14 +202,53 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   }, [isFilterOpen]);
   const navigate = Route.useNavigate();
   const hasOpenedSidePane = useRef(false);
+  const routeContentRef = useRef<HTMLDivElement>(null);
+  const openerCandidateRef = useRef<HTMLElement | undefined>(undefined);
+  const pendingSidePaneOpenRef = useRef<PendingSidePaneOpen | undefined>(
+    undefined,
+  );
+  const readySidePaneKeyRef = useRef<string | undefined>(undefined);
   if (item) hasOpenedSidePane.current = true;
+  const rememberWorkItemOpener = useCallback((target: EventTarget | null) => {
+    const opener = getWorkItemOpener(target);
+    if (!opener || isWorkItemDragActive(target, opener)) {
+      openerCandidateRef.current = undefined;
+      return;
+    }
+    openerCandidateRef.current = opener;
+    queueMicrotask(() => {
+      if (openerCandidateRef.current === opener) {
+        openerCandidateRef.current = undefined;
+      }
+    });
+  }, []);
   const openSidePane = useCallback(
     (key: string) => {
-      void navigate({
+      const opener =
+        openerCandidateRef.current ?? getWorkItemOpener(document.activeElement);
+      openerCandidateRef.current = undefined;
+      const pendingOpen =
+        opener?.isConnected &&
+        !isWorkItemDragActive(document.activeElement, opener)
+          ? {
+              key,
+              opener,
+              ready: readySidePaneKeyRef.current === key,
+            }
+          : undefined;
+      pendingSidePaneOpenRef.current = pendingOpen;
+      const navigation = navigate({
         search: (prev: WorkItemListSearch) => ({ ...prev, item: key }),
         replace: true,
         resetScroll: false,
       });
+      if (navigation && typeof navigation.then === "function") {
+        void navigation.catch(() => {
+          if (pendingSidePaneOpenRef.current === pendingOpen) {
+            pendingSidePaneOpenRef.current = undefined;
+          }
+        });
+      }
     },
     [navigate],
   );
@@ -223,6 +312,38 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   } = useGetProjects({ workspaceId: workspace?.id ?? "" });
 
   const project = projects?.find((candidate) => candidate.slug === projectKey);
+  const groupingFieldsQuery = useQuery({
+    queryKey: ["custom-fields", workspace?.id ?? "", false],
+    queryFn: async () => {
+      const { getCustomFields } = await import("@/fetchers/custom-field");
+      return getCustomFields(workspace?.id ?? "");
+    },
+    enabled: layout === "board" && Boolean(workspace?.id),
+    staleTime: 30_000,
+  });
+  const customGroupingFields = (groupingFieldsQuery.data?.data ?? []).filter(
+    (field) =>
+      field.deletedAt === null &&
+      field.visibility.some((entry) => entry.visible),
+  );
+  const registeredCustomField = group.startsWith("cf.")
+    ? customGroupingFields.find((field) => `cf.${field.key}` === group)
+    : undefined;
+  const boardGroup: WorkItemGroup =
+    group.startsWith("cf.") && !registeredCustomField ? "state" : group;
+  const groupOptions: WorkItemGroup[] = [
+    "state",
+    "assignee",
+    "priority",
+    "label",
+    ...customGroupingFields.map((field) => `cf.${field.key}` as const),
+  ];
+  const groupLabels = Object.fromEntries([
+    ...customGroupingFields.map((field) => [`cf.${field.key}`, field.name]),
+    ...(group.startsWith("cf.") && !registeredCustomField
+      ? [[group, t("workItems:board.groupUnavailable")]]
+      : []),
+  ]);
   // `VW-19`: the chosen columns persist per person and project; a `columns` URL always wins.
   const columnsPreference = useProjectViewPreference({
     projectId: project?.id,
@@ -315,6 +436,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     hasNextPage: hasMoreWorkItems,
     isFetchingNextPage: isLoadingMoreWorkItems,
     isLoadMoreError,
+    isCursorChanged,
+    restartFromFirstPage,
     isPlaceholderData,
     fetchNextPage: fetchMoreWorkItems,
   } = useGetWorkItems({
@@ -325,6 +448,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     columns,
     sort,
     dir,
+    sorts,
     enabled: isTabularLayout,
     realtimeStatus:
       realtimeStatus && realtimeStatus.projectId === project?.id
@@ -403,6 +527,28 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           ...prev,
           sort: nextSort,
           dir: nextDir,
+          sorts: undefined,
+        }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
+
+  const handleSortsChange = useCallback(
+    (
+      nextSorts: { field: WorkItemSortField; order: WorkItemSortDirection }[],
+    ) => {
+      const primary = nextSorts[0] ?? {
+        field: "key" as const,
+        order: "asc" as const,
+      };
+      navigate({
+        search: (prev: WorkItemListSearch) => ({
+          ...prev,
+          sort: primary.field,
+          dir: primary.order,
+          sorts: nextSorts.length > 1 ? nextSorts : undefined,
         }),
         replace: true,
       });
@@ -470,11 +616,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   // `VW-13`: the grouping lives in the URL (`VW-1`) and survives a layout switch; the default
   // (state) is never written.
   const handleGroupChange = useCallback(
-    (nextGroup: WorkItemGroup) => {
+    (nextGroup: ProjectViewGroup) => {
+      const workItemGroup = parseWorkItemGroup(nextGroup);
+      if (!workItemGroup) return;
       navigate({
         search: (prev: WorkItemListSearch) => ({
           ...prev,
-          group: nextGroup === "state" ? undefined : nextGroup,
+          group: workItemGroup === "state" ? undefined : workItemGroup,
         }),
         replace: true,
       });
@@ -482,7 +630,18 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     [navigate],
   );
 
+  const handleCombinedChange = useCallback(() => {
+    navigate({
+      search: (prev: WorkItemWorkSearch) => ({
+        ...prev,
+        combined: prev.combined === "descendants" ? undefined : "descendants",
+      }),
+      replace: true,
+    });
+  }, [navigate]);
+
   const handleCloseSidePane = useCallback(() => {
+    pendingSidePaneOpenRef.current = undefined;
     navigate({
       search: (prev: WorkItemListSearch) => ({
         ...prev,
@@ -492,6 +651,78 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
       resetScroll: false,
     });
   }, [navigate]);
+
+  const handleSidePaneReady = useCallback((key?: string) => {
+    readySidePaneKeyRef.current = key;
+    const pendingOpen = pendingSidePaneOpenRef.current;
+    if (pendingOpen && pendingOpen.key === key) pendingOpen.ready = true;
+  }, []);
+
+  const handlePendingSidePaneKeyDownCapture = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key === "Enter") {
+        if (
+          event.defaultPrevented ||
+          event.repeat ||
+          event.ctrlKey ||
+          event.metaKey
+        ) {
+          return;
+        }
+        rememberWorkItemOpener(event.target);
+        return;
+      }
+
+      if (
+        event.key !== "Escape" ||
+        event.defaultPrevented ||
+        event.repeat ||
+        event.nativeEvent.isComposing
+      ) {
+        return;
+      }
+
+      const pendingOpen = pendingSidePaneOpenRef.current;
+      if (!pendingOpen || pendingOpen.ready) return;
+      if (
+        !pendingOpen.opener.isConnected ||
+        !routeContentRef.current?.contains(pendingOpen.opener)
+      ) {
+        pendingSidePaneOpenRef.current = undefined;
+        return;
+      }
+      if (
+        getWorkItemOpener(event.target) !== pendingOpen.opener ||
+        document.querySelector('[data-task-dragging="true"]')
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      handleCloseSidePane();
+    },
+    [handleCloseSidePane, rememberWorkItemOpener],
+  );
+
+  const handleWorkItemClickCapture = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey) {
+        return;
+      }
+      rememberWorkItemOpener(event.target);
+    },
+    [rememberWorkItemOpener],
+  );
+
+  useEffect(
+    () => () => {
+      openerCandidateRef.current = undefined;
+      pendingSidePaneOpenRef.current = undefined;
+      readySidePaneKeyRef.current = undefined;
+    },
+    [],
+  );
 
   const handleRetry = useCallback(() => {
     refetchProjects();
@@ -588,7 +819,12 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             : t("workItems:list.pageTitle")
         }
       />
-      <div className="flex h-full min-h-0 min-w-0 w-full flex-col overflow-y-auto">
+      <div
+        ref={routeContentRef}
+        className="flex h-full min-h-0 min-w-0 w-full flex-col overflow-y-auto"
+        onClickCapture={handleWorkItemClickCapture}
+        onKeyDownCapture={handlePendingSidePaneKeyDownCapture}
+      >
         <p className="sr-only" role="status" aria-live="polite">
           {selectionAnnouncement}
         </p>
@@ -639,11 +875,36 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                   }}
                 />
                 {layout === "board" ? (
-                  <GroupControl
-                    group={group}
-                    onGroupChange={handleGroupChange}
-                    groups={["state", "assignee", "priority"]}
-                  />
+                  <>
+                    {!combinedActive ? (
+                      <Suspense fallback={null}>
+                        <GroupControl
+                          group={group}
+                          onGroupChange={handleGroupChange}
+                          groups={groupOptions}
+                          groupLabels={groupLabels}
+                        />
+                      </Suspense>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {t("workItems:board.combinedScope")}
+                      </span>
+                    )}
+                    <Button
+                      variant={combinedActive ? "secondary" : "ghost"}
+                      type="button"
+                      aria-pressed={combinedActive}
+                      disabled={group !== "state"}
+                      title={
+                        group !== "state"
+                          ? t("workItems:board.combinedStateGroupingRequired")
+                          : undefined
+                      }
+                      onClick={handleCombinedChange}
+                    >
+                      {t("workItems:board.combinedDescendants")}
+                    </Button>
+                  </>
                 ) : null}
               </div>
               <div className="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 sm:w-auto">
@@ -754,6 +1015,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             />
           </Suspense>
         ) : null}
+        {combinedGroupMismatch ? (
+          <Alert variant="warning" role="status">
+            <AlertDescription>
+              {t("workItems:board.combinedStateGroupingRequired")}
+            </AlertDescription>
+          </Alert>
+        ) : null}
         {isTabularLayout ? (
           <Suspense fallback={<WorkItemListLoading />}>
             <WorkItemsPanel
@@ -766,7 +1034,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               realtimeStatus={realtimeStatus}
               sort={sort}
               dir={dir}
+              sorts={sorts}
               onSortChange={handleSortChange}
+              onSortsChange={handleSortsChange}
               onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
               onRetry={handleRetry}
               columns={columns}
@@ -775,6 +1045,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               onLoadMore={() => void fetchMoreWorkItems()}
               isLoadingMore={isLoadingMoreWorkItems}
               isLoadMoreError={isLoadMoreError}
+              isCursorChanged={isCursorChanged}
+              onRestartFromFirstPage={() => void restartFromFirstPage()}
               isPlaceholderData={isPlaceholderData}
               selectedKeys={selectedKeys}
               canBulkAssign={canBulkAssign}
@@ -786,12 +1058,14 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         ) : project ? (
           <Suspense fallback={<WorkItemListLoading />}>
             <WorkItemBoardView
-              group={group}
+              group={boardGroup}
+              customField={registeredCustomField}
               sort={boardSort}
               dir={boardDir}
               project={project}
               workspaceId={workspace?.id}
               filter={filter}
+              combined={combinedActive}
               realtimeProjectId={realtimeProjectId}
               realtimeStatus={realtimeStatus}
               onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
@@ -815,7 +1089,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               realtimeStatus={realtimeStatus}
               sort={sort}
               dir={dir}
+              sorts={sorts}
               onSortChange={handleSortChange}
+              onSortsChange={handleSortsChange}
               onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
               onRetry={handleRetry}
             />
@@ -823,7 +1099,11 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         )}
         {hasOpenedSidePane.current ? (
           <Suspense fallback={null}>
-            <WorkItemSidePane itemKey={item} onClose={handleCloseSidePane} />
+            <WorkItemSidePane
+              itemKey={item}
+              onClose={handleCloseSidePane}
+              onReady={handleSidePaneReady}
+            />
           </Suspense>
         ) : null}
         {project && isCreateOpenForProject && CreateDialogShell ? (

@@ -8,7 +8,226 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * that nobody remembered to list therefore fails the build instead of shipping unprotected
  * (`docs/01-architecture/rbac.md`, elevation coverage test).
  */
+const organisationLifecycleWritePolicy = {
+  capability: "instance:admin",
+  scope: "instance",
+  scopeSource: "instance",
+  reach: {
+    exempt: "no_single_resource",
+    reason:
+      "customer organisation profiles are managed by current instance administrators",
+  },
+  elevated: false,
+  elevationExemptionReason:
+    "The retained God Mode API table declares create, profile, suspend and unsuspend without elevation; organisation deletion remains elevated.",
+  sessionOnly: true,
+} as const;
+
 export const instancePolicies = {
+  "POST /api/instance/organisations": organisationLifecycleWritePolicy,
+  "PATCH /api/instance/organisations/{id}": organisationLifecycleWritePolicy,
+  "POST /api/instance/organisations/{id}/suspend":
+    organisationLifecycleWritePolicy,
+  "POST /api/instance/organisations/{id}/unsuspend":
+    organisationLifecycleWritePolicy,
+  "DELETE /api/instance/organisations/{id}": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "current instance administrator; exact organisation target and generation are revalidated by typed-name/step-up pending action",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
+  "POST /api/instance/organisations/{id}/restore": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "current instance administrator restores an exact organisation deletion operation within its retention window",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
+  "GET /api/instance/organisations": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "instance administrators inspect customer organisation catalogues",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only organisation and catalogue configuration",
+    sessionOnly: true,
+  },
+  "PUT /api/instance/organisations/{id}/catalogue": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "instance administrators assign each organisation's portal catalogue",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "RT-8a and the God Mode API table require current instance administrator authority for catalogue assignment; it is not an elevated action in permissions.md",
+    sessionOnly: true,
+  },
+  "GET /api/instance/storage/usage": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "instance administrator inspects the active attachment storage backend",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only logical attachment totals and current bootstrap backend metadata",
+    sessionOnly: true,
+  },
+  "POST /api/instance/storage/test": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "instance administrator inspects the active attachment storage backend",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "bounded diagnostic on one frozen backend using a server-generated object, fixed nonsecret bytes and exact-object cleanup; no authority or configuration change",
+    sessionOnly: true,
+  },
+  "GET /api/instance/mcp/usage": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance administrator inspects recorded MCP key usage",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only bounded usage and key state metadata without credentials or request contents",
+    sessionOnly: true,
+  },
+  "GET /api/instance/plugins": {
+    capability: "instance:manage_plugins",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide supported plugin configuration catalog",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only supported plugin metadata without configuration or secret values",
+    sessionOnly: true,
+  },
+  "GET /api/instance/jobs": {
+    capability: "instance:manage_jobs",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide registered job administration",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only registered job configuration and execution metadata",
+    sessionOnly: true,
+  },
+  "PATCH /api/instance/jobs/{name}": {
+    capability: "instance:manage_jobs",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide registered job administration",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "reversible audited runtime job cadence and enable settings",
+    sessionOnly: true,
+  },
+  "POST /api/instance/jobs/{name}/run": {
+    capability: "instance:manage_jobs",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide registered job administration",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "audited manual scheduling of an existing job; privileged secret rotation is excluded",
+    sessionOnly: true,
+  },
+  "GET /api/instance/deliveries": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance administrator inspects metadata-only delivery state",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only delivery metadata with no payload or destination data",
+    sessionOnly: true,
+  },
+  "POST /api/instance/deliveries/{id}/requeue": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance administrator retries an existing dead delivery",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "audited retry of existing dead metadata through the bounded worker; no authority change and current delivery reach/preferences are rechecked",
+    sessionOnly: true,
+  },
+  "GET /api/instance/organisations/{id}/customer-visibility": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "customer organisation defaults are administered by instance administrators",
+    },
+    elevated: false,
+    elevationExemptionReason: "read-only customer visibility configuration",
+    sessionOnly: true,
+  },
+  "PATCH /api/instance/organisations/{id}/customer-visibility": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "customer organisation defaults are administered by instance administrators",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "changes the default for future requests without changing access to existing records",
+    sessionOnly: true,
+  },
   "GET /api/instance/users": {
     capability: "instance:admin",
     scope: "instance",
@@ -139,6 +358,18 @@ export const instancePolicies = {
     elevated: false,
     elevationExemptionReason:
       "creates a pending action; execution requires action-bound PA-15 proof",
+    sessionOnly: true,
+  },
+  "POST /api/instance/purge": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "exceptional hard purge is an instance-wide administration action",
+    },
+    elevated: true,
     sessionOnly: true,
   },
   "GET /api/instance/identity-connections": {

@@ -2,6 +2,9 @@ import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
 import {
   evaluatePolicy,
+  instanceScope,
+  NO_PERSON_PARAMETER,
+  NO_SINGLE_RESOURCE,
   projectScopeFromRow,
   type ResolvedIdentity,
   reaches,
@@ -15,6 +18,7 @@ import {
   cycleDeletionTarget,
   moduleDeletionTarget,
 } from "../agile/deletion-target";
+import { personalKeyDeletionTarget } from "../api-key/personal-key-deletion-target";
 import { serviceKeyDeletionTarget } from "../api-key/service-key-deletion-target";
 import { appendAuditLog } from "../audit/audit-writer";
 import { appendPendingActionStepUpAudit } from "../auth/step-up-audit";
@@ -33,6 +37,13 @@ import {
   userTable,
 } from "../database/schema";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
+import { IdentityGrantClosureChangedError } from "../identity/errors";
+import { databaseErrorCode } from "../identity/grant-closure-retry";
+import {
+  IMPORT_CHUNK_ROUTE,
+  IMPORT_CHUNK_TARGET,
+  IMPORT_LINK_CHUNK_ROUTE,
+} from "../imports/pending-action-contract";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { invitationDeletionTarget } from "../invitation/invitation-deletion-target";
@@ -75,10 +86,15 @@ import {
   approveClickDeletion,
   type ClickDeletionApprovalInput,
   type RegisteredDeletionEffect,
+  type RegisteredDeletionLoaded,
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
+  type RuntimeRegisteredDeletionTarget,
 } from "./click-deletion-executor";
 import { failOnExecutorError } from "./execution-failure";
+import { identityConnectionDeletionTarget } from "./identity-connection-deletion-target";
 import { lockPendingActionLifecycle } from "./lifecycle-invalidation";
+import { organisationDeletionTarget } from "./organisation-deletion-target";
 import {
   canonicalPendingActionPayload,
   hashPendingActionPayload,
@@ -1139,35 +1155,39 @@ async function invalidateServiceCalendarDeletion(
 // target modules import back into the pending-action graph, so an eagerly-built array could
 // read a target binding before its module finished initialising (TDZ) depending on boot order.
 let registeredDeletionTargetCache:
-  | readonly RegisteredDeletionTarget[]
+  | readonly RuntimeRegisteredDeletionTarget[]
   | undefined;
-export function registeredDeletionTargets(): readonly RegisteredDeletionTarget[] {
-  registeredDeletionTargetCache ??= [
-    projectDeletionTarget,
-    workspaceDeletionTarget,
-    workspaceRoleDeletionTarget,
-    labelDeletionTarget,
-    projectLabelDeletionTarget,
-    columnDeletionTarget,
-    cannedResponseDeletionTarget,
-    milestoneDeletionTarget,
-    prerequisiteDeletionTarget,
-    documentLinkDeletionTarget,
-    invitationDeletionTarget,
-    serviceKeyDeletionTarget,
-    customFieldDeletionTarget,
-    teamDeletionTarget,
-    serviceDeletionTarget,
-    kbCategoryDeletionTarget,
-    timeEntryDeletionTarget,
-    costEntryDeletionTarget,
-    webhookDeletionTarget,
-    automationDeletionTarget,
-    cycleDeletionTarget,
-    moduleDeletionTarget,
-    pageDeletionTarget,
-    dashboardDeletionTarget,
-  ];
+export function registeredDeletionTargets(): readonly RuntimeRegisteredDeletionTarget[] {
+  if (!registeredDeletionTargetCache)
+    registeredDeletionTargetCache = [
+      projectDeletionTarget,
+      workspaceDeletionTarget,
+      workspaceRoleDeletionTarget,
+      labelDeletionTarget,
+      projectLabelDeletionTarget,
+      columnDeletionTarget,
+      cannedResponseDeletionTarget,
+      milestoneDeletionTarget,
+      prerequisiteDeletionTarget,
+      documentLinkDeletionTarget,
+      invitationDeletionTarget,
+      serviceKeyDeletionTarget,
+      personalKeyDeletionTarget,
+      customFieldDeletionTarget,
+      teamDeletionTarget,
+      serviceDeletionTarget,
+      kbCategoryDeletionTarget,
+      timeEntryDeletionTarget,
+      costEntryDeletionTarget,
+      webhookDeletionTarget,
+      automationDeletionTarget,
+      cycleDeletionTarget,
+      moduleDeletionTarget,
+      pageDeletionTarget,
+      dashboardDeletionTarget,
+      organisationDeletionTarget,
+      identityConnectionDeletionTarget,
+    ];
   return registeredDeletionTargetCache;
 }
 
@@ -1185,13 +1205,80 @@ export function findRegisteredDeletionTarget(input: {
   action: string;
   targetType: string;
   routeKey: string;
-}): RegisteredDeletionTarget | undefined {
+}): RuntimeRegisteredDeletionTarget | undefined {
   if (input.action !== "delete") return undefined;
   return registeredDeletionTargets().find(
     (target) =>
       target.targetType === input.targetType &&
       target.routeKey === input.routeKey,
   );
+}
+
+type RuntimeRegisteredDeletionLoaded =
+  | RegisteredDeletionLoaded<string>
+  | RegisteredDeletionLoaded<null>;
+
+type RuntimeRegisteredDeletionReadScope = RegisteredDeletionReadScope;
+
+function assertRegisteredDeletionCanExecute(
+  target: RuntimeRegisteredDeletionTarget,
+  tx: PendingActionTransaction,
+  loaded: RuntimeRegisteredDeletionLoaded,
+) {
+  return loaded.workspaceId === null
+    ? (
+        target as RegisteredDeletionTarget<RegisteredDeletionLoaded<null>>
+      ).assertDeletable?.(tx, loaded as RegisteredDeletionLoaded<null>)
+    : (
+        target as RegisteredDeletionTarget<RegisteredDeletionLoaded<string>>
+      ).assertDeletable?.(tx, loaded as RegisteredDeletionLoaded<string>);
+}
+
+function registeredDeletionCallerReaches(
+  target: RuntimeRegisteredDeletionTarget,
+  tx: PendingActionTransaction,
+  loaded: RuntimeRegisteredDeletionLoaded | RuntimeRegisteredDeletionReadScope,
+  identity: ResolvedIdentity,
+): Promise<boolean> {
+  if (loaded.workspaceId === null) {
+    const predicate = (
+      target as RegisteredDeletionTarget<RegisteredDeletionLoaded<null>>
+    ).callerReaches;
+    return predicate
+      ? predicate(tx, loaded as RegisteredDeletionReadScope, identity)
+      : Promise.resolve(true);
+  }
+  const predicate = (
+    target as RegisteredDeletionTarget<RegisteredDeletionLoaded<string>>
+  ).callerReaches;
+  return predicate
+    ? predicate(tx, loaded as RegisteredDeletionReadScope, identity)
+    : Promise.resolve(true);
+}
+
+function executeRegisteredDeletionTarget(
+  target: RuntimeRegisteredDeletionTarget,
+  tx: PendingActionTransaction,
+  context: {
+    row: typeof schema.pendingActionTable.$inferSelect;
+    loaded: RuntimeRegisteredDeletionLoaded;
+    identity: ResolvedIdentity;
+    input: ClickDeletionApprovalInput;
+  },
+): Promise<RegisteredDeletionEffect> {
+  return context.loaded.workspaceId === null
+    ? (
+        target as RegisteredDeletionTarget<RegisteredDeletionLoaded<null>>
+      ).execute(tx, {
+        ...context,
+        loaded: context.loaded as RegisteredDeletionLoaded<null>,
+      })
+    : (
+        target as RegisteredDeletionTarget<RegisteredDeletionLoaded<string>>
+      ).execute(tx, {
+        ...context,
+        loaded: context.loaded as RegisteredDeletionLoaded<string>,
+      });
 }
 
 export function isRegisteredDeletion(input: {
@@ -1226,6 +1313,7 @@ export async function evaluateRegisteredDeletionAccess(
   tx: PendingActionTransaction,
   input: ActionRequiredAccessInput,
   identity: ResolvedIdentity,
+  mode: "locked" | "read" = "locked",
 ): Promise<RequiredAccessDecision> {
   const target = findRegisteredDeletionTarget(input);
   const id = input.targetIds.length === 1 ? input.targetIds[0] : undefined;
@@ -1233,7 +1321,9 @@ export async function evaluateRegisteredDeletionAccess(
     return { allowed: false, failure: "unsupported", status: 403 };
   if (target.sessionOnly && input.credentialType !== "session")
     return { allowed: false, failure: "credential", status: 403 };
-  const loaded = await target.load(tx, id);
+  const loader = mode === "read" ? target.readScope : target.load;
+  if (!loader) return { allowed: false, failure: "unsupported", status: 404 };
+  const loaded = await loader(tx, id);
   if (
     !loaded ||
     loaded.workspaceId !== input.workspaceId ||
@@ -1246,80 +1336,174 @@ export async function evaluateRegisteredDeletionAccess(
       ? target.projectPolicyRouteKey
       : target.routeKey,
   );
+  if (!route) return { allowed: false, failure: "unsupported", status: 403 };
   if (
-    route?.kind !== "capability" ||
-    !("capability" in route.policy) ||
-    (route.policy.scope !== "project" && route.policy.scope !== "workspace")
-  )
-    return { allowed: false, failure: "unsupported", status: 403 };
-  const policy = route.policy;
-  const projectScoped = policy.scope === "project";
-  if (projectScoped && !loaded.projectId)
-    return { allowed: false, failure: "unsupported", status: 403 };
-  // PR-2/PR-3: reach and authority on a child project follow its ancestor chain.
-  const ancestorProjectIds =
-    projectScoped && loaded.projectId
-      ? await projectAncestryFor(
-          tx,
-          identity,
-          loaded.workspaceId,
-          loaded.projectId,
-        )
-      : undefined;
-  const ownerTeamId =
-    projectScoped && loaded.projectId
-      ? await projectOwnerTeamFor(
-          tx,
-          identity,
-          loaded.workspaceId,
-          loaded.projectId,
-        )
-      : null;
-  const decision = evaluatePolicy(policy, {
-    identity,
-    ...(ancestorProjectIds ? { ancestorProjectIds } : {}),
-    target: {
-      workspaceId: loaded.workspaceId,
-      ...(loaded.projectId ? { projectId: loaded.projectId } : {}),
-    },
-    ...(loaded.rowFacts ? { row: loaded.rowFacts } : {}),
-    scope: projectScoped
-      ? projectScopeFromRow({
-          projectId: loaded.projectId ?? "",
-          workspaceId: loaded.workspaceId,
-        })
-      : policy.scopeSource === "request"
-        ? workspaceScopeFromRequest({ workspaceId: loaded.workspaceId })
-        : workspaceScopeFromRow({ workspaceId: loaded.workspaceId }),
-    inReach: projectScoped
-      ? reaches(identity, {
-          workspaceId: loaded.workspaceId,
-          projectId: loaded.projectId ?? "",
-          organisationId: loaded.organisationId,
-          ancestorProjectIds,
-          ownerTeamId,
-        })
-      : workspaceInReach(identity, loaded.workspaceId),
-  });
-  if (!decision.allowed)
-    return {
-      allowed: false,
-      failure: decision.status === 404 ? "reach" : "capability",
-      status: decision.status === 404 ? 404 : 403,
-    };
-  if (
-    target.callerReaches &&
-    !(await target.callerReaches(tx, loaded, identity))
-  )
+    target.targetType === "organisation" ||
+    target.targetType === "identity_connection"
+  ) {
+    if (
+      input.action !== "delete" ||
+      input.routeKey !==
+        (target.targetType === "organisation"
+          ? "DELETE /api/instance/organisations/{id}"
+          : "DELETE /api/instance/identity-connections/{id}") ||
+      input.targetIds.length !== 1 ||
+      input.targetIds[0] !== loaded.id ||
+      input.credentialType !== "session" ||
+      input.workspaceId !== null ||
+      input.projectId !== null ||
+      loaded.workspaceId !== null ||
+      loaded.projectId !== null ||
+      loaded.organisationId !==
+        (target.targetType === "organisation" ? loaded.id : null) ||
+      (target.targetType === "identity_connection" &&
+        input.organisationId !== null) ||
+      route.kind !== "capability" ||
+      !("capability" in route.policy) ||
+      route.policy.scope !== "instance" ||
+      route.policy.scopeSource !== "instance" ||
+      route.policy.capability !== "instance:admin" ||
+      route.policy.elevated !== true ||
+      route.policy.sessionOnly !== true
+    )
+      return { allowed: false, failure: "unsupported", status: 403 };
+    const decision = evaluatePolicy(route.policy, {
+      identity,
+      target: {},
+      scope: instanceScope(),
+      inReach: NO_SINGLE_RESOURCE,
+    });
+    if (!decision.allowed)
+      return {
+        allowed: false,
+        failure: "capability",
+        status: decision.status === 404 ? 404 : 403,
+      };
+    if (!(await registeredDeletionCallerReaches(target, tx, loaded, identity)))
+      return { allowed: false, failure: "reach", status: 404 };
+    if (
+      mode === "locked" &&
+      (input.payload !== undefined || input.targetVersions != null)
+    ) {
+      const versions =
+        input.targetVersions &&
+        typeof input.targetVersions === "object" &&
+        !Array.isArray(input.targetVersions)
+          ? (input.targetVersions as Record<string, unknown>)
+          : null;
+      if (
+        !versions ||
+        versions[loaded.id] !==
+          (loaded as RuntimeRegisteredDeletionLoaded).version
+      )
+        return { allowed: false, failure: "target_version", status: 409 };
+    }
+    return { allowed: true };
+  }
+  if (route.kind === "self") {
+    // Self routes have no tenant scope to infer. A registered self target must instead carry
+    // its owner as a locked row fact, and only the same staff person may approve it.
+    if (
+      identity.side !== "staff" ||
+      !loaded.rowFacts?.personId ||
+      loaded.rowFacts.personId !== identity.personId ||
+      loaded.workspaceId !== null ||
+      loaded.projectId !== null ||
+      loaded.organisationId !== null
+    )
+      return { allowed: false, failure: "reach", status: 404 };
+    const decision = evaluatePolicy(route.policy, {
+      identity,
+      target: {},
+      targetPersonId: NO_PERSON_PARAMETER,
+    });
+    if (!decision.allowed)
+      return {
+        allowed: false,
+        failure: "reach",
+        status: decision.status === 404 ? 404 : 403,
+      };
+  } else {
+    if (
+      route.kind !== "capability" ||
+      !("capability" in route.policy) ||
+      (route.policy.scope !== "project" && route.policy.scope !== "workspace")
+    )
+      return { allowed: false, failure: "unsupported", status: 403 };
+    if (!loaded.workspaceId)
+      return { allowed: false, failure: "unsupported", status: 403 };
+    const policy = route.policy;
+    const projectScoped = policy.scope === "project";
+    if (projectScoped && !loaded.projectId)
+      return { allowed: false, failure: "unsupported", status: 403 };
+    // PR-2/PR-3: reach and authority on a child project follow its ancestor chain.
+    const ancestorProjectIds =
+      projectScoped && loaded.projectId
+        ? await projectAncestryFor(
+            tx,
+            identity,
+            loaded.workspaceId,
+            loaded.projectId,
+          )
+        : undefined;
+    const ownerTeamId =
+      projectScoped && loaded.projectId
+        ? await projectOwnerTeamFor(
+            tx,
+            identity,
+            loaded.workspaceId,
+            loaded.projectId,
+          )
+        : null;
+    const decision = evaluatePolicy(policy, {
+      identity,
+      ...(ancestorProjectIds ? { ancestorProjectIds } : {}),
+      target: {
+        workspaceId: loaded.workspaceId,
+        ...(loaded.projectId ? { projectId: loaded.projectId } : {}),
+      },
+      ...(loaded.rowFacts ? { row: loaded.rowFacts } : {}),
+      scope: projectScoped
+        ? projectScopeFromRow({
+            projectId: loaded.projectId ?? "",
+            workspaceId: loaded.workspaceId,
+          })
+        : policy.scopeSource === "request"
+          ? workspaceScopeFromRequest({ workspaceId: loaded.workspaceId })
+          : workspaceScopeFromRow({ workspaceId: loaded.workspaceId }),
+      inReach: projectScoped
+        ? reaches(identity, {
+            workspaceId: loaded.workspaceId,
+            projectId: loaded.projectId ?? "",
+            organisationId: loaded.organisationId,
+            ancestorProjectIds,
+            ownerTeamId,
+          })
+        : workspaceInReach(identity, loaded.workspaceId),
+    });
+    if (!decision.allowed)
+      return {
+        allowed: false,
+        failure: decision.status === 404 ? "reach" : "capability",
+        status: decision.status === 404 ? 404 : 403,
+      };
+  }
+  if (!(await registeredDeletionCallerReaches(target, tx, loaded, identity)))
     return { allowed: false, failure: "reach", status: 404 };
-  if (input.payload !== undefined || input.targetVersions != null) {
+  if (
+    mode === "locked" &&
+    (input.payload !== undefined || input.targetVersions != null)
+  ) {
     const versions =
       input.targetVersions &&
       typeof input.targetVersions === "object" &&
       !Array.isArray(input.targetVersions)
         ? (input.targetVersions as Record<string, unknown>)
         : null;
-    if (!versions || versions[id] !== loaded.version)
+    if (
+      !versions ||
+      versions[id] !== (loaded as RuntimeRegisteredDeletionLoaded).version
+    )
       return { allowed: false, failure: "target_version", status: 409 };
   }
   return { allowed: true };
@@ -1387,7 +1571,7 @@ export async function resolveRegisteredDeletionRequestScope(
     throw new HTTPException(access.status === 404 ? 404 : 403, {
       message: access.status === 404 ? target.notFound : "Forbidden",
     });
-  await target.assertDeletable?.(tx, loaded);
+  await assertRegisteredDeletionCanExecute(target, tx, loaded);
   const [actor] = await tx
     .select({ userId: personTable.userId, name: userTable.name })
     .from(personTable)
@@ -1435,85 +1619,99 @@ export async function approveRegisteredDeletion(
     throw new HTTPException(409, {
       message: "pending_action_kind_unsupported",
     });
-  const approved = await approveClickDeletion<RegisteredDeletionEffect>(input, {
-    targetType: target.targetType,
-    routeKey: target.routeKey,
-    confirmation: [target.confirmation],
-    ...(target.confirmation === "typed_name_step_up"
-      ? {
-          confirm: async (tx, row) => {
-            const summary = row.payloadSummary as Record<string, unknown>;
-            // The fingerprint check already proved the current name equals the frozen one.
-            if (
-              typeof summary?.name !== "string" ||
-              input.typedName !== summary.name
-            )
-              throw new HTTPException(400, {
-                message: "confirmation_mismatch",
+  const approve = () =>
+    approveClickDeletion<RegisteredDeletionEffect>(input, {
+      targetType: target.targetType,
+      routeKey: target.routeKey,
+      confirmation: [target.confirmation],
+      retryGrantClosure: target.targetType === "identity_connection",
+      ...(target.confirmation === "typed_name_step_up"
+        ? {
+            confirm: async (tx, row) => {
+              const summary = row.payloadSummary as Record<string, unknown>;
+              // The fingerprint check already proved the current name equals the frozen one.
+              if (
+                typeof summary?.name !== "string" ||
+                input.typedName !== summary.name
+              )
+                throw new HTTPException(400, {
+                  message: "confirmation_mismatch",
+                });
+              const proof = await consumePendingActionProof(tx, {
+                token: input.stepUpToken ?? "",
+                personId: input.requesterPersonId,
+                sessionId: input.sessionId,
+                userId: input.userId,
+                pendingActionId: row.id,
               });
-            const proof = await consumePendingActionProof(tx, {
-              token: input.stepUpToken ?? "",
-              personId: input.requesterPersonId,
-              sessionId: input.sessionId,
-              pendingActionId: row.id,
-            });
-            if (!proof) {
+              if (!proof) {
+                await appendPendingActionStepUpAudit(tx, {
+                  action: "auth.step_up_denied",
+                  actorId: input.userId,
+                  personId: input.requesterPersonId,
+                  pendingActionId: row.id,
+                  traceId: input.traceId,
+                });
+                return {
+                  supplied: {},
+                  denied: input.stepUpToken
+                    ? ("step_up_expired" as const)
+                    : ("step_up_required" as const),
+                };
+              }
               await appendPendingActionStepUpAudit(tx, {
-                action: "auth.step_up_denied",
+                action: "auth.step_up_consumed",
                 actorId: input.userId,
                 personId: input.requesterPersonId,
                 pendingActionId: row.id,
                 traceId: input.traceId,
               });
               return {
-                supplied: {},
-                denied: input.stepUpToken
-                  ? ("step_up_expired" as const)
-                  : ("step_up_required" as const),
+                supplied: { typedNameMatched: true, stepUp: true },
+                stepUpTokenId: proof.id,
               };
-            }
-            await appendPendingActionStepUpAudit(tx, {
-              action: "auth.step_up_consumed",
-              actorId: input.userId,
-              personId: input.requesterPersonId,
-              pendingActionId: row.id,
-              traceId: input.traceId,
+            },
+          }
+        : {}),
+      execute: failOnExecutorError(
+        async (tx, row) => {
+          const id = row.targetIds.length === 1 ? row.targetIds[0] : undefined;
+          const loaded = id ? await target.load(tx, id) : undefined;
+          if (!loaded)
+            throw new HTTPException(409, {
+              message: "pending_action_target_changed",
             });
-            return {
-              supplied: { typedNameMatched: true, stepUp: true },
-              stepUpTokenId: proof.id,
-            };
-          },
-        }
-      : {}),
-    execute: failOnExecutorError(async (tx, row) => {
-      const id = row.targetIds.length === 1 ? row.targetIds[0] : undefined;
-      const loaded = id ? await target.load(tx, id) : undefined;
-      if (!loaded)
-        throw new HTTPException(409, {
-          message: "pending_action_target_changed",
-        });
-      await target.assertDeletable?.(tx, loaded);
-      const identity = await resolveIdentity(
-        { userId: input.userId, credential: "session" },
-        tx,
-      );
-      if (!identity || identity.personId !== input.requesterPersonId)
-        throw new HTTPException(403, { message: "Forbidden" });
-      const effect = await target.execute(tx, {
-        row,
-        loaded,
-        identity,
-        input,
-      });
-      // The approval's own `pending_action.executed` audit and outbox event record the
-      // outcome (action, target ids); no per-entity audit key exists for these legacy targets.
-      return effect;
-    }),
-    afterCommit: async (effect) => {
-      await effect.afterCommit?.();
-    },
-  });
+          await assertRegisteredDeletionCanExecute(target, tx, loaded);
+          const identity = await resolveIdentity(
+            { userId: input.userId, credential: "session" },
+            tx,
+          );
+          if (!identity || identity.personId !== input.requesterPersonId)
+            throw new HTTPException(403, { message: "Forbidden" });
+          const effect = await executeRegisteredDeletionTarget(target, tx, {
+            row,
+            loaded,
+            identity,
+            input,
+          });
+          // The approval's own `pending_action.executed` audit and outbox event record the
+          // outcome (action, target ids); no per-entity audit key exists for these legacy targets.
+          return effect;
+        },
+        {
+          passthrough: (error) =>
+            target.targetType === "identity_connection" &&
+            (error instanceof IdentityGrantClosureChangedError ||
+              ["40P01", "40001", "23503", "23505"].includes(
+                databaseErrorCode(error) ?? "",
+              )),
+        },
+      ),
+      afterCommit: async (effect) => {
+        await effect.afterCommit?.();
+      },
+    });
+  const approved = await approve();
   const { executionResult: _effect, ...result } = approved;
   return result;
 }
@@ -1598,24 +1796,26 @@ export async function requestRegisteredDeletion(
     userId,
     apiKey,
   );
-  const created = await createPendingAction({
-    requesterPersonId,
-    credentialType: apiKey ? "api_key" : "session",
-    credentialId: apiKey?.id ?? session?.id ?? null,
-    origin: apiKey ? "api" : "web",
-    action: "delete",
-    routeKey: input.routeKey,
-    targetType: input.targetType,
-    targetIds: [input.id],
-    ...(input.workspaceId !== undefined
-      ? { workspaceId: input.workspaceId }
-      : {}),
-    ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
-    actorId: userId,
-    actorType: apiKey ? "api_key" : "person",
-    actorIp: c.req.header("x-forwarded-for") ?? null,
-    userAgent: c.req.header("user-agent") ?? null,
-  });
+  const create = () =>
+    createPendingAction({
+      requesterPersonId,
+      credentialType: apiKey ? "api_key" : "session",
+      credentialId: apiKey?.id ?? session?.id ?? null,
+      origin: apiKey ? "api" : "web",
+      action: "delete",
+      routeKey: input.routeKey,
+      targetType: input.targetType,
+      targetIds: [input.id],
+      ...(input.workspaceId !== undefined
+        ? { workspaceId: input.workspaceId }
+        : {}),
+      ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
+      actorId: userId,
+      actorType: apiKey ? "api_key" : "person",
+      actorIp: c.req.header("x-forwarded-for") ?? null,
+      userAgent: c.req.header("user-agent") ?? null,
+    });
+  const created = await create();
   return registeredDeletionRequestSchema.parse(created);
 }
 
@@ -1631,7 +1831,12 @@ export function isStepUpPendingDeletion(action: {
       action.targetType === "work_item" &&
       action.confirmation === "typed_count_step_up" &&
       action.routeKey === BULK_WORK_ITEM_DELETION_ROUTE) ||
-    isRegisteredStepUpDeletion(action)
+    isRegisteredStepUpDeletion(action) ||
+    (action.action === "mcp_destructive" &&
+      action.targetType === IMPORT_CHUNK_TARGET &&
+      action.confirmation === "typed_count_step_up" &&
+      (action.routeKey === IMPORT_CHUNK_ROUTE ||
+        action.routeKey === IMPORT_LINK_CHUNK_ROUTE))
   );
 }
 
@@ -1639,9 +1844,64 @@ export function isStepUpPendingDeletion(action: {
 export async function pendingDeletionStepUpAccess(
   executor: typeof db | PendingActionTransaction,
   input: { id: string; requesterPersonId: string; sessionId: string },
+  options: { readOnly?: boolean } = {},
 ): Promise<boolean> {
+  const importAccess = await importChunkStepUpAccess(executor, input, options);
+  if (importAccess !== undefined) return importAccess;
   return (
     (await bulkWorkItemDeletionStepUpAccess(executor, input)) ||
     (await registeredDeletionStepUpAccess(executor, input))
   );
+}
+
+/** Current original-key and browser-session access for the two registered import chunk routes. */
+async function importChunkStepUpAccess(
+  executor: typeof db | PendingActionTransaction,
+  input: { id: string; requesterPersonId: string; sessionId: string },
+  options: { readOnly?: boolean },
+): Promise<boolean | undefined> {
+  const check = async (tx: PendingActionTransaction) => {
+    if (!options.readOnly) await lockPendingActionLifecycle(tx);
+    const query = tx
+      .select()
+      .from(pendingActionTable)
+      .where(
+        and(
+          eq(pendingActionTable.id, input.id),
+          eq(pendingActionTable.requestedByPersonId, input.requesterPersonId),
+          eq(pendingActionTable.state, "pending"),
+        ),
+      );
+    const [row] = await (options.readOnly ? query : query.for("update")).limit(
+      1,
+    );
+    if (!row || row.expiresAt <= new Date()) return undefined;
+    if (
+      row.action !== "mcp_destructive" ||
+      row.targetType !== IMPORT_CHUNK_TARGET ||
+      row.confirmationRequired !== "typed_count_step_up" ||
+      (row.routeKey !== IMPORT_CHUNK_ROUTE &&
+        row.routeKey !== IMPORT_LINK_CHUNK_ROUTE)
+    )
+      return undefined;
+    const accessOptions = {
+      existingPendingAction: true,
+      readOnly: options.readOnly,
+    };
+    const original = await evaluateActionRequiredAccess(tx, row, accessOptions);
+    if (!original.allowed) return false;
+    const session = await evaluateActionRequiredAccess(
+      tx,
+      {
+        ...row,
+        credentialType: "session",
+        credentialId: input.sessionId,
+      },
+      accessOptions,
+    );
+    return session.allowed;
+  };
+  return executor === db
+    ? db.transaction(check)
+    : check(executor as PendingActionTransaction);
 }

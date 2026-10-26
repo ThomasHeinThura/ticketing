@@ -13,6 +13,7 @@ const MERMAID_LANGUAGE = "mermaid";
 const MERMAID_REFRESH_META = "mermaid-refresh";
 const DEFAULT_ERROR_KEY = "tasks:detail.editor.mermaid.renderFailed";
 const RENDER_DEBOUNCE_MS = 250;
+const RENDER_TIMEOUT_MS = 15_000;
 const RENDER_CACHE_LIMIT = 20;
 const mermaidPluginKey = new PluginKey("mermaid-block");
 
@@ -41,8 +42,13 @@ const MERMAID_OPENERS =
   /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram(-v2)?|erDiagram|journey|gantt|pie|quadrantChart|requirementDiagram|gitGraph|mindmap|timeline|sankey-beta|xychart-beta|block-beta|C4Context|architecture-beta|packet-beta|kanban|radar-beta|treemap-beta)\b/;
 
 const renderCache = new Map<string, RenderState | null>();
+type RenderSubscriber = (cacheKey: string, state: RenderState) => void;
+const renderSubscribers = new Map<string, Set<RenderSubscriber>>();
+const renderUseCounts = new Map<string, number>();
+const renderErrorsToasted = new Set<string>();
 let mermaidIdCounter = 0;
 let initializedTheme: "dark" | "default" | null = null;
+let cacheEvictionQueued = false;
 
 function isMermaid(code: string) {
   const opener = code
@@ -53,19 +59,55 @@ function isMermaid(code: string) {
   return opener !== undefined && MERMAID_OPENERS.test(opener);
 }
 
-// `inUse` is never evicted, so the limit is a floor rather than a ceiling: a
-// document holding more diagrams than the limit grows the cache to fit instead
-// of evicting entries the same pass still needs. Evicting them would leave
-// `getDecorations` wanting them again on the refresh that follows every render,
-// which never settles.
-function cacheRender(cacheKey: string, state: RenderState, inUse: Set<string>) {
-  renderCache.set(cacheKey, state);
+// Keys used by any mounted editor are never evicted, so the limit is a floor
+// rather than a ceiling. Evicting a live key during its completion refresh would
+// make that editor request it again and prevent the decoration from settling.
+function evictRenderCache() {
+  cacheEvictionQueued = false;
+  if (renderCache.size <= RENDER_CACHE_LIMIT) return;
 
-  for (const key of renderCache.keys()) {
+  for (const [key, state] of renderCache) {
     if (renderCache.size <= RENDER_CACHE_LIMIT) return;
-    if (inUse.has(key)) continue;
+    if (state === null || (renderUseCounts.get(key) ?? 0) > 0) continue;
     renderCache.delete(key);
+    renderErrorsToasted.delete(key);
   }
+}
+
+function queueRenderCacheEviction() {
+  if (cacheEvictionQueued) return;
+  cacheEvictionQueued = true;
+  queueMicrotask(evictRenderCache);
+}
+
+function cacheRender(cacheKey: string, state: RenderState) {
+  renderCache.set(cacheKey, state);
+  evictRenderCache();
+}
+
+function subscribe(cacheKey: string, subscriber: RenderSubscriber) {
+  const subscribers = renderSubscribers.get(cacheKey) ?? new Set();
+  subscribers.add(subscriber);
+  renderSubscribers.set(cacheKey, subscribers);
+}
+
+function unsubscribe(cacheKey: string, subscriber: RenderSubscriber) {
+  const subscribers = renderSubscribers.get(cacheKey);
+  if (!subscribers) return;
+  subscribers.delete(subscriber);
+  if (subscribers.size === 0) renderSubscribers.delete(cacheKey);
+}
+
+function notifyRenderSubscribers(cacheKey: string, state: RenderState) {
+  for (const subscriber of [...(renderSubscribers.get(cacheKey) ?? [])]) {
+    subscriber(cacheKey, state);
+  }
+}
+
+function changeRenderUseCount(cacheKey: string, change: 1 | -1) {
+  const count = (renderUseCounts.get(cacheKey) ?? 0) + change;
+  if (count <= 0) renderUseCounts.delete(cacheKey);
+  else renderUseCounts.set(cacheKey, count);
 }
 
 async function renderMermaid(code: string, dark: boolean) {
@@ -95,58 +137,98 @@ async function renderMermaid(code: string, dark: boolean) {
   });
 }
 
+async function renderMermaidWithTimeout(code: string, dark: boolean) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      renderMermaid(code, dark),
+      new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error("Mermaid rendering timed out.")),
+          RENDER_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
+}
+
 function createScheduler(errorKey: string, onSettled: () => void): Scheduler {
   const wanted = new Map<
     string,
     { code: string; dark: boolean; explicit: boolean }
   >();
   let active = true;
+  const trackedKeys = new Set<string>();
+
+  const onRenderSettled: RenderSubscriber = (cacheKey, state) => {
+    if (!active) return;
+    if (
+      state.status === "error" &&
+      wanted.get(cacheKey)?.explicit &&
+      !renderErrorsToasted.has(cacheKey)
+    ) {
+      renderErrorsToasted.add(cacheKey);
+      toast.error(i18n.t(errorKey), { description: state.message });
+    }
+    onSettled();
+  };
+
+  const reset = () => {
+    for (const key of trackedKeys) {
+      unsubscribe(key, onRenderSettled);
+      changeRenderUseCount(key, -1);
+    }
+    trackedKeys.clear();
+    wanted.clear();
+    // Decorations are rebuilt synchronously after reset. Deferring eviction until
+    // that rebuild has re-registered its live keys avoids evicting an active
+    // document's own entries at the >20-key cache boundary.
+    queueRenderCacheEviction();
+  };
 
   const flush = debounce(async () => {
     if (!active) return;
 
     const batch = [...wanted].filter(([key]) => !renderCache.has(key));
-    if (batch.length === 0) return;
-
-    // Every key the document is currently showing, not just the ones being
-    // rendered now: an entry already cached and still on screen must survive
-    // this pass too.
-    const inUse = new Set(wanted.keys());
-
-    await Promise.all(
-      batch.map(async ([key, { code, dark, explicit }]) => {
-        renderCache.set(key, null);
-        try {
-          cacheRender(
-            key,
-            {
-              status: "done",
-              svg: await renderMermaid(code, dark),
-            },
-            inUse,
-          );
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error);
-          cacheRender(key, { status: "error", message }, inUse);
-          if (explicit && active) {
-            toast.error(i18n.t(errorKey), { description: message });
-          }
-        }
-      }),
-    );
-
-    if (active) onSettled();
+    for (const [key, { code, dark }] of batch) {
+      // A second editor may have started this key between its own debounce and
+      // this callback. Claim only absent keys so one render serves every editor.
+      if (renderCache.has(key)) continue;
+      renderErrorsToasted.delete(key);
+      renderCache.set(key, null);
+      void renderMermaidWithTimeout(code, dark)
+        .then((svg) => {
+          const state: RenderState = { status: "done", svg };
+          cacheRender(key, state);
+          notifyRenderSubscribers(key, state);
+        })
+        .catch((error: unknown) => {
+          const state: RenderState = {
+            status: "error",
+            message: error instanceof Error ? error.message : String(error),
+          };
+          cacheRender(key, state);
+          notifyRenderSubscribers(key, state);
+        });
+    }
   }, RENDER_DEBOUNCE_MS);
 
   return {
-    want: (cacheKey, code, dark, explicit) =>
+    want: (cacheKey, code, dark, explicit) => {
+      if (!wanted.has(cacheKey)) {
+        trackedKeys.add(cacheKey);
+        changeRenderUseCount(cacheKey, 1);
+        subscribe(cacheKey, onRenderSettled);
+      }
       wanted.set(cacheKey, {
         code,
         dark,
         explicit: explicit || wanted.get(cacheKey)?.explicit === true,
-      }),
-    reset: () => wanted.clear(),
+      });
+    },
+    reset,
     flush: () => {
       if (wanted.size > 0) flush();
     },
@@ -154,18 +236,26 @@ function createScheduler(errorKey: string, onSettled: () => void): Scheduler {
     destroy: () => {
       active = false;
       flush.cancel();
-      wanted.clear();
+      reset();
     },
   };
 }
 
-function createPreviewElement(state: RenderState | null) {
+function createPreviewElement(state: RenderState | null, errorKey: string) {
   const container = document.createElement("div");
   container.className = "taskdesk-mermaid-preview";
   container.contentEditable = "false";
 
-  if (!state || state.status === "error") {
+  if (!state) {
     container.dataset.state = "loading";
+    return container;
+  }
+
+  if (state.status === "error") {
+    container.dataset.state = "error";
+    container.setAttribute("role", "status");
+    container.setAttribute("aria-live", "polite");
+    container.textContent = i18n.t(errorKey);
     return container;
   }
 
@@ -174,7 +264,11 @@ function createPreviewElement(state: RenderState | null) {
   return container;
 }
 
-function getDecorations(doc: ProseMirrorNode, scheduler: Scheduler) {
+function getDecorations(
+  doc: ProseMirrorNode,
+  scheduler: Scheduler,
+  errorKey: string,
+) {
   const dark = isDarkTheme();
   const decorations: Decoration[] = [];
 
@@ -195,15 +289,12 @@ function getDecorations(doc: ProseMirrorNode, scheduler: Scheduler) {
       const cacheKey = `${dark ? "dark" : "light"}:${code}`;
       const state = renderCache.get(cacheKey) ?? null;
 
-      if (state?.status === "error") return;
-      if (!renderCache.has(cacheKey)) {
-        scheduler.want(cacheKey, code, dark, explicit);
-      }
+      scheduler.want(cacheKey, code, dark, explicit);
 
       decorations.push(
         Decoration.widget(
           block.pos + block.node.nodeSize,
-          () => createPreviewElement(state),
+          () => createPreviewElement(state, errorKey),
           { key: `${cacheKey}:${state?.status ?? "loading"}`, side: 1 },
         ),
       );
@@ -238,14 +329,18 @@ export const MermaidBlock = Extension.create<MermaidBlockOptions>({
         key: mermaidPluginKey,
         state: {
           init: (_config: unknown, state: EditorState) =>
-            getDecorations(state.doc, scheduler),
+            getDecorations(state.doc, scheduler, this.options.errorKey),
           apply: (transaction: Transaction, decorationSet: DecorationSet) => {
             if (
               transaction.docChanged ||
               transaction.getMeta(MERMAID_REFRESH_META) ||
               transaction.getMeta(SHIKI_CODEBLOCK_REFRESH_META)
             ) {
-              return getDecorations(transaction.doc, scheduler);
+              return getDecorations(
+                transaction.doc,
+                scheduler,
+                this.options.errorKey,
+              );
             }
 
             return decorationSet.map(transaction.mapping, transaction.doc);

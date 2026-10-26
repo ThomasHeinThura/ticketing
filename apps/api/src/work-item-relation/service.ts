@@ -237,13 +237,21 @@ export async function deleteWorkItemRelationInTransaction(
 export async function listWorkItemRelations(input: {
   key: string;
   workspaceId: string;
+  allowArchivedForRead?: true;
   canRead: (row: RelationEndpoint) => Promise<boolean>;
   canUpdate: (row: RelationEndpoint) => Promise<boolean>;
 }) {
   const source = await findEndpoint(input.key, input.workspaceId);
-  assertWorkItemStillLive(source);
+  if (
+    !source ||
+    source.deletedAt !== null ||
+    (source.archivedAt !== null && !input.allowArchivedForRead)
+  ) {
+    throw new HTTPException(404, { message: "Work item not found" });
+  }
   const rows = await listRelationRows(source.id, input.workspaceId);
-  const sourceUpdate = await input.canUpdate(source);
+  const sourceUpdate =
+    source.archivedAt === null && (await input.canUpdate(source));
   const data = [];
   let hiddenCount = 0;
   for (const row of rows) {

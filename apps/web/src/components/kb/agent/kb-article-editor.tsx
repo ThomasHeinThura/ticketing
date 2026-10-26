@@ -32,7 +32,7 @@ import {
   Skeleton,
   Switch,
 } from "@taskdesk/ui";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
 import PageTitle from "@/components/page-title";
@@ -44,6 +44,7 @@ import {
 } from "@/fetchers/kb";
 import { kbKeys, useKbArticle, useKbCategories } from "@/hooks/queries/kb";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
+import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { HttpError } from "@/lib/http-error";
 import { type KbEditorSearch, routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
@@ -53,6 +54,10 @@ import {
   KbArticleContent,
   removedNodeTypes,
 } from "../kb-article-content";
+import {
+  createKbSlashCommands,
+  KB_EDITOR_EXTENSIONS,
+} from "./kb-editor-extensions";
 
 const NONE = "none";
 
@@ -68,6 +73,7 @@ type Draft = {
   body: unknown;
   categoryId: string | null;
   projectId: string | null;
+  ownerId: string | null;
   customerVisible: boolean;
   reviewDueAt: string;
 };
@@ -78,13 +84,14 @@ function draftOf(article: KbArticle): Draft {
     body: article.body,
     categoryId: article.categoryId,
     projectId: article.projectId,
+    ownerId: article.ownerId,
     customerVisible: article.customerVisible,
     reviewDueAt: dateInput(article.reviewDueAt),
   };
 }
 
 /** Only the fields that differ from what was loaded; an unchanged body is never re-sent. */
-function changesOf(
+export function changesOf(
   article: KbArticle,
   draft: Draft,
   bodyEdited: boolean,
@@ -97,6 +104,7 @@ function changesOf(
     changes.categoryId = draft.categoryId;
   if (draft.reviewDueAt !== dateInput(article.reviewDueAt))
     changes.reviewDueAt = isoDate(draft.reviewDueAt);
+  if (draft.ownerId !== article.ownerId) changes.ownerId = draft.ownerId;
   if (canPublish) {
     if (draft.customerVisible !== article.customerVisible)
       changes.customerVisible = draft.customerVisible;
@@ -174,10 +182,33 @@ function Editor({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const kbSlashCommands = useMemo(
+    () =>
+      createKbSlashCommands({
+        callout: t("kb:editor.slashCallout"),
+        calloutSearch: t("kb:editor.searchCallout"),
+        internalCallout: t("kb:editor.slashInternalCallout"),
+        internalCalloutSearch: t("kb:editor.searchInternalCallout"),
+        workItemReference: t("kb:editor.slashWorkItemReference"),
+        workItemReferenceSearch: t("kb:editor.searchWorkItemReference"),
+      }),
+    [t],
+  );
   const categories = useKbCategories(article.workspaceId);
   const projects = useGetProjects(
     { workspaceId: article.workspaceId },
     canPublish,
+  );
+  const workspaceUsers = useGetActiveWorkspaceUsers(article.workspaceId);
+  const ownerChoices = (workspaceUsers.data?.members ?? []).flatMap((member) =>
+    member.personId
+      ? [
+          {
+            id: member.personId,
+            label: member.user?.name || member.user?.email || member.personId,
+          },
+        ]
+      : [],
   );
   const [base, setBase] = useState(article);
   const [draft, setDraft] = useState<Draft>(() => draftOf(article));
@@ -357,7 +388,12 @@ function Editor({
                     enableMentions={false}
                     showQuickAttachButton={false}
                     placeholder={t("kb:editor.bodyPlaceholder")}
+                    additionalExtensions={KB_EDITOR_EXTENSIONS}
+                    additionalSlashCommands={kbSlashCommands}
                   />
+                  <p className="mt-2 text-muted-foreground text-xs">
+                    {t("kb:editor.workItemReferenceHelp")}
+                  </p>
                 </div>
               </>
             )}
@@ -368,9 +404,50 @@ function Editor({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1">
+                <Label htmlFor="kb-owner">{t("kb:fields.owner")}</Label>
+                <Select
+                  value={draft.ownerId ?? NONE}
+                  items={[
+                    { value: NONE, label: t("kb:fields.none") },
+                    ...ownerChoices.map((owner) => ({
+                      value: owner.id,
+                      label: owner.label,
+                    })),
+                  ]}
+                  onValueChange={(value) =>
+                    setDraft((old) => ({
+                      ...old,
+                      ownerId: value && value !== NONE ? value : null,
+                    }))
+                  }
+                >
+                  <SelectTrigger id="kb-owner">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>{t("kb:fields.none")}</SelectItem>
+                    {ownerChoices.map((owner) => (
+                      <SelectItem key={owner.id} value={owner.id}>
+                        {owner.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-muted-foreground text-xs">
+                  {t("kb:editor.ownerHelp")}
+                </p>
+              </div>
+              <div className="space-y-1">
                 <Label htmlFor="kb-category">{t("kb:fields.category")}</Label>
                 <Select
                   value={draft.categoryId ?? NONE}
+                  items={[
+                    { value: NONE, label: t("kb:fields.none") },
+                    ...(categories.data?.categories ?? []).map((category) => ({
+                      value: category.id,
+                      label: category.name,
+                    })),
+                  ]}
                   onValueChange={(value) =>
                     setDraft((old) => ({
                       ...old,
@@ -416,6 +493,13 @@ function Editor({
                     <Label htmlFor="kb-project">{t("kb:fields.project")}</Label>
                     <Select
                       value={draft.projectId ?? NONE}
+                      items={[
+                        { value: NONE, label: t("kb:editor.workspaceWide") },
+                        ...(projects.data ?? []).map((project) => ({
+                          value: project.id,
+                          label: project.name,
+                        })),
+                      ]}
                       onValueChange={(value) =>
                         setDraft((old) => ({
                           ...old,

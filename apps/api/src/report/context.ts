@@ -1,6 +1,8 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { type SQL, sql } from "drizzle-orm";
 import db from "../database";
+import type { Executor } from "../database/executor";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
 import {
   previousWindow,
@@ -11,9 +13,26 @@ import {
 import { emptyUse } from "./snapshot.logic";
 import { FILTER_KEYS, type ReportContext, type ReportFilters } from "./types";
 
-/** A statement that returns rows: the raw `db.execute` result unwrapped. */
-export async function selectRows<T>(query: SQL): Promise<T[]> {
-  const result = await db.execute(query);
+const reportExecutor = new AsyncLocalStorage<Executor>();
+
+/** Run every raw report query in a caller-owned executor, including nested report helpers. */
+export function withReportExecutor<T>(
+  executor: Executor,
+  run: () => Promise<T>,
+): Promise<T> {
+  return reportExecutor.run(executor, run);
+}
+
+export function currentReportExecutor(): Executor | undefined {
+  return reportExecutor.getStore();
+}
+
+/** A statement that returns rows: unwraps the active report transaction by default. */
+export async function selectRows<T>(
+  query: SQL,
+  executor: Executor = currentReportExecutor() ?? db,
+): Promise<T[]> {
+  const result = await executor.execute(query);
   return result.rows as T[];
 }
 
@@ -30,6 +49,7 @@ export function num(value: unknown): number {
 export function reachPredicate(
   identity: ResolvedIdentity,
   readAll: boolean,
+  executor: Executor = currentReportExecutor() ?? db,
 ): SQL {
   if (readAll) return sql`true`;
   return (
@@ -38,7 +58,7 @@ export function reachPredicate(
       sql`p.id`,
       sql`p.workspace_id`,
       sql`p.organisation_id`,
-      db,
+      executor,
     ) ?? sql`false`
   );
 }
@@ -53,11 +73,14 @@ export function buildContext(input: {
   window: ReportWindow;
   filters: ReportFilters;
   options?: Record<string, string>;
+  executor?: Executor;
+  exportPage?: { offset: number; limit: number };
   /** RP-9: read closed days from snapshots (default). Off, every period is computed live. */
   snapshots?: boolean;
   /** RP-10: a background export, which may return more rows than the screen. */
   exporting?: boolean;
 }): ReportContext {
+  const executor = input.executor ?? currentReportExecutor() ?? db;
   return {
     workspaceId: input.workspaceId,
     identity: input.identity,
@@ -68,10 +91,21 @@ export function buildContext(input: {
     window: input.window,
     previous: previousWindow(input.window),
     filters: input.filters,
-    reach: reachPredicate(input.identity, input.readAll),
+    reach: reachPredicate(input.identity, input.readAll, executor),
     options: input.options ?? {},
-    snapshots: { enabled: input.snapshots !== false, use: emptyUse() },
+    snapshots: {
+      enabled: input.snapshots !== false,
+      use: emptyUse(),
+      sources: {
+        metricSnapshot: false,
+        cycleSnapshot: false,
+        liveComponents: new Set(),
+        snapshotDayKeys: new Set(),
+        uncoveredDayKeys: new Set(),
+      },
+    },
     exporting: input.exporting === true,
+    exportPage: input.exportPage,
   };
 }
 

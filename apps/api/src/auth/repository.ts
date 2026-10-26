@@ -22,7 +22,8 @@ export type VerifiedStepUpAuthentication =
   | "totp"
   | "backup_code"
   | {
-      authMethod: "password" | "totp" | "backup_code";
+      authMethod: "password" | "totp" | "backup_code" | "sso_prompt_login";
+      authenticatedAt?: Date;
       revalidate: (executor: StepUpExecutor) => Promise<boolean>;
     };
 
@@ -479,10 +480,17 @@ export async function consumePendingActionProofRecord(
     personId: string;
     sessionId: string;
     pendingActionId: string;
+    isAuthMethodAllowed: (authMethod: string) => boolean;
   },
-): Promise<{ id: string } | null> {
+): Promise<{ id: string; authMethod: string } | null> {
   const [proof] = await executor
-    .select({ id: schema.stepUpConfirmationTable.id })
+    .select({
+      id: schema.stepUpConfirmationTable.id,
+      authMethod: schema.stepUpConfirmationTable.authMethod,
+      authenticatedAt: schema.stepUpConfirmationTable.authenticatedAt,
+      createdAt: schema.stepUpConfirmationTable.createdAt,
+      challengeExpiresAt: schema.stepUpConfirmationTable.challengeExpiresAt,
+    })
     .from(schema.stepUpConfirmationTable)
     .where(
       and(
@@ -501,6 +509,20 @@ export async function consumePendingActionProofRecord(
     .for("update")
     .limit(1);
   if (!proof) return null;
+  if (!proof.authMethod || !input.isAuthMethodAllowed(proof.authMethod))
+    return null;
+  if (
+    proof.authMethod === "sso_prompt_login" &&
+    !(await revalidateSsoStepUpProofRecord(executor, {
+      id: proof.id,
+      personId: input.personId,
+      sessionId: input.sessionId,
+      authenticatedAt: proof.authenticatedAt,
+      challengeCreatedAt: proof.createdAt,
+      challengeExpiresAt: proof.challengeExpiresAt,
+    }))
+  )
+    return null;
 
   const consumed = await executor
     .update(schema.stepUpConfirmationTable)
@@ -513,7 +535,9 @@ export async function consumePendingActionProofRecord(
       ),
     )
     .returning({ id: schema.stepUpConfirmationTable.id });
-  return consumed.length === 1 ? { id: proof.id } : null;
+  return consumed.length === 1
+    ? { id: proof.id, authMethod: proof.authMethod }
+    : null;
 }
 
 export async function issuePendingActionTokenRecord(
@@ -535,7 +559,7 @@ export async function issuePendingActionTokenRecord(
     ) => Promise<T | null>;
   },
 ): Promise<{
-  authMethod: "password" | "totp" | "backup_code";
+  authMethod: "password" | "totp" | "backup_code" | "sso_prompt_login";
   tokenExpiresAt: Date;
 } | null> {
   await executor.execute(
@@ -630,6 +654,8 @@ export async function issuePendingActionTokenRecord(
   }
   const authMethod =
     typeof verification === "string" ? verification : verification.authMethod;
+  const authenticatedAt =
+    typeof verification === "string" ? undefined : verification.authenticatedAt;
 
   const finalized = await input.finalize(async (finalExecutor) => {
     const [currentSession] = await lockActiveStepUpSession(
@@ -727,7 +753,7 @@ export async function issuePendingActionTokenRecord(
         state: "issued",
         tokenHash: input.tokenHash,
         authMethod,
-        authenticatedAt: issuedAt,
+        authenticatedAt: authenticatedAt ?? issuedAt,
         issuedAt,
         tokenExpiresAt,
       })
@@ -742,6 +768,17 @@ export async function issuePendingActionTokenRecord(
         ),
       )
       .returning({ id: schema.stepUpConfirmationTable.id });
+    if (updated.length === 1 && authMethod === "sso_prompt_login") {
+      await finalExecutor
+        .update(schema.verificationTable)
+        .set({ expiresAt: tokenExpiresAt })
+        .where(
+          eq(
+            schema.verificationTable.identifier,
+            `step-up-oidc-verified:${input.id}`,
+          ),
+        );
+    }
     return updated.length === 1 ? { authMethod, tokenExpiresAt } : null;
   });
   if (finalized === null) {
@@ -951,7 +988,7 @@ export async function issueOperationTokenRecord(
     ) => Promise<T | null>;
   },
 ): Promise<{
-  authMethod: "password" | "totp" | "backup_code";
+  authMethod: "password" | "totp" | "backup_code" | "sso_prompt_login";
   issuedAt: Date;
   tokenExpiresAt: Date;
 } | null> {
@@ -995,6 +1032,8 @@ export async function issueOperationTokenRecord(
   }
   const authMethod =
     typeof verification === "string" ? verification : verification.authMethod;
+  const authenticatedAt =
+    typeof verification === "string" ? undefined : verification.authenticatedAt;
   const finalized = await input.finalize(async (finalExecutor) => {
     const [currentSession] = await lockActiveStepUpSession(
       finalExecutor,
@@ -1045,7 +1084,7 @@ export async function issueOperationTokenRecord(
         state: "issued",
         tokenHash: input.tokenHash,
         authMethod,
-        authenticatedAt: issuedAt,
+        authenticatedAt: authenticatedAt ?? issuedAt,
         issuedAt,
         tokenExpiresAt,
       })
@@ -1060,6 +1099,17 @@ export async function issueOperationTokenRecord(
         ),
       )
       .returning({ id: schema.stepUpConfirmationTable.id });
+    if (updated.length === 1 && authMethod === "sso_prompt_login") {
+      await finalExecutor
+        .update(schema.verificationTable)
+        .set({ expiresAt: tokenExpiresAt })
+        .where(
+          eq(
+            schema.verificationTable.identifier,
+            `step-up-oidc-verified:${input.id}`,
+          ),
+        );
+    }
     return updated.length === 1
       ? { authMethod, issuedAt, tokenExpiresAt }
       : null;
@@ -1090,10 +1140,24 @@ export async function consumeOperationProofRecord(
     version: number;
     bodyHash: Buffer;
   },
-): Promise<{ authMethod: "password" | "totp" | "backup_code" } | null> {
+): Promise<{
+  authMethod: "password" | "totp" | "backup_code" | "sso_prompt_login";
+} | null> {
   const [proof] = await lockOperationProof(executor, input);
   if (!proof?.bodyHash || !proof.authMethod) return null;
   if (!timingSafeEqual(proof.bodyHash, input.bodyHash)) return null;
+  if (
+    proof.authMethod === "sso_prompt_login" &&
+    !(await revalidateSsoStepUpProofRecord(executor, {
+      id: proof.id,
+      personId: input.personId,
+      sessionId: input.sessionId,
+      authenticatedAt: proof.authenticatedAt,
+      challengeCreatedAt: proof.createdAt,
+      challengeExpiresAt: proof.challengeExpiresAt,
+    }))
+  )
+    return null;
   const consumed = await executor
     .update(schema.stepUpConfirmationTable)
     .set({ state: "consumed", consumedAt: sql`now()` })
@@ -1109,11 +1173,153 @@ export async function consumeOperationProofRecord(
   if (
     proof.authMethod !== "password" &&
     proof.authMethod !== "totp" &&
-    proof.authMethod !== "backup_code"
+    proof.authMethod !== "backup_code" &&
+    proof.authMethod !== "sso_prompt_login"
   ) {
     return null;
   }
   return { authMethod: proof.authMethod };
+}
+
+async function revalidateSsoStepUpProofRecord(
+  executor: StepUpExecutor,
+  input: {
+    id: string;
+    personId: string;
+    sessionId: string;
+    authenticatedAt: Date | null;
+    challengeCreatedAt: Date;
+    challengeExpiresAt: Date;
+  },
+): Promise<boolean> {
+  const identifier = `step-up-oidc-verified:${input.id}`;
+  const [stored] = await executor
+    .select()
+    .from(schema.verificationTable)
+    .where(eq(schema.verificationTable.identifier, identifier))
+    .for("update")
+    .limit(1);
+  if (!stored || stored.expiresAt <= new Date() || !input.authenticatedAt)
+    return false;
+  let evidence: Record<string, unknown>;
+  try {
+    evidence = JSON.parse(stored.value) as Record<string, unknown>;
+  } catch {
+    return false;
+  }
+  if (
+    evidence.challengeId !== input.id ||
+    evidence.sessionId !== input.sessionId ||
+    evidence.personId !== input.personId ||
+    typeof evidence.userId !== "string" ||
+    typeof evidence.connectionId !== "string" ||
+    typeof evidence.issuer !== "string" ||
+    typeof evidence.subject !== "string" ||
+    typeof evidence.configVersion !== "number" ||
+    typeof evidence.authTime !== "string" ||
+    typeof evidence.callbackReceivedAt !== "string"
+  )
+    return false;
+  const authTime = new Date(evidence.authTime);
+  const callbackReceivedAt = new Date(evidence.callbackReceivedAt);
+  if (
+    Number.isNaN(authTime.getTime()) ||
+    Number.isNaN(callbackReceivedAt.getTime()) ||
+    authTime.getTime() !== input.authenticatedAt.getTime() ||
+    callbackReceivedAt > input.challengeExpiresAt ||
+    authTime.getTime() < input.challengeCreatedAt.getTime() - 60_000 ||
+    authTime.getTime() > callbackReceivedAt.getTime() + 60_000 ||
+    callbackReceivedAt.getTime() - authTime.getTime() > 5 * 60_000
+  )
+    return false;
+  const [identity] = await executor
+    .select({
+      sessionId: schema.sessionTable.id,
+      userId: schema.sessionTable.userId,
+      sessionConnectionId: schema.sessionTable.identityConnectionId,
+      personId: schema.personTable.id,
+      personActive: schema.personTable.active,
+      personSide: schema.personTable.side,
+      identityConnectionId: schema.identityConnectionTable.id,
+      connectionEnabled: schema.identityConnectionTable.enabled,
+      connectionIssuer: schema.identityConnectionTable.issuer,
+      configVersion: schema.identityConnectionTable.configVersion,
+      mfaUpstreamMode: schema.identityConnectionTable.mfaUpstreamMode,
+      subject: schema.externalIdentityTable.subject,
+      identityActive: schema.externalIdentityTable.active,
+    })
+    .from(schema.sessionTable)
+    .innerJoin(
+      schema.personTable,
+      and(
+        eq(schema.personTable.userId, schema.sessionTable.userId),
+        eq(schema.personTable.id, input.personId),
+      ),
+    )
+    .innerJoin(
+      schema.identityConnectionTable,
+      eq(
+        schema.identityConnectionTable.id,
+        schema.sessionTable.identityConnectionId,
+      ),
+    )
+    .innerJoin(
+      schema.externalIdentityTable,
+      and(
+        eq(
+          schema.externalIdentityTable.identityConnectionId,
+          schema.identityConnectionTable.id,
+        ),
+        eq(schema.externalIdentityTable.userId, schema.sessionTable.userId),
+        eq(schema.externalIdentityTable.personId, schema.personTable.id),
+        eq(schema.externalIdentityTable.issuer, evidence.issuer),
+        eq(schema.externalIdentityTable.subject, evidence.subject),
+      ),
+    )
+    .where(
+      and(
+        eq(schema.sessionTable.id, input.sessionId),
+        eq(schema.sessionTable.userId, evidence.userId),
+        eq(schema.sessionTable.portal, "agent"),
+        gt(schema.sessionTable.expiresAt, dbClockUtc()),
+        isNull(schema.sessionTable.impersonatedBy),
+        eq(schema.personTable.active, true),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.identityConnectionTable.id, evidence.connectionId),
+        eq(schema.identityConnectionTable.enabled, true),
+        eq(schema.identityConnectionTable.portalScope, "agent"),
+        eq(schema.identityConnectionTable.issuer, evidence.issuer),
+        eq(
+          schema.identityConnectionTable.configVersion,
+          evidence.configVersion,
+        ),
+        eq(schema.identityConnectionTable.mfaUpstreamMode, "off"),
+        eq(schema.externalIdentityTable.active, true),
+      ),
+    )
+    .for("update")
+    .limit(1);
+  if (
+    !identity ||
+    identity.sessionId !== input.sessionId ||
+    identity.userId !== evidence.userId ||
+    identity.sessionConnectionId !== evidence.connectionId ||
+    identity.personId !== input.personId ||
+    identity.personActive !== true ||
+    identity.personSide !== "staff" ||
+    identity.identityConnectionId !== evidence.connectionId ||
+    identity.connectionEnabled !== true ||
+    identity.connectionIssuer !== evidence.issuer ||
+    identity.configVersion !== evidence.configVersion ||
+    identity.mfaUpstreamMode !== "off" ||
+    identity.subject !== evidence.subject ||
+    identity.identityActive !== true
+  )
+    return false;
+  await executor
+    .delete(schema.verificationTable)
+    .where(eq(schema.verificationTable.id, stored.id));
+  return true;
 }
 
 export async function getCustomerPortalIdentityRow(userId: string) {

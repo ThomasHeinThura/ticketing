@@ -34,6 +34,11 @@ services:
   migrate:
     image: ghcr.io/thomasheinthura/taskdesk:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
     restart: "no"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=1770
     environment:
       TASKDESK_ROLE: migrate
       # The owner/migration credential (issue #296). `POSTGRES_USER` is the
@@ -62,6 +67,11 @@ services:
     # rollback are both "edit the digest and bring the service back up".
     image: ghcr.io/thomasheinthura/taskdesk:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
     restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=1770
     # No `ports:`. See the header.
     environment:
       # --- the five required bootstrap variables --------------------------

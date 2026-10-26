@@ -4,13 +4,11 @@ import {
   type DragStartEvent,
   type DropAnimation,
   defaultDropAnimationSideEffects,
-  KeyboardSensor,
   MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -30,12 +28,28 @@ import {
   workItemTransitionReasonKey,
 } from "@/lib/work-item-transition-reasons";
 import type { WorkItemRow } from "@/types/work-item";
+import type { CombinedWorkItemRow } from "@/types/work-item/combined";
 import {
   isClosingCategory,
   useOpenChildrenGuard,
 } from "./open-children-warning";
+import { sortableKeyboardCoordinatesWithVirtualRows } from "./virtualization/sortable-keyboard-coordinates";
+import {
+  SynchronousKeyboardSensor,
+  VisibleTargetKeyboardSensor,
+} from "./virtualization/synchronous-keyboard-sensor";
 export type WorkItemDragState = { id: string; name: string; group?: string };
 type Notice = { kind: "status" | "error"; text: string };
+
+function isCombinedWorkItemRow(item: WorkItemRow): item is CombinedWorkItemRow {
+  const row = item as CombinedWorkItemRow;
+  return (
+    typeof row.stateTemplateId === "string" &&
+    typeof row.sourceProject?.id === "string" &&
+    typeof row.sourceProject?.key === "string" &&
+    typeof row.sourceProject?.name === "string"
+  );
+}
 
 /** One canonical write controller shared by Kaneo board and list presentations. */
 export default function useWorkItemDragDrop({
@@ -47,6 +61,9 @@ export default function useWorkItemDragDrop({
   sort = "position",
   dir = "asc",
   surface = "board",
+  combined = false,
+  canRankForProject,
+  canTransitionForProject,
 }: {
   projectId: string;
   states: WorkItemDragState[] | undefined;
@@ -56,12 +73,20 @@ export default function useWorkItemDragDrop({
   sort?: WorkItemSortField;
   dir?: WorkItemSortDirection;
   surface?: "board" | "list";
+  /** Opt-in presentation grouped by workspace state template, with project-local writes. */
+  combined?: boolean;
+  canRankForProject?: (projectId: string) => boolean;
+  canTransitionForProject?: (projectId: string) => boolean;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const childrenGuard = useOpenChildrenGuard();
   const [dragged, setDragged] = useState<WorkItemRow>();
   const draggedRef = useRef<WorkItemRow | undefined>(undefined);
+  const KeyboardSensor =
+    surface === "list"
+      ? VisibleTargetKeyboardSensor
+      : SynchronousKeyboardSensor;
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
@@ -71,7 +96,12 @@ export default function useWorkItemDragDrop({
       },
     }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: sortableKeyboardCoordinatesWithVirtualRows,
+      keyboardCodes: {
+        start: ["Space"],
+        end: ["Space", "Enter"],
+        cancel: ["Escape"],
+      },
     }),
   );
   const dropAnimation: DropAnimation = {
@@ -111,9 +141,13 @@ export default function useWorkItemDragDrop({
   const itemsByState = useMemo(() => {
     const grouped = new Map<string, WorkItemRow[]>();
     for (const item of workItems ?? []) {
-      const items = grouped.get(item.stateId) ?? [];
+      const stateKey =
+        combined && isCombinedWorkItemRow(item)
+          ? item.stateTemplateId
+          : item.stateId;
+      const items = grouped.get(stateKey) ?? [];
       items.push(item);
-      grouped.set(item.stateId, items);
+      grouped.set(stateKey, items);
     }
     for (const [stateId, items] of grouped) {
       if (sort === "position") {
@@ -132,7 +166,7 @@ export default function useWorkItemDragDrop({
       // Preserving that order keeps Load more consistent across cursor pages.
     }
     return grouped;
-  }, [workItems, sort, dir]);
+  }, [workItems, sort, dir, combined]);
 
   // Keyboard drag completion follows the real card across a persisted column change.
   useEffect(() => {
@@ -370,6 +404,202 @@ export default function useWorkItemDragDrop({
     });
   }
 
+  function canRankItem(item: WorkItemRow) {
+    return combined
+      ? canReorder && (canRankForProject?.(item.projectId) ?? false)
+      : canRank;
+  }
+
+  function canTransitionItem(item: WorkItemRow) {
+    return combined
+      ? (canTransitionForProject?.(item.projectId) ?? false)
+      : canTransition;
+  }
+
+  async function handleCombinedDrop(
+    target: WorkItemDragState,
+    targetItem?: WorkItemRow,
+  ) {
+    const item = draggedRef.current;
+    setOverStateId(undefined);
+    draggedRef.current = undefined;
+    setDragged(undefined);
+    if (!item || !isCombinedWorkItemRow(item)) return;
+
+    const sourceColumn = (itemsByState.get(item.stateTemplateId) ?? []).filter(
+      (candidate) =>
+        candidate.projectId === item.projectId &&
+        candidate.stateId === item.stateId,
+    );
+    if (target.id === item.stateTemplateId) {
+      if (!canRankItem(item) || !canReorder) {
+        setNotice({
+          kind: "error",
+          text: t("workItems:board.rankForbidden"),
+        });
+        return;
+      }
+      if (targetItem && targetItem.id !== item.id) {
+        const samePartition =
+          targetItem.projectId === item.projectId &&
+          targetItem.stateId === item.stateId;
+        if (!samePartition) {
+          setNotice({
+            kind: "error",
+            text: t("workItems:board.crossProjectRankDenied"),
+          });
+          return;
+        }
+        const targetIndex = sourceColumn.findIndex(
+          (candidate) => candidate.id === targetItem.id,
+        );
+        if (targetIndex >= 0)
+          await runMove(() =>
+            rankWithin(
+              item,
+              sourceColumn,
+              targetIndex,
+              targetIndex,
+              target.name,
+            ),
+          );
+        return;
+      }
+      if (!targetItem)
+        await runMove(() =>
+          rankWithin(
+            item,
+            sourceColumn,
+            sourceColumn.length,
+            sourceColumn.length,
+            target.name,
+          ),
+        );
+      return;
+    }
+
+    if (!canTransitionItem(item)) {
+      setNotice({
+        kind: "error",
+        text: t("workItems:board.transitionForbidden"),
+      });
+      return;
+    }
+    const operationGeneration = generation.current;
+    await runMove(async () => {
+      try {
+        const offers = await getWorkItemTransitions(item.key);
+        if (generation.current !== operationGeneration)
+          return { kind: "status", text: "" };
+        const offer = offers.find(
+          (candidate) => candidate.toStateTemplateId === target.id,
+        );
+        if (!offer?.available) {
+          await refreshBoard();
+          const reason = offer?.blockedBy
+            .map((entry) => t(workItemTransitionReasonKey(entry.reasonCode)))
+            .join(", ");
+          return {
+            kind: "error",
+            text: reason
+              ? t("workItems:board.transitionBlocked", {
+                  key: item.key,
+                  reason,
+                })
+              : t("workItems:board.transitionUnavailable", {
+                  key: item.key,
+                }),
+          };
+        }
+        const confirmed = await new Promise<boolean>((resolve) => {
+          void childrenGuard.guard({
+            key: item.key,
+            closing:
+              isClosingCategory(offer.toStateCategory) &&
+              !isClosingCategory(item.stateCategory),
+            proceed: () => resolve(true),
+            cancel: () => resolve(false),
+          });
+        });
+        if (!confirmed || generation.current !== operationGeneration)
+          return { kind: "status", text: "" };
+        await transitionWorkItem({
+          key: item.key,
+          toStateTemplateId: offer.toStateTemplateId,
+        });
+        if (generation.current !== operationGeneration) {
+          await refreshBoard();
+          return { kind: "status", text: "" };
+        }
+
+        const targetColumn = (itemsByState.get(target.id) ?? []).filter(
+          (candidate) =>
+            candidate.projectId === item.projectId &&
+            candidate.stateId === offer.toStateId,
+        );
+        const sameProjectTarget =
+          targetItem?.projectId === item.projectId &&
+          targetItem.stateId === offer.toStateId;
+        if (canRankItem(item) && targetColumn.length > 0) {
+          const targetIndex = sameProjectTarget
+            ? targetColumn.findIndex(
+                (candidate) => candidate.id === targetItem.id,
+              )
+            : targetColumn.length;
+          const at = targetIndex < 0 ? targetColumn.length : targetIndex;
+          const before = targetColumn[at - 1];
+          const after = targetColumn[at];
+          try {
+            await rankWorkItem({
+              key: item.key,
+              ...(before ? { beforeId: before.id } : {}),
+              ...(after ? { afterId: after.id } : {}),
+            });
+          } catch (error) {
+            await refreshBoard();
+            return {
+              kind: "error",
+              text: t("workItems:board.movedNotRanked", {
+                key: item.key,
+                state: target.name,
+                reason: describeFailure(
+                  classifyWorkItemWriteError(error),
+                  item.key,
+                ),
+              }),
+            };
+          }
+        }
+        await refreshBoard();
+        return {
+          kind: "status",
+          text: t("workItems:board.transitionSaved", {
+            key: item.key,
+            state: target.name,
+          }),
+        };
+      } catch (error) {
+        await refreshBoard();
+        return {
+          kind: "error",
+          text:
+            error instanceof WorkItemTransitionBlockedError
+              ? t("workItems:board.transitionBlocked", {
+                  key: item.key,
+                  reason: error.reasonCodes
+                    .map((code) => t(workItemTransitionReasonKey(code)))
+                    .join(", "),
+                })
+              : describeFailure(
+                  classifyWorkItemWriteError(error),
+                  item.key,
+                  "transition",
+                ),
+        };
+      }
+    });
+  }
+
   function startDrag(event: DragStartEvent) {
     if (busyRef.current) return;
     const item = workItems?.find(
@@ -377,9 +607,11 @@ export default function useWorkItemDragDrop({
     );
     if (
       !item ||
-      item.projectId !== projectContext.current ||
+      (!combined && item.projectId !== projectContext.current) ||
       item.unavailableFields.includes("key") ||
-      (!canTransition && !canReorder)
+      (combined
+        ? !canRankItem(item) && !canTransitionItem(item)
+        : !canTransition && !canReorder)
     )
       return;
     draggedRef.current = item;
@@ -393,10 +625,13 @@ export default function useWorkItemDragDrop({
     );
     if (
       !source ||
-      source.projectId !== projectContext.current ||
+      (!combined && source.projectId !== projectContext.current) ||
       source.unavailableFields.includes("key") ||
+      source.projectId !== draggedRef.current?.projectId ||
       source.stateId !== draggedRef.current?.stateId ||
-      (!canTransition && !canReorder)
+      (combined
+        ? !canRankItem(source) && !canTransitionItem(source)
+        : !canTransition && !canReorder)
     ) {
       cancelDrag();
       return;
@@ -404,14 +639,18 @@ export default function useWorkItemDragDrop({
     const targetItem = workItems?.find(
       (candidate) => candidate.id === event.over?.id,
     );
-    const target = states?.find(
-      (candidate) => candidate.id === (targetItem?.stateId ?? event.over?.id),
-    );
+    const targetStateId = combined
+      ? targetItem && isCombinedWorkItemRow(targetItem)
+        ? targetItem.stateTemplateId
+        : event.over?.id
+      : (targetItem?.stateId ?? event.over?.id);
+    const target = states?.find((candidate) => candidate.id === targetStateId);
     if (!event.over || !target) {
       cancelDrag();
       return;
     }
-    await handleDrop(target, targetItem);
+    if (combined) await handleCombinedDrop(target, targetItem);
+    else await handleDrop(target, targetItem);
   }
   function cancelDrag() {
     setOverStateId(undefined);
@@ -422,9 +661,12 @@ export default function useWorkItemDragDrop({
 
   function overDrag(event: DragOverEvent) {
     const targetItem = workItems?.find((item) => item.id === event.over?.id);
-    const state = states?.find(
-      (candidate) => candidate.id === (targetItem?.stateId ?? event.over?.id),
-    );
+    const targetStateId = combined
+      ? targetItem && isCombinedWorkItemRow(targetItem)
+        ? targetItem.stateTemplateId
+        : event.over?.id
+      : (targetItem?.stateId ?? event.over?.id);
+    const state = states?.find((candidate) => candidate.id === targetStateId);
     setOverStateId(draggedRef.current && state ? state.id : undefined);
   }
   return {

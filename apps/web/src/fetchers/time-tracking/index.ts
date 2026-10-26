@@ -83,7 +83,7 @@ export type CostByCurrency = {
   pricedMinutes: number;
 };
 export type TimeSummary = {
-  scope: "work_item" | "project";
+  scope: "work_item" | "project" | "cycle" | "module";
   totalMinutes: number;
   billableMinutes: number;
   entryCount: number;
@@ -122,7 +122,22 @@ export type ProjectBudget = {
   thresholdReached?: 75 | 90 | null;
   otherCurrencies?: CostByCurrency[];
   unpricedMinutes?: number;
-  committedMinor: number | null;
+  committedMinor?: number | null;
+  committedByCurrency?: Array<{
+    currency: string;
+    amountMinor: number;
+    taskCount: number;
+  }>;
+  committedUnknown?: {
+    taskCount: number;
+    reasons: {
+      unscheduled: number;
+      nonTime: number;
+      unassigned: number;
+      unrated: number;
+    };
+    knownRemainingMinutes: number;
+  };
 };
 export type BudgetOverview = {
   /** The caller holds `budget:manage`. */
@@ -291,6 +306,8 @@ export const getTimeSummary = (input: {
   workspaceId: string;
   workItemId?: string;
   projectId?: string;
+  cycleId?: string;
+  moduleId?: string;
   from?: string;
   to?: string;
 }) =>

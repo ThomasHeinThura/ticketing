@@ -13,6 +13,7 @@ const errorSchema = z.object({ message: z.string() });
 const progressSchema = z.object({
   currentKeyId: z.string().nullable(),
   previousKeyConfigured: z.boolean(),
+  expiredInvitationDeliveryEnvelopes: z.number().int().nonnegative(),
   total: z.object({
     plugins: z.number(),
     identityConnections: z.number(),

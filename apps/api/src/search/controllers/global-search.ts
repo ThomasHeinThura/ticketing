@@ -1,5 +1,7 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { projectsWithFeature } from "../../feature-flag/repository";
+import { searchArticles } from "../../kb/repository";
+import { kbEnabledWorkspaceIds } from "../../kb/visibility";
 import { searchProjectPages } from "../../pages/search";
 import { isCustomerPrincipal } from "../../utils/is-customer-principal";
 import {
@@ -23,6 +25,8 @@ import { TASK_SHORT_ID_PATTERN } from "../task-short-id";
 type SearchParams = {
   query: string;
   identity: ResolvedIdentity;
+  /** Aborted when the HTTP client leaves; checkpoints stop later entity/fallback work. */
+  signal?: AbortSignal;
   type?:
     | "all"
     | "tasks"
@@ -30,6 +34,7 @@ type SearchParams = {
     | "people"
     | "views"
     | "pages"
+    | "kb_articles"
     | "projects"
     | "workspaces"
     | "comments"
@@ -51,6 +56,8 @@ type SearchParams = {
   workItemAccess?: (
     workspaceId: string,
   ) => Promise<{ personId: string; projectIds: string[] } | null>;
+  /** A live KB read-capability check, including API-key scope. */
+  kbArticleAccess?: (workspaceId: string) => Promise<boolean>;
 };
 
 type SearchResult = {
@@ -61,6 +68,7 @@ type SearchResult = {
     | "person"
     | "saved_view"
     | "page"
+    | "kb_article"
     | "project"
     | "workspace"
     | "comment"
@@ -142,13 +150,23 @@ async function globalSearch(params: SearchParams): Promise<{
   const {
     query,
     identity,
+    signal,
     type = "all",
     workspaceId,
     projectId,
     limit = 20,
     reachableProjectIds,
     workItemAccess,
+    kbArticleAccess,
   } = params;
+
+  const aborted = () => signal?.aborted === true;
+  const emptyResult = () => ({
+    results: [],
+    totalCount: 0,
+    searchQuery: query,
+  });
+  if (aborted()) return emptyResult();
 
   const resolvedUserId = identity.userId;
   if (!resolvedUserId) {
@@ -156,6 +174,7 @@ async function globalSearch(params: SearchParams): Promise<{
   }
 
   const userWorkspaces = await listUserWorkspaceIds(resolvedUserId);
+  if (aborted()) return emptyResult();
 
   const accessibleWorkspaceIds = userWorkspaces
     .map((w) => w.workspaceId)
@@ -177,6 +196,7 @@ async function globalSearch(params: SearchParams): Promise<{
   const reachable = await reachableProjectIds(
     workspaceId ? [workspaceId] : accessibleWorkspaceIds,
   );
+  if (aborted()) return emptyResult();
   const scope: SearchScope = {
     identity,
     workspaceId,
@@ -206,6 +226,7 @@ async function globalSearch(params: SearchParams): Promise<{
         slug,
         taskNumber,
       });
+      if (aborted()) return emptyResult();
 
       for (const task of shortIdTasks) {
         seenTaskIds.add(task.id);
@@ -238,6 +259,7 @@ async function globalSearch(params: SearchParams): Promise<{
       searchPattern,
       limit,
     });
+    if (aborted()) return emptyResult();
 
     for (const task of tasks) {
       if (seenTaskIds.has(task.id)) continue;
@@ -270,22 +292,29 @@ async function globalSearch(params: SearchParams): Promise<{
     type === "work_items" ||
     type === "people" ||
     type === "views" ||
-    type === "pages";
+    type === "pages" ||
+    type === "kb_articles";
   const searchWorkspaceId =
     workspaceId ??
     (accessibleWorkspaceIds.length === 1
       ? accessibleWorkspaceIds[0]
       : undefined);
-  if (
-    wantsCanonical &&
-    searchWorkspaceId &&
-    !(await isCustomerPrincipal(resolvedUserId, searchWorkspaceId))
-  ) {
+  const isCustomer =
+    wantsCanonical && searchWorkspaceId
+      ? await isCustomerPrincipal(resolvedUserId, searchWorkspaceId)
+      : false;
+  if (aborted()) return emptyResult();
+  let peopleResultsPromise: Promise<SearchResult[]> = Promise.resolve([]);
+  let pageResultsPromise: Promise<SearchResult[]> = Promise.resolve([]);
+  let viewResultsPromise: Promise<SearchResult[]> = Promise.resolve([]);
+  let articleResultsPromise: Promise<SearchResult[]> = Promise.resolve([]);
+  if (wantsCanonical && searchWorkspaceId && !isCustomer) {
     const term = query.normalize("NFKC").trim();
     const access =
       type === "all" || type === "work_items" || type === "views"
         ? ((await workItemAccess?.(searchWorkspaceId)) ?? null)
         : null;
+    if (aborted()) return emptyResult();
     // Intersect with the legacy reach set so a project outside either decision never appears.
     const reachableSet = new Set(reachable);
     const itemProjectIds = (access?.projectIds ?? []).filter((id) =>
@@ -303,7 +332,15 @@ async function globalSearch(params: SearchParams): Promise<{
         ...base,
         limit,
       });
-      if (rows.length < limit) {
+      // A query can be canceled while Postgres is running. We cannot cancel that SQL
+      // statement here, but we can avoid starting the expensive fuzzy fallback or any
+      // remaining entity lookups for an obsolete prefix.
+      if (aborted()) return emptyResult();
+      // SV-9 is a typo fallback, not a way to pad a good prefix/title match with
+      // near-duplicates. On a common prefix, pg_trgm can legitimately match most
+      // of a large workspace; asking it to rank those rows after every partial hit
+      // turns ordinary typing into a full sort of the workspace's work items.
+      if (rows.length === 0) {
         rows = rows.concat(
           await searchCanonicalWorkItemsFuzzy({
             ...base,
@@ -311,6 +348,7 @@ async function globalSearch(params: SearchParams): Promise<{
             limit: limit - rows.length,
           }),
         );
+        if (aborted()) return emptyResult();
       }
       for (const item of rows) {
         results.push({
@@ -334,41 +372,49 @@ async function globalSearch(params: SearchParams): Promise<{
     }
 
     if ((type === "all" || type === "people") && term) {
-      for (const person of await searchWorkspacePeople({
-        workspaceId: searchWorkspaceId,
-        term,
-        limit,
-      })) {
-        results.push({
+      peopleResultsPromise = (async () => {
+        if (aborted()) return [];
+        const people = await searchWorkspacePeople({
+          workspaceId: searchWorkspaceId,
+          term,
+          limit,
+        });
+        if (aborted()) return [];
+        return people.map((person) => ({
           id: person.id,
-          type: "person",
+          type: "person" as const,
           title: person.name,
           description: person.jobTitle || undefined,
           userId: person.userId || undefined,
           workspaceId: searchWorkspaceId,
           createdAt: person.createdAt,
           relevanceScore: person.relevanceScore,
-        });
-      }
+        }));
+      })();
     }
 
     // PG-6: pages of the projects the caller reaches (staff only: this branch is closed to a
     // customer principal above).
     if ((type === "all" || type === "pages") && term) {
-      for (const page of await searchProjectPages({
-        workspaceId: searchWorkspaceId,
-        reachableProjectIds: await projectsWithFeature(
+      pageResultsPromise = (async () => {
+        if (aborted()) return [];
+        const pageProjectIds = await projectsWithFeature(
           "feature.pages",
           searchWorkspaceId,
           reachable,
-        ),
-        projectId,
-        term,
-        limit,
-      })) {
-        results.push({
+        );
+        if (aborted()) return [];
+        const pages = await searchProjectPages({
+          workspaceId: searchWorkspaceId,
+          reachableProjectIds: pageProjectIds,
+          projectId,
+          term,
+          limit,
+        });
+        if (aborted()) return [];
+        return pages.map((page) => ({
           id: page.id,
-          type: "page",
+          type: "page" as const,
           title: page.title,
           description: page.snippet || undefined,
           projectId: page.projectId,
@@ -377,72 +423,139 @@ async function globalSearch(params: SearchParams): Promise<{
           workspaceId: page.workspaceId,
           createdAt: page.createdAt,
           relevanceScore: page.relevanceScore,
-        });
-      }
+        }));
+      })();
     }
 
     if ((type === "all" || type === "views") && access && term) {
-      for (const view of await searchSavedViews({
-        workspaceId: searchWorkspaceId,
-        personId: access.personId,
-        userId: resolvedUserId,
-        reachableProjectIds: itemProjectIds,
-        term,
-        limit,
-      })) {
-        results.push({
+      viewResultsPromise = (async () => {
+        if (aborted()) return [];
+        const views = await searchSavedViews({
+          workspaceId: searchWorkspaceId,
+          personId: access.personId,
+          userId: resolvedUserId,
+          reachableProjectIds: itemProjectIds,
+          term,
+          limit,
+        });
+        if (aborted()) return [];
+        return views.map((view) => ({
           id: view.id,
-          type: "saved_view",
+          type: "saved_view" as const,
           title: view.name,
           layout: view.layout,
           workspaceId: view.workspaceId,
           createdAt: view.createdAt,
           relevanceScore: view.relevanceScore,
+        }));
+      })();
+    }
+
+    if ((type === "all" || type === "kb_articles") && term && kbArticleAccess) {
+      articleResultsPromise = (async () => {
+        if (aborted()) return [];
+        const canReadKb = await kbArticleAccess(searchWorkspaceId);
+        if (aborted() || !canReadKb) return [];
+        const kbWorkspaceIds = await kbEnabledWorkspaceIds([searchWorkspaceId]);
+        if (aborted() || !kbWorkspaceIds.includes(searchWorkspaceId)) return [];
+        const articles = await searchArticles({
+          workspaceId: searchWorkspaceId,
+          reachableProjectIds: reachable,
+          projectId,
+          // The KB vector indexes the stored text as written. Keep the raw query form for the
+          // same Unicode tokenization used by the KB route; `term` is NFKC-normalized for the
+          // other canonical search repositories.
+          q: query.trim(),
+          limit,
         });
-      }
+        if (aborted()) return [];
+        return articles.map((article) => ({
+          id: article.id,
+          type: "kb_article" as const,
+          title: article.title,
+          description: article.snippet || undefined,
+          projectId: article.projectId ?? undefined,
+          workspaceId: article.workspaceId,
+          createdAt: new Date(article.createdAt),
+          relevanceScore: article.relevanceScore,
+        }));
+      })();
     }
   }
 
-  if (type === "all" || type === "projects") {
-    const projects = await searchProjects({ scope, searchPattern, limit });
+  const projectResultsPromise =
+    type === "all" || type === "projects"
+      ? (async () => {
+          if (aborted()) return [];
+          const projects = await searchProjects({
+            scope,
+            searchPattern,
+            limit,
+          });
+          if (aborted()) return [];
+          return projects.map((project) => ({
+            id: project.id,
+            type: "project" as const,
+            title: project.name,
+            description: project.description || undefined,
+            projectId: project.id,
+            projectSlug: project.slug || undefined,
+            workspaceId: project.workspaceId,
+            workspaceName: project.workspaceName || undefined,
+            createdAt: project.createdAt,
+            relevanceScore: project.relevanceScore,
+          }));
+        })()
+      : Promise.resolve([]);
 
-    for (const project of projects) {
-      results.push({
-        id: project.id,
-        type: "project",
-        title: project.name,
-        description: project.description || undefined,
-        projectId: project.id,
-        projectSlug: project.slug || undefined,
-        workspaceId: project.workspaceId,
-        workspaceName: project.workspaceName || undefined,
-        createdAt: project.createdAt,
-        relevanceScore: project.relevanceScore,
-      });
-    }
-  }
+  const workspaceResultsPromise =
+    type === "all" || type === "workspaces"
+      ? (async () => {
+          if (aborted()) return [];
+          const workspaces = await searchWorkspaces({
+            identity,
+            accessibleWorkspaceIds,
+            searchPattern,
+            limit,
+          });
+          if (aborted()) return [];
+          return workspaces.map((workspace) => ({
+            id: workspace.id,
+            type: "workspace" as const,
+            title: workspace.name,
+            description: workspace.description || undefined,
+            workspaceId: workspace.id,
+            workspaceName: workspace.name,
+            createdAt: workspace.createdAt,
+            relevanceScore: workspace.relevanceScore,
+          }));
+        })()
+      : Promise.resolve([]);
 
-  if (type === "all" || type === "workspaces") {
-    const workspaces = await searchWorkspaces({
-      identity,
-      accessibleWorkspaceIds,
-      searchPattern,
-      limit,
-    });
-
-    for (const workspace of workspaces) {
-      results.push({
-        id: workspace.id,
-        type: "workspace",
-        title: workspace.name,
-        description: workspace.description || undefined,
-        workspaceId: workspace.id,
-        workspaceName: workspace.name,
-        createdAt: workspace.createdAt,
-        relevanceScore: workspace.relevanceScore,
-      });
-    }
-  }
+  const [
+    peopleResults,
+    pageResults,
+    viewResults,
+    articleResults,
+    projectResults,
+    workspaceResults,
+  ] = await Promise.all([
+    peopleResultsPromise,
+    pageResultsPromise,
+    viewResultsPromise,
+    articleResultsPromise,
+    projectResultsPromise,
+    workspaceResultsPromise,
+  ]);
+  if (aborted()) return emptyResult();
+  results.push(
+    ...peopleResults,
+    ...pageResults,
+    ...viewResults,
+    ...articleResults,
+    ...projectResults,
+    ...workspaceResults,
+  );
 
   if (type === "comments" || type === "activities") {
     const activities = await searchActivities({
@@ -452,6 +565,7 @@ async function globalSearch(params: SearchParams): Promise<{
       searchPattern,
       limit,
     });
+    if (aborted()) return emptyResult();
 
     for (const activity of activities) {
       const isComment = activity.type === "comment";

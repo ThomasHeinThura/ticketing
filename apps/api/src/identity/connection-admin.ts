@@ -7,6 +7,7 @@ import {
 import { and, eq, lt, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
+import { publishCommittedAuthConfigurationReload } from "../auth/configuration-reload";
 import { appendStepUpAudit } from "../auth/step-up-audit";
 import {
   consumeIdentityConnectionProof,
@@ -782,6 +783,7 @@ router.openapi(createConnectionRoute, async (c) => {
     throw new HTTPException(422, {
       message: "Identity configuration is invalid",
     });
+  await publishCommittedAuthConfigurationReload();
   if (!result.auditOk) await reportAuditFailure();
   setShadowLegacyAuthorization(c, "allowed");
   const [created] = await getIdentityConnection(connectionId);
@@ -1066,6 +1068,7 @@ router.openapi(configureConnectionRoute, async (c) => {
     setShadowLegacyAuthorization(c, "denied");
     throw new HTTPException(403, { message: "step_up_unavailable" });
   }
+  await publishCommittedAuthConfigurationReload();
   if (!result.auditOk) await reportAuditFailure();
   await reportPendingActionAuditFailures(result.pendingActionAuditFailures);
   for (const affectedUserId of result.affectedUserIds)

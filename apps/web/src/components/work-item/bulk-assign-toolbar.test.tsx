@@ -179,7 +179,9 @@ describe("canonical bulk actions use original Kaneo composition", () => {
     expect(screen.queryByRole("combobox")).toBeNull();
     await openActions();
     expect(
-      await screen.findByRole("option", { name: "Archive tasks" }),
+      await screen.findByRole("option", {
+        name: translate("tasks:bulk.archive"),
+      }),
     ).toBeInTheDocument();
     expect(mocks.permissions).toHaveBeenCalledWith("ws_1", "proj_1");
   });
@@ -272,7 +274,7 @@ describe("canonical bulk actions use original Kaneo composition", () => {
   it("preserves operation refusal and the selection", async () => {
     mocks.operation.mockRejectedValue(new HttpError(403, "denied"));
     const { onAssigned } = mount();
-    await choose("Archive tasks");
+    await choose(translate("tasks:bulk.archive"));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(onAssigned).not.toHaveBeenCalled();
   });
@@ -285,8 +287,12 @@ describe("canonical bulk actions use original Kaneo composition", () => {
     mount();
     await openActions();
     expect(screen.queryByRole("option", { name: "Riley" })).toBeNull();
-    expect(screen.queryByRole("option", { name: "Delete tasks" })).toBeNull();
-    expect(screen.queryByRole("option", { name: "Archive tasks" })).toBeNull();
+    expect(
+      screen.queryByRole("option", { name: translate("tasks:bulk.delete") }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("option", { name: translate("tasks:bulk.archive") }),
+    ).toBeNull();
     expect(screen.getByRole("option", { name: "high" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Set Due Date" })).toBeNull();
   });
@@ -499,7 +505,7 @@ describe("bulk durable deletion", () => {
       pendingActionId: "pa-bulk",
     });
     const { onAssigned } = mount();
-    await choose("Delete tasks");
+    await choose(translate("tasks:bulk.delete"));
     await waitFor(() =>
       expect(mocks.openPending).toHaveBeenCalledWith({
         pendingActionId: "pa-bulk",
@@ -516,7 +522,7 @@ describe("bulk durable deletion", () => {
         }),
     );
     mount();
-    await choose("Delete tasks");
+    await choose(translate("tasks:bulk.delete"));
     await waitFor(() => expect(mocks.deletion).toHaveBeenCalled());
     cleanup();
     await act(async () =>

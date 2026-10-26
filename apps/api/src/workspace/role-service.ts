@@ -8,21 +8,39 @@ import {
   isCapability,
   statement,
 } from "@taskdesk/permissions";
-import { sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
+import {
+  captureWorkspaceServiceKeyAuthority,
+  markServiceKeysForAuthorityLoss,
+} from "../api-key/authority-loss";
 import { appendAuditLog } from "../audit/audit-writer";
 import type { StepUpExecutor } from "../auth/repository";
-import db from "../database";
+import db, { schema } from "../database";
+import { apiKeyExtensionTable } from "../database/schema";
+import { retryIdentityGrantClosure } from "../identity/membership-projection";
+import {
+  reportIdentityAuditFailure,
+  writeRoleChangeEvidence,
+} from "../identity/oidc-group-mapping-admin";
+import {
+  hasSafeIdpRoleCapabilities,
+  lockRoleIdentityGrantClosure,
+  projectMembershipKeys,
+  validateIdpMappingRole,
+} from "../identity/repository";
 import { withWorkspaceDeletionAccessLifecycle } from "../pending-action/workspace-access-invalidation";
 import {
   applyCapabilityDeltaToLegacyStatements,
   capabilitiesFromLegacyStatements,
   LEGACY_PAIR_CAPABILITY,
 } from "../permissions/legacy-statements";
+import { resolveIdentity } from "../permissions/resolve-identity";
 import {
   expandedRoleCapabilities,
   findWorkspaceRoleByKey,
   storedCapabilities,
 } from "../permissions/workspace-role-authority.repository";
+import { listLiveProjectReachFacts } from "../user-preference/repository";
 import { resolveMembershipRole } from "../utils/workspace-member-roles";
 import { MAX_WORKSPACE_ROLES_PER_WORKSPACE } from "../utils/workspace-role-limits";
 import {
@@ -46,11 +64,13 @@ import {
 } from "./controllers/workspace-role-errors";
 import { WORKSPACE_ROLE_LOCK_NAMESPACE } from "./controllers/workspace-role-lock";
 import {
+  countActiveRoleImpactWorkItems,
   countCustomRoles,
-  countIdentityRoleReferences,
   countRoleHolders,
   getRoleWithHolderCount,
   insertRoleRow,
+  listActiveRoleHolderUserIds,
+  listActiveRoleImpactProjectIds,
   listPersonNames,
   listRoleHistory,
   listRoleHolders,
@@ -574,9 +594,60 @@ export type UpdateRoleInput = {
   caller: RoleCaller | null;
   /** As on create: spends the step-up proof in this transaction, right before the write. */
   beforeWrite?: (tx: StepUpExecutor) => Promise<void>;
+  /** Read-only impact preview through the same role and CAS validation path. */
+  dryRun?: boolean;
 } & RequestedCapabilities;
 
-export async function updateRole(input: UpdateRoleInput): Promise<RoleView> {
+export type RoleImpactPreview = {
+  affected: { people: number; workItems: number; projects: number };
+};
+
+async function captureRoleServiceKeyAuthority(
+  tx: StepUpExecutor,
+  workspaceId: string,
+) {
+  const owners = await tx
+    .selectDistinct({ userId: schema.personTable.userId })
+    .from(apiKeyExtensionTable)
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.id, apiKeyExtensionTable.createdByPersonId),
+    )
+    .where(eq(apiKeyExtensionTable.workspaceId, workspaceId));
+  const snapshots = [];
+  for (const owner of owners) {
+    if (!owner.userId) continue;
+    const snapshot = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      owner.userId,
+      workspaceId,
+    );
+    if (snapshot) snapshots.push(snapshot);
+  }
+  return snapshots;
+}
+
+async function recordRoleServiceKeyAuthorityLoss(
+  tx: StepUpExecutor,
+  snapshots: Awaited<ReturnType<typeof captureRoleServiceKeyAuthority>>,
+) {
+  for (const before of snapshots) {
+    const after = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      before.userId,
+      before.workspaceId,
+    );
+    await markServiceKeysForAuthorityLoss(tx, {
+      before,
+      after,
+      now: new Date(),
+    });
+  }
+}
+
+export async function updateRole(
+  input: UpdateRoleInput,
+): Promise<RoleView | RoleImpactPreview> {
   const closure = requestedClosure(input);
   if (
     closure === null &&
@@ -597,168 +668,548 @@ export async function updateRole(input: UpdateRoleInput): Promise<RoleView> {
     );
   }
 
-  return withWorkspaceDeletionAccessLifecycle(input.workspaceId, async (tx) => {
-    await lockWorkspaceRoleAssignment(tx, input.workspaceId);
+  const outcome = await retryIdentityGrantClosure(() =>
+    withWorkspaceDeletionAccessLifecycle(input.workspaceId, async (tx) => {
+      await lockWorkspaceRoleAssignment(tx, input.workspaceId);
 
-    const existing = await lockRoleRow(tx, input.workspaceId, input.roleId);
-    if (!existing) throw new WorkspaceRoleNotFoundError(input.roleId);
-    // RL-6: owner is compiled and never edited.
-    if (existing.key === "owner" || !existing.isEditable) {
-      throw new RoleNotEditableError(existing.key);
-    }
-    // A built-in role keeps its key, name and rank; only its capabilities and description change,
-    // and only through `capabilities` (a legacy statement body is not a faithful edit of a row
-    // whose compiled list is wider than the legacy vocabulary).
-    if (
-      existing.isSystem &&
-      (input.permission !== undefined ||
-        input.name !== undefined ||
-        input.rank !== undefined)
-    ) {
-      throw new RoleNotEditableError(existing.key);
-    }
+      const discoveredRole = await getRoleWithHolderCount(
+        tx,
+        input.workspaceId,
+        input.roleId,
+      );
+      if (!discoveredRole) throw new WorkspaceRoleNotFoundError(input.roleId);
+      // RL-6: owner is compiled and never edited.
+      if (discoveredRole.key === "owner" || !discoveredRole.isEditable) {
+        throw new RoleNotEditableError(discoveredRole.key);
+      }
+      // A built-in role keeps its key, name and rank; only its capabilities and description change,
+      // and only through `capabilities` (a legacy statement body is not a faithful edit of a row
+      // whose compiled list is wider than the legacy vocabulary).
+      if (
+        discoveredRole.isSystem &&
+        (input.permission !== undefined ||
+          input.name !== undefined ||
+          input.rank !== undefined)
+      ) {
+        throw new RoleNotEditableError(discoveredRole.key);
+      }
 
-    if (
-      input.expectedVersion !== undefined &&
-      input.expectedVersion !== String(existing.updatedAt.getTime())
-    ) {
-      throw new RoleChangedError(
-        toRoleView({
-          ...existing,
-          holderCount: await countRoleHolders(
+      const identityClosure = await lockRoleIdentityGrantClosure(tx, {
+        workspaceId: input.workspaceId,
+        roleId: input.roleId,
+      });
+      const existing = await lockRoleRow(tx, input.workspaceId, input.roleId);
+      if (!existing) throw new WorkspaceRoleNotFoundError(input.roleId);
+
+      if (
+        input.expectedVersion !== undefined &&
+        input.expectedVersion !== String(existing.updatedAt.getTime())
+      ) {
+        throw new RoleChangedError(
+          toRoleView({
+            ...existing,
+            holderCount: await countRoleHolders(
+              tx,
+              input.workspaceId,
+              existing.key,
+            ),
+          }),
+        );
+      }
+
+      const caller = input.caller;
+      const callerRank = caller?.rank ?? 0;
+      const isOwnRole = caller !== null && caller.roleKey === existing.key;
+      // RL-4: nothing at or above your own rank, except the role you hold yourself.
+      if (existing.rank >= callerRank && !isOwnRole) {
+        throw new RoleRankError(
+          "You cannot edit a role ranked at or above your own rank",
+        );
+      }
+      // RL-14: nor move a role to a rank at or above your own.
+      if (input.rank !== undefined && input.rank >= callerRank) {
+        throw new RoleRankError(
+          "You cannot give a role a rank at or above your own rank",
+        );
+      }
+
+      const before = expandedRoleCapabilities(
+        storedCapabilities(existing.capabilities),
+      );
+      const nextCapabilities = closure ?? [...before].sort();
+      const { added, removed } = diffCapabilities(
+        [...before],
+        nextCapabilities,
+      );
+
+      // RL-3 applies to what this save ADDS.
+      const missing = capabilitiesBeyond(added, caller?.capabilities ?? null);
+      if (missing.length > 0)
+        throw new InsufficientPermissionToGrantError(missing);
+
+      if (isOwnRole && removed.length > 0 && input.confirmSelfEdit !== true) {
+        throw new SelfEditConfirmationError(removed);
+      }
+
+      const capabilitiesChanged = added.length > 0 || removed.length > 0;
+      const rankChanged =
+        input.rank !== undefined && input.rank !== existing.rank;
+      const hasIdentityReferences =
+        identityClosure.identityReferenceConnectionIds.length > 0 ||
+        identityClosure.activeRoleGrants.length > 0 ||
+        identityClosure.oidcMappings.length > 0 ||
+        identityClosure.scimMappings.length > 0;
+      if (
+        (capabilitiesChanged || rankChanged) &&
+        hasIdentityReferences &&
+        !hasSafeIdpRoleCapabilities(existing.scope, nextCapabilities)
+      ) {
+        throw new RoleInIdentityUseError();
+      }
+
+      // RL-7: the post-save world still has an active person who can manage roles.
+      if (capabilitiesChanged) {
+        await assertActiveRoleManagerRemains(tx, input.workspaceId, {
+          kind: "update",
+          roleId: existing.id,
+          capabilities: nextCapabilities,
+        });
+      }
+
+      if (input.dryRun) {
+        const holderUserIds = await listActiveRoleHolderUserIds(
+          tx,
+          input.workspaceId,
+          existing.key,
+        );
+        const candidateProjectIds = await listActiveRoleImpactProjectIds(
+          tx,
+          input.workspaceId,
+        );
+        const reachableProjectIds = new Set<string>();
+        const activeHolderPersonIds = new Set<string>();
+        for (const userId of holderUserIds) {
+          const identity = await resolveIdentity(
+            { userId, credential: "session" },
+            tx,
+          );
+          if (identity?.side !== "staff") continue;
+          activeHolderPersonIds.add(identity.personId);
+          const projects = await listLiveProjectReachFacts(
+            identity,
+            candidateProjectIds,
+            tx,
+          );
+          for (const project of projects) reachableProjectIds.add(project.id);
+        }
+        const projectIds = [...reachableProjectIds];
+        return {
+          kind: "preview" as const,
+          preview: {
+            affected: {
+              people: activeHolderPersonIds.size,
+              workItems: await countActiveRoleImpactWorkItems(tx, projectIds),
+              projects: projectIds.length,
+            },
+          },
+        };
+      }
+
+      await input.beforeWrite?.(tx);
+
+      const serviceKeyAuthority =
+        capabilitiesChanged || rankChanged
+          ? await captureRoleServiceKeyAuthority(tx, input.workspaceId)
+          : [];
+
+      // The three built-in defaults that still have a legacy statement row keep that row in step
+      // with the canonical set, by delta, because the legacy gates read it (owner decision, 23 Oct:
+      // capabilities live in `role`; the legacy row is a derived, readable projection).
+      if (
+        existing.isSystem &&
+        capabilitiesChanged &&
+        LEGACY_SYSTEM_STATEMENT_KEYS.has(existing.key)
+      ) {
+        const stored = await lockLegacySystemPermission(
+          tx,
+          input.workspaceId,
+          existing.key,
+        );
+        if (stored !== null) {
+          let parsed: Record<string, readonly string[]> = {};
+          try {
+            const value: unknown = JSON.parse(stored);
+            if (value && typeof value === "object" && !Array.isArray(value)) {
+              parsed = Object.fromEntries(
+                Object.entries(value).map(([resource, actions]) => [
+                  resource,
+                  Array.isArray(actions)
+                    ? actions.filter(
+                        (action): action is string =>
+                          typeof action === "string",
+                      )
+                    : [],
+                ]),
+              );
+            }
+          } catch {
+            parsed = {};
+          }
+          await setLegacySystemPermission(
             tx,
             input.workspaceId,
             existing.key,
-          ),
-        }),
-      );
-    }
+            JSON.stringify(
+              applyCapabilityDeltaToLegacyStatements(parsed, {
+                added,
+                removed,
+              }),
+            ),
+          );
+        }
+      }
 
-    const caller = input.caller;
-    const callerRank = caller?.rank ?? 0;
-    const isOwnRole = caller !== null && caller.roleKey === existing.key;
-    // RL-4: nothing at or above your own rank, except the role you hold yourself.
-    if (existing.rank >= callerRank && !isOwnRole) {
-      throw new RoleRankError(
-        "You cannot edit a role ranked at or above your own rank",
-      );
-    }
-    // RL-14: nor move a role to a rank at or above your own.
-    if (input.rank !== undefined && input.rank >= callerRank) {
-      throw new RoleRankError(
-        "You cannot give a role a rank at or above your own rank",
-      );
-    }
-
-    const before = expandedRoleCapabilities(
-      storedCapabilities(existing.capabilities),
-    );
-    const nextCapabilities = closure ?? [...before].sort();
-    const { added, removed } = diffCapabilities([...before], nextCapabilities);
-
-    // RL-3 applies to what this save ADDS.
-    const missing = capabilitiesBeyond(added, caller?.capabilities ?? null);
-    if (missing.length > 0)
-      throw new InsufficientPermissionToGrantError(missing);
-
-    if (isOwnRole && removed.length > 0 && input.confirmSelfEdit !== true) {
-      throw new SelfEditConfirmationError(removed);
-    }
-
-    const capabilitiesChanged = added.length > 0 || removed.length > 0;
-    const rankChanged =
-      input.rank !== undefined && input.rank !== existing.rank;
-    if (
-      (capabilitiesChanged || rankChanged) &&
-      (await countIdentityRoleReferences(tx, existing.id)) > 0
-    ) {
-      throw new RoleInIdentityUseError();
-    }
-
-    // RL-7: the post-save world still has an active person who can manage roles.
-    if (capabilitiesChanged) {
-      await assertActiveRoleManagerRemains(tx, input.workspaceId, {
-        kind: "update",
-        roleId: existing.id,
-        capabilities: nextCapabilities,
+      const updated = await updateRoleRow(tx, existing.id, {
+        ...(closure === null ? {} : { capabilities: nextCapabilities }),
+        ...(input.name === undefined ? {} : { name: input.name.trim() }),
+        ...(input.description === undefined
+          ? {}
+          : { description: input.description?.trim() || null }),
+        ...(input.rank === undefined ? {} : { rank: input.rank }),
       });
-    }
 
-    await input.beforeWrite?.(tx);
+      let identityAuditFailed = false;
+      if (capabilitiesChanged || rankChanged) {
+        const invalidGrantIds: string[] = [];
+        const invalidGrantCountByConnection = new Map<string, number>();
+        const now = new Date();
+        const roleGrants = identityClosure.activeRoleGrants;
+        const externalIdentityIds = [
+          ...new Set(
+            roleGrants.flatMap((grant) =>
+              grant.externalIdentityId ? [grant.externalIdentityId] : [],
+            ),
+          ),
+        ];
+        const peopleIds = [
+          ...new Set(roleGrants.map((grant) => grant.personId)),
+        ];
+        const identities = externalIdentityIds.length
+          ? await tx
+              .select({
+                id: schema.externalIdentityTable.id,
+                active: schema.externalIdentityTable.active,
+              })
+              .from(schema.externalIdentityTable)
+              .where(
+                inArray(schema.externalIdentityTable.id, externalIdentityIds),
+              )
+          : [];
+        const people = peopleIds.length
+          ? await tx
+              .select({
+                id: schema.personTable.id,
+                active: schema.personTable.active,
+              })
+              .from(schema.personTable)
+              .where(inArray(schema.personTable.id, peopleIds))
+          : [];
+        const oidcMappingIds = [
+          ...new Set(
+            roleGrants.flatMap((grant) =>
+              grant.oidcGroupMappingId ? [grant.oidcGroupMappingId] : [],
+            ),
+          ),
+        ];
+        const oidcMappings = oidcMappingIds.length
+          ? await tx
+              .select({
+                id: schema.oidcGroupMappingTable.id,
+                identityConnectionId:
+                  schema.oidcGroupMappingTable.identityConnectionId,
+                roleId: schema.oidcGroupMappingTable.roleId,
+                scope: schema.oidcGroupMappingTable.scope,
+                scopeId: schema.oidcGroupMappingTable.scopeId,
+                enabled: schema.oidcGroupMappingTable.enabled,
+              })
+              .from(schema.oidcGroupMappingTable)
+              .where(inArray(schema.oidcGroupMappingTable.id, oidcMappingIds))
+          : [];
+        const scimMappingIds = [
+          ...new Set(
+            roleGrants.flatMap((grant) =>
+              grant.scimGroupMappingId ? [grant.scimGroupMappingId] : [],
+            ),
+          ),
+        ];
+        const scimGrantIds = roleGrants
+          .filter((grant) => grant.sourceKind === "scim_group")
+          .map((grant) => grant.id);
+        const scimMembers = scimGrantIds.length
+          ? await tx
+              .select({
+                membershipGrantId:
+                  schema.scimGroupMemberTable.membershipGrantId,
+                scimGroupMappingId:
+                  schema.scimGroupMemberTable.scimGroupMappingId,
+                externalIdentityId:
+                  schema.scimGroupMemberTable.externalIdentityId,
+                revokedAt: schema.scimGroupMemberTable.revokedAt,
+              })
+              .from(schema.scimGroupMemberTable)
+              .where(
+                inArray(
+                  schema.scimGroupMemberTable.membershipGrantId,
+                  scimGrantIds,
+                ),
+              )
+          : [];
+        const scimMappings = scimMappingIds.length
+          ? await tx
+              .select({
+                id: schema.scimGroupMappingTable.id,
+                identityConnectionId:
+                  schema.scimConnectionTable.identityConnectionId,
+                externalGroupId: schema.scimGroupMappingTable.externalGroupId,
+                roleId: schema.scimGroupMappingTable.roleId,
+                scope: schema.scimGroupMappingTable.scope,
+                scopeId: schema.scimGroupMappingTable.scopeId,
+                enabled: schema.scimGroupMappingTable.enabled,
+              })
+              .from(schema.scimGroupMappingTable)
+              .innerJoin(
+                schema.scimConnectionTable,
+                eq(
+                  schema.scimConnectionTable.identityConnectionId,
+                  schema.scimGroupMappingTable.scimConnectionId,
+                ),
+              )
+              .where(inArray(schema.scimGroupMappingTable.id, scimMappingIds))
+          : [];
+        const scimConnections = identityClosure.connections.length
+          ? await tx
+              .select({
+                identityConnectionId:
+                  schema.scimConnectionTable.identityConnectionId,
+                enabled: schema.scimConnectionTable.enabled,
+                allowedResources: schema.scimConnectionTable.allowedResources,
+              })
+              .from(schema.scimConnectionTable)
+              .where(
+                inArray(
+                  schema.scimConnectionTable.identityConnectionId,
+                  identityClosure.connections.map(
+                    (connection) => connection.id,
+                  ),
+                ),
+              )
+          : [];
+        const identityById = new Map(
+          identities.map((identity) => [identity.id, identity]),
+        );
+        const personById = new Map(people.map((person) => [person.id, person]));
+        const connectionById = new Map(
+          identityClosure.connections.map((connection) => [
+            connection.id,
+            connection,
+          ]),
+        );
+        const oidcById = new Map(
+          oidcMappings.map((mapping) => [mapping.id, mapping]),
+        );
+        const scimById = new Map(
+          scimMappings.map((mapping) => [mapping.id, mapping]),
+        );
+        const scimMemberByGrantId = new Map(
+          scimMembers.map((member) => [member.membershipGrantId, member]),
+        );
+        const scimDirectoryMembers = new Set(
+          identityClosure.scimDirectoryMembers
+            .filter((member) => member.memberActive && member.groupActive)
+            .map(
+              (member) =>
+                `${member.connectionId}\0${member.externalIdentityId}\0${member.externalGroupId}`,
+            ),
+        );
+        const scimConnectionById = new Map(
+          scimConnections.map((connection) => [
+            connection.identityConnectionId,
+            connection,
+          ]),
+        );
+        for (const grant of roleGrants) {
+          const connection = grant.identityConnectionId
+            ? connectionById.get(grant.identityConnectionId)
+            : undefined;
+          const person = personById.get(grant.personId);
+          const identity = grant.externalIdentityId
+            ? identityById.get(grant.externalIdentityId)
+            : undefined;
+          let sourceMatches = Boolean(
+            connection?.enabled &&
+              person?.active &&
+              identity?.active &&
+              grant.scope === "workspace" &&
+              grant.roleId === existing.id,
+          );
+          let sourceScope = grant.scope === "workspace" ? "workspace" : null;
+          let sourceScopeId = grant.scopeId;
+          if (sourceMatches && grant.sourceKind === "jit_default") {
+            const policy = connection?.jitPolicy;
+            const jit =
+              policy && typeof policy === "object" && !Array.isArray(policy)
+                ? (policy as Record<string, unknown>)
+                : {};
+            sourceMatches =
+              jit.enabled === true &&
+              jit.default_role_id === grant.roleId &&
+              connection?.defaultWorkspaceId === grant.scopeId;
+          } else if (sourceMatches && grant.sourceKind === "oidc_group") {
+            const mapping = grant.oidcGroupMappingId
+              ? oidcById.get(grant.oidcGroupMappingId)
+              : undefined;
+            sourceMatches = Boolean(
+              mapping?.enabled &&
+                mapping.roleId === grant.roleId &&
+                mapping.identityConnectionId === grant.identityConnectionId &&
+                mapping.scope === grant.scope &&
+                mapping.scopeId === grant.scopeId,
+            );
+            sourceScope = mapping?.scope === "workspace" ? "workspace" : null;
+            sourceScopeId = mapping?.scopeId ?? grant.scopeId;
+          } else if (sourceMatches && grant.sourceKind === "scim_group") {
+            const mapping = grant.scimGroupMappingId
+              ? scimById.get(grant.scimGroupMappingId)
+              : undefined;
+            const scimConnection = grant.identityConnectionId
+              ? scimConnectionById.get(grant.identityConnectionId)
+              : undefined;
+            const scimMember = scimMemberByGrantId.get(grant.id);
+            sourceMatches = Boolean(
+              mapping?.enabled &&
+                mapping.roleId === grant.roleId &&
+                mapping.identityConnectionId === grant.identityConnectionId &&
+                mapping.scope === grant.scope &&
+                mapping.scopeId === grant.scopeId &&
+                scimMember?.revokedAt === null &&
+                scimMember.scimGroupMappingId === mapping.id &&
+                scimMember.externalIdentityId === grant.externalIdentityId &&
+                Boolean(
+                  grant.identityConnectionId &&
+                    grant.externalIdentityId &&
+                    scimDirectoryMembers.has(
+                      `${grant.identityConnectionId}\0${grant.externalIdentityId}\0${mapping?.externalGroupId ?? ""}`,
+                    ),
+                ) &&
+                scimConnection?.enabled &&
+                scimConnection.allowedResources.includes("groups"),
+            );
+            sourceScope = mapping?.scope === "workspace" ? "workspace" : null;
+            sourceScopeId = mapping?.scopeId ?? grant.scopeId;
+          } else if (
+            grant.sourceKind !== "jit_default" &&
+            grant.sourceKind !== "oidc_group" &&
+            grant.sourceKind !== "scim_group"
+          ) {
+            sourceMatches = false;
+          }
+          const roleValid =
+            sourceMatches && sourceScope === "workspace" && connection
+              ? await validateIdpMappingRole(tx, {
+                  portalScope: connection.portalScope,
+                  organisationId: connection.organisationId,
+                  maxRoleRank: connection.maxRoleRank,
+                  scope: "workspace",
+                  scopeId: sourceScopeId,
+                  roleId: grant.roleId,
+                })
+              : false;
+          if (!roleValid) {
+            invalidGrantIds.push(grant.id);
+            if (grant.identityConnectionId) {
+              invalidGrantCountByConnection.set(
+                grant.identityConnectionId,
+                (invalidGrantCountByConnection.get(
+                  grant.identityConnectionId,
+                ) ?? 0) + 1,
+              );
+            }
+          }
+        }
+        if (invalidGrantIds.length) {
+          await tx
+            .update(schema.scimGroupMemberTable)
+            .set({ revokedAt: now, membershipId: null })
+            .where(
+              inArray(
+                schema.scimGroupMemberTable.membershipGrantId,
+                invalidGrantIds,
+              ),
+            );
+          await tx
+            .update(schema.membershipGrantTable)
+            .set({
+              revokedAt: now,
+              revocationReason: "mapping_changed",
+              membershipId: null,
+              updatedAt: now,
+            })
+            .where(inArray(schema.membershipGrantTable.id, invalidGrantIds));
+        }
+        await projectMembershipKeys(tx, identityClosure.projectionKeys);
+        const roleSourceConnections = new Set(
+          identityClosure.identityReferenceConnectionIds,
+        );
+        for (const connection of identityClosure.connections.filter((source) =>
+          roleSourceConnections.has(source.id),
+        )) {
+          const evidence = await writeRoleChangeEvidence(tx, {
+            actorId: caller?.actor.userId ?? "",
+            connectionId: connection.id,
+            roleId: existing.id,
+            configVersion: connection.configVersion,
+            changedFields: [
+              ...(capabilitiesChanged ? ["capabilities"] : []),
+              ...(rankChanged ? ["rank"] : []),
+            ],
+            retiredGrantCount:
+              invalidGrantCountByConnection.get(connection.id) ?? 0,
+          });
+          identityAuditFailed ||= !evidence;
+        }
+      }
 
-    // The three built-in defaults that still have a legacy statement row keep that row in step
-    // with the canonical set, by delta, because the legacy gates read it (owner decision, 23 Oct:
-    // capabilities live in `role`; the legacy row is a derived, readable projection).
-    if (
-      existing.isSystem &&
-      capabilitiesChanged &&
-      LEGACY_SYSTEM_STATEMENT_KEYS.has(existing.key)
-    ) {
-      const stored = await lockLegacySystemPermission(
+      await recordRoleServiceKeyAuthorityLoss(tx, serviceKeyAuthority);
+
+      const holderCount = await countRoleHolders(
         tx,
         input.workspaceId,
         existing.key,
       );
-      if (stored !== null) {
-        let parsed: Record<string, readonly string[]> = {};
-        try {
-          const value: unknown = JSON.parse(stored);
-          if (value && typeof value === "object" && !Array.isArray(value)) {
-            parsed = Object.fromEntries(
-              Object.entries(value).map(([resource, actions]) => [
-                resource,
-                Array.isArray(actions)
-                  ? actions.filter(
-                      (action): action is string => typeof action === "string",
-                    )
-                  : [],
-              ]),
-            );
-          }
-        } catch {
-          parsed = {};
-        }
-        await setLegacySystemPermission(
-          tx,
-          input.workspaceId,
-          existing.key,
-          JSON.stringify(
-            applyCapabilityDeltaToLegacyStatements(parsed, { added, removed }),
-          ),
-        );
-      }
-    }
+      await appendRoleAudit(tx, {
+        action: "role.updated",
+        workspaceId: input.workspaceId,
+        roleId: updated.id,
+        roleName: updated.key,
+        actor: caller?.actor ?? { userId: "", actorType: "person" },
+        before: [...before],
+        after: nextCapabilities,
+        holderCount,
+        ...(rankChanged
+          ? { rank: { before: existing.rank, after: input.rank ?? null } }
+          : {}),
+      });
 
-    const updated = await updateRoleRow(tx, existing.id, {
-      ...(closure === null ? {} : { capabilities: nextCapabilities }),
-      ...(input.name === undefined ? {} : { name: input.name.trim() }),
-      ...(input.description === undefined
-        ? {}
-        : { description: input.description?.trim() || null }),
-      ...(input.rank === undefined ? {} : { rank: input.rank }),
-    });
-
-    const holderCount = await countRoleHolders(
-      tx,
-      input.workspaceId,
-      existing.key,
-    );
-    await appendRoleAudit(tx, {
-      action: "role.updated",
-      workspaceId: input.workspaceId,
-      roleId: updated.id,
-      roleName: updated.key,
-      actor: caller?.actor ?? { userId: "", actorType: "person" },
-      before: [...before],
-      after: nextCapabilities,
-      holderCount,
-      ...(rankChanged
-        ? { rank: { before: existing.rank, after: input.rank ?? null } }
-        : {}),
-    });
-
-    return toRoleView({ ...updated, holderCount });
-  });
+      return {
+        kind: "updated" as const,
+        role: toRoleView({ ...updated, holderCount }),
+        identityAuditFailed,
+      };
+    }),
+  );
+  if (outcome.kind === "preview") return outcome.preview;
+  if (outcome.identityAuditFailed) await reportIdentityAuditFailure();
+  return outcome.role;
 }
 
 /* ------------------------------------------------------------------ *
@@ -830,10 +1281,16 @@ export async function reassignRoleHolders(
     }
 
     await lockPersonsInOrder(tx, userIds);
+    const serviceKeyAuthority = await captureRoleServiceKeyAuthority(
+      tx,
+      input.workspaceId,
+    );
     await setHolderRole(tx, input.workspaceId, userIds, to.key);
     for (const userId of userIds) {
       await syncWorkspaceAdminReach(tx, input.workspaceId, userId);
     }
+
+    await recordRoleServiceKeyAuthorityLoss(tx, serviceKeyAuthority);
 
     // RL-7: moving people must not strand role management.
     await assertActiveRoleManagerRemains(tx, input.workspaceId, {

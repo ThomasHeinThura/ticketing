@@ -33,7 +33,7 @@ import {
   kbArticleVersionTable,
   kbCategoryTable,
 } from "../database/schema-p5-kb";
-import { escapeLikePattern } from "../search/like-pattern";
+import { kbFullText } from "./full-text";
 import {
   type ArticleAction,
   type ArticleState,
@@ -320,35 +320,19 @@ async function detail(
 }
 
 // ---------------------------------------------------------------------------------------
-// Relevance (KB-9): the canonical search's lower-cased LIKE matching, weighted to titles.
+// Relevance (KB-9): shared weighted Postgres full-text search, with title weight A and body B.
 
 export function relevance(
   terms: string[],
   title: SQLWrapper,
   body: SQLWrapper,
 ) {
-  const titleHits = terms.length
-    ? sql.join(
-        terms.map(
-          (term) =>
-            sql`(CASE WHEN lower(${title}) LIKE ${`%${escapeLikePattern(term)}%`} THEN 1 ELSE 0 END)`,
-        ),
-        sql` + `,
-      )
-    : sql`0`;
-  const bodyHits = terms.length
-    ? sql.join(
-        terms.map(
-          (term) =>
-            sql`(CASE WHEN lower(${body}) LIKE ${`%${escapeLikePattern(term)}%`} THEN 1 ELSE 0 END)`,
-        ),
-        sql` + `,
-      )
-    : sql`0`;
+  const fullText = kbFullText(terms, title, body);
   return {
-    titleHits,
-    bodyHits,
-    score: sql<number>`((${titleHits}) * 6 + (${bodyHits}) * 2)`,
+    titleHits: sql`(CASE WHEN ${fullText.titleMatches} THEN 1 ELSE 0 END)`,
+    score: fullText.score,
+    matches: fullText.matches,
+    hasQuery: fullText.query !== undefined,
   };
 }
 
@@ -424,11 +408,7 @@ export async function listArticles(input: {
           lt(kbArticleTable.reviewDueAt, new Date()),
         )
       : undefined,
-    // Every term must appear in the title or the body.
-    ...terms.map((term) => {
-      const like = `%${escapeLikePattern(term)}%`;
-      return sql`(lower(${kbArticleTable.title}) LIKE ${like} OR lower(${kbArticleTable.bodyText}) LIKE ${like})`;
-    }),
+    input.q?.trim() ? (rel.hasQuery ? rel.matches : sql`false`) : undefined,
   ];
   const where = and(...conditions);
   const order =
@@ -456,15 +436,39 @@ export async function listArticles(input: {
 export async function searchArticles(input: {
   workspaceId: string;
   reachableProjectIds: string[];
+  projectId?: string;
   q: string;
   limit: number;
 }) {
-  const result = await listArticles({
-    ...input,
-    sort: "updated",
-    offset: 0,
-  });
-  return result.articles;
+  const terms = searchTerms(input.q);
+  const rel = relevance(terms, kbArticleTable.title, kbArticleTable.bodyText);
+  if (!rel.hasQuery) return [];
+  const rows = await db
+    .select({ article: kbArticleTable, relevanceScore: rel.score })
+    .from(kbArticleTable)
+    .where(
+      and(
+        staffScope(input.workspaceId, input.reachableProjectIds),
+        input.projectId
+          ? or(
+              isNull(kbArticleTable.projectId),
+              eq(kbArticleTable.projectId, input.projectId),
+            )
+          : undefined,
+        rel.matches,
+      ),
+    )
+    .orderBy(
+      desc(rel.score),
+      desc(kbArticleTable.updatedAt),
+      asc(kbArticleTable.id),
+    )
+    .limit(input.limit);
+  const articles = await summaries(rows.map((row) => row.article));
+  return articles.map((article, index) => ({
+    ...article,
+    relevanceScore: Number(rows[index]?.relevanceScore ?? 0),
+  }));
 }
 
 export async function getArticle(
@@ -508,7 +512,7 @@ export async function relatedArticles(
           article.categoryId
             ? eq(kbArticleTable.categoryId, article.categoryId)
             : undefined,
-          terms.length > 0 ? sql`(${rel.titleHits}) >= 1` : undefined,
+          rel.hasQuery ? sql`(${rel.titleHits}) >= 1` : undefined,
         ),
       ),
     )
@@ -537,7 +541,7 @@ export async function staffDeflection(input: {
       and(
         staffScope(input.workspaceId, input.reachableProjectIds),
         eq(kbArticleTable.state, "published"),
-        sql`((${rel.titleHits}) >= 1 OR (${rel.bodyHits}) >= 2)`,
+        rel.matches,
       ),
     )
     .orderBy(

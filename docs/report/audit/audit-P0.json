@@ -5,127 +5,602 @@
 			"id": "EV-1",
 			"state": "partial",
 			"evidence": "apps/api/src/events/outbox.ts (enqueueOutboxEvent in caller tx); apps/api/src/notification/fanout.ts (enqueueNotificationEvent: outbox+inbox+notification_delivery in one tx); callers work-item/native-event.ts, pending-action/service.ts, approval/service.ts, work-item/controllers/create-comment.ts, scheduler/sla-scan.ts, intake/repository.ts; tests tests/api-integration/pending-action-service.test.ts ('rolls the request back if its transactional outbox insert fails'), tests/api-integration/notification-immediate-mention.test.ts, tests/api-integration/approval-notifications.test.ts, tests/api/events/outbox.test.ts",
-			"gap": "Fire-and-forget in-memory EventEmitter (apps/api/src/events/index.ts publishEvent) still drives legacy task/label/view/time-entry/comment/activity/workspace mutations and notification/index.ts + plugins/registry.ts subscribers; no attachDigest implementation exists, so digest membership is never materialized"
+			"gap": "Fire-and-forget in-memory EventEmitter (apps/api/src/events/index.ts publishEvent) still drives legacy task/label/view/time-entry/comment/activity/workspace mutations and notification/index.ts + plugins/registry.ts subscribers; no attachDigest implementation exists, so digest membership is never materialized",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/legacy-task-outbox-bridge.test.ts",
+					"tests/api/events/legacy-task-compatibility.test.ts",
+					"tests/api-integration/legacy-transactional-fanout.test.ts",
+					"tests/api-integration/legacy-delivery-recovery.test.ts",
+					"tests/api/events/legacy-transactional-fanout.test.ts"
+				],
+				"assertions": [
+					"legacy task mutation rolls back if required activity insert fails",
+					"fanout replay does not duplicate inbox/delivery"
+				],
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/events/outbox.ts",
+					"apps/api/src/notification/fanout.ts",
+					"apps/api/src/events/legacy-task-effects.ts",
+					"apps/api/src/events/index.ts",
+					"apps/api/src/plugins/index.ts",
+					"apps/api/src/plugins/registry.ts",
+					"apps/api/src/activity/repository.ts"
+				],
+				"requirementSource": "docs/technical/events.md:159",
+				"repairReconciledAt": "2026-10-25T05:24:55.610883+00:00",
+				"independentReview": "pending",
+				"latestEvidence": "Current source has transactional parent/recipient/child fanout for approved compatibility producers and customer-safe projection. Focused PostgreSQL170/170 and event/customer/webhook units107/107 pass. Owned SUB-3 accepted as HELP-21; real browser public/internal comments and staff mention inbox pass. Browser reach revocation and universal per-producer browser coverage remain unverified; no phase acceptance inferred.",
+				"auditEvidence": "docs/report/audit/codex-20261025-p0-event-verification.json",
+				"testEvidenceStatus": "scoped_current_pass"
+			}
 		},
 		{
 			"id": "EV-2",
 			"state": "partial",
 			"evidence": "apps/api/src/database/schema.ts (notification_event_person_unique on (event_id, person_id) ~L1348; notification_delivery_event_recipient_channel_unique ~L2000; outbox_event_id_workspace_id_unique); apps/api/src/notification/outbox-drain.ts + scheduler/outbox-drain.ts drain delivery children only",
-			"gap": "No parent-outbox consumer (webhooks/automations absent), so parent re-drain idempotency is untestable; no test asserts the unique constraints make replay idempotent; inserts have no onConflict handling"
+			"gap": "No parent-outbox consumer (webhooks/automations absent), so parent re-drain idempotency is untestable; no test asserts the unique constraints make replay idempotent; inserts have no onConflict handling",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/legacy-task-outbox-bridge.test.ts",
+					"tests/api-integration/outbox-parent-consumer.test.ts",
+					"tests/api-integration/notification-fanout-replay.test.ts",
+					"tests/api-integration/legacy-transactional-fanout.test.ts",
+					"tests/api-integration/legacy-delivery-recovery.test.ts",
+					"tests/api/events/legacy-transactional-fanout.test.ts"
+				],
+				"assertions": [
+					"replay creates no duplicate inbox/delivery",
+					"parent consumer retry handles durable webhook/automation enqueue"
+				],
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/events/outbox-consumer.ts",
+					"apps/api/src/notification/fanout.repository.ts",
+					"apps/api/src/events/legacy-task-effects.ts",
+					"apps/api/src/plugins/index.ts",
+					"apps/api/src/plugins/registry.ts",
+					"apps/api/src/activity/repository.ts"
+				],
+				"requirementSource": "docs/technical/events.md:165",
+				"independentReview": "pending",
+				"executionScope": "Canonical replay suites passed 8 PostgreSQL tests; consumer registration passed 2 units. Universal producer coverage remains open.",
+				"repairReconciledAt": "2026-10-25T05:24:55.610883+00:00",
+				"latestEvidence": "Current source has transactional parent/recipient/child fanout for approved compatibility producers and customer-safe projection. Focused PostgreSQL170/170 and event/customer/webhook units107/107 pass. Owned SUB-3 accepted as HELP-21; real browser public/internal comments and staff mention inbox pass. Browser reach revocation and universal per-producer browser coverage remain unverified; no phase acceptance inferred.",
+				"testEvidenceStatus": "scoped_current_pass",
+				"auditEvidence": "docs/report/audit/codex-20261025-p0-event-verification.json"
+			}
 		},
 		{
 			"id": "EV-3",
 			"state": "missing",
 			"evidence": "Envelope carries depth/originAutomationId (apps/api/src/events/outbox.ts) but every producer hardcodes depth:0/originAutomationId:null (native-event.ts, sla-scan.ts, scim-lifecycle.ts, etc.); no automation engine found in apps/api/src or packages",
-			"gap": "No automation runtime, no depth increment, no self-origin skip, no depth>5 guard, no test"
+			"gap": "No automation runtime, no depth increment, no self-origin skip, no depth>5 guard, no test",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/automation/automation-conditions-and-loops.test.ts:210",
+					"tests/api/automation/automation-conditions-and-loops.test.ts:233",
+					"tests/api/automation/automation-conditions-and-loops.test.ts:247"
+				],
+				"assertions": [
+					"Self-origin event is skipped.",
+					"Depth 5 and 6 are refused.",
+					"Automation context stamps origin and increments event depth."
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Automation context increments depth and consumer skips self-origin and depth >=5."
+				],
+				"paths": [
+					"apps/api/src/events/automation-context.ts",
+					"apps/api/src/events/outbox.ts",
+					"apps/api/src/automation/consumer.ts"
+				],
+				"requirementSource": "docs/technical/events.md:187"
+			}
 		},
 		{
 			"id": "EV-4",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/events/event-keys.ts (EVENT_KEYS + runtime reject in enqueueOutboxEvent); tests/api/events/event-keys.test.ts (doc catalogue parity both directions); scripts/ci/check-events.mjs + scripts/ci/probes/check-events.test.mjs",
-			"gap": "Decision-log-entry rule is process-only (no gate); legacy task.*/comment.* keys still published on the in-memory bus outside the catalogue"
+			"gap": "Decision-log-entry rule is process-only (no gate); legacy task.*/comment.* keys still published on the in-memory bus outside the catalogue",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api/events/event-keys.test.ts"],
+				"assertions": ["event key catalogue checked against declarations"],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Key catalogue and additive decision rule represented in source; decision-log process itself is not an executed gate."
+				],
+				"paths": [
+					"apps/api/src/events/event-keys.ts",
+					"apps/api/src/events/outbox.ts"
+				],
+				"requirementSource": "docs/technical/events.md:190"
+			}
 		},
 		{
 			"id": "EV-5",
 			"state": "partial",
 			"evidence": "apps/api/src/notification/customer-event-audience.ts; notification/current-eligibility.ts; notification/native-inbox-reach.ts; tests/api/notification-current-eligibility.test.ts ('does not project an internal comment to a customer', 'suppresses customer assignment notices'), tests/api/notification/native-inbox-reach.test.ts",
-			"gap": "Customer portal projection seam is missing (eligibility test says it 'fails closed at the missing customer projection seam'); legacy in-memory notification subscribers in notification/index.ts bypass the audience gate"
+			"gap": "Customer portal projection seam is missing (eligibility test says it 'fails closed at the missing customer projection seam'); legacy in-memory notification subscribers in notification/index.ts bypass the audience gate",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/notification-fanout-replay.test.ts"
+				],
+				"assertions": ["durable fanout recipient idempotency"],
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/notification/fanout.ts",
+					"apps/api/src/notification/recipient-resolvers.ts",
+					"apps/api/src/notification/index.ts",
+					"apps/api/src/plugins/index.ts",
+					"apps/api/src/plugins/registry.ts",
+					"apps/api/src/events/legacy-task-effects.ts",
+					"apps/api/src/activity/repository.ts"
+				],
+				"requirementSource": "docs/technical/events.md:193",
+				"independentReview": "pending",
+				"latestEvidence": "Current source has transactional parent/recipient/child fanout for approved compatibility producers and customer-safe projection. Focused PostgreSQL170/170 and event/customer/webhook units107/107 pass. Owned SUB-3 accepted as HELP-21; real browser public/internal comments and staff mention inbox pass. Browser reach revocation and universal per-producer browser coverage remain unverified; no phase acceptance inferred.",
+				"testEvidenceStatus": "scoped_current_pass",
+				"auditEvidence": "docs/report/audit/codex-20261025-p0-event-verification.json"
+			}
 		},
 		{
 			"id": "PA-1",
 			"state": "partial",
 			"evidence": "Pending-action request paths: work-item/index.ts (DELETE /work-items/{key}, bulk, DELETE /comments/{id} -> 202), attachment/index.ts, work-item-relation/index.ts, view/index.ts, service-calendar/index.ts, instance/users/index.ts; tests tests/api-integration/pending-action-service.test.ts ('refuses a requester without current workspace reach'), pending-action-comment-deletion.test.ts",
-			"gap": "Many DELETE routes still delete directly with 200: task/index.ts (legacy hard delete + S3 key deletion in task/controllers/delete-task.ts), project/index.ts (project, milestone, prerequisite, document link), workspace/index.ts (workspace, member, role), label, column, canned-response, comment/index.ts, activity/index.ts, task-relation, invitation, notification, workflow-rule"
+			"gap": "Many DELETE routes still delete directly with 200: task/index.ts (legacy hard delete + S3 key deletion in task/controllers/delete-task.ts), project/index.ts (project, milestone, prerequisite, document link), workspace/index.ts (workspace, member, role), label, column, canned-response, comment/index.ts, activity/index.ts, task-relation, invitation, notification, workflow-rule",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/delete-routes-never-immediate.test.ts:250",
+					"tests/api-integration/pending-action-project-workspace-deletion.test.ts:232"
+				],
+				"assertions": [
+					"all DELETE contracts 202/410 or accepted PA-1a allowlist",
+					"unprivileged project delete request refused without action"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Retained PA-1a explicitly exempts unlinks, own inbox/settings, session-only history-free configuration and authenticator revocation; those are not gaps."
+				],
+				"paths": [
+					"apps/api/src/pending-action/deletion-targets.ts",
+					"apps/api/src/pending-action/required-access.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2466"
+			}
 		},
 		{
 			"id": "PA-2",
 			"state": "partial",
 			"evidence": "apps/api/src/pending-action/service.ts createPendingAction (audit pending_action.requested + outbox); pending-action/response.ts pendingDeletionRequestSchema {pendingActionId, action, summary, confirmation, expiresAt, approveUrl}; tests tests/api-integration/pending-action-service.test.ts ('PA-2: persists the bound request and audit row'), pending-action-comment-deletion.test.ts ('real DELETE returns202 without mutation'), pending-action-bulk-work-item-deletion.test.ts, pending-action-attachment-deletion.test.ts, pending-action-relation-deletion.test.ts",
-			"gap": "Correct for wired kinds (work item, comment, attachment, relation, saved view, service calendar, bulk, user deactivation) only; project/workspace/label/legacy task etc. still delete immediately"
+			"gap": "Correct for wired kinds (work item, comment, attachment, relation, saved view, service calendar, bulk, user deactivation) only; project/workspace/label/legacy task etc. still delete immediately",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/pending-action-project-workspace-deletion.test.ts:135",
+					"tests/api-integration/pending-action-registered-deletion.test.ts:107"
+				],
+				"assertions": [
+					"project DELETE 202 leaves target until approval",
+					"column 202 leaves target until approval"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pending-action/service.ts",
+					"apps/api/src/pending-action/deletion-targets.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2469"
+			}
 		},
 		{
 			"id": "PA-3",
 			"state": "implemented_tested",
 			"evidence": "apps/web/src/components/work-item/work-item-comment-delete.tsx, work-item-attachments.tsx, work-item-relations.tsx, bulk-assign-toolbar.tsx, components/pending-action/*-summary.ts, routes/agent/.../settings/profile/pending-actions/$id.tsx; tests apps/web/src/components/pending-action/comment-deletion-summary.test.ts, attachment-deletion-summary.test.ts, components/work-item/work-item-comment-delete.test.tsx, work-item-actions.test.tsx, routes/.../pending-actions/$id.test.tsx",
-			"gap": "Unit/component tests only (no browser verification here); project/workspace delete UIs do not use the dialog because their APIs bypass pending actions"
+			"gap": "Unit/component tests only (no browser verification here); project/workspace delete UIs do not use the dialog because their APIs bypass pending actions",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/pending-action/pending-action-approval-dialog.test.tsx:105",
+					"apps/web/src/components/pending-action/pending-action-approval-dialog.test.tsx:130"
+				],
+				"assertions": [
+					"Dialog renders the fetched server summary and approves before closing.",
+					"Cancel action closes the dialog without approval."
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Browser dialog behavior requires real browser evidence; source-only assessment cannot verify focus/visual timing."
+				],
+				"paths": [
+					"apps/web/src/components/pending-action",
+					"apps/web/src/hooks"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2473"
+			}
 		},
 		{
 			"id": "PA-4",
 			"state": "partial",
 			"evidence": "pending-action/service.ts (credentialType api_key, origin api/mcp, duplicate pending refusal); GET /api/me/pending-actions/{id} polling in pending-action/index.ts; tests pending-action-service.test.ts ('PA-4: rejects a second pending request', 'allows exactly one of two concurrent identical requests'), pending-actions-read.test.ts ('attributes API-key list and detail reads')",
-			"gap": "No Idempotency-Key middleware anywhere in apps/api/src; no requester notification ('An agent using your key ... asked to delete'); custom fields/time entries/labels not routed; MCP delete tools call legacy direct-delete routes"
+			"gap": "No Idempotency-Key middleware anywhere in apps/api/src; no requester notification ('An agent using your key ... asked to delete'); custom fields/time entries/labels not routed; MCP delete tools call legacy direct-delete routes",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/pending-action-service.test.ts",
+					"tests/api-integration/pending-action-failed-execution.test.ts:118"
+				],
+				"assertions": [
+					"duplicate pending action returns 409",
+					"API/MCP key origin drives requester notification"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/middleware/idempotency.ts",
+					"apps/api/src/pending-action/service.ts",
+					"apps/api/src/notification/recipient-resolvers.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2476"
+			}
 		},
 		{
 			"id": "PA-5",
 			"state": "partial",
 			"evidence": "utils/require-session-only.ts (403 session_required for API key and impersonation); workspace/policy.ts DELETE workspace sessionOnly:true; tests tests/api-integration/workspace-session-only.test.ts, api-key-self-mutations.test.ts",
-			"gap": "project/policy.ts DELETE /api/project/{id} lacks sessionOnly (API key can soft-delete a project directly); elevated web-origin deletes (workspace, project, API key, webhook, identity connection) execute immediately instead of creating elevated pending actions; no is_mcp key concept"
+			"gap": "project/policy.ts DELETE /api/project/{id} lacks sessionOnly (API key can soft-delete a project directly); elevated web-origin deletes (workspace, project, API key, webhook, identity connection) execute immediately instead of creating elevated pending actions; no is_mcp key concept",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/pending-action-project-workspace-deletion.test.ts:185",
+					"tests/api-integration/instance-hard-purge.test.ts:321"
+				],
+				"assertions": [
+					"API key refused at elevated project request",
+					"portal/API-key/impersonation requests refused"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/utils/require-session-only.ts",
+					"apps/api/src/pending-action/approval-contract.ts",
+					"apps/api/src/project/policy.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2490"
+			}
 		},
 		{
 			"id": "PA-5a",
 			"state": "missing",
 			"evidence": "No 'no_approver' code in apps/api/src (only docs/technical/safety-and-runtime.md); requirePendingActionRequesterIdentity in pending-action/service.ts assumes every key has an owning user",
-			"gap": "No workspace service-key credential type and no 403 no_approver refusal or test"
+			"gap": "No workspace service-key credential type and no 403 no_approver refusal or test",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/service-key-principal.test.ts:118"
+				],
+				"assertions": ["service key no person yields no_approver"],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/api-key/credential.ts",
+					"apps/api/src/pending-action/service.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2497"
+			}
 		},
 		{
 			"id": "PA-6",
 			"state": "implemented_tested",
 			"evidence": "pending-action/index.ts approve route (requireSessionOnly, elevated, self); executors in work-item-deletion-target.ts, comment-deletion-target.ts, attachment-deletion-target.ts, relation-deletion-target.ts, bulk-work-item-deletion-target.ts, deletion-targets.ts, service.ts approveUserDeactivation (payload hash re-check ~L713); tests pending-action-bulk-work-item-deletion.test.ts ('does not substitute a moved target', 'rejects altered approved payload', 'rechecks the original key ceiling'), pending-action-comment-deletion.test.ts ('invalidates an edited comment', 'lost read reach ... invalidates approval'), pending-action-service.test.ts",
-			"gap": "Step 5 'failed with the error' terminal state not implemented; only wired kinds have executors (others return 409 pending_action_kind_unsupported)"
+			"gap": "Step 5 'failed with the error' terminal state not implemented; only wired kinds have executors (others return 409 pending_action_kind_unsupported)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/pending-actions-decisions.test.ts",
+					"tests/api-integration/pending-action-failed-execution.test.ts:118"
+				],
+				"assertions": [
+					"requester-only session approval, policy and target revalidation",
+					"executor failure produces terminal failed outcome"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pending-action/service.ts",
+					"apps/api/src/pending-action/required-access.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2499"
+			}
 		},
 		{
 			"id": "PA-7",
 			"state": "implemented_tested",
 			"evidence": "pending-action/payload.ts hashPendingActionPayload; schema payload_hash; tests tests/api/pending-action-payload.test.ts, pending-action-bulk-work-item-deletion.test.ts ('serializes concurrent approvals and rejects an exact-set retry', 'uses immutable approved targets'), pending-action-comment-deletion.test.ts ('executes once under concurrent confirmation')",
-			"gap": ""
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/pending-action-service.test.ts"],
+				"assertions": [
+					"payload hash/target version and scope changes reject approval"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pending-action/payload.ts",
+					"apps/api/src/pending-action/service.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2521"
+			}
 		},
 		{
 			"id": "PA-8",
 			"state": "implemented_tested",
 			"evidence": "pending-action/service.ts ACTION_TTL_MS = 15 min; apps/api/src/scheduler/pending-action-expire.ts registered every minute in scheduler/index.ts; tests tests/api-integration/pending-action-expire.test.ts (15 cases incl. nullable-scope degradation, lease, cap 1000), tests/api/scheduler/pending-action-expire-schedule.test.ts",
-			"gap": ""
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/pending-action-expire.test.ts"],
+				"assertions": ["database-clock expiry and terminal event/audit"],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/scheduler/pending-action-expire.ts",
+					"apps/api/src/pending-action/service.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2524"
+			}
 		},
 		{
 			"id": "PA-9",
 			"state": "implemented_tested",
 			"evidence": "pending-action/credential-invalidation.ts, lifecycle-invalidation.ts, workspace-access-invalidation.ts; schema invalidation_reason check (credential_revoked, requester_deactivated, reach_lost, capability_removed, version_changed, scope_changed); tests pending-action-credential-revocation.test.ts, pending-action-service.test.ts (PA-9 cases), pending-actions-decisions.test.ts, pending-action-comment-deletion.test.ts",
-			"gap": ""
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/pending-action-credential-revocation.test.ts",
+					"tests/api-integration/pending-actions-decisions.test.ts"
+				],
+				"assertions": [
+					"key/session revocation invalidates pending rows",
+					"lost target access cannot approve"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pending-action/service.ts",
+					"apps/api/src/pending-action/credential-invalidation.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2533"
+			}
 		},
 		{
 			"id": "PA-10",
 			"state": "partial",
 			"evidence": "Approval only via session-only POST /api/me/pending-actions/{id}/approve (pending-action/policy.ts, index.ts); no confirm flag accepted in approval body (.strict() schema)",
-			"gap": "packages/mcp/src/tools/register.ts exposes delete_task, delete_task_comment, delete_label, delete_task_relation that hit legacy direct-delete routes, so an agent deletes without any human approval"
+			"gap": "packages/mcp/src/tools/register.ts exposes delete_task, delete_task_comment, delete_label, delete_task_relation that hit legacy direct-delete routes, so an agent deletes without any human approval",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/delete-routes-never-immediate.test.ts:312",
+					"packages/mcp/src/tools/register.test.ts:112"
+				],
+				"assertions": [
+					"legacy direct-delete routes retired",
+					"decide_approval is not exposed as immediate MCP tool"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pending-action/service.ts",
+					"packages/mcp/src/tools/register.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2562"
+			}
 		},
 		{
 			"id": "PA-11",
 			"state": "partial",
 			"evidence": "Audit/outbox for requested, viewed (service.ts ~L1161), decided (approved/denied/cancelled/expired/invalidated), executed; tests pending-actions-read.test.ts ('viewed audits', 'does not return a summary when its viewed audit write fails'), pending-actions-decisions.test.ts, pending-action-expire.test.ts (AU-14 nested audit failure), pending-action-service.test.ts (AU-14)",
-			"gap": "No 'failed' execution outcome/state transition or pending_action.executed{failed} event anywhere in pending-action/"
+			"gap": "No 'failed' execution outcome/state transition or pending_action.executed{failed} event anywhere in pending-action/",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/pending-action-failed-execution.test.ts:118"
+				],
+				"assertions": [
+					"failed executor writes failed row/audit/executed-failed event"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pending-action/execution-failure.ts",
+					"apps/api/src/pending-action/service.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2565"
+			}
 		},
 		{
 			"id": "PA-12",
 			"state": "partial",
 			"evidence": "scheduler/session-cleanup.ts soft-delete purge and scheduler/attachment-cleanup.ts (attachment-gc, attachment-pending-cleanup) honor legal hold; tests tests/api-integration/session-cleanup-purge.test.ts, attachment-cleanup.test.ts",
-			"gap": "No audit-purge job registered (scheduler/index.ts); legal hold has no administration API to set it"
+			"gap": "No audit-purge job registered (scheduler/index.ts); legal hold has no administration API to set it",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/audit-purge.test.ts:107",
+					"tests/api-integration/pending-action-project-workspace-deletion.test.ts:330"
+				],
+				"assertions": [
+					"open legal hold stops prefix purge",
+					"legal hold blocks approved workspace deletion"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/scheduler/audit-purge.ts",
+					"apps/api/src/audit/purge.ts",
+					"apps/api/src/utils/workspace-legal-hold.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2576"
+			}
 		},
 		{
 			"id": "PA-13",
 			"state": "partial",
 			"evidence": "No MCP purge tool (packages/mcp/src/tools/register.ts) and no automation engine; legal-hold checks in session-cleanup.ts/attachment-cleanup.ts",
-			"gap": "POST /api/instance/purge absent; legacy DELETE /api/task/{id} (task/controllers/delete-task.ts) hard-deletes the row and S3 objects, i.e. a general-purpose hard purge path still exists"
+			"gap": "POST /api/instance/purge absent; legacy DELETE /api/task/{id} (task/controllers/delete-task.ts) hard-deletes the row and S3 objects, i.e. a general-purpose hard purge path still exists",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/instance-hard-purge.test.ts:209",
+					"tests/api-integration/instance-hard-purge.test.ts:291",
+					"tests/api-integration/instance-hard-purge.test.ts:566"
+				],
+				"assertions": [
+					"request 202 then typed-name step-up approval purges/audits",
+					"live target/legal hold/non-admin refused",
+					"audit failure rolls back purge"
+				],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/instance/purge.ts",
+					"apps/api/src/instance/purge-target.ts",
+					"apps/api/src/pending-action/hard-purge-executor.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2584",
+				"repairReconciledAt": "2026-10-24T20:30:35.725596+00:00",
+				"independentReview": "pending"
+			}
 		},
 		{
 			"id": "PA-14",
 			"state": "partial",
 			"evidence": "'mcp_destructive' action accepted in pending-action/payload.ts, response.ts, service.ts, schema.ts; tests/api/pending-action-payload.test.ts",
-			"gap": "No MCP decide_approval tool, no MCP bulk tool, no is_mcp key flag; nothing creates mcp_destructive actions"
+			"gap": "No MCP decide_approval tool, no MCP bulk tool, no is_mcp key flag; nothing creates mcp_destructive actions",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/approval-mcp-decision.test.ts",
+					"packages/mcp/src/tools/register.test.ts",
+					"tests/api/pending-action-payload.test.ts"
+				],
+				"assertions": [
+					"MCP request returns202, replay is idempotent, human click executes after current key/authority recheck",
+					"Decision event failure rolls back mutation and records failed action"
+				],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/approval/index.ts",
+					"apps/api/src/approval/policy.ts",
+					"packages/mcp/src/tools/register.ts",
+					"apps/api/src/pending-action/service.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2590",
+				"executionScope": "MCP approval integration7pass, MCP package58pass, payload7pass; no >50 mutation surface exists to expose without a gate. Browser confirmation pending.",
+				"repairReconciledAt": "2026-10-24T21:33:20.912480+00:00",
+				"independentReview": "pending"
+			}
 		},
 		{
 			"id": "PA-15",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/auth/step-up-api.ts, step-up-service.ts, step-up-audit.ts; identity/oidc-group-mapping-admin.ts, identity/scim-admin.ts, instance/reset-mfa.ts consumers; tests tests/api/identity/step-up-canonicalization.test.ts, tests/api-integration/identity-connection-admin.test.ts, scim-admin.test.ts, identity/oidc-group-mapping-admin.test.ts, instance-users.test.ts, local-factor-policy-concurrency.test.ts, pending-action-bulk-work-item-deletion.test.ts ('step-up proof binds to exactly one batch')",
-			"gap": "SSO prompt=login re-auth adapter absent (fails closed step_up_unavailable as spec permits); real Entra step-up is external_blocked"
+			"gap": "SSO prompt=login re-auth adapter absent (fails closed step_up_unavailable as spec permits); real Entra step-up is external_blocked",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/pending-action-project-workspace-deletion.test.ts:135",
+					"tests/api-integration/identity-connection-admin.test.ts",
+					"tests/api/auth/step-up-sso.test.ts",
+					"tests/api-integration/identity/oidc-step-up-auth-time.test.ts",
+					"tests/api-integration/identity/oidc-sso-step-up.test.ts",
+					"apps/web/src/fetchers/god-mode/sso-identity-step-up.test.ts"
+				],
+				"assertions": [
+					"local step-up proof required for elevated deletion",
+					"operation-bound proof/CAS"
+				],
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/auth/step-up-api.ts",
+					"apps/api/src/auth/step-up-ext.ts",
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/api/src/identity/oidc-step-up.ts",
+					"apps/api/src/auth/step-up-sso.ts",
+					"apps/api/src/auth/step-up-spend.ts",
+					"apps/web/src/fetchers/god-mode/sso-identity-step-up.ts",
+					"apps/web/src/hooks/use-step-up-action.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2593",
+				"testEvidenceStatus": "scoped_current_pass",
+				"independentReview": "pending",
+				"latestEvidence": "Real local signed-provider browser flow passes fresh step-up, stale auth_time rejection, required-factor denial, SSO-only TOTP enrollment and TOTP-protected action. No extra session/JIT during step-up; enrollment invalidates prior sessions. 15 dedicated SSO integration and 2 focused enrollment UI tests pass; API/web types pass. Real Entra remains external; independent phase review pending.",
+				"externalValidation": "Real Entra app registration pending Thomas.",
+				"browserEvidence": "docs/report/browser/codex-20261025-sso-stepup.json"
+			}
+		},
+		{
+			"id": "PA-1a",
+			"state": "implemented_untested",
+			"evidence": "Accepted immediate-removal exemptions have explicit reasoned entries in delete-routes-never-immediate and retain route guards. This entry records an existing23October owner decision; it is not a new exception. Fresh full integration/browser verification remains pending.",
+			"gap": "Final complete-tree verification remains pending.",
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/delete-routes-never-immediate.test.ts"
+				],
+				"assertions": [
+					"Accepted immediate-removal exemptions have explicit reasoned entries in delete-routes-never-immediate and retain route guards. This entry records an existing23October owner decision; it is not a new exception. Fresh full integration/browser verification remains pending."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [
+					"Final complete-tree gates, browser matrix and independent phase review remain pending."
+				],
+				"paths": [
+					"tests/api-integration/delete-routes-never-immediate.test.ts"
+				],
+				"requirementSource": "docs/technical/safety-and-runtime.md:2470",
+				"executionScope": "Index repair for a retained, previously omitted compound ID; no acceptance inferred."
+			}
 		}
 	],
 	"top_gaps": [
@@ -147,5 +622,13 @@
 		"Add Idempotency-Key middleware for 202 delete requests and a pending_action.requested notification resolver for api-key/mcp origins via enqueueNotificationEvent",
 		"Add integration tests asserting replay of fan-out hits notification_event_person_unique / notification_delivery_event_recipient_channel_unique without duplicate rows",
 		"Migrate legacy publishEvent callers to recordWorkItemEvent/enqueueOutboxEvent inside their transactions, keeping the in-memory bus for websocket hints only"
-	]
+	],
+	"currentAssessment": {
+		"sourceHead": "aea5d5702ea9ac553573f598e02f425cd79cde87",
+		"method": "Read-only source and test-assertion inspection; no tests or browser journeys executed. Existing state/evidence/gap retained as historical. PA-1a accepted exemptions applied.",
+		"historicalStatesNotCurrentVerdicts": true,
+		"browser": "pending",
+		"executedTests": false,
+		"externalAcceptance": "PA-15 local signed-provider journey passes scoped browser checks. Real Entra acceptance remains with Thomas."
+	}
 }

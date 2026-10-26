@@ -11,6 +11,7 @@ import {
 } from "../pending-action/deletion-targets";
 import { requireInvitationWorkspaceAccess } from "../utils/require-invitation-workspace-access";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
@@ -66,12 +67,9 @@ const getPendingRoute = createRoute({
 // already does), marked `deprecated: true`, but make the handler unconditionally refuse
 // -- closing the info-leak today without waiting out a deprecation window a route that
 // never did anything safe doesn't deserve.
-// Classification (issue #8): reuses `cancelInvitationRoute`'s own real middleware chain
-// below rather than a bare unconditional throw, so the DECLARED policy
-// (`invitation/policy.ts`) matches what actually runs, not a guess -- `capability:
-// "member:invite"` is enforced here exactly as it is for cancel, and the handler still
-// refuses even a caller who passes it, because the actual decision was "nobody gets real
-// data from this operation again," not "only non-admins are refused."
+// Classification (issue #8): retains its own session, row-derived workspace, membership
+// and legacy authority gates before the unconditional refusal. The route remains disabled
+// for every caller; the policy declaration does not make invitation details available.
 const getInvitationRoute = createRoute({
   method: "get",
   operationId: "getInvitationDetails",
@@ -109,14 +107,10 @@ const getInvitationRoute = createRoute({
 // (the controllers) check the invitation's own state and that the caller
 // IS its recipient.
 //
-// Cancel is different: it is an action a workspace ADMIN/OWNER takes on
-// someone else's invitation, so it needs the full S4/S5 authorization
-// shape -- `requireInvitationWorkspaceAccess()` resolves `workspaceId` from
-// the invitation id (see that middleware's own doc comment for why this is
-// a dedicated resolver rather than another `workspaceAccess.from*` case),
-// then `requireWorkspaceMembership` / `requireWorkspacePermission` (against
-// the INHERITED `invitation:cancel` statement) / `requireWorkspaceRoleAuthority`
-// run exactly as they do on every S4/S5 mutation route.
+// Cancel is an action a staff member with `member:invite` takes on someone
+// else's invitation. `requireInvitationWorkspaceAccess()` resolves
+// `workspaceId` from the invitation id; membership and the canonical
+// capability are then checked before the pending action is requested.
 
 const acceptInvitationRoute = createRoute({
   method: "post",
@@ -176,8 +170,7 @@ const cancelInvitationRoute = createRoute({
     requireSessionOnly(),
     requireInvitationWorkspaceAccess(),
     requireWorkspaceMembership,
-    requireWorkspacePermission({ invitation: ["cancel"] }),
-    requireWorkspaceRoleAuthority({ invitation: ["cancel"] }),
+    requireWorkspaceCapability("member:invite"),
   ] as const,
   request: { params: invitationParam },
   responses: {
@@ -188,7 +181,7 @@ const cancelInvitationRoute = createRoute({
     400: errorResponse("The invitation is no longer pending"),
     401: errorResponse("No credential at all"),
     403: errorResponse(
-      "An API key or impersonation session (session_required), no workspace access, or missing invitation:cancel permission",
+      "An API key or impersonation session (session_required), no workspace access, or missing member:invite capability",
     ),
     404: errorResponse("No invitation with this id"),
     409: errorResponse("An equivalent cancellation is already pending"),

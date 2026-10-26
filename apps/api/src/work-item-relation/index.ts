@@ -95,7 +95,9 @@ const readRoute = createRoute({
   operationId: "getWorkItemRelations",
   tags: ["Work items"],
   summary: "Read canonical peer relations",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: relationKeyParam },
   responses: {
     200: jsonResponse(
@@ -175,6 +177,7 @@ const workItemRelation = apiRouter<BaseVariables & { workspaceId: string }>()
         await listWorkItemRelations({
           key: c.req.valid("param").key,
           workspaceId: c.get("workspaceId"),
+          allowArchivedForRead: true,
           ...(await access(c)),
         }),
       ),

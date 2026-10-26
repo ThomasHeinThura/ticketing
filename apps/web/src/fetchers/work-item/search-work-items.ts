@@ -3,6 +3,8 @@ import { HttpError, readErrorDetail } from "@/lib/http-error";
 import {
   isWorkItemSearchSortField,
   type WorkItemSearchColumn,
+  type WorkItemSearchSortField,
+  type WorkItemSort,
   type WorkItemSortDirection,
   type WorkItemSortField,
 } from "@/lib/routes";
@@ -10,6 +12,10 @@ import {
   parseWorkItemFilterText,
   type WorkItemFilter,
 } from "@/lib/work-item-filter";
+import type {
+  WorkItemCustomFieldColumn,
+  WorkItemCustomFieldPerson,
+} from "@/types/work-item";
 import { parseWorkItemRow, type WorkItemRow } from "@/types/work-item";
 
 export type StructuredWorkItemsResult = {
@@ -19,6 +25,8 @@ export type StructuredWorkItemsResult = {
   nextCursor?: string | null;
   /** `meta.total`: the exact count of reachable matches, not just this page. */
   total?: number;
+  customFieldColumns?: WorkItemCustomFieldColumn[];
+  customFieldPeople?: WorkItemCustomFieldPerson[];
 };
 
 /**
@@ -29,17 +37,27 @@ export type StructuredWorkItemsResult = {
 export function toSearchSort(
   sort: WorkItemSortField,
   dir: WorkItemSortDirection,
-): {
-  field: "key" | "title" | "priority" | "dueDate";
-  order: "asc" | "desc";
-}[] {
+): WorkItemSearchSort[] {
   return isWorkItemSearchSortField(sort) ? [{ field: sort, order: dir }] : [];
 }
 
 export type WorkItemSearchSort = {
-  field: "key" | "title" | "priority" | "dueDate";
+  field: WorkItemSearchSortField;
   order: "asc" | "desc";
 };
+
+export function toSearchSorts(
+  sorts: readonly WorkItemSort[] | undefined,
+  sort: WorkItemSortField,
+  dir: WorkItemSortDirection,
+): WorkItemSearchSort[] {
+  return (sorts?.length ? sorts : [{ field: sort, order: dir }]).flatMap(
+    (entry) =>
+      isWorkItemSearchSortField(entry.field)
+        ? [{ field: entry.field, order: entry.order }]
+        : [],
+  );
+}
 
 /**
  * `POST /api/work-items/search` with an already-built filter AST. The saved-view screens and
@@ -72,7 +90,8 @@ export async function postWorkItemSearch(input: {
       await readErrorDetail(response, "Failed to search work items"),
     );
   }
-  const { data, page, meta } = await response.json();
+  const { data, page, meta, customFieldColumns, customFieldPeople } =
+    await response.json();
   const items = data.map(parseWorkItemRow);
   return {
     items,
@@ -80,6 +99,8 @@ export async function postWorkItemSearch(input: {
     hasMore: page.hasMore,
     nextCursor: page.nextCursor,
     total: meta?.total,
+    ...(customFieldColumns ? { customFieldColumns } : {}),
+    ...(customFieldPeople ? { customFieldPeople } : {}),
   };
 }
 
@@ -108,6 +129,7 @@ export default async function searchWorkItems(input: {
   filter: string;
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
+  sorts?: WorkItemSort[];
   columns?: WorkItemSearchColumn[];
   /** The `page.nextCursor` of the previous page; bound by the server to this exact query. */
   cursor?: string;
@@ -123,7 +145,7 @@ export default async function searchWorkItems(input: {
     filter: filter
       ? { op: "and", clauses: [projectFilter, filter] }
       : projectFilter,
-    sort: toSearchSort(input.sort, input.dir),
+    sort: toSearchSorts(input.sorts, input.sort, input.dir),
     columns: input.columns,
     cursor: input.cursor,
   });

@@ -10,6 +10,7 @@ export const searchQuery = z.object({
       "people",
       "views",
       "pages",
+      "kb_articles",
       "projects",
       "workspaces",
       "comments",

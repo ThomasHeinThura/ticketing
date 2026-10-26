@@ -35,7 +35,7 @@ import type { ReaderVisibility } from "./visibility";
  *
  * - a **workspace rule** (`project_id` null) needs `workspace:manage_settings` for everything,
  *   reading included;
- * - a **project rule** needs `project:manage_settings` to change, and `project:read` to list or
+ * - a **project rule** needs `automation:manage` to change, and `project:read` to list or
  *   read run history, evaluated at the project (so inherited project authority applies) after the
  *   caller's reach to that project is established. An unreachable project answers `404`.
  *
@@ -123,8 +123,7 @@ export async function authoriseRuleScope(
   });
   if (!facts || !reaches(identity, facts))
     throw new HTTPException(404, { message: "Not found" });
-  const capability =
-    mode === "manage" ? "project:manage_settings" : "project:read";
+  const capability = mode === "manage" ? "automation:manage" : "project:read";
   if (!hasProjectReadCapability(identity, capability, "project", facts))
     throw new HTTPException(403, { message: "Insufficient permissions" });
   return identity;

@@ -259,7 +259,12 @@ describe("pending-action service persistence", () => {
         key: "SUP-1",
         title: "Test request",
         projectName: "Integration Project",
-        requesterName: "Pending Action Requester",
+        childrenAffected: 0,
+        requestedByName: "Pending Action Requester",
+        customerRequesterName: null,
+        customerVisibility: "private",
+        portalRemoval: "removed_on_approval",
+        recoveryDays: 30,
       },
       confirmation: "click",
       approveUrl: `/agent/settings/profile/pending-actions/${response.pendingActionId}`,
@@ -324,7 +329,11 @@ describe("pending-action service persistence", () => {
       key: "SUP-1",
       title: "Test request",
       projectName: "Integration Project",
-      requesterName: "Pending Action Requester",
+      requestedByName: "Pending Action Requester",
+      customerRequesterName: null,
+      customerVisibility: "private",
+      portalRemoval: "removed_on_approval",
+      recoveryDays: 30,
     });
     const [row] = await db
       .select({ summary: schema.pendingActionTable.payloadSummary })

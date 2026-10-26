@@ -563,7 +563,9 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       authorizeNativeTopic(credential, `work_item:${item.key}`),
     ).resolves.not.toBeNull();
 
-    await archiveProject(project.project.id, member.workspace.id);
+    await archiveProject(project.project.id, member.workspace.id, {
+      userId: member.user.id,
+    });
 
     await expect(
       authorizeNativeTopic(credential, `project:${project.project.id}`),
@@ -816,7 +818,9 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     });
 
     const denied = nextMessage(socket);
-    await archiveProject(project.project.id, member.workspace.id);
+    await archiveProject(project.project.id, member.workspace.id, {
+      userId: member.user.id,
+    });
     await expect(denied).resolves.toEqual({ type: "subscription_denied" });
 
     const closed = new Promise<void>((resolve) =>

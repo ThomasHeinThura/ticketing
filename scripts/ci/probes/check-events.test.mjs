@@ -111,24 +111,10 @@ describe("check:events — the shipped tree", () => {
 
     const result = runChecker(dir, "check-events.mjs");
     assert.equal(result.status, 0, result.output);
-    // 29 = the 24 keys before PR 292, plus work_item.created and work_item.updated, plus
-    // work_item.assigned (assignment.md AS-16; PR #353) -- that's the 27 keys before
-    // #433 and #430 each independently branched off it -- plus TWO keys that were each
-    // already documented in events.md but not yet actually published anywhere at that
-    // common ancestor: work_item.deleted (#433's DELETE route) and work_item.unassigned
-    // (#430's DELETE .../assign route). #433 bumped this assertion 27->28 on its own
-    // branch before #430 (which independently also bumped main's copy 27->28) merged
-    // in; merging both together for real is what pushes it to 29. A non-vacuity guard:
-    // it proves the checker actually saw the shipped keys, rather than passing on an
-    // empty scan. #451 added a 30th: work_item.commented (comment POST on a work item).
-    // #442/PR #457 added a 31st: work_item.transitioned (POST .../transition) --
-    // events.md already documented this key, but nothing published it until this route.
-    // PR #658 adds three saved-view publishers: saved_view.created,
-    // saved_view.pinned, and saved_view.updated. All three are registered in events.md,
-    // bringing the shipped inventory to 34 keys.
-    // PR #515 persists pending_action.decided through the durable outbox, not
-    // publishEvent; this checker counts only process-local publishEvent call sites.
-    assert.match(result.output, /34 published event key/);
+    // Check the current local-bus inventory, including saved-view publishers.
+    // Retired direct-delete publishers no longer contribute local bus keys;
+    // durable outbox-only domain events are intentionally not counted here.
+    assert.match(result.output, /30 published event key/);
   });
 });
 

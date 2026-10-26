@@ -1,0 +1,19 @@
+{
+	"correctionDate": "2026-10-25",
+	"preservesPriorEvidence": true,
+	"records": [
+		{
+			"file": "labels.json",
+			"field": "screenshot",
+			"original": "/tmp/p1-vw13-browser-evidence/labels-1440-light.png",
+			"correction": "The image is a dark-theme capture. The filename and prior theme label are incorrect; the original capture is retained unchanged."
+		},
+		{
+			"file": "final.json",
+			"field": "labels.screenshot",
+			"original": "/tmp/p1-vw13-browser-evidence/labels-1440-light.png",
+			"correction": "This screenshot is dark theme, not light theme. The original evidence remains unchanged; use the responsive capture group-effort-light-1440.png for the light-theme view."
+		}
+	],
+	"verification": "Inspected the retained screenshot visually; its page and app surfaces use the dark palette."
+}

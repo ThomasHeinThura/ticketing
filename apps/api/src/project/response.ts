@@ -26,6 +26,7 @@ export const projectSchema = z
       .nullable()
       .openapi({ enum: ["L1", "L2", "L3"] }),
     serviceCalendarId: z.string().nullable(),
+    slaPolicyId: z.string().nullable(),
     parentId: z.string().nullable().openapi({
       description:
         "PR-1: the parent project in the same workspace; null for a root project.",
@@ -103,6 +104,8 @@ export const projectStatisticsSchema = z
 export const projectListItemSchema = projectSchema
   .extend({
     statistics: projectStatisticsSchema,
+    /** PR-5: exact work-item statistics for the caller-visible project subtree. */
+    descendantStatistics: projectStatisticsSchema.optional(),
     // Legacy, always empty. Fetch the board via GET /task/tasks/{id}.
     archivedTasks: z
       .array(boardTaskSchema)

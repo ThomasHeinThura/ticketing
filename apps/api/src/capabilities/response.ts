@@ -28,6 +28,10 @@ export const capabilitiesResponseSchema = z
     removeMembers: z.boolean(),
     manageServiceCalendars: z.boolean(),
     shareSavedViews: z.boolean(),
+    triageIntake: z
+      .boolean()
+      .optional()
+      .openapi({ description: "Strict intake:triage; absent means denied." }),
     manageWorkspaceSettings: z.boolean(),
     transitionTasks: z.boolean(),
     rankTasks: z.boolean(),

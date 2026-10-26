@@ -1,0 +1,48 @@
+{
+	"recordedAt": "2026-10-26T07:22:34.186Z",
+	"scope": "Single Compose deployment: ordinary admin sign-in, persisted API reads, agent and portal loading; not full phase acceptance",
+	"strictTls": true,
+	"checks": [
+		{
+			"name": "Ordinary password sign-in succeeds",
+			"pass": true
+		},
+		{
+			"name": "Own QA admin identity restored",
+			"pass": true
+		},
+		{
+			"name": "Agent shell loads without login redirect",
+			"pass": true
+		},
+		{
+			"name": "Workspace defaults API returns200",
+			"pass": true
+		},
+		{
+			"name": "Workspace state templates API returns200",
+			"pass": true
+		},
+		{
+			"name": "Project inheritance API returns200",
+			"pass": true
+		},
+		{
+			"name": "New workspace states screen renders",
+			"pass": true
+		},
+		{
+			"name": "Portal sign-in loads at host root",
+			"pass": true
+		},
+		{
+			"name": "Fresh portal has no agent session",
+			"pass": true
+		},
+		{
+			"name": "No browser JavaScript errors",
+			"pass": true
+		}
+	],
+	"outcome": "passed"
+}

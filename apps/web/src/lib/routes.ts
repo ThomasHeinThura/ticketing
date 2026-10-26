@@ -54,13 +54,21 @@ import { parseWorkItemGroup, type WorkItemGroup } from "./project-board-search";
  * share that codec and a grouping is not part of a saved query. `state` is the default and a
  * link that names it still parses; the builder never writes it.
  */
-export type WorkItemWorkSearch = WorkItemListSearch & { group?: WorkItemGroup };
+export type WorkItemWorkSearch = WorkItemListSearch & {
+  group?: WorkItemGroup;
+  combined?: "descendants";
+};
 
 export function parseWorkItemWorkSearch(raw: unknown): WorkItemWorkSearch {
   const group = parseWorkItemGroup((raw as { group?: unknown } | null)?.group);
+  const list = parseWorkItemListSearch(raw);
+  const combined = (raw as { combined?: unknown } | null)?.combined;
   return {
-    ...parseWorkItemListSearch(raw),
+    ...list,
     ...(group ? { group } : {}),
+    ...(list.layout === "board" && combined === "descendants"
+      ? { combined: "descendants" as const }
+      : {}),
   };
 }
 
@@ -192,6 +200,21 @@ export function parseWorkItemDetailSearch(raw: unknown): WorkItemDetailSearch {
   };
 }
 
+export type GodModeOrganisationsSearch = { organisationId?: string };
+
+export function parseGodModeOrganisationsSearch(
+  raw: unknown,
+): GodModeOrganisationsSearch {
+  if (!raw || typeof raw !== "object") return {};
+  const id = (raw as Record<string, unknown>).organisationId;
+  return typeof id === "string" &&
+    id.trim().length > 0 &&
+    id.length <= 128 &&
+    !/\p{Cc}/u.test(id)
+    ? { organisationId: id }
+    : {};
+}
+
 export type GodModeUsersSearch = {
   q?: string;
   side?: "staff" | "customer";
@@ -276,6 +299,8 @@ export function parseIdentityConnectionEditorSearchFromQueryString(
 }
 
 export type PendingActionsSearch = { cursor?: string };
+/** Workspace selected in the God Mode import history and retained on run detail links. */
+export type GodModeImportsSearch = { workspaceId?: string };
 /** Workspace customer invitations: which customer organisation is selected (CP-20). */
 export type CustomerInvitationsSearch = { organisation?: string };
 export type SavedViewsSearch = { query?: string };
@@ -337,6 +362,19 @@ function boundedId(value: unknown): string | undefined {
     : undefined;
 }
 
+export function parseGodModeImportsSearch(raw: unknown): GodModeImportsSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const workspaceId = boundedId(value.workspaceId);
+  return workspaceId ? { workspaceId } : {};
+}
+
+function godModeImportsQuery(search: GodModeImportsSearch) {
+  const resolved = parseGodModeImportsSearch(search);
+  return resolved.workspaceId
+    ? `?${new URLSearchParams({ workspaceId: resolved.workspaceId })}`
+    : "";
+}
+
 /**
  * Parses a saved view's URL. Total and bounded like every route parser: each property that is
  * absent or invalid is simply omitted, and no default is added, so a link keeps meaning what
@@ -344,7 +382,7 @@ function boundedId(value: unknown): string | undefined {
  */
 export function parseSavedViewUrlSearch(raw: unknown): SavedViewUrlSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
-  const { sort, ...rest } = parseWorkItemQueryState(value);
+  const { sort, sorts, ...rest } = parseWorkItemQueryState(value);
   const workspaceId = boundedId(value.workspaceId);
   const scopeId = boundedId(value.scopeId);
   return {
@@ -357,6 +395,7 @@ export function parseSavedViewUrlSearch(raw: unknown): SavedViewUrlSearch {
       ? { layout: value.layout as string }
       : {}),
     ...(isWorkItemSearchSortField(sort) ? { sort } : {}),
+    ...(sorts ? { sorts } : {}),
     ...rest,
   };
 }
@@ -372,6 +411,7 @@ export function parseSavedViewUrlSearchFromQueryString(queryString: string) {
     filterMode: params.get("filterMode") ?? undefined,
     sort: params.get("sort") ?? undefined,
     dir: params.get("dir") ?? undefined,
+    sorts: params.get("sorts") ?? undefined,
     columns: params.get("columns") ?? undefined,
     item: params.get("item") ?? undefined,
     hierarchy: params.get("hierarchy") ?? undefined,
@@ -436,6 +476,22 @@ export type AgentInboxFilter = (typeof AGENT_INBOX_FILTERS)[number];
 export type AgentInboxSearch = {
   filter?: Exclude<AgentInboxFilter, "all">;
 };
+
+export type AgentHomeSearch = { recovery?: "deleted" };
+
+export function parseAgentHomeSearch(raw: unknown): AgentHomeSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return value.recovery === "deleted" ? { recovery: "deleted" } : {};
+}
+
+export function parseAgentHomeSearchFromQueryString(
+  queryString: string,
+): AgentHomeSearch {
+  const params = new URLSearchParams(queryString);
+  return parseAgentHomeSearch({
+    recovery: params.get("recovery") ?? undefined,
+  });
+}
 
 export function parseAgentInboxSearch(raw: unknown): AgentInboxSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
@@ -708,13 +764,20 @@ export function parseServiceCalendarListSearchFromQueryString(
 }
 
 export type IntakeQueueSearch = {
-  state:
+  state?:
     | "new"
     | "clarifying"
     | "accepted"
     | "declined"
     | "duplicate"
     | "withdrawn";
+  /** IQ19/21: opaque association of two persisted saved views. */
+  queue?: string;
+  /** Canonical work-item filter text for the paired half. */
+  workItemFilter?: string;
+  workItemSorts?: WorkItemQueryState["sorts"];
+  workItemColumns?: WorkItemQueryState["columns"];
+  workItemFilterMode?: WorkItemQueryState["filterMode"];
   ref?: string;
   cursor?: string;
   /** `IQ-19`/`IQ-21`: request type id. */
@@ -877,10 +940,18 @@ function serviceManagementQuery(entries: Record<string, string | undefined>) {
   return suffix ? `?${suffix}` : "";
 }
 
-export type PortalSignInStage = "email" | "password" | "factor";
+export type PortalInboxSearch = { filter?: "all" | "unread" | "mentions" };
+
+export function parsePortalInboxSearch(raw: unknown): PortalInboxSearch {
+  const filter = (raw as { filter?: unknown } | null)?.filter;
+  return filter === "unread" || filter === "mentions" ? { filter } : {};
+}
+
+export type PortalSignInStage = "email" | "password" | "factor" | "otp";
 export type PortalSignInSearch = {
   stage: PortalSignInStage;
   factor: "totp" | "backup";
+  invitationId?: string;
 };
 
 export function parseWorkflowSettingsSearch(
@@ -914,7 +985,7 @@ export function parseIntakeSearch(raw: unknown): IntakeQueueSearch {
     "duplicate",
     "withdrawn",
   ] as const;
-  const state = states.find((candidate) => candidate === value.state) ?? "new";
+  const explicitState = states.find((candidate) => candidate === value.state);
   const ref =
     typeof value.ref === "string" && /^SUB-[1-9]\d{0,9}$/u.test(value.ref)
       ? value.ref
@@ -933,8 +1004,37 @@ export function parseIntakeSearch(raw: unknown): IntakeQueueSearch {
     (candidate) => candidate === value.assignee,
   );
   const age = INTAKE_AGE_FILTERS.find((candidate) => candidate === value.age);
+  const queue =
+    typeof value.queue === "string" &&
+    /^[A-Za-z0-9_-]{1,128}$/u.test(value.queue)
+      ? value.queue
+      : undefined;
+  const workItemQuery = parseWorkItemQueryState({
+    filter: value.workItemFilter,
+    sorts:
+      typeof value.workItemSorts === "string" &&
+      value.workItemSorts.length > 2000
+        ? undefined
+        : value.workItemSorts,
+    columns:
+      typeof value.workItemColumns === "string" &&
+      value.workItemColumns.length > 16384
+        ? undefined
+        : value.workItemColumns,
+    filterMode: value.workItemFilterMode,
+  });
+  const state = explicitState ?? (queue ? undefined : "new");
   return {
-    state,
+    ...(state ? { state } : {}),
+    ...(queue ? { queue } : {}),
+    ...(workItemQuery.filter ? { workItemFilter: workItemQuery.filter } : {}),
+    ...(workItemQuery.sorts ? { workItemSorts: workItemQuery.sorts } : {}),
+    ...(workItemQuery.columns
+      ? { workItemColumns: workItemQuery.columns }
+      : {}),
+    ...(workItemQuery.filterMode
+      ? { workItemFilterMode: workItemQuery.filterMode }
+      : {}),
     ...(ref ? { ref } : {}),
     ...(cursor ? { cursor } : {}),
     ...(requestType ? { requestType } : {}),
@@ -957,16 +1057,51 @@ export function parsePortalCatalogueSearch(
 
 export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
-  const stage = ["email", "password", "factor"].find(
+  const stage = ["email", "password", "factor", "otp"].find(
     (candidate) => candidate === value.stage,
   ) as PortalSignInStage | undefined;
   return {
     stage: stage ?? "email",
     factor: value.factor === "backup" ? "backup" : "totp",
+    ...(typeof value.invitationId === "string" &&
+    /^[A-Za-z0-9_-]{1,128}$/.test(value.invitationId)
+      ? { invitationId: value.invitationId }
+      : {}),
+  };
+}
+
+/** Existing Kaneo account security, including an opaque session-bound linking intent. */
+export type AccountSecuritySearch = {
+  enrollmentRequired?: boolean;
+  identityLinkIntent?: string;
+};
+export function parseAccountSecuritySearch(
+  raw: unknown,
+): AccountSecuritySearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return {
+    ...(value.enrollmentRequired === true || value.enrollmentRequired === "true"
+      ? { enrollmentRequired: true }
+      : {}),
+    ...(typeof value.identityLinkIntent === "string" &&
+    /^[A-Za-z0-9_-]{16,128}$/.test(value.identityLinkIntent)
+      ? { identityLinkIntent: value.identityLinkIntent }
+      : {}),
   };
 }
 
 export const routes = {
+  accountSecurity: {
+    path: "/dashboard/settings/account/security" as const,
+    build: (search: AccountSecuritySearch = {}) => {
+      const resolved = parseAccountSecuritySearch(search);
+      const query = new URLSearchParams();
+      if (resolved.enrollmentRequired) query.set("enrollmentRequired", "true");
+      if (resolved.identityLinkIntent)
+        query.set("identityLinkIntent", resolved.identityLinkIntent);
+      return `/dashboard/settings/account/security${query.size ? `?${query}` : ""}`;
+    },
+  },
   /** `docs/screens.md` "Workspace — webhooks". */
   webhooks: { path: "/agent/settings/webhooks" as const },
   /** `docs/screens.md` "Webhook editor"; `new` creates. */
@@ -1062,7 +1197,17 @@ export const routes = {
     path: "/agent/triage" as const,
     build: (search: IntakeQueueSearch = { state: "new" }) => {
       const resolved = parseIntakeSearch(search);
-      const query = new URLSearchParams({ state: resolved.state });
+      const query = new URLSearchParams();
+      if (resolved.state) query.set("state", resolved.state);
+      if (resolved.workItemFilter)
+        query.set("workItemFilter", resolved.workItemFilter);
+      if (resolved.workItemSorts)
+        query.set("workItemSorts", JSON.stringify(resolved.workItemSorts));
+      if (resolved.workItemColumns)
+        query.set("workItemColumns", JSON.stringify(resolved.workItemColumns));
+      if (resolved.workItemFilterMode)
+        query.set("workItemFilterMode", resolved.workItemFilterMode);
+      if (resolved.queue) query.set("queue", resolved.queue);
       if (resolved.ref) query.set("ref", resolved.ref);
       if (resolved.cursor) query.set("cursor", resolved.cursor);
       if (resolved.requestType) query.set("requestType", resolved.requestType);
@@ -1143,6 +1288,8 @@ export const routes = {
     build: (search: Partial<PortalSignInSearch> = {}) => {
       const resolved = parsePortalSignInSearch(search);
       const query = new URLSearchParams({ stage: resolved.stage });
+      if (resolved.invitationId)
+        query.set("invitationId", resolved.invitationId);
       if (resolved.stage === "factor" && resolved.factor === "backup")
         query.set("factor", "backup");
       return `/sign-in?${query.toString()}`;
@@ -1160,6 +1307,20 @@ export const routes = {
     path: "/kb/$id" as const,
     build: (params: { id: string }) => `/kb/${encodeURIComponent(params.id)}`,
   },
+  portalReleases: {
+    path: "/releases" as const,
+    build: (search: { cursor?: string } = {}) => {
+      const { cursor } = parsePortalReleasesSearch(search);
+      return cursor
+        ? `/releases?${new URLSearchParams({ cursor })}`
+        : "/releases";
+    },
+  },
+  portalRelease: {
+    path: "/releases/$id" as const,
+    build: (params: { id: string }) =>
+      `/releases/${encodeURIComponent(params.id)}`,
+  },
   portalCatalogue: {
     path: "/catalogue" as const,
     build: (search: PortalCatalogueSearch = {}) => {
@@ -1171,14 +1332,28 @@ export const routes = {
       return suffix ? `/catalogue?${suffix}` : "/catalogue";
     },
   },
+  portalInbox: {
+    path: "/notifications" as const,
+    build: (search: PortalInboxSearch = {}) => {
+      const { filter } = parsePortalInboxSearch(search);
+      return filter
+        ? `/notifications?${new URLSearchParams({ filter })}`
+        : "/notifications";
+    },
+  },
   portalRequests: {
     path: "/requests" as const,
-    build: (search: { cursor?: string } = {}) => {
-      const { cursor } = parsePortalRequestsSearch(search);
-      return cursor
-        ? `/requests?${new URLSearchParams({ cursor })}`
-        : "/requests";
+    build: (search: { cursor?: string; view?: "backlog" } = {}) => {
+      const { cursor, view } = parsePortalRequestsSearch(search);
+      const params = new URLSearchParams();
+      if (view) params.set("view", view);
+      if (cursor) params.set("cursor", cursor);
+      return params.size ? `/requests?${params}` : "/requests";
     },
+  },
+  portalAccount: {
+    path: "/account" as const,
+    build: () => "/account",
   },
   portalApprovals: {
     path: "/approvals" as const,
@@ -1218,9 +1393,11 @@ export const routes = {
       });
       if (resolved.group && resolved.group !== "state")
         query.set("group", resolved.group);
+      if (resolved.combined) query.set("combined", resolved.combined);
       appendWorkItemQueryState(query, {
         filter: resolved.filter,
         filterMode: resolved.filterMode,
+        sorts: resolved.sorts,
         columns: resolved.columns,
         item: resolved.item,
         hierarchy: resolved.hierarchy,
@@ -1336,6 +1513,40 @@ export const routes = {
     build: () => "/agent/god-mode/features",
   },
   /** `AK-7`: God Mode inventory of every API key on the instance. */
+  godModeWebhooks: {
+    path: "/agent/god-mode/webhooks" as const,
+    build: () => "/agent/god-mode/webhooks",
+  },
+  godModeJobs: {
+    path: "/agent/god-mode/jobs" as const,
+    build: () => "/agent/god-mode/jobs",
+  },
+  godModePlugins: {
+    path: "/agent/god-mode/plugins" as const,
+    build: () => "/agent/god-mode/plugins",
+  },
+  godModeStorage: {
+    path: "/agent/god-mode/storage" as const,
+    build: () => "/agent/god-mode/storage",
+  },
+  godModeMcpUsage: {
+    path: "/agent/god-mode/mcp" as const,
+    build: () => "/agent/god-mode/mcp",
+  },
+  godModeImports: {
+    path: "/agent/god-mode/imports" as const,
+    build: (search: GodModeImportsSearch = {}) =>
+      `/agent/god-mode/imports${godModeImportsQuery(search)}`,
+  },
+  godModeImportRun: {
+    path: "/agent/god-mode/imports/$id" as const,
+    build: (params: { id: string }, search: GodModeImportsSearch = {}) =>
+      `/agent/god-mode/imports/${encodeURIComponent(params.id)}${godModeImportsQuery(search)}`,
+  },
+  godModeDeliveries: {
+    path: "/agent/god-mode/deliveries" as const,
+    build: () => "/agent/god-mode/deliveries",
+  },
   godModeApiKeys: {
     path: "/agent/god-mode/api-keys" as const,
     build: () => "/agent/god-mode/api-keys",
@@ -1347,6 +1558,16 @@ export const routes = {
       const params = new URLSearchParams({ limit: String(resolved.limit) });
       if (resolved.action) params.set("action", resolved.action);
       return `/agent/god-mode/audit?${params}`;
+    },
+  },
+  godModeOrganisations: {
+    path: "/agent/god-mode/organisations" as const,
+    build: (search: GodModeOrganisationsSearch = {}) => {
+      const resolved = parseGodModeOrganisationsSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.organisationId)
+        query.set("organisationId", resolved.organisationId);
+      return `/agent/god-mode/organisations${query.size ? `?${query}` : ""}`;
     },
   },
   godModeUsers: {
@@ -1430,7 +1651,12 @@ export const routes = {
   },
   agentHome: {
     path: "/agent" as const,
-    build: () => "/agent",
+    build: (search: AgentHomeSearch = {}) => {
+      const resolved = parseAgentHomeSearch(search);
+      return resolved.recovery === "deleted"
+        ? "/agent?recovery=deleted"
+        : "/agent";
+    },
   },
   agentInbox: {
     path: "/agent/inbox" as const,
@@ -1492,6 +1718,14 @@ export const routes = {
   workspaceSettings: {
     path: "/agent/settings" as const,
     build: () => "/agent/settings",
+  },
+  workspaceTerminology: {
+    path: "/dashboard/settings/workspace/terminology" as const,
+    build: () => "/dashboard/settings/workspace/terminology",
+  },
+  workspaceFeatures: {
+    path: "/dashboard/settings/workspace/features" as const,
+    build: () => "/dashboard/settings/workspace/features",
   },
   workspaceMembers: {
     path: "/agent/settings/members" as const,
@@ -1742,6 +1976,7 @@ export function parseWorkItemListSearchFromQueryString(
     layout: params.get("layout") ?? undefined,
     sort: params.get("sort") ?? undefined,
     dir: params.get("dir") ?? undefined,
+    sorts: params.get("sorts") ?? undefined,
     filter: params.get("filter") ?? undefined,
     filterMode: params.get("filterMode") ?? undefined,
     columns: params.get("columns") ?? undefined,
@@ -1754,15 +1989,27 @@ export function parseWorkItemListSearchFromQueryString(
 }
 
 /** Opaque portal request cursors remain URL state; malformed values are discarded. */
-export function parsePortalRequestsSearch(raw: unknown): { cursor?: string } {
+export function parsePortalRequestsSearch(raw: unknown): {
+  cursor?: string;
+  view?: "backlog";
+} {
   if (!raw || typeof raw !== "object") return {};
-  const cursor = (raw as Record<string, unknown>).cursor;
-  return typeof cursor === "string" &&
+  const candidate = raw as Record<string, unknown>;
+  const cursor = candidate.cursor;
+  return {
+    ...(candidate.view === "backlog" ? { view: "backlog" as const } : {}),
+    ...(typeof cursor === "string" &&
     cursor.length > 0 &&
     cursor.length <= 2048 &&
     /^[A-Za-z0-9_-]+$/u.test(cursor)
-    ? { cursor }
-    : {};
+      ? { cursor }
+      : {}),
+  };
+}
+
+export function parsePortalReleasesSearch(raw: unknown): { cursor?: string } {
+  const { cursor } = parsePortalRequestsSearch(raw);
+  return cursor ? { cursor } : {};
 }
 
 export function parsePortalApprovalsSearch(raw: unknown): {

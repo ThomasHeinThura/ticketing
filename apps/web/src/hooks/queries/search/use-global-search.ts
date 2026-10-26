@@ -9,6 +9,7 @@ type SearchParams = {
     | "work_items"
     | "people"
     | "views"
+    | "kb_articles"
     | "projects"
     | "workspaces"
     | "comments"
@@ -22,7 +23,7 @@ function useGlobalSearch({ workspaceId, ...params }: SearchParams) {
   return useQuery({
     queryKey: ["search", { ...params, workspaceId }],
     queryFn: workspaceId
-      ? () => globalSearch({ ...params, workspaceId })
+      ? ({ signal }) => globalSearch({ ...params, workspaceId }, signal)
       : skipToken,
     enabled: !!params.q && params.q.length >= 1,
     staleTime: 1000 * 30, // 30 seconds

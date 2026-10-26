@@ -1,4 +1,14 @@
-import { and, count, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { schema } from "../database";
 import type { Executor } from "../database/executor";
 import { automationTable } from "../database/schema";
@@ -280,6 +290,72 @@ export async function countRoleHolders(
       ),
     );
   return Number(row?.value ?? 0);
+}
+
+/** Active staff holders used by the read-only role-impact preview. */
+export async function listActiveRoleHolderUserIds(
+  executor: Executor,
+  workspaceId: string,
+  key: string,
+): Promise<string[]> {
+  const rows = await executor
+    .select({ userId: schema.workspaceUserTable.userId })
+    .from(schema.workspaceUserTable)
+    .innerJoin(
+      schema.userTable,
+      eq(schema.userTable.id, schema.workspaceUserTable.userId),
+    )
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.userId, schema.workspaceUserTable.userId),
+    )
+    .where(
+      and(
+        eq(schema.workspaceUserTable.workspaceId, workspaceId),
+        eq(schema.workspaceUserTable.role, key),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.personTable.active, true),
+        or(isNull(schema.userTable.banned), eq(schema.userTable.banned, false)),
+      ),
+    )
+    .orderBy(schema.workspaceUserTable.userId);
+  return [...new Set(rows.map((row) => row.userId))];
+}
+
+/** Active, non-deleted work items in a project set already narrowed by canonical reach. */
+export async function countActiveRoleImpactWorkItems(
+  executor: Executor,
+  projectIds: readonly string[],
+): Promise<number> {
+  if (projectIds.length === 0) return 0;
+  const [row] = await executor
+    .select({ value: count() })
+    .from(schema.workItemTable)
+    .where(
+      and(
+        inArray(schema.workItemTable.projectId, [...projectIds]),
+        isNull(schema.workItemTable.archivedAt),
+        isNull(schema.workItemTable.deletedAt),
+      ),
+    );
+  return Number(row?.value ?? 0);
+}
+
+export async function listActiveRoleImpactProjectIds(
+  executor: Executor,
+  workspaceId: string,
+): Promise<string[]> {
+  const rows = await executor
+    .select({ id: schema.projectTable.id })
+    .from(schema.projectTable)
+    .where(
+      and(
+        eq(schema.projectTable.workspaceId, workspaceId),
+        isNull(schema.projectTable.archivedAt),
+        isNull(schema.projectTable.deletedAt),
+      ),
+    );
+  return rows.map((row) => row.id);
 }
 
 export type RoleHolderRow = {

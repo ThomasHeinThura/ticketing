@@ -1,7 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { schema } from "../database";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -92,6 +93,42 @@ export const labelDeletionTarget: RegisteredDeletionTarget = {
       version: registeredDeletionFingerprint(label),
     };
   },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const label = await readLabel(tx, id);
+    if (!label?.workspaceId) return undefined;
+    if (label.taskId) {
+      const [task] = await tx
+        .select({ projectId: schema.taskTable.projectId })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.id, label.taskId))
+        .limit(1);
+      if (!task?.projectId) return undefined;
+      const [project] = await tx
+        .select({
+          id: schema.projectTable.id,
+          workspaceId: schema.projectTable.workspaceId,
+        })
+        .from(schema.projectTable)
+        .where(
+          and(
+            eq(schema.projectTable.id, task.projectId),
+            eq(schema.projectTable.workspaceId, label.workspaceId),
+            isNull(schema.projectTable.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (!project) return undefined;
+    }
+    return {
+      id: label.id,
+      workspaceId: label.workspaceId,
+      projectId: null,
+      organisationId: null,
+    };
+  },
   execute: async (tx, { loaded, identity, input }) => {
     const label = await readLabel(tx, loaded.id);
     if (!label)
@@ -167,6 +204,43 @@ export const projectLabelDeletionTarget: RegisteredDeletionTarget = {
       },
       version: registeredDeletionFingerprint(label),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [row] = await tx
+      .select({
+        id: schema.labelTable.id,
+        projectId: schema.labelTable.projectId,
+      })
+      .from(schema.labelTable)
+      .where(eq(schema.labelTable.id, id))
+      .limit(1);
+    if (!row?.projectId) return undefined;
+    const [project] = await tx
+      .select({
+        id: schema.projectTable.id,
+        workspaceId: schema.projectTable.workspaceId,
+        organisationId: schema.projectTable.organisationId,
+      })
+      .from(schema.projectTable)
+      .where(
+        and(
+          eq(schema.projectTable.id, row.projectId),
+          isNull(schema.projectTable.deletedAt),
+          isNull(schema.projectTable.archivedAt),
+        ),
+      )
+      .limit(1);
+    return project
+      ? {
+          id: row.id,
+          workspaceId: project.workspaceId,
+          projectId: project.id,
+          organisationId: project.organisationId,
+        }
+      : undefined;
   },
   execute: async (tx, { loaded, identity, input }) => {
     const changes = await clearCatalogueLabel(

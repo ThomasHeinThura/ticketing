@@ -21,7 +21,11 @@ async function pinView(
   // before writing the caller's preference, so knowing an id cannot pin an invisible view.
   const view = await getView(viewId, personId, userId);
 
-  const mutation = await togglePinnedView(personId, view.workspaceId, viewId);
+  const mutation = await togglePinnedView(personId, view.workspaceId, viewId, {
+    personId,
+    userId,
+    apiKeyId: auditActor.apiKeyId ?? undefined,
+  });
 
   await writeSavedViewAudit({
     actor: auditActor,

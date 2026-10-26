@@ -61,11 +61,18 @@ const ITEM_GROUPS = [
   "type",
   "priority",
   "state",
+  "epic",
   "week",
-];
-const TIME_GROUPS = ["project", "person", "activity", "week"];
+] as const;
+const TIME_GROUPS = ["project", "person", "activity", "week"] as const;
 const WINDOWS = ["7", "30", "60", "90"] as const;
 const NONE = "__none__";
+
+export function reportBuilderGroupsForEntity(
+  entity: Entity,
+): readonly string[] {
+  return entity === "work_item" ? ITEM_GROUPS : TIME_GROUPS;
+}
 
 function Pick({
   id,
@@ -82,7 +89,7 @@ function Pick({
 }) {
   const chosen = options.find((option) => option.value === value);
   return (
-    <div className="space-y-1">
+    <div className="flex min-w-0 flex-col gap-1">
       <Label htmlFor={id}>{label}</Label>
       <Select value={value} onValueChange={(next) => next && onChange(next)}>
         <SelectTrigger id={id} className="w-52">
@@ -154,9 +161,10 @@ export function ReportBuilder({ search }: { search: ReportBuilderSearch }) {
     setTeamId(view.sharedWithTeamId ?? "");
   }, [loadedId]);
 
-  const groups = (entity === "work_item" ? ITEM_GROUPS : TIME_GROUPS).map(
-    (value) => ({ value, label: t(`reports:builder.groups.${value}`) }),
-  );
+  const groups = reportBuilderGroupsForEntity(entity).map((value) => ({
+    value,
+    label: t(`reports:builder.groups.${value}`),
+  }));
   const fieldGroups =
     entity === "work_item"
       ? (fields.data?.data ?? [])
@@ -255,7 +263,7 @@ export function ReportBuilder({ search }: { search: ReportBuilderSearch }) {
         </div>
         <Card>
           <CardContent className="flex flex-wrap items-end gap-4 p-4">
-            <div className="space-y-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <Label htmlFor="builder-name">{t("reports:builder.name")}</Label>
               <Input
                 id="builder-name"

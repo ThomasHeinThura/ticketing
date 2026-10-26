@@ -1,0 +1,105 @@
+{
+	"artifact": "codex-20261026-pr5-combined-and-visible-tree",
+	"runtime": {
+		"environment": "Local SIT",
+		"apiAndWebBuild": "183",
+		"strictTls": true,
+		"browserRoute": "/agent",
+		"projectListRequest": "GET /api/project?workspaceId=<redacted>",
+		"writesDuringStatisticsCheck": false
+	},
+	"combinedBoard": {
+		"projects": [
+			{
+				"key": "QCPQ",
+				"name": "QACombined Parent 20261026",
+				"items": ["QCPQ-1"]
+			},
+			{
+				"key": "QCCQ",
+				"name": "QACombined Child 20261026",
+				"parent": "QCPQ",
+				"items": ["QCCQ-1", "QCCQ-2"]
+			}
+		],
+		"checks": {
+			"combinedOptInSurvivesReload": "passed",
+			"ordinaryBoardShowsOnlyParentItem": "passed",
+			"combinedBoardShowsThreeItemsWithSourceProject": "passed",
+			"emptyColumnMouseDropTransitionsWithinSourceProject": "passed; QCCQ-1 moved to its own project's In Progress state",
+			"crossProjectRankDrop": "passed; denied with same-project explanation and no rank or transition write",
+			"keyboardRankAndFocus": "passed; same-project reorder preserved focus, reverse reorder restored original order, Escape cancelled without a write",
+			"statePersistsAfterReload": "passed",
+			"responsiveThemes": "passed at 375, 768, and 1440 CSS pixels in light and dark themes; no document overflow and board controls remained visible"
+		},
+		"screenshots": [
+			"docs/report/screens/codex-20261026-pr5-combined-light-375.png",
+			"docs/report/screens/codex-20261026-pr5-combined-light-768.png",
+			"docs/report/screens/codex-20261026-pr5-combined-light-1440.png",
+			"docs/report/screens/codex-20261026-pr5-combined-dark-375.png",
+			"docs/report/screens/codex-20261026-pr5-combined-dark-768.png",
+			"docs/report/screens/codex-20261026-pr5-combined-dark-1440.png"
+		],
+		"failureHistory": "The initial empty-column pointer collision failure is retained at docs/report/screens/codex-20261026-pr5-drag-target-beforefix.png; after the pointerWithin fix, the empty-column drop passed."
+	},
+	"visibleTreeStatistics": {
+		"projectRows": [
+			{
+				"key": "QCPQ",
+				"label": "QACombined Parent 20261026",
+				"statistics": {
+					"totalTasks": 1,
+					"completionPercentage": 0,
+					"dueDate": null
+				},
+				"descendantStatistics": {
+					"totalTasks": 3,
+					"completionPercentage": 0,
+					"dueDate": null
+				},
+				"visibleProjectsPageTreeLabel": "Visible project tree: 0% · 3"
+			},
+			{
+				"key": "QCCQ",
+				"label": "QACombined Child 20261026",
+				"statistics": {
+					"totalTasks": 2,
+					"completionPercentage": 0,
+					"dueDate": null
+				},
+				"descendantStatistics": "absent",
+				"parentBadge": "in QACombined Parent 20261026"
+			}
+		],
+		"screenshot": "docs/report/screens/codex-20261026-pr5-visible-tree-1440.png",
+		"dueDateLimit": "The three persisted browser fixture items have no due dates, so the live API correctly returned null. The earliest non-null due-date rollup is covered by the known-answer PostgreSQL integration test below."
+	},
+	"integration": {
+		"testFile": "tests/api-integration/project-list-descendant-statistics.test.ts",
+		"dedicatedDatabaseWrapper": "test-vw20-wrapper.py",
+		"result": "passed: 2 tests",
+		"knownAnswer": {
+			"parentOwn": {
+				"totalTasks": 1,
+				"completionPercentage": 0,
+				"dueDate": "2026-10-30T00:00:00.000Z"
+			},
+			"parentVisibleTree": {
+				"totalTasks": 3,
+				"completionPercentage": 33,
+				"dueDate": "2026-10-25T00:00:00.000Z"
+			},
+			"childOwn": {
+				"totalTasks": 2,
+				"completionPercentage": 50,
+				"dueDate": "2026-10-25T00:00:00.000Z"
+			},
+			"childHasDescendantStatistics": false
+		}
+	},
+	"scopeNotes": [
+		"Project-list self and visible-tree statistics use the canonical work-item table; no API source change was needed.",
+		"Browser verification used the approved additive QCPQ/QCCQ fixture and made no statistics-check writes. Existing records and memberships were not changed.",
+		"The screenshot records the parent tree label and child parent badge at 1440 pixels in dark theme."
+	]
+}

@@ -57,7 +57,11 @@ function requestWorkItemVisibility(
   );
 }
 
-function requestWorkItemScope(identity: ResolvedIdentity, executor: Executor) {
+function requestWorkItemScope(
+  identity: ResolvedIdentity,
+  executor: Executor,
+  options: { allowArchivedForRead?: true } = {},
+) {
   return and(
     currentProjectReachPredicate(
       identity,
@@ -68,7 +72,9 @@ function requestWorkItemScope(identity: ResolvedIdentity, executor: Executor) {
     ),
     requestWorkItemVisibility(identity, executor),
     isNull(schema.workItemTable.deletedAt),
-    isNull(schema.workItemTable.archivedAt),
+    options.allowArchivedForRead
+      ? undefined
+      : isNull(schema.workItemTable.archivedAt),
     isNull(schema.projectTable.deletedAt),
   );
 }
@@ -588,6 +594,7 @@ export async function loadApprovalTargetByKey(
   identity: ResolvedIdentity,
   key: string,
   executor?: Executor,
+  options: { allowArchivedForRead?: true } = {},
 ): Promise<ApprovalTarget> {
   const queryDb = executorOrDefault(executor);
   const [row] = await queryDb
@@ -612,7 +619,7 @@ export async function loadApprovalTargetByKey(
     .where(
       and(
         eq(schema.workItemTable.key, key),
-        requestWorkItemScope(identity, queryDb),
+        requestWorkItemScope(identity, queryDb, options),
       ),
     )
     .limit(1);
@@ -731,11 +738,12 @@ export async function resolveApprovalFeatureFlag(input: {
 export async function loadApprovalTargetByApprovalId(
   id: string,
   identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
-  options: { currentInstanceAdmin?: boolean } = {},
+  options: { currentInstanceAdmin?: boolean; executor?: Executor } = {},
 ) {
+  const queryDb = executorOrDefault(options.executor);
   const allowAdmin =
     options.currentInstanceAdmin && identity.credential === "session";
-  const [row] = await db
+  const [row] = await queryDb
     .select({
       workItemId: schema.workItemTable.id,
       workItemKey: schema.workItemTable.key,
@@ -767,10 +775,12 @@ export async function loadApprovalTargetByApprovalId(
       and(
         eq(schema.approvalTable.id, id),
         or(
-          requestWorkItemScope(identity, db),
+          requestWorkItemScope(identity, queryDb),
           eq(schema.approvalTable.requestedBy, identity.personId),
           eq(schema.approvalTable.approverId, identity.personId),
-          allowAdmin ? currentInstanceAdminPredicate(identity, db) : sql`false`,
+          allowAdmin
+            ? currentInstanceAdminPredicate(identity, queryDb)
+            : sql`false`,
         ),
         isNull(schema.workItemTable.deletedAt),
         isNull(schema.workItemTable.archivedAt),
@@ -795,13 +805,13 @@ export async function loadApprovalTargetByApprovalId(
     organisationId: row.organisationId,
     // PR-2/PR-3: reach and approval authority follow the ancestor chain.
     ancestorProjectIds: await projectAncestryFor(
-      db,
+      queryDb,
       identity,
       row.workspaceId,
       row.projectId,
     ),
     ownerTeamId: await projectOwnerTeamFor(
-      db,
+      queryDb,
       identity,
       row.workspaceId,
       row.projectId,
@@ -867,6 +877,7 @@ export async function listApprovalRows(
   workItemId: string,
   workspaceId: string,
   allowInstanceAdmin = false,
+  options: { allowArchivedForRead?: true } = {},
 ) {
   return db
     .select({
@@ -914,13 +925,15 @@ export async function listApprovalRows(
         eq(schema.approvalTable.workItemId, workItemId),
         eq(schema.approvalTable.workspaceId, workspaceId),
         or(
-          requestWorkItemScope(identity, db),
+          requestWorkItemScope(identity, db, options),
           eq(schema.approvalTable.requestedBy, identity.personId),
           eq(schema.approvalTable.approverId, identity.personId),
           allowInstanceAdmin ? approvalAdminScope(identity, db) : sql`false`,
         ),
         isNull(schema.workItemTable.deletedAt),
-        isNull(schema.workItemTable.archivedAt),
+        options.allowArchivedForRead
+          ? undefined
+          : isNull(schema.workItemTable.archivedAt),
         isNull(schema.projectTable.deletedAt),
       ),
     )
@@ -1115,8 +1128,10 @@ export async function isCabTeamMember(
   userId: string,
   workspaceId: string,
   workItemId: string,
+  executor?: Executor,
 ) {
-  const [row] = await db
+  const queryDb = executorOrDefault(executor);
+  const [row] = await queryDb
     .select({ id: schema.teamMemberTable.id })
     .from(schema.teamMemberTable)
     .innerJoin(
@@ -1129,7 +1144,7 @@ export async function isCabTeamMember(
         eq(schema.teamTable.workspaceId, workspaceId),
         eq(schema.teamTable.isCab, true),
         exists(
-          db
+          queryDb
             .select({ one: sql`1` })
             .from(schema.workItemTable)
             .innerJoin(
@@ -1140,7 +1155,7 @@ export async function isCabTeamMember(
               and(
                 eq(schema.workItemTable.id, workItemId),
                 eq(schema.workItemTable.workspaceId, workspaceId),
-                requestWorkItemScope(identity, db),
+                requestWorkItemScope(identity, queryDb),
               ),
             ),
         ),

@@ -1,0 +1,18 @@
+{
+	"recordedAt": "2026-10-25T23:08:45.576408+00:00",
+	"dependency": "react-i18next@17.0.11",
+	"cause": "useTranslation snapshot reused a translator across changed i18next instance, namespace list and nsMode when ready/language/keyPrefix/revision happened to match",
+	"repair": "Persistent pnpm patch updates all three cache inputs in source, ESM and CommonJS; MIT copyright/licence retained. No component remount or dependency version update. Docker metadata stages copy patches before frozen install.",
+	"proof": {
+		"before": "All3 installed-library regressions failed; nested provider context showed correct noun while hook retained old noun",
+		"after": "10/10 focused actual-library/nested-provider/global-dialog tests pass, including unsaved draft preservation",
+		"fullWeb": "3005/3005 across461files pass after patch",
+		"types": "Web app+node configurations pass after correcting a test-only resource type annotation",
+		"versionDrift": "Compared lock packages to verified184 source checkpoint: no added or removed resolved package versions; all workspace semantic settings preserved except patchedDependencies"
+	},
+	"browser": "../browser/org-purge-terms186/journey.json",
+	"limits": [
+		"Final shipping image/frozen Linux build remains pending",
+		"Target-specific workspace terms for a global pending-action overlay need explicit target context; current pending-action DTO lacks workspaceId, so global dialog uses instance terms without guessing"
+	]
+}

@@ -48,6 +48,7 @@ import {
 } from "@/hooks/queries/service-management";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { formatDateTime } from "@/lib/format";
+import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import {
   dateFromCalendarMonth,
   formatCalendarMonth,
@@ -483,7 +484,7 @@ export function ChangeCalendarView({
 }: {
   search: ChangeCalendarSearch;
 }) {
-  const { t } = useTranslation("serviceManagement");
+  const { t, i18n } = useTranslation("serviceManagement");
   const navigate = useNavigate();
   const { data: workspace } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";
@@ -495,7 +496,11 @@ export function ChangeCalendarView({
     <>
       <PageTitle title={t("changes.title")} />
       <PageFrame
-        title={t("changes.title")}
+        title={
+          <span title={getDefaultAgentTerm(i18n, "change", 2)}>
+            {t("changes.title")}
+          </span>
+        }
         description={t("changes.description")}
       >
         <SectionNav active="changes" />

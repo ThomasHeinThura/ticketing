@@ -27,9 +27,11 @@ export const TITLE_SAVE_DELAY_MS = 800;
 export default function WorkItemTitle({
   item,
   onAccessLost,
+  readOnly = false,
 }: {
   item: WorkItemDetailRow;
   onAccessLost: () => void;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -128,7 +130,7 @@ export default function WorkItemTitle({
       maxLength={500}
       aria-label={t("workItems:properties.titleLabel")}
       value={value}
-      readOnly={!canUpdateTasks()}
+      readOnly={readOnly || !canUpdateTasks()}
       placeholder={t("workItems:properties.titlePlaceholder")}
       onFocus={() => setFocused(true)}
       onBlur={() => {

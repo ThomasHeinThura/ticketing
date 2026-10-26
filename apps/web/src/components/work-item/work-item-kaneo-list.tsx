@@ -2,7 +2,7 @@ import { closestCorners, DndContext, DragOverlay } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { useNavigate } from "@tanstack/react-router";
 import { Alert, AlertDescription, Button } from "@taskdesk/ui";
-import { useCallback } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { ListColumnSection } from "@/components/list-view/list-column-section";
@@ -23,9 +23,15 @@ import {
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { ProjectWithTasks } from "@/types/project";
 import useWorkItemDragDrop from "./use-work-item-drag-drop";
+import type { VirtualizedSortableItem } from "./virtualization/virtualized-sortable-list";
 import WorkItemContextMenu from "./work-item-context-menu";
 import WorkItemList, { type WorkItemListProps } from "./work-item-list";
 import { WorkItemSlaBadge } from "./work-item-sla-badge";
+
+const VirtualizedSortableList = lazy(
+  () => import("./virtualization/virtualized-sortable-list"),
+) as unknown as typeof import("./virtualization/virtualized-sortable-list").default;
+const WorkItemInlineFields = lazy(() => import("./work-item-inline-fields"));
 
 /** Kaneo presentation over canonical rows; all writes stay with canonical actions. */
 export default function WorkItemKaneoList({
@@ -59,6 +65,8 @@ export default function WorkItemKaneoList({
     [props.workItems, states.data],
   );
   const dndAccessibility = useDndAccessibility(describeDnd);
+  const [retainFocusId, setRetainFocusId] = useState<string>();
+  const onRetainFocus = useCallback(() => setRetainFocusId(undefined), []);
   // `VW-15`: collapsed groups are a per-user, per-project preference, so they persist.
   const collapsedPreference = useProjectViewPreference({
     projectId,
@@ -96,6 +104,7 @@ export default function WorkItemKaneoList({
     props.isError ||
     props.isLoading ||
     !props.workItems?.length ||
+    props.workItems.some((item) => item.deletedAt || item.archivedAt) ||
     props.hasPartialFailure ||
     hasUngroupedRows ||
     states.isError ||
@@ -104,6 +113,7 @@ export default function WorkItemKaneoList({
     return <WorkItemList {...props} />;
   }
 
+  const workItems = props.workItems;
   const columns = (states.data ?? []).map(
     (state) =>
       ({
@@ -115,7 +125,68 @@ export default function WorkItemKaneoList({
         tasks: drag.itemsByState.get(state.id)?.map(workItemKaneoView) ?? [],
       }) satisfies ProjectWithTasks["columns"][number],
   );
-  const rowsById = new Map(props.workItems.map((item) => [item.id, item]));
+  const rowsById = new Map(workItems.map((item) => [item.id, item]));
+  const renderTaskRow = (
+    task: ProjectWithTasks["columns"][number]["tasks"][number],
+    column: ProjectWithTasks["columns"][number],
+    virtualItem?: VirtualizedSortableItem,
+  ) => {
+    const item = rowsById.get(task.id);
+    if (!item) return null;
+    const rowProps = {
+      task,
+      projectSlug: workItemProjectSlug(item),
+      taskIsCompleted: column.isFinal,
+      displayPreferences,
+      badges: <WorkItemSlaBadge sla={item.sla} />,
+      taskHref: routes.workItemDetail.build({ key: item.key }),
+      openTaskOnLinkClick: Boolean(props.onOpenItem),
+      onOpenTask: () =>
+        props.onOpenItem
+          ? props.onOpenItem(item.key)
+          : void navigate({
+              href: routes.workItemDetail.build({ key: item.key }),
+            }),
+      disableDragDrop:
+        props.isPlaceholderData ||
+        drag.busy ||
+        item.unavailableFields.includes("key") ||
+        (!drag.canReorder &&
+          (permission.isCheckingPermissions ||
+            !permission.canTransitionTasks())),
+      selectionEnabled: Boolean(props.canBulkAssign && props.onSelectionChange),
+      isSelected: props.selectedKeys?.includes(item.key) ?? false,
+      onToggleSelection: () =>
+        props.onSelectionChange?.(
+          item.key,
+          !props.selectedKeys?.includes(item.key),
+        ),
+      t,
+    };
+    const row = <TaskRow {...rowProps} />;
+    const inlineRow = (
+      <Suspense fallback={row}>
+        <WorkItemInlineFields
+          item={item}
+          disabled={Boolean(props.isPlaceholderData)}
+        >
+          {(controls) => <TaskRow {...rowProps} {...controls} />}
+        </WorkItemInlineFields>
+      </Suspense>
+    );
+    if (!virtualItem) return inlineRow;
+    return (
+      <div
+        key={task.id}
+        ref={virtualItem.measureRef}
+        data-index={virtualItem.index}
+        data-virtual-item-id={virtualItem.id}
+        style={virtualItem.style}
+      >
+        {inlineRow}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -128,9 +199,15 @@ export default function WorkItemKaneoList({
         accessibility={dndAccessibility}
         sensors={drag.sensors}
         collisionDetection={closestCorners}
-        onDragStart={drag.startDrag}
+        onDragStart={(event) => {
+          setRetainFocusId(undefined);
+          drag.startDrag(event);
+        }}
         onDragOver={drag.overDrag}
-        onDragEnd={drag.endDrag}
+        onDragEnd={(event) => {
+          if (event.over) setRetainFocusId(String(event.active.id));
+          drag.endDrag(event);
+        }}
         onDragCancel={drag.cancelDrag}
         modifiers={[snapCenterToCursor]}
       >
@@ -157,52 +234,28 @@ export default function WorkItemKaneoList({
                 onToggle={() => toggleGroup(column.id)}
                 t={t}
               >
-                {column.tasks.map((task) => {
-                  const item = rowsById.get(task.id);
-                  if (!item) return null;
-                  return (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      projectSlug={workItemProjectSlug(item)}
-                      taskIsCompleted={column.isFinal}
-                      displayPreferences={displayPreferences}
-                      badges={<WorkItemSlaBadge sla={item.sla} />}
-                      taskHref={routes.workItemDetail.build({ key: item.key })}
-                      openTaskOnLinkClick={Boolean(props.onOpenItem)}
-                      onOpenTask={() =>
-                        props.onOpenItem
-                          ? props.onOpenItem(item.key)
-                          : void navigate({
-                              href: routes.workItemDetail.build({
-                                key: item.key,
-                              }),
-                            })
+                {workItems.length > 100 && column.tasks.length > 0 ? (
+                  <Suspense
+                    fallback={column.tasks.map((task) =>
+                      renderTaskRow(task, column),
+                    )}
+                  >
+                    <VirtualizedSortableList
+                      items={column.tasks}
+                      getItemId={(task) => task.id}
+                      as="div"
+                      className="relative"
+                      estimateSize={46}
+                      retainFocusId={retainFocusId}
+                      onRetainFocus={onRetainFocus}
+                      renderItem={(task, virtualItem) =>
+                        renderTaskRow(task, column, virtualItem)
                       }
-                      disableDragDrop={
-                        props.isPlaceholderData ||
-                        drag.busy ||
-                        item.unavailableFields.includes("key") ||
-                        (!drag.canReorder &&
-                          (permission.isCheckingPermissions ||
-                            !permission.canTransitionTasks()))
-                      }
-                      selectionEnabled={Boolean(
-                        props.canBulkAssign && props.onSelectionChange,
-                      )}
-                      isSelected={
-                        props.selectedKeys?.includes(item.key) ?? false
-                      }
-                      onToggleSelection={() =>
-                        props.onSelectionChange?.(
-                          item.key,
-                          !props.selectedKeys?.includes(item.key),
-                        )
-                      }
-                      t={t}
                     />
-                  );
-                })}
+                  </Suspense>
+                ) : (
+                  column.tasks.map((task) => renderTaskRow(task, column))
+                )}
               </ListColumnSection>
             ))}
           </div>

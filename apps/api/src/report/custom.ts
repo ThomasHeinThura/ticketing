@@ -5,16 +5,18 @@ import {
   buildContext,
   cleanFilters,
   dayOf,
+  itemFilterSql,
   itemFrom,
   num,
   selectRows,
   timeFrom,
   tsn,
 } from "./context";
+import { epicReportCtes, parseEpicDrillHandle } from "./epic-rollup";
 import { workspaceFeatureEnabled } from "./feature";
 import { countValue, minutesToHours, type ReportWindow } from "./logic";
 import { type ReportEnvelope, stripRates } from "./present";
-import { itemsOf, rowCap, timeItemsOf } from "./reports/shared";
+import { itemsOf, pageLimit, pageRows, timeItemsOf } from "./reports/shared";
 import { type ReportCaps, scopeCounts } from "./run";
 import type { DrillItem, Row } from "./types";
 
@@ -56,6 +58,7 @@ const ITEM_GROUPS = [
   "type",
   "priority",
   "state",
+  "epic",
   "week",
 ];
 const TIME_GROUPS = ["project", "person", "activity", "week"];
@@ -89,6 +92,129 @@ export function customWindowInput(query: CustomQuery) {
 }
 
 const NO_VALUE = "(none)";
+
+type EpicReportGroup = {
+  label: string;
+  handle: string;
+  value: string;
+  completed: string | null;
+  total: string | null;
+};
+
+function epicGroupColumns() {
+  return [
+    { key: "group", label: "Group", kind: "text" as const },
+    {
+      key: "value",
+      label: "Matching work items",
+      kind: "number" as const,
+    },
+    {
+      key: "progressCompleted",
+      label: "Completed descendants",
+      kind: "number" as const,
+    },
+    {
+      key: "progressTotal",
+      label: "All descendants",
+      kind: "number" as const,
+    },
+    {
+      key: "progressPercent",
+      label: "Progress (all descendants)",
+      kind: "percent" as const,
+    },
+  ];
+}
+
+function epicGroupLabelSql() {
+  return sql`CASE
+    WHEN mapping.available = false THEN 'Epic unavailable'
+    WHEN mapping.epic_id IS NULL THEN 'No epic'
+    ELSE mapping.epic_key || ' — ' || mapping.epic_title
+  END`;
+}
+
+function epicGroupHandleSql() {
+  return sql`CASE
+    WHEN mapping.available = false THEN 'epic-unavailable'
+    WHEN mapping.epic_id IS NULL THEN 'epic-none'
+    ELSE 'epic:' || mapping.epic_id
+  END`;
+}
+
+async function selectEpicGroups(ctx: ReturnType<typeof buildContext>) {
+  return selectRows<EpicReportGroup>(sql`${epicReportCtes(ctx)}
+    SELECT
+      ${epicGroupLabelSql()} AS label,
+      ${epicGroupHandleSql()} AS handle,
+      count(*)::text AS value,
+      CASE WHEN mapping.available = true AND mapping.epic_id IS NOT NULL
+        THEN COALESCE(progress.completed, '0') ELSE NULL END AS completed,
+      CASE WHEN mapping.available = true AND mapping.epic_id IS NOT NULL
+        THEN COALESCE(progress.total, '0') ELSE NULL END AS total
+    ${itemFrom(
+      ctx,
+      sql`LEFT JOIN epic_mapping mapping ON mapping.item_id = w.id
+        LEFT JOIN epic_progress progress ON progress.epic_id = mapping.epic_id`,
+    )}
+    AND w.created_at >= ${tsn(ctx.window.from)} AND w.created_at < ${tsn(ctx.window.to)}
+    GROUP BY mapping.available, mapping.epic_id, mapping.epic_key, mapping.epic_title,
+      progress.completed, progress.total
+    ORDER BY count(*) DESC, 1
+    ${pageLimit(ctx, 200)}`);
+}
+
+function epicReportRows(groups: EpicReportGroup[]): Row[] {
+  return groups.map((group) => {
+    const row: Row = { group: group.label, value: num(group.value) };
+    if (group.handle === "epic-none" || group.handle === "epic-unavailable") {
+      row.progressCompleted = null;
+      row.progressTotal = null;
+      row.progressPercent = null;
+    } else {
+      const completed = num(group.completed ?? "0");
+      const total = num(group.total ?? "0");
+      row.progressCompleted = completed;
+      row.progressTotal = total;
+      row.progressPercent = total === 0 ? null : (completed / total) * 100;
+    }
+    row._drill = group.handle;
+    return row;
+  });
+}
+
+async function epicDrillItems(
+  ctx: ReturnType<typeof buildContext>,
+  narrowed: ReturnType<typeof sql>,
+  limit: number,
+): Promise<DrillItem[]> {
+  const rows = await selectRows<{
+    key: string;
+    title: string;
+    project_key: string | null;
+    state_name: string | null;
+    priority: string | null;
+  }>(sql`${epicReportCtes(ctx)}
+    SELECT w.key, w.title, p.slug AS project_key, st.name AS state_name, w.priority
+    FROM work_item w
+    JOIN project p ON p.id = w.project_id
+    JOIN state s ON s.id = w.state_id
+    JOIN state_template st ON st.id = s.state_template_id
+    LEFT JOIN epic_mapping mapping ON mapping.item_id = w.id
+    WHERE w.workspace_id = ${ctx.workspaceId}
+      AND w.deleted_at IS NULL AND p.deleted_at IS NULL
+      AND ${ctx.reach} AND ${itemFilterSql(ctx)} AND ${narrowed}
+    ORDER BY w.created_at DESC LIMIT ${limit}`);
+  return rows.map((row) => ({
+    kind: "work_item" as const,
+    key: row.key,
+    title: row.title,
+    projectKey: row.project_key,
+    state: row.state_name,
+    priority: row.priority,
+  }));
+}
 
 /** The label and SQL grouping of one `groupBy` over the entity's aliases. */
 async function groupExpression(
@@ -169,6 +295,7 @@ export async function runCustomReport(input: {
   now?: Date;
   /** RP-10: a background export, which returns more groups than the screen. */
   exporting?: boolean;
+  exportPage?: { offset: number; limit: number };
 }): Promise<ReportEnvelope> {
   const { query } = input;
   const ctx = buildContext({
@@ -180,32 +307,47 @@ export async function runCustomReport(input: {
     ...(input.now ? { now: input.now } : {}),
     window: input.window,
     filters: cleanFilters(query.filter ?? {}),
+    ...(input.exportPage ? { exportPage: input.exportPage } : {}),
     ...(input.exporting ? { exporting: true } : {}),
   });
-  const cap = rowCap(ctx, 200);
   const timeOn =
     query.entity === "time_entry" &&
     (await workspaceFeatureEnabled(input.workspaceId, "feature.time_tracking"));
-  const { label, joins } = await groupExpression(query, input.workspaceId);
+  const epicGrouped = query.entity === "work_item" && query.groupBy === "epic";
+  const { label, joins } = epicGrouped
+    ? { label: sql`''`, joins: sql`` }
+    : await groupExpression(query, input.workspaceId);
   const summing = query.aggregate?.fn === "sum";
   const measure = summing ? sql`sum(te.minutes)` : sql`count(*)`;
   let groups: Array<{ label: string; value: string }> = [];
-  if (query.entity === "work_item") {
-    groups = await selectRows(sql`SELECT ${label} AS label, count(*) AS value
-      ${itemFrom(ctx, joins)}
-      AND w.created_at >= ${tsn(ctx.window.from)} AND w.created_at < ${tsn(ctx.window.to)}
-      GROUP BY 1 ORDER BY count(*) DESC, 1 LIMIT ${cap}`);
-  } else if (timeOn) {
-    groups = await selectRows(sql`SELECT ${label} AS label, ${measure} AS value
-      ${timeFrom(ctx, joins)}
-      AND te.date >= ${dayOf(ctx.window.from)}::date AND te.date <= ${dayOf(new Date(ctx.window.to.getTime() - 1))}::date
-      GROUP BY 1 ORDER BY ${measure} DESC, 1 LIMIT ${cap}`);
+  let rows: Row[];
+  let truncated: boolean;
+  if (epicGrouped) {
+    const epicGroups = await selectEpicGroups(ctx);
+    const page = pageRows(ctx, epicGroups, 200);
+    rows = epicReportRows(page.rows);
+    truncated = page.truncated;
+  } else {
+    if (query.entity === "work_item") {
+      groups = await selectRows(sql`SELECT ${label} AS label, count(*) AS value
+        ${itemFrom(ctx, joins)}
+        AND w.created_at >= ${tsn(ctx.window.from)} AND w.created_at < ${tsn(ctx.window.to)}
+        GROUP BY 1 ORDER BY count(*) DESC, 1 ${pageLimit(ctx, 200)}`);
+    } else if (timeOn) {
+      groups =
+        await selectRows(sql`SELECT ${label} AS label, ${measure} AS value
+        ${timeFrom(ctx, joins)}
+        AND te.date >= ${dayOf(ctx.window.from)}::date AND te.date <= ${dayOf(new Date(ctx.window.to.getTime() - 1))}::date
+        GROUP BY 1 ORDER BY ${measure} DESC, 1 ${pageLimit(ctx, 200)}`);
+    }
+    const page = pageRows(ctx, groups, 200);
+    rows = page.rows.map((row) => ({
+      group: row.label,
+      value: summing ? minutesToHours(num(row.value)) : num(row.value),
+    }));
+    truncated = page.truncated;
   }
   const timeUnits = summing;
-  const rows: Row[] = groups.map((row) => ({
-    group: row.label,
-    value: timeUnits ? minutesToHours(num(row.value)) : num(row.value),
-  }));
   const total = rows.reduce((sum, row) => sum + Number(row.value), 0);
   const unit = timeUnits ? "hours" : "count";
   const weekly = query.groupBy === "week";
@@ -231,6 +373,11 @@ export async function runCustomReport(input: {
     },
     asOf: ctx.now.toISOString(),
     boundary: "live",
+    sources: {
+      metricSnapshot: false,
+      cycleSnapshot: false,
+      liveComponents: ["selected_period"],
+    },
     snapshot: null,
     filters: ctx.filters,
     options: { chartType: input.chartType },
@@ -262,19 +409,27 @@ export async function runCustomReport(input: {
               },
             ],
           },
-    columns: [
-      { key: "group", label: query.groupBy ? "Group" : "All", kind: "text" },
-      {
-        key: "value",
-        label: timeUnits ? "Hours" : "Count",
-        kind: timeUnits ? "hours" : "number",
-      },
-    ],
+    columns: epicGrouped
+      ? epicGroupColumns()
+      : [
+          {
+            key: "group",
+            label: query.groupBy ? "Group" : "All",
+            kind: "text",
+          },
+          {
+            key: "value",
+            label: timeUnits ? "Hours" : "Count",
+            kind: timeUnits ? "hours" : "number",
+          },
+        ],
     // RP-12: a group row carries its own label as the drill handle; the same expression picks its items.
     rows: empty
       ? []
-      : rows.map((row) => ({ ...row, _drill: String(row.group) })),
-    truncated: groups.length >= cap,
+      : rows.map((row) =>
+          epicGrouped ? row : { ...row, _drill: String(row.group) },
+        ),
+    truncated,
     empty: empty
       ? {
           reason:
@@ -286,8 +441,11 @@ export async function runCustomReport(input: {
         }
       : null,
     excluded: null,
-    notes:
-      query.entity === "time_entry" && !timeOn ? ["time_tracking_off"] : [],
+    notes: epicGrouped
+      ? ["epic_progress_all_descendants"]
+      : query.entity === "time_entry" && !timeOn
+        ? ["time_tracking_off"]
+        : [],
     drill: !empty,
     costVisible: false,
   };
@@ -296,8 +454,8 @@ export async function runCustomReport(input: {
 
 /**
  * RP-12: the work items or time entries behind one group of a tier 3 report, under the same window,
- * filters and reach as the report. The handle is the group's label (the report groups by that
- * label, so two people with one name are one group and one drill). No handle lists the whole
+ * filters and reach as the report. Epic handles are opaque IDs or typed special buckets; other
+ * groups retain the label-based handle used by the current builder. No handle lists the matching
  * population. Time entries carry hours only, never a rate.
  */
 export async function drillCustomReport(input: {
@@ -321,6 +479,24 @@ export async function drillCustomReport(input: {
     window: input.window,
     filters: cleanFilters(query.filter ?? {}),
   });
+  if (query.entity === "work_item" && query.groupBy === "epic") {
+    let groupNarrowing = sql`true`;
+    if (handle !== null) {
+      const parsed = parseEpicDrillHandle(handle);
+      if (!parsed) return [];
+      groupNarrowing =
+        parsed.kind === "epic"
+          ? sql`mapping.available = true AND mapping.epic_id = ${parsed.id}`
+          : parsed.kind === "none"
+            ? sql`mapping.available = true AND mapping.epic_id IS NULL`
+            : sql`mapping.available = false`;
+    }
+    return epicDrillItems(
+      ctx,
+      sql`w.created_at >= ${tsn(ctx.window.from)} AND w.created_at < ${tsn(ctx.window.to)} AND ${groupNarrowing}`,
+      input.limit,
+    );
+  }
   const { label, joins } = await groupExpression(query, input.workspaceId);
   const narrowed =
     handle !== null && query.groupBy ? sql`${label} = ${handle}` : sql`true`;

@@ -9,7 +9,7 @@ import {
 } from "../database/schema";
 import { logTaskDesk } from "../instance/observability/runtime";
 import { evaluateStoredWorkItemSla } from "../sla-policy/evaluation";
-import { withJobLease } from "./leader-lock";
+import { assertJobExecutionOwned, withJobLease } from "./leader-lock";
 import { enqueueSlaEvent } from "./sla-escalation";
 
 const BATCH_SIZE = 100;
@@ -159,6 +159,7 @@ export async function scanSla(): Promise<SlaScanOutcome> {
           .limit(BATCH_SIZE);
         if (!candidates.length) break;
         for (const candidate of candidates) {
+          await assertJobExecutionOwned();
           cursor = candidate.id;
           outcome.scanned++;
           try {

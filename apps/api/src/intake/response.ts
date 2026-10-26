@@ -56,6 +56,16 @@ export const submissionWorkItemSchema = z.object({
 });
 
 export const staffQueueRowSchema = z.object({
+  suggestedDuplicates: z
+    .array(
+      z.object({
+        id: z.string(),
+        key: z.string(),
+        title: z.string(),
+        score: z.number(),
+      }),
+    )
+    .optional(),
   ref: z.string(),
   summary: z.string(),
   submission: staffSubmissionSchema.pick({

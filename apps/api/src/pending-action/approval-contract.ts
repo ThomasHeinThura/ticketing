@@ -1,6 +1,34 @@
 export const pendingActionApprovalContracts = [
   {
     action: "delete",
+    targetType: "identity_connection",
+    confirmationRequired: "typed_name_step_up",
+    routeKey: "DELETE /api/instance/identity-connections/{id}",
+    executor: "registered_deletion",
+  },
+  {
+    action: "mcp_destructive",
+    targetType: "approval_decision",
+    confirmationRequired: "click",
+    routeKey: "POST /api/approvals/{id}/decide",
+    executor: "mcp_approval_decision",
+  },
+  {
+    action: "mcp_destructive",
+    targetType: "import_chunk",
+    confirmationRequired: "typed_count_step_up",
+    routeKey: "POST /api/imports/{id}/records",
+    executor: "import_chunk",
+  },
+  {
+    action: "mcp_destructive",
+    targetType: "import_chunk",
+    confirmationRequired: "typed_count_step_up",
+    routeKey: "POST /api/imports/{id}/links",
+    executor: "import_chunk",
+  },
+  {
+    action: "delete",
     targetType: "attachment",
     confirmationRequired: "click",
     routeKey: "DELETE /api/attachments/{id}",
@@ -47,6 +75,13 @@ export const pendingActionApprovalContracts = [
     confirmationRequired: "typed_name_step_up",
     routeKey: "POST /api/instance/users/{id}/deactivate",
     executor: "user_deactivation",
+  },
+  {
+    action: "delete",
+    targetType: "organisation",
+    confirmationRequired: "typed_name_step_up",
+    routeKey: "DELETE /api/instance/organisations/{id}",
+    executor: "registered_deletion",
   },
   {
     action: "delete",
@@ -150,6 +185,13 @@ export const pendingActionApprovalContracts = [
   },
   {
     action: "delete",
+    targetType: "api_key",
+    confirmationRequired: "typed_name_step_up",
+    routeKey: "DELETE /api/me/api-keys/{id}",
+    executor: "registered_deletion",
+  },
+  {
+    action: "delete",
     targetType: "webhook",
     confirmationRequired: "typed_name_step_up",
     routeKey: "DELETE /api/webhooks/{id}",
@@ -231,6 +273,27 @@ export const pendingActionApprovalContracts = [
     confirmationRequired: "click",
     routeKey: "DELETE /api/projects/{projectId}/pages/{id}",
     executor: "registered_deletion",
+  },
+  {
+    action: "purge",
+    targetType: "work_item",
+    confirmationRequired: "typed_name_step_up",
+    routeKey: "POST /api/instance/purge",
+    executor: "hard_purge",
+  },
+  {
+    action: "purge",
+    targetType: "project",
+    confirmationRequired: "typed_name_step_up",
+    routeKey: "POST /api/instance/purge",
+    executor: "hard_purge",
+  },
+  {
+    action: "purge",
+    targetType: "organisation",
+    confirmationRequired: "typed_name_step_up",
+    routeKey: "POST /api/instance/purge",
+    executor: "hard_purge",
   },
 ] as const;
 

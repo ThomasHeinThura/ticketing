@@ -1,5 +1,5 @@
 /**
- * CH-2 opt-in CAB workflow template: a fresh workspace has no CAB edges; applying the template adds
+ * CH-2 existing-workspace CAB template: a pre-existing workspace has no CAB edges; applying the template adds
  * an Approved state, binds the change types to a new CAB-gated workflow and adopts Approved into the
  * named projects; other work types are untouched; it is refused while a project without the
  * Approved state would be left with stranded change items; a second apply is idempotent; and only
@@ -131,7 +131,7 @@ async function world() {
 }
 
 describe("the CAB workflow template (CH-2)", () => {
-  it("is not applied to a fresh workspace: no CAB edges, status says so", async () => {
+  it("does not retrofit an existing workspace: no CAB edges until explicit apply", async () => {
     const t = await world();
     const { edges } = await t.changeTypeEdges();
     expect(edges.some((edge) => edge.requiresCab)).toBe(false);

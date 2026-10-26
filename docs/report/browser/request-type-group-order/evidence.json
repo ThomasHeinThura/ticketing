@@ -1,0 +1,91 @@
+{
+	"scope": "RT-9 independently editable request-type group ordering only; not phase acceptance",
+	"environment": "local SIT agent and portal hosts; existing workspace and groups",
+	"initialGroups": ["Accounts and access", "Support"],
+	"adminUi": {
+		"reorder": {
+			"method": "normal authenticated request-type settings UI",
+			"putStatus": 200,
+			"groupsAfterFreshReload": ["Support", "Accounts and access"]
+		},
+		"staleConcurrentSave": {
+			"method": "second settings tab retained the original version while first tab saved",
+			"putStatus": 409,
+			"persistedGroupsUnchanged": ["Support", "Accounts and access"]
+		},
+		"restore": {
+			"method": "normal authenticated request-type settings UI",
+			"putStatus": 200,
+			"groupsAfterFreshReload": ["Accounts and access", "Support"]
+		}
+	},
+	"portalCatalogue": {
+		"groupsAfterReorder": ["Support", "Accounts and access"],
+		"groupsAfterRestore": ["Accounts and access", "Support"]
+	},
+	"authorization": {
+		"workspaceMemberSaveControlVisible": false,
+		"portalCustomerGroupOrderGetStatus": 401,
+		"portalCustomerSaveControlVisible": false,
+		"apiIntegrationMemberPutStatus": 403
+	},
+	"visualChecks": [
+		{
+			"width": 375,
+			"theme": "light",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"screenshot": "request-type-group-order-375-light.png"
+		},
+		{
+			"width": 375,
+			"theme": "dark",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"screenshot": "request-type-group-order-375-dark.png"
+		},
+		{
+			"width": 390,
+			"theme": "light",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"screenshot": "request-type-group-order-390-light.png"
+		},
+		{
+			"width": 390,
+			"theme": "dark",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"screenshot": "request-type-group-order-390-dark.png"
+		},
+		{
+			"width": 768,
+			"theme": "light",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"screenshot": "request-type-group-order-768-light.png"
+		},
+		{
+			"width": 768,
+			"theme": "dark",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"screenshot": "request-type-group-order-768-dark.png"
+		},
+		{
+			"width": 1440,
+			"theme": "light",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"screenshot": "request-type-group-order-1440-light.png"
+		},
+		{
+			"width": 1440,
+			"theme": "dark",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"screenshot": "request-type-group-order-1440-dark.png"
+		}
+	],
+	"fixtureImpact": "Only the two existing group positions changed and were restored. Request-type fields, customer catalogue mappings, and the AT9 fixture were untouched. Workspace ws-taskdesk-sit / project HELP was handed back to P1 after restore."
+}

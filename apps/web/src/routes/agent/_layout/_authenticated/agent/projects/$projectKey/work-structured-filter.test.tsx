@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -20,6 +21,7 @@ const state = vi.hoisted(() => ({
   controlsProps: undefined as Record<string, unknown> | undefined,
   storedColumns: undefined as string[] | undefined,
   setColumns: vi.fn(),
+  getCustomFields: vi.fn(),
 }));
 
 vi.mock("@/hooks/use-project-view-preference", async (importOriginal) => ({
@@ -50,6 +52,9 @@ vi.mock("@/components/work-item/work-item-selection-toggle", () => ({
 }));
 vi.mock("@/components/work-item/work-item-list-loading", () => ({
   default: () => <div data-testid="list-loading" />,
+}));
+vi.mock("@/fetchers/custom-field", () => ({
+  getCustomFields: state.getCustomFields,
 }));
 vi.mock("@/components/work-item/work-items-panel", () => ({
   default: (props: Record<string, unknown>) => {
@@ -97,7 +102,14 @@ import { Route } from "./work";
 
 async function renderRoute() {
   const Component = Route.options.component as () => React.JSX.Element;
-  const view = render(<Component />);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const view = render(
+    <QueryClientProvider client={queryClient}>
+      <Component />
+    </QueryClientProvider>,
+  );
   await screen.findByTestId(
     state.search.layout === "board" ? "board" : "panel",
   );
@@ -134,6 +146,10 @@ beforeEach(() => {
   state.navigate.mockReset();
   state.storedColumns = undefined;
   state.setColumns.mockReset();
+  state.getCustomFields.mockReset().mockResolvedValue({
+    data: [],
+    meta: { total: 0, manyFieldsWarning: false },
+  });
   vi.spyOn(Route, "useParams").mockReturnValue({ projectKey: "WLP" } as never);
   vi.spyOn(Route, "useSearch").mockImplementation(
     (() => state.search) as never,
@@ -180,6 +196,15 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
     expect(screen.getByRole("button", { name: "Filter" })).toHaveAttribute(
       "aria-expanded",
       "false",
+    );
+    expect(state.getCustomFields).not.toHaveBeenCalled();
+  });
+
+  it("loads custom-field grouping metadata only for board layout", async () => {
+    state.search = { layout: "board", sort: "key", dir: "asc" };
+    await renderRoute();
+    await waitFor(() =>
+      expect(state.getCustomFields).toHaveBeenCalledWith("ws_1"),
     );
   });
 

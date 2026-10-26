@@ -18,12 +18,15 @@ export type StepUpOperation =
   | "identity_connection_configure"
   | "impersonation_start"
   | "secrets_rotate"
+  | "organisation_restore"
   | "webhook_create"
   | "webhook_update_url"
   | "webhook_rotate_secret"
+  | "webhook_rotate_all"
   | "workspace_role_create"
   | "workspace_role_update"
   | "service_key_create"
+  | "service_key_reattest"
   | "workspace_ownership_transfer"
   | "change_freeze_override";
 
@@ -54,12 +57,15 @@ export const STEP_UP_OPERATION_ROUTES: Record<StepUpOperation, string> = {
     "PATCH /api/instance/identity-connections/{id}",
   impersonation_start: "POST /api/instance/users/{id}/impersonate",
   secrets_rotate: "POST /api/instance/plugins/rotate-secrets",
+  organisation_restore: "POST /api/instance/organisations/{id}/restore",
   webhook_create: "POST /api/webhooks",
   webhook_update_url: "PATCH /api/webhooks/{id}",
   webhook_rotate_secret: "POST /api/webhooks/{id}/rotate-secret",
+  webhook_rotate_all: "POST /api/instance/webhooks/rotate-secrets",
   workspace_role_create: "POST /api/workspace/{workspaceId}/roles",
   workspace_role_update: "PATCH /api/workspace/{workspaceId}/roles/{roleId}",
   service_key_create: "POST /api/workspaces/{id}/api-keys",
+  service_key_reattest: "POST /api/workspaces/{id}/api-keys/{keyId}/re-attest",
   workspace_ownership_transfer:
     "POST /api/workspace/{workspaceId}/transfer-ownership",
   change_freeze_override: "POST /api/work-items/{key}/change/override-freeze",

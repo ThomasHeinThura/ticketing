@@ -1,0 +1,48 @@
+{
+	"compiledApiSha256": "4eace47a2cd485d167a1a9032edf29f3900161280b1f0f8b8a792345b3cbb8cd",
+	"schemaRows": 173,
+	"records": [
+		{
+			"runtime": "performance",
+			"compiledApiHashMatches": true
+		},
+		{
+			"runtime": "sso-browser",
+			"compiledApiHashMatches": true
+		}
+	],
+	"scope": "Local copies only; browser/gates still pending",
+	"readiness": [
+		{
+			"runtime": "main",
+			"host": "ticketing.localhost",
+			"strictTlsReadiness": "200"
+		},
+		{
+			"runtime": "main",
+			"host": "portal.localhost",
+			"strictTlsReadiness": "200"
+		},
+		{
+			"runtime": "performance",
+			"host": "ticketing.localhost",
+			"strictTlsReadiness": "200"
+		},
+		{
+			"runtime": "performance",
+			"host": "portal.localhost",
+			"strictTlsReadiness": "200"
+		},
+		{
+			"runtime": "sso-browser",
+			"host": "ticketing.localhost",
+			"strictTlsReadiness": "200"
+		},
+		{
+			"runtime": "sso-browser",
+			"host": "portal.localhost",
+			"strictTlsReadiness": "200"
+		}
+	],
+	"nativeApiPid": 22966
+}

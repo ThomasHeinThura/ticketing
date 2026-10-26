@@ -3,10 +3,20 @@ import type { ClaimedNotificationDelivery } from "../database/repositories/notif
 import type { DbTransaction } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import {
+  parseNotificationCopyDescriptor,
+  renderNotificationCopyDescriptor,
+} from "../terminology/notification-copy";
+import {
+  requireTerminologyLocale,
+  resolveTermForm,
+} from "../terminology/service";
+import {
   projectAncestryFor,
   projectOwnerTeamFor,
 } from "../utils/project-ancestry";
+import { isActiveTeamNotificationRecipient } from "./automation-team-recipients";
 import { isCustomerEligibleNotificationEvent } from "./customer-event-audience";
+import { isCurrentCustomerOwnRequest } from "./customer-request-scope";
 import type { NotificationProjection } from "./outbox-drain";
 import { resolveNotificationPreference } from "./preferences";
 import {
@@ -149,6 +159,12 @@ function canonicalBinding(
     payload.workspaceId === delivery.resourceId
   )
     return { payload, projectId };
+  if (
+    delivery.resourceType === "webhook" &&
+    isSupportedNotificationResourceEvent("webhook", delivery.eventKind) &&
+    payload.webhookId === delivery.resourceId
+  )
+    return { payload, projectId };
   return null;
 }
 
@@ -194,7 +210,11 @@ export async function evaluateCurrentNotificationReachAndPreference(
     },
   });
   if (!resource) return { kind: "suppress", reason: "resource_unavailable" };
-  if (resource.projectId === null && delivery.resourceType !== "workspace")
+  if (
+    resource.projectId === null &&
+    delivery.resourceType !== "workspace" &&
+    delivery.resourceType !== "webhook"
+  )
     return { kind: "suppress", reason: "resource_unavailable" };
   if (
     resource.workspaceId !== delivery.workspaceId ||
@@ -211,10 +231,45 @@ export async function evaluateCurrentNotificationReachAndPreference(
     )
   )
     return { kind: "suppress", reason: "customer_event_not_eligible" };
+  if (
+    identity.side === "customer" &&
+    (delivery.resourceType === "work_item" ||
+      delivery.resourceType === "comment") &&
+    (!resource.workItemId ||
+      !(await isCurrentCustomerOwnRequest(tx, identity, resource.workItemId)))
+  )
+    return { kind: "suppress", reason: "customer_request_not_owned" };
+
+  if (delivery.eventKind === "automation.notification_sent") {
+    const teamId = binding.payload.teamId;
+    if (
+      identity.side !== "staff" ||
+      typeof teamId !== "string" ||
+      !(await isActiveTeamNotificationRecipient(tx, {
+        teamId,
+        workspaceId: delivery.workspaceId,
+        userId: person.userId,
+        personId: identity.personId,
+      }))
+    )
+      return { kind: "suppress", reason: "team_membership_lost" };
+  }
 
   if (delivery.resourceType === "workspace") {
     if (
       !can(identity, "workspace:read", "workspace", {
+        workspaceId: resource.workspaceId,
+      })
+    )
+      return { kind: "suppress", reason: "reach_lost" };
+  } else if (delivery.resourceType === "webhook") {
+    if (
+      identity.side !== "staff" ||
+      !resource.staffUrl ||
+      !can(identity, "workspace:read", "workspace", {
+        workspaceId: resource.workspaceId,
+      }) ||
+      !can(identity, "webhook:manage", "workspace", {
         workspaceId: resource.workspaceId,
       })
     )
@@ -247,11 +302,10 @@ export async function evaluateCurrentNotificationReachAndPreference(
       return { kind: "suppress", reason: "reach_lost" };
     // Reach and authority are separate axes (rbac.md section 2): the recipient must also
     // currently hold work_item:read, the same rule as GET /api/work-items/{key}.
-    // A customer's role is organisation-scoped, so for an approval addressed to or raised
-    // by a customer the read authority is evaluated at the organisation, not at work-item
-    // scope where no organisation grant applies.
+    // A customer's role is organisation-scoped. Check the organisation grant after the
+    // current resource-reach check, which still enforces the individual request boundary.
     const canRead =
-      delivery.resourceType === "approval" && identity.side === "customer"
+      identity.side === "customer"
         ? can(identity, "work_item:read", "organisation", {
             organisationId: resource.organisationId ?? undefined,
           })
@@ -341,17 +395,51 @@ export async function evaluateCurrentNotificationReachAndPreference(
       return { kind: "defer", until: quiet.until, reason: "quiet_hours" };
   }
 
-  if (identity.side !== "staff" || !resource.staffUrl)
-    return { kind: "destination_unresolved" };
+  const authenticatedUrl =
+    identity.side === "staff" ? resource.staffUrl : resource.portalUrl;
+  if (!authenticatedUrl) return { kind: "destination_unresolved" };
+
+  let projectionTitle = delivery.title;
+  let projectionBody = delivery.body;
+  const eventData = delivery.eventData;
+  const systemCopy =
+    eventData && typeof eventData === "object" && !Array.isArray(eventData)
+      ? parseNotificationCopyDescriptor(eventData.systemCopy)
+      : null;
+  if (systemCopy) {
+    let locale = "en-US";
+    try {
+      locale = requireTerminologyLocale(person.locale ?? "en-US");
+    } catch {
+      // Older/unrecognized account locale falls back to the shipped English default.
+    }
+    const rendered = await renderNotificationCopyDescriptor(
+      systemCopy,
+      (termKey, count) =>
+        resolveTermForm({
+          locale,
+          audience: identity.side === "staff" ? "agent" : "customer",
+          termKey,
+          count,
+          workspaceId: resource.workspaceId,
+          executor: tx,
+        }),
+    ).catch(() => null);
+    if (rendered) {
+      projectionTitle = rendered.title;
+      projectionBody = rendered.body;
+    }
+  }
 
   // The inbox projection was created for this recipient in the originating
   // transaction. Return it only after rechecking current resource visibility.
   return {
     kind: "eligible",
     projection: {
-      title: delivery.title,
-      body: delivery.body,
-      url: resource.staffUrl,
+      title: projectionTitle,
+      body: projectionBody,
+      url: authenticatedUrl,
+      audience: identity.side === "staff" ? "agent" : "customer",
     },
   };
 }

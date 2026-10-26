@@ -95,11 +95,30 @@ describe("God Mode settings, features and health routes", () => {
     expect(read.status).toBe(200);
     const first = (await read.json()) as {
       updatedAt: string;
-      settings: { notificationRetentionDays: number; timezone: string };
+      settings: {
+        notificationRetentionDays: number;
+        invitationLifetimeHours: number;
+        customerInvitationCreateWindowMinutes: number;
+        customerInvitationPerInviterLimit: number;
+        customerInvitationPerOrganisationLimit: number;
+        customerInvitationResendCooldownSeconds: number;
+        cspMode: "report_only" | "enforce";
+        timezone: string;
+        mcpWriteCeilingPerMinute: number;
+        apiKeyBurstThreshold: number;
+      };
     };
     expect(first.settings).toMatchObject({
       notificationRetentionDays: 90,
+      invitationLifetimeHours: 48,
+      customerInvitationCreateWindowMinutes: 60,
+      customerInvitationPerInviterLimit: 20,
+      customerInvitationPerOrganisationLimit: 50,
+      customerInvitationResendCooldownSeconds: 60,
+      cspMode: "report_only",
       timezone: "UTC",
+      mcpWriteCeilingPerMinute: 30,
+      apiKeyBurstThreshold: 300,
     });
 
     const bad = await request(app, "/api/instance/settings", {
@@ -110,17 +129,86 @@ describe("God Mode settings, features and health routes", () => {
       }),
     });
     expect(bad.status).toBe(400);
+    for (const cspMode of ["disabled", "report-only"]) {
+      const invalidCspMode = await request(app, "/api/instance/settings", {
+        method: "PATCH",
+        body: JSON.stringify({
+          expectedUpdatedAt: first.updatedAt,
+          changes: { cspMode },
+        }),
+      });
+      expect(invalidCspMode.status).toBe(400);
+    }
+    const invalidMcpCeiling = await request(app, "/api/instance/settings", {
+      method: "PATCH",
+      body: JSON.stringify({
+        expectedUpdatedAt: first.updatedAt,
+        changes: { mcpWriteCeilingPerMinute: 101 },
+      }),
+    });
+    expect(invalidMcpCeiling.status).toBe(400);
+    for (const apiKeyBurstThreshold of [0, 100_001]) {
+      const invalidBurst = await request(app, "/api/instance/settings", {
+        method: "PATCH",
+        body: JSON.stringify({
+          expectedUpdatedAt: first.updatedAt,
+          changes: { apiKeyBurstThreshold },
+        }),
+      });
+      expect(invalidBurst.status).toBe(400);
+    }
+    const invitationLimitCases = [
+      { invitationLifetimeHours: 0 },
+      { invitationLifetimeHours: 721 },
+      { customerInvitationCreateWindowMinutes: 0 },
+      { customerInvitationCreateWindowMinutes: 1441 },
+      { customerInvitationPerInviterLimit: 0 },
+      { customerInvitationPerInviterLimit: 10_001 },
+      { customerInvitationPerOrganisationLimit: 0 },
+      { customerInvitationPerOrganisationLimit: 10_001 },
+      { customerInvitationResendCooldownSeconds: 0 },
+      { customerInvitationResendCooldownSeconds: 86_401 },
+    ];
+    for (const changes of invitationLimitCases) {
+      const invalid = await request(app, "/api/instance/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ expectedUpdatedAt: first.updatedAt, changes }),
+      });
+      expect(invalid.status).toBe(400);
+    }
 
     const saved = await request(app, "/api/instance/settings", {
       method: "PATCH",
       body: JSON.stringify({
         expectedUpdatedAt: first.updatedAt,
-        changes: { notificationRetentionDays: 30, timezone: "Asia/Yangon" },
+        changes: {
+          notificationRetentionDays: 30,
+          invitationLifetimeHours: 72,
+          customerInvitationCreateWindowMinutes: 90,
+          customerInvitationPerInviterLimit: 25,
+          customerInvitationPerOrganisationLimit: 55,
+          customerInvitationResendCooldownSeconds: 120,
+          timezone: "Asia/Yangon",
+          mcpWriteCeilingPerMinute: 25,
+          apiKeyBurstThreshold: 450,
+          cspMode: "enforce",
+        },
       }),
     });
     expect(saved.status).toBe(200);
     expect(await saved.json()).toMatchObject({
-      settings: { notificationRetentionDays: 30, timezone: "Asia/Yangon" },
+      settings: {
+        notificationRetentionDays: 30,
+        invitationLifetimeHours: 72,
+        customerInvitationCreateWindowMinutes: 90,
+        customerInvitationPerInviterLimit: 25,
+        customerInvitationPerOrganisationLimit: 55,
+        customerInvitationResendCooldownSeconds: 120,
+        timezone: "Asia/Yangon",
+        mcpWriteCeilingPerMinute: 25,
+        apiKeyBurstThreshold: 450,
+        cspMode: "enforce",
+      },
     });
 
     const stale = await request(app, "/api/instance/settings", {
@@ -137,6 +225,35 @@ describe("God Mode settings, features and health routes", () => {
       .from(schema.instanceSettingTable)
       .where(eq(schema.instanceSettingTable.id, "singleton"));
     expect(row?.days).toBe(30);
+    const [rateSetting] = await db
+      .select({
+        ceiling: schema.instanceSettingTable.mcpWriteCeilingPerMinute,
+        burst: schema.instanceSettingTable.apiKeyBurstThreshold,
+      })
+      .from(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    expect(rateSetting?.ceiling).toBe(25);
+    expect(rateSetting?.burst).toBe(450);
+    const [invitationSettings] = await db
+      .select({
+        lifetime: schema.instanceSettingTable.invitationLifetimeHours,
+        window:
+          schema.instanceSettingTable.customerInvitationCreateWindowMinutes,
+        inviter: schema.instanceSettingTable.customerInvitationPerInviterLimit,
+        organisation:
+          schema.instanceSettingTable.customerInvitationPerOrganisationLimit,
+        cooldown:
+          schema.instanceSettingTable.customerInvitationResendCooldownSeconds,
+      })
+      .from(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    expect(invitationSettings).toEqual({
+      lifetime: 72,
+      window: 90,
+      inviter: 25,
+      organisation: 55,
+      cooldown: 120,
+    });
   });
 
   it("a locked instance flag answers 409 feature_locked to a workspace administrator", async () => {

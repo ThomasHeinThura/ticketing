@@ -25,6 +25,7 @@ const txSelectRows: unknown[][] = [];
 const mockTxExecute = vi.fn(async (..._args: unknown[]) => ({ rows: [] }));
 const mockDelete = vi.fn();
 const mockPublishEvent = vi.fn();
+const mockEnqueueOutbox = vi.fn();
 const mockTransaction = vi.fn(async (cb: (tx: unknown) => unknown) =>
   cb(createMockTxContext()),
 );
@@ -67,6 +68,11 @@ vi.mock("../../../apps/api/src/events", () => ({
 vi.mock("../../../apps/api/src/work-item/native-event", () => ({
   recordWorkItemEvent: vi.fn(),
   publishWorkItemHint: vi.fn(),
+}));
+
+// Keep the database adapter isolated while exercising real compatibility-envelope construction.
+vi.mock("../../../apps/api/src/events/outbox", () => ({
+  enqueueOutboxEvent: (...args: unknown[]) => mockEnqueueOutbox(...args),
 }));
 
 import deleteLabel from "../../../apps/api/src/label/controllers/delete-label";
@@ -219,6 +225,14 @@ describe("deleteLabel", () => {
 
       expectLabelFamilyLocks();
       expect(mockPublishEvent).toHaveBeenCalledTimes(2);
+      expect(mockEnqueueOutbox).toHaveBeenCalledTimes(2);
+      expect(mockEnqueueOutbox).toHaveBeenCalledWith(
+        expect.objectContaining({ execute: expect.any(Function) }),
+        expect.objectContaining({
+          kind: "task.label_deleted",
+          payload: expect.objectContaining({ taskId: "task-1", key: "task-1" }),
+        }),
+      );
       expect(mockPublishEvent).toHaveBeenCalledWith("task.label_deleted", {
         task: { id: "task-1", projectId: "proj-1" },
         projectId: "proj-1",

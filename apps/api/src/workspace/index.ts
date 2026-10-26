@@ -6,6 +6,7 @@ import {
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
 import {
   registeredDeletionRequestSchema,
@@ -886,7 +887,7 @@ const updateWorkspaceRoleRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Update a workspace role's permissions",
   description:
-    "Elevated: spends a one-use PA-15 step-up proof (`workspace_role_update`) sent in `X-TaskDesk-Step-Up-Token`. Replace -- never merge -- a role's capability set, and/or rename it, re-describe it or change its rank. RL-3, RL-4, RL-7 and RL-14 apply; a stale `expectedVersion` is a 409 carrying the current role; removing capabilities from your own role needs `confirmSelfEdit`. Built-in roles are cloned, not edited.",
+    "Elevated: spends a one-use PA-15 step-up proof (`workspace_role_update`) sent in `X-TaskDesk-Step-Up-Token`. Replace -- never merge -- a role's capability set, and/or rename it, re-describe it or change its rank. RL-3, RL-4, RL-7 and RL-14 apply; a stale `expectedVersion` is a 409 carrying the current role; removing capabilities from your own role needs `confirmSelfEdit`. Built-in roles are cloned, not edited. `?dryRun=true` validates the same draft and CAS without spending proof or writing, and returns affected active holders and their current canonical-reach projects/work items.",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -897,13 +898,26 @@ const updateWorkspaceRoleRoute = createRoute({
   request: {
     headers: stepUpTokenHeader,
     params: workspaceRoleParam,
+    query: z.object({ dryRun: z.enum(["true"]).optional() }),
     body: {
       required: true,
       content: { "application/json": { schema: updateWorkspaceRoleBody } },
     },
   },
   responses: {
-    200: jsonResponse("The updated role", workspaceRoleSchema),
+    200: jsonResponse(
+      "The updated role or read-only impact preview",
+      z.union([
+        workspaceRoleSchema,
+        z.object({
+          affected: z.object({
+            people: z.number().int().nonnegative(),
+            workItems: z.number().int().nonnegative(),
+            projects: z.number().int().nonnegative(),
+          }),
+        }),
+      ]),
+    ),
     400: errorResponse("Invalid body, or an unknown permission resource"),
     401: errorResponse("No credential at all"),
     403: errorResponse(
@@ -1353,6 +1367,31 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     const body = c.req.valid("json");
     try {
       const roleId = c.req.valid("param").roleId;
+      if (c.req.valid("query").dryRun === "true") {
+        const preview = await updateRole({
+          workspaceId: c.get("workspaceId"),
+          roleId,
+          name: body.name,
+          description: body.description,
+          rank: body.rank,
+          capabilities: body.capabilities,
+          permission: body.permission,
+          expectedVersion: body.expectedVersion,
+          confirmSelfEdit: body.confirmSelfEdit,
+          caller: await resolveRoleCaller(
+            c.get("workspaceId"),
+            c.get("userId"),
+            roleAuditActor(c),
+          ),
+          dryRun: true,
+        });
+        if (!("affected" in preview)) {
+          throw new Error(
+            "Role impact preview returned a role mutation result",
+          );
+        }
+        return c.json(preview, 200);
+      }
       // Elevated: the proof is bound to this role and these exact changes. `confirmSelfEdit` only
       // acknowledges a warning, so a confirmation retry spends no second proof.
       const updated = await runWithStepUp(

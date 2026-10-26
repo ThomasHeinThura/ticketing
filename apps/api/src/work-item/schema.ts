@@ -401,6 +401,16 @@ export const listWorkItemsQuery = z.object({
   // matches nothing because the route already scopes by project).
   cycle: noNulByte("cycle").max(128).optional(),
   module: noNulByte("module").max(128).optional(),
+  // WI-21: active rows are the default. Archived/deleted rows are visible only when
+  // the caller explicitly selects a lifecycle state; reach and project scope are
+  // still enforced independently by the route.
+  lifecycle: z
+    .enum(["active", "archived", "deleted"])
+    .default("active")
+    .openapi({
+      description:
+        'WI-21: defaults to "active"; select "archived" or "deleted" to reveal those rows.',
+    }),
   sort: z.enum(WORK_ITEM_SORT_FIELDS).optional(),
   dir: z.enum(WORK_ITEM_SORT_DIRECTIONS).optional(),
 });

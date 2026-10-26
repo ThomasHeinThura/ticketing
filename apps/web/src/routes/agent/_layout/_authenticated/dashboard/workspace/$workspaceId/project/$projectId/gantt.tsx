@@ -55,6 +55,7 @@ import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
 import { useScheduleProject } from "@/hooks/queries/work-item/use-schedule-project";
 import { cn } from "@/lib/cn";
 import { filterProjectTasks } from "@/lib/filter-project-tasks";
+import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import { getStatusLabel } from "@/lib/i18n/domain";
 import { parseProjectBoardSearch } from "@/lib/project-board-search";
 import {
@@ -83,7 +84,7 @@ function parseTaskDate(value: string | null) {
 }
 
 function RouteComponent() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { projectId, workspaceId } = Route.useParams();
   const search = Route.useSearch();
   const { taskId } = search;
@@ -187,7 +188,9 @@ function RouteComponent() {
       ? "assignee"
       : search.group === "module" && features.modules
         ? "module"
-        : "none";
+        : search.group === "epic"
+          ? "epic"
+          : "none";
   const modulesQuery = useQuery({
     queryKey: ["agile", "modules", project?.slug],
     queryFn: () => getModules(project?.slug as string),
@@ -482,8 +485,8 @@ function RouteComponent() {
               group={group === "none" ? "state" : group}
               groups={
                 features.modules
-                  ? (["state", "assignee", "module"] as const)
-                  : (["state", "assignee"] as const)
+                  ? (["state", "assignee", "module", "epic"] as const)
+                  : (["state", "assignee", "epic"] as const)
               }
               defaultLabel={t("tasks:group.none")}
               onGroupChange={(next) =>
@@ -694,12 +697,23 @@ function RouteComponent() {
                         >
                           {showTaskRail ? (
                             <div className="sticky left-0 z-[11] flex items-center gap-2 border-r border-border bg-muted px-2 py-1.5 sm:px-3">
-                              <h2 className="truncate text-[11px] font-medium uppercase tracking-wide text-foreground">
+                              <h2
+                                className="truncate text-[11px] font-medium uppercase tracking-wide text-foreground"
+                                title={
+                                  row.by === "epic" && !row.name
+                                    ? getDefaultAgentTerm(i18n, "epic", 1)
+                                    : undefined
+                                }
+                              >
                                 {row.name ??
                                   t(
                                     row.by === "module"
                                       ? "tasks:gantt.noModule"
-                                      : "tasks:gantt.unassigned",
+                                      : row.by === "epic"
+                                        ? row.unavailable
+                                          ? "tasks:gantt.epicUnavailable"
+                                          : "tasks:gantt.noEpic"
+                                        : "tasks:gantt.unassigned",
                                   )}
                               </h2>
                               <span className="rounded-md bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">

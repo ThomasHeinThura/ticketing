@@ -293,7 +293,7 @@ function CanonicalWorkItemHeader({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {item ? (
+          {item && !item.archivedAt ? (
             <WorkItemActions
               item={item}
               onAccessLost={onAccessLost}

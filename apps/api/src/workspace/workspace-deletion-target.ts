@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { schema } from "../database";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -81,6 +82,24 @@ export const workspaceDeletionTarget: RegisteredDeletionTarget = {
       },
       version: registeredDeletionFingerprint(workspace),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [workspace] = await tx
+      .select({ id: schema.workspaceTable.id })
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, id))
+      .limit(1);
+    return workspace
+      ? {
+          id: workspace.id,
+          workspaceId: workspace.id,
+          projectId: null,
+          organisationId: null,
+        }
+      : undefined;
   },
   execute: async (tx, { loaded, input }) => {
     const before = await captureWorkspaceDeletionAccess(tx, loaded.id);
@@ -173,6 +192,32 @@ export const workspaceRoleDeletionTarget: RegisteredDeletionTarget = {
       summary: { roleId: role.id, name: role.name },
       version: registeredDeletionFingerprint(role),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [role] = await tx
+      .select({
+        id: schema.roleTable.id,
+        workspaceId: schema.roleTable.workspaceId,
+      })
+      .from(schema.roleTable)
+      .where(
+        and(
+          eq(schema.roleTable.id, id),
+          eq(schema.roleTable.scope, "workspace"),
+        ),
+      )
+      .limit(1);
+    return role?.workspaceId
+      ? {
+          id: role.id,
+          workspaceId: role.workspaceId,
+          projectId: null,
+          organisationId: null,
+        }
+      : undefined;
   },
   assertDeletable: async (tx, loaded) => {
     // Defensive only: `owner` is never deletable.

@@ -85,6 +85,14 @@ export const READ_ROUTE_KEYS = [
  * `task-target-reach.test.ts`.
  */
 export const OTHER_COVERED_ROUTE_KEYS = [
+  // approval-authoring.test.ts covers the staff list reach guard; customer predicates remain in the handler.
+  "GET /api/work-items/{key}/approvals",
+  // attachment.test.ts exercises the one-day restore window and current reach/authority.
+  "POST /api/attachments/{id}/restore",
+  // attachment.test.ts proves the successful reachable preview and foreign-workspace denial.
+  "GET /api/attachments/{id}/preview",
+  // Dedicated recovery tests assert hidden-project 404 and missing-capability 403.
+  "POST /api/v2/work-items/{key}/restore",
   "GET /api/canned-responses",
   // Dedicated real credential/reach cases in approval authoring integration tests.
   "GET /api/work-items/{key}/approval-request-context",

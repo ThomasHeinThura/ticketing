@@ -1,0 +1,12 @@
+{
+	"method": "ordinary strict-HTTPS password sign-in followed by UI TOTP verification",
+	"signInPath": "/api/auth/sign-in/email",
+	"signInStatus": 200,
+	"twoFactorRouteObserved": true,
+	"factorPath": "/api/auth/two-factor/verify-totp",
+	"factorStatus": 200,
+	"factorSetCookiePresent": true,
+	"workspaceStatus": 200,
+	"finalPath": "/agent/triage",
+	"ownerStateMode": "0600"
+}

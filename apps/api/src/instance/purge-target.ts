@@ -20,7 +20,11 @@ import { deleteStorageObject } from "../storage";
  * "purge (`PA-12`/`PA-13`) is refused while the hold stands").
  */
 
-export const HARD_PURGE_TARGET_TYPES = ["work_item", "project"] as const;
+export const HARD_PURGE_TARGET_TYPES = [
+  "work_item",
+  "project",
+  "organisation",
+] as const;
 export type HardPurgeTargetType = (typeof HARD_PURGE_TARGET_TYPES)[number];
 export type HardPurgeTarget = {
   targetType: HardPurgeTargetType;
@@ -37,6 +41,18 @@ export type HardPurgeFacts = {
   submissions: number;
   /** Request types / versions naming a project target as `default_project_id` (RESTRICT FK). */
   requestTypeDefaults: number;
+  externalDependants?: number;
+  organisationVersion?: { operationId: string; generation: number };
+  organisationImpact?: {
+    organisations: number;
+    projects: number;
+    people: number;
+    workItems: number;
+    comments: number;
+    submissions: number;
+    attachments: number;
+    storageObjectsQueued: number;
+  };
   workItems: number;
   comments: number;
   attachments: number;
@@ -51,7 +67,8 @@ export type HardPurgeCheck =
       reason:
         | "has_child_work_items"
         | "has_submissions"
-        | "is_request_type_default";
+        | "is_request_type_default"
+        | "has_external_dependants";
     }
   | {
       status: "eligible";
@@ -64,6 +81,9 @@ export type HardPurgeCheck =
         attachments: number;
         legalHold: "none";
         retention: "soft_deleted";
+        operationId?: string;
+        generation?: number;
+        impact?: HardPurgeFacts["organisationImpact"];
       };
     };
 
@@ -82,6 +102,8 @@ export function evaluateHardPurgeTarget(
     return { status: "blocked", reason: "has_submissions" };
   if (facts.requestTypeDefaults > 0)
     return { status: "blocked", reason: "is_request_type_default" };
+  if ((facts.externalDependants ?? 0) > 0)
+    return { status: "blocked", reason: "has_external_dependants" };
   return {
     status: "eligible",
     summary: {
@@ -93,6 +115,13 @@ export function evaluateHardPurgeTarget(
       attachments: facts.attachments,
       legalHold: "none",
       retention: "soft_deleted",
+      ...(facts.organisationVersion
+        ? {
+            operationId: facts.organisationVersion.operationId,
+            generation: facts.organisationVersion.generation,
+          }
+        : {}),
+      ...(facts.organisationImpact ? { impact: facts.organisationImpact } : {}),
     },
   };
 }
@@ -122,6 +151,134 @@ export async function readHardPurgeFacts(
   executor: Executor,
   target: HardPurgeTarget,
 ): Promise<HardPurgeFacts> {
+  if (target.targetType === "organisation") {
+    const { lockOrganisationPurgeState, organisationUnderOpenLegalHold } =
+      await import("./organisation-purge");
+    const state = await lockOrganisationPurgeState(executor, target.targetId);
+    if (!state) {
+      return {
+        exists: false,
+        softDeleted: false,
+        underLegalHold: false,
+        childWorkItems: 0,
+        submissions: 0,
+        requestTypeDefaults: 0,
+        workItems: 0,
+        comments: 0,
+        attachments: 0,
+        label: null,
+      };
+    }
+    const held = await organisationUnderOpenLegalHold(
+      executor,
+      target.targetId,
+    );
+    const counts = await executor.execute<{
+      projects: string;
+      people: string;
+      work_items: string;
+      comments: string;
+      submissions: string;
+      attachments: string;
+      storage_objects_queued: string;
+      external_dependants: string;
+    }>(sql`
+      SELECT
+        (SELECT count(*) FROM project p
+          WHERE p.organisation_id = ${target.targetId})::text AS projects,
+        (SELECT count(*) FROM person pe
+          WHERE pe.organisation_id = ${target.targetId})::text AS people,
+        (SELECT count(*) FROM work_item wi JOIN project p ON p.id = wi.project_id
+          WHERE p.organisation_id = ${target.targetId})::text AS work_items,
+        (SELECT count(*) FROM comment c JOIN work_item wi ON wi.id = c.work_item_id
+          JOIN project p ON p.id = wi.project_id
+          WHERE p.organisation_id = ${target.targetId})::text AS comments,
+        (SELECT count(*) FROM submission s
+          WHERE s.organisation_id = ${target.targetId}
+             OR s.work_item_id IN (
+               SELECT wi.id FROM work_item wi JOIN project p ON p.id = wi.project_id
+               WHERE p.organisation_id = ${target.targetId}
+             ))::text AS submissions,
+        (SELECT count(*) FROM attachment a
+          WHERE a.organisation_id = ${target.targetId}
+             OR a.work_item_id IN (
+               SELECT wi.id FROM work_item wi JOIN project p ON p.id = wi.project_id
+               WHERE p.organisation_id = ${target.targetId}
+             )
+             OR a.comment_id IN (
+               SELECT c.id FROM comment c JOIN work_item wi ON wi.id = c.work_item_id
+               JOIN project p ON p.id = wi.project_id
+               WHERE p.organisation_id = ${target.targetId}
+             )
+             OR a.submission_id IN (
+               SELECT s.id FROM submission s WHERE s.organisation_id = ${target.targetId}
+             ))::text AS attachments,
+        (SELECT count(DISTINCT a.object_key) FROM attachment a
+          WHERE (a.organisation_id = ${target.targetId}
+             OR a.work_item_id IN (
+               SELECT wi.id FROM work_item wi JOIN project p ON p.id = wi.project_id
+               WHERE p.organisation_id = ${target.targetId}
+             )
+             OR a.comment_id IN (
+               SELECT c.id FROM comment c JOIN work_item wi ON wi.id = c.work_item_id
+               JOIN project p ON p.id = wi.project_id
+               WHERE p.organisation_id = ${target.targetId}
+             )
+             OR a.submission_id IN (
+               SELECT s.id FROM submission s WHERE s.organisation_id = ${target.targetId}
+             ))
+            AND NOT EXISTS (
+              SELECT 1 FROM attachment_object_gc gc WHERE gc.object_key = a.object_key
+            ))::text AS storage_objects_queued,
+        (
+          (SELECT count(*) FROM project child JOIN project parent
+            ON parent.id = child.parent_id
+            WHERE parent.organisation_id = ${target.targetId}
+              AND child.organisation_id IS DISTINCT FROM ${target.targetId})
+          + (SELECT count(*) FROM workspace w
+            WHERE w.organisation_id = ${target.targetId}
+              AND EXISTS (SELECT 1 FROM project p WHERE p.workspace_id = w.id
+                AND p.organisation_id IS DISTINCT FROM ${target.targetId}))
+          + (SELECT count(*) FROM identity_connection ic
+            JOIN workspace w ON w.id = ic.default_workspace_id
+            WHERE w.organisation_id = ${target.targetId}
+              AND ic.organisation_id IS DISTINCT FROM ${target.targetId})
+          + (SELECT count(*) FROM membership_grant mg
+            JOIN person p ON p.id = mg.granted_by_person_id
+            WHERE p.organisation_id = ${target.targetId}
+              AND mg.person_id NOT IN (SELECT id FROM person
+                WHERE organisation_id = ${target.targetId}))
+        )::text AS external_dependants
+    `);
+    const row = counts.rows[0];
+    return {
+      exists: true,
+      softDeleted: true,
+      underLegalHold: held,
+      childWorkItems: 0,
+      submissions: 0,
+      requestTypeDefaults: 0,
+      externalDependants: Number(row?.external_dependants ?? 0),
+      workItems: Number(row?.work_items ?? 0),
+      comments: Number(row?.comments ?? 0),
+      attachments: Number(row?.attachments ?? 0),
+      label: state.name,
+      organisationImpact: {
+        organisations: 1,
+        projects: Number(row?.projects ?? 0),
+        people: Number(row?.people ?? 0),
+        workItems: Number(row?.work_items ?? 0),
+        comments: Number(row?.comments ?? 0),
+        submissions: Number(row?.submissions ?? 0),
+        attachments: Number(row?.attachments ?? 0),
+        storageObjectsQueued: Number(row?.storage_objects_queued ?? 0),
+      },
+      organisationVersion: {
+        operationId: state.operationId,
+        generation: state.generation,
+      },
+    };
+  }
   const items = itemsInScope(target);
   const root =
     target.targetType === "work_item"
@@ -232,6 +389,13 @@ export type HardPurgeRecord = {
   attachments: number;
   /** Stored objects no surviving attachment shares; remove them after commit. */
   storageObjectKeys: string[];
+  organisationPurge?: {
+    projects: number;
+    workItems: number;
+    people: number;
+    attachments: number;
+    storageObjectsQueued: number;
+  };
 };
 
 export class HardPurgeRefused extends Error {
@@ -253,7 +417,57 @@ export class HardPurgeRefused extends Error {
 export async function executeHardPurge(
   tx: Executor,
   target: HardPurgeTarget,
+  expectedOrganisationVersion?: { operationId: string; generation: number },
 ): Promise<HardPurgeRecord> {
+  if (target.targetType === "organisation") {
+    const { deleteOrganisationPurgeGraph, lockOrganisationPurgeState } =
+      await import("./organisation-purge");
+    const state = await lockOrganisationPurgeState(
+      tx,
+      target.targetId,
+      expectedOrganisationVersion,
+    );
+    if (!state) throw new HardPurgeRefused({ status: "not_found" });
+    await tx.execute(sql`LOCK TABLE legal_hold IN SHARE MODE`);
+    const check = await inspectHardPurgeTarget(tx, target);
+    if (check.status !== "eligible") throw new HardPurgeRefused(check);
+    const organisationPurge = await deleteOrganisationPurgeGraph(tx, state);
+    return {
+      targetType: "organisation",
+      targetId: target.targetId,
+      label: state.name,
+      workItemIds: [],
+      comments: check.summary.comments,
+      attachments: organisationPurge.attachments,
+      storageObjectKeys: [],
+      organisationPurge,
+    };
+  }
+
+  // An org-owned project shares the lifecycle lock order used by organisation restore and
+  // purge before the project row is locked. Its organisation snapshot row is removed in the
+  // same transaction to release the RESTRICT FK.
+  if (target.targetType === "project") {
+    const ownerResult = await tx.execute<{
+      organisation_id: string | null;
+    }>(sql`
+      SELECT organisation_id FROM project WHERE id = ${target.targetId}
+    `);
+    const owner = ownerResult.rows[0];
+    if (owner?.organisation_id) {
+      const { lockOrganisationIdentityDomainBindings } = await import(
+        "./organisation-lifecycle"
+      );
+      await lockOrganisationIdentityDomainBindings(tx);
+      await tx.execute(sql`
+        SELECT id FROM organisation WHERE id = ${owner.organisation_id} FOR UPDATE
+      `);
+      await tx.execute(sql`
+        SELECT operation_id FROM organisation_deletion_snapshot
+        WHERE organisation_id = ${owner.organisation_id} FOR UPDATE
+      `);
+    }
+  }
   await tx.execute(sql`LOCK TABLE legal_hold IN SHARE MODE`);
   if (target.targetType === "work_item") {
     await tx.execute(
@@ -296,6 +510,10 @@ export async function executeHardPurge(
     if ((deleted.rowCount ?? 0) === 0) break;
   }
   if (target.targetType === "project") {
+    await tx.execute(sql`
+      DELETE FROM organisation_deletion_project_snapshot
+      WHERE project_id = ${target.targetId}
+    `);
     const project = await tx.execute(
       sql`DELETE FROM "project" WHERE "id" = ${target.targetId}`,
     );

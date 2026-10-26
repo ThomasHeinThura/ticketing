@@ -7,6 +7,7 @@ import { Route } from "./identity";
 const mocks = vi.hoisted(() => ({
   admin: true,
   read: vi.fn(),
+  visibilityRead: vi.fn(),
   navigate: vi.fn(),
   params: { id: "org-1" },
   search: {} as Record<string, string | undefined>,
@@ -48,7 +49,11 @@ vi.mock("react-i18next", async () => {
   };
 });
 vi.mock("@/fetchers/god-mode/instance-users", () => ({
-  getCurrentFactorStatus: async () => ({ enabled: false }),
+  getCurrentFactorStatus: async () => ({
+    enabled: false,
+    required: false,
+    availableMethods: ["password"],
+  }),
 }));
 vi.mock("@/fetchers/god-mode/identity-connections", async (importOriginal) => ({
   ...(await importOriginal<
@@ -59,6 +64,16 @@ vi.mock("@/fetchers/god-mode/identity-connections", async (importOriginal) => ({
   getScimAdminSettings: () => new Promise(() => {}),
   getIdentityConnectionEvents: () => new Promise(() => {}),
 }));
+vi.mock(
+  "@/fetchers/god-mode/organisation-customer-visibility",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/fetchers/god-mode/organisation-customer-visibility")
+    >()),
+    getOrganisationCustomerVisibility: (...args: unknown[]) =>
+      mocks.visibilityRead(...args),
+  }),
+);
 
 const Component = (
   Route as unknown as { options: { component: React.ComponentType } }
@@ -79,6 +94,11 @@ beforeEach(() => {
   mocks.params = { id: "org-1" };
   mocks.search = {};
   mocks.read.mockResolvedValue(customerConnection);
+  mocks.visibilityRead.mockResolvedValue({
+    organisationId: "org-1",
+    defaultCustomerVisibility: "organisation",
+    updatedAt: "2026-10-25T10:00:00.000Z",
+  });
 });
 afterEach(() => {
   cleanup();
@@ -92,6 +112,11 @@ describe("Organisation Identity tab (CP-17, IP-5)", () => {
       await screen.findByRole("tab", { name: "Connection", selected: true }),
     ).toBeInTheDocument();
     expect(mocks.read).toHaveBeenCalledWith("org-1");
+    expect(mocks.visibilityRead).toHaveBeenCalledWith("org-1");
+    expect(await screen.findByText("Request visibility")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Default visibility for new requests"),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Connection name")).toHaveValue("Acme SSO");
     // A customer connection has no workspace and no role ceiling.
     expect(screen.queryByLabelText("Default workspace ID")).toBeNull();
@@ -137,6 +162,7 @@ describe("Organisation Identity tab (CP-17, IP-5)", () => {
     renderWithQuery(<Component />);
     expect(await screen.findByText("Access denied")).toBeInTheDocument();
     expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.visibilityRead).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("Connection name")).toBeNull();
   });
 });

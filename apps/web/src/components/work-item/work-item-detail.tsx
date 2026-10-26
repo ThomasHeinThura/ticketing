@@ -15,7 +15,7 @@ import {
   useIsMobile,
 } from "@taskdesk/ui";
 import { ChevronDown, ChevronRight, Info, TriangleAlert } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TaskPageFrame } from "@/components/common/task-layout";
 import WorkItemChangeSection, {
@@ -38,6 +38,7 @@ import WorkItemApprovals from "./work-item-approvals";
 import WorkItemAttachments from "./work-item-attachments";
 import WorkItemAuditHistory from "./work-item-audit-history";
 import { WorkItemBlockedBadge } from "./work-item-blocked-badge";
+import WorkItemColumnResizeHandle from "./work-item-column-resize-handle";
 import WorkItemCustomFields from "./work-item-custom-fields";
 import WorkItemDescription from "./work-item-description";
 import WorkItemDetailLoading from "./work-item-detail-loading";
@@ -48,6 +49,11 @@ import WorkItemRelations from "./work-item-relations";
 import WorkItemSla from "./work-item-sla";
 import WorkItemTitle from "./work-item-title";
 import UnavailableField from "./work-item-unavailable-field";
+
+const MIN_PROPERTIES_WIDTH = 260;
+const MAX_PROPERTIES_WIDTH = 560;
+const MIN_DETAIL_CONTENT_WIDTH = 480;
+const DEFAULT_PROPERTIES_WIDTH = 360;
 
 export type WorkItemDetailProps = {
   item: WorkItemDetailRow | undefined;
@@ -92,6 +98,44 @@ function WorkItemDetail({
 }: WorkItemDetailProps) {
   const { t } = useTranslation();
   const isCompactPage = useIsMobile(1024);
+  const [availableLayoutWidth, setAvailableLayoutWidth] = useState(() =>
+    typeof window === "undefined" ? 1280 : window.innerWidth,
+  );
+  const [propertiesWidth, setPropertiesWidth] = useState(
+    DEFAULT_PROPERTIES_WIDTH,
+  );
+  const propertiesPanelRef = useRef<HTMLDivElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: these values swap the layout container the ref points into, so the observer must re-attach when they change.
+  useEffect(() => {
+    const panel = propertiesPanelRef.current;
+    const layout = panel?.parentElement?.parentElement;
+    const updateLayoutWidth = () => {
+      const measuredWidth = layout?.clientWidth ?? 0;
+      setAvailableLayoutWidth(
+        measuredWidth > 0 ? measuredWidth : window.innerWidth,
+      );
+    };
+    updateLayoutWidth();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateLayoutWidth);
+      return () => window.removeEventListener("resize", updateLayoutWidth);
+    }
+    const observer = new ResizeObserver(updateLayoutWidth);
+    if (layout) observer.observe(layout);
+    else window.addEventListener("resize", updateLayoutWidth);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateLayoutWidth);
+    };
+  }, [isCompactPage, item?.id, pageHeader, variant]);
+  const maxPropertiesWidth = Math.max(
+    MIN_PROPERTIES_WIDTH,
+    Math.min(
+      MAX_PROPERTIES_WIDTH,
+      availableLayoutWidth - MIN_DETAIL_CONTENT_WIDTH,
+    ),
+  );
+  const boundedPropertiesWidth = Math.min(propertiesWidth, maxPropertiesWidth);
   // TC-6: the Time section exists only where feature.time_tracking is on for the item's project.
   const timeTracking = useTimeTrackingFeatures(item?.projectId);
   // The time APIs need time_entry:create, which the built-in Viewer role lacks: no Time section
@@ -136,6 +180,7 @@ function WorkItemDetail({
 
   const description = extractDescription(item.description);
   const hasPartialFailure = item.unavailableFields.length > 0;
+  const readOnly = Boolean(item.archivedAt);
 
   const metadata = (
     <dl
@@ -186,25 +231,37 @@ function WorkItemDetail({
       hidden={[
         ...(timeTracking.time && canLogTime() ? [] : (["time"] as const)),
         ...(changeVisible ? [] : (["change"] as const)),
+        ...(readOnly ? (["approvals", "change"] as const) : []),
       ]}
     >
       {{
-        attachments: <WorkItemAttachments workItemKey={workItemKey} />,
+        attachments: (
+          <WorkItemAttachments
+            workItemKey={workItemKey}
+            workspaceId={item.workspaceId}
+            readOnly={readOnly}
+          />
+        ),
         sla: <WorkItemSla workItemKey={workItemKey} compact />,
         approvals: <WorkItemApprovals workItemKey={workItemKey} compact />,
-        time: <WorkItemTime item={item} />,
+        time: <WorkItemTime item={item} readOnly={readOnly} />,
         change: <WorkItemChangeSection workItemKey={workItemKey} />,
       }}
     </WorkItemDetailSections>
   );
   // CF-3: the custom fields that apply to this item's type; none renders nothing.
   const customFields = (
-    <WorkItemCustomFields item={item} onAccessLost={onAccessLost} />
+    <WorkItemCustomFields
+      item={item}
+      onAccessLost={onAccessLost}
+      readOnly={readOnly}
+    />
   );
   const properties = (
     <WorkItemProperties
       item={item}
       compact={variant === "pane"}
+      readOnly={readOnly}
       onAccessLost={onAccessLost}
     >
       {variant === "page" && !isCompactPage ? (
@@ -215,6 +272,39 @@ function WorkItemDetail({
         </>
       ) : null}
     </WorkItemProperties>
+  );
+  const propertiesSidebar = isCompactPage ? (
+    <div
+      className="max-h-[40vh] overflow-y-auto overscroll-contain"
+      data-testid="work-item-properties-scroll"
+    >
+      {properties}
+    </div>
+  ) : (
+    <div
+      className="flex h-full min-h-0 shrink-0"
+      data-testid="work-item-properties-panel"
+      ref={propertiesPanelRef}
+      style={{ width: boundedPropertiesWidth }}
+    >
+      <WorkItemColumnResizeHandle
+        label={t("workItems:detail.resizeProperties")}
+        currentWidth={boundedPropertiesWidth}
+        minWidth={MIN_PROPERTIES_WIDTH}
+        maxWidth={maxPropertiesWidth}
+        direction="reverse"
+        stretch
+        onPreview={setPropertiesWidth}
+        onCommit={(nextWidth) => setPropertiesWidth(nextWidth)}
+        onCancel={setPropertiesWidth}
+      />
+      <div
+        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain"
+        data-testid="work-item-properties-scroll"
+      >
+        {properties}
+      </div>
+    </div>
   );
   const main = (
     <TaskDetailContentPresentation
@@ -246,6 +336,9 @@ function WorkItemDetail({
               item.key
             )}
           </p>
+          {readOnly ? (
+            <Badge variant="secondary">{t("workItems:list.archived")}</Badge>
+          ) : null}
           <WorkItemBlockedBadge
             blockedByOpenCount={item.blockedByOpenCount}
             className="self-start"
@@ -254,12 +347,20 @@ function WorkItemDetail({
           {item.unavailableFields.includes("title") ? (
             <UnavailableField field="title" />
           ) : (
-            <WorkItemTitle item={item} onAccessLost={onAccessLost} />
+            <WorkItemTitle
+              item={item}
+              onAccessLost={onAccessLost}
+              readOnly={readOnly}
+            />
           )}
           {description.kind === "unsupported" ? (
             <Badge variant="outline">{t("workItems:detail.unavailable")}</Badge>
           ) : (
-            <WorkItemDescription item={item} onAccessLost={onAccessLost} />
+            <WorkItemDescription
+              item={item}
+              onAccessLost={onAccessLost}
+              readOnly={readOnly}
+            />
           )}
         </>
       }
@@ -274,6 +375,7 @@ function WorkItemDetail({
           itemKey={workItemKey}
           workspaceId={item.workspaceId}
           projectId={item.projectId}
+          readOnly={readOnly}
         />
       }
       supporting={
@@ -293,6 +395,7 @@ function WorkItemDetail({
             focusedComment={focusedComment}
             filter={activityFilter}
             onFilterChange={onActivityFilterChange}
+            readOnly={readOnly}
           />
           <WorkItemAuditHistory
             workItemKey={workItemKey}
@@ -337,7 +440,7 @@ function WorkItemDetail({
         <TaskPageFrame
           header={pageHeader}
           notice={pageNotice}
-          rightSidebar={properties}
+          rightSidebar={propertiesSidebar}
         >
           <div data-testid="work-item-detail" data-work-item-intake-scope="">
             {main}
@@ -352,8 +455,8 @@ function WorkItemDetail({
           <div className="order-2 min-h-0 flex-1 overflow-y-auto overscroll-contain lg:order-1">
             {main}
           </div>
-          <aside className="order-1 border-border/80 border-b bg-card lg:order-2 lg:h-full lg:overflow-y-auto lg:border-b-0 lg:border-l">
-            {properties}
+          <aside className="order-1 min-h-0 border-border/80 border-b bg-card lg:order-2 lg:h-full lg:overflow-hidden lg:border-b-0 lg:border-l">
+            {propertiesSidebar}
           </aside>
         </div>
       )}

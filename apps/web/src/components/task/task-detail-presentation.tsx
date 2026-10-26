@@ -1,6 +1,7 @@
 import { Textarea, type TextareaProps } from "@taskdesk/ui";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import "./editor-styles.css";
 
 /** Original Kaneo task content composition, shared by legacy and canonical controllers. */
 export function TaskDetailContentPresentation({

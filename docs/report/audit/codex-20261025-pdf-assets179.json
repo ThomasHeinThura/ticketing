@@ -1,0 +1,24 @@
+[
+	{
+		"path": "/assets/pdf-preview/viewer-cnL_De8a.js",
+		"tls": true,
+		"status": "HTTP/2 200 ",
+		"headers": {
+			"access-control-allow-credentials": "true",
+			"access-control-allow-origin": "null",
+			"content-type": "text/javascript; charset=utf-8",
+			"cross-origin-resource-policy": "cross-origin"
+		}
+	},
+	{
+		"path": "/assets/pdf-preview/pdf.worker-PhvoOpM7.mjs",
+		"tls": true,
+		"status": "HTTP/2 200 ",
+		"headers": {
+			"access-control-allow-credentials": "true",
+			"access-control-allow-origin": "null",
+			"content-type": "text/javascript; charset=utf-8",
+			"cross-origin-resource-policy": "cross-origin"
+		}
+	}
+]

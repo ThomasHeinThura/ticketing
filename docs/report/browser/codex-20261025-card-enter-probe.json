@@ -1,0 +1,12 @@
+{
+	"path": "/agent/projects/HELP/work",
+	"search": "?layout=board&sort=key&dir=asc&item=HELP-19",
+	"dragging": 0,
+	"dialogs": 1,
+	"writes": [],
+	"afterEscape": {
+		"search": "?layout=board&sort=key&dir=asc",
+		"dragging": 0,
+		"dialogs": 1
+	}
+}

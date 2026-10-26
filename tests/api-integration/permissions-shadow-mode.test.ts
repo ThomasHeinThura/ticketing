@@ -37,7 +37,24 @@ import {
   grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
+import { addMember } from "./helpers/reach-world";
 import { ensureCreationWorkflow } from "./helpers/workflow";
+
+const outbound = vi.hoisted(() => ({
+  sendWebhookRequest: vi.fn(async () => ({
+    statusCode: 204,
+    durationMs: 0,
+    responseBody: "",
+    error: null,
+    success: true,
+  })),
+}));
+vi.mock("../../apps/api/src/webhook/safe-http", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../../apps/api/src/webhook/safe-http")
+  >()),
+  sendWebhookRequest: outbound.sendWebhookRequest,
+}));
 
 // This file resets the complete app module graph to test the import-time shadow
 // switch. Avoid the shared createApp mock here so each fresh graph retains its
@@ -1640,18 +1657,34 @@ describe("#8 notification self-read shadow evidence", () => {
   }, async () => {
     const fresh = await createAppWithShadow("off");
     const recipient = await createWorkspaceMember();
-    const actor = await createWorkspaceMember();
+    const actor = await addMember(recipient.workspace.id, "admin");
     await backfillPersons();
-    fresh.mockUser(recipient.user);
 
     const { project, columns } = await createProjectFixture({
       workspaceId: recipient.workspace.id,
     });
     await grantProjectRole(recipient.user.id, project.id, ["work_item:read"]);
+    await grantProjectRole(actor.user.id, project.id, ["work_item:update"]);
+    const actorLegacyRoleRows = await fresh.db
+      .update(fresh.schema.workspaceRoleTable)
+      .set({ permission: JSON.stringify({ work_item: ["update"] }) })
+      .where(
+        and(
+          eq(
+            fresh.schema.workspaceRoleTable.workspaceId,
+            recipient.workspace.id,
+          ),
+          eq(fresh.schema.workspaceRoleTable.role, "admin"),
+          eq(fresh.schema.workspaceRoleTable.isSystem, true),
+        ),
+      )
+      .returning({ id: fresh.schema.workspaceRoleTable.id });
+    expect(actorLegacyRoleRows).toHaveLength(1);
     const [task] = await fresh.db
       .insert(fresh.schema.taskTable)
       .values({
         projectId: project.id,
+        userId: recipient.user.id,
         title: "Reach-gated task",
         description: "Reach-gated task",
         status: "to-do",
@@ -1676,17 +1709,18 @@ describe("#8 notification self-read shadow evidence", () => {
         webhookEnabled: false,
       });
 
-    const { publishEvent } = await import("../../apps/api/src/events");
-    await publishEvent("task.status_changed", {
-      taskId: task.id,
-      userId: actor.user.id,
-      assigneeId: recipient.user.id,
-      oldStatus: "to-do",
-      newStatus: "in-progress",
-      title: task.title,
-      projectId: project.id,
-      type: "status_changed",
-    });
+    fresh.mockUser(actor.user);
+    const statusResponse = await fresh.app.request(
+      `/api/task/status/${task.id}`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: "in-progress" }),
+      },
+    );
+    expect(statusResponse.status, await statusResponse.clone().text()).toBe(
+      200,
+    );
 
     const findTaskNotifications = () =>
       fresh.db
@@ -1783,14 +1817,12 @@ describe("#8 notification self-read shadow evidence", () => {
       })
       .where(eq(fresh.schema.projectTable.id, softDeletedProject.id));
 
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response(null, { status: 204 }));
+    outbound.sendWebhookRequest.mockClear();
     const { deliverNotification } = await import(
       "../../apps/api/src/notification-preferences/delivery"
     );
     await deliverNotification(softDeletedProjectNotification.id);
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(outbound.sendWebhookRequest).not.toHaveBeenCalled();
 
     // Reach is revoked at both layers: the project grant (task reach) and the workspace
     // membership (workspace-scoped preference rules and workspace delivery contexts).
@@ -1821,24 +1853,26 @@ describe("#8 notification self-read shadow evidence", () => {
         ),
       );
 
-    await publishEvent("task.status_changed", {
-      taskId: task.id,
-      userId: actor.user.id,
-      assigneeId: recipient.user.id,
-      oldStatus: "in-progress",
-      newStatus: "done",
-      title: task.title,
-      projectId: project.id,
-      type: "status_changed",
-    });
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    const revokedReachResponse = await fresh.app.request(
+      `/api/task/status/${task.id}`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: "done" }),
+      },
+    );
+    expect(
+      revokedReachResponse.status,
+      await revokedReachResponse.clone().text(),
+    ).toBe(200);
     taskNotifications = await findTaskNotifications();
     expect(taskNotifications.map((notification) => notification.id)).toEqual([
       queuedNotification.id,
     ]);
 
+    fresh.mockUser(recipient.user);
     await deliverNotification(queuedNotification.id);
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(outbound.sendWebhookRequest).not.toHaveBeenCalled();
 
     const listResponse = await fresh.app.request("/api/notification");
     expect(listResponse.status).toBe(200);

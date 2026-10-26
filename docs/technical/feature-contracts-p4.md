@@ -1114,6 +1114,7 @@ PATCH  /api/instance/organisations/{id}               instance:admin
 POST   /api/instance/organisations/{id}/suspend       instance:admin
 POST   /api/instance/organisations/{id}/unsuspend     instance:admin
 DELETE /api/instance/organisations/{id}               instance:admin  E  (pending action — typed name + step-up)
+POST   /api/instance/organisations/{id}/restore       instance:admin  E  (exact deletion operation + step-up)
 PUT    /api/instance/organisations/{id}/catalogue     instance:admin
 GET    /api/instance/organisations/{id}/identity      instance:admin      (the organisation's identity connection)
 
@@ -1330,6 +1331,8 @@ Everything that varies between *people*. Stored in `user_preference`.
   does:** SLA policy (`workspace.default_sla_policy_id`), service calendar, and the
   enabled state set. An organisation's "project defaults" in God Mode are **copied onto a
   new project at creation**, never consulted afterwards — they are a template, not a level.
+  Thomas approved 26 October: disabling a workspace state used by inheriting projects
+  is refused while affected work items still use it; show those items for resolution.
 - `ST-4` Where a project overrides an inherited setting, the interface says so: "Inherited
   from workspace (Standard Support). Override ▾". A setting showing an inherited value with
   no indication that it is inherited is how people conclude the product is ignoring them.
@@ -1353,6 +1356,13 @@ Everything that varies between *people*. Stored in `user_preference`.
   matching key in the destination are re-pointed; anything without a match is reported and
   the move is **refused** until the operator resolves it (create the missing item, or
   clear the values). No silent nulling.
+  Thomas approved 26 October: moves stay within one organisation and include the complete
+  linked parent/child project hierarchy. Preview explicit team, role and person mappings;
+  refuse unresolved mappings. Preserve IDs, data, historical SLA measurements and pinned
+  policy meaning; destination policy applies to future SLA starts.
+  Thomas approved26 October: running imports/intake must finish and source subscriptions must
+  pause before a move. Preserve their history/configuration and require explicit destination
+  rebind before subscriptions resume.
 
 <a id="settings-hierarchy-permissions"></a>
 ### Permissions
@@ -1417,7 +1427,8 @@ here for `VW-2` (layout) and `VW-6` (density).
   | `density` | `global` | null | `density` | `"comfortable"` or `"compact"` |
   | `layout.<projectId>` | `project` | the project id | `layout` | `"board"`, `"list"` or `"table"` |
   | `listGroups.<projectId>` | `project` | the project id | `listGroups` | the collapsed list group ids (state ids), a duplicate-free array of at most 50 (`VW-15`) |
-  | `columns.<projectId>` | `project` | the project id | `columns` | the table's chosen columns in display order, a non-empty duplicate-free subset of `key`, `title`, `state`, `assignee`, `priority`, `dueDate` (`VW-19`) |
+  | `columns.<projectId>` | `project` | the project id | `columns` | the table's chosen columns in display order: a non-empty, duplicate-free list of at most 100 entries, each a native ID (`key`, `title`, `state`, `assignee`, `priority`, `dueDate`) or live workspace custom-field ID `cf.<key>` (`VW-19`, `CF-10`). Resolve registrations after project reach; omit deleted registrations on read. |
+  | `columnWidths.<projectId>` | `project` | the project id | `columnWidths` | registered column IDs mapped to integer widths of 64–800 px, at most 100 entries (`VW-21`; Thomas approved 25 October 2026) |
 
   `theme` and `sidebar` are named in the Profile table above but have no specified value
   domain yet, so they are **not** whitelisted and a write of either is `422`. They are added by
@@ -1594,7 +1605,7 @@ unique key, digest values, and per-person quiet-hours fields are defined in
   (`agent` or `customer`), the recipient, `event_kind`, channel, scope and optional
   `scope_id`, and expires after 30 days. Staff
   links open `/agent/settings/profile/notifications#preference_token={token}` and customer
-  links open `/portal/account#preference_token={token}`. Opening the link never changes a
+  links open `/account#preference_token={token}`. Opening the link never changes a
   preference.
 
   The landing page reads the fragment and immediately removes it from the address bar. It
@@ -1833,7 +1844,7 @@ durable delivery children make candidate creation and provider outcomes inspecta
 - `NO-20` Notification content is customer-facing language throughout, with no internal
   terminology and no staff names.
 - `NO-21` Customers have the same preference controls as staff for the smaller set of
-  events that apply to them. In the portal, those controls live under `/portal/account`.
+  events that apply to them. In the portal, those controls live under `/account`.
 
 <a id="notifications-permissions"></a>
 ### Permissions
@@ -1901,7 +1912,7 @@ assume a `projectId` is present in the event payload.
 
 Notifications inbox at `/agent/notifications`; staff scoped preferences under
 `/agent/settings/profile/notifications` and customer global preferences under
-`/portal/account`; the email-link fragment is exchanged for a server-side handoff before
+`/account`; the email-link fragment is exchanged for a server-side handoff before
 authentication, so neither page stores the signed token; God Mode channel
 configuration at `/agent/god-mode/notifications`;
 delivery operations at `/agent/god-mode/deliveries`. Workspace and project choices are
@@ -2172,6 +2183,9 @@ automation-specific condition keys: `age` (integer minutes since `created_at` or
 | Call a webhook | Uses a configured webhook |
 | Create a linked work item | For example, a follow-up task on resolution |
 | Request an approval | |
+
+
+The team-targeted variant is `{ type: "notify", teamId, title, body }`: a same-workspace staff team, title 1–160 characters and body 1–5,000 characters, using the existing closed staff placeholder grammar. The rule’s effective role needs `work_item:read` on its triggering item. The transaction records activity/audit and `automation.notification_sent`, bound to that item; only current active staff members with current item reach receive it, through their notification preferences and delivery-time checks. Staff email preferences expose this event with email off by default and optional hourly/daily digest; eligible in-app delivery remains automatic. Expanded text uses staff-safe placeholders, removes disallowed control characters and normalizes line breaks. It does not become an automation trigger. Person/channel variants remain separate retained scope.
 
 <a id="automations-behaviour"></a>
 ### Behaviour
@@ -2881,6 +2895,16 @@ AI agent" section giving a copy-pasteable configuration block for common clients
 In God Mode (`/agent/god-mode/mcp`, backed by `GET /api/instance/mcp/usage` with
 `instance:admin`): MCP usage — which keys, how many calls, which tools, error rates.
 
+Thomas approved client-reported tool/error statistics on 25 October 2026. Label these
+separately from server-recorded API request attempts. Accept only bounded tool names,
+outcomes, duration and invocation identifiers tied to the authenticated key; store no
+arguments, prompts, results or raw errors. These reports never determine permissions,
+billing or automatic key disabling. Client reports are not authoritative execution evidence.
+The exact `POST /api/mcp/tool-reports` route accepts only its authenticated personal MCP
+key’s own diagnostics. It uses the existing self policy without granting business write
+authority; browser sessions, ordinary keys and service keys are refused. Reports consume
+the verified key’s total request quota, but never business-write or auto-disable buckets.
+
 <a id="mcp-server-edge-cases"></a>
 ### Edge cases
 
@@ -2889,7 +2913,7 @@ In God Mode (`/agent/god-mode/mcp`, backed by `GET /api/instance/mcp/usage` with
 | Agent retries after a timeout | Idempotency key returns the original result |
 | Agent requests 10,000 work items | Paginated with a hard cap; the response says how to page |
 | Agent attempts something beyond its key | Refused with a readable explanation of what is missing |
-| Agent loops creating work items | Rate limit (`min(key.rate_limit_per_minute, instance_setting.mcp_write_ceiling_per_minute)`); a burst above `instance_setting.mcp_burst_disable_threshold` disables the key, emits `api_key.auto_disabled`, and notifies the owner |
+| Agent loops creating work items | Rate limit (`min(key.rate_limit_per_minute, instance_setting.mcp_write_ceiling_per_minute)`); a burst above `instance_setting.api_key_burst_threshold` disables the key, emits `api_key.auto_disabled`, and notifies the owner |
 | Key revoked mid-session | The next call fails with a clear message |
 | Owner deactivated (SCIM `active=false`, God Mode) | Every `is_mcp` key is revoked with the sessions (`IP-15`); pending actions the key requested are `invalidated` |
 | Agent calls `delete_work_item` | `202` + `pending_action_id`; nothing is deleted until the owner approves in the UI; a `confirm` argument is ignored |

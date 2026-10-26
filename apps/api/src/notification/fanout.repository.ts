@@ -19,15 +19,29 @@ export type PreferenceRow = {
 export async function lockRecipientPerson(
   tx: DbTransaction,
   personId: string,
-): Promise<{ userId: string | null; active: boolean } | undefined> {
+): Promise<
+  | {
+      userId: string | null;
+      active: boolean;
+      side: string;
+      locale: string | null;
+    }
+  | undefined
+> {
   const person = await tx.execute(sql`
-      SELECT user_id AS "userId", active
-        FROM person
-       WHERE id = ${personId}
-       FOR SHARE
+      SELECT p.user_id AS "userId", p.active, p.side, u.locale
+        FROM person p
+        LEFT JOIN "user" u ON u.id = p.user_id
+       WHERE p.id = ${personId}
+       FOR SHARE OF p
     `);
   return person.rows[0] as
-    | { userId: string | null; active: boolean }
+    | {
+        userId: string | null;
+        active: boolean;
+        side: string;
+        locale: string | null;
+      }
     | undefined;
 }
 
@@ -42,6 +56,7 @@ export async function insertEventInboxRow(
     eventKind: string;
     title: string;
     body: string;
+    eventData: Record<string, unknown> | null;
     resourceType: string;
     resourceId: string;
   },
@@ -49,11 +64,11 @@ export async function insertEventInboxRow(
   await tx.execute(sql`
       INSERT INTO notification
         (id, user_id, person_id, event_id, kind, title, body, content,
-         resource_type, resource_id, is_read, read_at, type)
+         resource_type, resource_id, is_read, read_at, type, event_data)
       VALUES
         (${row.id}, ${row.userId}, ${row.personId}, ${row.eventId}, ${row.eventKind},
          ${row.title}, ${row.body}, ${row.body}, ${row.resourceType},
-         ${row.resourceId}, false, NULL, 'info')
+         ${row.resourceId}, false, NULL, 'info', ${row.eventData ? JSON.stringify(row.eventData) : null}::jsonb)
       ON CONFLICT (event_id, person_id) WHERE event_id IS NOT NULL DO NOTHING
     `);
 }

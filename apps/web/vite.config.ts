@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { cp } from "node:fs/promises";
 import path from "node:path";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
@@ -311,8 +312,90 @@ function portalModuleGraphMetadata(): Plugin {
   };
 }
 
+function isolatedPdfPreviewArtifacts(outputRoot: string): Plugin {
+  return {
+    name: "taskdesk:isolated-pdf-preview-artifacts",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      const chunks = Object.values(bundle).filter(
+        (item) => item.type === "chunk",
+      );
+      const entry = chunks.find(
+        (chunk) => chunk.isEntry && chunk.name === "pdfPreview",
+      );
+      if (!entry)
+        this.error(
+          "The isolated PDF preview build must contain one viewer entry.",
+        );
+
+      const chunksByFile = new Map(
+        chunks.map((chunk) => [chunk.fileName, chunk]),
+      );
+      const visited = new Set<string>();
+      const visit = (fileName: string) => {
+        if (visited.has(fileName)) return;
+        if (!fileName.startsWith("assets/pdf-preview/"))
+          this.error(
+            `PDF preview dependency escaped its static asset prefix: ${fileName}`,
+          );
+        visited.add(fileName);
+        const chunk = chunksByFile.get(fileName);
+        if (!chunk) return;
+        for (const imported of [...chunk.imports, ...chunk.dynamicImports])
+          visit(imported);
+        for (const moduleId of Object.keys(chunk.modules)) {
+          const normalized = moduleId.replaceAll("\\", "/");
+          if (
+            normalized.includes("/apps/web/src/") &&
+            !normalized.includes("/apps/web/src/pdf-preview/")
+          ) {
+            this.error(
+              "The isolated PDF viewer imported application UI source.",
+            );
+          }
+          if (
+            /(?:^|\/)node_modules\/(?:react|react-dom|@tanstack\/router|i18next)(?:\/|$)/u.test(
+              normalized,
+            )
+          ) {
+            this.error(
+              "The isolated PDF viewer imported app runtime dependencies.",
+            );
+          }
+        }
+      };
+      visit(entry.fileName);
+      if (Object.keys(bundle).some((fileName) => fileName.endsWith(".css")))
+        this.error(
+          "The isolated canvas-only PDF viewer must not emit application CSS.",
+        );
+    },
+    async writeBundle(_options, bundle) {
+      if (bundle["pdf-preview.html"]?.type !== "asset")
+        this.error(
+          "The isolated PDF build did not emit its public viewer document.",
+        );
+      const sourceHtml = path.join(outputRoot, "pdf-preview.html");
+      const sourceAssets = path.join(outputRoot, "assets/pdf-preview");
+      for (const surface of ["agent", "portal"] as const) {
+        const destination = path.resolve(__dirname, "dist", surface);
+        if (!existsSync(path.join(destination, "index.html")))
+          throw new Error(
+            `The ${surface} app must be built before copying the isolated PDF viewer.`,
+          );
+        await cp(sourceHtml, path.join(destination, "pdf-preview.html"));
+        await cp(sourceAssets, path.join(destination, "assets/pdf-preview"), {
+          recursive: true,
+          force: true,
+        });
+      }
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const isPortal = mode === "portal";
+  const isPdfPreview = mode === "pdf-preview";
   const root = isPortal ? path.resolve(__dirname, "portal") : __dirname;
   const routeTree = isPortal
     ? path.resolve(__dirname, "src/routeTree.portal.gen.ts")
@@ -323,8 +406,11 @@ export default defineConfig(({ mode }) => {
   );
   const outDir = path.resolve(
     __dirname,
-    isPortal ? "dist/portal" : "dist/agent",
+    isPdfPreview ? "dist/pdf-preview" : isPortal ? "dist/portal" : "dist/agent",
   );
+  const buildInput: Record<string, string> = isPdfPreview
+    ? { pdfPreview: path.resolve(root, "pdf-preview.html") }
+    : { index: path.resolve(root, "index.html") };
 
   return {
     root,
@@ -333,30 +419,36 @@ export default defineConfig(({ mode }) => {
     // other's optimized-dependency URLs during startup.
     cacheDir: path.resolve(
       __dirname,
-      isPortal ? "node_modules/.vite-portal" : "node_modules/.vite-agent",
+      isPdfPreview
+        ? "node_modules/.vite-pdf-preview"
+        : isPortal
+          ? "node_modules/.vite-portal"
+          : "node_modules/.vite-agent",
     ),
-    publicDir: path.resolve(__dirname, "public"),
+    publicDir: isPdfPreview ? false : path.resolve(__dirname, "public"),
     define: {
       __APP_VERSION__: JSON.stringify(packageJson.version),
     },
     base: "/",
-    plugins: [
-      tanstackRouter({
-        routesDirectory,
-        generatedRouteTree: routeTree,
-        autoCodeSplitting: true,
-        routeFileIgnorePattern: "\\.test\\.tsx?$",
-      }),
-      ...(!isPortal ? [preloadWorkRouteForDirectVisits()] : []),
-      ...(isPortal ? [portalModuleGraphMetadata()] : []),
-      i18nNamespaceGroups({
-        i18nDir: path.resolve(__dirname, "../../i18n"),
-        groupedEntry: !isPortal,
-      }),
-      tailwindcss(),
-      react(),
-      babel({ presets: [reactCompilerPreset()] }),
-    ],
+    plugins: isPdfPreview
+      ? [isolatedPdfPreviewArtifacts(outDir)]
+      : [
+          tanstackRouter({
+            routesDirectory,
+            generatedRouteTree: routeTree,
+            autoCodeSplitting: true,
+            routeFileIgnorePattern: "\\.test\\.tsx?$",
+          }),
+          ...(!isPortal ? [preloadWorkRouteForDirectVisits()] : []),
+          ...(isPortal ? [portalModuleGraphMetadata()] : []),
+          i18nNamespaceGroups({
+            i18nDir: path.resolve(__dirname, "../../i18n"),
+            groupedEntry: !isPortal,
+          }),
+          tailwindcss(),
+          react(),
+          babel({ presets: [reactCompilerPreset()] }),
+        ],
     server: {
       host: true,
       hmr: true,
@@ -384,37 +476,61 @@ export default defineConfig(({ mode }) => {
       outDir,
       emptyOutDir: true,
       manifest: true,
-      sourcemap: "hidden",
+      sourcemap: isPdfPreview ? false : "hidden",
       rolldownOptions: {
-        input: path.resolve(root, "index.html"),
+        input: buildInput,
         output: {
-          codeSplitting: {
-            groups: [
-              {
-                name: isPortal
-                  ? "portal-initial-runtime"
-                  : "agent-initial-runtime",
-                tags: ["$initial"],
-                // Keep shared bootstrap modules in the initial graph before the frame
-                // group captures its remaining static dependencies below.
-                priority: 2,
-                maxSize: 1_000_000,
-              },
-              ...(!isPortal
-                ? [
+          entryFileNames: (chunk) =>
+            isPdfPreview ||
+            chunk.name === "pdfPreview" ||
+            chunk.facadeModuleId
+              ?.replaceAll("\\", "/")
+              .endsWith("/src/pdf-preview/viewer.ts")
+              ? "assets/pdf-preview/viewer-[hash].js"
+              : isPdfPreview
+                ? "assets/pdf-preview/[name]-[hash].js"
+                : "assets/[name]-[hash].js",
+          chunkFileNames: (chunk) =>
+            isPdfPreview || chunk.name.startsWith("pdf-preview")
+              ? "assets/pdf-preview/[name]-[hash].js"
+              : "assets/[name]-[hash].js",
+          assetFileNames: (asset) =>
+            asset.name?.includes("pdf.worker")
+              ? "assets/pdf-preview/pdf.worker-[hash][extname]"
+              : isPdfPreview
+                ? "assets/pdf-preview/[name]-[hash][extname]"
+                : "assets/[name]-[hash][extname]",
+          ...(!isPdfPreview
+            ? {
+                codeSplitting: {
+                  groups: [
                     {
-                      // Dozens of small frame imports otherwise queue ahead of locale
-                      // bootstrap on a cold connection. Preserve the same module graph
-                      // and execution order while fetching that closure in one group.
-                      name: "project-layout",
-                      test: /\/src\/components\/common\/project-layout\.tsx$/u,
-                      priority: 1,
+                      name: isPortal
+                        ? "portal-initial-runtime"
+                        : "agent-initial-runtime",
+                      tags: ["$initial"],
+                      // Keep shared bootstrap modules in the initial graph before the frame
+                      // group captures its remaining static dependencies below.
+                      priority: 2,
                       maxSize: 1_000_000,
                     },
-                  ]
-                : []),
-            ],
-          },
+                    ...(!isPortal
+                      ? [
+                          {
+                            // Dozens of small frame imports otherwise queue ahead of locale
+                            // bootstrap on a cold connection. Preserve the same module graph
+                            // and execution order while fetching that closure in one group.
+                            name: "project-layout",
+                            test: /\/src\/components\/common\/project-layout\.tsx$/u,
+                            priority: 1,
+                            maxSize: 1_000_000,
+                          },
+                        ]
+                      : []),
+                  ],
+                },
+              }
+            : {}),
           strictExecutionOrder: true,
         },
       },

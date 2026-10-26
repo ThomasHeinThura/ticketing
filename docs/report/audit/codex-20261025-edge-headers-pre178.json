@@ -1,0 +1,58 @@
+{
+	"recordedAt": "2026-10-25T13:26:46.474525+00:00",
+	"scope": "Edge reload only. Application CSP pending API restart; not full browser verification.",
+	"records": [
+		{
+			"host": "ticketing.localhost",
+			"path": "/",
+			"strictTls": true,
+			"headers": {
+				"cross-origin-opener-policy": "same-origin",
+				"permissions-policy": "geolocation=(), camera=(), microphone=(), payment=()",
+				"referrer-policy": "strict-origin-when-cross-origin",
+				"strict-transport-security": "max-age=63072000",
+				"x-content-type-options": "nosniff",
+				"x-frame-options": "DENY"
+			}
+		},
+		{
+			"host": "ticketing.localhost",
+			"path": "/pdf-preview.html",
+			"strictTls": true,
+			"headers": {
+				"cross-origin-opener-policy": "same-origin",
+				"permissions-policy": "geolocation=(), camera=(), microphone=(), payment=()",
+				"referrer-policy": "strict-origin-when-cross-origin",
+				"strict-transport-security": "max-age=63072000",
+				"x-content-type-options": "nosniff",
+				"x-frame-options": "SAMEORIGIN"
+			}
+		},
+		{
+			"host": "portal.localhost",
+			"path": "/",
+			"strictTls": true,
+			"headers": {
+				"cross-origin-opener-policy": "same-origin",
+				"permissions-policy": "geolocation=(), camera=(), microphone=(), payment=()",
+				"referrer-policy": "strict-origin-when-cross-origin",
+				"strict-transport-security": "max-age=63072000",
+				"x-content-type-options": "nosniff",
+				"x-frame-options": "DENY"
+			}
+		},
+		{
+			"host": "portal.localhost",
+			"path": "/pdf-preview.html",
+			"strictTls": true,
+			"headers": {
+				"cross-origin-opener-policy": "same-origin",
+				"permissions-policy": "geolocation=(), camera=(), microphone=(), payment=()",
+				"referrer-policy": "strict-origin-when-cross-origin",
+				"strict-transport-security": "max-age=63072000",
+				"x-content-type-options": "nosniff",
+				"x-frame-options": "SAMEORIGIN"
+			}
+		}
+	]
+}

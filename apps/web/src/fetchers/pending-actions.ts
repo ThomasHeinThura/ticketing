@@ -67,6 +67,22 @@ export async function createPendingActionProof(input: {
     kind: "pending_action" as const,
     pendingActionId: input.pendingActionId,
   };
+  if (input.method === "sso_prompt_login") {
+    const popup =
+      typeof window === "undefined"
+        ? null
+        : window.open("about:blank", "_blank", "popup,width=520,height=720");
+    if (!popup) throw new Error("Fresh authentication is unavailable");
+    popup.opener = null;
+    try {
+      const { proveSsoStepUpBinding } = await import(
+        "./god-mode/sso-identity-step-up"
+      );
+      return await proveSsoStepUpBinding(binding, popup);
+    } finally {
+      if (!popup.closed) popup.close();
+    }
+  }
   const challengeResponse = await client.me["step-up"].challenges.$post({
     json: binding,
   });

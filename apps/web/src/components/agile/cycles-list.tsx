@@ -24,6 +24,7 @@ import {
   getCycles,
   type Velocity,
 } from "@/fetchers/agile";
+import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import {
   CYCLE_STATUS_VARIANT,
   formatCalendarDate,
@@ -39,7 +40,9 @@ export function VelocityText({ velocity }: { velocity: Velocity }) {
   if (velocity.status === "insufficient_data")
     return (
       <span data-testid="velocity-insufficient">
-        {t("cycles.velocity.insufficient")}
+        {velocity.reason === "late_snapshot"
+          ? t("cycles.velocity.lateSnapshot")
+          : t("cycles.velocity.insufficient")}
       </span>
     );
   return (
@@ -95,7 +98,12 @@ export function CyclesList({ projectKey }: { projectKey: string }) {
       <PageTitle title={t("cycles.pageTitle")} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-semibold text-lg">{t("cycles.title")}</h1>
+          <h1
+            className="font-semibold text-lg"
+            title={getDefaultAgentTerm(i18n, "cycle", 2)}
+          >
+            {t("cycles.title")}
+          </h1>
           <p className="text-muted-foreground text-sm">
             {t("cycles.velocity.label")}:{" "}
             <VelocityText velocity={meta.velocity} />

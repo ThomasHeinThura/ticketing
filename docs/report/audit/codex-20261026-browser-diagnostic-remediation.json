@@ -1,0 +1,11 @@
+{
+	"recordedAt": "2026-10-26T04:20:10.430652+00:00",
+	"scope": "Own QA admin browser session only",
+	"diagnosticSanitized": true,
+	"oldSessionRevoked": true,
+	"oldSavedStateRejected": true,
+	"normalUiLoginVerified": true,
+	"reportFilesWithSessionCookieAssignments": 0,
+	"diagnosticIncludedOwnTestSession": true,
+	"thisRecordIncludesCredentialsOrCookies": false
+}

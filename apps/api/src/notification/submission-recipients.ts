@@ -75,6 +75,33 @@ export async function resolveSubmissionRepliedRecipients(
         by === "staff"
           ? `There is a new message on your request ${ref}.`
           : `The customer replied on ${ref}.`,
+      ...(by === "staff"
+        ? {
+            systemCopy: {
+              version: 1 as const,
+              title: [
+                { kind: "text" as const, text: "New message on your " },
+                {
+                  kind: "term" as const,
+                  termKey: "request" as const,
+                  count: 1,
+                },
+              ],
+              body: [
+                {
+                  kind: "text" as const,
+                  text: "There is a new message on your ",
+                },
+                {
+                  kind: "term" as const,
+                  termKey: "request" as const,
+                  count: 1,
+                },
+                { kind: "text" as const, text: ` ${ref}.` },
+              ],
+            },
+          }
+        : {}),
       channels: [],
     },
   ];
@@ -120,6 +147,16 @@ async function resolveSubmissionDeclinedRecipients(
       resourceId: submission.id,
       title: `Your request ${ref} was declined`,
       body: reason.trim().slice(0, 1000),
+      systemCopy: {
+        version: 1,
+        title: [
+          { kind: "text", text: "Your " },
+          { kind: "term", termKey: "request", count: 1 },
+          { kind: "text", text: ` ${ref} was declined` },
+        ],
+        // The authored reason stays a single literal segment. It is never scanned for term tokens.
+        body: [{ kind: "text", text: reason.trim().slice(0, 1000) }],
+      },
       channels: [],
     },
   ];

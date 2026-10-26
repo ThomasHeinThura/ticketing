@@ -49,4 +49,33 @@ describe("GroupControl (VW-13)", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Assignee" }));
     expect(onGroupChange).toHaveBeenCalledWith("assignee");
   });
+
+  it("uses the registered custom-field name in both the trigger and menu", async () => {
+    const onGroupChange = vi.fn();
+    const { rerender } = render(
+      <GroupControl
+        group="state"
+        onGroupChange={onGroupChange}
+        groups={["state", "cf.customer_impact"]}
+        groupLabels={{ "cf.customer_impact": "Customer impact" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Group" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Customer impact" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Customer impact" }));
+    expect(onGroupChange).toHaveBeenCalledWith("cf.customer_impact");
+    rerender(
+      <GroupControl
+        group="cf.customer_impact"
+        onGroupChange={onGroupChange}
+        groups={["state", "cf.customer_impact"]}
+        groupLabels={{ "cf.customer_impact": "Customer impact" }}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Customer impact" }),
+    ).toBeInTheDocument();
+  });
 });

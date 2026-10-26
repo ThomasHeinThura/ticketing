@@ -52,6 +52,11 @@ export function requireAttachmentReach(
     if (!id) {
       throw new HTTPException(400, { message: "Missing attachment id" });
     }
+    if (options.allowArchivedForRead && c.req.method !== "GET") {
+      throw new HTTPException(500, {
+        message: "Archived attachment access is only valid for GET requests",
+      });
+    }
     if (id.includes("\u0000")) {
       throw new HTTPException(400, { message: "Invalid attachment id" });
     }
@@ -63,7 +68,9 @@ export function requireAttachmentReach(
     // only its project's -- same gap `require-work-item-reach.ts` closed for #276, here
     // for the attachment-reach path, which has its own local lookup rather than going
     // through that middleware.
-    const [row] = await findAttachmentWorkItemForReach(db, id);
+    const [row] = await findAttachmentWorkItemForReach(db, id, {
+      allowArchivedForRead: options.allowArchivedForRead,
+    });
 
     if (!row) {
       throw new HTTPException(404, { message: "Attachment not found" });

@@ -1,4 +1,5 @@
 import { getConfiguredAgentOrigin } from "../../../apps/api/src/auth";
+import { rebindMockAuthenticatedSession } from "./auth";
 import type { App } from "./organization-http";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -34,11 +35,18 @@ export async function csrfRequest(
     throw new Error("csrfRequest requires an agent session cookie");
   }
 
-  const issuerResponse = await app.request("/api/me/csrf-token", {
-    headers: { cookie: sessionCookie, origin },
+  const host = new URL(origin).host;
+  const issuerHeaders = new Headers({ cookie: sessionCookie, origin });
+  issuerHeaders.set("host", host);
+  rebindMockAuthenticatedSession();
+  const issuerRequest = new Request(new URL("/api/me/csrf-token", origin), {
+    headers: issuerHeaders,
   });
+  const issuerResponse = await app.request(issuerRequest);
   if (!issuerResponse.ok) {
-    throw new Error(`CSRF issuer returned ${issuerResponse.status}`);
+    throw new Error(
+      `CSRF issuer returned ${issuerResponse.status} (${issuerResponse.headers.get("content-type") ?? "no content type"})`,
+    );
   }
   const issued = (await issuerResponse.json()) as {
     token?: unknown;
@@ -69,6 +77,7 @@ export async function csrfRequest(
   );
   headers.set("x-taskdesk-csrf", issued.token);
   if (!headers.has("origin")) headers.set("origin", origin);
+  headers.set("host", host);
 
-  return app.request(input, { ...init, headers });
+  return app.request(new Request(target, { ...init, headers }));
 }

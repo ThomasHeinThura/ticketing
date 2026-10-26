@@ -1,0 +1,113 @@
+{
+	"recordedAt": "2026-10-26T04:37:29.890Z",
+	"strictTls": true,
+	"scope": "Persisted settings role/workflow impact preview; cancel without applying changes",
+	"checks": [
+		{
+			"name": "Own audit admin session",
+			"pass": true
+		},
+		{
+			"name": "Original workspace resolvable",
+			"pass": true
+		},
+		{
+			"name": "Read actual destination roles",
+			"pass": true
+		},
+		{
+			"name": "Editable non-owner role exists",
+			"pass": true
+		},
+		{
+			"name": "role preview 375 light returns200",
+			"pass": true
+		},
+		{
+			"name": "role preview 375 light has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "role preview 375 light fits page",
+			"pass": true
+		},
+		{
+			"name": "role preview 768 light returns200",
+			"pass": true
+		},
+		{
+			"name": "role preview 768 light has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "role preview 768 light fits page",
+			"pass": true
+		},
+		{
+			"name": "role preview 1440 light returns200",
+			"pass": true
+		},
+		{
+			"name": "role preview 1440 light has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "role preview 1440 light fits page",
+			"pass": true
+		},
+		{
+			"name": "role preview 375 dark returns200",
+			"pass": true
+		},
+		{
+			"name": "role preview 375 dark has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "role preview 375 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "role preview 768 dark returns200",
+			"pass": true
+		},
+		{
+			"name": "role preview 768 dark has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "role preview 768 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "role preview 1440 dark returns200",
+			"pass": true
+		},
+		{
+			"name": "role preview 1440 dark has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "role preview 1440 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "All six previews preserve persisted role and version",
+			"pass": true
+		}
+	],
+	"screenshots": [
+		"role-375-light.png",
+		"role-768-light.png",
+		"role-1440-light.png",
+		"role-375-dark.png",
+		"role-768-dark.png",
+		"role-1440-dark.png"
+	],
+	"outcome": "role_passed_workflow_pending",
+	"roleAffected": {
+		"people": 0,
+		"workItems": 0,
+		"projects": 0
+	}
+}

@@ -1,5 +1,8 @@
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { cycleTable, moduleTable } from "../database/schema-p5-agile";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -41,6 +44,28 @@ export const cycleDeletionTarget: RegisteredDeletionTarget = {
       },
       version: registeredDeletionFingerprint(cycle),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [cycle] = await tx
+      .select({
+        id: cycleTable.id,
+        workspaceId: cycleTable.workspaceId,
+        projectId: cycleTable.projectId,
+      })
+      .from(cycleTable)
+      .where(eq(cycleTable.id, id))
+      .limit(1);
+    return cycle
+      ? {
+          id: cycle.id,
+          workspaceId: cycle.workspaceId,
+          projectId: cycle.projectId,
+          organisationId: null,
+        }
+      : undefined;
   },
   assertDeletable: async (tx, loaded) => {
     if (await cycleUnderOpenHold(tx, loaded.id))
@@ -88,6 +113,28 @@ export const moduleDeletionTarget: RegisteredDeletionTarget = {
       summary: { moduleId: mod.id, name: mod.name },
       version: registeredDeletionFingerprint(mod),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [mod] = await tx
+      .select({
+        id: moduleTable.id,
+        workspaceId: moduleTable.workspaceId,
+        projectId: moduleTable.projectId,
+      })
+      .from(moduleTable)
+      .where(eq(moduleTable.id, id))
+      .limit(1);
+    return mod
+      ? {
+          id: mod.id,
+          workspaceId: mod.workspaceId,
+          projectId: mod.projectId,
+          organisationId: null,
+        }
+      : undefined;
   },
   execute: async (tx, { loaded, identity }) => {
     const mod = await lockModule(tx, loaded.id);

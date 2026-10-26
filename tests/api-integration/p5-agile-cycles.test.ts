@@ -6,9 +6,11 @@
  */
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { snapshotEndedCycles } from "../../apps/api/src/agile/cycle.repository";
 import db, { schema } from "../../apps/api/src/database";
 import {
   cycleScopeEventTable,
+  cycleSnapshotTable,
   cycleTable,
 } from "../../apps/api/src/database/schema-p5-agile";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
@@ -47,6 +49,11 @@ type Cycle = {
     total: { count: number; points: number };
     completed: { count: number };
     unestimated: { count: number; share: number };
+    snapshot?: {
+      capturedAt: string;
+      basis: "completion_action" | "date_catchup";
+      endDateSummary: "known_at_action" | "unknown";
+    };
   };
 };
 
@@ -489,6 +496,127 @@ describe("completion (CY-6) and velocity (CY-9)", () => {
       status: "ok",
       value: 4,
       cycles: 3,
+    });
+  });
+
+  it("snapshots date-completed cycles once and includes them in velocity", async () => {
+    const now = new Date();
+    const sizes = [1, 2, 3];
+    const cycles: Cycle[] = [];
+    for (const [index, size] of sizes.entries()) {
+      const endOffset = -7 - index * 14;
+      const cycle = await makeCycle(
+        `Ended by date ${index}`,
+        endOffset - 9,
+        endOffset,
+      );
+      cycles.push(cycle);
+      const items = [];
+      for (let itemIndex = 0; itemIndex < size; itemIndex++)
+        items.push(
+          (
+            await w.items.makeItem(`date-${index}-${itemIndex}`, {
+              group: "completed",
+            })
+          ).key,
+        );
+      await w.json(await addItems(cycle.id, items));
+    }
+
+    expect(await snapshotEndedCycles(now)).toMatchObject({
+      scanned: 3,
+      created: 3,
+      skipped: 0,
+      failed: 0,
+      degraded: false,
+    });
+    const snapshots = await db
+      .select()
+      .from(cycleSnapshotTable)
+      .where(eq(cycleSnapshotTable.cycleId, cycles[0]?.id ?? ""));
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]?.date).toBe(day(0));
+    expect(snapshots[0]?.summary).toMatchObject({
+      snapshot: {
+        basis: "date_catchup",
+        endDateSummary: "unknown",
+      },
+    });
+    const capturedAt = (snapshots[0]?.summary as Cycle["summary"] | undefined)
+      ?.snapshot?.capturedAt;
+    expect(capturedAt).toBeDefined();
+    expect(new Date(capturedAt ?? "invalid").toISOString().slice(0, 10)).toBe(
+      day(0),
+    );
+
+    // Removing all live scope after the job has run cannot rewrite the immutable snapshot.
+    await db
+      .update(schema.workItemTable)
+      .set({ cycleId: null })
+      .where(eq(schema.workItemTable.cycleId, cycles[0]?.id ?? ""));
+    expect(await snapshotEndedCycles(now)).toMatchObject({
+      scanned: 0,
+      created: 0,
+      skipped: 0,
+      failed: 0,
+      degraded: false,
+    });
+
+    const listed = await w.json<{
+      data: Cycle[];
+      meta: { velocity: { status: string; value?: number; cycles: number } };
+    }>(await w.call(w.manager.user, `/api/projects/${w.project.slug}/cycles`));
+    expect(
+      listed.data.find((cycle) => cycle.id === cycles[0]?.id)?.summary.total
+        .count,
+    ).toBe(1);
+    expect(
+      listed.data.filter((cycle) => cycles.some(({ id }) => id === cycle.id)),
+    ).toHaveLength(3);
+    expect(listed.meta.velocity).toMatchObject({
+      status: "insufficient_data",
+      reason: "late_snapshot",
+      cycles: 3,
+    });
+    expect(cycles.every((cycle) => cycle.completedAt === null)).toBe(true);
+  });
+
+  it("bounds daily catch-up scans and advances past already snapshotted cycles", async () => {
+    await db.insert(cycleTable).values(
+      Array.from({ length: 101 }, (_, index) => {
+        const endDate = day(-2 - index);
+        return {
+          workspaceId: w.manager.workspace.id,
+          projectId: w.project.id,
+          name: `Catch-up ${index}`,
+          startDate: endDate,
+          endDate,
+        };
+      }),
+    );
+
+    expect(await snapshotEndedCycles(new Date())).toMatchObject({
+      scanned: 100,
+      created: 100,
+      skipped: 0,
+      failed: 0,
+    });
+    expect(await snapshotEndedCycles(new Date())).toMatchObject({
+      scanned: 1,
+      created: 1,
+      skipped: 0,
+      failed: 0,
+    });
+    expect(
+      await db
+        .select({ cycleId: cycleSnapshotTable.cycleId })
+        .from(cycleSnapshotTable),
+    ).toHaveLength(101);
+    expect(await snapshotEndedCycles(new Date())).toMatchObject({
+      scanned: 0,
+      created: 0,
+      skipped: 0,
+      failed: 0,
     });
   });
 });

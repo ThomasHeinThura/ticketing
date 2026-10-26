@@ -125,6 +125,13 @@ for (const [name, path] of [
         }),
       ).toBeVisible();
     }
+    if (name === "board") {
+      await expect(page.getByTestId("work-item-board")).toBeVisible();
+      await expect(
+        page.getByText("Seeded work item 1", { exact: true }),
+      ).toBeVisible();
+      await expect(page.getByTestId("work-item-board-error")).toHaveCount(0);
+    }
     // WCAG 2.5.3: the Select trigger name contains its visible text.
     if (name === "project settings general")
       await expect(
@@ -181,6 +188,6 @@ test("board at 200% zoom has no serious or critical axe violations @a11y", async
   await page.setViewportSize({ width: 640, height: 360 });
   await mountProjectAdminApp(page);
   await page.goto(`${PROJECT_VIEW}/board`);
-  await expect(page.getByTestId("g13-board-content")).toBeVisible();
+  await expect(page.getByTestId("work-item-board")).toBeVisible();
   expect(await seriousOrCriticalViolations(page)).toEqual([]);
 });

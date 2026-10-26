@@ -160,6 +160,8 @@ type WorkspaceAccessMiddlewareConfig = {
    * (`time-entry/policy.ts`), so adding reach does not silently change who may act.
    */
   deferCapability?: boolean;
+  /** Require a live project for an explicit legacy-task mutation lookup. */
+  requireLiveProjectForTask?: true;
   /**
    * For the saved-view lookup (#740): a view scoped to a project names that project, so a
    * project-scoped view whose project the caller does not reach is answered exactly like a
@@ -172,6 +174,7 @@ type ReachOptions = {
   readonly requireProjectReach?: boolean;
   readonly deferApiKeyCapability?: boolean;
   readonly deferCapability?: boolean;
+  readonly requireLiveProjectForTask?: true;
 };
 
 type ShadowResourceAnchor = {
@@ -339,6 +342,11 @@ export function workspaceAccessMiddleware(
 ) {
   const middleware = async (c: Context, next: Next) => {
     markShadowLegacyAuthorizationUnknown(c);
+    if (config.requireLiveProjectForTask && c.req.method === "GET") {
+      throw new HTTPException(500, {
+        message: "Live work-item access is only valid for mutations",
+      });
+    }
     const service = serviceKeyOfRequest(c);
     if (service) {
       await serviceKeyWorkspaceAccess(c, config, service);
@@ -433,6 +441,9 @@ export function workspaceAccessMiddleware(
             id,
             userId,
             apiKeyId,
+            {
+              requireLiveProjectForTask: config.requireLiveProjectForTask,
+            },
           );
           if (
             !resolved &&
@@ -455,7 +466,10 @@ export function workspaceAccessMiddleware(
               anchor.id,
               userId,
               apiKeyId,
-              { observerOnly: true },
+              {
+                observerOnly: true,
+                requireLiveProjectForTask: config.requireLiveProjectForTask,
+              },
             );
             if (observerRow) {
               setShadowLegacyAuthorization(c, "denied");
@@ -781,7 +795,10 @@ async function lookupWorkspaceId(
   id: string,
   userId: string,
   apiKeyId?: string,
-  options: { readonly observerOnly?: boolean } = {},
+  options: {
+    readonly observerOnly?: boolean;
+    readonly requireLiveProjectForTask?: true;
+  } = {},
 ): Promise<WorkspaceRowScope | null> {
   const reach = (workspaceId: SQLWrapper) => {
     const nativePredicate = reachableWorkspacePredicate(
@@ -854,6 +871,9 @@ async function lookupWorkspaceId(
               eq(schema.taskTable.id, id),
               reach(schema.projectTable.workspaceId),
               isNull(schema.projectTable.deletedAt),
+              ...(options.requireLiveProjectForTask
+                ? [isNull(schema.projectTable.archivedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -915,6 +935,9 @@ async function lookupWorkspaceId(
               eq(schema.taskTimeEntryTable.id, id),
               reach(schema.projectTable.workspaceId),
               isNull(schema.projectTable.deletedAt),
+              ...(options.requireLiveProjectForTask
+                ? [isNull(schema.projectTable.archivedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -1224,6 +1247,7 @@ export const workspaceAccess = {
       requireProjectReach: options.requireProjectReach,
       deferApiKeyCapability: options.deferApiKeyCapability,
       deferCapability: options.deferCapability,
+      requireLiveProjectForTask: options.requireLiveProjectForTask,
     }),
 
   fromTaskId: (idKey = "taskId", options: ReachOptions = {}) =>
@@ -1232,6 +1256,7 @@ export const workspaceAccess = {
       requireProjectReach: options.requireProjectReach,
       deferApiKeyCapability: options.deferApiKeyCapability,
       deferCapability: options.deferCapability,
+      requireLiveProjectForTask: options.requireLiveProjectForTask,
     }),
 
   fromTasks: (idKey = "taskIds", options: ReachOptions = {}) =>
@@ -1251,6 +1276,7 @@ export const workspaceAccess = {
       requireProjectReach: options.requireProjectReach,
       deferApiKeyCapability: options.deferApiKeyCapability,
       deferCapability: options.deferCapability,
+      requireLiveProjectForTask: options.requireLiveProjectForTask,
     }),
 
   fromActivity: (idKey = "id", options: ReachOptions = {}) =>

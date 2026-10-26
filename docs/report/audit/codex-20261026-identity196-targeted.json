@@ -1,0 +1,42 @@
+{
+	"recordedAt": "2026-10-26T12:34:01.155742+00:00",
+	"sourceMigrationCount": 196,
+	"deployedMigrationCount": 196,
+	"scope": "Identity connection pending deletion, expiry, digest and UI targeted verification; not phase acceptance",
+	"checks": [
+		{
+			"name": "Deletion/expiry/digest PostgreSQL suites, including 302000-row expiry plans",
+			"testsPassed": 42,
+			"log": "identity196-verified-awake-pg.log"
+		},
+		{
+			"name": "Independent permission suite",
+			"testsPassed": 118,
+			"log": "identity196-permissions-r2.log"
+		},
+		{
+			"name": "Focused editor, approval and state-template UI suites",
+			"testsPassed": 33,
+			"log": "identity196-web-final.log"
+		},
+		{
+			"name": "Pending approval contract unit suite",
+			"testsPassed": 212,
+			"log": "identity196-contract-unit.log"
+		},
+		{
+			"name": "Transaction-only grant retry and committed follow-up safeguard",
+			"testsPassed": 9,
+			"log": "identity196-retry-safety-pg.log"
+		}
+	],
+	"apiAndWebApplicationTypesPassed": true,
+	"browserDeletionFlowPending": false,
+	"fullPhaseGatesPending": true,
+	"formalReviewRoundsUsed": 0,
+	"oneComposeDeploymentRetained": true,
+	"identityDeletionBrowserChecksPassed": 58,
+	"dangerActionLayoutChecksPassed": 20,
+	"smokeChecksPassed": 10,
+	"visualCapturesInspected": 19
+}

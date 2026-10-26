@@ -26,13 +26,16 @@ import {
   Trash2,
 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
-import { useTranslation } from "react-i18next";
 import type getProjects from "@/fetchers/project/get-projects";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import {
+  getDefaultAgentTerm,
+  useAgentTranslation,
+} from "@/lib/i18n/agent-translation";
 import { toast } from "@/lib/toast";
 
 // The closed creation form pulls in the icon catalogue and editor controls.
@@ -47,7 +50,7 @@ type ProjectRecord = NonNullable<
 >[number];
 
 export function NavProjects() {
-  const { t } = useTranslation();
+  const { t, i18n } = useAgentTranslation();
   const { isMobile } = useSidebar();
   const { data: workspace } = useActiveWorkspace();
   const { data: projects } = useGetProjects({
@@ -195,7 +198,9 @@ export function NavProjects() {
               <SidebarGroupLabel className="h-7 cursor-pointer justify-between px-0 text-sidebar-accent-foreground" />
             }
           >
-            <span>{t("navigation:sidebar.projects")}</span>
+            <span title={getDefaultAgentTerm(i18n, "project", 2)}>
+              {t("navigation:sidebar.projects")}
+            </span>
             <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground transition-transform duration-200" />
           </CollapsibleTrigger>
           <CollapsiblePanel>

@@ -29,6 +29,14 @@ export type SentCustomerInvitation = CustomerInvitation & {
 
 export type InvitableOrganisation = { id: string; key: string; name: string };
 
+export type PortalAuthMethods = {
+  password: boolean;
+  magicLink: boolean;
+  emailOtp: boolean;
+};
+
+export type CustomerInvitationContinuationResult = { accepted: boolean };
+
 async function request<T>(
   path: string,
   init: { method?: string; body?: unknown } = {},
@@ -125,4 +133,53 @@ export async function acceptCustomerInvitation(
     },
   );
   if (!response.ok) throw new HttpError(response.status, "invitation_invalid");
+}
+
+/** Enabled local providers on the customer portal; this endpoint is not invitation-specific. */
+export async function getPortalAuthMethods(): Promise<PortalAuthMethods> {
+  return request<PortalAuthMethods>(
+    "/portal/auth-methods",
+    {},
+    "Failed to load sign-in methods",
+  );
+}
+
+/** Posts the fragment credential once; the server keeps only its hash in a short-lived context. */
+export async function beginCustomerInvitationContinuation(
+  id: string,
+  credential: string,
+): Promise<void> {
+  const response = await apiFetch(
+    getApiUrl(`/portal/invitations/${encodeURIComponent(id)}/continuation`),
+    {
+      method: "POST",
+      credentials: "include",
+      body: JSON.stringify({ credential }),
+    },
+  );
+  if (!response.ok) throw new HttpError(response.status, "invitation_invalid");
+}
+
+/** Accepts the invite using the HttpOnly server continuation, never a client-submitted hash. */
+export async function acceptCustomerInvitationContinuation(
+  id: string,
+): Promise<void> {
+  const response = await apiFetch(
+    getApiUrl(
+      `/portal/invitations/${encodeURIComponent(id)}/accept-continuation`,
+    ),
+    { method: "POST", credentials: "include" },
+  );
+  if (!response.ok) throw new HttpError(response.status, "invitation_invalid");
+}
+
+/** Read-only acknowledgment when a provider callback accepted before returning its session. */
+export async function getCustomerInvitationContinuationResult(
+  id: string,
+): Promise<CustomerInvitationContinuationResult> {
+  return request<CustomerInvitationContinuationResult>(
+    `/portal/invitations/${encodeURIComponent(id)}/continuation-result`,
+    {},
+    "invitation_invalid",
+  );
 }

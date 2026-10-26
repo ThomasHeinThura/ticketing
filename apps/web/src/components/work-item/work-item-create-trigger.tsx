@@ -2,6 +2,7 @@ import { Button } from "@taskdesk/ui";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 
 export default function WorkItemCreateTrigger({
   workspaceId,
@@ -17,7 +18,7 @@ export default function WorkItemCreateTrigger({
   pending?: boolean;
   buttonRef?: Ref<HTMLButtonElement>;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission(
     workspaceId,
     projectId,
@@ -33,6 +34,7 @@ export default function WorkItemCreateTrigger({
       loading={pending}
       aria-busy={pending || undefined}
       onClick={onClick}
+      title={getDefaultAgentTerm(i18n, "work_item", 1)}
       data-testid="create-work-item-trigger"
     >
       {t("workItems:create.trigger")}

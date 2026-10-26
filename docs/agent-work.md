@@ -2,6 +2,17 @@
 
 The main agent coordinates one shared worktree. Subagents are available for bounded tasks that help finish the current visible outcome. [AGENTS.md](../AGENTS.md) applies to every agent. This file gives the delegation details; it does not add another approval cycle.
 
+## Active repair ownership — 26 October
+
+| Owner | Writable scope |
+| --- | --- |
+| Coordinator | Shared schema/migrations, API mounts/policy registry, URL/i18n registries, report data, runtime, backups and serial PostgreSQL test scheduling |
+| Organisation lane — frozen | Workspace/project settings inheritance APIs, effective SLA/calendar resolution, state-write fences and calendar usage checks; source handed back to coordinator |
+| P1 lane — frozen | Project-move planner corrections and eight passing root-run unit tests; no executor. Settings/digest source handed back to coordinator |
+| Action lane — frozen | Identity-connection retirement handler/target/tests; shared approval and UI integration remain unfinished |
+
+One PostgreSQL reset suite runs at a time on a separate disposable integration database. Thomas requires one active deployment using only `deploy/compose.testing.yml`; its restored testing copy is at migration196. Superseded native, performance, SSO and image-probe deployments stay down. The coordinator owns all builds, database operations and deployment commands. Current smoke, identity retirement and danger-action layout journeys pass; full phase journeys and reviews remain pending.
+
 ## Before starting
 
 Read the current request, `AGENTS.md`, [status](status.md) and the relevant [roadmap](roadmap.md)/requirement rows. Inspect the branch, source revision and dirty files. Identify what belongs to another session. Read archived material only for the specific product contract; archived agent instructions are historical.

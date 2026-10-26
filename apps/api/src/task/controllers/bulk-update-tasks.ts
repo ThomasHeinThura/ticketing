@@ -4,6 +4,13 @@ import db from "../../database";
 import type { Executor } from "../../database/executor";
 import type { labelTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
+import {
+  dispatchLegacyTaskNotification,
+  insertLegacyTaskActivity,
+  insertLegacyTaskNotification,
+  type LegacyTaskNotification,
+} from "../../events/legacy-task-effects";
 import { lockWorkspaceLabelNames } from "../../label/label-name-lock";
 import { assertAssignableUserAndLockMembership } from "../../utils/assert-assignable-user";
 import type { callerReach } from "../../utils/caller-reach";
@@ -111,6 +118,7 @@ async function bulkUpdateTasks({
   userId,
   workspaceId,
   reach,
+  apiKeyId,
 }: {
   identity: ResolvedIdentity;
   taskIds: string[];
@@ -119,6 +127,7 @@ async function bulkUpdateTasks({
   userId: string;
   workspaceId: string;
   reach: BulkCallerReach;
+  apiKeyId?: string | null;
 }) {
   // Fail closed (#720): without the route's reach context nothing may be touched.
   if (!reach) {
@@ -189,6 +198,7 @@ async function bulkUpdateTasks({
     let taskInScope = false;
     let itemProjectId: string | undefined;
     const itemEvents: DeferredEvent[] = [];
+    const itemNotifications: LegacyTaskNotification[] = [];
     let itemUpdatedCount = 0;
     try {
       itemUpdatedCount = await db.transaction(async (tx) => {
@@ -264,6 +274,7 @@ async function bulkUpdateTasks({
           case "updateStatus": {
             const status = value as string;
             await assertValidTaskStatus(identity, status, task.projectId, tx);
+            if (task.status === status) return 0;
             const column = await findColumnBySlugForIdentity(
               tx,
               identity,
@@ -282,6 +293,25 @@ async function bulkUpdateTasks({
             if (!updated) {
               throw new HTTPException(404, { message: "Task not found" });
             }
+            await recordLegacyTaskCompatibilityEvent(tx, {
+              kind: "task.status_changed",
+              taskId,
+              projectId: task.projectId,
+              workspaceId,
+              identity,
+              apiKeyId,
+              payload: {
+                oldStatus: task.status,
+                newStatus: status,
+                type: "status_changed",
+              },
+            });
+            await insertLegacyTaskActivity(tx, identity, {
+              taskId,
+              type: "status_changed",
+              userId,
+              eventData: { oldStatus: task.status, newStatus: status },
+            });
             itemEvents.push(() =>
               publishEvent("task.status_changed", {
                 taskId,
@@ -296,6 +326,7 @@ async function bulkUpdateTasks({
 
           case "updatePriority": {
             const priority = value as string;
+            if (task.priority === priority) return 0;
             const updated = await updateTaskRowReturningId(
               tx,
               identity,
@@ -307,6 +338,25 @@ async function bulkUpdateTasks({
             if (!updated) {
               throw new HTTPException(404, { message: "Task not found" });
             }
+            await recordLegacyTaskCompatibilityEvent(tx, {
+              kind: "task.priority_changed",
+              taskId,
+              projectId: task.projectId,
+              workspaceId,
+              identity,
+              apiKeyId,
+              payload: {
+                oldPriority: task.priority,
+                newPriority: priority,
+                type: "priority_changed",
+              },
+            });
+            await insertLegacyTaskActivity(tx, identity, {
+              taskId,
+              type: "priority_changed",
+              userId,
+              eventData: { oldPriority: task.priority, newPriority: priority },
+            });
             itemEvents.push(() =>
               publishEvent("task.priority_changed", {
                 taskId,
@@ -331,6 +381,7 @@ async function bulkUpdateTasks({
                 tx,
               );
             }
+            if (task.userId === assigneeId) return 0;
             const newAssigneeName = assigneeId
               ? (await findUserName(identity, assigneeId, task.projectId, tx))
                   ?.name
@@ -345,6 +396,47 @@ async function bulkUpdateTasks({
             );
             if (!updated) {
               throw new HTTPException(404, { message: "Task not found" });
+            }
+            const eventId = await recordLegacyTaskCompatibilityEvent(tx, {
+              kind: assigneeId ? "task.assignee_changed" : "task.unassigned",
+              taskId,
+              projectId: task.projectId,
+              workspaceId,
+              identity,
+              apiKeyId,
+              payload: {
+                oldAssigneeId: task.userId,
+                newAssigneeId: assigneeId,
+                type: assigneeId ? "assignee_changed" : "unassigned",
+              },
+            });
+            if (assigneeId) {
+              await insertLegacyTaskActivity(tx, identity, {
+                taskId,
+                type: "assignee_changed",
+                userId,
+                eventData: {
+                  newAssigneeId: assigneeId,
+                  newAssignee: newAssigneeName,
+                  isSelfAssigned: userId === assigneeId,
+                },
+              });
+              const notification = await insertLegacyTaskNotification(tx, {
+                eventId,
+                eventKind: "task.assignee_changed",
+                userId: assigneeId,
+                type: "task_assignee_changed",
+                taskId,
+                projectId: task.projectId,
+                eventData: { taskTitle: task.title },
+              });
+              if (notification) itemNotifications.push(notification);
+            } else {
+              await insertLegacyTaskActivity(tx, identity, {
+                taskId,
+                type: "unassigned",
+                userId,
+              });
             }
             const eventData = {
               taskId,
@@ -379,6 +471,15 @@ async function bulkUpdateTasks({
               throw new HTTPException(404, { message: "Task not found" });
             }
             if (result.kind === "changed") {
+              await recordLegacyTaskCompatibilityEvent(tx, {
+                kind: "task.label_assigned",
+                taskId,
+                projectId: task.projectId,
+                workspaceId,
+                identity,
+                apiKeyId,
+                payload: { type: "label_assigned" },
+              });
               itemEvents.push(() =>
                 publishEvent("task.label_assigned", {
                   projectId: task.projectId,
@@ -403,6 +504,15 @@ async function bulkUpdateTasks({
               throw new HTTPException(404, { message: "Task not found" });
             }
             if (result.kind === "changed") {
+              await recordLegacyTaskCompatibilityEvent(tx, {
+                kind: "task.label_unassigned",
+                taskId,
+                projectId: task.projectId,
+                workspaceId,
+                identity,
+                apiKeyId,
+                payload: { label: result.value, type: "label_unassigned" },
+              });
               itemEvents.push(() =>
                 publishEvent("task.label_unassigned", {
                   label: result.value,
@@ -418,6 +528,11 @@ async function bulkUpdateTasks({
           }
 
           case "updateDueDate": {
+            if (
+              (task.dueDate?.getTime() ?? null) ===
+              (parsedDate?.getTime() ?? null)
+            )
+              return 0;
             const updated = await updateTaskRowReturningId(
               tx,
               identity,
@@ -429,6 +544,28 @@ async function bulkUpdateTasks({
             if (!updated) {
               throw new HTTPException(404, { message: "Task not found" });
             }
+            await recordLegacyTaskCompatibilityEvent(tx, {
+              kind: "task.due_date_changed",
+              taskId,
+              projectId: task.projectId,
+              workspaceId,
+              identity,
+              apiKeyId,
+              payload: {
+                oldDueDate: task.dueDate?.toISOString() ?? null,
+                newDueDate: parsedDate?.toISOString() ?? null,
+                type: "due_date_changed",
+              },
+            });
+            await insertLegacyTaskActivity(tx, identity, {
+              taskId,
+              type: "due_date_changed",
+              userId,
+              eventData: {
+                oldDueDate: task.dueDate?.toISOString() ?? null,
+                newDueDate: parsedDate?.toISOString() ?? null,
+              },
+            });
             itemEvents.push(() =>
               publishEvent("task.due_date_changed", {
                 taskId,
@@ -480,6 +617,9 @@ async function bulkUpdateTasks({
     // Each transaction owns its event queue. Publish as soon as that item's
     // commit succeeds so a later item's database failure cannot suppress it.
     for (const publish of itemEvents) await publish();
+    for (const notification of itemNotifications) {
+      await dispatchLegacyTaskNotification(notification);
+    }
     if (
       operation === "updateStatus" &&
       itemProjectId &&

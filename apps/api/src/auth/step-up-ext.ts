@@ -34,6 +34,9 @@ import {
 export const IMPERSONATION_START_OPERATION = "impersonation_start" as const;
 export const IMPERSONATION_START_ROUTE =
   "POST /api/instance/users/{id}/impersonate" as const;
+export const ORGANISATION_RESTORE_OPERATION = "organisation_restore" as const;
+export const ORGANISATION_RESTORE_ROUTE =
+  "POST /api/instance/organisations/{id}/restore" as const;
 export const SECRETS_ROTATE_OPERATION = "secrets_rotate" as const;
 export const SECRETS_ROTATE_ROUTE =
   "POST /api/instance/plugins/rotate-secrets" as const;
@@ -41,6 +44,9 @@ export const WEBHOOK_CREATE_OPERATION = "webhook_create" as const;
 export const WEBHOOK_CREATE_ROUTE = "POST /api/webhooks" as const;
 export const WEBHOOK_UPDATE_URL_OPERATION = "webhook_update_url" as const;
 export const WEBHOOK_UPDATE_URL_ROUTE = "PATCH /api/webhooks/{id}" as const;
+export const WEBHOOK_ROTATE_ALL_OPERATION = "webhook_rotate_all" as const;
+export const WEBHOOK_ROTATE_ALL_ROUTE =
+  "POST /api/instance/webhooks/rotate-secrets" as const;
 export const WEBHOOK_ROTATE_SECRET_OPERATION = "webhook_rotate_secret" as const;
 export const WEBHOOK_ROTATE_SECRET_ROUTE =
   "POST /api/webhooks/{id}/rotate-secret" as const;
@@ -54,6 +60,9 @@ export const WORKSPACE_ROLE_UPDATE_ROUTE =
 export const SERVICE_KEY_CREATE_OPERATION = "service_key_create" as const;
 export const SERVICE_KEY_CREATE_ROUTE =
   "POST /api/workspaces/{id}/api-keys" as const;
+export const SERVICE_KEY_REATTEST_OPERATION = "service_key_reattest" as const;
+export const SERVICE_KEY_REATTEST_ROUTE =
+  "POST /api/workspaces/{id}/api-keys/{keyId}/re-attest" as const;
 export const WORKSPACE_OWNERSHIP_TRANSFER_OPERATION =
   "workspace_ownership_transfer" as const;
 export const WORKSPACE_OWNERSHIP_TRANSFER_ROUTE =
@@ -82,6 +91,14 @@ const shapes = {
       .max(IMPERSONATION_REASON_MAX),
   },
   [SECRETS_ROTATE_OPERATION]: {},
+  [WEBHOOK_ROTATE_ALL_OPERATION]: {
+    replacementSetDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+  },
+  [ORGANISATION_RESTORE_OPERATION]: {
+    organisationId: id,
+    expectedOperationId: id,
+    expectedGeneration: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+  },
   [WEBHOOK_CREATE_OPERATION]: {
     workspaceId: id,
     name: z.string().trim().min(1).max(120),
@@ -113,6 +130,11 @@ const shapes = {
   [SERVICE_KEY_CREATE_OPERATION]: {
     workspaceId: id,
     ...createServiceKeyBody.shape,
+  },
+  [SERVICE_KEY_REATTEST_OPERATION]: {
+    workspaceId: id,
+    keyId: id,
+    expectedVersion: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
   },
   [WORKSPACE_OWNERSHIP_TRANSFER_OPERATION]: {
     workspaceId: id,
@@ -150,6 +172,16 @@ export type ExtInput =
     }
   | { operation: typeof SECRETS_ROTATE_OPERATION }
   | {
+      operation: typeof WEBHOOK_ROTATE_ALL_OPERATION;
+      replacementSetDigest: string;
+    }
+  | {
+      operation: typeof ORGANISATION_RESTORE_OPERATION;
+      organisationId: string;
+      expectedOperationId: string;
+      expectedGeneration: number;
+    }
+  | {
       operation: typeof WEBHOOK_CREATE_OPERATION;
       workspaceId: string;
       name: string;
@@ -180,6 +212,12 @@ export type ExtInput =
       operation: typeof SERVICE_KEY_CREATE_OPERATION;
       workspaceId: string;
     } & z.infer<typeof createServiceKeyBody>)
+  | {
+      operation: typeof SERVICE_KEY_REATTEST_OPERATION;
+      workspaceId: string;
+      keyId: string;
+      expectedVersion: number;
+    }
   | {
       operation: typeof WORKSPACE_OWNERSHIP_TRANSFER_OPERATION;
       workspaceId: string;
@@ -268,6 +306,7 @@ export type ExtProveBody = ExtChallengeBody & {
 } & (
     | { method: "password"; password: string }
     | { method: "totp" | "backup_code"; code: string }
+    | { method: "sso_prompt_login" }
   );
 
 // The schemas are exported as `z.ZodType<Body>` on purpose. Each operation multiplies the
@@ -306,6 +345,20 @@ export const extProveSchemas = EXT_OPERATIONS.flatMap((operation) =>
   ),
 ) as unknown as z.ZodType<ExtProveBody>[];
 
+/** Existing operation bindings with SSO proof; no client-supplied identity data is accepted. */
+export const extSsoProveSchemas = EXT_OPERATIONS.map((operation) =>
+  z
+    .object({
+      kind: z.literal("operation"),
+      operation: z.literal(operation),
+      ...shapes[operation],
+      challengeId: z.string(),
+      nonce: z.string().length(43),
+      method: z.literal("sso_prompt_login"),
+    })
+    .strict(),
+) as unknown as z.ZodType<ExtProveBody>[];
+
 /**
  * Fixed key order, only the fields the proof authorises. A webhook secret is deliberately not
  * bound: it is write-only and supplied by the same session that holds the proof; the exfiltration
@@ -328,6 +381,21 @@ function binding(input: ExtInput): {
           {
             userId: input.targetUserId,
             reason: input.reason,
+          },
+        ),
+      };
+    case ORGANISATION_RESTORE_OPERATION:
+      return {
+        operation: input.operation,
+        route: ORGANISATION_RESTORE_ROUTE,
+        body: canonicalOperationBody(
+          input.operation,
+          ORGANISATION_RESTORE_ROUTE,
+          1,
+          {
+            organisationId: input.organisationId,
+            expectedOperationId: input.expectedOperationId,
+            expectedGeneration: input.expectedGeneration,
           },
         ),
       };
@@ -365,6 +433,19 @@ function binding(input: ExtInput): {
             workspaceId: input.workspaceId,
             webhookId: input.webhookId,
             url: input.url,
+          },
+        ),
+      };
+    case WEBHOOK_ROTATE_ALL_OPERATION:
+      return {
+        operation: input.operation,
+        route: WEBHOOK_ROTATE_ALL_ROUTE,
+        body: canonicalOperationBody(
+          input.operation,
+          WEBHOOK_ROTATE_ALL_ROUTE,
+          1,
+          {
+            replacementSetDigest: input.replacementSetDigest,
           },
         ),
       };
@@ -410,6 +491,21 @@ function binding(input: ExtInput): {
           SERVICE_KEY_CREATE_ROUTE,
           1,
           serviceKeyRequest(input),
+        ),
+      };
+    case SERVICE_KEY_REATTEST_OPERATION:
+      return {
+        operation: input.operation,
+        route: SERVICE_KEY_REATTEST_ROUTE,
+        body: canonicalOperationBody(
+          input.operation,
+          SERVICE_KEY_REATTEST_ROUTE,
+          1,
+          {
+            workspaceId: input.workspaceId,
+            keyId: input.keyId,
+            expectedVersion: input.expectedVersion,
+          },
         ),
       };
     case WORKSPACE_OWNERSHIP_TRANSFER_OPERATION:
@@ -514,6 +610,7 @@ const EXT_OPERATION_CAPABILITY = {
   [WORKSPACE_ROLE_CREATE_OPERATION]: "workspace:manage_roles",
   [WORKSPACE_ROLE_UPDATE_OPERATION]: "workspace:manage_roles",
   [SERVICE_KEY_CREATE_OPERATION]: "api_key:manage",
+  [SERVICE_KEY_REATTEST_OPERATION]: "api_key:manage",
   [WORKSPACE_OWNERSHIP_TRANSFER_OPERATION]: "workspace:transfer_ownership",
   [CHANGE_FREEZE_OVERRIDE_OPERATION]: "change:manage",
 } as const;
@@ -531,7 +628,9 @@ export async function extAuthority(
 ): Promise<boolean> {
   if (
     input.operation === IMPERSONATION_START_OPERATION ||
-    input.operation === SECRETS_ROTATE_OPERATION
+    input.operation === SECRETS_ROTATE_OPERATION ||
+    input.operation === WEBHOOK_ROTATE_ALL_OPERATION ||
+    input.operation === ORGANISATION_RESTORE_OPERATION
   )
     return isCurrentInstanceAdminForStepUp(userId, executor);
   try {

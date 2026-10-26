@@ -77,6 +77,7 @@ import {
 import {
   accountTable,
   activityTable,
+  apiKeyRateLimitCounterTable,
   apikeyTable,
   approvalTable,
   assetTable,
@@ -86,6 +87,7 @@ import {
   columnTable,
   commentTable,
   commentVersionTable,
+  customerInvitationAuthContinuationTable,
   documentLinkTable,
   externalIdentityTable,
   externalLinkTable,
@@ -103,6 +105,9 @@ import {
   notificationPreferenceHandoffTable,
   notificationTable,
   oidcGroupMappingTable,
+  organisationDeletionProjectSnapshotTable,
+  organisationDeletionSnapshotTable,
+  organisationProjectDefaultTable,
   organisationQuotaTable,
   organisationRequestTypeTable,
   organisationTable,
@@ -115,6 +120,8 @@ import {
   projectTable,
   provisioningEventTable,
   requestParticipantTable,
+  requestRateLimitCounterTable,
+  requestTypeGroupOrderTable,
   requestTypeTable,
   requestTypeVersionTable,
   roleTable,
@@ -145,6 +152,7 @@ import {
   taskTimeEntryTable,
   teamMemberTable,
   teamTable,
+  terminologyOverrideTable,
   twoFactorTable,
   userAvatarTable,
   userNotificationPreferenceTable,
@@ -170,6 +178,14 @@ import {
   workspaceTable,
   workspaceUserTable,
 } from "./schema";
+import {
+  importChunkTable,
+  importMappingProfileTable,
+  importPlaceholderClaimTable,
+  importRecordLinkTable,
+  importRunTable,
+} from "./schema-imports";
+import { withUtcDatabaseSession } from "./utc-connection-string";
 
 config();
 
@@ -199,6 +215,8 @@ export const schema = {
   auditLogTable,
   taskActivityTable,
   apikeyTable,
+  apiKeyRateLimitCounterTable,
+  requestRateLimitCounterTable,
   cannedResponseTable,
   columnTable,
   commentTable,
@@ -219,6 +237,12 @@ export const schema = {
   scimGroupMemberTable,
   scimGroupTable,
   invitationTable,
+  customerInvitationAuthContinuationTable,
+  importRunTable,
+  importMappingProfileTable,
+  importRecordLinkTable,
+  importChunkTable,
+  importPlaceholderClaimTable,
   jobLeaseTable,
   labelTable,
   workItemLabelTable,
@@ -230,6 +254,9 @@ export const schema = {
   notificationTable,
   notificationPreferenceHandoffTable,
   outboxTable,
+  organisationProjectDefaultTable,
+  organisationDeletionSnapshotTable,
+  organisationDeletionProjectSnapshotTable,
   organisationQuotaTable,
   organisationRequestTypeTable,
   organisationTable,
@@ -238,6 +265,7 @@ export const schema = {
   prerequisiteTable,
   projectSlugClaimTable,
   projectTable,
+  requestTypeGroupOrderTable,
   requestTypeTable,
   requestTypeVersionTable,
   roleTable,
@@ -272,6 +300,7 @@ export const schema = {
   workItemTable,
   workItemTypeTable,
   workspaceRoleTable,
+  terminologyOverrideTable,
   workspaceTable,
   workspaceUserTable,
   accountTableRelations,
@@ -345,7 +374,9 @@ let dbInstance: DatabaseInstance | undefined;
 export function getDatabasePool(): Pool {
   if (!pool) {
     pool = new Pool({
-      connectionString: resolveDatabaseConnectionString(),
+      connectionString: withUtcDatabaseSession(
+        resolveDatabaseConnectionString(),
+      ),
       // Fail fast when Railway's internal network is slow rather than hanging
       // indefinitely and blocking every API request.
       connectionTimeoutMillis: 5_000,
@@ -397,7 +428,9 @@ let migrationDbInstance: DatabaseInstance | undefined;
 export function getMigrationDatabasePool(): Pool {
   if (!migrationPool) {
     migrationPool = new Pool({
-      connectionString: resolveMigrationDatabaseConnectionString(),
+      connectionString: withUtcDatabaseSession(
+        resolveMigrationDatabaseConnectionString(),
+      ),
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 30_000,
       // One client retains the migration advisory lock while Drizzle's dialect

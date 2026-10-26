@@ -101,10 +101,18 @@ services:
       - traefik.http.routers.taskdesk-v2-uat-agent.entrypoints=web
       - traefik.http.routers.taskdesk-v2-uat-agent.service=taskdesk-v2-uat
       - traefik.http.routers.taskdesk-v2-uat-agent.middlewares=taskdesk-v2-uat-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
+      - traefik.http.routers.taskdesk-v2-uat-agent-pdf-preview.rule=Host(`ticket-v2-uat.${DOMAIN:?DOMAIN is required}`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-v2-uat-agent-pdf-preview.entrypoints=web
+      - traefik.http.routers.taskdesk-v2-uat-agent-pdf-preview.service=taskdesk-v2-uat
+      - traefik.http.routers.taskdesk-v2-uat-agent-pdf-preview.middlewares=taskdesk-v2-uat-pdf-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
       - traefik.http.routers.taskdesk-v2-uat-portal.rule=Host(`portal-v2-uat.${DOMAIN:?DOMAIN is required}`)
       - traefik.http.routers.taskdesk-v2-uat-portal.entrypoints=web
       - traefik.http.routers.taskdesk-v2-uat-portal.service=taskdesk-v2-uat
       - traefik.http.routers.taskdesk-v2-uat-portal.middlewares=taskdesk-v2-uat-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
+      - traefik.http.routers.taskdesk-v2-uat-portal-pdf-preview.rule=Host(`portal-v2-uat.${DOMAIN:?DOMAIN is required}`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-v2-uat-portal-pdf-preview.entrypoints=web
+      - traefik.http.routers.taskdesk-v2-uat-portal-pdf-preview.service=taskdesk-v2-uat
+      - traefik.http.routers.taskdesk-v2-uat-portal-pdf-preview.middlewares=taskdesk-v2-uat-pdf-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
       # `@docker`, not `@file`: this overlay attaches to the HOST'S EXISTING
       # Dokploy-managed Traefik (dokploy-network), which loads its own dynamic
       # file-provider config, not this repo's deploy/traefik/dynamic/middlewares.yml.
@@ -128,6 +136,16 @@ services:
       - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.customResponseHeaders.Cross-Origin-Opener-Policy=same-origin
       - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.customResponseHeaders.X-Powered-By=
       - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.customResponseHeaders.Server=
+      - traefik.http.middlewares.taskdesk-v2-uat-pdf-headers.headers.stsSeconds=63072000
+      - traefik.http.middlewares.taskdesk-v2-uat-pdf-headers.headers.stsIncludeSubdomains=false
+      - traefik.http.middlewares.taskdesk-v2-uat-pdf-headers.headers.stsPreload=false
+      - traefik.http.middlewares.taskdesk-v2-uat-pdf-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.taskdesk-v2-uat-pdf-headers.headers.customFrameOptionsValue=SAMEORIGIN
+      - traefik.http.middlewares.taskdesk-v2-uat-pdf-headers.headers.referrerPolicy=strict-origin-when-cross-origin
+      - traefik.http.middlewares.taskdesk-v2-uat-pdf-headers.headers.permissionsPolicy=geolocation=(), camera=(), microphone=(), payment=()
+      - traefik.http.middlewares.taskdesk-v2-uat-pdf-headers.headers.customResponseHeaders.Cross-Origin-Opener-Policy=same-origin
+      - traefik.http.middlewares.taskdesk-v2-uat-pdf-headers.headers.customResponseHeaders.X-Powered-By=
+      - traefik.http.middlewares.taskdesk-v2-uat-pdf-headers.headers.customResponseHeaders.Server=
       - traefik.http.middlewares.taskdesk-v2-uat-compress.compress=true
       - traefik.http.middlewares.taskdesk-v2-uat-ratelimit.ratelimit.average=100
       - traefik.http.middlewares.taskdesk-v2-uat-ratelimit.ratelimit.burst=200

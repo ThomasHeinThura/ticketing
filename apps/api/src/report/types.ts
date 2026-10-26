@@ -114,12 +114,24 @@ export type ReportContext = {
    * RP-9: whether closed days may be read from `metric_snapshot` (tests switch it off to compare with
    * a live run) and how this run read them, which the envelope states. Mutated while the report runs.
    */
-  snapshots: { enabled: boolean; use: SnapshotUse };
+  snapshots: {
+    enabled: boolean;
+    use: SnapshotUse;
+    sources: {
+      metricSnapshot: boolean;
+      cycleSnapshot: boolean;
+      liveComponents: Set<string>;
+      snapshotDayKeys: Set<string>;
+      uncoveredDayKeys: Set<string>;
+    };
+  };
   /**
    * RP-10: an export is running in the background, so a report may return more rows than the screen
    * does. Reports that cap their rows read `rowCap(ctx, n)`.
    */
   exporting: boolean;
+  /** One stable page of a queued CSV; screen/detail runs leave this unset. */
+  exportPage?: { offset: number; limit: number };
 };
 
 /** A selectable option of one report (the cycle a burndown shows, how a breach analysis groups). */
@@ -160,6 +172,8 @@ export type ReportDefinition = {
   rated?: boolean;
   /** Does not depend on the window (live, at-risk, now). */
   live?: boolean;
+  /** This definition can render every result row as bounded queued CSV pages. */
+  pagedExport?: boolean;
   /** Static options (`by`, `metric`, `days`): the first value is the default. */
   options?: Array<{ key: string; values: string[] }>;
   compute: (ctx: ReportContext) => Promise<ReportBody>;
@@ -177,7 +191,7 @@ export type ReportDefinition = {
  * A time entry carries hours only: never a rate or a cost, whoever asks (TC-11).
  */
 export type DrillItem = {
-  kind: "work_item" | "time_entry" | "article";
+  kind: "work_item" | "time_entry" | "cost_entry" | "article";
   key: string;
   title: string;
   projectKey: string | null;
@@ -191,6 +205,8 @@ export type DrillItem = {
   hours?: number | null;
   /** `time_entry`: the work item it was logged on. */
   workItemKey?: string | null;
+  /** `time_entry` or `cost_entry`: currency only; rates and amounts are never returned. */
+  currency?: string | null;
 };
 
 export type { Sampled };

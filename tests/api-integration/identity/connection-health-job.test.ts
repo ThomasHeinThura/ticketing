@@ -3,8 +3,10 @@
  *
  * WRITTEN, NOT YET RUN by the implementer (needs the integration database).
  */
+
+import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
 import { checkIdentityConnectionHealth } from "../../../apps/api/src/identity/connection-health";
@@ -38,7 +40,11 @@ async function connection(
 }
 
 describe("identity connection health job (IP-25)", () => {
-  beforeEach(async () => resetTestDatabase());
+  beforeEach(async () => {
+    vi.stubEnv("TASKDESK_ENCRYPTION_KEY", randomBytes(32).toString("hex"));
+    await resetTestDatabase();
+  });
+  afterEach(() => vi.unstubAllEnvs());
 
   it("flags an unreachable IdP, clears it on recovery, and leaves disabled connections and config_version alone", async () => {
     await connection("health-up", true, TENANT);

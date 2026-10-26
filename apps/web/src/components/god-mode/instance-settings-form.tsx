@@ -20,6 +20,7 @@ import {
 } from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { TerminologyEditor } from "@/components/settings/terminology-editor";
 import {
   getInstanceSettings,
   type InstanceSettings,
@@ -41,9 +42,20 @@ function timezoneOptions(current: string): string[] {
 }
 
 type Draft = Record<
-  Exclude<keyof InstanceSettings, "attachmentAllowedExtensions" | "timezone">,
+  Exclude<
+    keyof InstanceSettings,
+    | "attachmentAllowedExtensions"
+    | "timezone"
+    | "anonymousRateLimitWindowMs"
+    | "cspMode"
+  >,
   string
-> & { timezone: string; attachmentAllowedExtensions: string };
+> & {
+  timezone: string;
+  attachmentAllowedExtensions: string;
+  anonymousRateLimitWindowMinutes: string;
+  cspMode: InstanceSettings["cspMode"];
+};
 
 function toDraft(settings: InstanceSettings): Draft {
   return {
@@ -51,6 +63,26 @@ function toDraft(settings: InstanceSettings): Draft {
     clarificationWindowDays: String(settings.clarificationWindowDays),
     reopenWindowDays: String(settings.reopenWindowDays),
     notificationRetentionDays: String(settings.notificationRetentionDays),
+    cspMode: settings.cspMode,
+    invitationLifetimeHours: String(settings.invitationLifetimeHours),
+    customerInvitationCreateWindowMinutes: String(
+      settings.customerInvitationCreateWindowMinutes,
+    ),
+    customerInvitationPerInviterLimit: String(
+      settings.customerInvitationPerInviterLimit,
+    ),
+    customerInvitationPerOrganisationLimit: String(
+      settings.customerInvitationPerOrganisationLimit,
+    ),
+    customerInvitationResendCooldownSeconds: String(
+      settings.customerInvitationResendCooldownSeconds,
+    ),
+    anonymousRateLimitWindowMinutes: String(
+      settings.anonymousRateLimitWindowMs / 60_000,
+    ),
+    anonymousRateLimitMax: String(settings.anonymousRateLimitMax),
+    mcpWriteCeilingPerMinute: String(settings.mcpWriteCeilingPerMinute),
+    apiKeyBurstThreshold: String(settings.apiKeyBurstThreshold),
     timezone: settings.timezone,
     attachmentMaxBytes: String(settings.attachmentMaxBytes),
     attachmentMaxPerItem: String(settings.attachmentMaxPerItem),
@@ -64,6 +96,14 @@ const numericKeys = [
   "clarificationWindowDays",
   "reopenWindowDays",
   "notificationRetentionDays",
+  "invitationLifetimeHours",
+  "customerInvitationCreateWindowMinutes",
+  "customerInvitationPerInviterLimit",
+  "customerInvitationPerOrganisationLimit",
+  "customerInvitationResendCooldownSeconds",
+  "anonymousRateLimitMax",
+  "mcpWriteCeilingPerMinute",
+  "apiKeyBurstThreshold",
   "attachmentMaxBytes",
   "attachmentMaxPerItem",
 ] as const;
@@ -78,7 +118,11 @@ function diff(
     const value = Number(draft[key]);
     if (value !== original[key]) changes[key] = value;
   }
+  const windowMs = Number(draft.anonymousRateLimitWindowMinutes) * 60_000;
+  if (windowMs !== original.anonymousRateLimitWindowMs)
+    changes.anonymousRateLimitWindowMs = windowMs;
   if (draft.timezone !== original.timezone) changes.timezone = draft.timezone;
+  if (draft.cspMode !== original.cspMode) changes.cspMode = draft.cspMode;
   const extensions = draft.attachmentAllowedExtensions
     .split(/[\s,]+/u)
     .map((value) => value.trim().replace(/^\./u, "").toLowerCase())
@@ -106,7 +150,12 @@ export function InstanceSettingsForm() {
         </Button>
       </Alert>
     );
-  return <SettingsFields key={query.data.updatedAt} loaded={query.data} />;
+  return (
+    <div className="space-y-6">
+      <SettingsFields key={query.data.updatedAt} loaded={query.data} />
+      <TerminologyEditor target={{ scope: "instance" }} />
+    </div>
+  );
 }
 
 function SettingsFields({ loaded }: { loaded: InstanceSettingsResponse }) {
@@ -117,6 +166,13 @@ function SettingsFields({ loaded }: { loaded: InstanceSettingsResponse }) {
     () => timezoneOptions(loaded.settings.timezone),
     [loaded.settings.timezone],
   );
+  const cspModeOptions = [
+    {
+      value: "report_only" as const,
+      label: t("cspModeOptions.reportOnly"),
+    },
+    { value: "enforce" as const, label: t("cspModeOptions.enforce") },
+  ];
   const changes = diff(loaded.settings, draft);
   const dirty = Object.keys(changes).length > 0;
   const save = useMutation({
@@ -134,7 +190,11 @@ function SettingsFields({ loaded }: { loaded: InstanceSettingsResponse }) {
     setDraft((previous) => ({ ...previous, [key]: value }));
     save.reset();
   }
-  function numberField(key: (typeof numericKeys)[number], min: number) {
+  function numberField(
+    key: (typeof numericKeys)[number],
+    min: number,
+    max?: number,
+  ) {
     return (
       <div className="space-y-2">
         <Label htmlFor={`setting-${key}`}>{t(`fields.${key}.label`)}</Label>
@@ -142,6 +202,7 @@ function SettingsFields({ loaded }: { loaded: InstanceSettingsResponse }) {
           id={`setting-${key}`}
           type="number"
           min={min}
+          max={max}
           value={draft[key]}
           disabled={save.isPending}
           onChange={(event) => set(key, event.target.value)}
@@ -203,6 +264,107 @@ function SettingsFields({ loaded }: { loaded: InstanceSettingsResponse }) {
             </p>
           </div>
           {numberField("notificationRetentionDays", 1)}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("contentSecurityPolicy.title")}</CardTitle>
+          <CardDescription>
+            {t("contentSecurityPolicy.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="max-w-xl space-y-2">
+            <Label htmlFor="setting-cspMode">{t("fields.cspMode.label")}</Label>
+            <Select
+              items={cspModeOptions}
+              value={draft.cspMode}
+              onValueChange={(value) => {
+                if (value === "report_only" || value === "enforce")
+                  set("cspMode", value);
+              }}
+              disabled={save.isPending}
+            >
+              <SelectTrigger id="setting-cspMode">
+                <SelectValue>
+                  {t(
+                    draft.cspMode === "report_only"
+                      ? "cspModeOptions.reportOnly"
+                      : "cspModeOptions.enforce",
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="report_only">
+                  {t("cspModeOptions.reportOnly")}
+                </SelectItem>
+                <SelectItem value="enforce">
+                  {t("cspModeOptions.enforce")}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">
+              {t("fields.cspMode.help")}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("anonymousRateLimit.title")}</CardTitle>
+          <CardDescription>
+            {t("anonymousRateLimit.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="setting-anonymousRateLimitWindowMinutes">
+              {t("fields.anonymousRateLimitWindowMinutes.label")}
+            </Label>
+            <Input
+              id="setting-anonymousRateLimitWindowMinutes"
+              type="number"
+              min={1}
+              max={1440}
+              step={1}
+              value={draft.anonymousRateLimitWindowMinutes}
+              disabled={save.isPending}
+              onChange={(event) =>
+                set("anonymousRateLimitWindowMinutes", event.target.value)
+              }
+            />
+            <p className="text-muted-foreground text-xs">
+              {t("fields.anonymousRateLimitWindowMinutes.help")}
+            </p>
+          </div>
+          {numberField("anonymousRateLimitMax", 1, 10_000)}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("invitationLimits.title")}</CardTitle>
+          <CardDescription>{t("invitationLimits.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          {numberField("invitationLifetimeHours", 1, 720)}
+          {numberField("customerInvitationCreateWindowMinutes", 1, 1440)}
+          {numberField("customerInvitationPerInviterLimit", 1, 10_000)}
+          {numberField("customerInvitationPerOrganisationLimit", 1, 10_000)}
+          {numberField("customerInvitationResendCooldownSeconds", 1, 86_400)}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("mcpRateLimit.title")}</CardTitle>
+          <CardDescription>{t("mcpRateLimit.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          {numberField("mcpWriteCeilingPerMinute", 1, 100)}
+          {numberField("apiKeyBurstThreshold", 1, 100_000)}
         </CardContent>
       </Card>
 

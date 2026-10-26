@@ -102,7 +102,11 @@ test("the full scheduled-job inventory is registered, including the inherited co
   const targetJobs = [...contract.matchAll(/^\| `([a-z][a-z-]+)` \|/gm)].map(
     (match) => match[1],
   );
-  assert.equal(targetJobs.length, 19);
+  // The maintained registry includes P4/P5's automation, pending-action,
+  // report-export and secrets-rekey jobs as well as the original inventory.
+  assert.equal(targetJobs.length, 25);
+  assert.ok(targetJobs.includes("customer-invitation-delivery"));
+  assert.ok(targetJobs.includes("quiet-hours-release"));
   assert.equal(new Set(targetJobs).size, targetJobs.length);
   assert.ok(!targetJobs.includes("audit-verify"));
   const source = readFileSync(

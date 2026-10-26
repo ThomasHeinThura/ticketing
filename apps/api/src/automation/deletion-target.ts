@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import { automationTable, projectTable } from "../database/schema";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -60,6 +61,42 @@ export const automationDeletionTarget: RegisteredDeletionTarget = {
         projectId: row.projectId,
       },
       version: registeredDeletionFingerprint(row),
+    };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [row] = await tx
+      .select({
+        id: automationTable.id,
+        workspaceId: automationTable.workspaceId,
+        projectId: automationTable.projectId,
+      })
+      .from(automationTable)
+      .where(eq(automationTable.id, id))
+      .limit(1);
+    if (!row) return undefined;
+    let organisationId: string | null = null;
+    if (row.projectId) {
+      const [project] = await tx
+        .select({ organisationId: projectTable.organisationId })
+        .from(projectTable)
+        .where(
+          and(
+            eq(projectTable.id, row.projectId),
+            eq(projectTable.workspaceId, row.workspaceId),
+          ),
+        )
+        .limit(1);
+      if (!project) return undefined;
+      organisationId = project.organisationId;
+    }
+    return {
+      id: row.id,
+      workspaceId: row.workspaceId,
+      projectId: row.projectId,
+      organisationId,
     };
   },
   execute: async (tx, { loaded, identity }) => {

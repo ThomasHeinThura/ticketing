@@ -1,9 +1,49 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
-import { claimJobLease, releaseJobLease } from "./repository";
+import { claimJobLease, ownsJobLease, releaseJobLease } from "./repository";
 
 const INSTANCE_ID = randomUUID();
 
 const DEFAULT_LEASE_MS = 15 * 60 * 1000;
+
+export class JobExecutionReservationLostError extends Error {
+  constructor() {
+    super("The job execution reservation is no longer owned.");
+    this.name = "JobExecutionReservationLostError";
+  }
+}
+
+export type JobExecutionReservation = {
+  jobName: string;
+  runId: string;
+  runnerId: string;
+  leaseOwner?: string;
+  assertRunOwned: () => Promise<boolean>;
+};
+
+const executionContext = new AsyncLocalStorage<JobExecutionReservation>();
+
+/** Carries a run reservation through the existing job handler call chain. */
+export function withJobExecutionReservation<T>(
+  reservation: JobExecutionReservation,
+  run: () => Promise<T>,
+): Promise<T> {
+  return executionContext.run(reservation, run);
+}
+
+/** Check at a handler's next safe work boundary; this cannot cancel an in-flight SQL call. */
+export async function assertJobExecutionOwned(): Promise<void> {
+  const reservation = executionContext.getStore();
+  if (!reservation) return;
+  if (!(await reservation.assertRunOwned()))
+    throw new JobExecutionReservationLostError();
+  if (
+    reservation.leaseOwner &&
+    !(await ownsJobLease(reservation.jobName, reservation.leaseOwner))
+  ) {
+    throw new JobExecutionReservationLostError();
+  }
+}
 
 /**
  * Acquires `name`'s lease, or reports that someone else holds it.
@@ -39,6 +79,12 @@ export async function withJobLease<T>(
 ): Promise<T> {
   const ttl = `${leaseMs} milliseconds`;
 
+  const current = executionContext.getStore();
+  if (current?.jobName === name && current.leaseOwner) {
+    await assertJobExecutionOwned();
+    return run();
+  }
+
   const claimed = await claimJobLease(name, INSTANCE_ID, ttl);
 
   if (!claimed) {
@@ -46,7 +92,14 @@ export async function withJobLease<T>(
   }
 
   try {
-    return await run();
+    const reservation = current
+      ? { ...current, jobName: name, leaseOwner: INSTANCE_ID }
+      : undefined;
+    if (!reservation) return await run();
+    return await withJobExecutionReservation(reservation, async () => {
+      await assertJobExecutionOwned();
+      return run();
+    });
   } finally {
     await releaseJobLease(name, INSTANCE_ID).catch((error) => {
       console.error(`Failed to release the ${name} lease`, error);

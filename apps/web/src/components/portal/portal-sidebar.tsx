@@ -20,16 +20,21 @@ import {
   Home,
   LayoutGrid,
   LogOut,
+  UserRound,
 } from "lucide-react";
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { getPortalKb } from "@/fetchers/kb/portal";
+import { getPortalReleases } from "@/fetchers/portal/releases";
+import {
+  getDefaultPortalTerm,
+  usePortalTranslation,
+} from "@/lib/i18n/portal-translation";
 import { portalAuthClient } from "@/lib/portal-auth-client";
 import { routes } from "@/lib/routes";
 
 /** Customer navigation uses Kaneo's sidebar/inset composition, without agent imports. */
 export default function PortalSidebar() {
-  const { t } = useTranslation("portal");
+  const { t, i18n } = usePortalTranslation("portal");
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -40,6 +45,12 @@ export default function PortalSidebar() {
   const knowledgeBase = useQuery({
     queryKey: ["portal", "kb-navigation"],
     queryFn: () => getPortalKb({ limit: 1 }),
+    retry: false,
+    staleTime: 60_000,
+  });
+  const releases = useQuery({
+    queryKey: ["portal", "release-navigation"],
+    queryFn: () => getPortalReleases({ limit: 1 }),
     retry: false,
     staleTime: 60_000,
   });
@@ -63,11 +74,26 @@ export default function PortalSidebar() {
       to: routes.portalRequests.path,
       label: t("navigation.requests"),
       icon: ClipboardList,
+      title: getDefaultPortalTerm(i18n, "request", 2),
     },
+    ...(releases.data?.data.length
+      ? [
+          {
+            to: routes.portalReleases.path,
+            label: t("navigation.releases"),
+            icon: BookOpen,
+          },
+        ]
+      : []),
     {
       to: routes.portalApprovals.path,
       label: t("navigation.approvals"),
       icon: ClipboardList,
+    },
+    {
+      to: routes.portalAccount.path,
+      label: t("navigation.account"),
+      icon: UserRound,
     },
   ];
   async function signOut() {
@@ -109,9 +135,10 @@ export default function PortalSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigation.map(({ to, label, icon: Icon }) => (
+              {navigation.map(({ to, label, icon: Icon, title }) => (
                 <SidebarMenuItem key={to}>
                   <SidebarMenuButton
+                    title={title}
                     isActive={
                       location.pathname === to ||
                       (to === routes.portalKb.path &&

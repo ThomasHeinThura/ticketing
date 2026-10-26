@@ -3,8 +3,10 @@ import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { ApiKeyKind } from "../api-key/credential";
 import { clientIpForContext, enforceApiKeyRequest } from "../api-key/enforce";
+import { loadApiKeyKind } from "../api-key/repository";
 import { authForHost, hasCustomerPortalIdentity, portalForHost } from "../auth";
 import { mcpFeatureEnabled } from "./mcp-feature-enabled";
+import { auditMcpRequest } from "./mcp-request-audit";
 import { verifyApiKey } from "./verify-api-key";
 
 function isAuthRejection(error: unknown) {
@@ -90,6 +92,17 @@ async function enforceKeyRules(c: Context, keyId: string): Promise<ApiKeyKind> {
   return enforceApiKeyRequest(c, keyId, { mcpFeatureEnabled });
 }
 
+/** Audit only after the bearer was verified and its stored kind was loaded. */
+async function enforceVerifiedApiKey(
+  c: Context,
+  key: { id: string; userId: string },
+): Promise<ApiKeyKind> {
+  const kind = await loadApiKeyKind(key.id);
+  if (kind.isMcp)
+    await auditMcpRequest({ apiKeyId: key.id, ownerUserId: key.userId });
+  return enforceKeyRules(c, key.id);
+}
+
 function setApiKeyContext(
   c: Context,
   key: {
@@ -147,7 +160,7 @@ export async function authenticateApiRequest(c: Context): Promise<void> {
       throw new HTTPException(401, { message: "Unauthorized" });
     }
     const key = apiKeyResult.key;
-    setApiKeyContext(c, key, await enforceKeyRules(c, key.id));
+    setApiKeyContext(c, key, await enforceVerifiedApiKey(c, key));
     return;
   }
 
@@ -157,7 +170,7 @@ export async function authenticateApiRequest(c: Context): Promise<void> {
     });
     if (apiKeyResult?.valid && apiKeyResult.key) {
       const key = apiKeyResult.key;
-      setApiKeyContext(c, key, await enforceKeyRules(c, key.id));
+      setApiKeyContext(c, key, await enforceVerifiedApiKey(c, key));
       return;
     }
     // The pinned Better Auth stack does not accept bearer session tokens here.
@@ -198,7 +211,7 @@ export async function resolveAssetBearerOrCookie(c: Context): Promise<{
       clientIp: clientIpForContext(c),
     });
     if (apiKeyResult?.valid && apiKeyResult.key) {
-      await enforceKeyRules(c, apiKeyResult.key.id);
+      await enforceVerifiedApiKey(c, apiKeyResult.key);
       return {
         userId: apiKeyResult.key.userId,
         apiKeyId: apiKeyResult.key.id,
@@ -212,7 +225,7 @@ export async function resolveAssetBearerOrCookie(c: Context): Promise<{
       clientIp: clientIpForContext(c),
     });
     if (apiKeyResult?.valid && apiKeyResult.key) {
-      await enforceKeyRules(c, apiKeyResult.key.id);
+      await enforceVerifiedApiKey(c, apiKeyResult.key);
       return {
         userId: apiKeyResult.key.userId,
         apiKeyId: apiKeyResult.key.id,

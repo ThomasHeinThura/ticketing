@@ -266,6 +266,7 @@ export async function listWorkItemActivity(
     cursor?: string;
     limit?: number;
     comment?: string;
+    allowArchivedForRead?: true;
     viewer?: CommentViewer;
   },
 ) {
@@ -276,7 +277,9 @@ export async function listWorkItemActivity(
           eq(workItemTable.key, key),
           eq(workItemTable.workspaceId, workspaceId),
           isNull(workItemTable.deletedAt),
-          isNull(workItemTable.archivedAt),
+          ...(options.allowArchivedForRead
+            ? []
+            : [isNull(workItemTable.archivedAt)]),
         ),
       });
       if (!item || item.workspaceId !== workspaceId) {

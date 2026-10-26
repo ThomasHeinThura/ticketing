@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import { webhookTable } from "../database/schema";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -46,6 +47,24 @@ export const webhookDeletionTarget: RegisteredDeletionTarget = {
         workspaceId: row.workspaceId,
       }),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [row] = await tx
+      .select({ id: webhookTable.id, workspaceId: webhookTable.workspaceId })
+      .from(webhookTable)
+      .where(eq(webhookTable.id, id))
+      .limit(1);
+    return row
+      ? {
+          id: row.id,
+          workspaceId: row.workspaceId,
+          projectId: null,
+          organisationId: null,
+        }
+      : undefined;
   },
   execute: async (tx, { loaded, identity }) => {
     const deleted = await tx

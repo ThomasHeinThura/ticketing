@@ -3,6 +3,7 @@ import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import type { Transaction } from "../../database/executor";
 import { projectMembershipKeys } from "../../identity/membership-projection";
+import { lockProjectMembershipScopes } from "../../identity/repository";
 import { invalidateNativeAuthorization } from "../../ws";
 import { descendantProjectIds, reachAncestorIds } from "../hierarchy";
 import {
@@ -182,6 +183,8 @@ export async function addProjectMember(
   await db.transaction(async (tx) => {
     await requireProject(tx, scope);
     const person = await requireTargetPerson(tx, input.personId);
+    if (!(await lockProjectMembershipScopes(tx, [scope.projectId])))
+      throw new HTTPException(404, { message: "Project not found" });
     // PR-8: staff only. Inactive people cannot be added (AS-5 would refuse them anyway).
     if (
       person.side !== "staff" ||
@@ -241,6 +244,8 @@ export async function updateProjectMemberRole(
   await db.transaction(async (tx) => {
     await requireProject(tx, scope);
     const person = await requireTargetPerson(tx, input.personId);
+    if (!(await lockProjectMembershipScopes(tx, [scope.projectId])))
+      throw new HTTPException(404, { message: "Project not found" });
     const roster = await loadRoster(tx, scope);
     const current = roster.find((entry) => entry.personId === person.id);
     if (!current) {
@@ -302,6 +307,8 @@ export async function removeProjectMember(
   await db.transaction(async (tx) => {
     await requireProject(tx, scope);
     const person = await requireTargetPerson(tx, input.personId);
+    if (!(await lockProjectMembershipScopes(tx, [scope.projectId])))
+      throw new HTTPException(404, { message: "Project not found" });
     const { parents, deleted } = await loadWorkspaceAncestry(
       tx,
       scope.workspaceId,

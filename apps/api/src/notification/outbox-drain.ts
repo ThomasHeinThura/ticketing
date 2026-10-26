@@ -31,6 +31,7 @@ export type NotificationProjection = {
   title: string;
   body: string;
   url: string;
+  audience?: "agent" | "customer";
 };
 
 export type NotificationEligibility =

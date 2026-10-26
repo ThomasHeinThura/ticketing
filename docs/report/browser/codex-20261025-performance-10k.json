@@ -1,0 +1,281 @@
+{
+	"artifact": "codex-20261025-performance-10k",
+	"target": {
+		"agent": "https://ticketing.localhost:1443",
+		"portal": "https://portal.localhost:1443",
+		"strictTls": true,
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871
+	},
+	"fixture": {
+		"project": "PERF",
+		"titlePrefix": "TaskDeskPerf10k-20261025",
+		"expectedRows": 10000,
+		"ownerSessionVerified": true
+	},
+	"virtualization": {
+		"board": {
+			"pass": true,
+			"uniqueRowsLoaded": 200,
+			"stateRowsLoaded": 200,
+			"renderedBeforeScroll": 9,
+			"renderedAfterScroll": 13,
+			"newRowsAfterScroll": 12
+		},
+		"list": {
+			"pass": true,
+			"uniqueRowsLoaded": 150,
+			"renderedBeforeScroll": 26,
+			"renderedAfterScroll": 31
+		},
+		"table": {
+			"pass": true,
+			"uniqueRowsLoaded": 150,
+			"renderedRows": 26,
+			"visibleColumns": 4,
+			"totalDefaultColumns": 6,
+			"scrollWidth": 756,
+			"clientWidth": 502
+		},
+		"groupedBoard": {
+			"pass": true,
+			"uniqueRowsLoaded": 200,
+			"priorityCounts": {
+				"urgent": 59,
+				"high": 44,
+				"medium": 55,
+				"low": 42
+			},
+			"virtualizedByPriority": {
+				"urgent": true,
+				"high": false,
+				"medium": true,
+				"low": false,
+				"none": false
+			},
+			"renderedByPriority": {
+				"urgent": 9,
+				"high": 44,
+				"medium": 9,
+				"low": 42,
+				"none": 0
+			}
+		}
+	},
+	"keyboard": {
+		"escapeCancel": {
+			"pass": true,
+			"writes": 0
+		},
+		"rankDrop": {
+			"pass": false,
+			"outcome": "no rank POST observed; drag marker cleared",
+			"workItemKey": "PERF-1863",
+			"beforeIndex": 0,
+			"afterReloadIndex": 0,
+			"writes": [],
+			"trace": [
+				{
+					"step": "picked-up",
+					"dragging": true,
+					"activeWorkItemKey": "PERF-1863",
+					"mountedRowKeys": [
+						"PERF-1863",
+						"PERF-7972",
+						"PERF-6219",
+						"PERF-6083",
+						"PERF-8204",
+						"PERF-1024",
+						"PERF-3454",
+						"PERF-4512"
+					]
+				},
+				{
+					"step": "after-arrow-down",
+					"dragging": true,
+					"activeWorkItemKey": "PERF-1863",
+					"mountedRowKeys": [
+						"PERF-1863",
+						"PERF-7972",
+						"PERF-6219",
+						"PERF-6083",
+						"PERF-8204",
+						"PERF-1024",
+						"PERF-3454",
+						"PERF-4512"
+					]
+				},
+				{
+					"step": "after-drop-space",
+					"dragging": false,
+					"activeWorkItemKey": "PERF-1863",
+					"mountedRowKeys": [
+						"PERF-1863",
+						"PERF-7972",
+						"PERF-6219",
+						"PERF-6083",
+						"PERF-8204",
+						"PERF-1024",
+						"PERF-3454",
+						"PERF-4512"
+					]
+				}
+			]
+		},
+		"idleEnterAndTitleEditorEnter": {
+			"pass": true,
+			"scope": "PERF-*"
+		},
+		"earlierObservedAttempts": [
+			{
+				"status": 200,
+				"request": {
+					"workItemKey": "PERF-1863",
+					"beforeKey": "PERF-1863",
+					"afterKey": "PERF-6219"
+				},
+				"response": {
+					"position": "2.9375000000",
+					"version": 4
+				},
+				"reloadedIndex": 1,
+				"initialIndex": 0
+			},
+			{
+				"status": 409,
+				"detail": "Response body and neighbor keys were not captured in that exploratory run; unresolved."
+			}
+		]
+	},
+	"search": {
+		"journey": "Cmd+K action palette, then Search action, then Search dialog query",
+		"cmdKDirectTyping": {
+			"query": "PERF-1",
+			"resultVisible": false,
+			"searchApiRequested": false,
+			"currentBehavior": "action-palette-only"
+		},
+		"metric": "input-to-visible-search-result",
+		"requiredMs": 100,
+		"samples": 12,
+		"rawSamples": [
+			{
+				"query": "PERF-1",
+				"status": 200,
+				"endpointTtfbMs": 64.581,
+				"endpointCompleteMs": 66.828,
+				"inputToResponseMs": 79.30000001192093,
+				"inputToVisibleResultMs": 90.30000001192093
+			},
+			{
+				"query": "PERF-2",
+				"status": 200,
+				"endpointTtfbMs": 45.166,
+				"endpointCompleteMs": 46.802,
+				"inputToResponseMs": 55,
+				"inputToVisibleResultMs": 61.10000002384186
+			},
+			{
+				"query": "PERF-3",
+				"status": 200,
+				"endpointTtfbMs": 39.908,
+				"endpointCompleteMs": 41.367000000000004,
+				"inputToResponseMs": 47.30000001192093,
+				"inputToVisibleResultMs": 54.80000001192093
+			},
+			{
+				"query": "PERF-4",
+				"status": 200,
+				"endpointTtfbMs": 49.417,
+				"endpointCompleteMs": 51.347,
+				"inputToResponseMs": 58.59999996423721,
+				"inputToVisibleResultMs": 62.39999997615814
+			},
+			{
+				"query": "PERF-5",
+				"status": 200,
+				"endpointTtfbMs": 33.563,
+				"endpointCompleteMs": 35.136,
+				"inputToResponseMs": 42.09999996423721,
+				"inputToVisibleResultMs": 47.80000001192093
+			},
+			{
+				"query": "PERF-6",
+				"status": 200,
+				"endpointTtfbMs": 38.462,
+				"endpointCompleteMs": 39.89,
+				"inputToResponseMs": 46.19999998807907,
+				"inputToVisibleResultMs": 52.19999998807907
+			},
+			{
+				"query": "PERF-7",
+				"status": 200,
+				"endpointTtfbMs": 36.799,
+				"endpointCompleteMs": 38.372,
+				"inputToResponseMs": 44.80000001192093,
+				"inputToVisibleResultMs": 48.30000001192093
+			},
+			{
+				"query": "PERF-8",
+				"status": 200,
+				"endpointTtfbMs": 39.009,
+				"endpointCompleteMs": 40.531,
+				"inputToResponseMs": 47.30000001192093,
+				"inputToVisibleResultMs": 53.80000001192093
+			},
+			{
+				"query": "PERF-9",
+				"status": 200,
+				"endpointTtfbMs": 40.974000000000004,
+				"endpointCompleteMs": 42.492,
+				"inputToResponseMs": 49.30000001192093,
+				"inputToVisibleResultMs": 53.200000047683716
+			},
+			{
+				"query": "PERF-10",
+				"status": 200,
+				"endpointTtfbMs": 43.043,
+				"endpointCompleteMs": 44.525999999999996,
+				"inputToResponseMs": 50.80000001192093,
+				"inputToVisibleResultMs": 56.19999998807907
+			},
+			{
+				"query": "PERF-11",
+				"status": 200,
+				"endpointTtfbMs": 47.775,
+				"endpointCompleteMs": 49.333999999999996,
+				"inputToResponseMs": 56.30000001192093,
+				"inputToVisibleResultMs": 62.19999998807907
+			},
+			{
+				"query": "PERF-12",
+				"status": 200,
+				"endpointTtfbMs": 32.381,
+				"endpointCompleteMs": 33.721,
+				"inputToResponseMs": 40,
+				"inputToVisibleResultMs": 43.40000003576279
+			}
+		],
+		"p95InputToVisibleMs": 90.30000001192093,
+		"p95EndpointCompleteMs": 66.828,
+		"passLatencyRequirement": true,
+		"directCmdKSearchGap": "Typing an item key directly into the Cmd+K action palette produced no search request or work-item result; the Search action and separate Search dialog were required."
+	},
+	"persistedCensus": {
+		"pass": true,
+		"expected": 10000,
+		"count": 10000,
+		"pages": 50,
+		"hasMore": false,
+		"malformed": false,
+		"foreignProjectKeys": []
+	},
+	"browserErrors": [],
+	"screenshots": [
+		"codex-20261025-performance-board.png",
+		"codex-20261025-performance-keyboard-drop-arrow.png",
+		"codex-20261025-performance-list.png",
+		"codex-20261025-performance-table.png",
+		"codex-20261025-performance-grouped-board.png"
+	]
+}

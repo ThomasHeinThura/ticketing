@@ -78,7 +78,16 @@ export const apiKeySummarySchema = z.object({
   disabledReason: z.string().nullable(),
   workspaceId: z.string().nullable(),
   createdByFormerMember: z.boolean(),
+  ownedByWorkspaceAdmins: z.boolean(),
+  requiresReattestation: z.boolean(),
+  accountabilityVersion: z.number().int().min(1),
 });
+
+export const reattestServiceKeyBody = z
+  .object({
+    expectedVersion: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+  })
+  .strict();
 
 export const apiKeyListSchema = z.object({
   apiKeys: z.array(apiKeySummarySchema),

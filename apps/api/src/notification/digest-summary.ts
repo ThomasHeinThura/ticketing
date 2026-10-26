@@ -35,6 +35,7 @@ export type DigestSummary = { title: string; body: string; url: string };
 export function buildDigestSummary(
   cadence: "hourly" | "daily",
   eventKinds: readonly string[],
+  inboxUrl = DIGEST_INBOX_URL,
 ): DigestSummary {
   const counts = new Map<string, number>();
   for (const kind of eventKinds) {
@@ -57,6 +58,66 @@ export function buildDigestSummary(
         ? `Your hourly summary: ${total} ${total === 1 ? "update" : "updates"}`
         : `Your daily summary: ${total} ${total === 1 ? "update" : "updates"}`,
     body: shown.join("\n"),
-    url: DIGEST_INBOX_URL,
+    url: inboxUrl,
+  };
+}
+
+/** Customer copy contains counts only and points to the authenticated portal request list. */
+export function buildCustomerDigestSummary(
+  cadence: "hourly" | "daily",
+  eventKinds: readonly string[],
+  requestTerms: { singular: string; plural: string } = {
+    singular: "request",
+    plural: "requests",
+  },
+): DigestSummary {
+  const requestTermLower = requestTerms.singular.toLocaleLowerCase();
+  const requestTermPluralLower = requestTerms.plural.toLocaleLowerCase();
+  // Keep grouping semantic. A rendered request label depends on runtime terminology, so
+  // grouping by the final text can split equivalent event kinds ("Request updates" vs
+  // "Requests updates") when the selected term has different singular/plural forms.
+  const counts = new Map<string, number>();
+  const labels: Readonly<Record<string, string>> = {
+    comments: "new comments",
+    mentions: "mentions",
+    request_updates: `${requestTermLower} updates`,
+    approval_requests: `approval ${requestTermPluralLower}`,
+    approval_updates: "approval updates",
+    approvals_expiring: "approvals expiring",
+  };
+  for (const kind of eventKinds) {
+    const group =
+      kind === "work_item.commented"
+        ? "comments"
+        : kind === "work_item.mentioned"
+          ? "mentions"
+          : kind === "work_item.transitioned"
+            ? "request_updates"
+            : kind === "approval.requested"
+              ? "approval_requests"
+              : kind === "approval.decided" ||
+                  kind === "approval.expired" ||
+                  kind === "approval.withdrawn"
+                ? "approval_updates"
+                : kind === "approval.expiring"
+                  ? "approvals_expiring"
+                  : "request_updates";
+    counts.set(group, (counts.get(group) ?? 0) + 1);
+  }
+  const lines = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, DIGEST_MAX_LINES)
+    .map(([group, count]) => {
+      const label = labels[group] ?? `${requestTermLower} updates`;
+      return `${label[0]?.toUpperCase()}${label.slice(1)}: ${count}`;
+    });
+  const total = eventKinds.length;
+  return {
+    title:
+      cadence === "hourly"
+        ? `Your hourly ${requestTermLower} summary: ${total} ${total === 1 ? "update" : "updates"}`
+        : `Your daily ${requestTermLower} summary: ${total} ${total === 1 ? "update" : "updates"}`,
+    body: lines.join("\n"),
+    url: "/requests",
   };
 }

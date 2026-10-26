@@ -1,10 +1,10 @@
 # Screen coverage
 
-Maintained route inventory for automated coverage. 🟡 means built or in progress, never accepted (P4 and P5 screens are code-complete and **not browser-verified**: scripted sign-in is blocked, so Thomas must sign in); ⬜ means planned. All runtime and owner acceptance remains in [status.md](status.md). Retained original planned routes do not authorize parallel interfaces. Portal paths use the separate portal origin. Legacy `/portal/requests` redirects to `/requests` and is tested as a redirect, rather than a separate screen.
+Maintained route inventory for automated coverage. 🟡 means built or in progress, never accepted (fresh feature/browser sign-off is pending; 25 Oct scripted login is authorized on the isolated audit copy); ⬜ means planned. All runtime and owner acceptance remains in [status.md](status.md). Retained original planned routes do not authorize parallel interfaces. Portal paths use the separate portal origin. Portal inventory lists host-root destinations; retained legacy redirects are compatibility checks, not separate screens.
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Sign in | `/agent/sign-in` | route | P0 | ⬜ |
+| Sign in (legacy `/agent/sign-in` redirects) | `/auth/sign-in` | route | P0 | ⬜ |
 | MFA challenge | `/auth/two-factor` | route | P0 | 🟡 |
 | MFA enrolment | `/dashboard/settings/account/security` | route | P0 | 🟡 |
 | Accept invitation | `/agent/invite` | route | P3 | ⬜ |
@@ -77,7 +77,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Project — estimates (system, scale, cycle completion default) | `/agent/projects/{key}/settings/estimates` | route | P5 | 🟡 |
 | Workspace — rates | `/agent/settings/rates` | route | P5 | 🟡 |
 | Workspace — time activities | `/agent/settings/time-activities` | route | P5 | 🟡 |
-| Workspace — cost types | `/agent/settings/cost-types` | route | P5 | ⬜ |
+| Workspace — cost types (Rates section) | `/agent/settings/rates` | component | P5 | 🟡 |
 | Workspace — automations | `/agent/settings/automations` | route | P4 | 🟡 |
 | Workspace — webhooks | `/agent/settings/webhooks` | route | P4 | 🟡 |
 | Webhook editor | `/agent/settings/webhooks/{id}` | route | P4 | 🟡 |
@@ -94,6 +94,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Project — budget | `/agent/projects/{key}/settings/budget` | route | P5 | 🟡 |
 | Project — danger zone | `/agent/projects/{key}/settings/danger` | route | P1 | 🟡 |
 | God Mode home / health | `/agent/god-mode` | route | P4 | 🟡 |
+| Webhook security posture | `/agent/god-mode/webhooks` | route | P4 | 🟡 |
 | General (incl. terminology) | `/agent/god-mode/general` | route | P4 | 🟡 |
 | Branding | `/agent/god-mode/branding` | route | P4 | ⬜ |
 | **Authentication providers** | `/agent/god-mode/authentication` | route | P3 | 🟡 |
@@ -104,29 +105,32 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Storage | `/agent/god-mode/storage` | route | P4 | ⬜ |
 | Notification channels — SMTP configuration | `/agent/god-mode/notifications` | route | P4 | 🟡 |
 | Deliveries (outbox, dead letters) | `/agent/god-mode/deliveries` | route | P4 | ⬜ |
+| Workspace — features | `/dashboard/settings/workspace/features` | route | P4 | 🟡 |
 | Feature flags | `/agent/god-mode/features` | route | P4 | 🟡 |
 | Jobs | `/agent/god-mode/jobs` | route | P4 | ⬜ |
 | Plugins | `/agent/god-mode/plugins` | route | P4 | ⬜ |
 | Observability and instance MFA policy | `/god-mode/observability` | route | P0 | 🟡 |
 | MCP usage | `/agent/god-mode/mcp` | route | P4 | ⬜ |
 | Audit log | `/agent/god-mode/audit` | route | P2 | 🟡 |
-| Import runs | `/agent/god-mode/import` | route | P6 | ⬜ |
+| Import runs (shared P4 prerequisite) | `/agent/god-mode/imports?workspaceId={workspaceId}` | route | P6 | 🟡 |
+| Import run detail | `/agent/god-mode/imports/{id}?workspaceId={workspaceId}` | route | P6 | 🟡 |
 | Users | `/agent/god-mode/users` | route | P4 | 🟡 |
 | Sign in | `/sign-in` | route | P3 | 🟡 |
 | Accept invitation | `/invite/{id}` | route | P3 | 🟡 |
-| Home | `/portal` | route | P3 | ⬜ |
-| Request detail (work item) | `/portal/requests/{ref}` | route | P3 | ⬜ |
-| Catalogue | `/portal/new` | route | P3 | ⬜ |
-| Request form | `/portal/new/{typeKey}` | route | P3 | ⬜ |
+| Home | `/` | route | P3 | ⬜ |
+| Request detail (work item) | `/submissions/{ref}` | route | P3 | ⬜ |
+| Catalogue | `/catalogue` | route | P3 | ⬜ |
+| Request form | `/catalogue?key={typeKey}` | route | P3 | ⬜ |
 | Customer portal — request catalogue and selected form | `/catalogue?q=no-match&key=access` | route | P3 | 🟡 |
 | Customer portal — submission detail | `/submissions/{ref}` | route | P3 | 🟡 |
-| Approvals | `/portal/approvals` | route | P3 | ⬜ |
-| Projects list | `/portal/projects` | route | P3 | ⬜ |
-| Project detail | `/portal/projects/{key}` | route | P3 | ⬜ |
+| Approvals | `/approvals` | route | P3 | ⬜ |
+| Projects list | `/projects` | route | P3 | ⬜ |
+| Project detail | `/projects/{key}` | route | P3 | ⬜ |
 | Knowledge base | `/kb` | route | P5 | 🟡 |
 | Article | `/kb/{id}` | route | P5 | 🟡 |
-| Satisfaction survey | `/portal/requests/{ref}/rate` | route | P3 | ⬜ |
-| Account (incl. notification preferences) | `/portal/account` | route | P3 | ⬜ |
+| Satisfaction survey | `/submissions/{ref}` | route | P3 | ⬜ |
+| Customer notification inbox and bell | `/notifications?filter=unread` | route | P4 | 🟡 |
+| Account (mention/comment email notification preferences; remaining controls open) | `/account` | route | P3 | 🟡 |
 | Not found (portal origin) | `*` | route | P3 | ⬜ |
 | Portal home | `/` | route | P3 | 🟡 |
 | Portal requests | `/requests` | route | P3 | 🟡 |
@@ -134,7 +138,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Summary | Count |
 | --- | --- |
-| **Total** | **142** (127 routes + 15 overlays, dialogs and sections) |
+| **Total** | **145** (130 routes + 15 overlays, dialogs and sections) |
 
 ## Overlays, dialogs and embedded sections
 
@@ -142,7 +146,7 @@ Retained journey coverage beyond URL routes. These rows do not claim screen acce
 
 | Screen | Route / context | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Sign-in — provider chooser | `/agent/sign-in` | section | P0 | ⬜ |
+| Sign-in — provider chooser | `/auth/sign-in` | section | P0 | ⬜ |
 | Command palette | — | overlay | P1 | 🟡 |
 | Pending action approval (every deletion — [pending-actions.md](technical/safety-and-runtime.md#pending-actions)) | — | dialog | P1 | 🟡 |
 | Error boundary | — | overlay | P0 | ⬜ |

@@ -6,7 +6,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * Mounted at `apps/api/src/index.ts:789`, below the app-wide auth guard (line 755) — H2 does
  * not constrain any route here.
  *
- * **All five routes are `self`, kind 2 — every one of them reads or writes only the CALLING
+ * **All seven routes are `self`, kind 2 — every one of them reads or writes only the CALLING
  * session's own notification rows, and none names another person.** `apps/api/src/notification/
  * index.ts` carries no `workspaceAccess`/`requireWorkspacePermission` middleware at all; every
  * controller (`apps/api/src/notification/controllers/*`) takes `userId` as a plain function
@@ -50,6 +50,16 @@ export const notificationPolicies = {
       exempt: "no_person_parameter",
       reason:
         "returns the caller's own notifications; the route names no person parameter because the caller is the person",
+    },
+  },
+
+  "GET /api/notification/inbox": {
+    authenticated: true,
+    self: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "returns only the caller's reachable notifications and unread total; filters and cursor cannot select another person",
     },
   },
 

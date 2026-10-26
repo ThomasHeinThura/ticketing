@@ -12,6 +12,8 @@ export const pageSummarySchema = z.object({
   updatedBy: person.nullable(),
   createdAt: responseTimestamp,
   updatedAt: responseTimestamp,
+  deletedAt: responseTimestamp.optional(),
+  purgeAfter: responseTimestamp.optional(),
 });
 
 export const pageListSchema = z.object({

@@ -158,7 +158,8 @@ export const dashboardWidgetTable = pgTable(
  * RP-9: one aggregate of one metric for one closed UTC day of one project, split by the dimensions a
  * report can filter on (`priority`, `typeId`). Written by the `metrics-snapshot` job, which replaces
  * a whole workspace-day in one transaction, so the unique key only guards against a second writer.
- * The rows are counts: no person, rate or cost data, so legal holds do not apply.
+ * Additional report families may carry opaque person dimensions and currency totals, never
+ * names, comments or rate schedules. Their retention respects matching legal holds.
  */
 export const metricSnapshotTable = pgTable(
   "metric_snapshot",
@@ -242,6 +243,9 @@ export const metricSnapshotDayTable = pgTable(
     workspaceId: text("workspace_id").notNull(),
     periodStart: timestamp("period_start", tz).notNull(),
     computedAt: timestamp("computed_at", tz).defaultNow().notNull(),
+    // Legacy writers certify only their original three metrics. New readers must
+    // require the version written after every supported fact family is complete.
+    snapshotVersion: integer("snapshot_version").notNull().default(1),
   },
   (table) => [
     primaryKey({
@@ -255,6 +259,10 @@ export const metricSnapshotDayTable = pgTable(
     })
       .onDelete("cascade")
       .onUpdate("cascade"),
+    check(
+      "metric_snapshot_day_version_positive",
+      sql`${table.snapshotVersion} > 0`,
+    ),
   ],
 );
 

@@ -14,23 +14,19 @@
  * to UTC. It is a real behavioural defect all the same, and these tests are what make the fix
  * checkable rather than asserted — the same run under the old predicate deletes a live session.
  *
- * ## How the non-UTC server is simulated, and why that way
+ * ## How the non-UTC session is simulated
  *
- * `PGOPTIONS` is read by `pg` when it *opens a connection* (`connection-parameters.js` →
- * `val('options', config)` → `process.env.PGOPTIONS`), and it is set before the first query in
- * this file, so every connection the shared pool opens carries `TimeZone=Asia/Yangon` for the
- * whole file. That is the server's setting as far as that session is concerned, which is
- * exactly the variable under test.
+ * The production pool pins UTC at connection startup. This test fixture applies a
+ * session-local `SET TIME ZONE` to every existing pooled client and to each later
+ * connection, after startup, then restores UTC after each test. It never changes a
+ * database or role default shared with other suites.
  *
- * A file-scoped `ALTER DATABASE … SET timezone` was rejected as the mechanism: it outlives the
- * file, so a crash mid-run would leave the shared test database non-UTC for every later file
- * that reuses the name. `PGOPTIONS` is scoped to the process running this file. The first test
- * asserts the session really is non-UTC, so this file cannot pass vacuously if that mechanism
- * ever stops working.
+ * The first test asserts the active session really is non-UTC, so the fixture cannot
+ * pass vacuously if pool configuration stops working.
  */
 import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { withJobLease } from "../../apps/api/src/scheduler/leader-lock";
 import {
@@ -38,18 +34,16 @@ import {
   runSessionCleanup,
 } from "../../apps/api/src/scheduler/session-cleanup";
 import { resetTestDatabase } from "./helpers/database";
+import { setTestDatabaseTimezone } from "./helpers/database-timezone";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 import {
   plantPreferenceHandoff,
   preferenceHandoffExists,
 } from "./helpers/preference-handoff-fixture";
 
-// Must be set before the pool opens its first connection — see the header. Asia/Yangon is
-// UTC+06:30, deliberately not a whole number of hours from UTC.
-process.env.PGOPTIONS = "-c timezone=Asia/Yangon";
-
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
+let restoreDatabaseTimezone: (() => Promise<void>) | undefined;
 
 async function sessionTimeZone() {
   const result = await db.execute<{ timezone: string }>(
@@ -98,12 +92,12 @@ async function placeLease(name: string, owner: string, expiresInMs: number) {
 describe("API integration: session-cleanup on a database server ahead of UTC", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+    restoreDatabaseTimezone = await setTestDatabaseTimezone("Asia/Yangon");
   });
 
-  afterAll(() => {
-    // Hygiene: the assignment above is process-wide, so do not leave it behind for whatever
-    // runs in this process next.
-    delete process.env.PGOPTIONS;
+  afterEach(async () => {
+    await restoreDatabaseTimezone?.();
+    restoreDatabaseTimezone = undefined;
   });
 
   it("purges only expired UTC handoffs through the real leased job", async () => {

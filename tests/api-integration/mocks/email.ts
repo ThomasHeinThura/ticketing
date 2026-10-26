@@ -1,5 +1,8 @@
 import { resolveSmtpConfiguration as realResolveSmtpConfiguration } from "../../../packages/email/dist/smtp-runtime";
-import type { EmailResult } from "../../../packages/email/src/send-email";
+import type {
+  EmailResult,
+  WorkspaceInvitationSendOptions,
+} from "../../../packages/email/src/send-email";
 
 export async function sendMagicLinkEmail(
   _to: string,
@@ -22,7 +25,9 @@ export const sentWorkspaceInvitationEmails: {
   to: string;
   subject: string;
   data: Record<string, unknown>;
+  options: WorkspaceInvitationSendOptions;
 }[] = [];
+export const workspaceInvitationPreflightResults: boolean[] = [];
 
 /** Test switches: whether an email provider exists, and whether a send throws at the transport. */
 export const emailMock: {
@@ -42,14 +47,21 @@ export async function sendWorkspaceInvitationEmail(
   to: string,
   subject: string,
   data: unknown,
+  options: WorkspaceInvitationSendOptions = {},
 ): Promise<EmailResult> {
   if (emailMock.configured === false)
     return { success: false, reason: "SMTP_NOT_CONFIGURED" };
+  if (options.beforeSend) {
+    const allowed = await options.beforeSend();
+    workspaceInvitationPreflightResults.push(allowed);
+    if (!allowed) return { success: false, reason: "NOT_AUTHORIZED" };
+  }
   if (emailMock.failTransport) throw new Error("transport failure");
   sentWorkspaceInvitationEmails.push({
     to,
     subject,
     data: (data ?? {}) as Record<string, unknown>,
+    options,
   });
   return { success: true };
 }

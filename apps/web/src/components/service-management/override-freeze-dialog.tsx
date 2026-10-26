@@ -42,8 +42,7 @@ export function OverrideFreezeDialog({
   const stepUp = useStepUpAction();
   const [reason, setReason] = useState("");
   const trimmed = reason.trim();
-  const valid =
-    trimmed.length >= OVERRIDE_REASON_MIN && stepUp.secret.length > 0;
+  const valid = trimmed.length >= OVERRIDE_REASON_MIN && stepUp.canRun;
   const mutation = useMutation({
     mutationFn: async () => {
       const outcome = await stepUp.run(

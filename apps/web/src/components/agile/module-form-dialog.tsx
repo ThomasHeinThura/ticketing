@@ -98,7 +98,7 @@ export function ModuleFormDialog({
           </DialogTitle>
           <DialogDescription>{t("modules.form.description")}</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 px-6">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="module-name">{t("modules.form.name")}</Label>
             <Input

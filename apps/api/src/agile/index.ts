@@ -641,7 +641,7 @@ const getItemEstimateRoute = createRoute({
   tags: ["Estimates"],
   summary: "A work item's estimate with its roll-up",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },

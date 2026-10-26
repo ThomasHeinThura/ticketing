@@ -1,0 +1,34 @@
+{
+	"recordedAt": "2026-10-25T08:50:24.832599+00:00",
+	"formalPhaseReview": false,
+	"apiUnits": {
+		"files": 236,
+		"tests": 1971,
+		"status": "pass",
+		"checkpoint": "Native table/Plugins/Jobs baseline before custom-column and delivery-retry additions"
+	},
+	"webUnits": {
+		"files": 431,
+		"tests": 2819,
+		"status": "pass",
+		"checkpoint": "Native title/date controls, Settings shell and corrected lazy-module fixtures"
+	},
+	"permissions": {
+		"files": 17,
+		"tests": 115,
+		"status": "pass"
+	},
+	"generators": ["route metadata", "OpenAPI", "permission matrix"],
+	"limits": [
+		"Recorded package checkpoints; the new custom-column, delivery-retry, MCP usage and Storage slices require affected checks and fresh full gates.",
+		"Canonical all-package run stopped on a board fixture; its corrected full web rerun passes. No final all-package gate or phase acceptance inferred."
+	],
+	"otherPackageTests": {
+		"domain": 742,
+		"permissions": 277,
+		"email": 48,
+		"libs": 16,
+		"mcp": 58,
+		"ui": 326
+	}
+}

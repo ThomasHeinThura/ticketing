@@ -1,0 +1,32 @@
+{
+	"recordedAt": "2026-10-25T22:46:41.745396+00:00",
+	"scope": "Exact owned qapurge26 organisation, QAPURGE project and QAPURGE-1 work item on the audit copy only",
+	"strictTLS": true,
+	"backup": {
+		"databaseCustomDumpFullyDecoded": true,
+		"storageArchiveFilesByteVerified": 3,
+		"scope": "Audit copy DB and its filesystem attachments; exact SHA-256 guard verified before each destructive stage"
+	},
+	"execution": {
+		"softDelete": "Browser typed exact name plus fresh password step-up; approved and persisted",
+		"permanentPurge": "Browser typed exact name plus fresh password step-up; approved and absent after reload",
+		"unrelatedIdentityDigestsUnchanged": true,
+		"unrelatedFullRowIntegrity": "business-integrity.json",
+		"auditActionsRetained": [
+			"hard_purge.executed",
+			"organisation.created",
+			"organisation.deleted"
+		]
+	},
+	"visualStatus": "fail: global approval dialog contains unresolved terminology placeholders; source provider-boundary repair in progress",
+	"initialHarnessIssues": [
+		"Invalid fixture project key rejected400; existing partial organisation completed with valid uppercase key QAPURGE, no duplicate organisation",
+		"Role heading selector did not match Kaneo CardTitle; corrected to exact selected organisation button, before any delete request"
+	],
+	"limits": [
+		"No other business data purged; protected live DB never targeted",
+		"Project/work-item manual purge targets and negative browser cases still need their own complete journeys",
+		"Executed deletion screenshot initially exposed a missing org action label; catalog fixed; global noun interpolation remains under repair"
+	],
+	"screens": ["soft-delete-approve-dialog.png", "purge-approve-dialog.png"]
+}

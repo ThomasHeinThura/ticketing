@@ -14,6 +14,7 @@ import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import type {
   WorkItemSearchColumn,
+  WorkItemSort,
   WorkItemSortDirection,
   WorkItemSortField,
 } from "@/lib/routes";
@@ -40,7 +41,9 @@ type WorkItemsPanelProps = {
     | undefined;
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
+  sorts?: WorkItemSort[];
   onSortChange: (sort: WorkItemSortField, dir: WorkItemSortDirection) => void;
+  onSortsChange?: (sorts: WorkItemSort[]) => void;
   onRealtimeAvailabilityChange: (
     projectId: string,
     status: WorkItemRealtimeStatus,
@@ -52,6 +55,8 @@ type WorkItemsPanelProps = {
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
   isLoadMoreError?: boolean;
+  isCursorChanged?: boolean;
+  onRestartFromFirstPage?: () => void;
   isPlaceholderData?: boolean;
   selectedKeys?: string[];
   canBulkAssign?: boolean;
@@ -70,7 +75,9 @@ function WorkItemsPanel({
   realtimeStatus,
   sort,
   dir,
+  sorts,
   onSortChange,
+  onSortsChange,
   onRealtimeAvailabilityChange,
   onRetry,
   columns,
@@ -79,6 +86,8 @@ function WorkItemsPanel({
   onLoadMore,
   isLoadingMore,
   isLoadMoreError,
+  isCursorChanged,
+  onRestartFromFirstPage,
   isPlaceholderData,
   selectedKeys,
   canBulkAssign,
@@ -191,7 +200,9 @@ function WorkItemsPanel({
     isError: isError,
     sort: sort,
     dir: dir,
+    sorts,
     onSortChange: onSortChange,
+    onSortsChange,
     onRetry: onRetry,
     columns: columns,
     isFiltered: isFiltered,
@@ -199,6 +210,8 @@ function WorkItemsPanel({
     onLoadMore: onLoadMore,
     isLoadingMore: isLoadingMore,
     isLoadMoreError,
+    isCursorChanged,
+    onRestartFromFirstPage,
     isPlaceholderData,
     selectedKeys: selectedKeys,
     canBulkAssign: canBulkAssign,
@@ -228,7 +241,11 @@ function WorkItemsPanel({
         {layout === "list" ? (
           <WorkItemKaneoList {...listProps} />
         ) : (
-          <WorkItemList {...listProps} />
+          <WorkItemList
+            {...listProps}
+            customFieldColumns={workItemsResult?.customFieldColumns}
+            customFieldPeople={workItemsResult?.customFieldPeople}
+          />
         )}
       </Suspense>
       {project &&

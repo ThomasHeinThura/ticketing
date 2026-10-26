@@ -91,10 +91,10 @@ function MultiChoice({
           id={id}
           variant="outline"
           size="sm"
-          className="w-full justify-start font-normal"
+          className="w-full min-w-0 max-w-full justify-start font-normal"
           disabled={disabled}
         >
-          <span className="truncate">
+          <span className="min-w-0 truncate">
             {summary || t("customFields:value.notSet")}
           </span>
         </Button>
@@ -145,6 +145,7 @@ export function CustomFieldValueInput({
   const peopleNames = new Map(
     people.map((person) => [person.personId, person.name ?? ""]),
   );
+  const unavailablePersonLabel = t("customFields:value.notOnProject");
 
   switch (field.format) {
     case "text":
@@ -153,6 +154,7 @@ export function CustomFieldValueInput({
       return (
         <Input
           id={id}
+          className="w-full min-w-0 max-w-full"
           type={field.format === "text" ? "text" : field.format}
           maxLength={field.format === "text" ? 500 : 2000}
           value={typeof value === "string" ? value : ""}
@@ -165,6 +167,7 @@ export function CustomFieldValueInput({
       return (
         <Textarea
           id={id}
+          className="w-full min-w-0 max-w-full"
           rows={3}
           maxLength={20000}
           value={typeof value === "string" ? value : ""}
@@ -178,6 +181,7 @@ export function CustomFieldValueInput({
       return (
         <Input
           id={id}
+          className="w-full min-w-0 max-w-full"
           type="number"
           step={field.format === "number" ? 1 : "any"}
           value={typeof value === "number" ? String(value) : ""}
@@ -202,9 +206,10 @@ export function CustomFieldValueInput({
         );
       };
       return (
-        <div className="flex gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap gap-1">
           <Input
             id={id}
+            className="min-w-0 max-w-full basis-20 flex-1"
             type="number"
             step="any"
             aria-label={t("customFields:value.amount")}
@@ -221,7 +226,7 @@ export function CustomFieldValueInput({
           <Input
             type="text"
             maxLength={3}
-            className="w-24"
+            className="w-16 min-w-0 max-w-full"
             aria-label={t("customFields:value.currencyCode")}
             placeholder="USD"
             value={current.currency ?? ""}
@@ -241,11 +246,11 @@ export function CustomFieldValueInput({
               id={id}
               variant="outline"
               size="sm"
-              className="w-full justify-start font-normal"
+              className="w-full min-w-0 max-w-full justify-start font-normal"
               disabled={disabled}
             >
               <CalendarDays className="size-4 text-muted-foreground" />
-              <span className="truncate">
+              <span className="min-w-0 truncate">
                 {isValueSet(value)
                   ? formatValue({ ...field, format: "date" }, value)
                   : t("customFields:value.notSet")}
@@ -299,6 +304,7 @@ export function CustomFieldValueInput({
       return (
         <Input
           id={id}
+          className="w-full min-w-0 max-w-full"
           type="datetime-local"
           value={local}
           disabled={disabled}
@@ -330,7 +336,7 @@ export function CustomFieldValueInput({
           disabled={disabled}
           onValueChange={(next) => onChange(next ?? null)}
         >
-          <SelectTrigger id={id}>
+          <SelectTrigger id={id} className="w-full min-w-0 max-w-full">
             <SelectValue>
               {typeof value === "string"
                 ? formatValue(field, value)
@@ -364,37 +370,55 @@ export function CustomFieldValueInput({
           disabled={disabled}
           onValueChange={(next) => onChange(next ?? null)}
         >
-          <SelectTrigger id={id}>
+          <SelectTrigger id={id} className="w-full min-w-0 max-w-full">
             <SelectValue>
               {typeof value === "string"
-                ? (peopleNames.get(value) ??
-                  t("customFields:value.notOnProject"))
+                ? peopleNames.get(value) || unavailablePersonLabel
                 : t("customFields:value.notSet")}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {people.map((person) => (
               <SelectItem key={person.personId} value={person.personId}>
-                {person.name ?? person.personId}
+                {person.name ?? unavailablePersonLabel}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       );
-    case "multi_user":
+    case "multi_user": {
+      const selected = Array.isArray(value) ? (value as string[]) : [];
+      const knownPeople = new Set(people.map((person) => person.personId));
+      const choices = [
+        ...people.map((person) => ({
+          key: person.personId,
+          label: person.name ?? unavailablePersonLabel,
+        })),
+        ...selected
+          .filter((personId) => !knownPeople.has(personId))
+          .map((personId) => ({
+            key: personId,
+            label: unavailablePersonLabel,
+          })),
+      ];
+      const summary = selected.length
+        ? selected
+            .map(
+              (personId) => peopleNames.get(personId) || unavailablePersonLabel,
+            )
+            .join(", ")
+        : t("customFields:value.notSet");
       return (
         <MultiChoice
           id={id}
-          choices={people.map((person) => ({
-            key: person.personId,
-            label: person.name ?? person.personId,
-          }))}
-          selected={Array.isArray(value) ? (value as string[]) : []}
+          choices={choices}
+          selected={selected}
           disabled={disabled}
-          summary={formatValue(field, value, peopleNames)}
+          summary={summary}
           onChange={(next) => onChange(next.length ? next : null)}
         />
       );
+    }
     default:
       return null;
   }

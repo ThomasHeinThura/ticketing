@@ -1,7 +1,6 @@
-import { and, eq } from "drizzle-orm";
-import type { Context, Next } from "hono";
+import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import db from "../database";
 import {
   apiRouter,
   type BaseVariables,
@@ -13,6 +12,7 @@ import { resolveIdentity } from "../permissions/resolve-identity";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { portalAcceptScope } from "./portal-scope";
 import {
   findInvitableOrganisation,
   listCustomerInvitations,
@@ -153,29 +153,6 @@ const resendRoute = createRoute({
     429: errorResponse("Sent a moment ago"),
   },
 });
-
-/** A customer session of an active customer person; the person's own organisation is the scope. */
-async function portalAcceptScope(c: Context, next: Next) {
-  const userId = c.get("userId") as string | undefined;
-  if (!userId) throw new HTTPException(401, { message: "Unauthorized" });
-  const [person] = await db
-    .select({ organisationId: schema.personTable.organisationId })
-    .from(schema.personTable)
-    .where(
-      and(
-        eq(schema.personTable.userId, userId),
-        eq(schema.personTable.side, "customer"),
-        eq(schema.personTable.active, true),
-      ),
-    )
-    .limit(1);
-  if (!person)
-    throw new HTTPException(404, { message: "Invitation not found" });
-  c.set("portalPredicateSatisfied", true);
-  c.set("policyOrganisationId", person.organisationId);
-  c.set("policyOrganisationIdSource", "row");
-  await next();
-}
 
 const acceptRoute = createRoute({
   method: "post",

@@ -53,7 +53,14 @@ export default defineConfig({
       // accident of `apps/api`'s own dependency graph. `audit-log.test.ts` (issue #37)
       // imports `@taskdesk/domain` directly to independently recompute `row_hash`.
       {
-        find: "@taskdesk/domain",
+        find: "@taskdesk/domain/webhook-secret-rotation",
+        replacement: resolve(
+          __dirname,
+          "../../packages/domain/src/webhook-secret-rotation.ts",
+        ),
+      },
+      {
+        find: /^@taskdesk\/domain$/,
         replacement: resolve(__dirname, "../../packages/domain/src/index.ts"),
       },
     ],

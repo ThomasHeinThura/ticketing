@@ -24,7 +24,6 @@ import {
   kbArticleVersionTable,
   kbCategoryTable,
 } from "../database/schema-p5-kb";
-import { escapeLikePattern } from "../search/like-pattern";
 import { searchTerms, snippet } from "./logic";
 import { deflectionTerms, relevance } from "./repository";
 import { type KbNode, toCustomerBody } from "./sanitise";
@@ -121,10 +120,7 @@ export async function portalList(
         ? inArray(kbArticleTable.categoryId, categoryIds)
         : sql`false`
       : undefined,
-    ...terms.map((term) => {
-      const like = `%${escapeLikePattern(term)}%`;
-      return sql`(lower(${version.title}) LIKE ${like} OR lower(${version.bodyText}) LIKE ${like})`;
-    }),
+    input.q?.trim() ? (rel.hasQuery ? rel.matches : sql`false`) : undefined,
   );
   const order =
     terms.length > 0
@@ -253,7 +249,7 @@ async function portalRelated(
           article.categoryId
             ? eq(kbArticleTable.categoryId, article.categoryId)
             : undefined,
-          terms.length > 0 ? sql`(${rel.titleHits}) >= 1` : undefined,
+          rel.hasQuery ? sql`(${rel.titleHits}) >= 1` : undefined,
         ),
       ),
     )
@@ -302,18 +298,13 @@ export async function portalFeedback(
 /** KB-8 / KB-9: suggestions for a request summary; read-only, nothing is recorded here. */
 export async function portalDeflection(scope: PortalKbScope, q: string) {
   const terms = deflectionTerms(q);
-  if (terms.length === 0) return [];
   const rel = relevance(terms, version.title, version.bodyText);
+  if (!rel.hasQuery) return [];
   const rows = await db
     .select(portalColumns)
     .from(kbArticleTable)
     .innerJoin(version, publishedJoin)
-    .where(
-      and(
-        scope.visible,
-        sql`((${rel.titleHits}) >= 1 OR (${rel.bodyHits}) >= 2)`,
-      ),
-    )
+    .where(and(scope.visible, rel.matches))
     .orderBy(
       desc(rel.score),
       desc(kbArticleTable.viewCount),

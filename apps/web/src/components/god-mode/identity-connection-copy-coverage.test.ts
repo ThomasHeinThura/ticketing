@@ -43,8 +43,17 @@ describe("identityConnections copy coverage", () => {
         source.match(/useTranslation\(\s*"([A-Za-z0-9_]+)"/u)?.[1] ??
         "identityConnections";
       for (const match of source.matchAll(/\bt\(\s*"([A-Za-z0-9_.]+)"/gu)) {
-        if (!has(match[1] as string, namespaceName))
-          missing.push(`${path.basename(file)}: ${match[1]}`);
+        const key = match[1] as string;
+        const argumentsAfterKey = source.slice(
+          (match.index ?? 0) + match[0].length,
+        );
+        const usesCount = /^\s*,\s*\{[^}]*\bcount\s*:/u.test(argumentsAfterKey);
+        const completeEnglishPlural =
+          usesCount &&
+          has(`${key}_one`, namespaceName) &&
+          has(`${key}_other`, namespaceName);
+        if (!has(key, namespaceName) && !completeEnglishPlural)
+          missing.push(`${path.basename(file)}: ${key}`);
       }
     }
     expect(missing).toEqual([]);

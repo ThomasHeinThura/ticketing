@@ -25,6 +25,26 @@ export function rowCap(ctx: ReportContext, n: number): number {
   return capFor(ctx.exporting, n);
 }
 
+/** Screen runs fetch one extra row to state truncation; queued exports advance bounded pages. */
+export function pageLimit(ctx: ReportContext, screenCap: number) {
+  const limit = ctx.exportPage?.limit ?? rowCap(ctx, screenCap) + 1;
+  const offset = ctx.exportPage?.offset ?? 0;
+  return sql`LIMIT ${limit} OFFSET ${offset}`;
+}
+
+export function pageRows<T>(
+  ctx: ReportContext,
+  fetched: T[],
+  screenCap: number,
+): { rows: T[]; truncated: boolean } {
+  if (ctx.exportPage) return { rows: fetched, truncated: false };
+  const cap = rowCap(ctx, screenCap);
+  return {
+    rows: fetched.slice(0, cap),
+    truncated: fetched.length > cap,
+  };
+}
+
 export function emptyBody(overrides: Partial<ReportBody> = {}): ReportBody {
   return {
     metrics: [],
@@ -108,6 +128,7 @@ export async function countOutside(
   column: "created_at" | "resolved_at",
   extra: ReturnType<typeof sql> = sql`true`,
 ): Promise<number> {
+  ctx.snapshots.sources.liveComponents.add("outside_window");
   const [row] = await selectRows<{ n: string }>(sql`SELECT count(*) AS n
     FROM work_item w
     JOIN project p ON p.id = w.project_id

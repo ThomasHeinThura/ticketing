@@ -48,6 +48,35 @@ async function seedAtRisk(count: number) {
     });
 }
 
+/** Insert a large fixture in set-based SQL so the paging regression does not spend time in ORM calls. */
+async function seedAtRiskBulk(count: number) {
+  // The report fixture creates its project states on demand.
+  await w.addItem({
+    open: true,
+    createdDaysAgo: 5,
+    title: "Bulk fixture state seed",
+  });
+  const stateResult = await db.execute<{ id: string }>(sql`SELECT s.id
+    FROM state s JOIN state_template st ON st.id = s.state_template_id
+    WHERE s.project_id = ${w.projectA.id} AND st."group" = 'started'
+    ORDER BY s.id LIMIT 1`);
+  const state = stateResult.rows[0];
+  if (!state) throw new Error("started state fixture is missing");
+  await db.execute(sql`WITH generated AS (
+      SELECT n, gen_random_uuid()::text AS id FROM generate_series(1, ${count}) AS n
+    ), inserted AS (
+      INSERT INTO work_item (id, workspace_id, project_id, type_id, number, key, title, state_id, created_at, updated_at)
+      SELECT id, ${w.workspaceId}, ${w.projectA.id}, ${w.itemA.typeId}, 200000 + n,
+        'BULK-' || n::text, 'At risk bulk ' || n::text, ${state.id},
+        now() - interval '5 days', now()
+      FROM generated
+      RETURNING id, number
+    )
+    INSERT INTO work_item_sla_cache (work_item_id, metric, state, due_at, computed_at)
+    SELECT id, 'resolution', 'at_risk', now() + (number - 200000) * interval '1 second', now()
+    FROM inserted`);
+}
+
 async function settle(user: User, id: string): Promise<ExportDto> {
   await runReportExport();
   for (let attempt = 0; attempt < 50; attempt += 1) {
@@ -63,6 +92,38 @@ async function settle(user: User, id: string): Promise<ExportDto> {
 
 const dataLines = (csv: string) =>
   csv.split("\r\n").filter((line) => line.length > 0 && !line.startsWith("#"));
+
+function parseCsv(csv: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+  for (let index = 0; index < csv.length; index += 1) {
+    const char = csv[index];
+    if (quoted) {
+      if (char === '"' && csv[index + 1] === '"') {
+        field += '"';
+        index += 1;
+      } else if (char === '"') quoted = false;
+      else field += char;
+    } else if (char === '"') quoted = true;
+    else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\r" || char === "\n") {
+      if (char === "\r" && csv[index + 1] === "\n") index += 1;
+      row.push(field);
+      if (row.some((value) => value.length > 0)) rows.push(row);
+      row = [];
+      field = "";
+    } else field += char;
+  }
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
 
 describe("synchronous and queued exports (RP-10)", () => {
   it("answers a small export with the CSV and audits it as it leaves", async () => {
@@ -123,6 +184,108 @@ describe("synchronous and queued exports (RP-10)", () => {
       `/api/report-exports?workspaceId=${w.workspaceId}`,
     );
     expect(((await mine.json()) as { data: ExportDto[] }).data).toHaveLength(1);
+  });
+
+  it("exports every row beyond the former 5,000-row ceiling without truncation", async () => {
+    await seedAtRiskBulk(5_205);
+    const screen = await w.report(w.owner.user, "at_risk_now");
+    expect(screen.body.rows).toHaveLength(200);
+    expect(screen.body.truncated).toBe(true);
+    const queued = await post(
+      w.owner.user,
+      "/api/reports/at_risk_now/export",
+      {},
+    );
+    expect(queued.status, await queued.clone().text()).toBe(202);
+    const { data } = (await queued.json()) as { data: ExportDto };
+    const done = await settle(w.owner.user, data.id);
+    expect(done.status).toBe("ready");
+    expect(done.rowCount).toBe(5_205);
+    expect(done.truncated).toBe(false);
+    const download = await w.get(
+      w.owner.user,
+      `/api/report-exports/${data.id}/download`,
+    );
+    expect(download.status).toBe(200);
+    const csv = await download.text();
+    expect(dataLines(csv)).toHaveLength(5_206);
+    const parsed = parseCsv(csv);
+    const header = parsed.findIndex((row) => row[0] === "Key");
+    const rows = parsed.slice(header + 1);
+    const keys = rows.map((row) => row[0]);
+    expect(rows).toHaveLength(5_205);
+    expect(new Set(keys).size).toBe(5_205);
+    expect(rows.at(-1)?.[0]).toBe("BULK-5205");
+    expect(rows.at(-1)?.[1]).toBe("At risk bulk 5205");
+    expect(csv).not.toContain("# Truncated");
+  });
+
+  it("keeps the requested project filter on every queued page", async () => {
+    await seedAtRisk(210);
+    await w.addItem({
+      projectId: w.projectB.id,
+      open: true,
+      createdDaysAgo: 3,
+      sla: { state: "at_risk" },
+      title: "Outside filtered project",
+    });
+    const queued = await post(w.owner.user, "/api/reports/at_risk_now/export", {
+      projectId: w.projectA.id,
+    });
+    expect(queued.status).toBe(202);
+    const { data } = (await queued.json()) as { data: ExportDto };
+    const done = await settle(w.owner.user, data.id);
+    expect(done.status).toBe("ready");
+    expect(done.rowCount).toBe(210);
+    const download = await w.get(
+      w.owner.user,
+      `/api/report-exports/${data.id}/download`,
+    );
+    const csv = await download.text();
+    expect(csv).toContain(w.projectA.slug);
+    expect(csv).not.toContain("Outside filtered project");
+    expect(csv).not.toContain(w.projectB.slug);
+  });
+
+  it("fails atomically when a later CSV page cannot be appended", async () => {
+    await seedAtRisk(260);
+    const queued = await post(
+      w.owner.user,
+      "/api/reports/at_risk_now/export",
+      {},
+    );
+    expect(queued.status).toBe(202);
+    const { data } = (await queued.json()) as { data: ExportDto };
+    await db.execute(sql`CREATE OR REPLACE FUNCTION public.test_fail_report_export_second_chunk()
+      RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF OLD.content IS NOT NULL THEN
+          RAISE EXCEPTION 'injected later page failure';
+        END IF;
+        RETURN NEW;
+      END $$`);
+    await db.execute(sql`CREATE TRIGGER test_fail_report_export_second_chunk
+      BEFORE UPDATE OF content ON report_export FOR EACH ROW
+      EXECUTE FUNCTION public.test_fail_report_export_second_chunk()`);
+    try {
+      const done = await settle(w.owner.user, data.id);
+      expect(done.status).toBe("failed");
+      expect(done.error).toBe("export_failed");
+      const [stored] = await db
+        .select()
+        .from(reportExportTable)
+        .where(eq(reportExportTable.id, data.id));
+      expect(stored?.status).toBe("failed");
+      expect(stored?.content).toBeNull();
+      expect(stored?.rowCount).toBeNull();
+    } finally {
+      await db.execute(
+        sql`DROP TRIGGER IF EXISTS test_fail_report_export_second_chunk ON report_export`,
+      );
+      await db.execute(
+        sql`DROP FUNCTION IF EXISTS public.test_fail_report_export_second_chunk()`,
+      );
+    }
   });
 
   it("never lets another person, another workspace or a customer reach someone's export", async () => {

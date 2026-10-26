@@ -1,0 +1,117 @@
+{
+	"recordedAt": "2026-10-26T05:22:11.817Z",
+	"strictTls": true,
+	"scope": "Own-workspace workflow publication impact preview; draft preparation only, no publication",
+	"checks": [
+		{
+			"name": "Own audit admin session",
+			"pass": true
+		},
+		{
+			"name": "Original workspace resolvable",
+			"pass": true
+		},
+		{
+			"name": "Read real own-workspace workflows",
+			"pass": true
+		},
+		{
+			"name": "Own workspace workflow exists",
+			"pass": true
+		},
+		{
+			"name": "Own draft persisted without publishing",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 375 light returns200",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 375 light has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 375 light fits page",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 768 light returns200",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 768 light has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 768 light fits page",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 1440 light returns200",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 1440 light has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 1440 light fits page",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 375 dark returns200",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 375 dark has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 375 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 768 dark returns200",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 768 dark has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 768 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 1440 dark returns200",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 1440 dark has bounded impact",
+			"pass": true
+		},
+		{
+			"name": "workflow preview 1440 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "Six previews leave workflow tree and active version unchanged",
+			"pass": true
+		}
+	],
+	"screenshots": [
+		"workflow-375-light.png",
+		"workflow-768-light.png",
+		"workflow-1440-light.png",
+		"workflow-375-dark.png",
+		"workflow-768-dark.png",
+		"workflow-1440-dark.png"
+	],
+	"outcome": "passed",
+	"workflowAffected": {
+		"people": 1,
+		"workItems": 51,
+		"projects": 1
+	}
+}

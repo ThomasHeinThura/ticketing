@@ -5,7 +5,7 @@ import {
   desc,
   eq,
   exists,
-  gt,
+  inArray,
   isNull,
   or,
   type SQL,
@@ -14,6 +14,7 @@ import {
 import db, { schema } from "../database";
 import { type Executor, executorOrDefault } from "../database/executor";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
+import { dbClockUtc } from "../utils/db-time";
 import {
   CUSTOMER_INVITATION_ROLE,
   customerInvitationStatus,
@@ -330,7 +331,7 @@ export async function addressCannotBeInvited(
 export async function countRecentCreates(
   executor: Executor,
   by: { inviterId: string } | { organisationId: string },
-  since: Date,
+  windowMinutes: number,
 ): Promise<number> {
   const [row] = await executor
     .select({ value: count() })
@@ -341,10 +342,32 @@ export async function countRecentCreates(
         "inviterId" in by
           ? eq(invitation.inviterId, by.inviterId)
           : eq(invitation.organisationId, by.organisationId),
-        gt(invitation.createdAt, since),
+        sql`${invitation.createdAt} > ${dbClockUtc()} - make_interval(mins => ${windowMinutes}::int)`,
       ),
     );
   return row?.value ?? 0;
+}
+
+/** Current CP-22/26 values. Missing singleton configuration fails closed. */
+export async function readInvitationRuntimeSettings(executor: Executor) {
+  const [row] = await executor
+    .select({
+      invitationLifetimeHours:
+        schema.instanceSettingTable.invitationLifetimeHours,
+      customerInvitationCreateWindowMinutes:
+        schema.instanceSettingTable.customerInvitationCreateWindowMinutes,
+      customerInvitationPerInviterLimit:
+        schema.instanceSettingTable.customerInvitationPerInviterLimit,
+      customerInvitationPerOrganisationLimit:
+        schema.instanceSettingTable.customerInvitationPerOrganisationLimit,
+      customerInvitationResendCooldownSeconds:
+        schema.instanceSettingTable.customerInvitationResendCooldownSeconds,
+    })
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
+    .limit(1);
+  if (!row) throw new Error("Invitation runtime settings unavailable");
+  return row;
 }
 
 export async function insertCustomerInvitation(
@@ -462,7 +485,7 @@ export async function rotateCredential(
       expiresAt: values.expiresAt,
       lastSentAt: values.now,
       ...(values.renewedBy
-        ? { inviterId: values.renewedBy, createdAt: values.now }
+        ? { inviterId: values.renewedBy, createdAt: dbClockUtc() }
         : {}),
     })
     .where(
@@ -549,8 +572,12 @@ export async function findInvitationForSignUp(
   return row;
 }
 
-export async function findUserForAccept(executor: Executor, userId: string) {
-  const [row] = await executor
+export async function lockUsersForAccept(
+  executor: Executor,
+  userIds: readonly string[],
+) {
+  const ids = [...new Set(userIds)].sort();
+  return executor
     .select({
       id: schema.userTable.id,
       name: schema.userTable.name,
@@ -558,25 +585,29 @@ export async function findUserForAccept(executor: Executor, userId: string) {
       emailVerified: schema.userTable.emailVerified,
     })
     .from(schema.userTable)
-    .where(eq(schema.userTable.id, userId))
-    .limit(1);
-  return row;
+    .where(inArray(schema.userTable.id, ids))
+    .orderBy(schema.userTable.id)
+    .for("update");
 }
 
-export async function findPersonByUser(executor: Executor, userId: string) {
-  const [row] = await executor
+export async function lockPeopleForAccept(
+  executor: Executor,
+  userIds: readonly string[],
+) {
+  const ids = [...new Set(userIds)].sort();
+  return executor
     .select({
       id: schema.personTable.id,
+      userId: schema.personTable.userId,
       organisationId: schema.personTable.organisationId,
       side: schema.personTable.side,
       active: schema.personTable.active,
       isPlaceholder: schema.personTable.isPlaceholder,
     })
     .from(schema.personTable)
-    .where(eq(schema.personTable.userId, userId))
-    .for("update")
-    .limit(1);
-  return row;
+    .where(inArray(schema.personTable.userId, ids))
+    .orderBy(schema.personTable.id)
+    .for("update");
 }
 
 export async function insertCustomerPerson(
@@ -613,21 +644,79 @@ export async function findCanonicalCustomerRoleId(executor: Executor) {
   return row?.id;
 }
 
-/** Insert the organisation-scope membership; an existing one is left as it is. */
-export async function insertCustomerMembership(
+/** The invitation sender is the evidenced actor for this direct customer-role grant. */
+export async function ensureCustomerMembershipGrant(
   executor: Executor,
-  values: { personId: string; organisationId: string; roleId: string },
+  values: {
+    personId: string;
+    organisationId: string;
+    roleId: string;
+    grantedByPersonId: string;
+  },
 ) {
-  await executor
-    .insert(schema.membershipTable)
+  const [active] = await executor
+    .select({
+      id: schema.membershipGrantTable.id,
+      roleId: schema.membershipGrantTable.roleId,
+    })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.personId, values.personId),
+        eq(schema.membershipGrantTable.scope, "organisation"),
+        eq(schema.membershipGrantTable.scopeId, values.organisationId),
+        eq(schema.membershipGrantTable.sourceKind, "direct"),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    )
+    .for("update")
+    .limit(1);
+  if (active) {
+    return {
+      grantId: active.id,
+      created: false,
+      roleMatches: active.roleId === values.roleId,
+    };
+  }
+
+  const [created] = await executor
+    .insert(schema.membershipGrantTable)
     .values({
       personId: values.personId,
       scope: "organisation",
       scopeId: values.organisationId,
       roleId: values.roleId,
+      sourceKind: "direct",
+      directOrigin: "admin",
+      grantedByPersonId: values.grantedByPersonId,
       seesAll: false,
     })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ id: schema.membershipGrantTable.id });
+  if (created) return { grantId: created.id, created: true, roleMatches: true };
+
+  const [raced] = await executor
+    .select({
+      id: schema.membershipGrantTable.id,
+      roleId: schema.membershipGrantTable.roleId,
+    })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.personId, values.personId),
+        eq(schema.membershipGrantTable.scope, "organisation"),
+        eq(schema.membershipGrantTable.scopeId, values.organisationId),
+        eq(schema.membershipGrantTable.sourceKind, "direct"),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    )
+    .for("update")
+    .limit(1);
+  return {
+    grantId: raced?.id,
+    created: false,
+    roleMatches: raced?.roleId === values.roleId,
+  };
 }
 
 /** The single-use gate: affects exactly one row, and only while the same credential is stored. */

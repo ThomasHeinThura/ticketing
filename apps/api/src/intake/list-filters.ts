@@ -7,13 +7,14 @@ import { HTTPException } from "hono/http-exception";
  */
 export type SubmissionListFilters = {
   requestTypeKey?: string;
-  /** `unclaimed` or a person id; filters `claimed_by`. */
+  /** `claimed`, `unclaimed` or a person id; filters `claimed_by`. */
   assignee?: string;
   /** Created strictly before `now - N days`. */
   olderThanDays?: number;
 };
 
 export const UNCLAIMED = "unclaimed";
+export const CLAIMED = "claimed";
 const MAX_OLDER_THAN_DAYS = 3650;
 
 type RawFilters = {

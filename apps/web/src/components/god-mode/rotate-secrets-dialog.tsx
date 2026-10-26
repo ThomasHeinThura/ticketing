@@ -71,7 +71,7 @@ export function RotateSecretsDialog({ onClose }: { onClose: () => void }) {
           </Button>
           {started ? null : (
             <Button
-              disabled={stepUp.busy || stepUp.secret.length === 0}
+              disabled={stepUp.busy || !stepUp.canRun}
               onClick={() => void submit()}
             >
               {t("rotateSecrets.submit")}

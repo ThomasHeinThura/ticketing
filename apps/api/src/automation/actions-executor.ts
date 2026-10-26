@@ -47,6 +47,7 @@ import { type EffectiveRole, roleMayAct } from "./effective-role";
 import type { LoadedWorkItem } from "./facts";
 import { expandPlaceholders } from "./placeholders";
 import type { AutomationRow } from "./repository";
+import { notifyTeam } from "./team-notify";
 
 /**
  * Action execution for one matched rule (`AM-3`, `AM-4`, `AM-7`, `AM-12`).
@@ -558,6 +559,13 @@ async function executeActionInner(
       return callWebhook(ctx, item, action.webhookId);
     case "post_comment":
       return postComment(ctx, item as LoadedWorkItem, action);
+    case "notify":
+      return notifyTeam(
+        ctx,
+        item as LoadedWorkItem,
+        action,
+        await placeholderValues(ctx, item as LoadedWorkItem),
+      );
     case "transition":
       return transitionItem(ctx, item as LoadedWorkItem, action);
   }

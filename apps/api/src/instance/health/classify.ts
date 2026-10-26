@@ -47,7 +47,9 @@ export function classifySecrets(progress: RekeyProgress): HealthCheck {
         ? "unknown"
         : "failing"
       : pending === 0
-        ? "ok"
+        ? progress.expiredInvitationDeliveryEnvelopes > 0
+          ? "degraded"
+          : "ok"
         : progress.previousKeyConfigured
           ? "degraded"
           : "failing";
@@ -59,6 +61,8 @@ export function classifySecrets(progress: RekeyProgress): HealthCheck {
       previousKeyConfigured: progress.previousKeyConfigured,
       secretsTotal: total,
       secretsPendingRekey: pending,
+      expiredInvitationDeliveryEnvelopes:
+        progress.expiredInvitationDeliveryEnvelopes,
       rekeyComplete: progress.complete,
       safeToRemovePreviousKey:
         progress.complete && progress.previousKeyConfigured,

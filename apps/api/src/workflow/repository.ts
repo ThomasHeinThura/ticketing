@@ -19,15 +19,18 @@ import {
   currentWorkspaceReachPredicate,
 } from "../database/repositories/identity-scope.repository";
 import {
+  personTable,
   projectTable,
   roleTable,
   stateTable,
   stateTemplateTable,
+  userTable,
   workflowTable,
   workflowTransitionTable,
   workflowVersionTable,
   workItemTable,
   workspaceTable,
+  workspaceUserTable,
 } from "../database/schema";
 
 /**
@@ -412,6 +415,28 @@ export async function listWorkflowAdoptingProjectIds(
         projectReach(identity, projectTable.id, executor),
       ),
     );
+}
+
+/** Active staff account candidates; each is still checked with canonical project reach. */
+export async function listActiveWorkflowWorkspaceUserIds(
+  executor: Executor,
+  workspaceId: string,
+): Promise<string[]> {
+  const rows = await executor
+    .select({ userId: workspaceUserTable.userId })
+    .from(workspaceUserTable)
+    .innerJoin(userTable, eq(userTable.id, workspaceUserTable.userId))
+    .innerJoin(personTable, eq(personTable.userId, workspaceUserTable.userId))
+    .where(
+      and(
+        eq(workspaceUserTable.workspaceId, workspaceId),
+        eq(personTable.side, "staff"),
+        eq(personTable.active, true),
+        sql`coalesce(${userTable.banned}, false) = false`,
+      ),
+    )
+    .orderBy(workspaceUserTable.userId);
+  return [...new Set(rows.map((row) => row.userId))];
 }
 
 /** A scalar refusal oracle: it exposes no hidden project IDs or counts. The existing

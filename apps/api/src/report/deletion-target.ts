@@ -1,5 +1,8 @@
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { dashboardTable } from "../database/schema-p5-reports";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -31,6 +34,27 @@ export const dashboardDeletionTarget: RegisteredDeletionTarget = {
       summary: { dashboardId: row.id, name: row.name, scope: row.scope },
       version: registeredDeletionFingerprint(row),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [row] = await tx
+      .select({
+        id: dashboardTable.id,
+        workspaceId: dashboardTable.workspaceId,
+      })
+      .from(dashboardTable)
+      .where(eq(dashboardTable.id, id))
+      .limit(1);
+    return row
+      ? {
+          id: row.id,
+          workspaceId: row.workspaceId,
+          projectId: null,
+          organisationId: null,
+        }
+      : undefined;
   },
   execute: async (tx, { loaded, identity }) => {
     const row = await lockDashboard(tx, loaded.id);

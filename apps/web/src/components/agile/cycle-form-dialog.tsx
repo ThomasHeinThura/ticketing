@@ -97,7 +97,7 @@ export function CycleFormDialog({
           </DialogTitle>
           <DialogDescription>{t("cycles.form.description")}</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 px-6">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="cycle-name">{t("cycles.form.name")}</Label>
             <Input

@@ -192,16 +192,23 @@ export type UpdateRoleInput = {
   confirmSelfEdit?: boolean;
 };
 
+export type RoleImpactPreview = {
+  affected: { people: number; workItems: number; projects: number };
+};
+
 export function updateRole(
   workspaceId: string,
   roleId: string,
   input: UpdateRoleInput,
   stepUpToken?: string,
+  options?: { dryRun?: boolean },
 ) {
-  return request<WorkspaceRoleDetail>(
-    `${base(workspaceId)}/${encodeURIComponent(roleId)}`,
+  return request<WorkspaceRoleDetail | RoleImpactPreview>(
+    `${base(workspaceId)}/${encodeURIComponent(roleId)}${options?.dryRun ? "?dryRun=true" : ""}`,
     { method: "PATCH", body: input, stepUpToken },
-    "Failed to save the role",
+    options?.dryRun
+      ? "Failed to preview the role impact"
+      : "Failed to save the role",
   );
 }
 

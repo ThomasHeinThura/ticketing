@@ -1,6 +1,9 @@
+import { and, eq, isNotNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
+import { apiKeyExtensionTable, apikeyTable } from "../database/schema";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -50,6 +53,36 @@ export const serviceKeyDeletionTarget: RegisteredDeletionTarget = {
         disabledAt: row.disabledAt,
       }),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [row] = await tx
+      .select({
+        id: apikeyTable.id,
+        workspaceId: apiKeyExtensionTable.workspaceId,
+      })
+      .from(apikeyTable)
+      .innerJoin(
+        apiKeyExtensionTable,
+        eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+      )
+      .where(
+        and(
+          eq(apikeyTable.id, id),
+          isNotNull(apiKeyExtensionTable.workspaceId),
+        ),
+      )
+      .limit(1);
+    return row?.workspaceId
+      ? {
+          id: row.id,
+          workspaceId: row.workspaceId,
+          projectId: null,
+          organisationId: null,
+        }
+      : undefined;
   },
   execute: async (tx, { loaded, identity }) => {
     await invalidatePendingActionsForCredential(tx, {

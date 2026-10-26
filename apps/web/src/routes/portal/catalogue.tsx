@@ -24,6 +24,8 @@ import {
   getPortalRequestType,
   submitPortalRequest,
 } from "@/fetchers/intake";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
+import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 import { missingRequiredIntakeFields } from "@/lib/intake-validation";
 import { resolveIntakeVisibility } from "@/lib/intake-visibility";
 import { parsePortalCatalogueSearch, routes } from "@/lib/routes";
@@ -46,7 +48,21 @@ export const Route = createFileRoute("/catalogue")({
 });
 
 function PortalCatalogue() {
-  const { t } = useTranslation();
+  const { i18n } = useTranslation();
+  const { key } = Route.useSearch();
+  return (
+    <TerminologyProvider
+      audience="customer"
+      locale={i18n.resolvedLanguage ?? i18n.language}
+      portalSelector={key ? { requestTypeKey: key } : undefined}
+    >
+      <PortalCatalogueContent />
+    </TerminologyProvider>
+  );
+}
+
+function PortalCatalogueContent() {
+  const { t } = usePortalTranslation();
   const { q, key } = Route.useSearch();
   const { portalUserId } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -196,14 +212,10 @@ function PortalCatalogue() {
           ref={listHeadingRef}
           tabIndex={-1}
         >
-          {t("portal:intake.catalogueTitle", {
-            defaultValue: "Request catalogue",
-          })}
+          {t("portal:intake.catalogueTitle")}
         </h1>
         <p className="text-muted-foreground">
-          {t("portal:intake.catalogueDescription", {
-            defaultValue: "Choose a request type and tell us what you need.",
-          })}
+          {t("portal:intake.catalogueDescription")}
         </p>
       </header>
       {primaryError && (
@@ -510,7 +522,7 @@ function PortalCatalogue() {
             <Button type="submit" disabled={submit.isPending}>
               {submit.isPending
                 ? t("common:empty.loading", { defaultValue: "Submitting…" })
-                : t("portal:intake.submit", { defaultValue: "Submit request" })}
+                : t("portal:intake.submit")}
             </Button>
           </form>
         </section>

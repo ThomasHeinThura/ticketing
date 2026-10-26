@@ -1,3 +1,4 @@
+import { HTTPException } from "hono/http-exception";
 import { clientIpForContext } from "../api-key/enforce";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
@@ -28,9 +29,13 @@ import downloadAttachment from "./controllers/download-attachment";
 import listWorkItemAttachments from "./controllers/list-work-item-attachments";
 import presignAttachment from "./controllers/presign-attachment";
 import { presignSubmissionAttachment } from "./controllers/presign-submission-attachment";
+import previewAttachment from "./controllers/preview-attachment";
+import restoreAttachment from "./controllers/restore-attachment";
+import { PdfPreviewUnavailableError } from "./pdf-preview";
 import {
   findAttachmentAuditActor,
   findSubmissionAttachmentContent,
+  findWorkItemAttachment,
   listPortalSubmissionAttachments,
   listStaffSubmissionAttachments,
 } from "./repository";
@@ -43,6 +48,7 @@ import {
 } from "./response";
 import {
   attachmentIdParam,
+  attachmentListQuery,
   presignAttachmentBody,
   workItemKeyParam,
 } from "./schema";
@@ -63,6 +69,7 @@ function toAttachmentResponse(row: {
   createdAt: Date;
   deletedAt: Date | null;
   canDelete?: boolean;
+  canRestore?: boolean;
 }) {
   return {
     id: row.id,
@@ -77,6 +84,7 @@ function toAttachmentResponse(row: {
     createdAt: row.createdAt,
     deletedAt: row.deletedAt,
     canDelete: row.canDelete ?? false,
+    canRestore: row.canRestore ?? false,
   };
 }
 
@@ -85,6 +93,50 @@ function resolveActor(
   apiKey: { id: string } | undefined,
 ): { actorId: string; actorType: "person" | "api_key" } {
   return { actorId: userId, actorType: apiKey ? "api_key" : "person" };
+}
+
+async function pdfPreviewResponse(input: {
+  attachment: {
+    id: string;
+    objectKey: string;
+    mimeType: string;
+    size: number;
+    workspaceId: string;
+  };
+  projectId: string | null;
+  actorId: string;
+  actorType: "person" | "api_key";
+  apiKeyId: string | null;
+  signal: AbortSignal;
+}) {
+  try {
+    const { body, contentLength } = await previewAttachment(input);
+    return new Response(body, {
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+        // This endpoint is consumed by the authenticated parent via fetch. A direct
+        // navigation should download bytes instead of invoking the browser PDF viewer
+        // outside the sandboxed Kaneo preview.
+        "Content-Disposition": "attachment",
+        "Content-Length": String(contentLength),
+        "Content-Type": "application/pdf",
+        "Cross-Origin-Resource-Policy": "same-origin",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch (error) {
+    if (error instanceof PdfPreviewUnavailableError) {
+      throw new HTTPException(error.reason === "too_large" ? 413 : 415, {
+        message:
+          error.reason === "too_large"
+            ? "PDF exceeds the preview size limit."
+            : "PDF preview is unavailable.",
+      });
+    }
+    throw new HTTPException(503, {
+      message: "PDF preview is temporarily unavailable.",
+    });
+  }
 }
 
 const presignAttachmentRoute = createRoute({
@@ -124,8 +176,10 @@ const listWorkItemAttachmentsRoute = createRoute({
   path: "/work-items/{key}/attachments",
   tags: ["Attachments"],
   summary: "List a work item's attachments",
-  middleware: [requireWorkItemReach()] as const,
-  request: { params: workItemKeyParam },
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
+  request: { params: workItemKeyParam, query: attachmentListQuery },
   responses: {
     200: jsonResponse("The work item's attachments", attachmentListSchema),
     403: errorResponse("Missing work_item:read permission"),
@@ -167,12 +221,94 @@ const downloadAttachmentRoute = createRoute({
   description:
     "AT-5/AT-6: redirects to a five-minute presigned download URL and writes an " +
     "attachment.downloaded audit row.",
-  middleware: [requireAttachmentReach()] as const,
+  middleware: [
+    requireAttachmentReach("id", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: attachmentIdParam },
   responses: {
     302: { description: "Redirect to the presigned download URL" },
     403: errorResponse("Missing work_item:read permission"),
     404: errorResponse("Attachment not found, or not ready"),
+  },
+});
+
+const previewAttachmentRoute = createRoute({
+  method: "get",
+  operationId: "previewPdfAttachment",
+  path: "/attachments/{id}/preview",
+  tags: ["Attachments"],
+  summary: "Preview a PDF attachment",
+  description:
+    "Streams bounded PDF bytes after the same attachment reach check as download; no storage URL or object key is returned.",
+  middleware: [
+    requireAttachmentReach("id", { allowArchivedForRead: true }),
+  ] as const,
+  request: { params: attachmentIdParam },
+  responses: {
+    200: {
+      description: "Authorized PDF bytes for the sandboxed renderer",
+      content: {
+        "application/pdf": { schema: { type: "string", format: "binary" } },
+      },
+    },
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Attachment not found or not ready"),
+    413: errorResponse("PDF exceeds the preview size limit"),
+    415: errorResponse("Attachment is not a valid PDF preview"),
+    503: errorResponse("PDF preview is temporarily unavailable"),
+  },
+});
+
+const portalSubmissionPreviewRoute = createRoute({
+  method: "get",
+  operationId: "previewPortalSubmissionPdfAttachment",
+  path: "/portal/submissions/{ref}/attachments/{id}/preview",
+  tags: ["Attachments"],
+  summary: "Preview a customer-visible submission PDF",
+  middleware: [requireSubmissionAttachmentReach("portal_download")] as const,
+  request: {
+    params: submissionRefParam.extend({ id: attachmentIdParam.shape.id }),
+  },
+  responses: {
+    200: {
+      description: "Authorized customer-visible PDF bytes",
+      content: {
+        "application/pdf": { schema: { type: "string", format: "binary" } },
+      },
+    },
+    404: errorResponse("Submission or attachment not found"),
+    413: errorResponse("PDF exceeds the preview size limit"),
+    415: errorResponse("Attachment is not a valid PDF preview"),
+    503: errorResponse("PDF preview is temporarily unavailable"),
+  },
+});
+
+const staffSubmissionPreviewRoute = createRoute({
+  method: "get",
+  operationId: "previewStaffSubmissionPdfAttachment",
+  path: "/submissions/{ref}/attachments/{id}/preview",
+  tags: ["Attachments"],
+  summary: "Preview a submission PDF during triage",
+  middleware: [
+    requireSubmissionAttachmentReach("staff_download"),
+    requireApiKeyPermissionScope({ intake: ["triage"] }),
+    requireWorkspaceCapability("intake:triage"),
+  ] as const,
+  request: {
+    params: submissionRefParam.extend({ id: attachmentIdParam.shape.id }),
+  },
+  responses: {
+    200: {
+      description: "Authorized submission PDF bytes",
+      content: {
+        "application/pdf": { schema: { type: "string", format: "binary" } },
+      },
+    },
+    403: errorResponse("Missing triage permission"),
+    404: errorResponse("Submission or attachment not found"),
+    413: errorResponse("PDF exceeds the preview size limit"),
+    415: errorResponse("Attachment is not a valid PDF preview"),
+    503: errorResponse("PDF preview is temporarily unavailable"),
   },
 });
 
@@ -196,6 +332,28 @@ const deleteAttachmentRoute = createRoute({
     409: errorResponse("A deletion approval is already pending"),
     403: errorResponse("Missing attachment delete authority"),
     404: errorResponse("Attachment not found"),
+  },
+});
+
+const restoreAttachmentRoute = createRoute({
+  method: "post",
+  operationId: "restoreAttachment",
+  path: "/attachments/{id}/restore",
+  tags: ["Attachments"],
+  summary: "Restore a recently deleted attachment",
+  description:
+    "AT-7: restores a soft-deleted file within 24 hours when its work-item parent and stored object still exist and the caller has the original deletion authority.",
+  middleware: [
+    requireAttachmentReach("id", { deferApiKeyCapability: true }),
+  ] as const,
+  request: { params: attachmentIdParam },
+  responses: {
+    200: jsonResponse("The restored attachment", attachmentSchema),
+    403: errorResponse("Missing attachment delete authority"),
+    404: errorResponse("Attachment or live parent not found"),
+    409: errorResponse(
+      "Attachment has expired or its stored object is unavailable",
+    ),
   },
 });
 
@@ -236,10 +394,12 @@ const portalSubmissionCompleteRoute = createRoute({
   responses: {
     200: jsonResponse(
       "Completed submission attachment",
-      attachmentSchema.omit({ canDelete: true, commentId: true }).extend({
-        workItemId: attachmentSchema.shape.workItemId.nullable(),
-        submissionId: z.string().nullable(),
-      }),
+      attachmentSchema
+        .omit({ canDelete: true, canRestore: true, commentId: true })
+        .extend({
+          workItemId: attachmentSchema.shape.workItemId.nullable(),
+          submissionId: z.string().nullable(),
+        }),
     ),
     400: errorResponse("Upload bytes are invalid"),
     404: errorResponse("Attachment not found"),
@@ -374,7 +534,10 @@ const attachment = apiRouter<
   .openapi(listWorkItemAttachmentsRoute, async (c) => {
     const workItemId = c.get("workItemId") as string;
     const identity = await resolveCallerIdentity(c, c.get("userId"));
-    const rows = await listWorkItemAttachments(identity, workItemId);
+    const rows = await listWorkItemAttachments(identity, workItemId, {
+      allowArchivedForRead: true,
+      lifecycle: c.req.valid("query").lifecycle,
+    });
     return c.json(rows.map(toAttachmentResponse), 200);
   })
   .openapi(completeAttachmentRoute, async (c) => {
@@ -419,6 +582,29 @@ const attachment = apiRouter<
 
     return c.redirect(downloadUrl, 302);
   })
+  .openapi(previewAttachmentRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const workItemId = c.get("workItemId") as string;
+    const workspaceId = c.get("workspaceId") as string;
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    const [row] = await findWorkItemAttachment(db, identity, {
+      id,
+      workspaceId,
+      workItemId,
+    });
+    if (row?.state !== "ready" || row.deletedAt !== null)
+      throw new HTTPException(404, { message: "Attachment not found" });
+    const apiKey = c.get("apiKey");
+    const { actorId, actorType } = resolveActor(c.get("userId"), apiKey);
+    return await pdfPreviewResponse({
+      attachment: row,
+      projectId: (c.get("projectId") as string | undefined) ?? null,
+      actorId,
+      actorType,
+      apiKeyId: apiKey?.id ?? null,
+      signal: c.req.raw.signal,
+    });
+  })
   .openapi(deleteAttachmentRoute, async (c) => {
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId") as string;
@@ -444,6 +630,18 @@ const attachment = apiRouter<
       userAgent: c.req.header("user-agent") ?? null,
     });
     return c.json(pendingDeletionRequestSchema.parse(pending), 202);
+  })
+  .openapi(restoreAttachmentRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const apiKey = c.get("apiKey");
+    const restored = await restoreAttachment({
+      attachmentId: id,
+      actorId: c.get("userId"),
+      actorType: apiKey ? "api_key" : "person",
+      apiKeyId: apiKey?.id ?? null,
+      identity: await resolveCallerIdentity(c, c.get("userId")),
+    });
+    return c.json(toAttachmentResponse(restored), 200);
   })
   .openapi(portalSubmissionPresignRoute, async (c) =>
     c.json(
@@ -473,6 +671,7 @@ const attachment = apiRouter<
     // staff-only deletion hint (`canDelete`) never does either.
     const {
       canDelete: _staffDeletionHint,
+      canRestore: _staffRestoreHint,
       commentId: _staffCommentParent,
       ...customerShape
     } = toAttachmentResponse(completed);
@@ -524,6 +723,28 @@ const attachment = apiRouter<
     });
     return c.redirect(downloadUrl, 302);
   })
+  .openapi(portalSubmissionPreviewRoute, async (c) => {
+    const [row] = await findSubmissionAttachmentContent(
+      db,
+      await resolveCallerIdentity(c, c.get("userId")),
+      {
+        id: c.req.valid("param").id,
+        workspaceId: c.get("workspaceId"),
+        submissionId: c.get("submissionId"),
+        linkedWorkItemId: c.get("submissionWorkItemId"),
+        portal: true,
+      },
+    );
+    if (!row) throw new HTTPException(404, { message: "Attachment not found" });
+    return await pdfPreviewResponse({
+      attachment: row,
+      projectId: null,
+      actorId: c.get("requesterId"),
+      actorType: "person",
+      apiKeyId: null,
+      signal: c.req.raw.signal,
+    });
+  })
   .openapi(staffSubmissionListRoute, async (c) => {
     const rows = await listStaffSubmissionAttachments(
       db,
@@ -568,6 +789,32 @@ const attachment = apiRouter<
       entityId: row.id,
     });
     return c.redirect(downloadUrl, 302);
+  })
+  .openapi(staffSubmissionPreviewRoute, async (c) => {
+    const [row] = await findSubmissionAttachmentContent(
+      db,
+      await resolveCallerIdentity(c, c.get("userId")),
+      {
+        id: c.req.valid("param").id,
+        workspaceId: c.get("workspaceId"),
+        submissionId: c.get("submissionId"),
+        linkedWorkItemId: c.get("submissionWorkItemId"),
+        portal: false,
+      },
+    );
+    if (!row) throw new HTTPException(404, { message: "Attachment not found" });
+    const apiKey = c.get("apiKey");
+    const [staffPerson] = apiKey
+      ? [null]
+      : await findAttachmentAuditActor(c.get("userId"));
+    return await pdfPreviewResponse({
+      attachment: row,
+      projectId: null,
+      actorId: staffPerson?.id ?? c.get("userId"),
+      actorType: apiKey ? "api_key" : "person",
+      apiKeyId: apiKey?.id ?? null,
+      signal: c.req.raw.signal,
+    });
   });
 
 export default attachment;

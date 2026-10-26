@@ -13,7 +13,6 @@ import useGetNotifications from "@/hooks/queries/notification/use-get-notificati
 import { cn } from "@/lib/cn";
 import { formatRelativeTime } from "@/lib/format";
 import type { AgentInboxFilter } from "@/lib/routes";
-import { matchesInboxFilter } from "./notification-filters";
 
 type InboxFilter = AgentInboxFilter;
 
@@ -34,17 +33,18 @@ export default function NotificationInbox({
     isLoading,
     isError,
     refetch,
-  } = useGetNotifications();
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useGetNotifications(filter);
   const { mutate: markAllAsRead, isPending: isMarkingAll } =
     useMarkAllNotificationsAsRead();
   const { mutate: markAsRead } = useMarkNotificationAsRead();
   const { mutate: markAsUnread } = useMarkNotificationAsUnread();
   const openNotification = useNotificationClick();
 
-  const unread = notifications?.filter((n) => !n.isRead) ?? [];
-  const visible = (notifications ?? []).filter((n) =>
-    matchesInboxFilter(n, filter),
-  );
+  const unreadCount = notifications?.pages[0]?.unreadCount ?? 0;
+  const visible = notifications?.pages.flatMap((page) => page.data) ?? [];
   const emptyKey = {
     all: "notifications:emptyTitle",
     unread: "navigation:inbox.emptyUnread",
@@ -63,7 +63,7 @@ export default function NotificationInbox({
           <TabsList className="bg-sidebar gap-2">
             <TabsTrigger value="all">{t("navigation:inbox.all")}</TabsTrigger>
             <TabsTrigger value="unread">
-              {t("navigation:inbox.unread", { count: unread.length })}
+              {t("navigation:inbox.unread", { count: unreadCount })}
             </TabsTrigger>
             <TabsTrigger value="mentions">
               {t("navigation:inbox.mentions")}
@@ -73,7 +73,7 @@ export default function NotificationInbox({
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        {unread.length > 0 ? (
+        {unreadCount > 0 ? (
           <Button
             variant="outline"
             size="sm"
@@ -167,6 +167,20 @@ export default function NotificationInbox({
           })}
         </ul>
       )}
+      {hasNextPage ? (
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isFetchingNextPage}
+            onClick={() => void fetchNextPage()}
+          >
+            {isFetchingNextPage
+              ? t("common:empty.loading")
+              : t("workItems:list.loadMore")}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

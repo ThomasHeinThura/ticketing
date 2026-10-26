@@ -43,9 +43,70 @@ export class SmtpAttemptError extends Error {
       | "failed"
       | "rejected",
     readonly ambiguous = false,
+    readonly diagnostic?: "authentication" | "connection" | "tls",
   ) {
     super(`SMTP attempt ${kind}`);
   }
+}
+
+type SmtpDiagnostic = "authentication" | "connection" | "tls";
+
+const SMTP_DIAGNOSTIC_BY_CODE: Readonly<Record<string, SmtpDiagnostic>> = {
+  EAUTH: "authentication",
+  ECONNABORTED: "connection",
+  ECONNREFUSED: "connection",
+  ECONNRESET: "connection",
+  ECONNERR: "connection",
+  ECONNECTION: "connection",
+  EHOSTUNREACH: "connection",
+  ENETUNREACH: "connection",
+  ENOTFOUND: "connection",
+  EAI_AGAIN: "connection",
+  ETIMEDOUT: "connection",
+  EPIPE: "connection",
+  ESOCKET: "connection",
+  CERT_HAS_EXPIRED: "tls",
+  CERT_NOT_YET_VALID: "tls",
+  CERT_REVOKED: "tls",
+  CERT_UNTRUSTED: "tls",
+  CERT_SIGNATURE_FAILURE: "tls",
+  DEPTH_ZERO_SELF_SIGNED_CERT: "tls",
+  ERR_SSL_CA_MD_TOO_WEAK: "tls",
+  ERR_SSL_CERTIFICATE_VERIFY_FAILED: "tls",
+  ERR_SSL_EE_KEY_TOO_SMALL: "tls",
+  ERR_SSL_UNSUPPORTED_PROTOCOL: "tls",
+  ERR_SSL_WRONG_VERSION_NUMBER: "tls",
+  ERR_TLS_CERT_ALTNAME_FORMAT: "tls",
+  ERR_TLS_CERT_ALTNAME_INVALID: "tls",
+  ERR_TLS_DH_PARAM_SIZE: "tls",
+  ERR_TLS_HANDSHAKE_TIMEOUT: "tls",
+  SELF_SIGNED_CERT_IN_CHAIN: "tls",
+  UNABLE_TO_GET_ISSUER_CERT: "tls",
+  UNABLE_TO_GET_ISSUER_CERT_LOCALLY: "tls",
+  UNABLE_TO_VERIFY_LEAF_SIGNATURE: "tls",
+};
+
+/** Retain only a bounded category; provider replies and credentials never escape. */
+function smtpDiagnostic(error: unknown): SmtpDiagnostic | undefined {
+  const codes: string[] = [];
+  let current: unknown = error;
+  const seen = new Set<object>();
+  for (let depth = 0; depth < 3; depth += 1) {
+    if (typeof current !== "object" || current === null || seen.has(current))
+      break;
+    seen.add(current);
+    if ("code" in current && typeof current.code === "string")
+      codes.push(current.code);
+    if ("errno" in current && typeof current.errno === "string")
+      codes.push(current.errno);
+    current = "cause" in current ? current.cause : undefined;
+  }
+  if (codes.includes("EAUTH")) return "authentication";
+  if (codes.some((code) => SMTP_DIAGNOSTIC_BY_CODE[code] === "tls"))
+    return "tls";
+  if (codes.some((code) => SMTP_DIAGNOSTIC_BY_CODE[code] === "connection"))
+    return "connection";
+  return undefined;
 }
 
 /** Opens one cancellable connection; secure sockets retain normal certificate validation. */
@@ -68,10 +129,16 @@ export async function openSmtpSocket(
       socket.destroy();
       reject(new SmtpAttemptError("aborted"));
     };
-    const error = () => {
+    const error = (cause: Error) => {
       signal.removeEventListener("abort", abort);
       socket.destroy();
-      reject(new SmtpAttemptError("failed"));
+      reject(
+        new SmtpAttemptError(
+          "failed",
+          false,
+          smtpDiagnostic(cause) ?? "connection",
+        ),
+      );
     };
     socket.once("error", error);
     signal.addEventListener("abort", abort, { once: true });
@@ -166,11 +233,15 @@ export async function executeSmtp(
               }
               callback(null, { connection: socket, secured: result.secured });
             },
-            () =>
+            (error: unknown) =>
               callback(
-                new SmtpAttemptError(
-                  controller.signal.aborted ? reason : "failed",
-                ),
+                error instanceof SmtpAttemptError
+                  ? error
+                  : new SmtpAttemptError(
+                      controller.signal.aborted ? reason : "failed",
+                      false,
+                      smtpDiagnostic(error),
+                    ),
               ),
           );
         },
@@ -212,7 +283,7 @@ export async function executeSmtp(
     if (controller.signal.aborted) throw new SmtpAttemptError(reason, sending);
     if (error instanceof SmtpAttemptError) throw error;
     // Provider errors may embed credentials, addresses or full server replies. Never propagate those.
-    throw new SmtpAttemptError("failed", sending);
+    throw new SmtpAttemptError("failed", sending, smtpDiagnostic(error));
   } finally {
     clearTimeout(timer);
     input.signal?.removeEventListener("abort", abort);

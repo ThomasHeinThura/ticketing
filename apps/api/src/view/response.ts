@@ -14,6 +14,8 @@ export const savedViewSchema = z
     scopeId: z.string(),
     visibility: z.string(),
     sharedWithTeamId: z.string().nullable(),
+    queuePairId: z.string().min(1).max(128).nullable().optional(),
+    queueVersion: z.number().int().safe().min(1).nullable().optional(),
     layout: z.string(),
     query: z.unknown(),
     createdAt: responseTimestamp,

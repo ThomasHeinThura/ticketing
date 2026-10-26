@@ -3,19 +3,25 @@ import type { TFunction } from "i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
-import TaskCard from "./task-card";
+import TaskCard, {
+  deferKeyboardSensorEndKey,
+  deferKeyboardSensorKey,
+  isDeferredKeyboardSensorEvent,
+} from "./task-card";
 
 const mocks = vi.hoisted(() => ({
   openContextMenu: vi.fn(),
   openTask: vi.fn(),
   dragStart: vi.fn(),
   dragKeyDown: vi.fn(),
+  isDragging: false,
 }));
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   vi.restoreAllMocks();
+  mocks.isDragging = false;
   useBulkSelectionStore.setState({
     selectedTaskIds: new Set(),
     focusedTaskId: null,
@@ -24,12 +30,19 @@ afterEach(() => {
 
 vi.mock("@dnd-kit/sortable", () => ({
   useSortable: ({ disabled }: { disabled: boolean }) => ({
-    attributes: { role: "button", tabIndex: 0, "aria-disabled": disabled },
+    attributes: {
+      role: "button",
+      tabIndex: 0,
+      "aria-disabled": disabled,
+      "aria-pressed": false,
+      "aria-roledescription": "sortable",
+      "aria-describedby": "dnd-instructions",
+    },
     listeners: { onPointerDown: mocks.dragStart, onKeyDown: mocks.dragKeyDown },
     setNodeRef: vi.fn(),
     transform: null,
     transition: undefined,
-    isDragging: false,
+    isDragging: mocks.isDragging,
   }),
 }));
 
@@ -38,8 +51,14 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@taskdesk/ui", async () => {
-  const { Button, Avatar, AvatarFallback, AvatarImage } =
-    await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
+  const {
+    Button,
+    Fieldset,
+    FieldsetLegend,
+    Avatar,
+    AvatarFallback,
+    AvatarImage,
+  } = await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const passthrough = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   );
@@ -52,6 +71,8 @@ vi.mock("@taskdesk/ui", async () => {
     AlertDialogHeader: passthrough,
     AlertDialogTitle: passthrough,
     Button,
+    Fieldset,
+    FieldsetLegend,
     Avatar,
     AvatarFallback,
     AvatarImage,
@@ -120,14 +141,24 @@ function renderTaskCard() {
       isSelected={false}
       isFocused={false}
       onOpenTask={mocks.openTask}
-      t={((key: string) => key) as unknown as TFunction}
+      t={mockT}
       workspaceId="workspace-1"
       assignee={undefined}
       onContextMenuTask={mocks.openContextMenu}
     />,
   );
-  return screen.getByText("Keyboard task").closest('[role="button"]');
+  return screen.getByText("Keyboard task").closest("fieldset");
 }
+
+const mockT = ((key: string, options?: Record<string, unknown>) => {
+  if (key === "common:a11y.taskContainerLabel")
+    return `Task ${options?.key}: ${options?.title}`;
+  if (key === "common:a11y.taskOpenAndDragHint")
+    return "Press Enter to open. Press Space to start dragging, then use the arrow keys to move.";
+  if (key === "common:a11y.taskOpenHint")
+    return "Press Enter or Space to open.";
+  return key;
+}) as unknown as TFunction;
 
 const displayPreferences = {
   showAssignees: false,
@@ -139,6 +170,194 @@ const displayPreferences = {
 };
 
 describe("TaskCard keyboard context menu", () => {
+  it("suppresses deferred Escape for disconnected or inactive cards and marks replay", async () => {
+    const disconnected = document.createElement("fieldset");
+    disconnected.dataset.taskDragging = "true";
+    document.body.append(disconnected);
+    const disconnectedDispatch = vi.spyOn(disconnected, "dispatchEvent");
+    deferKeyboardSensorEndKey(
+      disconnected,
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        code: "Escape",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    disconnected.remove();
+
+    const inactive = document.createElement("fieldset");
+    inactive.dataset.taskDragging = "true";
+    document.body.append(inactive);
+    const inactiveDispatch = vi.spyOn(inactive, "dispatchEvent");
+    deferKeyboardSensorEndKey(
+      inactive,
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        code: "Escape",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    delete inactive.dataset.taskDragging;
+
+    const active = document.createElement("fieldset");
+    active.dataset.taskDragging = "true";
+    document.body.append(active);
+    const replays: KeyboardEvent[] = [];
+    active.addEventListener("keydown", (event) => {
+      const keyboardEvent = event as KeyboardEvent;
+      if (!isDeferredKeyboardSensorEvent(keyboardEvent)) return;
+      replays.push(keyboardEvent);
+      deferKeyboardSensorEndKey(active, keyboardEvent);
+    });
+    deferKeyboardSensorEndKey(
+      active,
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        code: "Escape",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(disconnectedDispatch).not.toHaveBeenCalled();
+    expect(inactiveDispatch).not.toHaveBeenCalled();
+    expect(replays).toHaveLength(1);
+    expect(isDeferredKeyboardSensorEvent(replays[0] as KeyboardEvent)).toBe(
+      true,
+    );
+  });
+
+  it("replays one unhandled arrow with its keyboard modifiers and repeat flag", async () => {
+    const card = document.createElement("fieldset");
+    card.dataset.taskDragging = "true";
+    document.body.append(card);
+    const replays: KeyboardEvent[] = [];
+    card.addEventListener("keydown", (event) => {
+      const keyboardEvent = event as KeyboardEvent;
+      if (isDeferredKeyboardSensorEvent(keyboardEvent))
+        replays.push(keyboardEvent);
+    });
+
+    deferKeyboardSensorKey(
+      card,
+      new KeyboardEvent("keydown", {
+        key: "ArrowDown",
+        code: "ArrowDown",
+        bubbles: true,
+        cancelable: true,
+        altKey: true,
+        ctrlKey: true,
+        metaKey: true,
+        shiftKey: true,
+        repeat: true,
+      }),
+    );
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(replays).toHaveLength(1);
+    expect(replays[0]).toMatchObject({
+      key: "ArrowDown",
+      code: "ArrowDown",
+      altKey: true,
+      ctrlKey: true,
+      metaKey: true,
+      shiftKey: true,
+      repeat: true,
+    });
+    card.remove();
+  });
+
+  it("does not replay an arrow already handled by the sensor", async () => {
+    const card = document.createElement("fieldset");
+    card.dataset.taskDragging = "true";
+    document.body.append(card);
+    const dispatch = vi.spyOn(card, "dispatchEvent");
+    const event = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      code: "ArrowDown",
+      bubbles: true,
+      cancelable: true,
+    });
+    event.preventDefault();
+
+    deferKeyboardSensorKey(card, event);
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(dispatch).not.toHaveBeenCalled();
+    card.remove();
+  });
+
+  it("replays fast arrows in order before the configured Space drop", async () => {
+    mocks.isDragging = true;
+    const card = renderTaskCard();
+    if (!card) throw new Error("Expected task card");
+    const sensorEvents: string[] = [];
+    let overKey = "PERF-1863";
+
+    // Match KeyboardSensor's attach order: listener installation is queued after Space
+    // starts a drag, then the card queues the early Arrow and Space for replay.
+    window.setTimeout(() => {
+      card.addEventListener("keydown", (event) => {
+        if (isDeferredKeyboardSensorEvent(event as KeyboardEvent)) {
+          const keyboardEvent = event as KeyboardEvent;
+          if (keyboardEvent.code === "ArrowDown") {
+            overKey = overKey === "PERF-1863" ? "PERF-7972" : "PERF-6219";
+            sensorEvents.push(`over:${overKey}`);
+          }
+          if (keyboardEvent.code === "ArrowUp") {
+            overKey = "PERF-7972";
+            sensorEvents.push(`over:${overKey}`);
+          }
+          if (keyboardEvent.code === "Space")
+            sensorEvents.push(`drop:${overKey}`);
+        }
+      });
+    }, 0);
+    fireEvent.keyDown(card, { key: "ArrowDown", code: "ArrowDown" });
+    fireEvent.keyDown(card, { key: "ArrowDown", code: "ArrowDown" });
+    fireEvent.keyDown(card, { key: "ArrowUp", code: "ArrowUp" });
+    fireEvent.keyDown(card, { key: " ", code: "Space" });
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(sensorEvents).toEqual([
+      "over:PERF-7972",
+      "over:PERF-6219",
+      "over:PERF-7972",
+      "drop:PERF-7972",
+    ]);
+  });
+
+  it("does not replay arrows for disconnected or inactive cards", async () => {
+    const disconnected = document.createElement("fieldset");
+    disconnected.dataset.taskDragging = "true";
+    document.body.append(disconnected);
+    const disconnectedDispatch = vi.spyOn(disconnected, "dispatchEvent");
+    deferKeyboardSensorKey(
+      disconnected,
+      new KeyboardEvent("keydown", { key: "ArrowDown", code: "ArrowDown" }),
+    );
+    disconnected.remove();
+
+    const inactive = document.createElement("fieldset");
+    inactive.dataset.taskDragging = "true";
+    document.body.append(inactive);
+    const inactiveDispatch = vi.spyOn(inactive, "dispatchEvent");
+    deferKeyboardSensorKey(
+      inactive,
+      new KeyboardEvent("keydown", { key: "ArrowDown", code: "ArrowDown" }),
+    );
+    delete inactive.dataset.taskDragging;
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(disconnectedDispatch).not.toHaveBeenCalled();
+    expect(inactiveDispatch).not.toHaveBeenCalled();
+    inactive.remove();
+  });
+
   it("G10: opens the focused card menu with Shift+F10", () => {
     const card = renderTaskCard();
 
@@ -163,6 +382,28 @@ describe("TaskCard keyboard context menu", () => {
     fireEvent.click(card as HTMLElement);
 
     expect(mocks.openTask).toHaveBeenCalledExactlyOnceWith("task-1");
+    mocks.openTask.mockClear();
+    mocks.dragKeyDown.mockClear();
+    fireEvent.keyDown(card as HTMLElement, { key: "Enter" });
+    expect(mocks.openTask).toHaveBeenCalledExactlyOnceWith("task-1");
+    expect(mocks.dragKeyDown).toHaveBeenCalledOnce();
+    mocks.openTask.mockClear();
+    mocks.dragKeyDown.mockClear();
+    fireEvent.keyDown(card as HTMLElement, { key: " " });
+    expect(mocks.openTask).not.toHaveBeenCalled();
+    expect(mocks.dragKeyDown).toHaveBeenCalledOnce();
+  });
+
+  it("does not open the task or change selection during a keyboard drag", () => {
+    mocks.isDragging = true;
+    const card = renderTaskCard();
+
+    fireEvent.keyDown(card as HTMLElement, { key: "Enter" });
+    expect(mocks.openTask).not.toHaveBeenCalled();
+    fireEvent.keyDown(card as HTMLElement, { key: "Escape" });
+    expect(useBulkSelectionStore.getState().selectedTaskIds.has("task-1")).toBe(
+      false,
+    );
   });
 
   it("keeps modifier-click selection actions connected to the shared store", () => {
@@ -191,21 +432,27 @@ describe("TaskCard keyboard context menu", () => {
       isSelected: false,
       isFocused: false,
       onOpenTask: mocks.openTask,
-      t: ((key: string) => key) as unknown as TFunction,
+      t: mockT,
       projectSlug: "PRJ",
     };
     const view = render(<TaskCard {...props} />);
-    expect(
-      screen.getByText("Keyboard task").closest('[role="button"]'),
-    ).not.toHaveAttribute("data-task-selected", "true");
+    const card = screen.getByText("Keyboard task").closest("fieldset");
+    expect(card).toHaveAccessibleName("Task PRJ-1: Keyboard task");
+    expect(card).toHaveAttribute("aria-roledescription", "sortable");
+    const descriptions = card?.getAttribute("aria-describedby")?.split(" ");
+    expect(descriptions).toContain("dnd-instructions");
+    const keyboardHintId = descriptions?.at(-1);
+    expect(keyboardHintId).toBeTruthy();
+    expect(document.getElementById(keyboardHintId ?? "")).toHaveTextContent(
+      "Press Enter to open. Press Space to start dragging",
+    );
+    expect(card).not.toHaveAttribute("aria-pressed");
+    expect(card).not.toHaveAttribute("data-task-selected", "true");
 
     view.rerender(<TaskCard {...props} isSelected={true} isFocused={true} />);
-    expect(
-      screen.getByText("Keyboard task").closest('[role="button"]'),
-    ).toHaveAttribute("data-task-selected", "true");
-    expect(
-      screen.getByText("Keyboard task").closest('[role="button"]'),
-    ).toHaveClass("ring-2");
+    const updatedCard = screen.getByText("Keyboard task").closest("fieldset");
+    expect(updatedCard).toHaveAttribute("data-task-selected", "true");
+    expect(updatedCard).toHaveClass("ring-2");
   });
 
   it("keeps the label spacing without an empty wrapper when labels are absent", () => {
@@ -218,7 +465,7 @@ describe("TaskCard keyboard context menu", () => {
         isSelected={false}
         isFocused={false}
         onOpenTask={mocks.openTask}
-        t={((key: string) => key) as unknown as TFunction}
+        t={mockT}
         workspaceId="workspace-1"
         assignee={undefined}
         onContextMenuTask={mocks.openContextMenu}
@@ -257,7 +504,7 @@ describe("TaskCard keyboard context menu", () => {
         isSelected={false}
         isFocused={false}
         onOpenTask={mocks.openTask}
-        t={((key: string) => key) as unknown as TFunction}
+        t={mockT}
         workspaceId="workspace-1"
         assignee={undefined}
         onContextMenuTask={mocks.openContextMenu}
@@ -281,7 +528,7 @@ describe("TaskCard keyboard context menu", () => {
         isSelected={false}
         isFocused={false}
         onOpenTask={mocks.openTask}
-        t={((key: string) => key) as unknown as TFunction}
+        t={mockT}
         workspaceId="workspace-1"
         assignee={undefined}
         onContextMenuTask={mocks.openContextMenu}
@@ -309,14 +556,14 @@ describe("canonical work-item card", () => {
         isSelected={false}
         isFocused={false}
         onOpenTask={mocks.openTask}
-        t={((key: string) => key) as unknown as TFunction}
+        t={mockT}
         onContextMenuTask={mocks.openContextMenu}
       />,
     );
     const link = screen.getByRole("link", { name: "PRJ-1 Keyboard task" });
-    const card = link.closest('[role="button"]');
+    const card = link.closest("fieldset");
     if (!(card instanceof HTMLElement))
-      throw new Error("Expected enabled card");
+      throw new Error("Expected enabled task card");
     expect(card).not.toHaveAttribute("aria-disabled");
     expect(link.closest('[aria-disabled="true"]')).toBeNull();
     expect(card).toHaveAttribute("tabindex", "0");
@@ -336,8 +583,13 @@ describe("canonical work-item card", () => {
     fireEvent.keyDown(card, { key: " " });
     expect(mocks.dragStart).not.toHaveBeenCalled();
     expect(mocks.dragKeyDown).not.toHaveBeenCalled();
+    expect(mocks.openTask).toHaveBeenCalledExactlyOnceWith(task.id);
+    mocks.openTask.mockClear();
     card.focus();
     fireEvent.keyDown(card, { key: "Enter" });
+    expect(mocks.openTask).toHaveBeenCalledExactlyOnceWith(task.id);
+    mocks.openTask.mockClear();
+    fireEvent.keyDown(card, { key: " " });
     expect(mocks.openTask).toHaveBeenCalledExactlyOnceWith(task.id);
   });
   it("preserves enabled legacy drag activators", () => {
@@ -364,7 +616,7 @@ describe("canonical work-item card", () => {
         isSelected={false}
         isFocused={false}
         onOpenTask={mocks.openTask}
-        t={((key: string) => key) as unknown as TFunction}
+        t={mockT}
         taskHref="/agent/work/PRJ-1"
         onContextMenuTask={mocks.openContextMenu}
         onToggleSelection={onToggleSelection}
@@ -373,8 +625,8 @@ describe("canonical work-item card", () => {
     const link = screen.getByRole("link", { name: "PRJ-1 Keyboard task" });
     expect(link).toHaveAttribute("href", "/agent/work/PRJ-1");
     expect(screen.getByText("TE")).toBeInTheDocument();
-    const card = link.closest('[role="button"]');
-    if (!card) throw new Error("Expected Kaneo card button");
+    const card = link.closest("fieldset");
+    if (!card) throw new Error("Expected Kaneo task card group");
     fireEvent.click(card, { ctrlKey: true });
     expect(onToggleSelection).toHaveBeenCalledOnce();
     expect(useBulkSelectionStore.getState().selectedTaskIds.size).toBe(0);

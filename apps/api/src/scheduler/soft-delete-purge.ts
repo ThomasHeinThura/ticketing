@@ -1,4 +1,11 @@
+import { createId } from "@paralleldrive/cuid2";
+import { sql } from "drizzle-orm";
+import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
+import {
+  listOrganisationPurgeCandidates,
+  purgeExpiredOrganisation,
+} from "../instance/organisation-purge";
 import {
   countRowsRetainedBySharedObject,
   deleteProjectTree,
@@ -49,6 +56,7 @@ export type SoftDeleteRowResult =
 export type SoftDeletePurgeOutcome = {
   projectsPurged: number;
   workItemsPurged: number;
+  organisationsPurged?: number;
   awaitingAttachments: number;
   skipped: number;
   failed: number;
@@ -97,6 +105,23 @@ export async function purgeSoftDeletedProject(
 ): Promise<{ result: SoftDeleteRowResult; workItemsDeleted: number }> {
   return db.transaction(async (tx) => {
     await fenceLegalHolds(tx);
+    const ownerResult = await tx.execute<{ organisation_id: string | null }>(
+      sql`SELECT organisation_id FROM project WHERE id = ${id}`,
+    );
+    const organisationId = ownerResult.rows[0]?.organisation_id;
+    if (organisationId) {
+      const { lockOrganisationIdentityDomainBindings } = await import(
+        "../instance/organisation-lifecycle"
+      );
+      await lockOrganisationIdentityDomainBindings(tx);
+      await tx.execute(sql`
+        SELECT id FROM organisation WHERE id = ${organisationId} FOR UPDATE
+      `);
+      await tx.execute(sql`
+        SELECT operation_id FROM organisation_deletion_snapshot
+        WHERE organisation_id = ${organisationId} FOR UPDATE
+      `);
+    }
     if (!(await lockEligibleProject(tx, id)))
       return { result: "no_longer_eligible", workItemsDeleted: 0 };
     const remaining = await releaseAttachmentsForPurge(tx, { projectId: id });
@@ -194,6 +219,64 @@ export async function purgeSoftDeletedRows(
     if (result === "purged") outcome.workItemsPurged++;
     else tally(outcome, result);
   });
+
+  const seenOrganisations: string[] = [];
+  for (;;) {
+    if (outOfBudget()) {
+      outcome.budgetExhausted =
+        (await listOrganisationPurgeCandidates(db, 1, seenOrganisations))
+          .length > 0 || outcome.budgetExhausted;
+      break;
+    }
+    const candidates = await listOrganisationPurgeCandidates(
+      db,
+      batch,
+      seenOrganisations,
+    );
+    if (candidates.length === 0) break;
+    for (const candidate of candidates) {
+      if (outOfBudget()) break;
+      seenOrganisations.push(candidate.organisationId);
+      attempted++;
+      try {
+        const result = await db.transaction(async (tx) => {
+          const purged = await purgeExpiredOrganisation(tx, candidate);
+          if (purged.status === "purged") {
+            await appendAuditLog(tx, {
+              actorId: null,
+              actorType: "system",
+              traceId: `organisation-purge-${createId()}`,
+              workspaceId: null,
+              organisationId: null,
+              action: "hard_purge.executed",
+              entityType: "organisation",
+              entityId: candidate.organisationId,
+              before: null,
+              after: {
+                organisationId: candidate.organisationId,
+                operationId: candidate.operationId,
+                generation: candidate.generation,
+                projects: purged.counts.projects,
+                workItems: purged.counts.workItems,
+                people: purged.counts.people,
+                attachments: purged.counts.attachments,
+                storageObjectsQueued: purged.counts.storageObjectsQueued,
+                legalHold: "none",
+                retention: "30_day_window_elapsed",
+              },
+            });
+          }
+          return purged;
+        });
+        if (result.status === "purged")
+          outcome.organisationsPurged = (outcome.organisationsPurged ?? 0) + 1;
+        else outcome.skipped++;
+      } catch {
+        outcome.failed++;
+        outcome.degraded = true;
+      }
+    }
+  }
 
   try {
     const retained = await countRowsRetainedBySharedObject(db);

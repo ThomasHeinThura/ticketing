@@ -91,10 +91,14 @@ export function ErrorDisplay({
             {parsedError.type === "cors" && (
               <Button
                 onClick={() =>
-                  window.open("https://taskdesk.bimats.com/docs", "_blank")
+                  window.open(
+                    "https://taskdesk.bimats.com/docs",
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
                 }
                 variant="outline"
-                size="icon"
+                size="sm"
                 className="w-full"
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
@@ -105,7 +109,7 @@ export function ErrorDisplay({
             <Button
               onClick={() => window.location.reload()}
               variant="outline"
-              size="icon"
+              size="sm"
               className="w-full"
             >
               <RefreshCw className="w-4 h-4 mr-2" />

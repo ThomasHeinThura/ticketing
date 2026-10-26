@@ -17,6 +17,13 @@ export const cycleSummarySchema = z.object({
   cancelled: bucket,
   /** ES-5: how much of the scope has no estimate, never counted as zero. */
   unestimated: z.object({ count: z.number().int(), share: z.number() }),
+  snapshot: z
+    .object({
+      capturedAt: z.string().datetime(),
+      basis: z.enum(["completion_action", "date_catchup"]),
+      endDateSummary: z.enum(["known_at_action", "unknown"]),
+    })
+    .optional(),
 });
 
 export const velocitySchema = z.discriminatedUnion("status", [
@@ -29,7 +36,7 @@ export const velocitySchema = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("insufficient_data"),
     cycles: z.number().int(),
-    reason: z.enum(["fewer_than_three", "mixed_units"]),
+    reason: z.enum(["fewer_than_three", "mixed_units", "late_snapshot"]),
   }),
 ]);
 

@@ -19,6 +19,18 @@ export async function findDeliveryNotification(notificationId: string) {
   });
 }
 
+export async function findDeliveryEventNotification(
+  eventId: string,
+  personId: string,
+) {
+  return await db.query.notificationTable.findFirst({
+    where: and(
+      eq(notificationTable.eventId, eventId),
+      eq(notificationTable.personId, personId),
+    ),
+  });
+}
+
 export async function findDeliveryTaskContext(resourceId: string) {
   return await db
     .select({
@@ -64,6 +76,14 @@ export async function findDeliveryUser(userId: string) {
     })
     .from(userTable)
     .where(eq(userTable.id, userId))
+    .limit(1);
+}
+
+export async function findDeliveryPersonSide(personId: string) {
+  return db
+    .select({ side: personTable.side, locale: personTable.locale })
+    .from(personTable)
+    .where(eq(personTable.id, personId))
     .limit(1);
 }
 
@@ -118,9 +138,10 @@ export async function findDeliveryQuietHours(userId: string) {
 }
 
 /**
- * Durable quiet-hours hold for the legacy delivery path. The marker lives in the existing
- * `notification.event_data` jsonb (no new table); a restart therefore cannot lose a held
- * delivery. `scheduler/notification-digest-release.ts` releases the rows once the time passes.
+ * Durable compatibility queue and quiet-hours hold for the legacy delivery path. New eligible
+ * legacy rows start with this marker due immediately; quiet-hours evaluation may move it to a
+ * later deadline. The marker lives in existing `notification.event_data` jsonb (no new table),
+ * and `scheduler/notification-digest-release.ts` claims it after a restart or at the deadline.
  */
 export const QUIET_HOURS_HOLD_KEY = "quietHoursHeldUntil";
 

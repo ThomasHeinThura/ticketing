@@ -57,6 +57,11 @@ export const reportEnvelopeSchema = z.object({
   }),
   asOf: z.string(),
   boundary: z.enum(["live", "snapshot", "mixed"]),
+  sources: z.object({
+    metricSnapshot: z.boolean(),
+    cycleSnapshot: z.boolean(),
+    liveComponents: z.array(z.string()),
+  }),
   snapshot: z
     .object({
       closedDays: z.number().int(),
@@ -158,7 +163,7 @@ export const reportCatalogueSchema = z.object({
 });
 
 export const drillItemSchema = z.object({
-  kind: z.enum(["work_item", "time_entry", "article"]),
+  kind: z.enum(["work_item", "time_entry", "cost_entry", "article"]),
   key: z.string(),
   title: z.string(),
   projectKey: z.string().nullable(),
@@ -168,6 +173,7 @@ export const drillItemSchema = z.object({
   person: z.string().nullable().optional(),
   hours: z.number().nullable().optional(),
   workItemKey: z.string().nullable().optional(),
+  currency: z.string().nullable().optional(),
 });
 
 export const drillResponseSchema = z.object({

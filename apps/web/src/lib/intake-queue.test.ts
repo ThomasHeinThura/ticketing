@@ -62,8 +62,8 @@ describe("splitIntakeFilters (IQ-21)", () => {
     expect(
       splitIntakeFilters({ requestType: "rt_9", assignee: "claimed" }, types),
     ).toEqual({
-      server: {},
-      residual: { requestType: "rt_9", assignee: "claimed" },
+      server: { assignee: "claimed" },
+      residual: { requestType: "rt_9" },
       pending: false,
     });
   });

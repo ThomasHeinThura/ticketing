@@ -32,6 +32,7 @@ function routes() {
   const base = w.base();
   return [
     ["GET", base, undefined],
+    ["GET", `${base}?deletedOnly=true`, undefined],
     ["POST", base, { title: "x", body: doc("x") }],
     ["GET", `${base}/${pageId}`, undefined],
     ["PATCH", `${base}/${pageId}`, { expectedVersion: 1, title: "y" }],

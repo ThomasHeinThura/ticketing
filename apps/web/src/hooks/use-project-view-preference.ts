@@ -9,8 +9,10 @@ import {
   useGetUserSettings,
   userSettingsQueryKey,
 } from "@/hooks/queries/user-settings/use-get-user-settings";
-import type { WorkItemSearchColumn } from "@/lib/work-item-list-search";
-import { WORK_ITEM_SEARCH_COLUMNS } from "@/lib/work-item-list-search";
+import {
+  isWorkItemSearchColumn,
+  type WorkItemSearchColumn,
+} from "@/lib/work-item-list-search";
 
 /**
  * Per-user, per-project view preferences kept in `user_preference` through
@@ -25,8 +27,8 @@ export function useProjectViewPreference<T>({
   parse,
 }: {
   projectId: string | undefined;
-  /** The settings key prefix: `listGroups`, `columns` or `layout` (`VW-2`). */
-  name: "listGroups" | "columns" | "layout";
+  /** Owner-registered per-project settings key prefix. */
+  name: "listGroups" | "columns" | "columnWidths" | "layout";
   /** Returns the value for stored data of the right shape, otherwise undefined. */
   parse: (raw: unknown) => T | undefined;
 }) {
@@ -61,9 +63,17 @@ export function useProjectViewPreference<T>({
     },
   });
 
+  // Keep the shared route-facing setter fire-and-forget. A table editor can supply
+  // per-call callbacks without adding promise handling to every consumer of this hook.
   const set = useCallback(
-    (next: T | null) => {
-      if (!userId || !settingKey) return;
+    (
+      next: T | null,
+      callbacks?: {
+        onSuccess?: () => void;
+        onError?: (error: unknown) => void;
+      },
+    ) => {
+      if (!userId || !settingKey) return false;
       const queryKey = userSettingsQueryKey(userId);
       const cached = queryClient.getQueryData<UserSettings>(queryKey);
       // Never invent a partial settings object: a read still in flight would overwrite it, and
@@ -76,7 +86,14 @@ export function useProjectViewPreference<T>({
           settings,
         } as UserSettings);
       }
-      mutate({ patch: { [settingKey]: next }, seed: !cached });
+      mutate(
+        { patch: { [settingKey]: next }, seed: !cached },
+        {
+          onSuccess: () => callbacks?.onSuccess?.(),
+          onError: (error) => callbacks?.onError?.(error),
+        },
+      );
+      return true;
     },
     [mutate, queryClient, settingKey, userId],
   );
@@ -105,11 +122,10 @@ export function parseTableColumns(
   raw: unknown,
 ): WorkItemSearchColumn[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
-  const known = new Set<string>(WORK_ITEM_SEARCH_COLUMNS);
   const seen = new Set<string>();
+  if (raw.length > 100) return undefined;
   for (const column of raw) {
-    if (typeof column !== "string" || !known.has(column) || seen.has(column))
-      return undefined;
+    if (!isWorkItemSearchColumn(column) || seen.has(column)) return undefined;
     seen.add(column);
   }
   return raw as WorkItemSearchColumn[];

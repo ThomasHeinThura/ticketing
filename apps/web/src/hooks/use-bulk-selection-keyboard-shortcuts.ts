@@ -34,6 +34,10 @@ export function useBulkSelectionKeyboardShortcuts(
         selectAll();
       }
       if (event.key === "Escape") {
+        // The sortable owns Escape during an active task drag. Leaving the event
+        // untouched lets its KeyboardSensor cancel, including while that
+        // sensor's document listener is still being attached after Space.
+        if (document.querySelector('[data-task-dragging="true"]')) return;
         event.preventDefault();
         clearSelection();
       }

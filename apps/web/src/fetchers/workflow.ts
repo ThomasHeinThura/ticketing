@@ -106,16 +106,40 @@ export async function validateWorkflowVersion(input: {
   return response.json();
 }
 
-/** `POST /api/workflows/{id}/versions/{n}/publish`: in-flight items are not migrated. */
-export async function publishWorkflowVersion(input: {
+/** `POST /api/workflows/{id}/versions/{n}/publish?dryRun=true`: impact plus WF-9 checks. */
+export async function previewWorkflowPublication(input: {
   id: string;
   number: number;
-}) {
+}): Promise<WorkflowValidation> {
   const response = await client.workflows[":id"].versions[
     ":number"
   ].publish.$post({
     param: { id: input.id, number: String(input.number) },
+    query: { dryRun: "true" },
+  });
+  if (!response.ok) return fail(response, "Failed to preview publishing");
+  const result = await response.json();
+  if (!("affected" in result)) {
+    throw new Error("Workflow publish dry-run returned a published version");
+  }
+  return result;
+}
+
+/** `POST /api/workflows/{id}/versions/{n}/publish`: in-flight items are not migrated. */
+export async function publishWorkflowVersion(input: {
+  id: string;
+  number: number;
+}): Promise<WorkflowVersion> {
+  const response = await client.workflows[":id"].versions[
+    ":number"
+  ].publish.$post({
+    param: { id: input.id, number: String(input.number) },
+    query: {},
   });
   if (!response.ok) return fail(response, "Failed to publish the version");
-  return response.json();
+  const result = await response.json();
+  if (!("number" in result)) {
+    throw new Error("Workflow publish returned a dry-run validation report");
+  }
+  return result;
 }

@@ -5,13 +5,17 @@ import { trustProxyDepth } from "../utils/auth-request";
 import { resolveClientIp } from "../utils/resolve-client-ip";
 import type { ApiKeyKind } from "./credential";
 import { isClientIpAllowed } from "./ip-allowlist";
+import { classifyRequest, type RateLimitClass } from "./rate-limit";
 import {
-  classifyRequest,
-  effectiveLimit,
-  KeyRateLimiter,
-  type RateLimitClass,
-} from "./rate-limit";
-import { loadApiKeyKind, recordApiKeyUse } from "./repository";
+  consumeApiKeyRateLimit,
+  type SharedRateLimitDecision,
+} from "./rate-limit-store";
+import {
+  loadApiKeyBurstThreshold,
+  loadApiKeyKind,
+  loadMcpWriteCeilingPerMinute,
+  recordApiKeyUse,
+} from "./repository";
 
 /**
  * The per-request rules the `api_key` extension adds on top of "the key exists and its owner
@@ -59,13 +63,13 @@ export function clientIpForContext(c: Context): string | null {
   });
 }
 
-const limiter = new KeyRateLimiter();
-
 export type EnforceApiKeyRequestOptions = {
   /** Reads `feature.mcp` for the instance; supplied by the caller (feature-flag owner). */
   mcpFeatureEnabled: () => Promise<boolean>;
-  /** `instance_setting.mcp_write_ceiling_per_minute`, once that column exists. */
+  /** Optional test/config override; production reads the current persisted instance setting. */
   mcpWriteCeilingPerMinute?: number;
+  /** Optional test/config override; production reads the current persisted instance setting. */
+  apiKeyBurstThreshold?: number;
   /** A write that touches many items (MC-10); defaults from the route, not the caller. */
   bulk?: boolean;
 };
@@ -94,16 +98,47 @@ export async function enforceApiKeyRequest(
     bulk: options.bulk,
     path: c.req.path,
   });
-  const limit = effectiveLimit(
-    {
+  let mcpWriteCeilingPerMinute = options.mcpWriteCeilingPerMinute;
+  let apiKeyBurstThreshold = options.apiKeyBurstThreshold;
+  if (
+    key.isMcp &&
+    requestClass !== "read" &&
+    (mcpWriteCeilingPerMinute === undefined ||
+      apiKeyBurstThreshold === undefined)
+  ) {
+    try {
+      const [storedCeiling, storedBurstThreshold] = await Promise.all([
+        mcpWriteCeilingPerMinute === undefined
+          ? loadMcpWriteCeilingPerMinute()
+          : Promise.resolve(mcpWriteCeilingPerMinute),
+        apiKeyBurstThreshold === undefined
+          ? loadApiKeyBurstThreshold()
+          : Promise.resolve(apiKeyBurstThreshold),
+      ]);
+      mcpWriteCeilingPerMinute = storedCeiling;
+      apiKeyBurstThreshold = storedBurstThreshold;
+    } catch {
+      throw new HTTPException(503, { message: "rate_limit_unavailable" });
+    }
+  }
+  let rate: SharedRateLimitDecision;
+  try {
+    rate = await consumeApiKeyRateLimit({
+      apiKeyId: keyId,
       isMcp: key.isMcp,
       keyLimitPerMinute: key.rateLimitPerMinute,
-      mcpWriteCeilingPerMinute: options.mcpWriteCeilingPerMinute,
-    },
-    requestClass,
-  );
-  const rate = limiter.check(keyId, requestClass, limit);
+      ...(mcpWriteCeilingPerMinute === undefined
+        ? {}
+        : { mcpWriteCeilingPerMinute }),
+      ...(apiKeyBurstThreshold === undefined ? {} : { apiKeyBurstThreshold }),
+      requestClass,
+    });
+  } catch {
+    throw new HTTPException(503, { message: "rate_limit_unavailable" });
+  }
   if (!rate.allowed) {
+    if ("disabled" in rate)
+      throw new HTTPException(401, { message: "Unauthorized" });
     c.header("Retry-After", String(rate.retryAfterSeconds));
     throw new HTTPException(429, {
       message: `rate_limited: this key may make ${rate.limit} ${requestClass} requests per minute; retry in ${rate.retryAfterSeconds}s`,

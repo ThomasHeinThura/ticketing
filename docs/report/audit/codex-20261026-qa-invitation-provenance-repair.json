@@ -1,0 +1,21 @@
+{
+	"recordedAt": "2026-10-25T20:23:19.728403+00:00",
+	"scope": "One owned CP23 QA contact on audit copy only",
+	"guardedDatabase": "taskdesk_codex_sit_20261025 on62871",
+	"backup": "backups/codex-sit-20261025/pre-0183-audit.dump",
+	"backupFullyDecoded": true,
+	"checks": [
+		"Exact membership id resolved to active customer of owned qaic26 organisation",
+		"Invitation id read privately and uniquely linked to accepted person, organisation and redeemed audit",
+		"Invitee user address matches invitation and reserved taskdesk.invalid domain",
+		"Exactly one active staff inviter linked via persisted invitation inviter user id",
+		"Canonical customer role, organisation scope, seesAll false; no existing grant",
+		"Canonical source grant helper and membership projection used transactionally",
+		"Existing membership id, role and reach preserved",
+		"Separate system membership.changed audit appended; historical audit not rewritten"
+	],
+	"result": "committed one grant and its projection; subsequent guarded startup migration passes",
+	"productionGuardChanged": false,
+	"protectedLiveDatabaseTargeted": false,
+	"regression": "Customer invitation lifecycle35/35 and API full typecheck pass"
+}

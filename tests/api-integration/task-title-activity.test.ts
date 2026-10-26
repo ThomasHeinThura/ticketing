@@ -522,9 +522,11 @@ describe("API integration: task title activity", () => {
             ? pauseAfterAssigneeName(member.user.id, task.projectId)
             : pauseAfterProjectContext(task.projectId);
       const reach = {
+        identity: null,
         reaches: async () => true,
         can: async () => true,
         reachableProjectIds: async () => [task.projectId],
+        projectFactsFor: async () => [],
       };
       let update:
         | Promise<Awaited<ReturnType<typeof bulkUpdateTasks>>>
@@ -611,9 +613,11 @@ describe("API integration: task title activity", () => {
       if (!original) throw new Error("expected persisted task fixture");
       const gate = pauseAfterProjectContext(task.projectId);
       const reach = {
+        identity: null,
         reaches: async () => true,
         can: async () => true,
         reachableProjectIds: async () => [task.projectId],
+        projectFactsFor: async () => [],
       };
       let update:
         | Promise<Awaited<ReturnType<typeof bulkUpdateTasks>>>
@@ -699,9 +703,11 @@ describe("API integration: task title activity", () => {
       .returning();
     if (!attached) throw new Error("expected attached label fixture");
     const reach = {
+      identity: null,
       reaches: async () => true,
       can: async () => true,
       reachableProjectIds: async () => [task.projectId],
+      projectFactsFor: async () => [],
     };
 
     const addResult = await bulkUpdateTasks({

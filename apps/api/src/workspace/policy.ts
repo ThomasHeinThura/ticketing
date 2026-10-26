@@ -461,4 +461,39 @@ export const workspacePolicies = {
     elevationExemptionReason:
       "moves people between this workspace's own existing roles, never to or from a role at or above the caller's rank and never owner; grants no sees_all beyond what the target role's own owner/admin reach rule already derives, and permissions.md's elevated table carries no row for bulk reassignment (RL-8)",
   },
+  "GET /api/workspace/{workspaceId}/project-settings": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+  "PATCH /api/workspace/{workspaceId}/project-settings": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+  "GET /api/workspace/{workspaceId}/state-templates": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+  "POST /api/workspace/{workspaceId}/state-templates": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+  "PATCH /api/workspace/{workspaceId}/state-templates/{stateTemplateId}": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
 } as const satisfies PolicyMap;

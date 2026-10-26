@@ -39,6 +39,25 @@ export const factorStatusPolicies = {
       reason: "challenge is bound to the current session's own active person",
     },
   },
+  "POST /api/me/step-up/sso/start": {
+    authenticated: true,
+    sessionOnly: true,
+    self: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "SSO reauthentication is bound to the current session's own challenge and person",
+    },
+  },
+  "POST /api/me/step-up/sso/status": {
+    authenticated: true,
+    sessionOnly: true,
+    self: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason: "returns only the current session's own SSO challenge status",
+    },
+  },
   "POST /api/me/step-up": {
     authenticated: true,
     sessionOnly: true,

@@ -1,0 +1,22 @@
+{
+	"name": "SIT Audit 20261025 burst 1792891481388",
+	"phase": "delete own disabled key",
+	"checks": [
+		{
+			"name": "Owner inbox contains auto-disable event with exact own-key typed link",
+			"passed": true
+		},
+		{
+			"name": "Server mentions filter excludes non-mention auto-disable row",
+			"passed": true
+		},
+		{
+			"name": "Owner notification navigates to real personal-key management",
+			"passed": true
+		},
+		{
+			"name": "Typed owner step-up deletes disabled fixture key; two fresh server reads confirm absence",
+			"passed": true
+		}
+	]
+}

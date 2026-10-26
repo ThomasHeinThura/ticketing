@@ -859,6 +859,19 @@ function configuredAliases(configFiles, snapshot, root, manifests) {
       }
       return undefined;
     };
+    const addAlias = (key, target, exact = false) => {
+      const storedKey = exact ? `\0${key}` : key;
+      if (
+        ownerAliases.has(storedKey) &&
+        ownerAliases.get(storedKey) !== target
+      ) {
+        violations.push(
+          violation(relative, `ambiguous resolve.alias mapping for "${key}"`),
+        );
+        return;
+      }
+      ownerAliases.set(storedKey, target);
+    };
     function visit(node) {
       if (
         node.kind === ts.SyntaxKind.PropertyAssignment &&
@@ -876,6 +889,51 @@ function configuredAliases(configFiles, snapshot, root, manifests) {
         node.kind === ts.SyntaxKind.PropertyAssignment &&
         node.name.getText(file) === "alias"
       ) {
+        if (node.initializer.kind === ts.SyntaxKind.ArrayLiteralExpression) {
+          for (const entry of node.initializer.elements) {
+            const fields = new Map();
+            if (entry.kind === ts.SyntaxKind.ObjectLiteralExpression) {
+              for (const property of entry.properties) {
+                if (property.kind !== ts.SyntaxKind.PropertyAssignment)
+                  continue;
+                const key = text(property.name) ?? property.name.getText(file);
+                fields.set(key, property.initializer);
+              }
+            }
+            const find = fields.get("find");
+            let key = text(find);
+            let exact = false;
+            if (find?.kind === ts.SyntaxKind.RegularExpressionLiteral) {
+              const expression = find.getText(file);
+              if (expression.startsWith("/^") && expression.endsWith("$/")) {
+                const literal = expression.slice(2, -2).replace(/\\\//g, "/");
+                // Only anchored literal module names are statically resolvable.
+                // General patterns, captures, flags and replacement expressions fail closed.
+                if (/^[@A-Za-z0-9/_-]+$/.test(literal)) {
+                  key = literal;
+                  exact = true;
+                }
+              }
+            }
+            const target = evaluatePath(fields.get("replacement"));
+            if (
+              !key ||
+              !target ||
+              fields.size !== 2 ||
+              entry.properties?.length !== 2
+            ) {
+              violations.push(
+                violation(
+                  relative,
+                  "dynamic resolve.alias mapping cannot be proven by the package boundary gate",
+                ),
+              );
+              continue;
+            }
+            addAlias(key, target, exact);
+          }
+          return;
+        }
         if (node.initializer.kind !== ts.SyntaxKind.ObjectLiteralExpression) {
           violations.push(
             violation(
@@ -910,16 +968,7 @@ function configuredAliases(configFiles, snapshot, root, manifests) {
             );
             continue;
           }
-          if (ownerAliases.has(key) && ownerAliases.get(key) !== target) {
-            violations.push(
-              violation(
-                relative,
-                `ambiguous resolve.alias mapping for "${key}"`,
-              ),
-            );
-            continue;
-          }
-          ownerAliases.set(key, target);
+          addAlias(key, target);
         }
       }
       node.forEachChild(visit);
@@ -940,13 +989,22 @@ function resolveWorkspaceTarget(
   const { specifier } = imported;
   const names = [...workspaceByName.values()];
   const aliasMatches = [...aliases]
-    .filter(([key]) => specifier === key || specifier.startsWith(`${key}/`))
-    .sort((a, b) => b[0].length - a[0].length);
+    .filter(([key]) =>
+      key.startsWith("\0")
+        ? specifier === key.slice(1)
+        : specifier === key || specifier.startsWith(`${key}/`),
+    )
+    .sort(
+      (a, b) => b[0].replace(/^\0/, "").length - a[0].replace(/^\0/, "").length,
+    );
   if (aliasMatches.length) {
-    const [key, targetPath] = aliasMatches[0];
+    const [storedKey, targetPath] = aliasMatches[0];
+    const key = storedKey.replace(/^\0/, "");
     if (
       aliasMatches.length > 1 &&
-      aliasMatches[0][0].length === aliasMatches[1][0].length
+      aliasMatches[0][0].replace(/^\0/, "").length ===
+        aliasMatches[1][0].replace(/^\0/, "").length &&
+      aliasMatches[0][1] !== aliasMatches[1][1]
     )
       return { unresolvedAlias: true };
     const resolved = path.resolve(

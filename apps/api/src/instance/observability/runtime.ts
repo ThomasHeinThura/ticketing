@@ -120,7 +120,7 @@ export function recordAuditWriteFailure(
 }
 
 export async function startObservabilityRuntime(
-  options: { hostname?: string } = {},
+  options: { hostname?: string; metricsListener?: boolean } = {},
 ): Promise<void> {
   const [row] = await db
     .select({
@@ -133,30 +133,32 @@ export async function startObservabilityRuntime(
   if (!row) throw new Error("Observability settings unavailable");
   logger.setLogLevels(parseLogLevels(row.levels));
 
-  listener = createMetricsListener({
-    readCurrentTokenDigest: async () => {
-      const [current] = await db
-        .select({ digest: schema.instanceSettingTable.metricsTokenHash })
-        .from(schema.instanceSettingTable)
-        .where(eq(schema.instanceSettingTable.id, "singleton"))
-        .limit(1);
-      return current?.digest ?? null;
-    },
-    renderMetrics: () => metrics.metrics(),
-    ...(options.hostname ? { hostname: options.hostname } : {}),
-  });
-  try {
-    await listener.start();
-  } catch {
-    logger.log({
-      module: "http",
-      message: "observability.listener_bind_failure",
-      level: "error",
-      result: "failed",
+  if (options.metricsListener !== false) {
+    listener = createMetricsListener({
+      readCurrentTokenDigest: async () => {
+        const [current] = await db
+          .select({ digest: schema.instanceSettingTable.metricsTokenHash })
+          .from(schema.instanceSettingTable)
+          .where(eq(schema.instanceSettingTable.id, "singleton"))
+          .limit(1);
+        return current?.digest ?? null;
+      },
+      renderMetrics: () => metrics.metrics(),
+      ...(options.hostname ? { hostname: options.hostname } : {}),
     });
-    throw new Error(
-      `Metrics listener failed to bind on ${METRICS_LISTENER_MANIFEST.port}`,
-    );
+    try {
+      await listener.start();
+    } catch {
+      logger.log({
+        module: "http",
+        message: "observability.listener_bind_failure",
+        level: "error",
+        result: "failed",
+      });
+      throw new Error(
+        `Metrics listener failed to bind on ${METRICS_LISTENER_MANIFEST.port}`,
+      );
+    }
   }
 
   refreshController = createObservabilityConfigRefresher({

@@ -193,6 +193,15 @@ export const RELEASE_STATUS_VALUES = [
 ] as const;
 
 /** REL-1, REL-4, REL-5. */
+export type PublishedReleaseSnapshot = {
+  version: 1;
+  name: string;
+  serviceName: string;
+  plannedDate: string | null;
+  notes: string | null;
+  publishedAt: string;
+};
+
 export const releaseTable = pgTable(
   "release",
   {
@@ -214,6 +223,7 @@ export const releaseTable = pgTable(
     notesEditedAt: timestamp("notes_edited_at", tz),
     publishToPortal: boolean("publish_to_portal").notNull().default(false),
     publishedAt: timestamp("published_at", tz),
+    portalSnapshot: jsonb("portal_snapshot").$type<PublishedReleaseSnapshot>(),
     createdBy: text("created_by").references(() => userTable.id, {
       onDelete: "set null",
     }),

@@ -12,6 +12,7 @@ import {
   type PendingActionNotificationContext,
 } from "./pending-action-recipient.repository";
 import {
+  findApiKeyAutoDisableOwner,
   findApprovalNotificationContext,
   findCurrentNotificationResource,
   findNotificationPerson,
@@ -283,6 +284,115 @@ export async function resolveWorkspaceCreatedRecipient(
         workspaceId,
         eventKind: event.kind,
       }),
+    },
+  ];
+}
+
+/**
+ * WH-7: notify the webhook's current stored owner. Current capability and reach are
+ * eligibility gates; workspace managers are not added as recipients by this event.
+ */
+export async function resolveWebhookAutoDisabledRecipients(
+  tx: DbTransaction,
+  event: DomainEventEnvelope<Record<string, unknown>>,
+): Promise<readonly NotificationRecipientCandidate[]> {
+  if (event.kind !== "webhook.auto_disabled") return [];
+  const webhookId = event.payload.webhookId;
+  if (
+    typeof webhookId !== "string" ||
+    !webhookId ||
+    !("workspaceId" in event.scope) ||
+    !event.scope.workspaceId
+  )
+    return [];
+
+  const workspaceId = event.scope.workspaceId;
+  const resource = await findCurrentNotificationResource(tx, {
+    resourceType: "webhook",
+    resourceId: webhookId,
+    eventKind: event.kind,
+    workspaceId,
+  });
+  if (
+    !resource ||
+    resource.workspaceId !== workspaceId ||
+    resource.projectId !== null ||
+    resource.customerVisible ||
+    !resource.staffUrl ||
+    (event.scope.organisationId ?? null) !== resource.organisationId
+  )
+    return [];
+
+  if (!resource.ownerPersonId) return [];
+  const channels = await configuredMentionChannels(tx);
+  const recipients: NotificationRecipientCandidate[] = [];
+
+  const person = await findNotificationPerson(tx, resource.ownerPersonId);
+  if (!person?.active || !person.userId || person.side !== "staff") return [];
+  const identity = await resolveIdentity(
+    { userId: person.userId, credential: "session" },
+    tx,
+  );
+  if (
+    !identity ||
+    identity.personId !== resource.ownerPersonId ||
+    identity.side !== "staff" ||
+    !can(identity, "workspace:read", "workspace", { workspaceId }) ||
+    !can(identity, "webhook:manage", "workspace", { workspaceId })
+  )
+    return [];
+
+  recipients.push({
+    personId: resource.ownerPersonId,
+    resourceType: "webhook",
+    resourceId: webhookId,
+    title: "Webhook disabled",
+    body: "A webhook was disabled and needs your attention.",
+    channels,
+  });
+  return recipients;
+}
+
+/** MC-22: the current owner of a personal MCP key is the sole auto-disable recipient. */
+export async function resolveApiKeyAutoDisabledRecipient(
+  tx: DbTransaction,
+  event: DomainEventEnvelope<Record<string, unknown>>,
+): Promise<readonly NotificationRecipientCandidate[]> {
+  if (event.kind !== "api_key.auto_disabled") return [];
+  if (
+    !event.scope ||
+    typeof event.scope !== "object" ||
+    Object.keys(event.scope).length !== 0
+  )
+    return [];
+
+  const apiKeyId = event.payload.apiKeyId;
+  if (
+    typeof apiKeyId !== "string" ||
+    !apiKeyId ||
+    event.payload.key !== apiKeyId ||
+    event.payload.url !== "/agent/settings/profile/api-keys" ||
+    event.payload.reason !== "mcp_burst_threshold_exceeded"
+  )
+    return [];
+
+  const owner = await findApiKeyAutoDisableOwner(tx, apiKeyId);
+  if (!owner) return [];
+  const identity = await resolveIdentity(
+    { userId: owner.userId, credential: "session" },
+    tx,
+  );
+  if (identity?.side !== "staff" || identity.personId !== owner.personId)
+    return [];
+
+  return [
+    {
+      personId: owner.personId,
+      resourceType: "api_key",
+      resourceId: apiKeyId,
+      title: "MCP API key disabled",
+      body: "An MCP API key was automatically disabled after a burst of write attempts.",
+      channels: [],
     },
   ];
 }

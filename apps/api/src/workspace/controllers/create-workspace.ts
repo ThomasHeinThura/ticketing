@@ -6,6 +6,7 @@ import type { DomainEventEnvelope } from "../../events/outbox";
 import { enqueueNotificationEvent } from "../../notification/fanout";
 import { resolveWorkspaceCreatedRecipient } from "../../notification/recipient-resolvers";
 import { ensureProjectLeadRole } from "../../project/project-creator-grant";
+import { seedDefaultCabWorkflowInTransaction } from "../../service-management/cab-template";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { ensureInternalOrganisation } from "../../utils/seed-internal-organisation";
 import { seedWorkspaceDefaults } from "../../utils/seed-workspace-defaults";
@@ -209,6 +210,11 @@ async function createWorkspace(input: CreateWorkspaceInput) {
         // workspace -- without them, `POST /api/projects/{projectId}/work-items` has
         // no type and no default state to create against on a fresh instance.
         await seedWorkspaceDefaults(workspace.id, tx);
+
+        // CH-2: a newly created workspace starts with CAB-required change transitions.
+        // The `Approved` workspace template is picked up by future project creation through
+        // `seedProjectStates`; existing workspaces are never changed by this bootstrap.
+        await seedDefaultCabWorkflowInTransaction(workspace.id, tx);
 
         // The project-scope `project-lead` role (decision log 2026-10-14), so it exists to
         // assign from the first project on; migration 0124 seeds it for older workspaces.

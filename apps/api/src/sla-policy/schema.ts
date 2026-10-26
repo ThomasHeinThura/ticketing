@@ -1,4 +1,5 @@
 import { HTTPException } from "hono/http-exception";
+import { CATALOGUE_KEY_PATTERN } from "../label/catalogue-key";
 import { z } from "../openapi";
 
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
@@ -25,6 +26,7 @@ const threshold = z.number().int().min(1).max(99);
 export const createPolicyBody = z
   .object({
     name: z.string().trim().min(1).max(120),
+    key: z.string().regex(CATALOGUE_KEY_PATTERN).optional(),
     description: z.string().max(2_000).nullable().optional(),
     calendarId: identifier,
     atRiskThresholdPct: threshold.default(75),

@@ -1,8 +1,17 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { schema } from "../database";
-import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
+import {
+  currentProjectReachPredicate,
+  currentWorkspaceReachPredicate,
+} from "../database/repositories/identity-scope.repository";
+import {
+  apiKeyExtensionTable,
+  apikeyTable,
+  webhookTable,
+} from "../database/schema";
 import type { DbTransaction } from "../events/outbox";
+import { findLinkedRequestOwnerPersonIds } from "./customer-request-scope";
 import { isSupportedNotificationResourceEvent } from "./resource-contract";
 
 export type CurrentNotificationResource = {
@@ -13,10 +22,16 @@ export type CurrentNotificationResource = {
   visibleToPersonIds: readonly string[] | null;
   customerVisible: boolean;
   staffUrl: string | null;
+  /** Customer-host route only; never contains a staff key or internal resource id. */
+  portalUrl: string | null;
+  /** Server-side creator identity for events whose recipient rule includes the creator. */
+  ownerPersonId?: string | null;
+  /** Current requester ids for structurally linked, non-archived requests. */
+  customerRequestOwnerPersonIds?: readonly string[];
 };
 
 export type NativeNotificationResourceRequest = {
-  resourceType: "work_item" | "comment";
+  resourceType: "work_item" | "comment" | "webhook";
   resourceId: string;
   eventKind: string;
 };
@@ -75,6 +90,13 @@ export async function findCurrentNotificationResources(
     ...new Set(
       valid
         .filter((request) => request.resourceType === "comment")
+        .map(({ resourceId }) => resourceId),
+    ),
+  ];
+  const webhookIds = [
+    ...new Set(
+      valid
+        .filter((request) => request.resourceType === "webhook")
         .map(({ resourceId }) => resourceId),
     ),
   ];
@@ -163,6 +185,31 @@ export async function findCurrentNotificationResources(
           ),
         )
     : [];
+  const webhooks = webhookIds.length
+    ? await tx
+        .select({
+          id: webhookTable.id,
+          workspaceId: webhookTable.workspaceId,
+          ownerPersonId: webhookTable.createdBy,
+          organisationId: schema.workspaceTable.organisationId,
+        })
+        .from(webhookTable)
+        .innerJoin(
+          schema.workspaceTable,
+          eq(schema.workspaceTable.id, webhookTable.workspaceId),
+        )
+        .where(
+          and(
+            inArray(webhookTable.id, webhookIds),
+            isNull(schema.workspaceTable.deletedAt),
+            currentWorkspaceReachPredicate(
+              identity,
+              schema.workspaceTable.id,
+              tx,
+            ),
+          ),
+        )
+    : [];
   const privateWorkItemIds = [
     ...new Set([
       ...workItems
@@ -194,6 +241,12 @@ export async function findCurrentNotificationResources(
     people.push(participant.personId);
     peopleByWorkItem.set(participant.workItemId, people);
   }
+  const linkedRequestOwners = await findLinkedRequestOwnerPersonIds(tx, [
+    ...new Set([
+      ...workItems.map(({ id }) => id),
+      ...comments.map(({ workItemId }) => workItemId),
+    ]),
+  ]);
   const facts = new Map<string, CurrentNotificationResource>();
   for (const row of workItems) {
     const resource: CurrentNotificationResource = {
@@ -206,8 +259,10 @@ export async function findCurrentNotificationResources(
         row.customerVisibility,
         peopleByWorkItem.get(row.id) ?? [],
       ),
+      customerRequestOwnerPersonIds: linkedRequestOwners.get(row.id) ?? [],
       customerVisible: true,
       staffUrl: `/agent/work-items/${encodeURIComponent(row.key)}`,
+      portalUrl: "/requests",
     };
     facts.set(resourceKey("work_item", row.id), resource);
     facts.set(resourceKey("work_item", row.key), resource);
@@ -224,8 +279,23 @@ export async function findCurrentNotificationResources(
         row.customerVisibility,
         peopleByWorkItem.get(row.workItemId) ?? [],
       ),
+      customerRequestOwnerPersonIds:
+        linkedRequestOwners.get(row.workItemId) ?? [],
       customerVisible: row.visibility === "public",
       staffUrl: `/agent/work-items/${encodeURIComponent(row.key)}?comment=${encodeURIComponent(row.id)}`,
+      portalUrl: row.visibility === "public" ? "/requests" : null,
+    });
+  }
+  for (const row of webhooks) {
+    facts.set(resourceKey("webhook", row.id), {
+      workspaceId: row.workspaceId,
+      projectId: null,
+      organisationId: row.organisationId,
+      visibleToPersonIds: null,
+      customerVisible: false,
+      staffUrl: `/agent/settings/webhooks/${encodeURIComponent(row.id)}`,
+      portalUrl: null,
+      ownerPersonId: row.ownerPersonId,
     });
   }
   return facts;
@@ -263,6 +333,9 @@ async function findWorkItemResource(
       ({ personId }) => personId,
     );
   }
+  const linkedRequestOwners = await findLinkedRequestOwnerPersonIds(tx, [
+    row.id,
+  ]);
   return {
     workItemId: row.id,
     workspaceId: row.workspaceId,
@@ -273,8 +346,10 @@ async function findWorkItemResource(
       row.customerVisibility,
       participantIds,
     ),
+    customerRequestOwnerPersonIds: linkedRequestOwners.get(row.id) ?? [],
     customerVisible: true,
     staffUrl: `/agent/work-items/${encodeURIComponent(row.key)}`,
+    portalUrl: "/requests",
   };
 }
 
@@ -318,6 +393,7 @@ export async function findCurrentNotificationResource(
       ),
       customerVisible: true,
       staffUrl: null,
+      portalUrl: null,
     };
   }
 
@@ -352,6 +428,7 @@ export async function findCurrentNotificationResource(
           staffUrl: resource.staffUrl
             ? `${resource.staffUrl}?comment=${encodeURIComponent(input.resourceId)}`
             : null,
+          portalUrl: row.visibility === "public" ? resource.portalUrl : null,
         }
       : null;
   }
@@ -369,10 +446,119 @@ export async function findCurrentNotificationResource(
       visibleToPersonIds: null,
       customerVisible: true,
       staffUrl: null,
+      portalUrl: null,
+    };
+  }
+
+  if (
+    input.resourceType === "webhook" &&
+    input.workspaceId &&
+    isSupportedNotificationResourceEvent(input.resourceType, input.eventKind)
+  ) {
+    const [webhook] = await tx
+      .select({
+        id: webhookTable.id,
+        workspaceId: webhookTable.workspaceId,
+        ownerPersonId: webhookTable.createdBy,
+        organisationId: schema.workspaceTable.organisationId,
+      })
+      .from(webhookTable)
+      .innerJoin(
+        schema.workspaceTable,
+        eq(schema.workspaceTable.id, webhookTable.workspaceId),
+      )
+      .where(
+        and(
+          eq(webhookTable.id, input.resourceId),
+          eq(webhookTable.workspaceId, input.workspaceId),
+          isNull(schema.workspaceTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!webhook) return null;
+    return {
+      workspaceId: webhook.workspaceId,
+      projectId: null,
+      organisationId: webhook.organisationId,
+      visibleToPersonIds: null,
+      customerVisible: false,
+      staffUrl: `/agent/settings/webhooks/${encodeURIComponent(webhook.id)}`,
+      portalUrl: null,
+      ownerPersonId: webhook.ownerPersonId,
     };
   }
 
   return null;
+}
+
+/** Current owner facts for the instance-scoped MCP-key auto-disable notification. */
+export async function findApiKeyAutoDisableOwner(
+  tx: DbTransaction,
+  apiKeyId: string,
+): Promise<{ userId: string; personId: string } | null> {
+  const [row] = await tx
+    .select({
+      userId: apikeyTable.userId,
+      personId: apiKeyExtensionTable.personId,
+    })
+    .from(apikeyTable)
+    .innerJoin(
+      apiKeyExtensionTable,
+      eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+    )
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.id, apiKeyExtensionTable.personId),
+    )
+    .where(
+      and(
+        eq(apikeyTable.id, apiKeyId),
+        eq(apikeyTable.referenceId, apikeyTable.userId),
+        eq(schema.personTable.userId, apikeyTable.userId),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.personTable.active, true),
+        isNull(apiKeyExtensionTable.workspaceId),
+        eq(apiKeyExtensionTable.isMcp, true),
+      ),
+    )
+    .limit(1);
+  return row?.userId && row.personId
+    ? { userId: row.userId, personId: row.personId }
+    : null;
+}
+
+/** Only current, active staff owners can read their personal MCP-key alert. */
+export async function findCurrentOwnedApiKeyAutoDisableIds(
+  tx: DbTransaction,
+  identity: ResolvedIdentity,
+  apiKeyIds: readonly string[],
+): Promise<Set<string>> {
+  if (identity.side !== "staff" || apiKeyIds.length === 0) return new Set();
+  const rows = await tx
+    .select({ id: apikeyTable.id })
+    .from(apikeyTable)
+    .innerJoin(
+      apiKeyExtensionTable,
+      eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+    )
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.id, apiKeyExtensionTable.personId),
+    )
+    .where(
+      and(
+        inArray(apikeyTable.id, [...new Set(apiKeyIds)]),
+        eq(apikeyTable.userId, identity.userId),
+        eq(apikeyTable.referenceId, identity.userId),
+        eq(apiKeyExtensionTable.personId, identity.personId),
+        eq(schema.personTable.userId, identity.userId),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.personTable.active, true),
+        isNull(apiKeyExtensionTable.workspaceId),
+        eq(apiKeyExtensionTable.isMcp, true),
+      ),
+    );
+  return new Set(rows.map(({ id }) => id));
 }
 
 export async function findNotificationPerson(
@@ -384,11 +570,16 @@ export async function findNotificationPerson(
       userId: schema.personTable.userId,
       side: schema.personTable.side,
       active: schema.personTable.active,
+      locale: schema.userTable.locale,
       quietHoursStart: schema.personTable.quietHoursStart,
       quietHoursEnd: schema.personTable.quietHoursEnd,
       quietHoursTimezone: schema.personTable.quietHoursTimezone,
     })
     .from(schema.personTable)
+    .leftJoin(
+      schema.userTable,
+      eq(schema.userTable.id, schema.personTable.userId),
+    )
     .where(eq(schema.personTable.id, personId))
     .limit(1);
   return person ?? null;

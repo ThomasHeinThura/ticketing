@@ -1,0 +1,12 @@
+{
+	"recordedAt": "2026-10-25T14:31:52.589Z",
+	"runtimeCheckpoint": 179,
+	"status": "scoped_pass",
+	"scope": "Real signed-in browser with intentional workspace GET failure and recovery through Kaneo error panel.",
+	"blockedRequests": 1,
+	"preflight200": true,
+	"onboardingAbsentOnFailure": true,
+	"retryRecovered": true,
+	"workspaceCount": 1,
+	"screenshot": "docs/report/browser/screens/workspace-discovery-error179.png"
+}

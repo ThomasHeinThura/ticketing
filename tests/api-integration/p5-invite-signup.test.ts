@@ -123,6 +123,31 @@ function bodyFor(
   };
 }
 
+async function beginContinuation(
+  invited: { id: string; credential: string },
+  ip = nextClientIp(),
+) {
+  const target = customerOrigin();
+  const response = await w.app.request(
+    `${target}/api/portal/invitations/${encodeURIComponent(invited.id)}/continuation`,
+    {
+      method: "POST",
+      headers: {
+        host: new URL(target).host,
+        origin: target,
+        "content-type": "application/json",
+        "x-forwarded-for": ip,
+      },
+      body: JSON.stringify({ credential: invited.credential }),
+    },
+  );
+  return {
+    response,
+    cookie: cookieOf(response, `__Host-tdk_customer_invite_${invited.id}`),
+    ip,
+  };
+}
+
 const cookieOf = (response: Response, name: string) =>
   response.headers
     .getSetCookie()
@@ -200,6 +225,108 @@ async function expectUntouched(
 }
 
 describe("a new invitee signs up with the credential", () => {
+  it("rejects a continuation POST from a foreign origin before looking up the invitation", async () => {
+    const invited = await w.invite("foreign.origin@example.test");
+    const target = customerOrigin();
+    const response = await w.app.request(
+      `${target}/api/portal/invitations/${encodeURIComponent(invited.id)}/continuation`,
+      {
+        method: "POST",
+        headers: {
+          host: new URL(target).host,
+          origin: "https://attacker.example.test",
+          "content-type": "application/json",
+          "x-forwarded-for": nextClientIp(),
+        },
+        body: JSON.stringify({ credential: invited.credential }),
+      },
+    );
+
+    expect(response.status, await response.clone().text()).toBe(403);
+    expect(await w.rowOf(invited.id)).toMatchObject({ status: "pending" });
+    expect(
+      await db
+        .select()
+        .from(schema.customerInvitationAuthContinuationTable)
+        .where(
+          eq(
+            schema.customerInvitationAuthContinuationTable.invitationId,
+            invited.id,
+          ),
+        ),
+    ).toHaveLength(0);
+  });
+
+  it("hands the fragment to the continuation endpoint before a provider signup", async () => {
+    const email = "continuation.invitee@example.test";
+    const invited = await w.invite(email);
+    const { response: begun, cookie, ip } = await beginContinuation(invited);
+    expect(begun.status, await begun.clone().text()).toBe(204);
+    expect(cookie).toBeTruthy();
+    const setCookie = begun.headers.getSetCookie().join(";");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).toContain("Path=/");
+
+    // inviteWorld.invite() uses a staff-authenticated route and leaves its session spy active.
+    // Restore the real auth getter before testing the anonymous customer signup request.
+    vi.restoreAllMocks();
+    const response = await w.app.request(
+      `${customerOrigin()}/api/auth/sign-up/email`,
+      {
+        method: "POST",
+        headers: {
+          host: new URL(customerOrigin()).host,
+          origin: customerOrigin(),
+          "content-type": "application/json",
+          cookie: cookie as string,
+          "x-taskdesk-invitation-id": invited.id,
+          "x-forwarded-for": ip,
+        },
+        body: JSON.stringify({
+          invitationId: invited.id,
+          name: "New Invitee",
+          email,
+          password: PASSWORD,
+        }),
+      },
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(await response.text()).not.toContain(invited.credential);
+    const [user] = await userRows(email);
+    expect(user?.emailVerified).toBe(true);
+    expect((await w.rowOf(invited.id))?.status).toBe("accepted");
+    const [continuation] = await db
+      .select()
+      .from(schema.customerInvitationAuthContinuationTable)
+      .where(
+        eq(
+          schema.customerInvitationAuthContinuationTable.invitationId,
+          invited.id,
+        ),
+      );
+    expect(continuation?.consumedAt).toBeInstanceOf(Date);
+    expect(continuation?.acceptedUserId).toBe(user?.id);
+    expect(continuation?.nonceHash).not.toBe(cookie?.split("=")[1]);
+    expect(JSON.stringify(continuation)).not.toContain(invited.credential);
+
+    const sessionCookie = cookieOf(response, PORTAL_COOKIE);
+    const result = await w.app.request(
+      `${customerOrigin()}/api/portal/invitations/${encodeURIComponent(invited.id)}/continuation-result`,
+      {
+        headers: {
+          host: new URL(customerOrigin()).host,
+          origin: customerOrigin(),
+          cookie: `${sessionCookie}; ${cookie}`,
+        },
+      },
+    );
+    expect(result.status, await result.clone().text()).toBe(200);
+    expect(await result.json()).toEqual({ accepted: true });
+    expect(result.headers.getSetCookie().join(";")).toContain("Max-Age=0");
+  });
+
   it("signs up, accepts in the same request and gets a working customer session that cannot reach the agent host", async () => {
     const email = "fresh.invitee@example.test";
     const invited = await w.invite(email);
@@ -513,6 +640,25 @@ describe("single use under concurrency", () => {
 });
 
 describe("rate limit", () => {
+  it("applies the configured anonymous ceiling before validating invitation credentials", async () => {
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ anonymousRateLimitWindowMs: 60_000, anonymousRateLimitMax: 1 })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    const ip = nextClientIp();
+    const body = {
+      name: "Unknown invitee",
+      email: "unknown@example.test",
+      password: PASSWORD,
+      invitationId: "does-not-exist",
+      invitationCredential: "A-credential-that-is-long-enough",
+    };
+    const first = await signUp(body, { ip });
+    const second = await signUp(body, { ip });
+    expect(first.status).toBe(403);
+    expect(second.status).toBe(429);
+  });
+
   it("answers 429 after three sign-up attempts a minute from one client", async () => {
     const email = "limited@example.test";
     const invited = await w.invite(email);

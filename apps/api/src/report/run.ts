@@ -1,12 +1,19 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { sql } from "drizzle-orm";
-import { buildContext, num, selectRows } from "./context";
+import db from "../database";
+import type { Executor } from "../database/executor";
+import {
+  buildContext,
+  currentReportExecutor,
+  num,
+  selectRows,
+  withReportExecutor,
+} from "./context";
 import { workspaceFeatureEnabled } from "./feature";
 import type { ReportWindow } from "./logic";
 import { type ReportEnvelope, stripRates } from "./present";
 import { reportByKey } from "./registry";
 import { EXTRA_DRILL } from "./reports/drill-extra";
-import { boundaryOf } from "./snapshot.logic";
 import type { ReportChoice, ReportDefinition, ReportFilters } from "./types";
 
 export type ReportCaps = {
@@ -63,7 +70,7 @@ export async function scopeCounts(
   return { projects: num(row?.n), archived: num(row?.archived) };
 }
 
-export async function runReport(input: {
+type RunReportInput = {
   def: ReportDefinition;
   workspaceId: string;
   identity: ResolvedIdentity;
@@ -76,11 +83,30 @@ export async function runReport(input: {
   snapshots?: boolean;
   /** RP-10: a background export, which may return more rows than the screen. */
   exporting?: boolean;
-}): Promise<ReportEnvelope> {
+  exportPage?: { offset: number; limit: number };
+  executor?: Executor;
+};
+
+export async function runReport(
+  input: RunReportInput,
+): Promise<ReportEnvelope> {
+  const executor = input.executor ?? currentReportExecutor() ?? db;
+  return withReportExecutor(executor, () =>
+    runReportInContext({ ...input, executor }),
+  );
+}
+
+async function runReportInContext(
+  input: RunReportInput & { executor: Executor },
+): Promise<ReportEnvelope> {
   const { def } = input;
   if (
     def.feature &&
-    !(await workspaceFeatureEnabled(input.workspaceId, def.feature))
+    !(await workspaceFeatureEnabled(
+      input.workspaceId,
+      def.feature,
+      input.executor,
+    ))
   )
     throw new ReportFeatureDisabledError(def.feature);
   const options = selectOptions(def, input.options ?? {});
@@ -95,6 +121,8 @@ export async function runReport(input: {
     window: input.window,
     filters: input.filters,
     options,
+    executor: input.executor,
+    ...(input.exportPage ? { exportPage: input.exportPage } : {}),
     ...(input.snapshots === false ? { snapshots: false } : {}),
     ...(input.exporting ? { exporting: true } : {}),
   });
@@ -109,6 +137,26 @@ export async function runReport(input: {
     body.drill = true;
   }
   const use = ctx.snapshots.use;
+  const sources = ctx.snapshots.sources;
+  if (
+    !sources.metricSnapshot &&
+    !sources.cycleSnapshot &&
+    sources.liveComponents.size === 0
+  )
+    sources.liveComponents.add(def.live ? "current_state" : "selected_period");
+  // Source metadata includes comparison and supporting reads, but the boundary is about the
+  // selected window. Only a stored day actually used by that window makes it historical.
+  const hasHistorical = use.snapshotDays > 0;
+  // Comparison ranges are auxiliary context for trend reports; the boundary describes the
+  // selected window itself. Keep their provenance visible without making a fully stored selected
+  // period appear mixed just because the preceding comparison range is still live.
+  const hasWindowLive = [...sources.liveComponents].some(
+    (component) =>
+      component !== "comparison_period" &&
+      (component !== "outside_window" || body.population === 0),
+  );
+  const hasLive = hasWindowLive || use.liveParts || use.uncoveredDays > 0;
+  const boundary = !hasHistorical ? "live" : hasLive ? "mixed" : "snapshot";
   const scope = await scopeCounts(ctx);
   const empty = body.population === 0;
   const notes = [...body.notes];
@@ -130,7 +178,12 @@ export async function runReport(input: {
       live: def.live === true,
     },
     asOf: ctx.now.toISOString(),
-    boundary: boundaryOf(use),
+    boundary,
+    sources: {
+      metricSnapshot: sources.metricSnapshot || use.snapshotDays > 0,
+      cycleSnapshot: sources.cycleSnapshot,
+      liveComponents: [...sources.liveComponents].sort(),
+    },
     snapshot:
       use.snapshotDays > 0
         ? {

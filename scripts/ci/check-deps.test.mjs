@@ -564,6 +564,82 @@ test("Vite aliases resolving into another workspace are boundary checked", async
   );
 });
 
+test("static array aliases enforce boundaries and anchored aliases match exactly", async (t) => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "taskdesk-deps-array-alias-"),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  for (const [relative, name] of [
+    ["apps/web", "@taskdesk/web"],
+    ["apps/api", "@taskdesk/api"],
+  ]) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: {} }),
+    );
+  }
+  await writeFile(
+    path.join(root, "apps/web/vite.config.ts"),
+    `import path from "node:path";
+export default { resolve: { alias: [
+  { find: "@api", replacement: path.resolve(__dirname, "../api/src") },
+  { find: /^exact-api$/, replacement: path.resolve(__dirname, "../api/src/auth.ts") }
+] } };`,
+  );
+  await writeFile(path.join(root, "apps/api/src/auth.ts"), "export {};\n");
+  await writeFile(
+    path.join(root, "apps/web/src/edge.ts"),
+    'import "@api/auth"; import "exact-api"; import "exact-api/child";',
+  );
+  const { violations } = await analyzeDependencies(root);
+  const boundary = violations.filter(
+    (message) =>
+      message.includes("apps/web/src/edge.ts") && message.includes("apps/api"),
+  );
+  assert.equal(boundary.length, 2, violations.join("\n"));
+  assert.doesNotMatch(violations.join("\n"), /dynamic resolve.alias/);
+});
+
+test("dynamic array alias shapes fail closed", async (t) => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "taskdesk-deps-dynamic-array-"),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(path.join(root, "apps/web/src"), { recursive: true });
+  await writeFile(
+    path.join(root, "apps/web/package.json"),
+    JSON.stringify({ name: "@taskdesk/web" }),
+  );
+  await writeFile(
+    path.join(root, "apps/web/tsconfig.json"),
+    JSON.stringify({ compilerOptions: {} }),
+  );
+  await writeFile(
+    path.join(root, "apps/web/vite.config.ts"),
+    `export default { resolve: { alias: [
+  { find: /^api-(.*)$/, replacement: "../api/$1" },
+  { find: /^exact$/i, replacement: "../api/src" },
+  { find: "@api", replacement: "../api/src", customResolver: resolver },
+  { find: "@api", replacement: "../api/src", ...extras },
+  ...aliases
+] } };`,
+  );
+  const { violations } = await analyzeDependencies(root);
+  assert.equal(
+    violations.filter((message) =>
+      message.includes("dynamic resolve.alias mapping"),
+    ).length,
+    5,
+    violations.join("\n"),
+  );
+});
+
 test("conflicting bundler alias definitions fail closed", async (t) => {
   const root = await mkdtemp(
     path.join(os.tmpdir(), "taskdesk-deps-vite-alias-ambiguous-"),

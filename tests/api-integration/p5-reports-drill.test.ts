@@ -13,6 +13,12 @@ import {
   cycleTable,
 } from "../../apps/api/src/database/schema-p5-agile";
 import { deflectionEventTable } from "../../apps/api/src/database/schema-p5-kb";
+import {
+  budgetTable,
+  costEntryTable,
+  costTypeTable,
+  timeEntryTable,
+} from "../../apps/api/src/database/schema-p5-time";
 import { resetTestDatabase } from "./helpers/database";
 import { makeTeam } from "./helpers/p4-closeout";
 import { insertArticle } from "./helpers/p5-kb";
@@ -33,11 +39,19 @@ type Item = {
   state: string | null;
   priority: string | null;
   hours?: number | null;
+  currency?: string | null;
   person?: string | null;
   date?: string | null;
   workItemKey?: string | null;
 };
 type User = Parameters<ReportsWorld["get"]>[0];
+
+function requireDrillHandle(handle: unknown): string {
+  if (typeof handle !== "string") {
+    throw new Error("Expected the report row to include a drill handle");
+  }
+  return handle;
+}
 
 /** The report, then the drill of each of its rows: every row's handle must list something. */
 async function drill(
@@ -236,6 +250,131 @@ describe("time reports (hours only, never a rate)", () => {
     // The lead holds no rates either, and the drill carries none.
     noRates(JSON.stringify(lead.items));
   });
+
+  it("drills each cost row by budget, including full-period time and cost entries without rates", async () => {
+    const oldDate = isoDaysAgo(12);
+    const reportWindowDate = isoDaysAgo(3);
+    const costType = (
+      await db
+        .insert(costTypeTable)
+        .values({
+          workspaceId: w.workspaceId,
+          name: "Licence",
+          unit: "seat",
+          currency: "EUR",
+        })
+        .returning()
+    )[0];
+    await db.insert(timeEntryTable).values([
+      {
+        workspaceId: w.workspaceId,
+        projectId: w.projectA.id,
+        workItemId: w.itemA.id,
+        personId: w.ownerPersonId,
+        date: oldDate,
+        minutes: 60,
+        activityId: w.dev.id,
+        description: "Earlier priced work",
+        billable: true,
+        rateMinor: 6000,
+        currency: "EUR",
+      },
+      {
+        workspaceId: w.workspaceId,
+        projectId: w.projectA.id,
+        workItemId: w.itemA.id,
+        personId: w.ownerPersonId,
+        date: reportWindowDate,
+        minutes: 60,
+        activityId: w.dev.id,
+        description: "Current priced work",
+        billable: true,
+        rateMinor: 2000,
+        currency: "EUR",
+      },
+    ]);
+    await db.insert(costEntryTable).values({
+      workspaceId: w.workspaceId,
+      projectId: w.projectA.id,
+      workItemId: w.itemA.id,
+      costTypeId: costType?.id ?? "",
+      personId: w.ownerPersonId,
+      date: oldDate,
+      units: 1,
+      rateMinor: 2500,
+      amountMinor: 2500,
+      currency: "EUR",
+      billable: true,
+      note: "Annual seats",
+    });
+    const budgets = await db
+      .insert(budgetTable)
+      .values([
+        {
+          workspaceId: w.workspaceId,
+          projectId: w.projectA.id,
+          name: "Long period",
+          plannedAmountMinor: 20000,
+          currency: "EUR",
+          periodStart: isoDaysAgo(20),
+          periodEnd: isoDaysAgo(1),
+        },
+        {
+          workspaceId: w.workspaceId,
+          projectId: w.projectA.id,
+          name: "Current period",
+          plannedAmountMinor: 20000,
+          currency: "EUR",
+          periodStart: isoDaysAgo(6),
+          periodEnd: isoDaysAgo(1),
+        },
+      ])
+      .returning();
+
+    const { body } = await w.report(
+      w.owner.user,
+      "cost_to_deliver",
+      "&window=7",
+    );
+    const longRow = body.rows.find((row) => row.budget === "Long period");
+    const currentRow = body.rows.find((row) => row.budget === "Current period");
+    expect(longRow?.actual).toBe(10500);
+    expect(currentRow?.actual).toBe(2000);
+    const longHandle = requireDrillHandle(longRow?._drill);
+    const currentHandle = requireDrillHandle(currentRow?._drill);
+    expect(longHandle).toBe(`budget:${budgets[0]?.id}`);
+    expect(currentHandle).toBe(`budget:${budgets[1]?.id}`);
+    expect(longHandle).not.toBe(currentHandle);
+
+    const longDrill = await drill(
+      w.owner.user,
+      "cost_to_deliver",
+      "&window=7",
+      longHandle,
+    );
+    expect(longDrill.items.map((item) => item.kind).sort()).toEqual([
+      "cost_entry",
+      "time_entry",
+      "time_entry",
+    ]);
+    expect(longDrill.items.map((item) => item.title)).toContain(
+      "Licence — Annual seats",
+    );
+    expect(longDrill.items.every((item) => item.currency === "EUR")).toBe(true);
+    expect(longDrill.items.map((item) => item.date)).toContain(oldDate);
+    const currentDrill = await drill(
+      w.owner.user,
+      "cost_to_deliver",
+      "&window=7",
+      currentHandle,
+    );
+    expect(currentDrill.items.map((item) => item.kind)).toEqual(["time_entry"]);
+    expect(currentDrill.items[0]?.title).toBe("Current priced work");
+    expect(currentDrill.items[0]?.date).toBe(reportWindowDate);
+    const raw = JSON.stringify([...longDrill.items, ...currentDrill.items]);
+    for (const needle of ["rateMinor", "amountMinor", "6000", "2500", "2000"])
+      expect(raw).not.toContain(needle);
+  });
 });
 
 describe("cycle and knowledge base reports", () => {
@@ -389,7 +528,11 @@ describe("tier 3 reports and widgets", () => {
       "U2",
     ]);
     expect(await items("nothing")).toEqual([]);
-    expect(await items()).toHaveLength(3);
+    // The shared time world already has Item A and its child in the lead's
+    // reachable project. A full-population drill includes those, but not Item B.
+    expect((await items()).map((item) => item.title).sort()).toEqual(
+      [w.itemA.title, w.childItem.title, "U1", "U2", "L1"].sort(),
+    );
   });
 
   it("lists time entries behind a custom time report, hours only", async () => {
@@ -411,7 +554,7 @@ describe("tier 3 reports and widgets", () => {
       ).json()) as { data: Item[] }
     ).data;
     expect(items).toHaveLength(1);
-    expect(items[0]).toMatchObject({ kind: "time_entry", hours: 0.8 });
+    expect(items[0]).toMatchObject({ kind: "time_entry", hours: 0.75 });
     noRates(JSON.stringify(items));
   });
 

@@ -1,0 +1,254 @@
+{
+	"recordedAt": "2026-10-26T12:50:36.712Z",
+	"scope": "Own disabled synthetic identity connection: typed-name/password approval, cancel, history/SCIM/session effects at three widths in both themes",
+	"strictTls": true,
+	"checks": [
+		{
+			"name": "Exact own fixture is still unretired",
+			"pass": true
+		},
+		{
+			"name": "Own current administrator",
+			"pass": true
+		},
+		{
+			"name": "Real browser session differs from synthetic source session",
+			"pass": true
+		},
+		{
+			"name": "Current non-admin QA session",
+			"pass": true
+		},
+		{
+			"name": "Non-admin CSRF issuer200",
+			"pass": true
+		},
+		{
+			"name": "Non-admin cannot request connection retirement",
+			"pass": true
+		},
+		{
+			"name": "editor 375 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Typed retirement request202 375 light",
+			"pass": true
+		},
+		{
+			"name": "Server requires typed-name and step-up 375 light",
+			"pass": true
+		},
+		{
+			"name": "Wrong name cannot submit 375 light",
+			"pass": true
+		},
+		{
+			"name": "Approval has no page overflow 375 light",
+			"pass": true
+		},
+		{
+			"name": "Cancellation200 375 light",
+			"pass": true
+		},
+		{
+			"name": "Cancellation leaves connection unretired 375 light",
+			"pass": true
+		},
+		{
+			"name": "editor 768 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Typed retirement request202 768 light",
+			"pass": true
+		},
+		{
+			"name": "Server requires typed-name and step-up 768 light",
+			"pass": true
+		},
+		{
+			"name": "Wrong name cannot submit 768 light",
+			"pass": true
+		},
+		{
+			"name": "Approval has no page overflow 768 light",
+			"pass": true
+		},
+		{
+			"name": "Cancellation200 768 light",
+			"pass": true
+		},
+		{
+			"name": "Cancellation leaves connection unretired 768 light",
+			"pass": true
+		},
+		{
+			"name": "editor 1440 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Typed retirement request202 1440 light",
+			"pass": true
+		},
+		{
+			"name": "Server requires typed-name and step-up 1440 light",
+			"pass": true
+		},
+		{
+			"name": "Wrong name cannot submit 1440 light",
+			"pass": true
+		},
+		{
+			"name": "Approval has no page overflow 1440 light",
+			"pass": true
+		},
+		{
+			"name": "Cancellation200 1440 light",
+			"pass": true
+		},
+		{
+			"name": "Cancellation leaves connection unretired 1440 light",
+			"pass": true
+		},
+		{
+			"name": "editor 375 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Typed retirement request202 375 dark",
+			"pass": true
+		},
+		{
+			"name": "Server requires typed-name and step-up 375 dark",
+			"pass": true
+		},
+		{
+			"name": "Wrong name cannot submit 375 dark",
+			"pass": true
+		},
+		{
+			"name": "Approval has no page overflow 375 dark",
+			"pass": true
+		},
+		{
+			"name": "Cancellation200 375 dark",
+			"pass": true
+		},
+		{
+			"name": "Cancellation leaves connection unretired 375 dark",
+			"pass": true
+		},
+		{
+			"name": "editor 768 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Typed retirement request202 768 dark",
+			"pass": true
+		},
+		{
+			"name": "Server requires typed-name and step-up 768 dark",
+			"pass": true
+		},
+		{
+			"name": "Wrong name cannot submit 768 dark",
+			"pass": true
+		},
+		{
+			"name": "Approval has no page overflow 768 dark",
+			"pass": true
+		},
+		{
+			"name": "Cancellation200 768 dark",
+			"pass": true
+		},
+		{
+			"name": "Cancellation leaves connection unretired 768 dark",
+			"pass": true
+		},
+		{
+			"name": "editor 1440 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Typed retirement request202 1440 dark",
+			"pass": true
+		},
+		{
+			"name": "Server requires typed-name and step-up 1440 dark",
+			"pass": true
+		},
+		{
+			"name": "Wrong name cannot submit 1440 dark",
+			"pass": true
+		},
+		{
+			"name": "Approval has no page overflow 1440 dark",
+			"pass": true
+		},
+		{
+			"name": "Fresh-password approval200",
+			"pass": true
+		},
+		{
+			"name": "Approval executes",
+			"pass": true
+		},
+		{
+			"name": "Connection is retained disabled with tombstone and erased secret",
+			"pass": true
+		},
+		{
+			"name": "Identity history remains active and orphan-marked",
+			"pass": true
+		},
+		{
+			"name": "Person status is unchanged",
+			"pass": true
+		},
+		{
+			"name": "SCIM credential is disabled and erased",
+			"pass": true
+		},
+		{
+			"name": "Only the synthetic connection-bound session is revoked",
+			"pass": true
+		},
+		{
+			"name": "Administrator remains signed in",
+			"pass": true
+		},
+		{
+			"name": "Admin API hides retired connection",
+			"pass": true
+		},
+		{
+			"name": "Fresh list omits retired fixture",
+			"pass": true
+		},
+		{
+			"name": "Six requests and five cancellations",
+			"pass": true
+		},
+		{
+			"name": "No browser JavaScript errors",
+			"pass": true
+		}
+	],
+	"screenshots": [
+		"editor-375-light.png",
+		"approval-375-light.png",
+		"editor-768-light.png",
+		"approval-768-light.png",
+		"editor-1440-light.png",
+		"approval-1440-light.png",
+		"editor-375-dark.png",
+		"approval-375-dark.png",
+		"editor-768-dark.png",
+		"approval-768-dark.png",
+		"editor-1440-dark.png",
+		"approval-1440-dark.png"
+	],
+	"outcome": "passed"
+}

@@ -10,6 +10,7 @@ export const WORK_ROUTE_I18N_NAMESPACES = [
   "navigation",
   "workItems",
   "tasks",
+  "term",
 ] as const;
 
 /** The route this applies to; keep in step with the HTML preload in `vite.config.ts`. */

@@ -41,28 +41,38 @@ export const DUE_DATE_FILTER_VALUES = {
   noDueDate: "noDueDate",
 } as const;
 
-/** `VW-13`: how the board splits its columns. `state` is the default and is never written. */
-export const WORK_ITEM_GROUPS = ["state", "assignee", "priority"] as const;
-export type WorkItemGroup = (typeof WORK_ITEM_GROUPS)[number];
+/** `VW-13`: board grouping. `state` is the default; custom fields use `cf.<key>`. */
+export const WORK_ITEM_GROUPS = [
+  "state",
+  "assignee",
+  "priority",
+  "label",
+] as const;
+export type WorkItemGroup = (typeof WORK_ITEM_GROUPS)[number] | `cf.${string}`;
+
+const CUSTOM_FIELD_GROUP = /^cf\.[a-z][a-z0-9_]{0,63}$/u;
 
 export function parseWorkItemGroup(value: unknown): WorkItemGroup | undefined {
   return typeof value === "string" &&
-    (WORK_ITEM_GROUPS as readonly string[]).includes(value)
+    ((WORK_ITEM_GROUPS as readonly string[]).includes(value) ||
+      CUSTOM_FIELD_GROUP.test(value))
     ? (value as WorkItemGroup)
     : undefined;
 }
 
 /**
- * `VW-27`: the timeline may also group by module (`feature.modules`). Only project views that
- * name it accept it; the board's own grouping (`parseWorkItemGroup`) stays state, assignee and
- * priority.
+ * `VW-27`: the timeline may also group by module (`feature.modules`) or epic. Only the timeline
+ * offers the epic option; the board's own grouping (`parseWorkItemGroup`) remains unchanged and
+ * also accepts live custom-field keys (`cf.<key>`).
  */
-export type ProjectViewGroup = WorkItemGroup | "module";
+export type ProjectViewGroup = WorkItemGroup | "module" | "epic";
 
 export function parseProjectViewGroup(
   value: unknown,
 ): ProjectViewGroup | undefined {
-  return value === "module" ? "module" : parseWorkItemGroup(value);
+  return value === "module" || value === "epic"
+    ? value
+    : parseWorkItemGroup(value);
 }
 
 /** `VW-28`: `deps=1` draws the timeline's dependency arrows. Off (absent) by default. */

@@ -13,12 +13,15 @@ import {
   sql,
 } from "drizzle-orm";
 import db from "../database";
+import type { Executor } from "../database/executor";
 import {
   currentInstanceAdminPredicate,
   currentProjectReachPredicate,
   currentWorkspaceReachPredicate,
 } from "../database/repositories/identity-scope.repository";
 import {
+  apiKeyExtensionTable,
+  apikeyTable,
   commentTable,
   notificationTable,
   personTable,
@@ -26,12 +29,24 @@ import {
   requestTypeTable,
   submissionTable,
   taskTable,
+  userNotificationPreferenceTable,
+  userTable,
+  webhookTable,
   workItemTable,
   workspaceTable,
 } from "../database/schema";
 import { QUIET_HOURS_HOLD_KEY } from "../notification-preferences/delivery.repository";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import type { AuthenticatedApiKey } from "../permissions/resolve-request-identity";
+import {
+  parseNotificationCopyDescriptor,
+  renderNotificationCopyDescriptor,
+  withoutNotificationCopyDescriptor,
+} from "../terminology/notification-copy";
+import {
+  requireTerminologyLocale,
+  resolveTermForm,
+} from "../terminology/service";
 import {
   COST_TRACKING_FEATURE_KEY,
   trackingFeatureEnabled,
@@ -42,6 +57,7 @@ import {
 } from "../utils/project-ancestry";
 import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
 import { approvalNotificationReadable } from "./approval-reach.repository";
+import { customerOwnedRequestNotificationPredicate } from "./customer-request-scope";
 import {
   canReadNativeInboxCandidate,
   type NativeInboxCandidate,
@@ -49,6 +65,7 @@ import {
 } from "./native-inbox-reach";
 import {
   findCurrentNotificationResources,
+  findCurrentOwnedApiKeyAutoDisableIds,
   type NativeNotificationResourceRequest,
 } from "./repository";
 import {
@@ -74,7 +91,7 @@ type NotificationCandidate = Pick<
   | "updatedAt"
 >;
 type PolicyCandidate = NotificationCandidate & { eventKind: string | null };
-interface MaterializedNotificationRow {
+export interface MaterializedNotificationRow {
   id: NotificationRow["id"];
   userId: NotificationRow["userId"];
   title: NotificationRow["title"];
@@ -98,8 +115,69 @@ type NativeInboxCredential = {
 };
 type InboxExecutor = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-type Cursor = { createdAt: Date; id: string };
+export type NotificationInboxCursor = { createdAt: Date; id: string };
+type Cursor = NotificationInboxCursor;
 const CANDIDATE_PAGE_SIZE = 100;
+export type NotificationInboxFilter =
+  | "all"
+  | "unread"
+  | "mentions"
+  | "assignments";
+
+export function encodeNotificationInboxCursor(cursor: Cursor): string {
+  return Buffer.from(
+    JSON.stringify({
+      createdAt: cursor.createdAt.toISOString(),
+      id: cursor.id,
+    }),
+  ).toString("base64url");
+}
+
+export function decodeNotificationInboxCursor(value: string): Cursor | null {
+  try {
+    const decoded = JSON.parse(Buffer.from(value, "base64url").toString()) as {
+      createdAt?: unknown;
+      id?: unknown;
+    };
+    if (
+      typeof decoded.createdAt !== "string" ||
+      typeof decoded.id !== "string" ||
+      !decoded.id.length ||
+      decoded.id.length > 128
+    )
+      return null;
+    const createdAt = new Date(decoded.createdAt);
+    if (Number.isNaN(createdAt.getTime())) return null;
+    return { createdAt, id: decoded.id };
+  } catch {
+    return null;
+  }
+}
+
+function notificationFilterPredicate(filter: NotificationInboxFilter) {
+  switch (filter) {
+    case "unread":
+      return or(
+        eq(notificationTable.isRead, false),
+        isNull(notificationTable.isRead),
+      );
+    case "mentions":
+      return or(
+        eq(notificationTable.kind, "work_item.mentioned"),
+        eq(notificationTable.type, "task_mention"),
+      );
+    case "assignments":
+      return or(
+        inArray(notificationTable.kind, [
+          "work_item.assigned",
+          "work_item.unassigned",
+        ]),
+        eq(notificationTable.type, "task_assignee_changed"),
+      );
+    case "all":
+      return undefined;
+  }
+}
 
 /**
  * `event_data` is PostgreSQL JSONB. The app Pool installs no custom parser;
@@ -121,15 +199,67 @@ function materializeNotification(
  * part of what a reader sees. A payload that held nothing else reads as null again.
  */
 function withoutHoldMarker(eventData: JsonValue | null): JsonValue | null {
+  let visible: unknown = eventData;
   if (
-    eventData === null ||
-    typeof eventData !== "object" ||
-    Array.isArray(eventData) ||
-    !(QUIET_HOURS_HOLD_KEY in eventData)
-  )
-    return eventData;
-  const { [QUIET_HOURS_HOLD_KEY]: _held, ...rest } = eventData;
-  return Object.keys(rest).length === 0 ? null : (rest as JsonValue);
+    visible !== null &&
+    typeof visible === "object" &&
+    !Array.isArray(visible) &&
+    QUIET_HOURS_HOLD_KEY in visible
+  ) {
+    const { [QUIET_HOURS_HOLD_KEY]: _held, ...rest } = visible;
+    visible = Object.keys(rest).length === 0 ? null : rest;
+  }
+  const stripped = withoutNotificationCopyDescriptor(visible);
+  return stripped === null ? null : (stripped as JsonValue);
+}
+
+async function recipientLocale(tx: InboxExecutor, userId: string) {
+  const [user] = await tx
+    .select({ locale: userTable.locale })
+    .from(userTable)
+    .where(eq(userTable.id, userId))
+    .limit(1);
+  try {
+    return requireTerminologyLocale(user?.locale ?? "en-US");
+  } catch {
+    return requireTerminologyLocale("en-US");
+  }
+}
+
+async function materializeForCurrentRecipient(
+  tx: InboxExecutor,
+  row: NotificationRow,
+  identity: ResolvedIdentity,
+  workspaceId: string | null,
+  locale: string,
+): Promise<MaterializedNotificationRow> {
+  const materialized = materializeNotification(row);
+  const data = row.eventData as JsonValue | null;
+  const descriptor =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? parseNotificationCopyDescriptor(data.systemCopy)
+      : null;
+  if (!descriptor) return materialized;
+  const rendered = await renderNotificationCopyDescriptor(
+    descriptor,
+    (termKey, count) =>
+      resolveTermForm({
+        locale,
+        audience: identity.side === "customer" ? "customer" : "agent",
+        termKey,
+        count,
+        workspaceId,
+        executor: tx,
+      }),
+  ).catch(() => null);
+  return rendered
+    ? {
+        ...materialized,
+        title: rendered.title,
+        body: rendered.body,
+        content: rendered.body,
+      }
+    : materialized;
 }
 
 function isSerializationFailure(error: unknown) {
@@ -174,6 +304,8 @@ function registeredNotificationResource() {
     eq(notificationTable.resourceType, "person"),
     eq(notificationTable.resourceType, "submission"),
     eq(notificationTable.resourceType, "project"),
+    eq(notificationTable.resourceType, "webhook"),
+    eq(notificationTable.resourceType, "api_key"),
     sql`false`,
   );
 }
@@ -265,7 +397,9 @@ async function resolveInboxIdentity(
 
 function nativeRequests(rows: readonly NotificationCandidate[]) {
   return rows.flatMap((row): NativeNotificationResourceRequest[] =>
-    (row.resourceType === "work_item" || row.resourceType === "comment") &&
+    (row.resourceType === "work_item" ||
+      row.resourceType === "comment" ||
+      row.resourceType === "webhook") &&
     row.resourceId &&
     row.kind
       ? [
@@ -442,6 +576,19 @@ async function readableNativeRows(
       : []
     ).map((row) => [row.id, row]),
   );
+  const apiKeyIds = rows
+    .filter(
+      (row) =>
+        row.resourceType === "api_key" &&
+        row.kind === "api_key.auto_disabled" &&
+        row.resourceId !== null,
+    )
+    .map((row) => row.resourceId as string);
+  const currentOwnedApiKeyIds = await findCurrentOwnedApiKeyAutoDisableIds(
+    tx,
+    identity,
+    apiKeyIds,
+  );
   return rows.filter((row) => {
     if (
       !identity ||
@@ -545,6 +692,14 @@ async function readableNativeRows(
         row.personId === identity.personId
       );
     }
+    if (row.resourceType === "api_key") {
+      return (
+        identity.side === "staff" &&
+        row.personId === identity.personId &&
+        row.kind === "api_key.auto_disabled" &&
+        currentOwnedApiKeyIds.has(row.resourceId)
+      );
+    }
     if (row.resourceType === "submission") {
       // IQ-12 / IQ-15 / NO-21: see `canReadSubmissionNotification`.
       const submission = submissionFacts.get(row.resourceId);
@@ -552,7 +707,11 @@ async function readableNativeRows(
         submission && canReadSubmissionNotification(identity, row, submission),
       );
     }
-    if (row.resourceType !== "work_item" && row.resourceType !== "comment")
+    if (
+      row.resourceType !== "work_item" &&
+      row.resourceType !== "comment" &&
+      row.resourceType !== "webhook"
+    )
       return false;
     const candidate: NativeInboxCandidate = {
       userId: row.userId,
@@ -584,15 +743,23 @@ async function readableNativeRows(
 async function selectCandidatePage(
   tx: InboxExecutor,
   userId: string,
+  identity: ResolvedIdentity,
   cursor: Cursor | undefined,
   credentialCanReadTask?: boolean,
   excludeInstanceAdminRows = false,
+  filter: NotificationInboxFilter = "all",
 ) {
   const selfScoped = and(
     eq(notificationTable.userId, userId),
     registeredNotificationResource(),
     approvalNotificationReadable(userId, tx),
     taskNotificationReadable(userId, tx, credentialCanReadTask),
+    customerOwnedRequestNotificationPredicate(
+      identity,
+      notificationTable.resourceType,
+      notificationTable.resourceId,
+      tx,
+    ),
   );
   const visibleToUser = excludeInstanceAdminRows
     ? and(
@@ -602,6 +769,8 @@ async function selectCandidatePage(
       )
     : selfScoped;
   const cursorFilter = cursorPredicate(cursor);
+  const filterPredicate = notificationFilterPredicate(filter);
+  const where = and(visibleToUser, cursorFilter, filterPredicate);
   return tx
     .select({
       notification: {
@@ -631,8 +800,24 @@ async function selectCandidatePage(
       ),
     )
     .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
-    .where(cursorFilter ? and(visibleToUser, cursorFilter) : visibleToUser)
+    .leftJoin(
+      webhookTable,
+      and(
+        eq(notificationTable.resourceId, webhookTable.id),
+        eq(notificationTable.resourceType, "webhook"),
+      ),
+    )
+    .leftJoin(
+      workspaceTable,
+      or(
+        eq(projectTable.workspaceId, workspaceTable.id),
+        and(
+          eq(notificationTable.resourceType, "webhook"),
+          eq(webhookTable.workspaceId, workspaceTable.id),
+        ),
+      ),
+    )
+    .where(where)
     .orderBy(desc(createdAtMs), desc(notificationTable.id))
     .limit(CANDIDATE_PAGE_SIZE);
 }
@@ -725,6 +910,65 @@ function currentOwnerPredicate(
         ),
     );
   }
+  if (row.resourceType === "webhook") {
+    return and(
+      eq(notificationTable.personId, identity.personId),
+      eq(notificationTable.kind, "webhook.auto_disabled"),
+      exists(
+        executor
+          .select({ one: sql`1` })
+          .from(webhookTable)
+          .innerJoin(
+            workspaceTable,
+            eq(workspaceTable.id, webhookTable.workspaceId),
+          )
+          .where(
+            and(
+              eq(webhookTable.id, notificationTable.resourceId),
+              isNull(workspaceTable.deletedAt),
+              currentWorkspaceReachPredicate(
+                identity,
+                workspaceTable.id,
+                executor,
+              ),
+            ),
+          ),
+      ),
+    );
+  }
+  if (row.resourceType === "api_key") {
+    return and(
+      eq(notificationTable.personId, identity.personId),
+      eq(notificationTable.kind, "api_key.auto_disabled"),
+      exists(
+        executor
+          .select({ one: sql`1` })
+          .from(apikeyTable)
+          .innerJoin(
+            apiKeyExtensionTable,
+            eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+          )
+          .innerJoin(
+            personTable,
+            eq(personTable.id, apiKeyExtensionTable.personId),
+          )
+          .where(
+            and(
+              eq(apikeyTable.id, notificationTable.resourceId),
+              eq(apikeyTable.userId, identity.userId),
+              eq(apikeyTable.referenceId, identity.userId),
+              eq(apiKeyExtensionTable.personId, identity.personId),
+              isNull(apiKeyExtensionTable.workspaceId),
+              eq(apiKeyExtensionTable.isMcp, true),
+              eq(personTable.id, identity.personId),
+              eq(personTable.userId, identity.userId),
+              eq(personTable.side, "staff"),
+              eq(personTable.active, true),
+            ),
+          ),
+      ),
+    );
+  }
   if (row.resourceType === "person") {
     return exists(
       executor
@@ -745,6 +989,12 @@ function currentOwnerPredicate(
     return and(
       eq(notificationTable.personId, identity.personId),
       inArray(notificationTable.kind, [...SUBMISSION_NOTIFICATION_KINDS]),
+      customerOwnedRequestNotificationPredicate(
+        identity,
+        notificationTable.resourceType,
+        notificationTable.resourceId,
+        executor,
+      ),
       exists(
         executor
           .select({ one: sql`1` })
@@ -772,60 +1022,79 @@ function currentOwnerPredicate(
     );
   }
   if (row.resourceType === "work_item") {
-    return exists(
-      executor
-        .select({ one: sql`1` })
-        .from(workItemTable)
-        .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
-        .innerJoin(
-          workspaceTable,
-          eq(workspaceTable.id, projectTable.workspaceId),
-        )
-        .where(
-          and(
-            eq(workItemTable.id, notificationTable.resourceId),
-            isNull(workItemTable.deletedAt),
-            isNull(workItemTable.archivedAt),
-            isNull(projectTable.deletedAt),
-            isNull(workspaceTable.deletedAt),
-            currentProjectReachPredicate(
-              identity,
-              projectTable.id,
-              projectTable.workspaceId,
-              projectTable.organisationId,
-              executor,
+    return and(
+      customerOwnedRequestNotificationPredicate(
+        identity,
+        notificationTable.resourceType,
+        notificationTable.resourceId,
+        executor,
+      ),
+      exists(
+        executor
+          .select({ one: sql`1` })
+          .from(workItemTable)
+          .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+          .innerJoin(
+            workspaceTable,
+            eq(workspaceTable.id, projectTable.workspaceId),
+          )
+          .where(
+            and(
+              eq(workItemTable.id, notificationTable.resourceId),
+              isNull(workItemTable.deletedAt),
+              isNull(workItemTable.archivedAt),
+              isNull(projectTable.deletedAt),
+              isNull(workspaceTable.deletedAt),
+              currentProjectReachPredicate(
+                identity,
+                projectTable.id,
+                projectTable.workspaceId,
+                projectTable.organisationId,
+                executor,
+              ),
             ),
           ),
-        ),
+      ),
     );
   }
   if (row.resourceType === "comment") {
-    return exists(
-      executor
-        .select({ one: sql`1` })
-        .from(commentTable)
-        .innerJoin(workItemTable, eq(workItemTable.id, commentTable.workItemId))
-        .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
-        .innerJoin(
-          workspaceTable,
-          eq(workspaceTable.id, projectTable.workspaceId),
-        )
-        .where(
-          and(
-            eq(commentTable.id, notificationTable.resourceId),
-            isNull(workItemTable.deletedAt),
-            isNull(workItemTable.archivedAt),
-            isNull(projectTable.deletedAt),
-            isNull(workspaceTable.deletedAt),
-            currentProjectReachPredicate(
-              identity,
-              projectTable.id,
-              projectTable.workspaceId,
-              projectTable.organisationId,
-              executor,
+    return and(
+      customerOwnedRequestNotificationPredicate(
+        identity,
+        notificationTable.resourceType,
+        notificationTable.resourceId,
+        executor,
+      ),
+      exists(
+        executor
+          .select({ one: sql`1` })
+          .from(commentTable)
+          .innerJoin(
+            workItemTable,
+            eq(workItemTable.id, commentTable.workItemId),
+          )
+          .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+          .innerJoin(
+            workspaceTable,
+            eq(workspaceTable.id, projectTable.workspaceId),
+          )
+          .where(
+            and(
+              eq(commentTable.id, notificationTable.resourceId),
+              isNull(workItemTable.deletedAt),
+              isNull(workItemTable.archivedAt),
+              isNull(projectTable.deletedAt),
+              isNull(workspaceTable.deletedAt),
+              currentProjectReachPredicate(
+                identity,
+                projectTable.id,
+                projectTable.workspaceId,
+                projectTable.organisationId,
+                executor,
+              ),
             ),
           ),
-        ),
+      ),
     );
   }
   return and(
@@ -844,8 +1113,12 @@ async function fetchAllowedRows(
   return tx
     .select({
       notification: notificationTable,
-      projectId: projectTable.id,
-      workspaceId: workspaceTable.id,
+      projectId: sql<
+        string | null
+      >`COALESCE(${projectTable.id}, ${workItemTable.projectId})`,
+      workspaceId: sql<
+        string | null
+      >`COALESCE(${workspaceTable.id}, ${workItemTable.workspaceId}, ${requestTypeTable.workspaceId})`,
     })
     .from(notificationTable)
     .leftJoin(
@@ -856,7 +1129,56 @@ async function fetchAllowedRows(
       ),
     )
     .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
+    .leftJoin(
+      commentTable,
+      and(
+        eq(notificationTable.resourceId, commentTable.id),
+        eq(notificationTable.resourceType, "comment"),
+      ),
+    )
+    .leftJoin(
+      workItemTable,
+      or(
+        and(
+          eq(notificationTable.resourceType, "work_item"),
+          eq(notificationTable.resourceId, workItemTable.id),
+        ),
+        and(
+          eq(notificationTable.resourceType, "comment"),
+          eq(commentTable.workItemId, workItemTable.id),
+        ),
+      ),
+    )
+    .leftJoin(
+      submissionTable,
+      and(
+        eq(notificationTable.resourceType, "submission"),
+        eq(notificationTable.resourceId, submissionTable.id),
+      ),
+    )
+    .leftJoin(
+      requestTypeTable,
+      eq(submissionTable.requestTypeId, requestTypeTable.id),
+    )
+    .leftJoin(
+      webhookTable,
+      and(
+        eq(notificationTable.resourceId, webhookTable.id),
+        eq(notificationTable.resourceType, "webhook"),
+      ),
+    )
+    .leftJoin(
+      workspaceTable,
+      or(
+        eq(projectTable.workspaceId, workspaceTable.id),
+        and(
+          eq(notificationTable.resourceType, "webhook"),
+          eq(webhookTable.workspaceId, workspaceTable.id),
+        ),
+        eq(workItemTable.workspaceId, workspaceTable.id),
+        eq(requestTypeTable.workspaceId, workspaceTable.id),
+      ),
+    )
     .where(
       or(
         ...rows.map((row) =>
@@ -880,6 +1202,7 @@ async function bulkMutation(userId: string, mode: "read" | "delete") {
       const page = await selectCandidatePage(
         tx,
         userId,
+        identity,
         cursor,
         undefined,
         excludeInstanceAlerts,
@@ -948,6 +1271,8 @@ export async function markOwnReadableNotificationRead(
   mode: "read" | "unread" = "read",
 ): Promise<MaterializedNotificationRow | undefined> {
   return inboxTransaction(async (tx) => {
+    const identity = await resolveInboxIdentity(tx, userId);
+    if (!identity) return undefined;
     const [row] = await tx
       .select({
         notification: {
@@ -976,12 +1301,17 @@ export async function markOwnReadableNotificationRead(
           registeredNotificationResource(),
           approvalNotificationReadable(userId, tx),
           taskNotificationReadable(userId, tx),
+          customerOwnedRequestNotificationPredicate(
+            identity,
+            notificationTable.resourceType,
+            notificationTable.resourceId,
+            tx,
+          ),
         ),
       )
       .limit(1);
     if (!row) return undefined;
-    const identity = await resolveInboxIdentity(tx, userId);
-    if (!identity) return undefined;
+    const locale = await recipientLocale(tx, userId);
     const allowed = await readableNativeRows(tx, [row.notification], identity);
     if (allowed.length === 0) return undefined;
     const [content] = await fetchAllowedRows(tx, allowed, identity);
@@ -1001,10 +1331,24 @@ export async function markOwnReadableNotificationRead(
           registeredNotificationResource(),
           approvalNotificationReadable(userId, tx),
           taskNotificationReadable(userId, tx),
+          customerOwnedRequestNotificationPredicate(
+            identity,
+            notificationTable.resourceType,
+            notificationTable.resourceId,
+            tx,
+          ),
         ),
       )
       .returning();
-    return updated ? materializeNotification(updated) : undefined;
+    return updated
+      ? materializeForCurrentRecipient(
+          tx,
+          updated,
+          identity,
+          content.workspaceId,
+          locale,
+        )
+      : undefined;
   });
 }
 
@@ -1025,6 +1369,7 @@ export async function listVisibleNotificationRows(params: {
   return inboxTransaction(async (tx) => {
     const identity = await resolveInboxIdentity(tx, userId, credential);
     if (!identity) return [];
+    const locale = await recipientLocale(tx, userId);
     const includeInstanceAlerts = canReadInstanceAlerts(identity);
     const results: Array<{
       notification: MaterializedNotificationRow;
@@ -1036,6 +1381,7 @@ export async function listVisibleNotificationRows(params: {
       const page = await selectCandidatePage(
         tx,
         userId,
+        identity,
         cursor,
         credentialCanReadTask,
         !includeInstanceAlerts,
@@ -1051,7 +1397,13 @@ export async function listVisibleNotificationRows(params: {
       for (const item of contentRows) {
         results.push({
           ...item,
-          notification: materializeNotification(item.notification),
+          notification: await materializeForCurrentRecipient(
+            tx,
+            item.notification,
+            identity,
+            item.workspaceId,
+            locale,
+          ),
         });
         if (results.length === 50) break;
       }
@@ -1063,16 +1415,139 @@ export async function listVisibleNotificationRows(params: {
   });
 }
 
-export async function findNotificationPreferenceRow(userId: string) {
-  return db.query.userNotificationPreferenceTable.findFirst({
-    where: (table, { eq }) => eq(table.userId, userId),
+/**
+ * NO-12/13: a server-filtered inbox page and a reach-scoped unread total. The count deliberately
+ * uses the same candidate/native checks as the list but never fetches notification content.
+ */
+export async function listVisibleNotificationInbox(params: {
+  userId: string;
+  credentialCanReadTask: boolean;
+  credential?: NativeInboxCredential;
+  filter: NotificationInboxFilter;
+  limit: number;
+  cursor?: Cursor;
+}): Promise<{
+  rows: Array<{
+    notification: MaterializedNotificationRow;
+    projectId: string | null;
+    workspaceId: string | null;
+  }>;
+  unreadCount: number;
+  nextCursor: string | null;
+}> {
+  const {
+    userId,
+    credentialCanReadTask,
+    credential = {},
+    filter,
+    limit,
+    cursor: requestedCursor,
+  } = params;
+  return inboxTransaction(async (tx) => {
+    const identity = await resolveInboxIdentity(tx, userId, credential);
+    if (!identity) return { rows: [], unreadCount: 0, nextCursor: null };
+    const locale = await recipientLocale(tx, userId);
+    const excludeInstanceAlerts = !canReadInstanceAlerts(identity);
+
+    let unreadCount = 0;
+    let countCursor: Cursor | undefined;
+    while (true) {
+      const page = await selectCandidatePage(
+        tx,
+        userId,
+        identity,
+        countCursor,
+        credentialCanReadTask,
+        excludeInstanceAlerts,
+        "unread",
+      );
+      const candidates = page.map(({ notification }) => notification);
+      unreadCount += (await readableNativeRows(tx, candidates, identity))
+        .length;
+      const last = page.at(-1)?.notification;
+      if (!last || page.length < CANDIDATE_PAGE_SIZE) break;
+      countCursor = { createdAt: last.createdAt, id: last.id };
+    }
+
+    const rows: Array<{
+      notification: MaterializedNotificationRow;
+      projectId: string | null;
+      workspaceId: string | null;
+    }> = [];
+    let pageCursor = requestedCursor;
+    let hasMore = false;
+    while (true) {
+      const page = await selectCandidatePage(
+        tx,
+        userId,
+        identity,
+        pageCursor,
+        credentialCanReadTask,
+        excludeInstanceAlerts,
+        filter,
+      );
+      const candidates = page.map(({ notification }) => notification);
+      const allowed = await readableNativeRows(tx, candidates, identity);
+      const contentRows = await fetchAllowedRows(
+        tx,
+        allowed,
+        identity,
+        credentialCanReadTask,
+      );
+      for (const item of contentRows) {
+        if (rows.length === limit) {
+          hasMore = true;
+          break;
+        }
+        rows.push({
+          ...item,
+          notification: await materializeForCurrentRecipient(
+            tx,
+            item.notification,
+            identity,
+            item.workspaceId,
+            locale,
+          ),
+        });
+      }
+      if (hasMore) break;
+      const last = page.at(-1)?.notification;
+      if (!last || page.length < CANDIDATE_PAGE_SIZE) break;
+      pageCursor = { createdAt: last.createdAt, id: last.id };
+    }
+
+    const lastReturned = rows.at(-1)?.notification;
+    return {
+      rows,
+      unreadCount,
+      nextCursor:
+        hasMore && lastReturned
+          ? encodeNotificationInboxCursor({
+              createdAt: lastReturned.createdAt,
+              id: lastReturned.id,
+            })
+          : null,
+    };
   });
+}
+
+export async function findNotificationPreferenceRow(
+  userId: string,
+  executor: Executor = db,
+) {
+  const [preference] = await executor
+    .select()
+    .from(userNotificationPreferenceTable)
+    .where(eq(userNotificationPreferenceTable.userId, userId))
+    .limit(1);
+  return preference;
 }
 
 export async function insertNotificationRow(
   values: typeof notificationTable.$inferInsert,
+  executor: Executor = db,
 ): Promise<MaterializedNotificationRow | undefined> {
-  const [notification] = await db
+  const [notification] = await executor
     .insert(notificationTable)
     .values(values)
     .returning();
@@ -1080,8 +1555,11 @@ export async function insertNotificationRow(
 }
 
 /** The project's workspace id, or `undefined`. */
-export async function findProjectWorkspaceId(projectId: string) {
-  const [project] = await db
+export async function findProjectWorkspaceId(
+  projectId: string,
+  executor: Executor = db,
+) {
+  const [project] = await executor
     .select({ workspaceId: projectTable.workspaceId })
     .from(projectTable)
     .where(eq(projectTable.id, projectId))
@@ -1090,8 +1568,11 @@ export async function findProjectWorkspaceId(projectId: string) {
 }
 
 /** The task's project id, or `undefined`. */
-export async function findTaskProjectId(taskId: string) {
-  const [task] = await db
+export async function findTaskProjectId(
+  taskId: string,
+  executor: Executor = db,
+) {
+  const [task] = await executor
     .select({ projectId: taskTable.projectId })
     .from(taskTable)
     .where(eq(taskTable.id, taskId))

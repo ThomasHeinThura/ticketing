@@ -34,8 +34,6 @@ export const approvalPolicies = {
     scope: "work_item",
     scopeSource: "row",
     reach: "required",
-    // F12 / PA-14: session-only until `mcp_destructive` carries decide_approval for keys.
-    sessionOnly: true,
   },
   "POST /api/approvals/{id}/withdraw": {
     capability: "approval:request",

@@ -184,7 +184,7 @@ export async function createModule(
   scope: ProjectRef,
   input: {
     name: string;
-    description?: string;
+    description?: string | null;
     leadId?: string | null;
     state?: ModuleState;
     targetDate?: string | null;

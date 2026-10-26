@@ -1,18 +1,32 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { Button, Tabs, TabsList, TabsTrigger, useIsMobile } from "@taskdesk/ui";
+import { Button, useIsMobile } from "@taskdesk/ui";
 import { ChevronLeft, PanelLeftIcon } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { SettingsSidebarProvider } from "@/components/SettingsSidebar";
-import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 
-/**
- * Kaneo's settings shell (Account / Workspace / Projects tabs), shared by kaneo's
- * `/dashboard/settings/*` pages and the v2 settings pages under `/agent/settings/*`, so
- * every settings screen looks the same.
- */
+function scopedSettingsTitle(
+  t: (key: string) => string,
+  pathname: string,
+  instance: boolean,
+) {
+  if (instance) return t("navigation:sidebar.godMode");
+  if (pathname.startsWith("/dashboard/settings/account"))
+    return t("settings:account");
+  if (pathname.startsWith("/agent/settings/profile"))
+    return t("settings:account");
+  if (pathname.startsWith("/dashboard/settings/projects"))
+    return t("navigation:projectList.projectSettings");
+  if (pathname.startsWith("/dashboard/settings/workspace"))
+    return t("navigation:page.settingsWorkspaceTab");
+  if (pathname.startsWith("/agent/settings"))
+    return t("navigation:page.settingsWorkspaceTab");
+  return t("navigation:page.settingsWorkspaceTab");
+}
+
+/** Kaneo settings chrome shared by its existing account, workspace, project and instance areas. */
 export function SettingsShell({
   children,
   instance = false,
@@ -26,48 +40,19 @@ export function SettingsShell({
   const isMobile = useIsMobile();
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const { data: workspace } = useActiveWorkspace();
-  const { data: projects } = useGetProjects({
-    workspaceId: workspace?.id ?? "",
-  });
-
-  const getActiveTab = () => {
-    if (instance) return "instance";
-    const pathname = location.pathname;
-    if (
-      pathname.includes("/dashboard/settings/account") ||
-      pathname.startsWith("/agent/settings/profile")
-    ) {
-      return "account";
-    }
-    if (
-      pathname.includes("/dashboard/settings/workspace") ||
-      pathname.startsWith("/agent/settings")
-    ) {
-      return "workspace";
-    }
-    if (pathname.includes("/dashboard/settings/projects")) {
-      return "project";
-    }
-    return "account";
-  };
-
-  const activeTab = getActiveTab();
+  const title = scopedSettingsTitle(t, location.pathname, instance);
 
   useEffect(() => {
-    if (location.pathname) {
-      setSettingsMenuOpen(false);
-    }
+    if (location.pathname) setSettingsMenuOpen(false);
   }, [location.pathname]);
 
   useLayoutEffect(() => {
-    if (!isMobile) {
-      setSettingsMenuOpen(false);
-    }
+    if (!isMobile) setSettingsMenuOpen(false);
   }, [isMobile]);
 
   return (
     <>
-      <PageTitle title={t("navigation:page.settingsTitle")} />
+      <PageTitle title={title} />
 
       <div className="flex h-full w-full flex-col bg-sidebar p-2 sm:p-4">
         <div className="relative flex h-full min-h-0 flex-col gap-6 overflow-hidden rounded-md border border-border bg-card p-3 md:gap-4 sm:p-4">
@@ -87,9 +72,7 @@ export function SettingsShell({
 
               <div className="flex items-center gap-1 md:hidden">
                 <ChevronLeft className="size-4 text-muted-foreground" />
-                <span className="text-lg font-semibold">
-                  {t("navigation:page.settingsTitle")}
-                </span>
+                <h1 className="text-lg font-semibold">{title}</h1>
               </div>
 
               <Button
@@ -99,72 +82,20 @@ export function SettingsShell({
                 className="hidden md:inline-flex"
                 onClick={() => {
                   if (!workspace?.id) return;
-
                   navigate({ to: "/agent" });
                 }}
               >
                 <ChevronLeft />
-
                 {t("navigation:page.backToWorkspace")}
               </Button>
             </div>
 
             <h1 className="mt-4 hidden pl-1 text-2xl font-semibold md:block">
-              {t("navigation:page.settingsTitle")}
+              {title}
             </h1>
-
-            <Tabs
-              value={activeTab}
-              className="w-full pt-4 md:w-[400px] md:pt-2"
-            >
-              <TabsList className="bg-sidebar gap-2">
-                <TabsTrigger
-                  value="account"
-                  className="[&[data-state=active]]:rounded-md [&[data-state=active]]:border [&[data-state=active]]:border-border [&[data-state=active]]:bg-card"
-                  onClick={() =>
-                    navigate({
-                      to: "/dashboard/settings/account/information",
-                    })
-                  }
-                >
-                  {t("settings:account")}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="workspace"
-                  className="[&[data-state=active]]:rounded-md [&[data-state=active]]:border [&[data-state=active]]:border-border [&[data-state=active]]:bg-card"
-                  onClick={() =>
-                    navigate({
-                      to: "/dashboard/settings/workspace/general",
-                    })
-                  }
-                >
-                  {t("navigation:page.settingsWorkspaceTab")}
-                </TabsTrigger>
-                <TabsTrigger
-                  disabled={projects?.length === 0}
-                  value="project"
-                  className="[&[data-state=active]]:rounded-md [&[data-state=active]]:border [&[data-state=active]]:border-border [&[data-state=active]]:bg-card"
-                  onClick={() =>
-                    navigate({
-                      to: "/dashboard/settings/projects",
-                    })
-                  }
-                >
-                  {t("navigation:sidebar.projects")}
-                </TabsTrigger>
-                {instance && (
-                  <TabsTrigger
-                    value="instance"
-                    className="[&[data-state=active]]:rounded-md [&[data-state=active]]:border [&[data-state=active]]:border-border [&[data-state=active]]:bg-card"
-                  >
-                    {t("navigation:sidebar.godMode")}
-                  </TabsTrigger>
-                )}
-              </TabsList>
-            </Tabs>
           </div>
 
-          {/* The page's one main landmark; settings pages render plain sections inside it. */}
+          {/* Each settings area owns its existing sidebar; mobile opens that same scoped menu. */}
           <main className="min-h-0 flex-1 overflow-y-auto">
             <SettingsSidebarProvider
               workspaceId={workspace?.id}

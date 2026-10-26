@@ -1,0 +1,164 @@
+{
+	"recordedAt": "2026-10-26T06:36:27.407Z",
+	"strictTls": true,
+	"scope": "Admin explicit key scope picker and non-admin UI denial; one temporary owned key",
+	"checks": [
+		{
+			"name": "Own audit admin session",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:create",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:update",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch instance:admin",
+			"pass": true
+		},
+		{
+			"name": "scope picker 375 light theme",
+			"pass": true
+		},
+		{
+			"name": "scope picker 375 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:create",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:update",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch instance:admin",
+			"pass": true
+		},
+		{
+			"name": "scope picker 768 light theme",
+			"pass": true
+		},
+		{
+			"name": "scope picker 768 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:create",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:update",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch instance:admin",
+			"pass": true
+		},
+		{
+			"name": "scope picker 1440 light theme",
+			"pass": true
+		},
+		{
+			"name": "scope picker 1440 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:create",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:update",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch instance:admin",
+			"pass": true
+		},
+		{
+			"name": "scope picker 375 dark theme",
+			"pass": true
+		},
+		{
+			"name": "scope picker 375 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:create",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:update",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch instance:admin",
+			"pass": true
+		},
+		{
+			"name": "scope picker 768 dark theme",
+			"pass": true
+		},
+		{
+			"name": "scope picker 768 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:create",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch work_item:update",
+			"pass": true
+		},
+		{
+			"name": "Named capability switch instance:admin",
+			"pass": true
+		},
+		{
+			"name": "scope picker 1440 dark theme",
+			"pass": true
+		},
+		{
+			"name": "scope picker 1440 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Personal-key creation201",
+			"pass": true
+		},
+		{
+			"name": "One-time key dialog matches created secret",
+			"pass": true
+		},
+		{
+			"name": "Explicit admin and work-item scopes persist",
+			"pass": true
+		},
+		{
+			"name": "Exactly one key created after six cancelled drafts",
+			"pass": true
+		},
+		{
+			"name": "Authenticated non-admin fixture",
+			"pass": true
+		},
+		{
+			"name": "Non-admin has no instance-admin picker option",
+			"pass": true
+		}
+	],
+	"screenshots": [
+		"scope-375-light.png",
+		"scope-768-light.png",
+		"scope-1440-light.png",
+		"scope-375-dark.png",
+		"scope-768-dark.png",
+		"scope-1440-dark.png"
+	],
+	"outcome": "passed"
+}

@@ -37,8 +37,23 @@ export type ElevatedEnforcement =
   | { kind: "pending_action_approval"; handler: string; consumer: string }
   | { kind: "exempt"; reason: string };
 
+export type ConditionalOperationEnforcement = Extract<
+  ElevatedEnforcement,
+  { kind: "conditional_operation" }
+>;
+
 export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
+  "POST /api/instance/purge": {
+    kind: "pending_action",
+    handler: "instance/purge.ts",
+    confirmation: "typed_name_step_up",
+  },
   // Workspace and keys
+  "DELETE /api/me/api-keys/{id}": {
+    kind: "pending_action",
+    handler: "api-key/personal-key-deletion-target.ts",
+    confirmation: "typed_name_step_up",
+  },
   "POST /api/workspace/{workspaceId}/roles": {
     kind: "operation",
     operation: "workspace_role_create",
@@ -54,7 +69,7 @@ export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
   "DELETE /api/workspace/{workspaceId}/roles/{roleId}": {
     kind: "exempt",
     reason:
-      "RL-8: role deletion is a click-level pending action approved by the requester after every holder is reassigned (feature-contracts-p4.md); permissions.md lists role deletion as elevated, so this is flagged for an owner decision rather than silently upgraded",
+      "RL-8: role deletion is a click-level pending action approved by the requester after every holder is reassigned; permissions.md explicitly excludes it from PA-15 operation proofs",
   },
   "POST /api/workspace/{workspaceId}/transfer-ownership": {
     kind: "operation",
@@ -65,6 +80,12 @@ export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
   "POST /api/workspaces/{id}/api-keys": {
     kind: "operation",
     operation: "service_key_create",
+    handler: "api-key/index.ts",
+    consumer: "runWithStepUp",
+  },
+  "POST /api/workspaces/{id}/api-keys/{keyId}/re-attest": {
+    kind: "operation",
+    operation: "service_key_reattest",
     handler: "api-key/index.ts",
     consumer: "runWithStepUp",
   },
@@ -86,6 +107,12 @@ export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
     handler: "webhook/index.ts",
     consumer: "runWithStepUp",
     when: "the body changes url",
+  },
+  "POST /api/instance/webhooks/rotate-secrets": {
+    kind: "operation",
+    operation: "webhook_rotate_all",
+    handler: "webhook/rotate-all-api.ts",
+    consumer: "runWithStepUp",
   },
   "POST /api/webhooks/{id}/rotate-secret": {
     kind: "operation",
@@ -112,6 +139,22 @@ export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
     consumer: "consumePendingActionProof",
   },
   // God Mode
+  "DELETE /api/instance/identity-connections/{id}": {
+    kind: "pending_action",
+    handler: "pending-action/identity-connection-deletion-target.ts",
+    confirmation: "typed_name_step_up",
+  },
+  "DELETE /api/instance/organisations/{id}": {
+    kind: "pending_action",
+    handler: "pending-action/organisation-deletion-target.ts",
+    confirmation: "typed_name_step_up",
+  },
+  "POST /api/instance/organisations/{id}/restore": {
+    kind: "operation",
+    operation: "organisation_restore",
+    handler: "instance/organisation-lifecycle.ts",
+    consumer: "runWithStepUp",
+  },
   "POST /api/instance/users/{id}/impersonate": {
     kind: "operation",
     operation: "impersonation_start",
@@ -186,3 +229,27 @@ export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
     consumer: "consumeScimTokenProof",
   },
 };
+
+/**
+ * Conditional PA-15 route checks which do not make the entire route elevated. These are
+ * separately classified because the condition depends on a locked resource, not just the route
+ * declaration. The handler remains responsible for spending the proof in its write transaction.
+ */
+export const CONDITIONAL_OPERATION_ENFORCEMENT: Record<
+  string,
+  ConditionalOperationEnforcement
+> = {
+  "POST /api/instance/users/{id}/suspend": {
+    kind: "conditional_operation",
+    operation: "instance_admin_suspend",
+    handler: "instance/users/index.ts",
+    consumer: "consumeInstanceAdminSuspendProof",
+    when: "the locked target user currently has role admin",
+  },
+};
+
+export function hasElevatedEnforcementClassification(
+  routeKey: string,
+): boolean {
+  return Object.hasOwn(ELEVATED_ENFORCEMENT, routeKey);
+}

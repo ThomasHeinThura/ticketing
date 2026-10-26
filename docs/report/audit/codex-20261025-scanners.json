@@ -1,0 +1,322 @@
+{
+	"generated": "2026-10-25T01:30:55.713926+00:00",
+	"scan": "Full Git history, 4274 commits; raw scanner exit 1 retained. No broad ignores or history rewrites. Staged-tree scan remains required before commit.",
+	"findings": [
+		{
+			"rule": "generic-api-key",
+			"file": "docs/07-planning/security-reviews/activity-write-ownership-20261018.md",
+			"line": 473,
+			"commit": "6ab259afe28922db1608e963713543e9e473015b",
+			"classification": "reviewed_false_positive",
+			"evidence": "Git tree/object SHA, verified with git cat-file; not an authentication credential."
+		},
+		{
+			"rule": "generic-api-key",
+			"file": "docs/07-planning/security-reviews/activity-write-ownership-20261018.md",
+			"line": 774,
+			"commit": "6ab259afe28922db1608e963713543e9e473015b",
+			"classification": "reviewed_false_positive",
+			"evidence": "Git tree/object SHA, verified with git cat-file; not an authentication credential."
+		},
+		{
+			"rule": "generic-api-key",
+			"file": "docs/07-planning/security-reviews/activity-write-ownership-20261018.md",
+			"line": 822,
+			"commit": "6ab259afe28922db1608e963713543e9e473015b",
+			"classification": "reviewed_false_positive",
+			"evidence": "Git tree/object SHA, verified with git cat-file; not an authentication credential."
+		},
+		{
+			"rule": "generic-api-key",
+			"file": "tests/api/portal-attachment-storage.test.ts",
+			"line": 168,
+			"commit": "4812dc8cda8c8c18cbc643049e3f7e7f3bcb1d81",
+			"classification": "reviewed_false_positive",
+			"evidence": "Local constant in a negative attachment-path/token-shape unit fixture; not configured for an external service."
+		},
+		{
+			"rule": "generic-api-key",
+			"file": "docs/07-planning/security-reviews/601-operational-records.md",
+			"line": 53,
+			"commit": "6222eff58e63c5b9be31ae5a8a34ec9fdfc153a4",
+			"classification": "reviewed_false_positive",
+			"evidence": "Prose route-policy operation count; not a credential."
+		},
+		{
+			"rule": "generic-api-key",
+			"file": "docs/07-planning/security-reviews/601-operational-records.md",
+			"line": 53,
+			"commit": "a945805bd312969fb6b5a5bd6dc61826d518e1b9",
+			"classification": "reviewed_false_positive",
+			"evidence": "Prose route-policy operation count; not a credential."
+		},
+		{
+			"rule": "generic-api-key",
+			"file": "docs/07-planning/status.md",
+			"line": 6172,
+			"commit": "6222eff58e63c5b9be31ae5a8a34ec9fdfc153a4",
+			"classification": "reviewed_false_positive",
+			"evidence": "Prose route-policy operation count; not a credential."
+		},
+		{
+			"rule": "generic-api-key",
+			"file": "docs/07-planning/status.md",
+			"line": 8318,
+			"commit": "6222eff58e63c5b9be31ae5a8a34ec9fdfc153a4",
+			"classification": "reviewed_false_positive",
+			"evidence": "Prose route-policy operation count; not a credential."
+		},
+		{
+			"rule": "generic-api-key",
+			"file": "tests/api-integration/existence-oracle-317.test.ts",
+			"line": 110,
+			"commit": "0d075205dec6584b1edf85453da805d2b0ada832",
+			"classification": "reviewed_false_positive",
+			"evidence": "RFC WebSocket handshake example nonce in an isolated existence-oracle test."
+		},
+		{
+			"rule": "private-key",
+			"file": "docs/07-planning/security-reviews/13-kaneo-import-lenses/E-secrets.md",
+			"line": 85,
+			"commit": "a9b1e5bc25d42b27127c716291b6cbe989b3e4c6",
+			"classification": "reviewed_false_positive",
+			"evidence": "Invalid illustrative PEM fragment in historical security documentation; openssl pkey cannot parse it."
+		}
+	],
+	"dependencyScan": {
+		"remaining": 1,
+		"severity": "LOW",
+		"package": "katex@0.16.47",
+		"advisory": "CVE-2026-103923",
+		"status": "assessed_open_low",
+		"path": "transitive Mermaid dependency",
+		"mitigations": [
+			"KaTeX is transitive through Mermaid; application config uses securityLevel strict and disables HTML labels.",
+			"Rendered SVG is passed through DOMPurify 3.4.17 with SVG profiles before display."
+		],
+		"evidence": [
+			"apps/web/src/components/task/extensions/mermaid-block.ts:76",
+			"apps/web/src/components/task/extensions/mermaid-block.ts:93"
+		],
+		"limitation": "These reduce exposure but do not remove the vulnerable transitive package. Retain the LOW finding; no clean scan or risk acceptance is claimed.",
+		"vendorAdvisory": "https://github.com/KaTeX/KaTeX/security/advisories/GHSA-238p-pmpm-9mq7",
+		"patchedVersion": "0.18.2",
+		"vendorCheckedAt": "2026-10-25T05:01:50.016994+00:00",
+		"upgradeConstraint": "Mermaid 11.16.1 currently requires KaTeX ^0.16.45 and locks 0.16.47. The fixed 0.18 line changes CSS classes and internal definitions. Validate public renderToString/MathML compatibility and diagram rendering before overriding the transitive range; no override or risk acceptance claimed."
+	},
+	"misconfigurationScan": "Helm chart could not render without required secrets; no pass claimed.",
+	"currentSourceScan": {
+		"tool": "Gitleaks dir, followed read-only links to git-listed tracked and unignored files",
+		"files": 4712,
+		"bytes": 79098830,
+		"findings": 2,
+		"triage": [
+			{
+				"path": "apps/web/e2e/mfa-csrf-journey.spec.ts",
+				"line": 69,
+				"assessment": "Deterministic public TOTP test vector, not an operational credential; literal not reproduced."
+			},
+			{
+				"path": "tests/api/portal-attachment-storage.test.ts",
+				"line": 168,
+				"assessment": "Deterministic malformed-storage-path test token, not a signing key or operational credential; literal not reproduced."
+			}
+		],
+		"stagedScan": "still required before commit",
+		"suppressionAdded": false
+	},
+	"shippingImageScan": {
+		"imageId": "sha256:c6759535a2e7b7cbe1a1ff52e32728ac0ecfb6a97a8e696120bd9dc4f6795c87",
+		"base": "node:24.20.0-bookworm-slim",
+		"severityCounts": {
+			"LOW": 82,
+			"HIGH": 57,
+			"MEDIUM": 91,
+			"UNKNOWN": 4,
+			"CRITICAL": 1
+		},
+		"fixableHighCritical": 0,
+		"status": "Unfiltered scan retained; package-by-package triage and runtime boot pending. Newer base experiment under assessment.",
+		"criticalVendorNote": {
+			"id": "CVE-2023-45853",
+			"package": "zlib1g",
+			"vendorSource": "https://security-tracker.debian.org/tracker/CVE-2023-45853",
+			"assessment": "Debian explains that the affected MiniZip code is not built into the older zlib binary package. Confirm exact image package contents before final disposition; no ignore rule added."
+		}
+	},
+	"latestShippingCandidate": {
+		"imageId": "sha256:107ecc6d13207f610dd4671d7e2c05bbe11ed24a281fea89689827c0e502cd50",
+		"node": "24.22.1",
+		"base": "trixie-slim with available distribution package updates",
+		"unfilteredFindings": {
+			"LOW": 67,
+			"HIGH": 44,
+			"MEDIUM": 63
+		},
+		"fixableHighCritical": 0,
+		"gate": "Retained operations contract gates HIGH/CRITICAL with a fix available; unfiltered findings remain recorded, no ignore/suppression file added.",
+		"boot": {
+			"runtime": {
+				"node": "v24.22.1",
+				"uid": 10001
+			},
+			"endpoints": [
+				{
+					"host": "ticketing.localhost",
+					"path": "/api/public/health/ready",
+					"status": 200,
+					"contentType": "application/json"
+				},
+				{
+					"host": "ticketing.localhost",
+					"path": "/agent",
+					"status": 200,
+					"contentType": "text/html; charset=utf-8"
+				},
+				{
+					"host": "portal.localhost",
+					"path": "/",
+					"status": 200,
+					"contentType": "text/html; charset=utf-8"
+				},
+				{
+					"host": "ticketing.localhost",
+					"path": "/api/public/health/live",
+					"status": 200,
+					"contentType": "application/json"
+				}
+			],
+			"imageId": "sha256:107ecc6d13207f610dd4671d7e2c05bbe11ed24a281fea89689827c0e502cd50",
+			"hardening": {
+				"readOnlyRoot": true,
+				"capDrop": "ALL",
+				"noNewPrivileges": true
+			},
+			"limitations": [
+				"Pre-final source candidate, not full image functional/browser signoff; native 443 deployment remains current.",
+				"TLS terminated at separate proxy; this probe used internal HTTP with explicit Host."
+			]
+		},
+		"runtimeInspection": {
+			"nodeDynamicLibraries": "libdl,libstdc++,libm,libgcc_s,libpthread,libc; no directly linked util-linux/acl/systemd/ncurses/wget library",
+			"setuidBinaries": "chage,chfn,chsh,expiry,gpasswd,mount,newgrp,passwd,su,umount,unix_chkpwd remain present; candidate no-new-privileges and cap-drop prevent privilege acquisition, not a scanner finding removal.",
+			"deploymentLimitation": "Hardening flags have been tested only on task-owned candidate container; base Compose has not yet been changed or verified with them."
+		},
+		"triage": [
+			{
+				"ids": [
+					"CVE-2026-76642",
+					"CVE-2026-78408",
+					"CVE-2026-78409",
+					"CVE-2026-78410"
+				],
+				"assessment": "Unfixed in trixie; mount/nsenter privileged local execution prerequisites. Native Node process does not dynamically link affected util-linux libraries. Candidate runs UID10001, dropped capabilities, no-new-privileges; retain all source-package findings and confirm final deployment hardening.",
+				"sources": [
+					"https://security-tracker.debian.org/tracker/CVE-2026-76642",
+					"https://security-tracker.debian.org/tracker/CVE-2026-78408",
+					"https://security-tracker.debian.org/tracker/CVE-2026-78409",
+					"https://security-tracker.debian.org/tracker/CVE-2026-78410"
+				]
+			},
+			{
+				"ids": ["CVE-2026-16742"],
+				"assessment": "Vendor describes systemd-homed privilege escalation; source-package scan flags shared libraries. Candidate does not run homed/init, and Node does not dynamically link libsystemd/libudev. Retain finding; do not equate source-package tagging with exposed homed service.",
+				"sources": [
+					"https://security-tracker.debian.org/tracker/CVE-2026-16742"
+				]
+			},
+			{
+				"ids": ["CVE-2025-69720"],
+				"assessment": "Vendor identifies infocmp CLI overflow. Application does not invoke infocmp; binary still installed, retained finding.",
+				"sources": [
+					"https://security-tracker.debian.org/tracker/CVE-2025-69720"
+				]
+			},
+			{
+				"ids": ["CVE-2026-58471", "CVE-2026-58472"],
+				"assessment": "Wget remains for retained fixed-loopback liveness probe only. No user-controlled destination, recursive HTML download or filename conversion in that invocation; binary remains vulnerable and findings stay open.",
+				"sources": [
+					"https://security-tracker.debian.org/tracker/CVE-2026-58471",
+					"https://security-tracker.debian.org/tracker/CVE-2026-58472"
+				]
+			},
+			{
+				"ids": ["CVE-2026-54369"],
+				"assessment": "libacl privilege-escalation finding retained; final applicable call-path assessment remains open.",
+				"sources": [
+					"https://security-tracker.debian.org/tracker/CVE-2026-54369"
+				]
+			}
+		],
+		"limitation": "Candidate predates final source closure; rebuild and rescan final image. Applicability assessment is not owner risk acceptance."
+	},
+	"pendingFinalImageChanges": {
+		"livenessProbe": "deploy/healthcheck.mjs copied and invoked directly with Node; no Wget install",
+		"checks": {
+			"loopbackProbeTests": 5,
+			"dockerContractTests": 23,
+			"dockerDepsGate": "pass; 9 manifests"
+		},
+		"imageStatus": "Source only; final image build, boot and unfiltered scan pending. Existing candidate counts remain unchanged."
+	},
+	"sourceScan174": {
+		"recordedAt": "2026-10-25T09:07:26.887149+00:00",
+		"scope": "5041 git-eligible tracked and non-ignored new files; private runtime/backups/archive excluded by existing gitignore",
+		"scannerExit": 1,
+		"rawFindings": 7,
+		"actualCredentialsFound": 0,
+		"suppressionAdded": false,
+		"findings": [
+			{
+				"rule": "generic-api-key",
+				"file": "apps/web/e2e/mfa-csrf-journey.spec.ts",
+				"line": 69,
+				"disposition": "Deterministic TOTP algorithm fixture used solely in test assertion; no live account or runtime secret.",
+				"actualCredential": false
+			},
+			{
+				"rule": "generic-api-key",
+				"file": "docs/report/audit/codex-20261025-jobs173-deployment.json",
+				"line": 2,
+				"disposition": "Build digest metadata; not an authentication credential. JSON hash fields verified as64hex SHA256 digests.",
+				"actualCredential": false
+			},
+			{
+				"rule": "generic-api-key",
+				"file": "docs/report/audit/codex-20261025-sso-fanout-requester-deployment.json",
+				"line": 6,
+				"disposition": "Build digest metadata; not an authentication credential. JSON hash fields verified as64hex SHA256 digests.",
+				"actualCredential": false
+			},
+			{
+				"rule": "generic-api-key",
+				"file": "docs/report/audit/codex-20261025-search174-deployment.json",
+				"line": 4,
+				"disposition": "Build digest metadata; not an authentication credential. JSON hash fields verified as64hex SHA256 digests.",
+				"actualCredential": false
+			},
+			{
+				"rule": "generic-api-key",
+				"file": "docs/report/audit/codex-20261025-search174-deployment.json",
+				"line": 8,
+				"disposition": "Build digest metadata; not an authentication credential. JSON hash fields verified as64hex SHA256 digests.",
+				"actualCredential": false
+			},
+			{
+				"rule": "generic-api-key",
+				"file": "docs/report/audit/codex-20261025-search174-deployment.json",
+				"line": 12,
+				"disposition": "Build digest metadata; not an authentication credential. JSON hash fields verified as64hex SHA256 digests.",
+				"actualCredential": false
+			},
+			{
+				"rule": "generic-api-key",
+				"file": "tests/api/portal-attachment-storage.test.ts",
+				"line": 168,
+				"disposition": "Deterministic opaque route-selector fixture in unit test; no live signed credential.",
+				"actualCredential": false
+			}
+		],
+		"stagedScan": "Still required before commit"
+	}
+}

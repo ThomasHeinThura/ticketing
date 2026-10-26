@@ -1,8 +1,10 @@
 import { createCipheriv, createHash, randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { decryptDeliveryEnvelope } from "../../apps/api/src/customer-invitation/delivery/envelope";
 import db, { schema } from "../../apps/api/src/database";
 import { webhookTable } from "../../apps/api/src/database/schema";
+import { customerInvitationDeliveryTable } from "../../apps/api/src/database/schema-customer-invitation-delivery";
 import {
   currentEncryptionKeyId,
   decryptIdentityClientSecret,
@@ -22,6 +24,7 @@ import {
 import { webhookSigningSecrets } from "../../apps/api/src/webhook/repository";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import { inviteWorld } from "./helpers/p5-invite";
 
 const currentName = "TASKDESK_ENCRYPTION_KEY";
 const previousName = "TASKDESK_ENCRYPTION_KEY_PREVIOUS";
@@ -241,6 +244,83 @@ describe("GM-12..GM-14 secrets-rekey", () => {
       .from(schema.userNotificationPreferenceTable)
       .where(eq(schema.userNotificationPreferenceTable.userId, user.id));
     expect(decryptSecret(pref?.ntfyToken)).toBe("ntfy-token");
+  });
+
+  it("rekeys only live invitation envelopes and erases expired ciphertext before decrypt", async () => {
+    useKeys(oldKey);
+    const world = await inviteWorld();
+    const create = async (email: string) => {
+      const response = await world.call(world.owner.user, world.base(), {
+        method: "POST",
+        body: { email },
+      });
+      expect(response.status).toBe(201);
+      return (await response.json()) as { id: string };
+    };
+    const liveInvitation = await create("live-rekey@example.test");
+    const expiredInvitation = await create("expired-rekey@example.test");
+    const [live] = await db
+      .select()
+      .from(customerInvitationDeliveryTable)
+      .where(
+        eq(customerInvitationDeliveryTable.invitationId, liveInvitation.id),
+      );
+    const [expired] = await db
+      .select()
+      .from(customerInvitationDeliveryTable)
+      .where(
+        eq(customerInvitationDeliveryTable.invitationId, expiredInvitation.id),
+      );
+    expect(live?.envelope).toEqual(expect.any(String));
+    expect(expired?.envelope).toEqual(expect.any(String));
+    await db
+      .update(customerInvitationDeliveryTable)
+      .set({
+        envelope: "not-a-valid-envelope",
+        createdAt: new Date(Date.now() - 15 * 60_000),
+        expiresAt: new Date(Date.now() - 1_000),
+      })
+      .where(eq(customerInvitationDeliveryTable.id, expired?.id as string));
+
+    useKeys(newKey, oldKey);
+    expect(await getSecretsRekeyProgress()).toMatchObject({
+      expiredInvitationDeliveryEnvelopes: 1,
+      pending: { textSecrets: 1 },
+      complete: false,
+    });
+    const outcome = await runSecretsRekey();
+    expect(outcome).toMatchObject({
+      rekeyed: { textSecrets: 1 },
+      failed: { textSecrets: 0 },
+    });
+    const [rekeyed] = await db
+      .select()
+      .from(customerInvitationDeliveryTable)
+      .where(eq(customerInvitationDeliveryTable.id, live?.id as string));
+    expect(
+      decryptDeliveryEnvelope({
+        deliveryId: live?.id as string,
+        invitationId: liveInvitation.id,
+        credentialHash: live?.credentialHash as string,
+        envelope: rekeyed?.envelope as string,
+        ownerId: live?.ownerId as string,
+      }).credential,
+    ).toBeTruthy();
+    const [purged] = await db
+      .select()
+      .from(customerInvitationDeliveryTable)
+      .where(eq(customerInvitationDeliveryTable.id, expired?.id as string));
+    expect(purged).toMatchObject({
+      state: "suppressed",
+      envelope: null,
+      credentialHash: null,
+      terminalCode: "expired",
+    });
+    expect(await getSecretsRekeyProgress()).toMatchObject({
+      expiredInvitationDeliveryEnvelopes: 0,
+      pending: { textSecrets: 0 },
+      complete: true,
+    });
   });
 
   it("P4R1-H2: legacy enc:v1 tokens under the current key do not turn Health red, and need no previous key", async () => {

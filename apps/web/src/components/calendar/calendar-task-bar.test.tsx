@@ -1,6 +1,6 @@
-import enUS from "@i18n/en-US.json";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@/test/en-translation";
 import CalendarTaskBar from "./calendar-task-bar";
 
 afterEach(() => {
@@ -26,22 +26,8 @@ vi.mock("@/lib/format", () => ({
  */
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) => {
-      const [namespace, path] = key.split(":");
-      const source = path
-        .split(".")
-        .reduce<unknown>(
-          (accumulator, part) =>
-            (accumulator as Record<string, unknown> | undefined)?.[part],
-          (enUS as Record<string, unknown>)[namespace],
-        );
-
-      if (typeof source !== "string") return key;
-
-      return source.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
-        String(options?.[name] ?? `{{${name}}}`),
-      );
-    },
+    t: (key: string, options?: Record<string, unknown>) =>
+      translate(key, options),
   }),
 }));
 
@@ -72,7 +58,10 @@ describe("CalendarTaskBar", () => {
     );
 
     expect(screen.getByRole("button")).toHaveAccessibleName(
-      "Design review, 2026-08-10 – 2026-08-12: open task",
+      translate("tasks:calendar.taskAriaLabel", {
+        title: "Design review",
+        range: "2026-08-10 – 2026-08-12",
+      }),
     );
   });
 

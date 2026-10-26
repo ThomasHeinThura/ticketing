@@ -323,11 +323,11 @@ describe("view grouping URL state (VW-13, VW-27, VW-1)", () => {
     expect(parseProjectBoardSearch({ group: "assignee" }).group).toBe(
       "assignee",
     );
-    expect(parseProjectBoardSearch({ group: "epic" })).not.toHaveProperty(
-      "group",
-    );
+    expect(parseProjectBoardSearch({ group: "epic" }).group).toBe("epic");
     // VW-27: the timeline's module grouping is a valid project view group.
     expect(parseProjectBoardSearch({ group: "module" }).group).toBe("module");
+    // Epic is a project-view option, while the board-specific parser remains unchanged.
+    expect(parseWorkItemGroup("epic")).toBeUndefined();
     // VW-12/13: the board's own grouping stays state, assignee and priority.
     expect(parseWorkItemGroup("module")).toBeUndefined();
     const routed = parseProjectRouterSearch("group=priority&layout=board");

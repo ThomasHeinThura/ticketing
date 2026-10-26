@@ -4,12 +4,15 @@
  * NOTE: written by the P1 search implementer WITHOUT a database; the coordinator runs it.
  */
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createPersonalApiKey } from "../../apps/api/src/api-key/service";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
-import { mockAuthenticatedSession } from "./helpers/auth";
+import { searchCanonicalWorkItems } from "../../apps/api/src/search/canonical-repository";
+import { escapeLikePattern } from "../../apps/api/src/search/like-pattern";
+import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { createCustomerPrincipal } from "./helpers/customer-principal";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -152,6 +155,102 @@ async function createItemAs(
   return (await response.json()) as { id: string; key: string };
 }
 
+/** The pre-branch search query, retained as a test oracle for semantic parity. */
+async function searchCanonicalWorkItemsBaseline(params: {
+  workspaceId: string;
+  reachableProjectIds: string[];
+  projectId?: string;
+  term: string;
+  limit: number;
+}) {
+  const lower = params.term.toLowerCase();
+  const prefix = `${escapeLikePattern(lower)}%`;
+  const contains = `%${escapeLikePattern(lower)}%`;
+  const descriptionText = sql<string>`coalesce(
+    case
+      when jsonb_typeof(${schema.workItemTable.description}) = 'string'
+        then ${schema.workItemTable.description} #>> '{}'
+      else jsonb_path_query_array(${schema.workItemTable.description}, 'lax $.**.text')::text
+    end, '')`;
+  const aliasMatch = db
+    .select({ id: schema.workItemKeyAliasTable.workItemId })
+    .from(schema.workItemKeyAliasTable)
+    .where(sql`lower(${schema.workItemKeyAliasTable.oldKey}) = ${lower}`);
+  const relevance = sql<number>`CASE
+    WHEN lower(${schema.workItemTable.key}) = ${lower} THEN 100
+    WHEN ${schema.workItemTable.id} IN (${aliasMatch}) THEN 90
+    WHEN lower(${schema.workItemTable.key}) LIKE ${prefix} THEN 12
+    WHEN lower(${schema.workItemTable.title}) = ${lower} THEN 10
+    WHEN lower(${schema.workItemTable.title}) LIKE ${prefix} THEN 8
+    WHEN lower(${schema.workItemTable.title}) LIKE ${contains} THEN 6
+    WHEN lower(${descriptionText}) LIKE ${contains} THEN 2
+    ELSE 1 END`;
+
+  return db
+    .select({
+      id: schema.workItemTable.id,
+      key: schema.workItemTable.key,
+      title: schema.workItemTable.title,
+      number: schema.workItemTable.number,
+      priority: schema.workItemTable.priority,
+      stateName: schema.stateTemplateTable.name,
+      projectId: schema.workItemTable.projectId,
+      projectName: schema.projectTable.name,
+      projectSlug: schema.projectTable.slug,
+      workspaceId: schema.workItemTable.workspaceId,
+      workspaceName: schema.workspaceTable.name,
+      createdAt: schema.workItemTable.createdAt,
+      relevanceScore: relevance.as("relevance"),
+    })
+    .from(schema.workItemTable)
+    .innerJoin(
+      schema.projectTable,
+      eq(schema.projectTable.id, schema.workItemTable.projectId),
+    )
+    .innerJoin(
+      schema.stateTable,
+      and(
+        eq(schema.stateTable.id, schema.workItemTable.stateId),
+        eq(schema.stateTable.projectId, schema.workItemTable.projectId),
+      ),
+    )
+    .innerJoin(
+      schema.stateTemplateTable,
+      eq(schema.stateTemplateTable.id, schema.stateTable.stateTemplateId),
+    )
+    .leftJoin(
+      schema.workspaceTable,
+      eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
+    )
+    .where(
+      and(
+        eq(schema.workItemTable.workspaceId, params.workspaceId),
+        isNull(schema.workItemTable.deletedAt),
+        isNull(schema.workItemTable.archivedAt),
+        isNull(schema.projectTable.deletedAt),
+        isNull(schema.projectTable.archivedAt),
+        params.reachableProjectIds.length > 0
+          ? inArray(schema.workItemTable.projectId, params.reachableProjectIds)
+          : sql`false`,
+        params.projectId
+          ? eq(schema.workItemTable.projectId, params.projectId)
+          : undefined,
+        or(
+          sql`lower(${schema.workItemTable.key}) LIKE ${prefix}`,
+          sql`${schema.workItemTable.id} IN (${aliasMatch})`,
+          ilike(schema.workItemTable.title, contains),
+          sql`lower(${descriptionText}) LIKE ${contains}`,
+        ),
+      ),
+    )
+    .orderBy(
+      desc(relevance),
+      desc(schema.workItemTable.createdAt),
+      schema.workItemTable.id,
+    )
+    .limit(params.limit);
+}
+
 describe("API integration: canonical global search", () => {
   beforeEach(async () => {
     await resetTestDatabase();
@@ -207,8 +306,197 @@ describe("API integration: canonical global search", () => {
   it("falls back to trigram similarity for a typo", async () => {
     const { create, search } = await seedWorld();
     const item = await create("Quarterly planning review");
+    const similar = await create("Quarterly plan review");
+
+    // A valid title hit is complete; similarity matches must not pad it with
+    // near-duplicates. This also prevents the fallback from sorting a whole
+    // workspace for ordinary prefix/title typing.
+    const direct = await search("Quarterly planning review");
+    expect(
+      direct.filter((result) => result.type === "work_item").map((r) => r.id),
+    ).toEqual([item.id]);
+
     const fuzzy = await search("Quarterly planing reveiw");
     expect(fuzzy.map((r) => r.id)).toContain(item.id);
+    expect(fuzzy.map((r) => r.id)).toContain(similar.id);
+  });
+
+  it("matches a two-character CJK title prefix", async () => {
+    const { create, search } = await seedWorld();
+    const item = await create("性能測試項目");
+    const results = await search("性能");
+    expect(results.filter((result) => result.type === "work_item")).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: item.id })]),
+    );
+  });
+
+  it("keeps branched search equivalent to the prior ranked query", async () => {
+    const { member, project, type, template, app, create } = await seedWorld();
+    const exactKey = await create("Unrelated exact key item");
+    const exactTitle = await create("Needle");
+    const prefixTitle = await create("Needle checklist");
+    const containsTitle = await create("A quiet needle in the title");
+    const descriptionOnly = await create("Description match only");
+    const percentLiteral = await create("Literal token% marker");
+    const percentWildcard = await create("Literal tokenX marker");
+    const cjk = await create("性能測試項目");
+    const archived = await create("Archived needle item");
+    await db
+      .update(schema.workItemTable)
+      .set({
+        description: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                { type: "text", text: "needle in the rich description" },
+              ],
+            },
+          ],
+        },
+      })
+      .where(eq(schema.workItemTable.id, descriptionOnly.id));
+    await db
+      .update(schema.workItemTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.workItemTable.id, archived.id));
+
+    // Retire an item's old key, then add a case-variant historical alias for the same id.
+    // The two case-sensitive alias rows intentionally both match the lower(old_key) lookup.
+    const oldKey = exactKey.key;
+    const currentKey = `${project.slug}-renamed-${randomUUID()}`;
+    await db
+      .update(schema.workItemTable)
+      .set({ key: currentKey, title: `Contains ${oldKey} in its title` })
+      .where(eq(schema.workItemTable.id, exactKey.id));
+    await db.insert(schema.workItemKeyAliasTable).values({
+      oldKey,
+      workItemId: exactKey.id,
+    });
+    const caseVariant = oldKey.toUpperCase();
+    await db.insert(schema.workItemKeyClaimTable).values({
+      key: caseVariant,
+      workItemId: exactKey.id,
+    });
+    await db.insert(schema.workItemKeyAliasTable).values({
+      oldKey: caseVariant,
+      workItemId: exactKey.id,
+    });
+
+    // A matching item in an unreachable live project must not consume a branch's top-K.
+    const hidden = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    await provisionProject(
+      member.workspace.id,
+      hidden.project.id,
+      type.id,
+      template.id,
+    );
+    const insider = await addMember(member.workspace.id, "member");
+    await grantProjectRole(insider.user.id, hidden.project.id, [
+      "work_item:read",
+      "work_item:create",
+      "project:read",
+    ]);
+    const hiddenItem = await createItemAs(
+      app,
+      insider.user,
+      hidden.project.id,
+      type.id,
+      "Needle hidden project",
+    );
+
+    const cases = [
+      { term: "needle", limit: 20 },
+      { term: "needle", limit: 1 },
+      { term: oldKey, limit: 20 },
+      { term: currentKey, limit: 20 },
+      { term: "token%", limit: 20 },
+      { term: "性能", limit: 20 },
+    ];
+    for (const testCase of cases) {
+      const input = {
+        workspaceId: member.workspace.id,
+        reachableProjectIds: [project.id],
+        ...testCase,
+      };
+      const [baseline, branched] = await Promise.all([
+        searchCanonicalWorkItemsBaseline(input),
+        searchCanonicalWorkItems(input),
+      ]);
+      expect(branched).toEqual(baseline);
+    }
+
+    const aliasResults = await searchCanonicalWorkItems({
+      workspaceId: member.workspace.id,
+      reachableProjectIds: [project.id],
+      term: oldKey,
+      limit: 20,
+    });
+    expect(aliasResults.filter((row) => row.id === exactKey.id)).toHaveLength(
+      1,
+    );
+    expect(
+      aliasResults.find((row) => row.id === exactKey.id)?.relevanceScore,
+    ).toBe(90);
+
+    const needleResults = await searchCanonicalWorkItems({
+      workspaceId: member.workspace.id,
+      reachableProjectIds: [project.id],
+      term: "needle",
+      limit: 20,
+    });
+    expect(needleResults.map((row) => row.id)).toEqual(
+      expect.arrayContaining([
+        exactTitle.id,
+        prefixTitle.id,
+        containsTitle.id,
+        descriptionOnly.id,
+      ]),
+    );
+    expect(needleResults.map((row) => row.id)).not.toContain(archived.id);
+    expect(needleResults.map((row) => row.id)).not.toContain(hiddenItem.id);
+
+    const escapedPercent = await searchCanonicalWorkItems({
+      workspaceId: member.workspace.id,
+      reachableProjectIds: [project.id],
+      term: "token%",
+      limit: 20,
+    });
+    expect(escapedPercent.map((row) => row.id)).toContain(percentLiteral.id);
+    expect(escapedPercent.map((row) => row.id)).not.toContain(
+      percentWildcard.id,
+    );
+    const cjkResults = await searchCanonicalWorkItems({
+      workspaceId: member.workspace.id,
+      reachableProjectIds: [project.id],
+      term: "性能",
+      limit: 20,
+    });
+    expect(cjkResults.map((row) => row.id)).toContain(cjk.id);
+  });
+
+  it("keeps canonical work items out of an API key without work_item:read", async () => {
+    const { member, create, app } = await seedWorld();
+    const item = await create("API key capability ceiling item");
+    const key = await createPersonalApiKey(
+      { userId: member.user.id },
+      {
+        name: "workspace search without work item access",
+        capabilities: ["workspace:read"],
+      },
+    );
+    mockAnonymousSession();
+
+    const response = await app.request(
+      `/api/search?q=${encodeURIComponent("API key capability ceiling")}&workspaceId=${member.workspace.id}&type=work_items`,
+      { headers: { "x-api-key": key.key } },
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const body = (await response.json()) as { results: Result[] };
+    expect(body.results.map((result) => result.id)).not.toContain(item.id);
   });
 
   it("never returns work items from a project the caller cannot reach", async () => {
@@ -251,6 +539,17 @@ describe("API integration: canonical global search", () => {
     // Not findable by its key either.
     const byKey = await search(hiddenItem.key);
     expect(byKey.map((r) => r.id)).not.toContain(hiddenItem.id);
+
+    const hiddenFuzzy = await createItemAs(
+      app,
+      insider.user,
+      hidden.project.id,
+      type.id,
+      "Cuttlefish provisioning exception",
+    );
+    mockAuthenticatedSession(member.user);
+    const typoOnly = await search("Cuttlefish provisionng excepton");
+    expect(typoOnly.map((r) => r.id)).not.toContain(hiddenFuzzy.id);
   });
 
   it("never returns another workspace's items, and refuses a search scoped to it", async () => {

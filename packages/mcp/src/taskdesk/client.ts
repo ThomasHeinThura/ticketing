@@ -28,6 +28,7 @@ export class TaskDeskApiError extends Error {
 export class TaskDeskClient {
   readonly baseUrl: string;
   private readonly auth: AuthService;
+  private telemetryInFlight = 0;
 
   constructor(options: { baseUrl: string; auth: AuthService }) {
     this.baseUrl = options.baseUrl;
@@ -93,5 +94,50 @@ export class TaskDeskClient {
       );
     }
     return body as T;
+  }
+
+  /** Best-effort bounded client telemetry; failures never affect the tool result. */
+  async reportToolInvocation(input: {
+    invocationId: string;
+    toolName: string;
+    durationMs: number;
+    outcome: "success" | "error";
+  }): Promise<void> {
+    if (!this.auth.usingApiKey || this.telemetryInFlight >= 8) return;
+    this.telemetryInFlight += 1;
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<void>((resolve) => {
+      timeout = setTimeout(() => {
+        controller.abort();
+        resolve();
+      }, 750);
+    });
+    const reporting = (async () => {
+      try {
+        const token = await this.auth.getAccessToken();
+        if (controller.signal.aborted) return;
+        const headers = new Headers({
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        });
+        const response = await fetch(`${this.baseUrl}/api/mcp/tool-reports`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(input),
+          signal: controller.signal,
+        });
+        await response.body?.cancel().catch(() => undefined);
+      } catch {
+        // Client-reported metrics are optional and contain no execution authority.
+      }
+    })();
+    // Keep the slot until the underlying auth/fetch promise settles. The deadline only
+    // detaches the tool call; it must not let permanently hung work evade the cap.
+    void reporting.finally(() => {
+      if (timeout !== undefined) clearTimeout(timeout);
+      this.telemetryInFlight -= 1;
+    });
+    await Promise.race([reporting, timedOut]);
   }
 }

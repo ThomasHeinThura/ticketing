@@ -1,0 +1,25 @@
+{
+	"recordedAt": "2026-10-25T05:42:15.884525+00:00",
+	"database": "taskdesk_codex_sso_browser_20261025_test",
+	"runtime": "Isolated task-owned Docker API/proxy with test-only signed-provider network fixture; production auth validator unchanged",
+	"checks": [
+		{
+			"host": "ticketing.localhost",
+			"port": 1444,
+			"path": "/api/public/health/ready",
+			"status": 200,
+			"exitCode": 0,
+			"strictTls": true
+		},
+		{
+			"host": "portal.localhost",
+			"port": 1444,
+			"path": "/",
+			"status": 200,
+			"exitCode": 0,
+			"strictTls": true
+		}
+	],
+	"providerHealth": 200,
+	"limits": "Setup only; browser SSO verification and real Entra validation pending."
+}

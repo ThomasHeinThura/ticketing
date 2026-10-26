@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ReportColumn, ReportMetric } from "@/fetchers/report";
 import {
   cellText,
+  columnLabel,
   formatMoney,
   formatValue,
   isInsufficient,
@@ -45,9 +46,58 @@ describe("report formatting", () => {
     expect(cellText(undefined, column("number"), {}, t)).toBe("—");
   });
 
+  it("localizes the inactive-assignee status without changing unrelated text cells", () => {
+    expect(
+      cellText(
+        "Inactive",
+        { key: "inactive", label: "Status", kind: "text" },
+        {},
+        t,
+      ),
+    ).toBe("reports:values.inactive");
+    expect(
+      cellText("Inactive", { key: "note", label: "Note", kind: "text" }, {}, t),
+    ).toBe("Inactive");
+  });
+
+  it("localizes epic special buckets from their typed drill handles only", () => {
+    const groupColumn: ReportColumn = {
+      key: "group",
+      label: "Group",
+      kind: "text",
+    };
+    expect(cellText("No epic", groupColumn, { _drill: "epic-none" }, t)).toBe(
+      "reports:groups.noEpic",
+    );
+    expect(
+      cellText(
+        "Epic unavailable",
+        groupColumn,
+        { _drill: "epic-unavailable" },
+        t,
+      ),
+    ).toBe("reports:groups.epicUnavailable");
+    expect(
+      cellText("epic-none", groupColumn, { _drill: "project:epic-none" }, t),
+    ).toBe("epic-none");
+  });
+
+  it("uses the matching-work-items heading only for the epic count column", () => {
+    expect(
+      columnLabel(
+        { key: "value", label: "Matching work items", kind: "number" },
+        t,
+      ),
+    ).toBe("reports:columns.matchingWorkItems");
+    expect(columnLabel(column("number"), t)).toBe("reports:columns.k");
+  });
+
   it("formats numbers by column kind", () => {
     expect(cellText(87.5, column("percent"), {}, t)).toBe("87.5%");
     expect(cellText(3.5, column("hours"), {}, t)).toBe("3.5 h");
+    expect(formatValue(0.25, "hours")).toBe("0.25 h");
+    expect(formatValue(0.5, "hours")).toBe("0.5 h");
+    expect(formatValue(1 / 60, "hours")).toBe("0.02 h");
     expect(cellText(12, column("days"), {}, t)).toBe("12 d");
     expect(cellText(4, column("number"), {}, t)).toBe("4");
     expect(formatValue(2.25, "count")).toBe("2.3");

@@ -14,6 +14,25 @@ import type { StepUpMethod } from "./instance-users";
  */
 export type IdentityOperationBinding =
   | {
+      operation: "instance_admin_grant";
+      targetUserId: string;
+    }
+  | {
+      operation: "instance_admin_suspend";
+      targetUserId: string;
+      request: { reason?: string; expiresAt?: string | null };
+    }
+  | {
+      operation: "mfa_reset";
+      userId: string;
+      verificationNote: string;
+    }
+  | {
+      operation: "impersonation_start";
+      targetUserId: string;
+      reason: string;
+    }
+  | {
       operation: "identity_connection_create";
       request: IdentityConnectionCreateBody;
     }
@@ -54,6 +73,16 @@ export type IdentityOperationBinding =
       operation: "secrets_rotate";
     }
   | {
+      operation: "webhook_rotate_all";
+      replacementSetDigest: string;
+    }
+  | {
+      operation: "organisation_restore";
+      organisationId: string;
+      expectedOperationId: string;
+      expectedGeneration: number;
+    }
+  | {
       operation: "workspace_role_create";
       workspaceId: string;
       role: string;
@@ -71,6 +100,12 @@ export type IdentityOperationBinding =
       rank?: number;
       capabilities?: string[];
       expectedVersion?: string;
+    }
+  | {
+      operation: "service_key_reattest";
+      workspaceId: string;
+      keyId: string;
+      expectedVersion: number;
     }
   | {
       operation: "workspace_ownership_transfer";
@@ -108,6 +143,20 @@ export async function proveIdentityOperation(
   factor: IdentityStepUpFactor,
 ): Promise<string> {
   const operationBinding = { kind: "operation" as const, ...binding };
+  if (factor.method === "sso_prompt_login") {
+    const popup =
+      typeof window === "undefined"
+        ? null
+        : window.open("about:blank", "_blank", "popup,width=520,height=720");
+    if (!popup) throw new Error("Fresh authentication is unavailable");
+    popup.opener = null;
+    try {
+      const { proveSsoStepUpBinding } = await import("./sso-identity-step-up");
+      return await proveSsoStepUpBinding(operationBinding, popup);
+    } finally {
+      if (!popup.closed) popup.close();
+    }
+  }
   const challengeResponse = await stepUp.challenges.$post({
     json: operationBinding as never,
   });

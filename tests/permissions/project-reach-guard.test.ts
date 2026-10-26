@@ -16,6 +16,7 @@ import {
   PROJECT_LIST_ROUTE_KEYS,
   PROJECT_PAGES_ROUTE_KEYS,
   PROJECT_READ_ROUTE_KEYS,
+  PROJECT_RECOVERY_ROUTE_KEYS,
   PROJECT_SOCKET_ROUTE_KEYS,
   PROJECT_WRITE_ROUTE_KEYS,
   TASK_TARGET_ROUTE_KEYS,
@@ -114,19 +115,23 @@ function findDerivedProjectLookupProblems(
  * A stale entry, or one that also carries the declaration, fails.
  */
 const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
+  "GET /api/workspace/{workspaceId}/project-settings":
+    "workspace-owned SLA/calendar defaults and enabled state-template ids, gated by current workspace access and workspace:manage_settings; no project or work-item rows",
+  "GET /api/workspace/{workspaceId}/state-templates":
+    "workspace-owned state definitions, gated by current workspace access and workspace:manage_settings; no project or work-item rows",
   "GET /api/canned-responses/manage":
     "workspace snippet definitions, gated by workspace:manage_settings and current workspace reach in SQL; no work item or project content. Composer listing remains independently item-scoped",
 
   "GET /api/project/organisations":
     "customer organisations (project:create picker); organisation rows, not project rows",
+  "GET /api/request-type-groups/order":
+    "request-type group ordering configuration only (labels and version), gated by current workspace reach and request_type:read; no project or work-item rows",
   "GET /api/request-types":
     "intake request-type definitions; configuration rows. They expose a default project id only, behind request_type:read",
   "GET /api/service-calendars":
     "SLA calendar definitions; configuration rows, not project rows",
   "GET /api/sla-policies":
     "SLA policy definitions; configuration rows, not project rows",
-  "GET /api/submissions":
-    "the intake queue, gated by intake:triage; rows carry the reference, form summary, state, claim, request type, requester and organisation, with no work item or project id, name, key or title (verified in #742 review)",
   "GET /api/views/team-audiences":
     "teams the caller belongs to; team rows, not project rows",
   "GET /api/workflows":
@@ -179,6 +184,10 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
     "service key summaries (prefix, capabilities, expiry, last use) behind api_key:manage; credential metadata, not project rows",
   "GET /api/workspaces/{id}/automations":
     "workspace-level rules only (project_id null), behind workspace:manage_settings; project rules are listed by the project route. Rows carry no work item content",
+  "GET /api/workspaces/{workspaceId}/terminology":
+    "workspace terminology configuration only, gated by workspace:manage_settings and current workspace reach; closed term forms and ETag, no project or work-item rows",
+  "GET /api/workspaces/{workspaceId}/terminology/runtime":
+    "effective agent noun forms for a currently reachable workspace, gated by workspace:read; only closed terminology keys, locale, forms and ETag, no project or work-item content",
   "GET /api/workspaces/{workspaceId}/features":
     "workspace feature-flag overrides; configuration rows, not project rows",
   "GET /api/workspaces/{workspaceId}/features/resolved":
@@ -273,8 +282,6 @@ function findListReachProblems(
  * other.
  */
 const SUBMISSION_ROUTE_EXEMPT: Readonly<Record<string, string>> = {
-  "GET /api/submissions":
-    "the intake queue; rows carry no work item id, project or comment (list schema picks without workItemId)",
   "POST /api/submissions/{ref}/claim":
     "returns the claim fields only (id, ref, state, claimedBy, claimedAt); reads no work item",
   "POST /api/submissions/{ref}/decline":
@@ -530,6 +537,7 @@ describe("project reach guard: the real router", () => {
         new Set<string>([
           ...PROJECT_WRITE_ROUTE_KEYS,
           ...PROJECT_READ_ROUTE_KEYS,
+          ...PROJECT_RECOVERY_ROUTE_KEYS,
           ...PROJECT_LABEL_ROUTE_KEYS,
           ...PROJECT_AGILE_ROUTE_KEYS,
           ...PROJECT_PAGES_ROUTE_KEYS,

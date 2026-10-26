@@ -16,6 +16,10 @@ const body = z.record(z.string(), z.unknown());
 export const projectParam = z.object({
   projectId: z.string().min(1).max(128),
 });
+export const pageListQuery = z.object({
+  /** Recovery listing is an update-level operation; omitted means live pages only. */
+  deletedOnly: z.enum(["true"]).optional(),
+});
 export const pageParam = z.object({
   projectId: z.string().min(1).max(128),
   id,

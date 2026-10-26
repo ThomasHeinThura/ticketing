@@ -1,3 +1,4 @@
+import { type CollisionDetection, closestCorners } from "@dnd-kit/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
@@ -10,15 +11,22 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useBulkSelectionKeyboardShortcuts } from "@/hooks/use-bulk-selection-keyboard-shortcuts";
 import { HttpError } from "@/lib/http-error";
 import { WorkItemTransitionBlockedError } from "@/lib/work-item-transition-reasons";
+import useBulkSelectionStore from "@/store/bulk-selection";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import { translate } from "@/test/en-translation";
 import type { WorkItemRow } from "@/types/work-item";
-import WorkItemBoard from "./work-item-board";
+import {
+  combinedBoardCollisionDetection,
+  default as WorkItemBoard,
+} from "./work-item-board";
 
 const drag = vi.hoisted(() => ({
   callbacks: undefined as Record<string, unknown> | undefined,
+  cancelCalls: 0,
+  endCalls: 0,
 }));
 vi.mock("@dnd-kit/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@dnd-kit/core")>();
@@ -26,8 +34,54 @@ vi.mock("@dnd-kit/core", async (importOriginal) => {
     ...actual,
     DndContext: (props: React.ComponentProps<typeof actual.DndContext>) => {
       drag.callbacks = props as unknown as Record<string, unknown>;
-      return <actual.DndContext {...props} />;
+      return (
+        <actual.DndContext
+          {...props}
+          onDragCancel={(event) => {
+            drag.cancelCalls += 1;
+            props.onDragCancel?.(event);
+          }}
+          onDragEnd={(event) => {
+            drag.endCalls += 1;
+            props.onDragEnd?.(event);
+          }}
+        />
+      );
     },
+  };
+});
+vi.mock("@tanstack/react-virtual", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@tanstack/react-virtual")>();
+  return {
+    ...actual,
+    useVirtualizer: ((options: Parameters<typeof actual.useVirtualizer>[0]) => {
+      const endIndex = Math.min(options.count - 1, 10);
+      const indexes =
+        endIndex < 0
+          ? []
+          : (options.rangeExtractor ?? actual.defaultRangeExtractor)({
+              startIndex: 0,
+              endIndex,
+              overscan: 3,
+              count: options.count,
+              lanes: 1,
+            });
+      return {
+        getVirtualItems: () =>
+          indexes.map((index) => ({
+            index,
+            start: index * 150,
+            end: (index + 1) * 150,
+            key: options.getItemKey?.(index) ?? index,
+            size: 150,
+            lane: 0,
+          })),
+        getTotalSize: () => options.count * 150,
+        scrollToIndex: vi.fn(),
+        measureElement: vi.fn(),
+      } as unknown as ReturnType<typeof actual.useVirtualizer>;
+    }) as typeof actual.useVirtualizer,
   };
 });
 const rankWorkItem = vi.hoisted(() => vi.fn());
@@ -106,9 +160,18 @@ const baseItems = [
 
 type BoardProps = Partial<Parameters<typeof WorkItemBoard>[0]>;
 
-function board(props: BoardProps = {}, client = new QueryClient()) {
-  const element = (next: BoardProps = {}): ReactNode => (
-    <QueryClientProvider client={client}>
+function RouteBulkSelectionShortcuts({ children }: { children: ReactNode }) {
+  useBulkSelectionKeyboardShortcuts();
+  return children;
+}
+
+function board(
+  props: BoardProps = {},
+  client = new QueryClient(),
+  withRouteShortcuts = false,
+) {
+  const element = (next: BoardProps = {}): ReactNode => {
+    const view = (
       <WorkItemBoard
         projectId="proj_1"
         states={states}
@@ -128,8 +191,17 @@ function board(props: BoardProps = {}, client = new QueryClient()) {
         {...props}
         {...next}
       />
-    </QueryClientProvider>
-  );
+    );
+    return (
+      <QueryClientProvider client={client}>
+        {withRouteShortcuts ? (
+          <RouteBulkSelectionShortcuts>{view}</RouteBulkSelectionShortcuts>
+        ) : (
+          view
+        )}
+      </QueryClientProvider>
+    );
+  };
   const view = render(element());
   return {
     client,
@@ -182,6 +254,8 @@ async function dragTo(key: string, target: string | null, keyboard = false) {
   });
 }
 beforeEach(() => {
+  drag.cancelCalls = 0;
+  drag.endCalls = 0;
   useUserPreferencesStore.getState().resetDisplayPreferences();
   rankWorkItem.mockReset();
   rankWorkItem.mockResolvedValue({});
@@ -201,7 +275,9 @@ describe("WorkItemBoard layout (VW-8)", () => {
       .map((heading) => heading.textContent);
     expect(names).toEqual(["Open", "Done", "Parked"]);
     expect(
-      within(column("Parked")).getByText("No work items in this state."),
+      within(column("Parked")).getByText(
+        translate("workItems:board.emptyColumn"),
+      ),
     ).toBeInTheDocument();
   });
 
@@ -240,8 +316,16 @@ describe("WorkItemBoard layout (VW-8)", () => {
 
   it("gives each column count a distinct accessible name", () => {
     board();
-    expect(screen.getByLabelText("3 work items in Open")).toBeInTheDocument();
-    expect(screen.getByLabelText("2 work items in Done")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(
+        translate("workItems:board.columnCount", { total: 3, state: "Open" }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(
+        translate("workItems:board.columnCount", { total: 2, state: "Done" }),
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows loading, error with retry, and no-states empty states", () => {
@@ -262,7 +346,9 @@ describe("G6 states of the board", () => {
   it("empty: every column says it is empty when no card exists", () => {
     board({ workItems: [] });
     expect(screen.getAllByTestId("work-item-board-column")).toHaveLength(3);
-    expect(screen.getAllByText("No work items in this state.")).toHaveLength(3);
+    expect(
+      screen.getAllByText(translate("workItems:board.emptyColumn")),
+    ).toHaveLength(3);
   });
 
   it("loading: shows a busy skeleton, no columns", () => {
@@ -322,10 +408,34 @@ describe("Kaneo card-only capability composition", () => {
     expect(screen.queryByRole("button", { name: /^Move down/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Change state/ })).toBeNull();
     expect(card("WLP-1")).not.toHaveAttribute("draggable", "true");
-    const activator = card("WLP-1").querySelector("[data-task-id]");
-    expect(activator).toHaveAttribute("role", "button");
-    expect(activator).toHaveAttribute("tabindex", "0");
-    expect(activator).not.toHaveAttribute("aria-disabled", "true");
+    const itemCard = within(card("WLP-1")).getByRole("group", {
+      name: translate("common:a11y.taskContainerLabel", {
+        key: "WLP-1",
+        title: "Title WLP-1",
+      }),
+    });
+    expect(itemCard).toHaveAccessibleName(
+      translate("common:a11y.taskContainerLabel", {
+        key: "WLP-1",
+        title: "Title WLP-1",
+      }),
+    );
+    expect(itemCard).toHaveAttribute("tabindex", "0");
+    const dragEnabled = capability.canRank || capability.canTransition;
+    if (dragEnabled) {
+      expect(itemCard).toHaveAttribute("aria-disabled", "false");
+      expect(itemCard).toHaveAttribute("aria-roledescription", "sortable");
+    } else {
+      expect(itemCard).not.toHaveAttribute("aria-disabled");
+      expect(itemCard).not.toHaveAttribute("aria-roledescription");
+    }
+    const hintId = itemCard.getAttribute("aria-describedby")?.split(" ").at(-1);
+    expect(hintId).toBeTruthy();
+    expect(document.getElementById(hintId ?? "")).toHaveTextContent(
+      dragEnabled
+        ? "Press Enter to open. Press Space to start dragging"
+        : "Press Enter or Space to open.",
+    );
   });
   it("registers the pinned mouse, touch and keyboard sensors", () => {
     board({ canRank: true });
@@ -344,6 +454,187 @@ describe("Kaneo card-only capability composition", () => {
     expect(sensors[1].options).toEqual({
       activationConstraint: { delay: 250, tolerance: 10 },
     });
+    expect(sensors[2].options).toMatchObject({
+      keyboardCodes: {
+        start: ["Space"],
+        end: ["Space", "Enter"],
+        cancel: ["Escape"],
+      },
+    });
+    expect(sensors[2].options).toHaveProperty("coordinateGetter");
+  });
+  it("uses pointer hit testing for combined empty columns with Kaneo keyboard fallback", () => {
+    const view = board();
+    expect(drag.callbacks?.collisionDetection).toBe(closestCorners);
+    view.rerender({
+      combinedColumns: [
+        { templateId: "s-open", name: "Open", group: "unstarted", position: 0 },
+      ],
+    });
+    expect(drag.callbacks?.collisionDetection).toBe(
+      combinedBoardCollisionDetection,
+    );
+
+    const rect = (x: number, y: number, width: number, height: number) =>
+      ({
+        x,
+        y,
+        left: x,
+        top: y,
+        right: x + width,
+        bottom: y + height,
+        width,
+        height,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    const nearbyCard = rect(0, 0, 100, 100);
+    const emptyColumn = rect(200, 0, 100, 300);
+    const droppableContainers = [
+      { id: "nearby-card" },
+      { id: "empty-column" },
+    ] as Parameters<CollisionDetection>[0]["droppableContainers"];
+    const pointerArgs = {
+      active: {
+        id: "dragged-card",
+        data: { current: {} },
+        rect: { current: { initial: null, translated: null } },
+      },
+      collisionRect: rect(240, 40, 20, 20),
+      droppableContainers,
+      droppableRects: new Map([
+        ["nearby-card", nearbyCard],
+        ["empty-column", emptyColumn],
+      ]),
+      pointerCoordinates: { x: 250, y: 50 },
+    } as Parameters<CollisionDetection>[0];
+    expect(
+      combinedBoardCollisionDetection(pointerArgs).map(({ id }) => id),
+    ).toEqual(["empty-column"]);
+
+    const keyboardArgs = {
+      ...pointerArgs,
+      collisionRect: rect(90, 40, 20, 20),
+      pointerCoordinates: null,
+    } as Parameters<CollisionDetection>[0];
+    expect(
+      combinedBoardCollisionDetection(keyboardArgs).map(({ id }) => id),
+    ).toEqual(["nearby-card", "empty-column"]);
+  });
+  it("cancels a Space-started keyboard drag on Escape", async () => {
+    board({ canRank: true }, new QueryClient(), true);
+    useBulkSelectionStore.setState({
+      availableTaskIds: ["selected-task"],
+      selectedTaskIds: new Set(["selected-task"]),
+      isSelectMode: true,
+    });
+    const activator = within(card("WLP-1")).getByRole("group", {
+      name: translate("common:a11y.taskContainerLabel", {
+        key: "WLP-1",
+        title: "Title WLP-1",
+      }),
+    });
+    activator.focus();
+
+    fireEvent.keyDown(activator, { key: " ", code: "Space" });
+    expect(screen.getByTestId("work-item-drag-overlay-card")).toBeVisible();
+    expect(new URLSearchParams(window.location.search).get("item")).toBeNull();
+
+    fireEvent.keyDown(activator, { key: "Escape", code: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByTestId("work-item-drag-overlay-card")).toBeNull(),
+    );
+    expect(drag.cancelCalls).toBe(1);
+    expect(useBulkSelectionStore.getState().selectedTaskIds).toEqual(
+      new Set(["selected-task"]),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  it("does not replay Escape when KeyboardSensor already handled cancellation", async () => {
+    board({ canRank: true }, new QueryClient(), true);
+    const activator = within(card("WLP-1")).getByRole("group", {
+      name: translate("common:a11y.taskContainerLabel", {
+        key: "WLP-1",
+        title: "Title WLP-1",
+      }),
+    });
+    activator.focus();
+
+    fireEvent.keyDown(activator, { key: " ", code: "Space" });
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-drag-overlay-card")).toBeVisible(),
+    );
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    const dispatch = vi.spyOn(activator, "dispatchEvent");
+    fireEvent.keyDown(activator, { key: "Escape", code: "Escape" });
+    dispatch.mockClear();
+    await waitFor(() =>
+      expect(screen.queryByTestId("work-item-drag-overlay-card")).toBeNull(),
+    );
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(drag.cancelCalls).toBe(1);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+  it.each([
+    { key: "Enter", code: "Enter" },
+    { key: " ", code: "Space" },
+  ])(
+    "ends a Space-started drag with an immediate $code",
+    async ({ key, code }) => {
+      board({ canRank: true }, new QueryClient(), true);
+      const activator = within(card("WLP-1")).getByRole("group", {
+        name: translate("common:a11y.taskContainerLabel", {
+          key: "WLP-1",
+          title: "Title WLP-1",
+        }),
+      });
+      activator.focus();
+
+      fireEvent.keyDown(activator, { key: " ", code: "Space" });
+      expect(screen.getByTestId("work-item-drag-overlay-card")).toBeVisible();
+      fireEvent.keyDown(activator, { key, code });
+
+      await waitFor(() =>
+        expect(screen.queryByTestId("work-item-drag-overlay-card")).toBeNull(),
+      );
+      expect(drag.endCalls).toBe(1);
+      expect(drag.cancelCalls).toBe(0);
+      expect(rankWorkItem).not.toHaveBeenCalled();
+      expect(transitionWorkItem).not.toHaveBeenCalled();
+      expect(screen.queryByRole("dialog")).toBeNull();
+    },
+  );
+  it.each([
+    { key: "Enter", code: "Enter" },
+    { key: " ", code: "Space" },
+  ])("does not replay a normally handled $code drop", async ({ key, code }) => {
+    board({ canRank: true }, new QueryClient(), true);
+    const activator = within(card("WLP-1")).getByRole("group", {
+      name: translate("common:a11y.taskContainerLabel", {
+        key: "WLP-1",
+        title: "Title WLP-1",
+      }),
+    });
+    activator.focus();
+
+    fireEvent.keyDown(activator, { key: " ", code: "Space" });
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-drag-overlay-card")).toBeVisible(),
+    );
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    const dispatch = vi.spyOn(activator, "dispatchEvent");
+    fireEvent.keyDown(activator, { key, code });
+    dispatch.mockClear();
+    await waitFor(() =>
+      expect(screen.queryByTestId("work-item-drag-overlay-card")).toBeNull(),
+    );
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(drag.endCalls).toBe(1);
+    expect(drag.cancelCalls).toBe(0);
+    expect(dispatch).not.toHaveBeenCalled();
   });
   it("never enables a missing-key card or unauthorized drag", async () => {
     board({
@@ -447,9 +738,7 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
     board({ canRank: true });
     await dragTo("WLP-1", "WLP-5");
     expect(
-      await screen.findByText(
-        "You don't have permission to change the state of work items.",
-      ),
+      await screen.findByText(translate("workItems:board.transitionForbidden")),
     ).toBeInTheDocument();
     expect(getWorkItemTransitions).not.toHaveBeenCalled();
     expect(transitionWorkItem).not.toHaveBeenCalled();
@@ -536,10 +825,7 @@ describe("failure handling for rank (404, 409, 422, 400, 403)", () => {
       422,
       "WLP-1 can't be moved right now because a rule blocks it. The board was refreshed.",
     ],
-    [
-      400,
-      "The work items around WLP-1 changed, so its position wasn't saved. The board was refreshed.",
-    ],
+    [400, translate("workItems:board.failure.invalid", { key: "WLP-1" })],
     [403, "You don't have permission to move WLP-1."],
     [500, "Couldn't move WLP-1. The board was refreshed."],
   ])(
@@ -695,7 +981,9 @@ describe("selection", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Select WLP-2" }));
     expect(onSelectionChange).toHaveBeenCalledWith("WLP-2", true);
     fireEvent.click(
-      screen.getByRole("checkbox", { name: "Select all work items in Done" }),
+      screen.getByRole("checkbox", {
+        name: translate("workItems:board.selectColumn", { state: "Done" }),
+      }),
     );
     expect(onSelectionChange).toHaveBeenCalledWith("WLP-4", true);
     expect(onSelectionChange).toHaveBeenCalledWith("WLP-5", true);
@@ -838,6 +1126,29 @@ it("starts and cancels an actual keyboard sensor drag with only the Kaneo card i
   );
   expect(rankWorkItem).not.toHaveBeenCalled();
   expect(transitionWorkItem).not.toHaveBeenCalled();
+});
+
+it("keeps large board columns bounded while preserving the full column item set", async () => {
+  const manyItems = Array.from({ length: 80 }, (_, index) =>
+    item(`WLP-${index + 1}`, "s-open", String(index + 1)),
+  );
+  board({ workItems: manyItems, canRank: true, canTransition: true });
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
+
+  const list = await waitFor(() => {
+    const found = within(column("Open")).getByRole("list");
+    expect(found).toHaveAttribute("data-virtualized-list", "true");
+    return found;
+  });
+  expect(list).toHaveStyle({ height: "12000px" });
+  expect(
+    within(column("Open")).getAllByTestId("work-item-board-card").length,
+  ).toBeLessThan(80);
+  expect(
+    within(column("Open")).getAllByTestId("work-item-board-card").length,
+  ).toBeGreaterThan(0);
 });
 
 it.each([

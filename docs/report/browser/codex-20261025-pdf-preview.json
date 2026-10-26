@@ -1,0 +1,263 @@
+{
+	"generatedAt": "2026-10-25T16:15:05.326Z",
+	"scenario": "AT9 sandboxed PDF preview browser verification",
+	"status": "passed",
+	"functionalSecurityStatus": "passed",
+	"themeCaptureStatus": "verified_light_and_dark",
+	"runtime": "Local TaskDesk API and web release 179 (strict HTTPS; current browser journey completed before API 180 restart)",
+	"command": "NODE_EXTRA_CA_CERTS=<private SIT CA certificate> pnpm --filter @taskdesk/web exec playwright test --config e2e/pdf-preview-runtime.config.ts --reporter=json",
+	"trust": {
+		"browserIgnoreHTTPSErrors": false,
+		"nodeExtraCaCerts": "Set to the private local SIT CA certificate for Playwright APIRequestContext TLS verification; certificate path omitted from public evidence."
+	},
+	"resultCapture": {
+		"startTime": "2026-10-25T16:15:05.326Z",
+		"exitCode": 0,
+		"expected": 1,
+		"passed": 1,
+		"skipped": 0,
+		"unexpected": 0,
+		"flaky": 0,
+		"durationMs": 16408.107,
+		"rawOutput": "The Playwright JSON reporter output and sanitized test summary were retained privately with restrictive permissions; no raw log or private data is copied into this report."
+	},
+	"fixture": {
+		"workspaceKey": "CCY",
+		"workItemKey": "CCY-1",
+		"attachment": "Existing owned synthetic two-page PDF",
+		"reused": true,
+		"uploadPerformed": false,
+		"workItemFieldsChanged": false,
+		"reloadShowsAttachment": true,
+		"originalWorkspaceRestored": true,
+		"themePreferenceRestored": true
+	},
+	"checks": {
+		"leadPreviewStatus": 200,
+		"viewerRolePreviewStatus": 404,
+		"customerOwnSubmissionPdf": "passed",
+		"customerForeignAttachmentPreviewStatus": 404,
+		"staffTriagePdfPreviewStatus": 200,
+		"iframe": {
+			"sandbox": "allow-scripts",
+			"opaqueOrigin": true,
+			"cookieReadable": false,
+			"storageReadable": false,
+			"parentDomReadable": false,
+			"apiFetchBlocked": true,
+			"iframeApiRequests": 0,
+			"rendererAssetsUsedNullOrigin": true,
+			"rendererAssetCookieOrAuthorization": false
+		},
+		"rendering": {
+			"pageCount": 2,
+			"nextPage": true,
+			"zoomChangedCanvasSize": true,
+			"canvasCentered": true,
+			"canvasStableAcrossTwoFrames": true,
+			"canvasPixelsBeforeAndAfterScreenshotMatched": true,
+			"canvasSize": "300x180 CSS pixels in the synthetic fixture",
+			"canvasOpaqueRatio": 1,
+			"canvasWhiteRatio": 0.977462962962963,
+			"canvasDarkGlyphPixels": 962,
+			"composedScreenshotPixelsChecked": true,
+			"composedScreenshotRetryLimit": 8,
+			"composedScreenshotWhiteRatioMinimum": 0.9,
+			"composedScreenshotDarkGlyphPixelMinimum": 20,
+			"composedScreenshotAllCapturesPassedFirstAttempt": true,
+			"downloadEventAndFilename": true,
+			"downloadResponseAttachmentDisposition": true,
+			"closeDisposesDialog": true,
+			"closeAbortsPendingPreviewWithoutLateAlert": true
+		},
+		"responsive": {
+			"widths": [375, 390, 768, 1440],
+			"themes": ["light", "dark"],
+			"captures": 8,
+			"themeLabelsValid": true,
+			"light": {
+				"htmlClass": "light",
+				"backgroundToken": "#fff",
+				"bodyBackground": "rgb(255, 255, 255)"
+			},
+			"dark": {
+				"htmlClass": "dark",
+				"backgroundToken": "color-mix(in srgb, oklch(14.5% 0 none) 96%, #fff)",
+				"bodyBackground": "color(srgb 0.0778016 0.0778173 0.0778187)"
+			},
+			"lightAndDarkBodyColorsDiffer": true,
+			"themePreferenceRestored": true,
+			"documentHorizontalOverflow": false,
+			"mobileHeader": "At 375px and 390px the complete filename occupies a separate row; the page count and all six controls remain visible below it."
+		},
+		"customerPortalJourney": {
+			"requestType": "AT9 PDF Preview Fixture, added through normal admin UI while retaining the original two request types",
+			"customerRequestCreatedThroughNormalUi": true,
+			"ownedPdfPreview": true,
+			"reloadShowsOwnedPdf": true,
+			"customerForeignAttachmentPreviewStatus": 404,
+			"staffTriagePdfPreviewStatus": 200,
+			"screenshots": [
+				"docs/report/browser/screens/pdf179-r7-portal-375.png",
+				"docs/report/browser/screens/pdf179-r7-portal-desktop.png",
+				"docs/report/browser/screens/pdf179-r7-staff-triage-375.png",
+				"docs/report/browser/screens/pdf179-r7-staff-triage-desktop.png"
+			]
+		},
+		"officeFallback": {
+			"fixture": "One small macro-free DOCX on CCY-4, uploaded through the normal UI in the authorized setup run and reused in this browser run",
+			"attachmentReady": true,
+			"pdfPreviewActionAbsent": true,
+			"downloadEvent": true,
+			"downloadFilenameMatched": true,
+			"downloadedBytesMatched": true,
+			"workItemFieldsUnchanged": true,
+			"screenshots": [
+				"docs/report/browser/screens/pdf179-r7-docx-fallback-375.png",
+				"docs/report/browser/screens/pdf179-r7-docx-fallback-desktop.png"
+			]
+		},
+		"expectedCspConsoleCategories": 2,
+		"unexpectedBrowserErrors": 0
+	},
+	"screenshots": [
+		"docs/report/browser/screens/pdf179-r7-375-light.png",
+		"docs/report/browser/screens/pdf179-r7-375-dark.png",
+		"docs/report/browser/screens/pdf179-r7-390-light.png",
+		"docs/report/browser/screens/pdf179-r7-390-dark.png",
+		"docs/report/browser/screens/pdf179-r7-768-light.png",
+		"docs/report/browser/screens/pdf179-r7-768-dark.png",
+		"docs/report/browser/screens/pdf179-r7-1440-light.png",
+		"docs/report/browser/screens/pdf179-r7-1440-dark.png",
+		"docs/report/browser/screens/pdf179-r7-portal-375.png",
+		"docs/report/browser/screens/pdf179-r7-portal-desktop.png",
+		"docs/report/browser/screens/pdf179-r7-staff-triage-375.png",
+		"docs/report/browser/screens/pdf179-r7-staff-triage-desktop.png",
+		"docs/report/browser/screens/pdf179-r7-docx-fallback-375.png",
+		"docs/report/browser/screens/pdf179-r7-docx-fallback-desktop.png"
+	],
+	"priorCaptureSet": {
+		"screenshots": [
+			"docs/report/browser/screens/pdf179-390-light.png",
+			"docs/report/browser/screens/pdf179-390-dark.png",
+			"docs/report/browser/screens/pdf179-768-light.png",
+			"docs/report/browser/screens/pdf179-768-dark.png",
+			"docs/report/browser/screens/pdf179-1440-light.png",
+			"docs/report/browser/screens/pdf179-1440-dark.png"
+		],
+		"functionalSecurityStatus": "not_assessed_by_these_captures",
+		"themeCaptureStatus": "invalid_all_dark",
+		"reason": "These legacy screenshots were labeled by requested prefers-color-scheme emulation while an explicit dark app preference remained in localStorage. They are retained as history and are not current evidence."
+	},
+	"attemptHistory": [
+		{
+			"status": "invalid_harness_attempt",
+			"issue": "Initial strict TLS preflight used Playwright's Node APIRequestContext without the local SIT CA trust setting and failed before the page journey.",
+			"resolution": "The passing command set NODE_EXTRA_CA_CERTS while keeping browser certificate verification enabled."
+		},
+		{
+			"status": "invalid_build_attempt",
+			"issue": "An earlier web build retained a stale VITE_API_URL, so browser UI requests targeted the wrong API origin.",
+			"resolution": "The corrected same-origin web build was deployed before browser verification."
+		},
+		{
+			"status": "real_product_defect_fixed",
+			"issue": "Nonce injection changed the static PDF viewer HTML body but Hono restored stale Content-Length and validators, truncating the document. The outer CORS layer also reintroduced Allow-Credentials on Origin:null viewer assets.",
+			"resolution": "The API header handling was corrected. The mounted static-response regression passed 5/5; security middleware tests passed 6/6; API typecheck passed. The deployed viewer response was complete and viewer assets returned ACAO null without Allow-Credentials before browser verification."
+		},
+		{
+			"status": "invalid_test_locator",
+			"issue": "The browser test queried the Kaneo-rendered download anchor as a button.",
+			"resolution": "The test now queries its link role; no application code changed."
+		},
+		{
+			"status": "invalid_theme_capture",
+			"issue": "The first six screenshots were labeled with requested light/dark emulation, but the app stayed dark due its explicit persisted preference.",
+			"resolution": "The persisted user-preferences theme is changed and reloaded for each capture; the html class and computed body color are checked. r2-r5 were separately rejected for screenshot timing/pixel evidence and are documented below; r7 is the current accepted set."
+		},
+		{
+			"status": "invalid_harness_attempt",
+			"issue": "The first post-build responsive retry checked panel visibility after reload without verifying the Kaneo Collapsible's expanded state, so it captured the work-item page with Attachments collapsed and timed out before completing the matrix.",
+			"resolution": "The E2E helper now checks aria-expanded, opens the disclosure when needed, and verifies the mounted panel before opening the preview. No upload occurred."
+		},
+		{
+			"status": "invalid_screenshot_timing_r2",
+			"issue": "The page counter showed Page 1 of 2 before visible page pixels were established. The r2 screenshots were blank or unverified at capture time; the load counter alone was mistakenly treated as render completion.",
+			"resolution": "Retained as invalid history. Later captures require a stable opaque canvas with mostly white background and dark glyph pixels, plus matching pixels in the exact composed screenshot canvas bounds."
+		},
+		{
+			"status": "invalid_screenshot_timing_r3",
+			"issue": "The r3 set still did not establish rendered pixels in the composed screenshot; Page 1 of 2 only indicated that the viewer loaded.",
+			"resolution": "Retained as invalid history. A canvas and screenshot crop pixel gate was added; r3 is not accepted evidence."
+		},
+		{
+			"status": "invalid_screenshot_timing_r4",
+			"issue": "The r4 screenshots remained invalid for visible-render proof due to the screenshot/render timing race; the loaded page counter was insufficient evidence.",
+			"resolution": "Retained as invalid history. The harness now waits for stable canvas pixels and checks the exact canvas crop in the parent screenshot."
+		},
+		{
+			"status": "invalid_screenshot_timing_r5",
+			"issue": "The r5 screenshots remained invalid for visible-render proof amid a child-canvas versus composed-screenshot race.",
+			"resolution": "Retained as invalid history. Direct canvas pixels and composed screenshot pixels are both checked before capture acceptance; r5 is not accepted evidence."
+		},
+		{
+			"status": "accepted_intermediate_capture_r6",
+			"issue": "The r6 set passed actual rendered-pixel inspection at 390, 768, and 1440px in both themes. It did not include the required 375px coverage or the portal, triage, and DOCX journeys.",
+			"resolution": "Superseded by the broader accepted r7 run. The six r6 screenshots remain available as history."
+		},
+		{
+			"status": "accepted_capture_r7",
+			"issue": "Final strict-TLS run passed after adding stable-canvas and composed-screenshot pixel checks, 375px light/dark coverage, and persisted portal/staff/DOCX journeys.",
+			"resolution": "Accepted current evidence: one Playwright test passed with no skipped, unexpected, or flaky tests. All 14 r7 screenshots were visually inspected."
+		}
+	],
+	"limitations": [
+		"PDF browser proof is Chromium-only; non-Chromium browsers were not checked.",
+		"The DOCX fallback download was verified; Office-document preview is not provided by this flow.",
+		"The r2-r5 timing-invalid captures, the older all-dark theme-mislabelled captures, and r6 intermediate captures remain in the screens directory as history and are not the current r7 evidence."
+	],
+	"independentReview": "Not performed in this browser task.",
+	"coordinatorVisualInspection": {
+		"priorRecordedAt": "2026-10-25T14:43:58.941282+00:00",
+		"priorFinding": "Earlier pdf179 captures were all dark and the 390px filename was truncated.",
+		"latestSet": "pdf179-r7-*",
+		"latestThemeAndHeaderChecks": "The PDF browser owner inspected all 14 r7 images; parent/root visual inspection of r7 is not recorded here. Root previously inspected r6 390px dark and confirmed rendered text."
+	},
+	"currentCaptureSet": {
+		"id": "r7",
+		"status": "accepted",
+		"functionalSecurityStatus": "passed",
+		"themeCaptureStatus": "verified_light_and_dark",
+		"screenshots": [
+			"docs/report/browser/screens/pdf179-r7-375-light.png",
+			"docs/report/browser/screens/pdf179-r7-375-dark.png",
+			"docs/report/browser/screens/pdf179-r7-390-light.png",
+			"docs/report/browser/screens/pdf179-r7-390-dark.png",
+			"docs/report/browser/screens/pdf179-r7-768-light.png",
+			"docs/report/browser/screens/pdf179-r7-768-dark.png",
+			"docs/report/browser/screens/pdf179-r7-1440-light.png",
+			"docs/report/browser/screens/pdf179-r7-1440-dark.png",
+			"docs/report/browser/screens/pdf179-r7-portal-375.png",
+			"docs/report/browser/screens/pdf179-r7-portal-desktop.png",
+			"docs/report/browser/screens/pdf179-r7-staff-triage-375.png",
+			"docs/report/browser/screens/pdf179-r7-staff-triage-desktop.png",
+			"docs/report/browser/screens/pdf179-r7-docx-fallback-375.png",
+			"docs/report/browser/screens/pdf179-r7-docx-fallback-desktop.png"
+		],
+		"pixelValidation": "Every accepted PDF screenshot passed both direct canvas checks and composed screenshot crop checks. Direct canvas samples were opaque, mostly white, included dark glyph pixels, and had matching checksums before and after screenshots. Composed screenshot crops exceeded 0.9 white ratio and 20 dark glyph pixels; all 8 viewport/theme captures passed on the first screenshot attempt.",
+		"visualInspection": "PDF browser owner visually inspected all 14 current r7 screenshots. PDF glyphs are visible in the main, portal, and staff preview captures; 375px controls fit. DOCX fallback attachment and download state are visible in desktop and mobile evidence."
+	},
+	"previousAcceptedCaptureSet": {
+		"id": "r6",
+		"status": "accepted_intermediate",
+		"screenshots": [
+			"docs/report/browser/screens/pdf179-r6-390-light.png",
+			"docs/report/browser/screens/pdf179-r6-390-dark.png",
+			"docs/report/browser/screens/pdf179-r6-768-light.png",
+			"docs/report/browser/screens/pdf179-r6-768-dark.png",
+			"docs/report/browser/screens/pdf179-r6-1440-light.png",
+			"docs/report/browser/screens/pdf179-r6-1440-dark.png"
+		],
+		"supersededBy": "r7 adds the required 375px theme coverage and portal, staff triage, and DOCX fallback journeys."
+	}
+}

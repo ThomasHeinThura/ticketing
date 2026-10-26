@@ -27,9 +27,14 @@ vi.mock("@/components/god-mode/step-up-fields", () => ({
 }));
 vi.mock("@/hooks/use-step-up-action", () => ({
   useStepUpAction: () => ({
+    method: "password",
+    availableMethods: ["password"],
     secret: mocks.secret,
+    setMethod: vi.fn(),
+    setSecret: vi.fn(),
     busy: false,
     failure: null,
+    canRun: Boolean(mocks.secret),
     run: (...args: unknown[]) => mocks.run(...args),
   }),
 }));

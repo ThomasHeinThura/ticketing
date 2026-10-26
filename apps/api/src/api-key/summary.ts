@@ -22,7 +22,12 @@ export type SummarySource = {
   lastUsedIp: string | null;
   disabledAt: Date | null;
   disabledReason: string | null;
-  creatorActive: boolean | null;
+  adminOwnershipTransferredAt: Date | null;
+  formerCreatorAt: Date | null;
+  reattestationRequiredAt: Date | null;
+  reattestedAt: Date | null;
+  reattestedByPersonId: string | null;
+  accountabilityVersion: number;
 };
 
 /**
@@ -89,6 +94,10 @@ export function toApiKeySummary(source: SummarySource): ApiKeySummary {
     workspaceId: source.workspaceId,
     // AK-7: a service key whose creator is no longer an active member is shown as owned by
     // the workspace administrators; the key itself keeps working.
-    createdByFormerMember: service && source.creatorActive !== true,
+    createdByFormerMember: service && source.formerCreatorAt !== null,
+    ownedByWorkspaceAdmins:
+      service && source.adminOwnershipTransferredAt !== null,
+    requiresReattestation: service && source.reattestationRequiredAt !== null,
+    accountabilityVersion: source.accountabilityVersion,
   };
 }

@@ -1,0 +1,125 @@
+{
+	"artifact": "codex-20261025-keyboard-list-activation-diagnostic",
+	"target": {
+		"origin": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871,
+		"strictTls": true
+	},
+	"events": [
+		{
+			"phase": "document-capture",
+			"code": "Space",
+			"key": " ",
+			"targetTag": "FIELDSET",
+			"targetTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"targetIsSortable": true,
+			"defaultPrevented": false,
+			"focusedTag": "FIELDSET",
+			"focusedTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"dragging": false,
+			"fieldsetDisabled": false
+		},
+		{
+			"phase": "window-bubble",
+			"code": "Space",
+			"key": " ",
+			"targetTag": "FIELDSET",
+			"targetTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"targetIsSortable": true,
+			"defaultPrevented": true,
+			"focusedTag": "FIELDSET",
+			"focusedTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"dragging": true,
+			"fieldsetDisabled": false
+		}
+	],
+	"rankRequests": [],
+	"errors": [],
+	"fixtureKey": "PERF-7972",
+	"fixtureId": "a03oizj1k8xx8cnnaxa09dva",
+	"before": {
+		"tag": "FIELDSET",
+		"tabIndex": 0,
+		"disabled": false,
+		"role": null,
+		"ariaDisabled": "false",
+		"ariaPressed": null,
+		"ariaDescribedBy": "DndDescribedBy-0 _r_1kt_",
+		"taskProps": {
+			"component": "mt",
+			"disableDragDrop": false
+		},
+		"sensorProps": null,
+		"chain": [
+			{
+				"name": "T",
+				"keys": []
+			},
+			{
+				"name": "mt",
+				"keys": ["disableDragDrop"]
+			},
+			{
+				"name": "W",
+				"keys": []
+			},
+			{
+				"name": "P",
+				"keys": []
+			},
+			{
+				"name": "A",
+				"keys": []
+			},
+			{
+				"name": "B",
+				"keys": []
+			},
+			{
+				"name": "Z",
+				"keys": []
+			},
+			{
+				"name": "T",
+				"keys": []
+			},
+			{
+				"name": "dt",
+				"keys": []
+			},
+			{
+				"name": "Te",
+				"keys": []
+			},
+			{
+				"name": "ve",
+				"keys": []
+			},
+			{
+				"name": "Ce",
+				"keys": []
+			},
+			{
+				"name": "we",
+				"keys": []
+			},
+			{
+				"name": "Ut",
+				"keys": []
+			}
+		],
+		"outerTaskTag": "DIV"
+	},
+	"focused": {
+		"isActive": true,
+		"activeTag": "FIELDSET",
+		"activeTaskId": "a03oizj1k8xx8cnnaxa09dva"
+	},
+	"afterSpace": {
+		"dragging": true,
+		"dataDragging": "true",
+		"activeTag": "FIELDSET",
+		"activeTaskId": "a03oizj1k8xx8cnnaxa09dva"
+	}
+}

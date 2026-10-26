@@ -1,10 +1,10 @@
 # Full product roadmap — P0–P9
 
-**Direction:** original Kaneo screens and components (library UI only), real persisted data, laptop verification, one Opus review at the end of each phase, then commit and push the feature branch. No rebuild. Status counts come from the requirement index and audit evidence, never invented percentages. Progress is shown in `docs/report/report.html`.
+**Direction:** original Kaneo screens and components (library UI only), real persisted data, laptop verification, one fresh independent Sol high-effort review at each phase end (up to three rounds including fixes), then commit and push the feature branch. No rebuild. Status counts come from the requirement index and audit evidence, never invented percentages. Progress is shown in `docs/report/report.html`.
 
 ## Goal (set 22 October 2026, owner Thomas)
 
-**Finish P0–P4 as fast as possible, starting tonight** (25 Oct: P0–P5 committed; see the phase status below). Each phase: implement and design → local gates → one Opus review → pass: commit/push and next phase; fail: `report.html` only and wait for Thomas. P5–P7 follow; P8/P9 stay proposed.
+**Current goal, updated 25 Oct:** audit and repair P0–P5, complete persisted browser coverage on HTTPS localhost and obtain independent AI phase sign-off. Then implement the approved P6 plan, open and merge a passing PR, deploy locally and repeat audit/browser checks. Each phase: implement → local gates/browser evidence → independent Sol high-effort review → fix and verify; at most three new review rounds. Passing review permits feature-branch commit/push and PR/merge. Unresolved findings after round three require `report.html` and Thomas’s decision. Luna implements; Sol reviews. P7 follows; P8/P9 stay proposed.
 
 | Bucket | Items |
 | --- | --- |
@@ -12,22 +12,38 @@
 | Externally blocked (reported, never marked done) | Real Entra tenant (25 cases), external penetration test, signed/digest-pinned image now that GitHub CI is off |
 | Decided 22 Oct | "Git update" = commit + push the feature branch (never main). Technexus image: after local SIT passes, push → PR → CI scan/build → deploy that image. Archive items (retirement order, terminology overlay, engagement RAG) are added back only if verified needed |
 
-**Approved by Thomas, 22 Oct:** all P0–P4 tasks in the [audit](report/audit) (`tonight_actions` and top gaps per phase) are approved as additional tasks on top of the rows below. Run phase by phase (P0 → P1 → P2 → P3 → P4), parallel inside a phase only on disjoint paths. No further approval is needed before starting a phase; the only stop is a failed Opus review.
+**Approved by Thomas, 22 Oct:** all P0–P4 tasks in the [audit](report/audit) (`tonight_actions` and top gaps per phase) are approved as additional tasks on top of the rows below. Run phase by phase (P0 → P1 → P2 → P3 → P4), parallel inside a phase only on disjoint paths. No further approval is needed before starting a phase; unresolved findings after three new review rounds require Thomas’s decision, as authorized on 25 Oct.
 
 **Updated 23 Oct (Thomas approved the full plan):** extend the same loop through **P5** (then P6–P7). P4 closes out its carries before its Opus review; P5 follows in lanes A–F (agile planning; time and cost; reports and dashboards; knowledge base; services, changes, releases; contracts then customer invitations / typed-domain SSO / Pages) with migrations 0148–0157 reserved, per [audit-P5](report/audit/audit-P5.json). Decisions taken as recommended: `task_time_entry` rename, inline-SVG charts with Table equivalents (no recharts), dnd-kit dashboard grid (no react-grid-layout), indented-list service impact, estimates in project settings, CAB workflow opt-in for existing workspaces, scratch DB before the live DB with `NOT VALID` foreign keys, staff-only project Pages, customer-scoped invitations that refuse staff roles. Old PRs #880 and #886/#888/#889 were closed as superseded.
 
-Phase exit criteria are the visible-finish column below plus a passing Opus review. Update this Goal block and the report whenever it changes.
+Current phase exit criteria are the visible-finish column below, full local gates, persisted browser evidence and a passing independent Sol review. Historical review records remain historical. Update this Goal block and the report whenever it changes.
 
-## Phase status (24 October 2026)
+## Phase status (25 October 2026)
 
 | Phase | State |
 | --- | --- |
-| P0–P3 | Done, Opus-reviewed (AI reviewed, not Thomas-accepted), committed and pushed |
-| P4 | Committed `c02a0892b` and pushed (5 Opus rounds, round 5 pass); review notes in `1de552577` |
-| P5 | Built, committed and pushed (`95ba4061d`). Opus rounds 1–7 found mediums (all fixed); round 8 pass. Not browser-verified |
-| P6–P7 | Not started. P8/P9 proposed |
+| P0–P3 | Committed/pushed; historical reviews retained. Fresh full audit, gate and browser sign-off pending; not complete or Thomas-accepted |
+| P4 | Committed/pushed; historical round-5 pass reported. Current capability repair and full browser/gate recheck in progress; fresh independent review pending |
+| P5 | Built/committed/pushed (`95ba4061d`); historical round-8 pass reported but later review artifacts incomplete. Cost drill and gate repairs, full browser testing and fresh independent review pending |
+| P6 | Goals/implementation approved 25 Oct; waits for P0–P5 local exit checks. Plan below; no implementation started |
+| P7 | Not started; external readiness evidence tracked separately. P8/P9 proposed |
 
-**Honest note: P0–P5 are only half finished.** "Reviewed" means code audit plus tests; nothing from P4 or P5 is browser-verified, and each phase carries partials, missing items and external blockers (P5 audit: 62 implemented and tested, 3 untested, 22 partial, 4 missing of 91). The `carry` lists per phase in [report data](report/data.json) are the open work, not a footnote. Detail in [status](status.md).
+**Current evidence:** the historical per-ID audits and aggregate report disagreed. [Report data](report/data.json) now reconciles historical rows with the requirement index and marks the fresh review pending; [status](status.md) records current checks. A committed phase or earlier code review is not full feature/browser acceptance.
+
+## Approved P6 goals — 25 October 2026
+
+Thomas approved these goals and automatic implementation **after P0–P5 local gates, fixes and browser/review exit checks pass**. Real Entra validation stays with Thomas. Thomas requested completion on 25 October; that target was missed. Remaining work stays gated on evidence and review. The active Codex goal also includes the preceding audit, HTTPS SIT and final P6 deployment/sign-off.
+
+**26 October exception approved by Thomas:** build the shared import-run/record-ledger API and bounded MCP import tools now as a P4 prerequisite. Source adapters, the complete wizard and cutover remain gated on P0–P5 exit checks.
+
+| Goal | Integrated slices and evidence | State |
+| --- | --- | --- |
+| G1 — Durable import framework (IM-1–7) | Persist run/mapping profile/source-to-target ledger. Upload/connect → discover → editable map → dry-run → explicit mapping approval → transactional chunks → reconciliation. Unique source identity, source hash and checkpoint in the same transaction as target writes. Restart resumes only committed chunks; mapping changes require a new dry-run. Preserve authors/timestamps, inactive placeholders, history/files/relations and visible loss accounting. Instance-admin policies, tenant checks, audit and existing credential clamps apply. | Shared MCP prerequisite approved now; remaining G1 after destination checks |
+| G2 — Source adapters | CSV first, then Jira/JSM, Azure DevOps, Plane, Planner and Power Apps through the common pipeline. Representative fixtures per source; invalid/unmapped records never silently coerced. Source credentials use the existing secrets module, read-only source access, bounded pagination/rate limits and source-specific chunk limits. No new dependency without Thomas's approval. | Approved; follows G1 |
+| G3 — Cutover rehearsal | On isolated copies: backup both records and files, staged/delta re-import, reconciled project/type counts and explicit losses, original-link provenance/redirect coverage, interruption/resume and duplicate-free rerun. Record freeze boundary, changed-source handling, timing and recovery procedure. Recovery uses verified backup/restore; do not promise atomic whole-run undo. Source retirement requires Thomas's acceptance. | Approved; follows stable adapters |
+| G4 — Kaneo wizard and bounded MCP | Compose existing Kaneo settings/dialog/table/progress components in God Mode, with registered URL state and translations. Editable mapping and dry-run report precede execute; run history, pause/resume and loss report are persisted. Existing MCP authority only; assisted mapping suggestions require human approval. Reconcile retained `create_import_mapping` wording with maintained `create_import_link`/`get_import_link` contracts before exposing tools. | Approved; integrated with G1/G2 |
+
+P6 exit: realistic fixture per source, zero unexplained reconciliation differences, restart/resume/idempotency and tenant/key denial tests, all local gates/scans, persisted browser journeys across roles/themes/widths and Kaneo parity, then fresh independent Sol review. Up to **three review rounds**; unresolved findings after round three mean update the report and request Thomas's decision. Pass permits feature-branch commit/push, PR and merge, followed by deployment and browser verification on the 443 SIT hosts. AI sign-off is recorded separately from Thomas acceptance.
 
 ## Added priority: exact Kaneo work-item experience
 

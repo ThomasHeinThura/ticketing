@@ -17,6 +17,10 @@ export default defineConfig({
     "./src/database/schema-p5-reports.ts",
     "./src/database/schema-p5-invite.ts",
     "./src/database/schema-p5-pages.ts",
+    "./src/database/schema-instance-jobs.ts",
+    "./src/database/schema-mcp-telemetry.ts",
+    "./src/database/schema-imports.ts",
+    "./src/database/schema-customer-invitation-delivery.ts",
   ],
   dialect: "postgresql",
   dbCredentials: {

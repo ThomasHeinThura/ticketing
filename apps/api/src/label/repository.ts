@@ -11,6 +11,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 import { type Executor, executorOrDefault } from "../database/executor";
 import {
   currentProjectReachPredicate,
@@ -23,6 +24,7 @@ import {
   taskTable,
   workspaceTable,
 } from "../database/schema";
+import { CATALOGUE_KEY_PATTERN, resolveCatalogueKey } from "./catalogue-key";
 
 /**
  * Label repository (issue #580). Every label statement lives here; the controllers keep the
@@ -199,6 +201,7 @@ export async function insertTaskLabelOnConflictDoNothing(
       executor
         .select({
           id: sql`${createId()}`.as("id"),
+          key: sql`null`.as("key"),
           name: sql`${values.name}`.as("name"),
           color: sql`${values.color}`.as("color"),
           createdAt: sql`now()`.as("created_at"),
@@ -255,14 +258,18 @@ export async function findTaskLabelByName(
 export async function insertWorkspaceLabelOnConflictDoNothing(
   executor: Executor,
   identity: ResolvedIdentity,
-  values: { name: string; color: string; workspaceId: string },
+  values: { name: string; color: string; workspaceId: string; key?: string },
 ) {
+  const key = resolveCatalogueKey(values.name, values.key);
+  if (!key || !CATALOGUE_KEY_PATTERN.test(key))
+    throw new HTTPException(422, { message: "Invalid catalogue key" });
   const [inserted] = await executor
     .insert(labelTable)
     .select(
       executor
         .select({
           id: sql`${createId()}`.as("id"),
+          key: sql`${key}`.as("key"),
           name: sql`${values.name}`.as("name"),
           color: sql`${values.color}`.as("color"),
           createdAt: sql`now()`.as("created_at"),

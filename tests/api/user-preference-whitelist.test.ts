@@ -30,7 +30,7 @@ describe("settings whitelist: list groups and columns (VW-15, VW-19)", () => {
   it("refuses an invalid project id and any unlisted key", () => {
     expect(parseSettingKey("columns.bad id")).toBeUndefined();
     expect(parseSettingKey(`listGroups.${"a".repeat(129)}`)).toBeUndefined();
-    expect(parseSettingKey("columnWidths.p")).toBeUndefined();
+    expect(parseSettingKey("columnWidths.bad id")).toBeUndefined();
     expect(parseSettingKey("theme")).toBeUndefined();
   });
 
@@ -47,14 +47,42 @@ describe("settings whitelist: list groups and columns (VW-15, VW-19)", () => {
     expect(target?.schema.safeParse("a").success).toBe(false);
   });
 
-  it("accepts a non-empty, duplicate-free subset of the table columns", () => {
+  it("accepts native and custom-field column identifiers syntactically", () => {
     const target = parseSettingKey("columns.p");
     expect(target?.schema.safeParse(["title", "key", "state"]).success).toBe(
       true,
     );
     expect(target?.schema.safeParse([]).success).toBe(false);
     expect(target?.schema.safeParse(["title", "title"]).success).toBe(false);
-    expect(target?.schema.safeParse(["cf.severity"]).success).toBe(false);
+    expect(target?.schema.safeParse(["cf.severity"]).success).toBe(true);
+    expect(target?.schema.safeParse(["cf.Bad-Key"]).success).toBe(false);
     expect(target?.schema.safeParse("title").success).toBe(false);
+  });
+
+  it("accepts native and custom-field widths syntactically and serves their project key", () => {
+    const target = parseSettingKey("columnWidths.p");
+    expect(target).toMatchObject({
+      kind: "columnWidths",
+      scope: "project",
+      scopeId: "p",
+      rowKey: "columnWidths",
+    });
+    expect(projectSettingKey("columnWidths", "p")).toBe("columnWidths.p");
+    expect(target?.schema.safeParse({ key: 64, title: 800 }).success).toBe(
+      true,
+    );
+    expect(target?.schema.safeParse({ "cf.severity": 180 }).success).toBe(true);
+    expect(target?.schema.safeParse({}).success).toBe(true);
+    for (const bad of [
+      { title: 63 },
+      { title: 801 },
+      { title: 100.5 },
+      { title: "120" },
+      { unknown: 120 },
+      { "cf.Bad-Key": 120 },
+      [],
+    ]) {
+      expect(target?.schema.safeParse(bad).success).toBe(false);
+    }
   });
 });

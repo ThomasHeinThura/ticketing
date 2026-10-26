@@ -43,7 +43,10 @@ import {
   lockScimProfileOrganisation,
   lockScimProfilePerson as lockScimProfilePersonRow,
 } from "./repository";
-import { recordScimAuthFailure } from "./scim-auth-events";
+import {
+  recordScimAuthFailure,
+  recordScimRequestDenied,
+} from "./scim-auth-events";
 import {
   lockAndVerifyScimMutation,
   resolveScimBearer,
@@ -52,6 +55,7 @@ import {
 import { ScimGroupWriteError, writeScimGroup } from "./scim-group-sync";
 import {
   announceScimDeactivation,
+  enqueueScimIdentityProvisioned,
   setScimIdentityActiveInTransaction,
 } from "./scim-lifecycle";
 import {
@@ -62,18 +66,16 @@ import {
   scimConnectionRateLimit,
   scimErrorBody,
   scimErrorResponse,
-  WindowCounter,
 } from "./scim-limits";
+import {
+  checkScimRateLimit,
+  hitScimRateLimit,
+  reportScimRateLimitUnavailable,
+  type ScimRateLimitDecision,
+} from "./scim-rate-limit-store";
 
 type ScimVariables = BaseVariables & { scimAuthority: ScimRequestAuthority };
 const scim = apiRouter<ScimVariables>();
-
-// IP-14: failed authentication is counted against the anonymous class (per trusted client
-// address); a client over the limit is refused before any credential lookup.
-const authFailureCounter = new WindowCounter(
-  SCIM_FAILURE_LIMIT,
-  SCIM_FAILURE_WINDOW_MS,
-);
 
 // One registration on purpose (`DECLARED_ROUTER_MIDDLEWARE` pins `ALL /scim/v2/*` to a single
 // reviewed entry): authenticate, then apply the per-connection rate limit (IP-14), then the
@@ -84,18 +86,52 @@ const connectionRateLimit = scimConnectionRateLimit(
 const bodySizeCap = scimBodyLimit();
 scim.use("*", async (c, next) => {
   const client = scimClientKey(c);
-  if (authFailureCounter.isExhausted(client))
-    return scimErrorResponse(c, 429, "Too many requests", undefined, {
-      "Retry-After": String(Math.ceil(SCIM_FAILURE_WINDOW_MS / 1000)),
+  let exhausted: ScimRateLimitDecision;
+  try {
+    exhausted = await checkScimRateLimit({
+      bucket: "anonymous_scim_failure",
+      key: client,
+      limit: SCIM_FAILURE_LIMIT,
+      windowMs: SCIM_FAILURE_WINDOW_MS,
     });
+  } catch {
+    reportScimRateLimitUnavailable();
+    throw new HTTPException(503, { message: "SCIM rate limit unavailable" });
+  }
+  if (!exhausted.allowed) {
+    await recordScimRequestDenied(null, "rate_limited");
+    return scimErrorResponse(c, 429, "Too many requests", undefined, {
+      "Retry-After": String(exhausted.retryAfterSeconds),
+    });
+  }
   let authority: ScimRequestAuthority;
   try {
     authority = await resolveScimBearer(c.req.header("Authorization"));
   } catch (error) {
     if (error instanceof HTTPException && error.status === 401) {
-      authFailureCounter.hit(client);
-      // IP-24: attributable failures write an `auth.failed` provisioning event (no secret).
-      await recordScimAuthFailure(error);
+      let counted: ScimRateLimitDecision;
+      try {
+        counted = await hitScimRateLimit({
+          bucket: "anonymous_scim_failure",
+          key: client,
+          limit: SCIM_FAILURE_LIMIT,
+          windowMs: SCIM_FAILURE_WINDOW_MS,
+        });
+      } catch {
+        await recordScimAuthFailure(error);
+        reportScimRateLimitUnavailable();
+        throw new HTTPException(503, {
+          message: "SCIM rate limit unavailable",
+        });
+      }
+      // IP-24: `onError` records this 401 once, including a token rotation discovered during
+      // transactional revalidation. The anonymous ingress counter remains the request limit.
+      if (!counted.allowed) {
+        await recordScimRequestDenied(null, "rate_limited");
+        return scimErrorResponse(c, 429, "Too many requests", undefined, {
+          "Retry-After": String(counted.retryAfterSeconds),
+        });
+      }
     }
     throw error;
   }
@@ -104,6 +140,22 @@ scim.use("*", async (c, next) => {
   const limited = await connectionRateLimit(c, async () => {
     capped = (await bodySizeCap(c, next)) ?? undefined;
   });
+  const response = limited ?? capped ?? c.res;
+  if (
+    response.status >= 400 &&
+    response.status < 500 &&
+    response.status !== 401 &&
+    response.status !== 429
+  ) {
+    await recordScimRequestDenied(
+      authority.connectionId,
+      response.status === 403
+        ? "authorization_denied"
+        : response.status === 413
+          ? "request_too_large"
+          : "request_rejected",
+    );
+  }
   return limited ?? capped;
 });
 
@@ -113,11 +165,13 @@ function scimResponse<T extends Response>(response: T): T {
   return response;
 }
 
-scim.onError((error, c) => {
+scim.onError(async (error, c) => {
   if (!(error instanceof HTTPException)) throw error;
   const status = error.status;
-  if (status === 401)
+  if (status === 401) {
+    await recordScimAuthFailure(error);
     return scimResponse(c.json(scimErrorBody(401, "Unauthorized"), 401));
+  }
   if (status === 403)
     return scimResponse(
       c.json(
@@ -491,6 +545,18 @@ async function applyScimActiveState(
       const { scim } = await lockAndVerifyScimMutation(tx, authority, "users");
       if (scim.lifecyclePolicy !== scimConnection.lifecyclePolicy)
         throw new IdentityGrantClosureChangedError();
+      if (active) {
+        const [identity] = await getScimExternalIdentity(
+          tx,
+          identityId,
+          connectionId,
+        );
+        if (!identity) return false;
+        await enqueueScimIdentityProvisioned(tx, {
+          connectionId,
+          personId: identity.personId,
+        });
+      }
       return lifecycle;
     }),
   );
@@ -529,6 +595,18 @@ async function applyScimActiveStateInTransaction(
   const { scim } = await lockAndVerifyScimMutation(tx, authority, "users");
   if (scim.lifecyclePolicy !== scimConnection.lifecyclePolicy)
     throw new IdentityGrantClosureChangedError();
+  if (active) {
+    const [identity] = await getScimExternalIdentity(
+      tx,
+      identityId,
+      connectionId,
+    );
+    if (!identity) return false;
+    await enqueueScimIdentityProvisioned(tx, {
+      connectionId,
+      personId: identity.personId,
+    });
+  }
   return lifecycle;
 }
 
@@ -933,6 +1011,10 @@ export default scim
           outcome: "success",
           detail: { personId, active: attrs.active ?? true },
           actorType: "scim",
+        });
+        await enqueueScimIdentityProvisioned(tx, {
+          connectionId: authority.connectionId,
+          personId,
         });
         return { created: true as const };
       });

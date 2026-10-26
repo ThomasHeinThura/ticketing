@@ -1,4 +1,8 @@
 import createNotification from "../notification/controllers/create-notification";
+import {
+  assertJobExecutionOwned,
+  JobExecutionReservationLostError,
+} from "./leader-lock";
 import { REMINDER_WINDOW_MINUTES } from "./reminder-timing";
 import {
   insertReminderSent,
@@ -83,6 +87,7 @@ export async function checkDueDateReminders(): Promise<{ degraded: boolean }> {
   let degraded = false;
 
   for (const window of Object.values(windows)) {
+    await assertJobExecutionOwned();
     try {
       const tasks = await getTasksNeedingReminder(
         window.start,
@@ -91,9 +96,13 @@ export async function checkDueDateReminders(): Promise<{ degraded: boolean }> {
       );
 
       for (const task of tasks) {
+        // A reminder is one unit from its sent marker through notification
+        // creation. Check only before beginning the next task.
+        await assertJobExecutionOwned();
         try {
           await processReminder(task, window.type, window.notificationType);
         } catch (error) {
+          if (error instanceof JobExecutionReservationLostError) throw error;
           degraded = true;
           console.error("Failed to process due date reminder", {
             taskId: task.id,
@@ -103,6 +112,7 @@ export async function checkDueDateReminders(): Promise<{ degraded: boolean }> {
         }
       }
     } catch (error) {
+      if (error instanceof JobExecutionReservationLostError) throw error;
       degraded = true;
       console.error("Failed to query tasks for due date reminders", {
         reminderType: window.type,

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { WorkItemAttachment } from "@/fetchers/attachment/work-item-attachments";
+import PdfPreviewDialog from "./pdf-preview-dialog";
 import { attachmentUrl } from "./work-item-attachments-tile";
 
 /**
@@ -11,11 +12,13 @@ import { attachmentUrl } from "./work-item-attachments-tile";
  */
 export default function WorkItemAttachmentLightbox({
   images,
+  pdfs = [],
   openId,
   onOpenChange,
   onNavigate,
 }: {
   images: readonly WorkItemAttachment[];
+  pdfs?: readonly WorkItemAttachment[];
   openId: string | null;
   onOpenChange: (open: boolean) => void;
   onNavigate: (id: string) => void;
@@ -25,6 +28,7 @@ export default function WorkItemAttachmentLightbox({
   const current = index >= 0 ? images[index] : undefined;
   const previous = index > 0 ? images[index - 1] : undefined;
   const next = index >= 0 ? images[index + 1] : undefined;
+  const currentPdf = pdfs.find((pdf) => pdf.id === openId);
 
   useEffect(() => {
     if (!current) return;
@@ -37,62 +41,73 @@ export default function WorkItemAttachmentLightbox({
   }, [current, next, onNavigate, previous]);
 
   return (
-    <Dialog open={Boolean(current)} onOpenChange={onOpenChange}>
-      <DialogPopup
-        className="max-w-6xl border-0 bg-transparent p-0 shadow-none before:hidden"
-        showCloseButton={false}
-        bottomStickOnMobile={false}
-      >
-        {current && (
-          <div className="flex max-h-[90vh] flex-col items-center justify-center gap-3 p-4">
-            <DialogTitle className="sr-only">{current.filename}</DialogTitle>
-            <img
-              src={attachmentUrl(current.id)}
-              alt={current.filename}
-              className="max-h-[78vh] max-w-[92vw] rounded-xl border border-white/12 bg-black/30 object-contain shadow-2xl"
-            />
-            <div className="flex items-center gap-1 rounded-lg bg-background/90 p-1 text-sm shadow-lg">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled={!previous}
-                aria-label={t("workItems:detail.attachments.previous")}
-                onClick={() => previous && onNavigate(previous.id)}
-              >
-                <ChevronLeft className="size-4" />
-              </Button>
-              <span className="max-w-64 truncate px-2">{current.filename}</span>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled={!next}
-                aria-label={t("workItems:detail.attachments.next")}
-                onClick={() => next && onNavigate(next.id)}
-              >
-                <ChevronRight className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                render={<a href={attachmentUrl(current.id)} />}
-                aria-label={t("workItems:detail.attachments.download", {
-                  name: current.filename,
-                })}
-              >
-                <Download className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={t("workItems:detail.attachments.closePreview")}
-                onClick={() => onOpenChange(false)}
-              >
-                <X className="size-4" />
-              </Button>
+    <>
+      <Dialog open={Boolean(current)} onOpenChange={onOpenChange}>
+        <DialogPopup
+          className="max-w-6xl border-0 bg-transparent p-0 shadow-none before:hidden"
+          showCloseButton={false}
+          bottomStickOnMobile={false}
+        >
+          {current && (
+            <div className="flex max-h-[90vh] flex-col items-center justify-center gap-3 p-4">
+              <DialogTitle className="sr-only">{current.filename}</DialogTitle>
+              <img
+                src={attachmentUrl(current.id)}
+                alt={current.filename}
+                className="max-h-[78vh] max-w-[92vw] rounded-xl border border-white/12 bg-black/30 object-contain shadow-2xl"
+              />
+              <div className="flex items-center gap-1 rounded-lg bg-background/90 p-1 text-sm shadow-lg">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={!previous}
+                  aria-label={t("workItems:detail.attachments.previous")}
+                  onClick={() => previous && onNavigate(previous.id)}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <span className="max-w-64 truncate px-2">
+                  {current.filename}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={!next}
+                  aria-label={t("workItems:detail.attachments.next")}
+                  onClick={() => next && onNavigate(next.id)}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  render={<a href={attachmentUrl(current.id)} />}
+                  aria-label={t("workItems:detail.attachments.download", {
+                    name: current.filename,
+                  })}
+                >
+                  <Download className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t("workItems:detail.attachments.closePreview")}
+                  onClick={() => onOpenChange(false)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
-      </DialogPopup>
-    </Dialog>
+          )}
+        </DialogPopup>
+      </Dialog>
+      <PdfPreviewDialog
+        key={currentPdf?.id ?? "closed"}
+        attachment={currentPdf}
+        onOpenChange={(open) => {
+          if (!open) onOpenChange(false);
+        }}
+      />
+    </>
   );
 }

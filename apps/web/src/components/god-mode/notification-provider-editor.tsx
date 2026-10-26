@@ -9,11 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Checkbox,
-  Input,
-  Label,
   Skeleton,
-  Switch,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,10 +18,20 @@ import {
   type EmailProviderConfig,
   getEmailProvider,
   saveEmailProvider,
+  smtpDiagnosticTranslationKey,
   verifyEmailProvider,
 } from "@/fetchers/god-mode/notification-provider";
+import {
+  listSupportedPlugins,
+  type PluginSettingsFormManifest,
+  type SupportedPlugin,
+} from "@/fetchers/god-mode/plugins";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { HttpError } from "@/lib/http-error";
+import {
+  isSupportedPluginSettingsForm,
+  SchemaSettingsForm,
+} from "./plugins/schema-settings-form";
 
 const queryKey = ["instance", "notification-provider", "email"];
 const emptyConfig: EmailProviderConfig = {
@@ -36,11 +42,32 @@ const emptyConfig: EmailProviderConfig = {
   username: null,
   fromAddress: "",
   replyTo: null,
+  captureToMailpit: false,
 };
+
+function isEmailSettingsForm(
+  value: unknown,
+): value is Extract<SupportedPlugin["settingsForm"], { available: true }> {
+  if (typeof value !== "object" || value === null) return false;
+  const manifest = value as PluginSettingsFormManifest;
+  if (!isSupportedPluginSettingsForm(manifest)) return false;
+  return manifest.fields.every((field) =>
+    field.group === "config"
+      ? Object.hasOwn(emptyConfig, field.key.slice("config.".length))
+      : true,
+  );
+}
+
 export function NotificationProviderEditor() {
   const { t } = useTranslation("notificationProvider");
   const query = useQuery({ queryKey, queryFn: getEmailProvider, retry: false });
-  if (query.isPending) return <Skeleton className="h-48 w-full" />;
+  const pluginQuery = useQuery({
+    queryKey: ["god-mode", "plugins"],
+    queryFn: listSupportedPlugins,
+    retry: false,
+  });
+  if (query.isPending || pluginQuery.isPending)
+    return <Skeleton className="h-48 w-full" />;
   if (query.isError)
     return (
       <Alert variant="error">
@@ -51,15 +78,52 @@ export function NotificationProviderEditor() {
         </Button>
       </Alert>
     );
-  return <ProviderForm key={query.data.version} provider={query.data} />;
+  if (pluginQuery.isError)
+    return (
+      <Alert variant="error">
+        <AlertTitle>{t("unavailable")}</AlertTitle>
+        <AlertDescription>{t("loadFailed")}</AlertDescription>
+        <Button variant="outline" onClick={() => void pluginQuery.refetch()}>
+          {t("retry")}
+        </Button>
+      </Alert>
+    );
+  const plugin = pluginQuery.data.plugins.find(
+    (item) => item.id === "notify.email",
+  );
+  if (!plugin || !isEmailSettingsForm(plugin.settingsForm))
+    return (
+      <Alert variant="error">
+        <AlertTitle>{t("unavailable")}</AlertTitle>
+        <AlertDescription>{t("loadFailed")}</AlertDescription>
+      </Alert>
+    );
+  return (
+    <ProviderForm
+      key={query.data.version}
+      provider={query.data}
+      settingsForm={plugin.settingsForm}
+      localMailpitCaptureAvailable={query.data.localMailpitCaptureAvailable}
+    />
+  );
 }
-function ProviderForm({ provider }: { provider: EmailProvider }) {
+function ProviderForm({
+  provider,
+  settingsForm,
+  localMailpitCaptureAvailable,
+}: {
+  provider: EmailProvider;
+  settingsForm: Extract<SupportedPlugin["settingsForm"], { available: true }>;
+  localMailpitCaptureAvailable: boolean;
+}) {
   const { t } = useTranslation("notificationProvider");
   const queryClient = useQueryClient();
   const [config, setConfig] = useState(provider.config ?? emptyConfig);
   const [enabled, setEnabled] = useState(provider.enabled);
   const [password, setPassword] = useState("");
   const [clearPassword, setClearPassword] = useState(false);
+  const [ordinaryConfigBeforeCapture, setOrdinaryConfigBeforeCapture] =
+    useState<EmailProviderConfig | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lifecycle = useIntentLifecycle(String(provider.version), () => {
@@ -75,16 +139,90 @@ function ProviderForm({ provider }: { provider: EmailProvider }) {
     config.host || config.fromAddress || config.username,
   );
   const requireConfig = enabled || hasConfig;
+  const captureSelected = config.captureToMailpit === true;
+  const captureUnavailable = captureSelected && !localMailpitCaptureAvailable;
+  const visibleSettingsForm = {
+    ...settingsForm,
+    fields: settingsForm.fields.filter((field) => {
+      if (field.key === "config.captureToMailpit")
+        return localMailpitCaptureAvailable;
+      if (captureSelected && localMailpitCaptureAvailable)
+        return (
+          field.group !== "secret" &&
+          (field.group !== "config" ||
+            field.key === "config.captureToMailpit" ||
+            field.key === "config.fromAddress" ||
+            field.key === "config.replyTo")
+        );
+      return true;
+    }),
+  };
   const secret = clearPassword
     ? { password: null }
-    : password
-      ? { password }
-      : {};
+    : captureSelected
+      ? { password: null }
+      : password
+        ? { password }
+        : {};
   function change<K extends keyof EmailProviderConfig>(
     key: K,
     value: EmailProviderConfig[K],
   ) {
-    setConfig((previous) => ({ ...previous, [key]: value }));
+    if (key === "captureToMailpit") {
+      if (value === true && localMailpitCaptureAvailable) {
+        setOrdinaryConfigBeforeCapture(config);
+        setConfig((previous) => ({
+          ...previous,
+          captureToMailpit: true,
+          host: "mailpit",
+          port: 1025,
+          secure: false,
+          requireTLS: false,
+          username: null,
+        }));
+        setPassword("");
+        setClearPassword(true);
+      } else {
+        const ordinary = ordinaryConfigBeforeCapture;
+        setConfig({
+          ...(ordinary ?? config),
+          captureToMailpit: false,
+          ...(ordinary
+            ? {}
+            : {
+                host: "",
+                port: 587,
+                secure: false,
+                requireTLS: true,
+                username: null,
+              }),
+        });
+        setOrdinaryConfigBeforeCapture(null);
+      }
+    } else {
+      setConfig((previous) => ({
+        ...previous,
+        [key]: value,
+        ...(captureUnavailable
+          ? {
+              captureToMailpit: false,
+              ...(key === "host"
+                ? {}
+                : {
+                    host: "",
+                    port: 587,
+                    secure: false,
+                    requireTLS: true,
+                    username: null,
+                  }),
+            }
+          : {}),
+      }));
+      if (captureUnavailable) {
+        setPassword("");
+        setClearPassword(true);
+      }
+    }
     setNotice(null);
   }
   async function submit(testOnly: boolean) {
@@ -123,7 +261,9 @@ function ProviderForm({ provider }: { provider: EmailProvider }) {
             ? "conflict"
             : cause instanceof HttpError && cause.status === 429
               ? "rateLimited"
-              : "operationFailed",
+              : cause instanceof HttpError && cause.status === 502
+                ? smtpDiagnosticTranslationKey(cause.message)
+                : "operationFailed",
         ),
       );
     }
@@ -142,124 +282,45 @@ function ProviderForm({ provider }: { provider: EmailProvider }) {
             void submit(false);
           }}
         >
-          <div className="flex items-center gap-3">
-            <Switch
-              id="smtp-enabled"
-              checked={enabled}
-              disabled={busy}
-              onCheckedChange={setEnabled}
-            />
-            <Label htmlFor="smtp-enabled">{t("enabled")}</Label>
-          </div>
           <p className="text-sm text-muted-foreground">
             {t(`sources.${provider.source}`)}
           </p>
-          <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="smtp-host">{t("host")}</Label>
-              <Input
-                id="smtp-host"
-                value={config.host}
-                required={requireConfig}
-                autoComplete="off"
-                onChange={(event) => change("host", event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="smtp-port">{t("port")}</Label>
-              <Input
-                id="smtp-port"
-                type="number"
-                min={1}
-                max={65535}
-                required={requireConfig}
-                value={config.port}
-                onChange={(event) => change("port", Number(event.target.value))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="smtp-from">{t("fromAddress")}</Label>
-              <Input
-                id="smtp-from"
-                type="email"
-                required={requireConfig}
-                value={config.fromAddress}
-                onChange={(event) => change("fromAddress", event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="smtp-reply">{t("replyTo")}</Label>
-              <Input
-                id="smtp-reply"
-                type="email"
-                value={config.replyTo ?? ""}
-                onChange={(event) =>
-                  change("replyTo", event.target.value || null)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="smtp-username">{t("username")}</Label>
-              <Input
-                id="smtp-username"
-                autoComplete="off"
-                value={config.username ?? ""}
-                onChange={(event) =>
-                  change("username", event.target.value || null)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="smtp-password">{t("password")}</Label>
-              <Input
-                id="smtp-password"
-                type="password"
-                autoComplete="new-password"
-                disabled={clearPassword}
-                value={password}
-                placeholder={
-                  provider.passwordConfigured
-                    ? (provider.passwordPreview ?? "")
-                    : ""
-                }
-                onChange={(event) => setPassword(event.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                {t("passwordHelp")}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="smtp-secure"
-                checked={config.secure}
-                onCheckedChange={(value) => change("secure", Boolean(value))}
-              />
-              <Label htmlFor="smtp-secure">{t("secure")}</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="smtp-tls"
-                checked={config.requireTLS}
-                onCheckedChange={(value) =>
-                  change("requireTLS", Boolean(value))
-                }
-              />
-              <Label htmlFor="smtp-tls">{t("requireTLS")}</Label>
-            </div>
-            {provider.passwordConfigured && (
-              <div className="flex items-center gap-2 sm:col-span-2">
-                <Checkbox
-                  id="smtp-clear"
-                  checked={clearPassword}
-                  onCheckedChange={(value) => {
-                    setClearPassword(Boolean(value));
-                    setPassword("");
-                  }}
-                />
-                <Label htmlFor="smtp-clear">{t("clearPassword")}</Label>
-              </div>
-            )}
-          </fieldset>
+          {captureUnavailable ? (
+            <Alert variant="error">
+              <AlertTitle>{t("unavailable")}</AlertTitle>
+              <AlertDescription>{t("captureUnavailable")}</AlertDescription>
+            </Alert>
+          ) : null}
+          {captureSelected && localMailpitCaptureAvailable ? (
+            <p className="text-sm text-muted-foreground">{t("captureHelp")}</p>
+          ) : null}
+          <SchemaSettingsForm
+            manifest={visibleSettingsForm}
+            enabled={enabled}
+            onEnabledChange={setEnabled}
+            config={
+              config as unknown as Record<
+                string,
+                string | number | boolean | null
+              >
+            }
+            onConfigChange={(key, value) => {
+              if (!Object.hasOwn(emptyConfig, key)) return;
+              const typedKey = key as keyof EmailProviderConfig;
+              change(typedKey, value as EmailProviderConfig[typeof typedKey]);
+            }}
+            requireConfig={requireConfig}
+            disabled={busy}
+            password={password}
+            onPasswordChange={setPassword}
+            passwordConfigured={provider.passwordConfigured}
+            passwordPreview={provider.passwordPreview}
+            clearPassword={clearPassword}
+            onClearPasswordChange={(value) => {
+              setClearPassword(value);
+              if (value) setPassword("");
+            }}
+          />
           {error && (
             <p role="alert" className="text-sm text-destructive">
               {error}
@@ -271,13 +332,18 @@ function ProviderForm({ provider }: { provider: EmailProvider }) {
             </p>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy || captureUnavailable}>
               {t("save")}
             </Button>
             <Button
               type="button"
               variant="outline"
-              disabled={busy || !config.host || !config.fromAddress}
+              disabled={
+                busy ||
+                captureUnavailable ||
+                !config.host ||
+                !config.fromAddress
+              }
               onClick={(event) => {
                 if (event.currentTarget.form?.reportValidity())
                   void submit(true);

@@ -46,11 +46,21 @@ services:
       - traefik.http.routers.taskdesk-local-agent.tls=true
       - traefik.http.routers.taskdesk-local-agent.service=taskdesk-local
       - traefik.http.routers.taskdesk-local-agent.middlewares=security-headers@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-local-agent-pdf-preview.rule=Host(`${TASKDESK_AGENT_HOST:-ticket.${DOMAIN:-localhost}}`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-local-agent-pdf-preview.entrypoints=websecure
+      - traefik.http.routers.taskdesk-local-agent-pdf-preview.tls=true
+      - traefik.http.routers.taskdesk-local-agent-pdf-preview.service=taskdesk-local
+      - traefik.http.routers.taskdesk-local-agent-pdf-preview.middlewares=pdf-preview-headers@file,compress@file,rate-limit@file
       - traefik.http.routers.taskdesk-local-portal.rule=Host(`${TASKDESK_PORTAL_HOST:-portal.${DOMAIN:-localhost}}`)
       - traefik.http.routers.taskdesk-local-portal.entrypoints=websecure
       - traefik.http.routers.taskdesk-local-portal.tls=true
       - traefik.http.routers.taskdesk-local-portal.service=taskdesk-local
       - traefik.http.routers.taskdesk-local-portal.middlewares=security-headers@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-local-portal-pdf-preview.rule=Host(`${TASKDESK_PORTAL_HOST:-portal.${DOMAIN:-localhost}}`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-local-portal-pdf-preview.entrypoints=websecure
+      - traefik.http.routers.taskdesk-local-portal-pdf-preview.tls=true
+      - traefik.http.routers.taskdesk-local-portal-pdf-preview.service=taskdesk-local
+      - traefik.http.routers.taskdesk-local-portal-pdf-preview.middlewares=pdf-preview-headers@file,compress@file,rate-limit@file
 
   postgres:
     # Published so psql, a GUI client and the integration tests can reach it.

@@ -1,0 +1,102 @@
+{
+	"strictTLS": true,
+	"readOnly": true,
+	"records": [
+		{
+			"theme": "light",
+			"width": 375,
+			"passed": true,
+			"fit": {
+				"viewport": 375,
+				"width": 375,
+				"theme": "light"
+			},
+			"loadedBell": true,
+			"socketCount": 1,
+			"socketOpened": true,
+			"sidebarLoaded": false,
+			"bellMenuContainsUnread": true,
+			"consoleErrors": 0
+		},
+		{
+			"theme": "light",
+			"width": 768,
+			"passed": true,
+			"fit": {
+				"viewport": 768,
+				"width": 768,
+				"theme": "light"
+			},
+			"loadedBell": true,
+			"socketCount": 1,
+			"socketOpened": true,
+			"sidebarLoaded": true,
+			"bellMenuContainsUnread": true,
+			"consoleErrors": 0
+		},
+		{
+			"theme": "light",
+			"width": 1440,
+			"passed": true,
+			"fit": {
+				"viewport": 1440,
+				"width": 1440,
+				"theme": "light"
+			},
+			"loadedBell": true,
+			"socketCount": 1,
+			"socketOpened": true,
+			"sidebarLoaded": true,
+			"bellMenuContainsUnread": true,
+			"consoleErrors": 0
+		},
+		{
+			"theme": "dark",
+			"width": 375,
+			"passed": true,
+			"fit": {
+				"viewport": 375,
+				"width": 375,
+				"theme": "dark"
+			},
+			"loadedBell": true,
+			"socketCount": 1,
+			"socketOpened": true,
+			"sidebarLoaded": false,
+			"bellMenuContainsUnread": true,
+			"consoleErrors": 0
+		},
+		{
+			"theme": "dark",
+			"width": 768,
+			"passed": true,
+			"fit": {
+				"viewport": 768,
+				"width": 768,
+				"theme": "dark"
+			},
+			"loadedBell": true,
+			"socketCount": 1,
+			"socketOpened": true,
+			"sidebarLoaded": true,
+			"bellMenuContainsUnread": true,
+			"consoleErrors": 0
+		},
+		{
+			"theme": "dark",
+			"width": 1440,
+			"passed": true,
+			"fit": {
+				"viewport": 1440,
+				"width": 1440,
+				"theme": "dark"
+			},
+			"loadedBell": true,
+			"socketCount": 1,
+			"socketOpened": true,
+			"sidebarLoaded": true,
+			"bellMenuContainsUnread": true,
+			"consoleErrors": 0
+		}
+	]
+}

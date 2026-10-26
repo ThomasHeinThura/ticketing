@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { kbCategoryTable } from "../database/schema-p5-kb";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -38,6 +39,27 @@ export const kbCategoryDeletionTarget: RegisteredDeletionTarget = {
       summary: { categoryId: category.id, name: category.name },
       version: registeredDeletionFingerprint(category),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [category] = await tx
+      .select({
+        id: kbCategoryTable.id,
+        workspaceId: kbCategoryTable.workspaceId,
+      })
+      .from(kbCategoryTable)
+      .where(eq(kbCategoryTable.id, id))
+      .limit(1);
+    return category
+      ? {
+          id: category.id,
+          workspaceId: category.workspaceId,
+          projectId: null,
+          organisationId: null,
+        }
+      : undefined;
   },
   assertDeletable: async (tx, loaded) => {
     const [category] = await tx

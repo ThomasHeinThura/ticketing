@@ -1,0 +1,146 @@
+{
+	"artifact": "codex-20261025-keyboard-10k-debug",
+	"label": "diagnostic only; rank writes are deliberately aborted; not pass evidence",
+	"target": {
+		"origin": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871,
+		"strictTls": true
+	},
+	"fixtureProject": "PERF",
+	"getterWrapped": false,
+	"sequences": [
+		{
+			"name": "paced",
+			"snapshots": [
+				{
+					"step": "picked-up",
+					"dragging": true,
+					"liveAnnouncements": [
+						"Picked up TaskDeskPerf10k-20261025 #01863 — 性能測試項目."
+					],
+					"dndContextFound": true,
+					"active": {
+						"key": "PERF-1863",
+						"sortable": {
+							"index": 0,
+							"itemCount": 200,
+							"containerId": "Sortable-2"
+						}
+					},
+					"over": {
+						"key": "PERF-1863"
+					},
+					"collisionRect": null,
+					"activeElementKey": null
+				},
+				{
+					"step": "after-arrow-down",
+					"dragging": true,
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 is over TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"dndContextFound": true,
+					"active": {
+						"key": "PERF-1863",
+						"sortable": {
+							"index": 0,
+							"itemCount": 200,
+							"containerId": "Sortable-2"
+						}
+					},
+					"over": {
+						"key": "PERF-7972"
+					},
+					"collisionRect": null,
+					"activeElementKey": null
+				},
+				{
+					"step": "after-drop-or-cancel",
+					"dragging": false,
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 was dropped on TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"dndContextFound": true,
+					"active": null,
+					"over": null,
+					"collisionRect": null,
+					"activeElementKey": null
+				}
+			],
+			"getterCalls": []
+		},
+		{
+			"name": "fast",
+			"snapshots": [
+				{
+					"step": "picked-up",
+					"dragging": true,
+					"liveAnnouncements": [
+						"Picked up TaskDeskPerf10k-20261025 #01863 — 性能測試項目."
+					],
+					"dndContextFound": true,
+					"active": {
+						"key": "PERF-1863",
+						"sortable": {
+							"index": 0,
+							"itemCount": 200,
+							"containerId": "Sortable-2"
+						}
+					},
+					"over": {
+						"key": "PERF-1863"
+					},
+					"collisionRect": null,
+					"activeElementKey": "PERF-1863"
+				},
+				{
+					"step": "after-arrow-down",
+					"dragging": true,
+					"liveAnnouncements": [
+						"Picked up TaskDeskPerf10k-20261025 #01863 — 性能測試項目."
+					],
+					"dndContextFound": true,
+					"active": {
+						"key": "PERF-1863",
+						"sortable": {
+							"index": 0,
+							"itemCount": 200,
+							"containerId": "Sortable-2"
+						}
+					},
+					"over": {
+						"key": "PERF-1863"
+					},
+					"collisionRect": null,
+					"activeElementKey": "PERF-1863"
+				},
+				{
+					"step": "after-drop-or-cancel",
+					"dragging": false,
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 was dropped."
+					],
+					"dndContextFound": true,
+					"active": null,
+					"over": null,
+					"collisionRect": null,
+					"activeElementKey": "PERF-1863"
+				}
+			],
+			"getterCalls": []
+		}
+	],
+	"abortedRankRequests": [
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-1863/rank",
+			"key": "PERF-1863",
+			"bodyKeys": ["afterId", "beforeId"],
+			"beforeKey": "PERF-7972",
+			"afterKey": "PERF-6219"
+		}
+	],
+	"errors": ["Failed to load resource: net::ERR_FAILED"],
+	"screenshot": "codex-20261025-keyboard-10k-debug.png"
+}

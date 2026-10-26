@@ -70,6 +70,7 @@ export const ACTION_TYPES = [
   "add_label",
   "remove_label",
   "add_watcher",
+  "notify",
   "call_webhook",
 ] as const;
 export type EditableActionType = (typeof ACTION_TYPES)[number];
@@ -90,6 +91,9 @@ export type ActionDraft = {
   type: string;
   /** A person, label or webhook id; or a priority; or a number of days. */
   value: string;
+  teamId?: string;
+  title?: string;
+  body?: string;
   readOnly: boolean;
   original?: AutomationAction;
 };
@@ -163,6 +167,13 @@ export function draftFromAutomation(rule: Automation): RuleDraft {
       key: nextKey(),
       type: action.type,
       value: actionValueToText(action),
+      ...(action.type === "notify"
+        ? {
+            teamId: String(action.teamId ?? ""),
+            title: String(action.title ?? ""),
+            body: String(action.body ?? ""),
+          }
+        : {}),
       readOnly: !(ACTION_TYPES as readonly string[]).includes(action.type),
       original: action,
     })),
@@ -186,6 +197,8 @@ function actionValueToText(action: AutomationAction): string {
       return String(action.personId ?? "");
     case "call_webhook":
       return String(action.webhookId ?? "");
+    case "notify":
+      return "";
     default:
       return "";
   }
@@ -225,6 +238,13 @@ export function actionToJson(draft: ActionDraft): AutomationAction {
       return { type: "add_watcher", personId: draft.value };
     case "call_webhook":
       return { type: "call_webhook", webhookId: draft.value };
+    case "notify":
+      return {
+        type: "notify",
+        teamId: draft.teamId ?? "",
+        title: draft.title ?? "",
+        body: draft.body ?? "",
+      };
     default:
       return { type: draft.type };
   }
@@ -288,9 +308,21 @@ export function validateDraft(draft: RuleDraft): DraftProblem[] {
     draft.actions.some(
       (action) =>
         !action.readOnly &&
+        action.type !== "notify" &&
         action.type !== "set_priority" &&
         action.type !== "set_due_date" &&
         action.value.trim() === "",
+    )
+  )
+    problems.push("actionValueRequired");
+  if (
+    draft.actions.some(
+      (action) =>
+        !action.readOnly &&
+        action.type === "notify" &&
+        (!action.teamId?.trim() ||
+          !action.title?.trim() ||
+          !action.body?.trim()),
     )
   )
     problems.push("actionValueRequired");

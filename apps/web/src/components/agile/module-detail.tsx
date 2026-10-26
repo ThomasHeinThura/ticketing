@@ -38,6 +38,7 @@ import { BACKLOG_DRAG_PREFIX, CycleBacklogPanel } from "./cycle-backlog-panel";
 import { FeatureOff } from "./feature-off";
 import { ModuleForecastText } from "./module-forecast";
 import { ModuleFormDialog } from "./module-form-dialog";
+import { ScopeLoggedTime } from "./scope-logged-time";
 import { ScopedWorkSurface } from "./scoped-work-surface";
 
 const DROP_ID = "module-dropzone";
@@ -233,6 +234,11 @@ export function ModuleDetailScreen({
         </p>
         <ModuleForecastText forecast={module.forecast} />
       </section>
+      <ScopeLoggedTime
+        workspaceId={workspaceId}
+        projectId={project?.id}
+        scope={{ moduleId }}
+      />
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">

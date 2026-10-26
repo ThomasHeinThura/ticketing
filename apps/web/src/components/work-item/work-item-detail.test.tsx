@@ -24,12 +24,34 @@ vi.mock("@/hooks/queries/time-tracking/use-time-tracking", () => ({
   }),
 }));
 vi.mock("@/components/time-tracking/work-item-time", () => ({
-  default: () => <div data-testid="time-section" />,
+  default: ({ readOnly }: { readOnly?: boolean }) => (
+    <div
+      data-testid="time-section"
+      data-read-only={String(Boolean(readOnly))}
+    />
+  ),
 }));
 vi.mock("@taskdesk/ui", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@taskdesk/ui")>()),
   useIsMobile: () => device.mobile,
 }));
+
+Object.defineProperty(window, "matchMedia", {
+  configurable: true,
+  writable: true,
+  value: (media: string) =>
+    ({
+      matches:
+        window.innerWidth <= Number(media.match(/max-width:\s*(\d+)px/)?.[1]),
+      media,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(() => true),
+    }) as MediaQueryList,
+});
 
 afterEach(() => {
   timeFeature.on = false;
@@ -89,38 +111,76 @@ vi.mock("./work-item-approval-request", () => ({ default: () => null }));
 vi.mock("./work-item-hierarchy", () => ({
   default: () => <div data-testid="work-item-hierarchy" />,
 }));
-vi.mock("./work-item-relations", () => ({ default: () => null }));
+vi.mock("./work-item-relations", () => ({
+  default: ({ readOnly }: { readOnly?: boolean }) => (
+    <div
+      data-testid="work-item-relations"
+      data-read-only={String(Boolean(readOnly))}
+    />
+  ),
+}));
 vi.mock("./work-item-sla", () => ({
   default: () => <div data-testid="sla-section" />,
 }));
-vi.mock("./work-item-attachments", () => ({ default: () => null }));
+vi.mock("./work-item-attachments", () => ({
+  default: ({ readOnly }: { readOnly?: boolean }) => (
+    <div
+      data-testid="work-item-attachments"
+      data-read-only={String(Boolean(readOnly))}
+    />
+  ),
+}));
 vi.mock("@/components/service-management/change-section", () => ({
   default: () => null,
   useChangeSectionVisible: () => false,
 }));
 vi.mock("./work-item-audit-history", () => ({ default: () => null }));
 vi.mock("./work-item-activity", () => ({
-  default: () => <div data-testid="work-item-activity" />,
+  default: ({ readOnly }: { readOnly?: boolean }) => (
+    <div
+      data-testid="work-item-activity"
+      data-read-only={String(Boolean(readOnly))}
+    />
+  ),
 }));
 
 vi.mock("./work-item-title", () => ({
-  default: ({ item }: { item: { title: string } }) => (
-    <p data-testid="work-item-title">{item.title}</p>
+  default: ({
+    item,
+    readOnly,
+  }: {
+    item: { title: string };
+    readOnly?: boolean;
+  }) => (
+    <p data-testid="work-item-title" data-read-only={String(Boolean(readOnly))}>
+      {item.title}
+    </p>
   ),
 }));
 vi.mock("./work-item-description", () => ({
-  default: () => <div data-testid="work-item-description" />,
+  default: ({ readOnly }: { readOnly?: boolean }) => (
+    <div
+      data-testid="work-item-description"
+      data-read-only={String(Boolean(readOnly))}
+    />
+  ),
 }));
 vi.mock("./work-item-properties", () => ({
   default: ({
     compact,
+    readOnly,
     onAccessLost,
     children,
   }: React.PropsWithChildren<{
     compact?: boolean;
+    readOnly?: boolean;
     onAccessLost: () => void;
   }>) => (
-    <div data-testid="work-item-properties" data-compact={String(!!compact)}>
+    <div
+      data-testid="work-item-properties"
+      data-compact={String(!!compact)}
+      data-read-only={String(Boolean(readOnly))}
+    >
       <Button type="button" onClick={onAccessLost}>
         properties
       </Button>
@@ -226,6 +286,73 @@ describe("WorkItemDetail", () => {
     expect(screen.getByTestId("work-item-metadata")).toHaveTextContent(
       "Platform",
     );
+    const propertiesScroll = screen.getByTestId("work-item-properties-scroll");
+    expect(propertiesScroll).toHaveClass(
+      "min-h-0",
+      "overflow-y-auto",
+      "overscroll-contain",
+    );
+    expect(propertiesScroll).toContainElement(properties);
+    expect(
+      screen.getByRole("separator", {
+        name: "workItems:detail.resizeProperties",
+      }),
+    ).toHaveAttribute("aria-valuemin", "260");
+  });
+
+  it("keeps the task-page-frame Properties panel independently scrollable and resizable", () => {
+    render(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem()}
+        pageHeader={<div data-testid="task-page-header" />}
+      />,
+    );
+    const scroll = screen.getByTestId("work-item-properties-scroll");
+    expect(screen.getByTestId("task-page-header")).toBeInTheDocument();
+    expect(scroll).toHaveClass("min-h-0", "overflow-y-auto");
+    expect(
+      screen.getByRole("separator", {
+        name: "workItems:detail.resizeProperties",
+      }),
+    ).toBeInTheDocument();
+    expect(scroll).toContainElement(screen.getByTestId("work-item-properties"));
+  });
+
+  it("keeps compact properties scrollable without offering the desktop resize handle", () => {
+    device.mobile = true;
+    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
+    expect(screen.getByTestId("work-item-properties-scroll")).toHaveClass(
+      "max-h-[40vh]",
+      "overflow-y-auto",
+    );
+    expect(screen.queryByRole("separator")).toBeNull();
+  });
+
+  it("keeps archived details visible while marking every editable surface read-only", () => {
+    timeFeature.on = true;
+    locationState.search = {
+      sections: { itemKey: "PROJ-123", open: ["time", "attachments"] },
+    };
+    render(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({ archivedAt: "2026-10-20T00:00:00.000Z" })}
+      />,
+    );
+
+    expect(screen.getByText("workItems:list.archived")).toBeInTheDocument();
+    for (const id of [
+      "work-item-title",
+      "work-item-description",
+      "work-item-activity",
+      "work-item-properties",
+      "work-item-relations",
+      "work-item-attachments",
+      "time-section",
+    ]) {
+      expect(screen.getByTestId(id)).toHaveAttribute("data-read-only", "true");
+    }
   });
 
   it("keeps an explicitly opened SLA disclosure below the title on narrow screens and mounts it once", () => {

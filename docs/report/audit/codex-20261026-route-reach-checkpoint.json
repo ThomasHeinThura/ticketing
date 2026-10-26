@@ -1,0 +1,56 @@
+{
+	"generated": "2026-10-25T18:23:12.077824+00:00",
+	"scope": "Route registration and project reach checkpoint; not phase sign-off",
+	"checks": [
+		{
+			"check": "Generated route metadata and OpenAPI",
+			"status": "pass"
+		},
+		{
+			"check": "Permissions suite",
+			"status": "pass",
+			"tests": 118,
+			"files": 17
+		},
+		{
+			"check": "Combined-board real PostgreSQL reach cases",
+			"status": "pass",
+			"tests": 7,
+			"excludedTests": 208,
+			"selection": "work-items/combined|tables cover exactly",
+			"dedicatedDatabase": true,
+			"coverage": [
+				"unreachable and nonexistent project responses match",
+				"reachable capable session succeeds",
+				"outsider API key cannot access project",
+				"GET and POST read paths"
+			]
+		},
+		{
+			"check": "Plugins rotation UI",
+			"status": "scoped pass",
+			"tests": 4,
+			"files": 2,
+			"coverage": [
+				"health failures disable rotation",
+				"persisted counts and job history",
+				"unconfigured encryption key disables rotation",
+				"existing plugin catalog remains available"
+			],
+			"browser": "pending next build"
+		}
+	],
+	"open": [
+		"Persisted standard project-list browser request returned500; under diagnosis.",
+		"Active combined-board and organisation edits require final typecheck, full tests and rebuilt browser verification."
+	],
+	"review": {
+		"roundsConsumed": 0,
+		"maxPerPhase": 3
+	},
+	"protection": {
+		"sourceSnapshot": "backups/codex-sit-20261025/worktree181-checkpoint",
+		"fullyDecodedArchiveMembers": 1728,
+		"purpose": "recoverable uncommitted work checkpoint; not a commit or complete final-tree snapshot"
+	}
+}

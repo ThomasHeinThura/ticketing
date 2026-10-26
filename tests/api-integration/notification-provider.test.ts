@@ -10,6 +10,7 @@ import {
   getEmailProvider,
   updateEmailProvider,
 } from "../../apps/api/src/notification-provider/service";
+import * as emailRuntime from "../../packages/email/dist/smtp-runtime";
 
 import {
   bootstrapSmtpConfiguration,
@@ -90,6 +91,63 @@ async function providerRow() {
       .from(schema.instancePluginConfigTable)
       .where(eq(schema.instancePluginConfigTable.pluginId, "notify.email")),
     "provider",
+  );
+}
+
+type SmtpConnector = NonNullable<
+  ReturnType<typeof providerRuntime.runtimeSmtpConfiguration>["connect"]
+>;
+
+async function startPrivateSmtpEndpoint(
+  onConnection: (socket: Socket) => void,
+) {
+  const sockets = new Set<Socket>();
+  const server = net.createServer((socket) => {
+    sockets.add(socket);
+    socket.on("close", () => sockets.delete(socket));
+    socket.on("error", () => {});
+    onConnection(socket);
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string")
+    throw new Error("SMTP diagnostic fixture address missing");
+  return {
+    port: address.port,
+    close: async () => {
+      for (const socket of sockets) socket.destroy();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    },
+  };
+}
+
+function useInjectedConnector(connect: SmtpConnector) {
+  const original = providerRuntime.runtimeSmtpConfiguration;
+  vi.spyOn(providerRuntime, "runtimeSmtpConfiguration").mockImplementation(
+    (settings, password) => ({ ...original(settings, password), connect }),
+  );
+}
+
+async function verifyWithInjectedConnector(
+  f: Awaited<ReturnType<typeof administrator>>,
+  configInput: Omit<typeof config, "username"> & { username: string | null },
+  password: string | undefined,
+  connect: SmtpConnector,
+) {
+  useInjectedConnector(connect);
+  return csrfRequest(
+    f.app,
+    `${route}/test`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: f.cookie },
+      body: JSON.stringify({
+        version: 0,
+        config: configInput,
+        ...(password === undefined ? {} : { password }),
+      }),
+    },
+    f.cookie,
   );
 }
 
@@ -371,6 +429,149 @@ describe("persisted SMTP provider backend", () => {
         audit.map((row) => ({ before: row.before, after: row.after })),
       ),
     ).not.toContain("pass:");
+  });
+  it("distinguishes a real SMTP 535 and redacts both provider reply and password", async () => {
+    const f = await administrator();
+    const password = `synthetic-secret-${randomUUID()}`;
+    const providerReply = `535 5.7.8 invalid credentials ${password}`;
+    const endpoint = await startPrivateSmtpEndpoint((socket) => {
+      socket.write("220 synthetic.test ESMTP\r\n");
+      let buffer = "";
+      socket.on("data", (chunk) => {
+        buffer += chunk.toString();
+        let end = buffer.indexOf("\r\n");
+        while (end >= 0) {
+          const line = buffer.slice(0, end);
+          buffer = buffer.slice(end + 2);
+          if (/^EHLO|^HELO/u.test(line))
+            socket.write("250-synthetic.test\r\n250 AUTH PLAIN LOGIN\r\n");
+          else if (/^AUTH /u.test(line)) socket.write(`${providerReply}\r\n`);
+          else if (line === "QUIT") socket.end("221 bye\r\n");
+          end = buffer.indexOf("\r\n");
+        }
+      });
+    });
+    try {
+      const response = await verifyWithInjectedConnector(
+        f,
+        { ...config, requireTLS: false },
+        password,
+        (signal) =>
+          openSmtpSocket(
+            {
+              host: "127.0.0.1",
+              port: endpoint.port,
+              secure: false,
+            },
+            signal,
+          ),
+      );
+      const body = await response.text();
+      expect(response.status).toBe(502);
+      expect(body).toContain("smtp_authentication_failed");
+      expect(body).not.toContain("535");
+      expect(body).not.toContain(password);
+      expect(
+        await db
+          .select()
+          .from(schema.instancePluginConfigTable)
+          .where(eq(schema.instancePluginConfigTable.pluginId, "notify.email")),
+      ).toHaveLength(0);
+    } finally {
+      await endpoint.close();
+    }
+  });
+  it("reports a real connection refusal as a connection failure", async () => {
+    const f = await administrator();
+    const reserved = net.createServer();
+    await new Promise<void>((resolve) =>
+      reserved.listen(0, "127.0.0.1", resolve),
+    );
+    const address = reserved.address();
+    if (!address || typeof address === "string")
+      throw new Error("SMTP refusal fixture address missing");
+    await new Promise<void>((resolve) => reserved.close(() => resolve()));
+
+    const response = await verifyWithInjectedConnector(
+      f,
+      { ...config, requireTLS: false, username: null },
+      undefined,
+      (signal) =>
+        openSmtpSocket(
+          {
+            host: "127.0.0.1",
+            port: address.port,
+            secure: false,
+          },
+          signal,
+        ),
+    );
+    const body = await response.text();
+    expect(response.status).toBe(502);
+    expect(body).toContain("smtp_connection_failed");
+    expect(body).not.toContain("ECONNREFUSED");
+  });
+  it("reports a real TLS handshake failure with its bounded category", async () => {
+    const f = await administrator();
+    const endpoint = await startPrivateSmtpEndpoint((socket) => {
+      socket.write("220 plaintext is not TLS\r\n");
+    });
+    try {
+      const response = await verifyWithInjectedConnector(
+        f,
+        { ...config, secure: true, requireTLS: false, username: null },
+        undefined,
+        (signal) =>
+          openSmtpSocket(
+            {
+              host: "127.0.0.1",
+              port: endpoint.port,
+              secure: true,
+              servername: "smtp.example.test",
+            },
+            signal,
+          ),
+      );
+      const body = await response.text();
+      expect(response.status).toBe(502);
+      expect(body).toContain("smtp_tls_failed");
+      expect(body).not.toContain("plaintext is not TLS");
+      expect(body).not.toContain("ERR_SSL_");
+    } finally {
+      await endpoint.close();
+    }
+  });
+  it("maps unknown connector errors to the generic redacted verification failure", async () => {
+    const f = await administrator();
+    const providerReply = "raw provider response synthetic-secret";
+    const response = await verifyWithInjectedConnector(
+      f,
+      { ...config, requireTLS: false, username: null },
+      undefined,
+      async () => {
+        throw new Error(providerReply);
+      },
+    );
+    const body = await response.text();
+    expect(response.status).toBe(502);
+    expect(body).toContain("smtp_verification_failed");
+    expect(body).not.toContain(providerReply);
+  });
+  it("maps the SMTP attempt deadline to the bounded timeout code", async () => {
+    const f = await administrator();
+    vi.spyOn(emailRuntime, "executeSmtp").mockRejectedValue(
+      new emailRuntime.SmtpAttemptError("deadline"),
+    );
+    const response = await verifyWithInjectedConnector(
+      f,
+      { ...config, requireTLS: false, username: null },
+      undefined,
+      async () => {
+        throw new Error("unused connector");
+      },
+    );
+    expect(response.status).toBe(502);
+    expect(await response.text()).toContain("smtp_timeout");
   });
   it("verifies through an injected private SMTP receiver with no message and enforces persisted rate limits", async () => {
     const f = await administrator();

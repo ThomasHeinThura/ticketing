@@ -1,0 +1,2 @@
+ALTER TABLE "provisioning_event" ALTER COLUMN "identity_connection_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "provisioning_event" ADD CONSTRAINT "provisioning_event_failure_attribution_check" CHECK (identity_connection_id IS NOT NULL OR (kind IN ('auth.failed', 'request.denied') AND outcome IN ('failed', 'denied') AND scim_connection_id IS NULL AND external_identity_id IS NULL));

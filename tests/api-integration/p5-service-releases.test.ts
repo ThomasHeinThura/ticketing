@@ -7,7 +7,10 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
-import { changeDetailTable } from "../../apps/api/src/database/schema-p5-service";
+import {
+  changeDetailTable,
+  releaseTable,
+} from "../../apps/api/src/database/schema-p5-service";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -178,11 +181,80 @@ describe("releases", () => {
     const done = (await released.json()) as ReleaseBody;
     expect(done.publishedAt).not.toBeNull();
     expect(done.notesLocked).toBe(true);
+    const [publishedRow] = await db
+      .select({ portalSnapshot: releaseTable.portalSnapshot })
+      .from(releaseTable)
+      .where(eq(releaseTable.id, release.id));
+    expect(publishedRow?.portalSnapshot).toMatchObject({
+      version: 1,
+      name: "R1",
+      serviceName: "Checkout",
+      notes: null,
+    });
     const locked = await w.ownerCall(`/api/releases/${release.id}/notes`, {
       method: "POST",
       body: { notes: "Too late" },
     });
     expect(locked.status).toBe(409);
+
+    const changed = await w.ownerCall(`/api/releases/${release.id}`, {
+      method: "PATCH",
+      body: { name: "R1 revised", plannedDate: "2032-03-04" },
+    });
+    expect(changed.status).toBe(200);
+    const [unchangedSnapshot] = await db
+      .select({ portalSnapshot: releaseTable.portalSnapshot })
+      .from(releaseTable)
+      .where(eq(releaseTable.id, release.id));
+    expect(unchangedSnapshot?.portalSnapshot).toEqual(
+      publishedRow?.portalSnapshot,
+    );
+    const unpublished = await w.ownerCall(`/api/releases/${release.id}`, {
+      method: "PATCH",
+      body: { publishToPortal: false },
+    });
+    expect(unpublished.status).toBe(200);
+    const [unpublishedRow] = await db
+      .select({ portalSnapshot: releaseTable.portalSnapshot })
+      .from(releaseTable)
+      .where(eq(releaseTable.id, release.id));
+    expect(unpublishedRow?.portalSnapshot).toBeNull();
+    const edited = await w.ownerCall(`/api/releases/${release.id}/notes`, {
+      method: "POST",
+      body: { notes: "Revised customer notes" },
+    });
+    expect(edited.status).toBe(200);
+    const republished = await w.ownerCall(`/api/releases/${release.id}`, {
+      method: "PATCH",
+      body: { publishToPortal: true },
+    });
+    const latest = (await republished.json()) as ReleaseBody;
+    const [republishedRow] = await db
+      .select({ portalSnapshot: releaseTable.portalSnapshot })
+      .from(releaseTable)
+      .where(eq(releaseTable.id, release.id));
+    expect(republishedRow?.portalSnapshot).toMatchObject({
+      name: "R1 revised",
+      plannedDate: "2032-03-04",
+      notes: "Revised customer notes",
+    });
+    await db
+      .update(releaseTable)
+      .set({ portalSnapshot: null })
+      .where(eq(releaseTable.id, release.id));
+    const restoredSnapshot = await w.ownerCall(`/api/releases/${release.id}`, {
+      method: "PATCH",
+      body: { version: latest.version, name: latest.name },
+    });
+    expect(restoredSnapshot.status).toBe(200);
+    const [restoredRow] = await db
+      .select({ portalSnapshot: releaseTable.portalSnapshot })
+      .from(releaseTable)
+      .where(eq(releaseTable.id, release.id));
+    expect(restoredRow?.portalSnapshot).toMatchObject({
+      name: "R1 revised",
+      notes: "Revised customer notes",
+    });
     const actions = (
       await db
         .select({ action: schema.auditLogTable.action })

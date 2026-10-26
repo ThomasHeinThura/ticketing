@@ -47,6 +47,7 @@ import {
 } from "@/hooks/queries/service-management";
 import { useTeams } from "@/hooks/queries/team/use-teams";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import { routes } from "@/lib/routes";
 import {
   LoadingRows,
@@ -266,7 +267,7 @@ function CreateServiceDialog({
 
 /** `docs/screens.md` "Services list" (`SVC-1`..`SVC-4`): every service with its status and counts. */
 export function ServicesList({ q }: { q?: string }) {
-  const { t } = useTranslation("serviceManagement");
+  const { t, i18n } = useTranslation("serviceManagement");
   const navigate = useNavigate();
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";
@@ -279,7 +280,11 @@ export function ServicesList({ q }: { q?: string }) {
     <>
       <PageTitle title={t("services.list.title")} />
       <PageFrame
-        title={t("services.list.title")}
+        title={
+          <span title={getDefaultAgentTerm(i18n, "service", 2)}>
+            {t("services.list.title")}
+          </span>
+        }
         description={t("services.list.description")}
         actions={
           status.data?.canManageServices ? (

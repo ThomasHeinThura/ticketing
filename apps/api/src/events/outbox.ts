@@ -1,6 +1,10 @@
 import type db from "../database";
 import { currentAutomationContext } from "./automation-context";
-import { EVENT_KEYS } from "./event-keys";
+import {
+  EVENT_KEYS,
+  isLegacyTaskCompatibilityPayload,
+  LEGACY_TASK_COMPATIBILITY_KEYS,
+} from "./event-keys";
 import { insertOutboxEvent } from "./outbox.repository";
 
 export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -74,8 +78,15 @@ export async function enqueueOutboxEvent<
   Payload extends Record<string, unknown>,
 >(tx: DbTransaction, input: DomainEventEnvelope<Payload>): Promise<void> {
   const event = withAutomationContext(input);
-  if (!EVENT_KEYS.has(event.kind)) {
+  const isLegacyTaskEvent = LEGACY_TASK_COMPATIBILITY_KEYS.has(event.kind);
+  if (!EVENT_KEYS.has(event.kind) && !isLegacyTaskEvent) {
     throw new TypeError(`Unknown domain event kind: ${event.kind}`);
+  }
+  if (
+    isLegacyTaskEvent &&
+    !isLegacyTaskCompatibilityPayload(event.payload, event.scope)
+  ) {
+    throw new TypeError("Invalid legacy task compatibility event payload");
   }
   if (!event.scope.workspaceId) {
     const instanceScopedKeys = new Set([
@@ -83,6 +94,9 @@ export async function enqueueOutboxEvent<
       "pending_action.decided",
       "pending_action.executed",
       "identity.deprovisioned",
+      "identity.provisioned",
+      "api_key.auto_disabled",
+      "import.chunk_completed",
     ]);
     if (
       Object.keys(event.scope).length > 0 ||

@@ -1,4 +1,14 @@
+import { createId } from "@paralleldrive/cuid2";
+import { and, eq } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 import db from "../../database";
+import {
+  apikeyTable,
+  organisationProjectDefaultTable,
+  userTable,
+  workspaceTable,
+} from "../../database/schema";
+import { enqueueOutboxEvent, eventScope } from "../../events/outbox";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { seedProjectStates } from "../../utils/seed-project-states";
 import {
@@ -60,7 +70,7 @@ export class InvalidProjectOrganisationError extends Error {
 type ProjectConfiguration = {
   kind: "project" | "managed_service";
   supportLevel: "L1" | "L2" | "L3" | null;
-  serviceCalendarId: string | null;
+  serviceCalendarId?: string | null;
   organisationId: string | null;
 };
 
@@ -71,6 +81,7 @@ async function createProject(
   slug: string,
   configuration: ProjectConfiguration,
   creatorUserId: string,
+  apiKeyId?: string,
 ) {
   try {
     return await createProjectRow(
@@ -80,6 +91,7 @@ async function createProject(
       slug,
       configuration,
       creatorUserId,
+      apiKeyId,
     );
   } catch (error) {
     // Exact constraint names, not a substring match on `"slug"` (issue #269): this
@@ -115,8 +127,22 @@ async function createProjectRow(
   slug: string,
   configuration: ProjectConfiguration,
   creatorUserId: string,
+  apiKeyId?: string,
 ) {
   return db.transaction(async (tx) => {
+    const [workspace] = await tx
+      .select({
+        defaultServiceCalendarId: workspaceTable.defaultServiceCalendarId,
+      })
+      .from(workspaceTable)
+      .where(eq(workspaceTable.id, workspaceId))
+      .for("share")
+      .limit(1);
+    if (!workspace)
+      throw new HTTPException(404, { message: "Workspace not found" });
+    let inheritedCalendarId: string | null = null;
+    let inheritedSlaPolicyId: string | null = null;
+    let hasOrganisationDefaults = false;
     if (configuration.organisationId !== null) {
       const servable = await isServableCustomerOrganisation(
         tx,
@@ -124,7 +150,46 @@ async function createProjectRow(
         configuration.organisationId,
       );
       if (!servable) throw new InvalidProjectOrganisationError();
+      const [defaults] = await tx
+        .select({
+          serviceCalendarId: organisationProjectDefaultTable.serviceCalendarId,
+          slaPolicyId: organisationProjectDefaultTable.slaPolicyId,
+        })
+        .from(organisationProjectDefaultTable)
+        .where(
+          and(
+            eq(
+              organisationProjectDefaultTable.organisationId,
+              configuration.organisationId,
+            ),
+            eq(organisationProjectDefaultTable.workspaceId, workspaceId),
+          ),
+        )
+        .limit(1);
+      hasOrganisationDefaults = Boolean(defaults);
+      inheritedCalendarId = defaults?.serviceCalendarId ?? null;
+      inheritedSlaPolicyId = defaults?.slaPolicyId ?? null;
     }
+    const serviceCalendarId =
+      configuration.serviceCalendarId === undefined
+        ? inheritedCalendarId
+        : configuration.serviceCalendarId;
+    const serviceCalendarMode =
+      configuration.serviceCalendarId !== undefined || hasOrganisationDefaults
+        ? "override"
+        : "inherit";
+    const effectiveServiceCalendarId =
+      serviceCalendarMode === "override"
+        ? serviceCalendarId
+        : workspace.defaultServiceCalendarId;
+    if (
+      configuration.kind === "managed_service" &&
+      (!configuration.supportLevel || !effectiveServiceCalendarId)
+    )
+      throw new HTTPException(422, {
+        message:
+          "PR-9: managed services require a support level and service calendar",
+      });
 
     // Serialize ordering writes per workspace: without this, two concurrent
     // creates can read the same max(position) and land on the same slot, and a
@@ -159,7 +224,10 @@ async function createProjectRow(
       slug,
       kind: configuration.kind,
       supportLevel: configuration.supportLevel,
-      serviceCalendarId: configuration.serviceCalendarId,
+      serviceCalendarId,
+      slaPolicyId: inheritedSlaPolicyId,
+      serviceCalendarMode,
+      slaPolicyMode: hasOrganisationDefaults ? "override" : "inherit",
       organisationId: configuration.organisationId,
       createdBy: creator?.id ?? null,
       position: maxPosition === null ? 0 : maxPosition + 1,
@@ -198,6 +266,68 @@ async function createProjectRow(
           person: creator,
         });
       }
+
+      let eventActor: {
+        type: "person" | "api_key";
+        id: string;
+        name: string;
+      };
+      if (apiKeyId) {
+        const [apiKey] = await tx
+          .select({ id: apikeyTable.id, name: apikeyTable.name })
+          .from(apikeyTable)
+          .where(
+            and(
+              eq(apikeyTable.id, apiKeyId),
+              eq(apikeyTable.referenceId, creatorUserId),
+            ),
+          )
+          .limit(1);
+        if (!apiKey) {
+          throw new Error("Could not resolve project-created API-key actor");
+        }
+        eventActor = {
+          type: "api_key",
+          id: apiKey.id,
+          name: apiKey.name ?? "API key",
+        };
+      } else {
+        if (!creator) {
+          throw new Error("Could not resolve project-created person actor");
+        }
+        const [creatorUser] = await tx
+          .select({ name: userTable.name })
+          .from(userTable)
+          .where(eq(userTable.id, creatorUserId))
+          .limit(1);
+        if (!creatorUser) {
+          throw new Error("Could not resolve project-created person actor");
+        }
+        eventActor = {
+          type: "person",
+          id: creator.id,
+          name: creatorUser.name,
+        };
+      }
+      await enqueueOutboxEvent(tx, {
+        id: `evt_${createId()}`,
+        kind: "project.created",
+        occurredAt: new Date().toISOString(),
+        actor: eventActor,
+        scope: eventScope({
+          workspaceId,
+          organisationId: createdProject.organisationId,
+          projectId: createdProject.id,
+        }),
+        payload: {
+          key: createdProject.slug,
+          url: `/agent/projects/${encodeURIComponent(createdProject.slug)}`,
+          kind: createdProject.kind,
+        },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
+      });
     }
 
     return createdProject;

@@ -3,6 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
+import { HttpError } from "@/lib/http-error";
 import useGetWorkItems from "./use-get-work-items";
 
 /**
@@ -33,6 +34,14 @@ function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+  };
+}
+
+function createWrapperWithClient(queryClient: QueryClient) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -183,8 +192,78 @@ describe("useGetWorkItems: structured filter (SV-11)", () => {
       filter: "assignee:@me",
       sort: "priority",
       dir: "desc",
+      sorts: [{ field: "priority", order: "desc" }],
       columns: ["key", "state"],
+      cursor: undefined,
     });
+    expect(mocks.getWorkItems).not.toHaveBeenCalled();
+  });
+
+  it("uses scoped search for custom columns even without a filter and preserves their metadata across pages", async () => {
+    mocks.searchWorkItems
+      .mockResolvedValueOnce({
+        ...makeResult(["s1"]),
+        hasMore: true,
+        nextCursor: "next",
+        customFieldColumns: [
+          {
+            key: "constructor",
+            name: "Asset tag",
+            format: "text",
+            options: [],
+          },
+        ],
+        customFieldPeople: [
+          { projectId: "proj-a", personId: "person-a", name: "A" },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ...makeResult(["s2"]),
+        customFieldColumns: [
+          {
+            key: "constructor",
+            name: "Asset tag",
+            format: "text",
+            options: [],
+          },
+        ],
+        customFieldPeople: [
+          { projectId: "proj-a", personId: "person-a", name: "A" },
+          { projectId: "proj-a", personId: "person-b", name: "B" },
+        ],
+      });
+    const { result } = renderHook(
+      () =>
+        useGetWorkItems({
+          projectId: "proj-a",
+          projectSlug: "OPS",
+          workspaceId: "ws-1",
+          columns: ["key", "cf.constructor"],
+          sort: "key",
+          dir: "asc",
+        }),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(1));
+    expect(mocks.searchWorkItems).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      projectSlug: "OPS",
+      filter: "",
+      sort: "key",
+      dir: "asc",
+      sorts: [{ field: "key", order: "asc" }],
+      columns: ["key", "cf.constructor"],
+      cursor: undefined,
+    });
+    await result.current.fetchNextPage();
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
+    expect(result.current.data?.customFieldColumns?.[0]?.key).toBe(
+      "constructor",
+    );
+    expect(result.current.data?.customFieldPeople).toEqual([
+      { projectId: "proj-a", personId: "person-a", name: "A" },
+      { projectId: "proj-a", personId: "person-b", name: "B" },
+    ]);
     expect(mocks.getWorkItems).not.toHaveBeenCalled();
   });
 
@@ -237,6 +316,53 @@ describe("useGetWorkItems: structured filter (SV-11)", () => {
     mocks.searchWorkItems.mockClear();
     await queryClient.invalidateQueries({ queryKey: ["work-items", "proj-a"] });
     expect(mocks.searchWorkItems).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces a changed sort cursor and restarts paging from the first page", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    mocks.searchWorkItems
+      .mockResolvedValueOnce({
+        ...makeResult(["first"]),
+        hasMore: true,
+        nextCursor: "oversized-anchor",
+      })
+      .mockRejectedValueOnce(new HttpError(409, "cursor_changed"))
+      .mockResolvedValueOnce({
+        ...makeResult(["fresh-first"]),
+        hasMore: true,
+        nextCursor: "new-anchor",
+      });
+    const { result } = renderHook(
+      () =>
+        useGetWorkItems({
+          projectId: "proj-a",
+          projectSlug: "OPS",
+          workspaceId: "ws-1",
+          filter: "priority:high",
+          sort: "key",
+          dir: "asc",
+        }),
+      { wrapper: createWrapperWithClient(queryClient) },
+    );
+    await waitFor(() =>
+      expect(result.current.data?.items[0]?.id).toBe("first"),
+    );
+
+    await result.current.fetchNextPage();
+    await waitFor(() => expect(result.current.isCursorChanged).toBe(true));
+    expect(result.current.isLoadMoreError).toBe(true);
+
+    await result.current.restartFromFirstPage();
+    await waitFor(() =>
+      expect(result.current.data?.items[0]?.id).toBe("fresh-first"),
+    );
+    expect(mocks.searchWorkItems).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ cursor: undefined }),
+    );
+    expect(result.current.isCursorChanged).toBe(false);
   });
 
   it("does not show another project's filtered rows while a project switch loads", async () => {

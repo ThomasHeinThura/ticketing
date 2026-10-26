@@ -36,6 +36,7 @@ import {
 } from "./response";
 import {
   createPageBody,
+  pageListQuery,
   pageParam,
   projectParam,
   restorePageBody,
@@ -100,12 +101,15 @@ const listRoute = createRoute({
   path: "/projects/{projectId}/pages",
   operationId: "listProjectPages",
   tags,
-  summary: "List a project's live pages (tree via parentId)",
+  summary:
+    "List a project's live pages or, with update permission, deleted pages for recovery",
   middleware: [pagesProjectReach] as const,
-  request: { params: projectParam },
+  request: { params: projectParam, query: pageListQuery },
   responses: {
     200: jsonResponse("Pages without bodies", pageListSchema),
-    403: errorResponse("Missing project:read permission"),
+    403: errorResponse(
+      "Missing project:read or recovery project:update permission",
+    ),
     404: staffOnly,
   },
 });
@@ -256,9 +260,19 @@ const deleteRoute = createRoute({
 
 const router = apiRouter<Vars>()
   .openapi(listRoute, async (c) => {
-    const { scope, canEdit } = await authorisePages(c, "project:read");
+    const deletedOnly = c.req.valid("query").deletedOnly === "true";
+    // A recovery listing reveals deleted titles and snippets, so require update capability
+    // before querying or serializing those rows. Reach, feature and API-key ceilings are
+    // still enforced by the same canonical page authorization path.
+    const { scope, canEdit } = await authorisePages(
+      c,
+      deletedOnly ? "project:update" : "project:read",
+    );
     return c.json(
-      pageListSchema.parse({ pages: await listPages(scope), canEdit }),
+      pageListSchema.parse({
+        pages: await listPages(scope, deletedOnly),
+        canEdit,
+      }),
       200,
     );
   })

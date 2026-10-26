@@ -11,6 +11,144 @@ export function costEntryAmountMinor(units: number, rateMinor: number): number {
   return units * rateMinor;
 }
 
+export type CommittedUnknownReason =
+  | "unscheduled"
+  | "nonTime"
+  | "unassigned"
+  | "unrated";
+
+export type CommittedForecastTask = {
+  /** The stored calendar date; null tasks cannot be assigned to any budget period. */
+  dueDate: string | null;
+  estimatedMinutes: number | null;
+  loggedMinutes: number;
+  assigneeId: string | null;
+  rate: { rateMinor: number; currency: string } | null;
+};
+
+export type CommittedForecast = {
+  byCurrency: Array<{
+    currency: string;
+    amountMinor: number;
+    taskCount: number;
+  }>;
+  unknown: {
+    taskCount: number;
+    reasons: Record<CommittedUnknownReason, number>;
+    /** Remaining minutes known even though one of due date, assignment or rate is missing. */
+    knownRemainingMinutes: number;
+  };
+};
+
+function committedAmountMinor(minutes: number, rateMinor: number): number {
+  const amount = (BigInt(minutes) * BigInt(rateMinor) + 30n) / 60n;
+  const safeAmount = Number(amount);
+  if (!Number.isSafeInteger(safeAmount))
+    throw new Error("committed amount exceeds safe integer range");
+  return safeAmount;
+}
+
+/** A scalar budget-currency total exists only for a complete, single-currency forecast. */
+export function committedMinorForBudget(
+  forecast: CommittedForecast,
+  budgetCurrency: string,
+): number | null {
+  if (forecast.unknown.taskCount > 0) return null;
+  if (forecast.byCurrency.length === 0) return 0;
+  if (
+    forecast.byCurrency.length === 1 &&
+    forecast.byCurrency[0]?.currency === budgetCurrency
+  )
+    return forecast.byCurrency[0].amountMinor;
+  return null;
+}
+
+/**
+ * TC-17: value only open leaf tasks due in this budget's calendar period. Missing period/date,
+ * non-time estimates, missing assignees and missing current rates stay explicit unknowns.
+ */
+export function committedForecast(
+  tasks: readonly CommittedForecastTask[],
+  periodStart: string,
+  periodEnd: string,
+): CommittedForecast {
+  const currencies = new Map<
+    string,
+    { currency: string; amountMinor: number; taskCount: number }
+  >();
+  const reasons: Record<CommittedUnknownReason, number> = {
+    unscheduled: 0,
+    nonTime: 0,
+    unassigned: 0,
+    unrated: 0,
+  };
+  let knownRemainingMinutes = 0;
+  const markUnknown = (
+    reason: CommittedUnknownReason,
+    remainingMinutes: number | null,
+  ) => {
+    reasons[reason] += 1;
+    if (remainingMinutes !== null) knownRemainingMinutes += remainingMinutes;
+  };
+
+  for (const task of tasks) {
+    if (task.dueDate === null) {
+      const remaining =
+        task.estimatedMinutes === null
+          ? null
+          : Math.max(0, task.estimatedMinutes - task.loggedMinutes);
+      markUnknown("unscheduled", remaining);
+      continue;
+    }
+    if (task.dueDate < periodStart || task.dueDate > periodEnd) continue;
+    if (
+      task.estimatedMinutes === null ||
+      !Number.isInteger(task.estimatedMinutes) ||
+      task.estimatedMinutes < 0
+    ) {
+      markUnknown("nonTime", null);
+      continue;
+    }
+    const remainingMinutes = Math.max(
+      0,
+      task.estimatedMinutes - task.loggedMinutes,
+    );
+    if (task.assigneeId === null) {
+      markUnknown("unassigned", remainingMinutes);
+      continue;
+    }
+    if (task.rate === null) {
+      markUnknown("unrated", remainingMinutes);
+      continue;
+    }
+
+    const total = currencies.get(task.rate.currency) ?? {
+      currency: task.rate.currency,
+      amountMinor: 0,
+      taskCount: 0,
+    };
+    total.amountMinor += committedAmountMinor(
+      remainingMinutes,
+      task.rate.rateMinor,
+    );
+    if (!Number.isSafeInteger(total.amountMinor))
+      throw new Error("committed amount exceeds safe integer range");
+    total.taskCount += 1;
+    currencies.set(task.rate.currency, total);
+  }
+
+  return {
+    byCurrency: [...currencies.values()].sort((a, b) =>
+      a.currency.localeCompare(b.currency),
+    ),
+    unknown: {
+      taskCount: Object.values(reasons).reduce((sum, count) => sum + count, 0),
+      reasons,
+      knownRemainingMinutes,
+    },
+  };
+}
+
 export type CostRateSource = "entry" | "cost_type";
 
 /**

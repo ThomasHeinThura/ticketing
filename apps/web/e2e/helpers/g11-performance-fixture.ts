@@ -351,6 +351,20 @@ export async function installPerformanceApiFixture(
       return json([PROJECT]);
     if (path === `/api/project/${PROJECT_ID}` && request.method() === "GET")
       return json(PROJECT);
+    if (
+      path === `/api/projects/${PROJECT_ID}/states` &&
+      request.method() === "GET"
+    )
+      return json([
+        {
+          id: "state-g11",
+          stateTemplateId: "template-g11",
+          name: "Backlog",
+          group: "backlog",
+          position: 1,
+          isDefault: true,
+        },
+      ]);
     if (path === "/api/capabilities")
       return json({
         manageProjects: false,

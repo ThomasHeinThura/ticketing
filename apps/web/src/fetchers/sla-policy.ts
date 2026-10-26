@@ -16,13 +16,14 @@ export type SlaPolicyGoal = SlaPolicy["draftVersion"] extends infer T
     : never
   : never;
 export type SlaPolicyInput = {
+  key?: string;
   name: string;
   description?: string | null;
   calendarId: string;
   atRiskThresholdPct: number;
   goals: SlaPolicyGoal[];
 };
-export type SlaPolicyPatch = Partial<SlaPolicyInput>;
+export type SlaPolicyPatch = Partial<Omit<SlaPolicyInput, "key">>;
 
 async function throwPolicyError(
   response: Response,

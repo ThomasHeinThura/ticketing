@@ -11,6 +11,7 @@ import {
   DURATION_BUCKETS,
   isCalendarDate,
   MAX_CUSTOM_WINDOW_DAYS,
+  minutesToHours,
   previousWindow,
   ratePercent,
   resolveWindow,
@@ -215,6 +216,11 @@ describe("database timestamps", () => {
 });
 
 describe("CSV (RP-10)", () => {
+  it("preserves quarter-hour precision in report hour values", () => {
+    expect(minutesToHours(15)).toBe(0.25);
+    expect(minutesToHours(30)).toBe(0.5);
+  });
+
   it("quotes per RFC 4180", () => {
     expect(csvCell('say "hi"')).toBe('"say ""hi"""');
     expect(csvCell("a,b")).toBe('"a,b"');
@@ -249,6 +255,11 @@ function envelope(overrides: Partial<ReportEnvelope> = {}): ReportEnvelope {
     },
     asOf: "2026-10-24T09:30:00.000Z",
     boundary: "live",
+    sources: {
+      metricSnapshot: false,
+      cycleSnapshot: false,
+      liveComponents: ["selected_period"],
+    },
     snapshot: null,
     filters: {},
     options: {},
@@ -338,10 +349,65 @@ describe("rate stripping (TC-11)", () => {
     expect(full).toContain("EUR 9.00");
   });
 
+  it("exports exact quarter-hour values without changing unrelated currency values", () => {
+    const csv = reportToCsv(
+      envelope({
+        columns: [
+          { key: "group", label: "Group", kind: "text" },
+          { key: "hours", label: "Hours", kind: "hours" },
+          { key: "cost", label: "Cost", kind: "text", sensitive: true },
+        ],
+        rows: [{ group: "CCY", hours: minutesToHours(15), cost: "€30.00" }],
+      }),
+    );
+    expect(csv).toContain("CCY,0.25,€30.00");
+  });
+
   it("states a live report as live", () => {
     expect(
       reportToCsv(envelope({ window: { ...envelope().window, live: true } })),
     ).toContain("# Window: live");
+  });
+
+  it("labels custom windows by their inclusive last day, including non-midnight ends", () => {
+    const oneDay = envelope({
+      window: {
+        preset: "custom",
+        from: "2026-10-24T00:00:00.000Z",
+        to: "2026-10-25T00:00:00.000Z",
+        days: 1,
+        live: false,
+      },
+    });
+    expect(reportToCsv(oneDay)).toContain("# Window: 2026-10-24 to 2026-10-24");
+    const partialEnd = envelope({
+      window: {
+        preset: "custom",
+        from: "2026-10-24T00:00:00.000Z",
+        to: "2026-10-25T09:30:00.000Z",
+        days: 2,
+        live: false,
+      },
+    });
+    expect(reportToCsv(partialEnd)).toContain(
+      "# Window: 2026-10-24 to 2026-10-25",
+    );
+  });
+
+  it("labels a stored snapshot through its last included UTC day", () => {
+    const snapshot = envelope({
+      boundary: "snapshot",
+      snapshot: {
+        closedDays: 1,
+        uncoveredDays: 0,
+        computedAt: "2026-10-25T08:00:00.000Z",
+        through: "2026-10-25T00:00:00.000Z",
+      },
+    });
+
+    expect(reportToCsv(snapshot)).toContain(
+      "# Source: 1 closed day(s) from stored daily snapshots up to 2026-10-24",
+    );
   });
 });
 

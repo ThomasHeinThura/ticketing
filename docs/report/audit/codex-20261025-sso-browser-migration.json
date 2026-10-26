@@ -1,0 +1,34 @@
+{
+	"recordedAt": "2026-10-25T06:29:15.451Z",
+	"records": [
+		{
+			"target": "sso-browser",
+			"database": "taskdesk_codex_sso_browser_20261025_test",
+			"before": {
+				"people": 1,
+				"work_items": 0,
+				"projects": 0,
+				"teams": 0,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 171
+			},
+			"after": {
+				"people": 1,
+				"work_items": 0,
+				"projects": 0,
+				"teams": 0,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 172
+			},
+			"rollbackDump": "backups/codex-sit-20261025/pre-0171-sso-browser.dump",
+			"dumpFullyDecoded": true
+		}
+	],
+	"protectedDatabase": "Never targeted; protected live database remains separate on62870",
+	"notes": [
+		"0171 adds versioned twelve-family coverage and transactional source invalidation; facts and source records are preserved.",
+		"Source records and aggregate rows are preserved; missing coverage reads live until the hourly job rebuilds it."
+	]
+}

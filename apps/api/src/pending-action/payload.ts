@@ -25,6 +25,8 @@ export type PendingActionPayloadInput = PendingActionScope & {
   target_type: string;
   target_ids: readonly string[];
   confirmation_required: ConfirmationKind;
+  /** Intent bound only for PA-14's approval-decision pending action. */
+  mcp_decision?: McpApprovalDecision;
 };
 
 export type PendingActionPayload = PendingActionScope & {
@@ -33,7 +35,45 @@ export type PendingActionPayload = PendingActionScope & {
   target_type: string;
   target_ids: string[];
   confirmation_required: ConfirmationKind;
+  /** Absent from all legacy payloads, preserving their existing hashes. */
+  mcp_decision?: McpApprovalDecision;
 };
+
+export type McpApprovalDecision = {
+  action: "approve" | "reject";
+  note: string | null;
+};
+
+export const MCP_APPROVAL_DECISION_ROUTE =
+  "POST /api/approvals/{id}/decide" as const;
+
+function canonicalMcpApprovalDecision(
+  input: PendingActionPayloadInput,
+): McpApprovalDecision | undefined {
+  const isDecisionTarget =
+    input.action === "mcp_destructive" &&
+    input.target_type === "approval_decision" &&
+    input.route_key === MCP_APPROVAL_DECISION_ROUTE;
+  if (!isDecisionTarget && input.mcp_decision === undefined) return undefined;
+  if (!isDecisionTarget || input.mcp_decision === undefined) {
+    throw new TypeError(
+      "MCP approval intent is supported only by its registered pending-action target",
+    );
+  }
+  const decision = input.mcp_decision as McpApprovalDecision;
+  if (
+    !decision ||
+    typeof decision !== "object" ||
+    Array.isArray(decision) ||
+    Object.keys(decision).sort().join(",") !== "action,note" ||
+    !["approve", "reject"].includes(decision.action) ||
+    !(decision.note === null || typeof decision.note === "string") ||
+    (typeof decision.note === "string" && decision.note.length > 4000)
+  ) {
+    throw new TypeError("MCP approval intent is malformed");
+  }
+  return { action: decision.action, note: decision.note };
+}
 
 function canonicalJson(value: unknown): string {
   if (
@@ -78,6 +118,7 @@ function canonicalJson(value: unknown): string {
 export function canonicalPendingActionPayload(
   input: PendingActionPayloadInput,
 ): PendingActionPayload {
+  const mcpDecision = canonicalMcpApprovalDecision(input);
   const targetIds = [...input.target_ids].sort();
   if (targetIds.length === 0 || targetIds.some((id) => id.length === 0)) {
     throw new TypeError("A pending action must name at least one target id");
@@ -94,6 +135,7 @@ export function canonicalPendingActionPayload(
     project_id: input.project_id,
     organisation_id: input.organisation_id,
     confirmation_required: input.confirmation_required,
+    ...(mcpDecision ? { mcp_decision: mcpDecision } : {}),
   };
 }
 

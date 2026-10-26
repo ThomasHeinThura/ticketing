@@ -3,18 +3,11 @@ import {
   type AvailableHoursRow,
   availableMinutes,
 } from "../../time-tracking/cost-logic";
-import {
-  dayOf,
-  itemFrom,
-  num,
-  OPEN,
-  selectRows,
-  timeFrom,
-  tsn,
-} from "../context";
+import { dayOf, itemFrom, num, OPEN, selectRows, tsn } from "../context";
 import { countValue, DAY_MS, minutesToHours, ratePercent, utc } from "../logic";
+import { loadFactRows } from "../snapshot.repository";
 import type { ReportContext, ReportDefinition, Row } from "../types";
-import { cell, col, emptyBody, itemsOf } from "./shared";
+import { cell, col, emptyBody, itemsOf, pageLimit, pageRows } from "./shared";
 
 const WORKING_HOURS_PER_DAY = 8;
 const NAME = sql`COALESCE(pe.display_name, u.name, 'Unknown')`;
@@ -24,6 +17,7 @@ const workload: ReportDefinition = {
   category: "people",
   title: "Workload",
   live: true,
+  pagedExport: true,
   async compute(ctx) {
     const rows = await selectRows<{
       assignee_id: string | null;
@@ -36,8 +30,9 @@ const workload: ReportDefinition = {
         count(*) FILTER (WHERE w.priority IN ('urgent', 'high')) AS urgent
       ${itemFrom(ctx, sql`LEFT JOIN person pe ON pe.id = w.assignee_id LEFT JOIN "user" u ON u.id = pe.user_id`)}
       AND ${OPEN}
-      GROUP BY 1, 2 ORDER BY count(*) DESC LIMIT 200`);
-    const table: Row[] = rows.map((row) => ({
+      GROUP BY 1, 2 ORDER BY count(*) DESC, w.assignee_id NULLS FIRST, ${NAME} ${pageLimit(ctx, 200)}`);
+    const page = pageRows(ctx, rows, 200);
+    const table: Row[] = page.rows.map((row) => ({
       assignee: row.assignee_id ? (row.name ?? "Unknown") : "(unassigned)",
       open: num(row.open),
       overdue: num(row.overdue),
@@ -89,6 +84,7 @@ const workload: ReportDefinition = {
         col("urgent", "Urgent or high", "number"),
       ],
       rows: table,
+      truncated: page.truncated,
       population: open,
       drill: true,
     });
@@ -112,6 +108,7 @@ const staleWork: ReportDefinition = {
   category: "people",
   title: "Stale work",
   live: true,
+  pagedExport: true,
   async compute(ctx) {
     const days = staleDays(ctx);
     const cutoff = new Date(ctx.now.getTime() - days * DAY_MS);
@@ -123,8 +120,9 @@ const staleWork: ReportDefinition = {
     }>(sql`SELECT w.assignee_id, ${NAME} AS name, count(*) AS stale, min(w.updated_at) AS oldest
       ${itemFrom(ctx, sql`LEFT JOIN person pe ON pe.id = w.assignee_id LEFT JOIN "user" u ON u.id = pe.user_id`)}
       AND ${OPEN} AND w.updated_at < ${tsn(cutoff)}
-      GROUP BY 1, 2 ORDER BY count(*) DESC LIMIT 200`);
-    const table: Row[] = rows.map((row) => ({
+      GROUP BY 1, 2 ORDER BY count(*) DESC, w.assignee_id NULLS FIRST, ${NAME} ${pageLimit(ctx, 200)}`);
+    const page = pageRows(ctx, rows, 200);
+    const table: Row[] = page.rows.map((row) => ({
       assignee: row.assignee_id ? (row.name ?? "Unknown") : "(unassigned)",
       stale: num(row.stale),
       oldest: Math.floor(
@@ -163,6 +161,7 @@ const staleWork: ReportDefinition = {
         col("oldest", "Longest untouched (days)", "days"),
       ],
       rows: table,
+      truncated: page.truncated,
       population: total,
       drill: true,
     });
@@ -179,10 +178,6 @@ const staleWork: ReportDefinition = {
 
 function lastDay(ctx: ReportContext): string {
   return dayOf(new Date(ctx.window.to.getTime() - 1));
-}
-
-function timeWindow(ctx: ReportContext) {
-  return sql`te.date >= ${dayOf(ctx.window.from)}::date AND te.date <= ${lastDay(ctx)}::date`;
 }
 
 const MINUTES_PER_DAY = WORKING_HOURS_PER_DAY * 60;
@@ -251,7 +246,42 @@ const utilisation: ReportDefinition = {
   category: "people",
   title: "Utilisation",
   feature: "feature.time_tracking",
+  pagedExport: true,
   async compute(ctx) {
+    const timeFacts = await loadFactRows(
+      ctx,
+      "time_logged",
+      ctx.window.from,
+      ctx.window.to,
+    );
+    const loggedByPerson = new Map<string, number>();
+    for (const fact of timeFacts) {
+      const personId = fact.dimensions.personId;
+      if (personId)
+        loggedByPerson.set(
+          personId,
+          (loggedByPerson.get(personId) ?? 0) + (fact.measures.minutes ?? 0),
+        );
+    }
+    ctx.snapshots.sources.liveComponents.add("availability");
+    ctx.snapshots.use.liveParts = true;
+    const loggedPersonIds = [...loggedByPerson.keys()];
+    const loggedPeople = loggedPersonIds.length
+      ? sql`pe.id IN (${sql.join(
+          loggedPersonIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})`
+      : sql`false`;
+    const loggedOrder = loggedPersonIds.length
+      ? sql`CASE pe.id ${sql.join(
+          loggedPersonIds.map(
+            (id) => sql`WHEN ${id} THEN ${loggedByPerson.get(id) ?? 0}`,
+          ),
+          sql` `,
+        )} ELSE 0 END`
+      : // ORDER BY a bare integer is interpreted as a select-list ordinal by PostgreSQL.
+        // Keep this as an expression when nobody logged time in the selected period.
+        sql`0::numeric`;
     const capacityVisible = ctx.readAnyTime
       ? ctx.readAll && !ctx.filters.teamId
         ? sql`true`
@@ -264,11 +294,7 @@ const utilisation: ReportDefinition = {
       name: string | null;
       minutes: string;
       days: string | null;
-    }>(sql`WITH logged AS (
-        SELECT te.person_id, sum(te.minutes) AS minutes
-        ${timeFrom(ctx)} AND ${timeWindow(ctx)}
-        GROUP BY 1),
-      cap AS (
+    }>(sql`WITH cap AS (
         SELECT pc.id AS person_id,
           max(t.capacity_days_per_week * COALESCE(tm.allocation_pct, 100) / 100.0) AS days
         FROM team t
@@ -286,28 +312,30 @@ const utilisation: ReportDefinition = {
           AND ${reachableTeam(ctx)}
         GROUP BY 1)
       SELECT pe.id AS person_id, COALESCE(pe.display_name, u.name, 'Unknown') AS name,
-        COALESCE(l.minutes, 0) AS minutes, c.days
+        0::numeric AS minutes, c.days
       FROM person pe
       LEFT JOIN "user" u ON u.id = pe.user_id
-      LEFT JOIN logged l ON l.person_id = pe.id
       LEFT JOIN cap c ON c.person_id = pe.id
-      WHERE pe.id IN (SELECT person_id FROM logged)
+      WHERE ${loggedPeople}
         OR (
           (c.days IS NOT NULL OR EXISTS (SELECT 1 FROM available_hours ah
               WHERE ah.workspace_id = ${ctx.workspaceId} AND ah.person_id = pe.id))
           AND ${capacityVisible}
         )
-      ORDER BY COALESCE(l.minutes, 0) DESC LIMIT 200`);
+      ORDER BY ${loggedOrder} DESC, pe.id ${pageLimit(ctx, 200)}`);
+    const page = pageRows(ctx, rows, 200);
     const available = await loadAvailableHours(
       ctx,
-      rows.map((row) => row.person_id),
+      page.rows.map((row) => row.person_id),
     );
     const from = dayOf(ctx.window.from);
     const to = lastDay(ctx);
     let usedFallback = false;
     let someUnset = false;
-    const table: Row[] = rows.map((row) => {
-      const loggedHours = minutesToHours(num(row.minutes));
+    const table: Row[] = page.rows.map((row) => {
+      const loggedHours = minutesToHours(
+        loggedByPerson.get(row.person_id) ?? 0,
+      );
       const result = availableMinutes(
         available.get(row.person_id) ?? [],
         from,
@@ -373,6 +401,7 @@ const utilisation: ReportDefinition = {
         col("utilisation", "Utilisation", "percent"),
       ],
       rows: table,
+      truncated: page.truncated,
       population: table.length,
       notes,
       drill: false,
@@ -385,6 +414,7 @@ const capacity: ReportDefinition = {
   category: "people",
   title: "Capacity",
   feature: "feature.time_tracking",
+  pagedExport: true,
   async compute(ctx) {
     const teams = await selectRows<{
       id: string;
@@ -397,8 +427,11 @@ const capacity: ReportDefinition = {
       WHERE t.workspace_id = ${ctx.workspaceId}
         AND ${ctx.filters.teamId ? sql`t.id = ${ctx.filters.teamId}` : sql`true`}
         AND ${reachableTeam(ctx)}
-      ORDER BY t.name LIMIT 200`);
-    const members = teams.length
+      ORDER BY t.name, t.id ${pageLimit(ctx, 200)}`);
+    const page = pageRows(ctx, teams, 200);
+    const selectedTeams = page.rows;
+    const selectedTeamIds = selectedTeams.map((team) => team.id);
+    const members = selectedTeams.length
       ? await selectRows<{
           team_id: string;
           person_id: string;
@@ -407,7 +440,7 @@ const capacity: ReportDefinition = {
           FROM team_member tm
           JOIN person pc ON pc.user_id = tm.user_id
           WHERE tm.team_id IN (${sql.join(
-            teams.map((team) => sql`${team.id}`),
+            selectedTeams.map((team) => sql`${team.id}`),
             sql`, `,
           )})`)
       : [];
@@ -420,28 +453,49 @@ const capacity: ReportDefinition = {
         (id) => ctx.readAnyTime || id === ctx.identity.personId,
       ),
     );
-    const logged = await selectRows<{
-      team_id: string;
-      minutes: string;
-    }>(sql`SELECT tm.team_id, sum(te.minutes) AS minutes
-      ${timeFrom(ctx, sql`JOIN team_member tm ON tm.user_id = pe.user_id JOIN team tt ON tt.id = tm.team_id AND tt.workspace_id = ${ctx.workspaceId}`)}
-      AND ${timeWindow(ctx)}
-      GROUP BY 1`);
-    const open = await selectRows<{
-      team_id: string;
-      n: string;
-    }>(sql`SELECT tm.team_id, count(*) AS n
+    const timeFacts = await loadFactRows(
+      ctx,
+      "time_logged",
+      ctx.window.from,
+      ctx.window.to,
+    );
+    const loggedBy = new Map<string, number>();
+    for (const fact of timeFacts) {
+      const personId = fact.dimensions.personId;
+      if (!personId) continue;
+      for (const member of members) {
+        if (
+          member.person_id === personId &&
+          selectedTeamIds.includes(member.team_id)
+        )
+          loggedBy.set(
+            member.team_id,
+            (loggedBy.get(member.team_id) ?? 0) + (fact.measures.minutes ?? 0),
+          );
+      }
+    }
+    ctx.snapshots.sources.liveComponents.add("availability");
+    ctx.snapshots.sources.liveComponents.add("commitments");
+    ctx.snapshots.use.liveParts = true;
+    const open =
+      selectedTeamIds.length > 0
+        ? await selectRows<{
+            team_id: string;
+            n: string;
+          }>(sql`SELECT tm.team_id, count(*) AS n
       ${itemFrom(ctx, sql`JOIN person pa ON pa.id = w.assignee_id JOIN team_member tm ON tm.user_id = pa.user_id JOIN team tt ON tt.id = tm.team_id AND tt.workspace_id = ${ctx.workspaceId}`)}
       AND ${OPEN}
-      GROUP BY 1`);
-    const loggedBy = new Map(
-      logged.map((row) => [row.team_id, num(row.minutes)]),
-    );
+      AND tm.team_id IN (${sql.join(
+        selectedTeamIds.map((id) => sql`${id}`),
+        sql`, `,
+      )})
+      GROUP BY 1`)
+        : [];
     const openBy = new Map(open.map((row) => [row.team_id, num(row.n)]));
     const from = dayOf(ctx.window.from);
     const to = lastDay(ctx);
     let usedFallback = false;
-    const table: Row[] = teams.map((team) => {
+    const table: Row[] = selectedTeams.map((team) => {
       // TC-20/TC-22: each member contributes their own available hours (scaled by their
       // allocation to this team); a member without a row falls back to the team's working days.
       let total = 0;
@@ -527,6 +581,7 @@ const capacity: ReportDefinition = {
         col("open", "Open items assigned", "number"),
       ],
       rows: table,
+      truncated: page.truncated,
       population: table.length,
       notes,
     });

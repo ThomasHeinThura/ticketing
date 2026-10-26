@@ -11,6 +11,7 @@ import { z } from "../openapi";
  *
  * | `listGroups.<projectId>` | `project` | project id | `listGroups` | collapsed list group (state) ids, at most 50 (`VW-15`) |
  * | `columns.<projectId>`    | `project` | project id | `columns`    | the table's chosen columns in display order (`VW-19`) |
+ * | `columnWidths.<projectId>` | `project` | project id | `columnWidths` | registered column IDs to 64–800 px integer widths, at most 100 entries (`VW-21`, Thomas approved 25 Oct) |
  *
  * `theme` and `sidebar` are named by the spec but have no specified value domain, so they are
  * not whitelisted. Adding a key is a spec change first, then a change here.
@@ -29,7 +30,7 @@ export const LIST_GROUPS_SCHEMA = z
     message: "list groups must not repeat",
   });
 
-/** The table columns the work-item search can show (`WORK_ITEM_SEARCH_COLUMNS` on the web). */
+/** Native table columns; live `cf.<key>` columns are checked in the settings service. */
 export const TABLE_COLUMNS = [
   "key",
   "title",
@@ -38,13 +39,29 @@ export const TABLE_COLUMNS = [
   "priority",
   "dueDate",
 ] as const;
+export const CUSTOM_FIELD_COLUMN_PATTERN = /^cf\.[a-z][a-z0-9_]{0,63}$/u;
+const TABLE_COLUMN_SET: ReadonlySet<string> = new Set(TABLE_COLUMNS);
+const TABLE_COLUMN_ID_SCHEMA = z
+  .string()
+  .refine(
+    (column) =>
+      TABLE_COLUMN_SET.has(column) || CUSTOM_FIELD_COLUMN_PATTERN.test(column),
+    { message: "unknown table column" },
+  );
 /** `VW-19`: a non-empty, duplicate-free subset of the columns, in display order. */
 export const COLUMNS_SCHEMA = z
-  .array(z.enum(TABLE_COLUMNS))
+  .array(TABLE_COLUMN_ID_SCHEMA)
   .min(1)
-  .max(TABLE_COLUMNS.length)
+  .max(100)
   .refine((columns) => new Set(columns).size === columns.length, {
     message: "columns must not repeat",
+  });
+
+/** VW-21 widths; syntax is checked here and live custom-field registration in the service. */
+export const COLUMN_WIDTHS_SCHEMA = z
+  .record(TABLE_COLUMN_ID_SCHEMA, z.number().int().min(64).max(800))
+  .refine((widths) => Object.keys(widths).length <= 100, {
+    message: "at most 100 column widths are allowed",
   });
 
 export type SettingTarget =
@@ -75,6 +92,13 @@ export type SettingTarget =
       readonly scopeId: string;
       readonly rowKey: "columns";
       readonly schema: typeof COLUMNS_SCHEMA;
+    }
+  | {
+      readonly kind: "columnWidths";
+      readonly scope: "project";
+      readonly scopeId: string;
+      readonly rowKey: "columnWidths";
+      readonly schema: typeof COLUMN_WIDTHS_SCHEMA;
     };
 
 export const SETTING_SCOPE_ID_MAX_LENGTH = 128;
@@ -92,9 +116,15 @@ const PROJECT_ID_PATTERN = new RegExp(
 const LAYOUT_PREFIX = "layout.";
 const LIST_GROUPS_PREFIX = "listGroups.";
 const COLUMNS_PREFIX = "columns.";
+const COLUMN_WIDTHS_PREFIX = "columnWidths.";
 
 /** The `user_preference.key` values a project-scoped settings key can occupy. */
-export const PROJECT_ROW_KEYS = ["layout", "listGroups", "columns"] as const;
+export const PROJECT_ROW_KEYS = [
+  "layout",
+  "listGroups",
+  "columns",
+  "columnWidths",
+] as const;
 
 /** Returns the row a settings key addresses, or undefined for a key that is not whitelisted. */
 export function parseSettingKey(key: string): SettingTarget | undefined {
@@ -140,6 +170,17 @@ export function parseSettingKey(key: string): SettingTarget | undefined {
       schema: COLUMNS_SCHEMA,
     };
   }
+  if (key.startsWith(COLUMN_WIDTHS_PREFIX)) {
+    const projectId = key.slice(COLUMN_WIDTHS_PREFIX.length);
+    if (!PROJECT_ID_PATTERN.test(projectId)) return undefined;
+    return {
+      kind: "columnWidths",
+      scope: "project",
+      scopeId: projectId,
+      rowKey: "columnWidths",
+      schema: COLUMN_WIDTHS_SCHEMA,
+    };
+  }
   return undefined;
 }
 
@@ -159,6 +200,8 @@ export function projectSettingKey(
       return `${LIST_GROUPS_PREFIX}${projectId}`;
     case "columns":
       return `${COLUMNS_PREFIX}${projectId}`;
+    case "columnWidths":
+      return `${COLUMN_WIDTHS_PREFIX}${projectId}`;
     default:
       return undefined;
   }

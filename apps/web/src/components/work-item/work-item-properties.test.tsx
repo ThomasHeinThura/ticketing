@@ -133,6 +133,28 @@ beforeEach(() => {
 });
 
 describe("WorkItemProperties", () => {
+  it("preserves the original property groups and labels while archived controls are disabled", async () => {
+    mocks.labels.mockResolvedValue([
+      { id: "label-1", name: "Support", color: "teal", assigned: true },
+    ]);
+    renderProps(
+      <WorkItemProperties item={item()} readOnly onAccessLost={vi.fn()} />,
+    );
+    expect(screen.getByTestId("work-item-state-control")).toBeDisabled();
+    expect(screen.getByTestId("work-item-priority-control")).toBeDisabled();
+    expect(screen.getByTestId("work-item-assignee-control")).toBeDisabled();
+    expect(await screen.findByText("Support")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "tasks:properties.labels" }),
+    ).toBeDisabled();
+    expect(screen.getByTestId("parent-control")).toBeInTheDocument();
+    for (const copy of screen.getAllByRole("button", {
+      name: "workItems:properties.copyLink",
+    }))
+      expect(copy).toBeEnabled();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
   it("adds and removes a catalogue label with versioned writes", async () => {
     mocks.labels.mockResolvedValue([
       { id: "label-1", name: "Support", color: "teal", assigned: false },

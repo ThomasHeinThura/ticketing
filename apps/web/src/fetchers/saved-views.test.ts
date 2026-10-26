@@ -146,12 +146,47 @@ describe("saved-view API calls", () => {
       }),
     });
     expect(await runSavedView({ id: "v1", cursor: "c" })).toMatchObject({
+      entity: "work_item",
       total: 4,
       hasMore: false,
     });
     expect(mocks.run).toHaveBeenCalledWith({
       param: { id: "v1" },
       query: { cursor: "c" },
+    });
+  });
+
+  it("preserves the submission entity response instead of treating it as work items", async () => {
+    mocks.run.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        submissions: [
+          {
+            ref: "SUB-17",
+            summary: "Access request",
+            submission: {
+              id: "submission-1",
+              number: 17,
+              state: "new",
+              customerVisibility: "private",
+              claimedBy: null,
+              claimedAt: null,
+              createdAt: "2026-10-25T00:00:00.000Z",
+            },
+            requestType: { id: "type-1", key: "access", name: "Access" },
+            requester: { id: "person-1", displayName: "Requester" },
+            organisation: { id: "org-1", name: "Customer" },
+          },
+        ],
+        page: { hasMore: false, nextCursor: null },
+        meta: { total: 1 },
+      }),
+    });
+    await expect(runSavedView({ id: "v1" })).resolves.toMatchObject({
+      entity: "submission",
+      submissions: [{ ref: "SUB-17" }],
+      hasMore: false,
+      total: 1,
     });
   });
 

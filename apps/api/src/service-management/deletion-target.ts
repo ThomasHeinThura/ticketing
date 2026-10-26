@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { serviceTable } from "../database/schema-p5-service";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -41,6 +42,24 @@ export const serviceDeletionTarget: RegisteredDeletionTarget = {
       summary: { serviceId: service.id, name: service.name },
       version: registeredDeletionFingerprint(service),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [service] = await tx
+      .select({ id: serviceTable.id, workspaceId: serviceTable.workspaceId })
+      .from(serviceTable)
+      .where(eq(serviceTable.id, id))
+      .limit(1);
+    return service
+      ? {
+          id: service.id,
+          workspaceId: service.workspaceId,
+          projectId: null,
+          organisationId: null,
+        }
+      : undefined;
   },
   assertDeletable: async (tx, loaded) => {
     const [service] = await tx

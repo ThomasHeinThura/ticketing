@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import db from "../database";
 import {
   personTable,
@@ -8,7 +8,6 @@ import {
   stateTemplateTable,
   teamMemberTable,
   userTable,
-  workItemKeyAliasTable,
   workItemTable,
   workspaceTable,
   workspaceUserTable,
@@ -42,18 +41,6 @@ export type CanonicalWorkItemRow = {
   createdAt: Date;
   relevanceScore: number;
 };
-
-/**
- * Plain text of a rich-text `description` document: every `text` node of the document, or the
- * string itself when the description is stored as a JSON string. Searching the raw jsonb cast
- * would also match structural keys such as `paragraph`.
- */
-const descriptionText = sql<string>`coalesce(
-  case
-    when jsonb_typeof(${workItemTable.description}) = 'string'
-      then ${workItemTable.description} #>> '{}'
-    else jsonb_path_query_array(${workItemTable.description}, 'lax $.**.text')::text
-  end, '')`;
 
 function workItemBaseConditions(params: {
   workspaceId: string;
@@ -106,52 +93,139 @@ export async function searchCanonicalWorkItems(params: {
   const lower = term.toLowerCase();
   const prefix = `${escapeLikePattern(lower)}%`;
   const contains = `%${escapeLikePattern(lower)}%`;
-  const aliasMatch = db
-    .select({ id: workItemKeyAliasTable.workItemId })
-    .from(workItemKeyAliasTable)
-    .where(sql`lower(${workItemKeyAliasTable.oldKey}) = ${lower}`);
+  const reachableProjects =
+    params.reachableProjectIds.length > 0
+      ? sql`wi.project_id IN (${sql.join(
+          params.reachableProjectIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})`
+      : sql`false`;
+  /**
+   * Plain text of the rich-text description's text nodes (or its JSON string value).
+   * Keep this expression aligned with the matching expression GIN index in schema.ts.
+   */
+  const aliasedDescriptionText = sql<string>`coalesce(
+    case
+      when jsonb_typeof(wi.description) = 'string' then wi.description #>> '{}'
+      else jsonb_path_query_array(wi.description, 'lax $.**.text')::text
+    end, '')`;
+  const scope = sql`
+    wi.workspace_id = ${params.workspaceId}
+    AND wi.deleted_at IS NULL
+    AND wi.archived_at IS NULL
+    AND p.deleted_at IS NULL
+    AND p.archived_at IS NULL
+    AND ${reachableProjects}
+    ${params.projectId ? sql`AND wi.project_id = ${params.projectId}` : sql``}
+  `;
 
-  const relevance = sql<number>`
-    CASE
-      WHEN lower(${workItemTable.key}) = ${lower} THEN 100
-      WHEN ${workItemTable.id} IN (${aliasMatch}) THEN 90
-      WHEN lower(${workItemTable.key}) LIKE ${prefix} THEN 12
-      WHEN lower(${workItemTable.title}) = ${lower} THEN 10
-      WHEN lower(${workItemTable.title}) LIKE ${prefix} THEN 8
-      WHEN lower(${workItemTable.title}) LIKE ${contains} THEN 6
-      WHEN lower(${descriptionText}) LIKE ${contains} THEN 2
-      ELSE 1
-    END`;
+  // Keep the searchable predicates in independent, bounded branches. The combined OR made
+  // PostgreSQL scan every live work item before it could apply the relevance sort, defeating
+  // both the title trigram index and the normalised key-prefix B-tree. The three public branch
+  // limits are safe: any row in the global top K is in at least one branch that grants its
+  // winning score, and K rows ahead of it in that branch also rank ahead globally.
+  const result = await db.execute(sql`
+    WITH
+    key_candidates AS (
+      SELECT wi.id, CASE WHEN lower(wi.key) = ${lower} THEN 100 ELSE 12 END AS score,
+             wi.created_at
+        FROM work_item AS wi
+        JOIN project AS p ON p.id = wi.project_id
+       WHERE ${scope}
+         AND lower(wi.key) LIKE ${prefix}
+       ORDER BY score DESC, wi.created_at DESC, wi.id
+       LIMIT ${limit}
+    ),
+    alias_distinct AS (
+      SELECT wi.id, max(wi.created_at) AS created_at
+        FROM work_item_key_alias AS alias
+        JOIN work_item AS wi ON wi.id = alias.work_item_id
+        JOIN project AS p ON p.id = wi.project_id
+       WHERE ${scope}
+         AND lower(alias.old_key) = ${lower}
+       GROUP BY wi.id
+    ),
+    alias_candidates AS (
+      SELECT id, 90 AS score, created_at
+        FROM alias_distinct
+       ORDER BY score DESC, created_at DESC, id
+       LIMIT ${limit}
+    ),
+    title_candidates AS (
+      SELECT wi.id,
+             CASE
+               WHEN lower(wi.title) = ${lower} THEN 10
+               WHEN lower(wi.title) LIKE ${prefix} THEN 8
+               ELSE 6
+             END AS score,
+             wi.created_at
+        FROM work_item AS wi
+        JOIN project AS p ON p.id = wi.project_id
+       WHERE ${scope}
+         AND wi.title ILIKE ${contains}
+       ORDER BY score DESC, wi.created_at DESC, wi.id
+       LIMIT ${limit}
+    ),
+    description_candidates AS (
+      SELECT wi.id, 2 AS score, wi.created_at
+        FROM work_item AS wi
+        JOIN project AS p ON p.id = wi.project_id
+       WHERE ${scope}
+         AND lower(${aliasedDescriptionText}) LIKE ${contains}
+       ORDER BY score DESC, wi.created_at DESC, wi.id
+       LIMIT ${limit}
+    ),
+    candidate_scores AS (
+      SELECT id, max(score) AS relevance_score, max(created_at) AS created_at
+        FROM (
+          SELECT id, score, created_at FROM key_candidates
+          UNION ALL
+          SELECT id, score, created_at FROM alias_candidates
+          UNION ALL
+          SELECT id, score, created_at FROM title_candidates
+          UNION ALL
+          SELECT id, score, created_at FROM description_candidates
+        ) AS candidates
+       GROUP BY id
+       ORDER BY relevance_score DESC, created_at DESC, id
+       LIMIT ${limit}
+    )
+    SELECT wi.id,
+           wi.key,
+           wi.title,
+           wi.number,
+           wi.priority,
+           state_template.name AS "stateName",
+           wi.project_id AS "projectId",
+           p.name AS "projectName",
+           p.slug AS "projectSlug",
+           wi.workspace_id AS "workspaceId",
+           w.name AS "workspaceName",
+           wi.created_at AS "createdAt",
+           candidate_scores.relevance_score AS "relevanceScore"
+      FROM candidate_scores
+      JOIN work_item AS wi ON wi.id = candidate_scores.id
+      JOIN project AS p ON p.id = wi.project_id
+      JOIN state AS state ON state.id = wi.state_id
+                         AND state.project_id = wi.project_id
+      JOIN state_template AS state_template
+        ON state_template.id = state.state_template_id
+      LEFT JOIN workspace AS w ON w.id = wi.workspace_id
+     ORDER BY candidate_scores.relevance_score DESC,
+              wi.created_at DESC,
+              wi.id
+  `);
 
-  return await db
-    .select({ ...workItemColumns, relevanceScore: relevance.as("relevance") })
-    .from(workItemTable)
-    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
-    .innerJoin(
-      stateTable,
-      and(
-        eq(stateTable.id, workItemTable.stateId),
-        eq(stateTable.projectId, workItemTable.projectId),
-      ),
-    )
-    .innerJoin(
-      stateTemplateTable,
-      eq(stateTemplateTable.id, stateTable.stateTemplateId),
-    )
-    .leftJoin(workspaceTable, eq(workspaceTable.id, workItemTable.workspaceId))
-    .where(
-      and(
-        ...workItemBaseConditions(params),
-        or(
-          sql`lower(${workItemTable.key}) LIKE ${prefix}`,
-          sql`${workItemTable.id} IN (${aliasMatch})`,
-          ilike(workItemTable.title, contains),
-          sql`lower(${descriptionText}) LIKE ${contains}`,
-        ),
-      ),
-    )
-    .orderBy(desc(relevance), desc(workItemTable.createdAt), workItemTable.id)
-    .limit(limit);
+  const rows = result.rows as Array<
+    Omit<CanonicalWorkItemRow, "createdAt"> & { createdAt: Date | string }
+  >;
+  return rows.map((row) => ({
+    ...row,
+    createdAt:
+      row.createdAt instanceof Date
+        ? row.createdAt
+        : new Date(`${row.createdAt.replace(" ", "T")}Z`),
+  }));
 }
 
 /**

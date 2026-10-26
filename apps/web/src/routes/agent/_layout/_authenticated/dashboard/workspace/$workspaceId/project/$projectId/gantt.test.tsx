@@ -1,4 +1,3 @@
-import enUS from "@i18n/en-US.json";
 import {
   act,
   cleanup,
@@ -10,6 +9,8 @@ import {
 import type { ComponentType, ReactNode } from "react";
 import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
+import { translate } from "@/test/en-translation";
 import type Task from "@/types/task";
 import { Route } from "./gantt";
 
@@ -161,30 +162,27 @@ vi.mock("@/components/gantt/canonical-gantt-task-bar", () => ({
 // Resolves against the real en-US bundle, so the assertions fail if the
 // jumpToToday key (or its interpolated siblings) stops matching what the
 // component actually requests.
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async () => ({
+  ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
-      const [namespace, path] = key.split(":");
-      const source = path
-        .split(".")
-        .reduce<unknown>(
-          (accumulator, part) =>
-            (accumulator as Record<string, unknown> | undefined)?.[part],
-          (enUS as Record<string, unknown>)[namespace],
-        );
-
-      if (typeof source !== "string") return key;
-
-      return source.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
-        String(options?.[name] ?? `{{${name}}}`),
-      );
+      return translate(key, options);
     },
   }),
 }));
 
+const agentWorkItems = getDefaultAgentTerm(undefined, "work_item", 2);
+const agentEpic = getDefaultAgentTerm(undefined, "epic", 1);
+const agentModule = getDefaultAgentTerm(undefined, "module", 1);
+
 const GanttRoute = (Route as unknown as { component: ComponentType }).component;
 
-function makeTask(overrides: Partial<Task>): Task {
+type TestScheduleTask = Task & {
+  epic: { id: string; key: string; title: string } | null;
+  epicAvailable: boolean;
+};
+
+function makeTask(overrides: Partial<TestScheduleTask>): TestScheduleTask {
   return {
     id: "task-1",
     title: "Task",
@@ -201,6 +199,8 @@ function makeTask(overrides: Partial<Task>): Task {
     assigneeId: null,
     assigneeName: null,
     projectId: "project-1",
+    epic: null,
+    epicAvailable: true,
     ...overrides,
   };
 }
@@ -404,7 +404,7 @@ describe("Gantt jump-to-today", () => {
       screen.getByPlaceholderText("Search scheduled tickets..."),
     ).toHaveValue("no such task");
     expect(
-      screen.getByText('No scheduled tasks match "no such task"'),
+      screen.getByText(`No scheduled ${agentWorkItems} match "no such task"`),
     ).toBeInTheDocument();
     expect(button).toBeDisabled();
   });
@@ -426,7 +426,7 @@ describe("Gantt jump-to-today", () => {
     const search = screen.getByPlaceholderText("Search scheduled tickets...");
     expect(search).toHaveValue("no such task");
     expect(
-      screen.getByText('No scheduled tasks match "no such task"'),
+      screen.getByText(`No scheduled ${agentWorkItems} match "no such task"`),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
@@ -563,7 +563,7 @@ describe("Gantt loading, error, empty and filter states (VW-7, VW-34)", () => {
     render(<GanttRoute />);
 
     expect(screen.getByTestId("gantt-empty")).toHaveTextContent(
-      "No scheduled tasks",
+      `No scheduled ${agentWorkItems}`,
     );
     expect(
       screen.queryByTestId("schedule-filter-chips"),
@@ -585,7 +585,7 @@ describe("Gantt loading, error, empty and filter states (VW-7, VW-34)", () => {
     render(<GanttRoute />);
 
     expect(screen.getByTestId("gantt-empty")).toHaveTextContent(
-      "No work items match this filter",
+      `No ${agentWorkItems} match this filter`,
     );
     expect(screen.getByTestId("schedule-filter-chips")).toHaveTextContent(
       "Priority",
@@ -664,6 +664,75 @@ describe("Gantt grouping (VW-27, VW-1)", () => {
     ).toBeInTheDocument();
   });
 
+  it("groups by the server-resolved epic, keeps None last, and exposes unavailable ancestry", () => {
+    routeState.search = { group: "epic" };
+    useGetTasks.mockReturnValue({
+      data: {
+        id: "project-1",
+        name: "Roadmap",
+        slug: "RM",
+        columns: [
+          {
+            id: "col-1",
+            name: "In Progress",
+            tasks: [
+              makeTask({
+                id: "RM-1",
+                title: "Epic root",
+                number: 1,
+                epic: { id: "epic-1", key: "RM-1", title: "Launch" },
+                epicAvailable: true,
+                startDate: "2026-08-28",
+                dueDate: "2026-09-02",
+              }),
+              makeTask({
+                id: "RM-2",
+                title: "Child",
+                number: 2,
+                epic: { id: "epic-1", key: "RM-1", title: "Launch" },
+                epicAvailable: true,
+                startDate: "2026-08-29",
+                dueDate: "2026-09-03",
+              }),
+              makeTask({
+                id: "RM-3",
+                title: "Hidden ancestor",
+                number: 3,
+                epic: null,
+                epicAvailable: false,
+                startDate: "2026-08-30",
+                dueDate: "2026-09-04",
+              }),
+              makeTask({
+                id: "RM-4",
+                title: "No epic",
+                number: 4,
+                epic: null,
+                epicAvailable: true,
+                startDate: "2026-08-31",
+                dueDate: "2026-09-05",
+              }),
+            ],
+          },
+        ],
+        plannedTasks: [],
+        archivedTasks: [],
+      },
+    });
+    render(<GanttRoute />);
+    const headings = screen
+      .getAllByTestId("gantt-group-row")
+      .map((row) => row.querySelector("h2")?.textContent);
+    expect(headings).toEqual([
+      "Launch",
+      `Unavailable ${agentEpic}`,
+      `No ${agentEpic}`,
+    ]);
+    expect(screen.getAllByText("Epic root")).toHaveLength(2);
+    expect(screen.getAllByText("Child")).toHaveLength(2);
+    expect(screen.getAllByText("Hidden ancestor")).toHaveLength(2);
+  });
+
   it("writes the grouping to the URL and removes it again when set back to none", async () => {
     // The menu opens asynchronously, which the faked clock would never advance.
     vi.useRealTimers();
@@ -723,7 +792,7 @@ describe("Gantt module grouping and dependency arrows (VW-27, VW-28)", () => {
     const headings = screen
       .getAllByTestId("gantt-group-row")
       .map((row) => row.querySelector("h2")?.textContent);
-    expect(headings).toEqual(["Checkout", "No module"]);
+    expect(headings).toEqual(["Checkout", `No ${agentModule}`]);
   });
 
   it("ignores group=module when the modules feature is off", () => {

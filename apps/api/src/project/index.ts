@@ -6,6 +6,7 @@ import {
   organisationTable,
   projectTable,
   serviceCalendarTable,
+  workspaceTable,
 } from "../database/schema";
 import {
   apiRouter,
@@ -27,6 +28,7 @@ import {
   listReachOf,
   requireReachFilteredList,
 } from "../utils/reach-filtered-list";
+import { apiKeyScopeSatisfies } from "../utils/require-api-key-permission-scope";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
@@ -55,6 +57,7 @@ import {
   updateProjectState,
 } from "./controllers/manage-project-states";
 import reorderProjectsCtrl from "./controllers/reorder-projects";
+import restoreProjectCtrl from "./controllers/restore-project";
 import standDownStakeholderCtrl from "./controllers/stand-down-stakeholder";
 import unarchiveProjectCtrl from "./controllers/unarchive-project";
 import updateMilestoneCtrl from "./controllers/update-milestone";
@@ -62,6 +65,7 @@ import updatePrerequisiteCtrl from "./controllers/update-prerequisite";
 import updateProjectCtrl from "./controllers/update-project";
 import updateProjectOwnershipCtrl from "./controllers/update-project-ownership";
 import updateStakeholderCtrl from "./controllers/update-stakeholder";
+import { resolveProjectServiceCalendarId } from "./effective-settings";
 import { countProjectRosterRows } from "./hierarchy.repository";
 import {
   assertCanManageProspectiveParent,
@@ -551,6 +555,35 @@ const unarchiveProjectRoute = createRoute({
   },
 });
 
+const restoreProjectRoute = createRoute({
+  method: "put",
+  operationId: "restoreProject",
+  path: "/{id}/restore",
+  tags: ["Projects"],
+  summary: "Restore a soft-deleted project",
+  description:
+    "Return a soft-deleted project to ordinary use during its 30-day recovery window. " +
+    "A soft-deleted or archived parent must be restored first. The project's prior " +
+    "archive state is preserved.",
+  middleware: [
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
+  ] as const,
+  request: { params: projectParam },
+  responses: {
+    200: jsonResponse("The restored project", projectSchema),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    403: errorResponse("Missing project:update permission"),
+    404: errorResponse("Project not found or out of reach"),
+    409: errorResponse(
+      "The 30-day restore window passed or the parent project must be restored first",
+    ),
+  },
+});
+
 // ── Issue #25's bounded slice: milestones, prerequisites, stakeholders, document ───────
 // links (`docs/03-features/projects-and-engagements.md` § API). Project members,
 // ownership (parent_id/owner_team_id) and health are NOT part of this slice -- see the
@@ -976,13 +1009,43 @@ const project = apiRouter<
   .openapi(listProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
     const { includeArchived, includeDeleted } = c.req.valid("query");
+    const reach = listReachOf(c);
+    const reachableProjectIds = await reach.reachableProjectIds([workspaceId], {
+      includeDeleted: includeDeleted === "true",
+    });
+    const reachable = new Set(reachableProjectIds);
+    const readableProjectIds = apiKeyScopeSatisfies(c.get("apiKey"), {
+      work_item: ["read"],
+    })
+      ? (
+          await Promise.all(
+            (
+              await reach.projectFactsFor([workspaceId])
+            )
+              .filter(
+                (project) =>
+                  reachable.has(project.id) &&
+                  !project.deleted &&
+                  !project.archived,
+              )
+              .map(async (project) =>
+                (await reach.can("work_item:read", {
+                  projectId: project.id,
+                  workspaceId,
+                  organisationId: project.organisationId,
+                }))
+                  ? project.id
+                  : null,
+              ),
+          )
+        ).filter((id): id is string => id !== null)
+      : [];
     const projects = await getProjectsCtrl(
       workspaceId,
       includeArchived === "true",
-      await listReachOf(c).reachableProjectIds([workspaceId], {
-        includeDeleted: includeDeleted === "true",
-      }),
+      reachableProjectIds,
       includeDeleted === "true",
+      readableProjectIds,
     );
     return c.json(projects, 200);
   })
@@ -997,11 +1060,6 @@ const project = apiRouter<
       organisationId,
     } = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
-    assertManagedServiceConfiguration({
-      kind,
-      supportLevel,
-      serviceCalendarId,
-    });
     await assertProjectCalendar(workspaceId, serviceCalendarId);
     try {
       const newProject = await createProjectCtrl(
@@ -1012,10 +1070,11 @@ const project = apiRouter<
         {
           kind,
           supportLevel: supportLevel ?? null,
-          serviceCalendarId: serviceCalendarId ?? null,
+          serviceCalendarId,
           organisationId: organisationId ?? null,
         },
         c.get("userId"),
+        c.get("apiKey")?.id,
       );
       return c.json(newProject, 200);
     } catch (error) {
@@ -1128,6 +1187,7 @@ const project = apiRouter<
         kind: projectTable.kind,
         supportLevel: projectTable.supportLevel,
         serviceCalendarId: projectTable.serviceCalendarId,
+        serviceCalendarMode: projectTable.serviceCalendarMode,
         managerId: projectTable.managerId,
         startDate: projectTable.startDate,
         endDate: projectTable.endDate,
@@ -1145,6 +1205,15 @@ const project = apiRouter<
     if (!current)
       throw new HTTPException(404, { message: "Project not found" });
     await assertProjectPeopleAndDates(id, current, body);
+    const [workspaceDefaults] = await db
+      .select({
+        defaultServiceCalendarId: workspaceTable.defaultServiceCalendarId,
+      })
+      .from(workspaceTable)
+      .where(eq(workspaceTable.id, workspaceId))
+      .limit(1);
+    if (!workspaceDefaults)
+      throw new HTTPException(404, { message: "Workspace not found" });
     const configuration = {
       kind: body.kind ?? (current.kind as "project" | "managed_service"),
       supportLevel:
@@ -1155,9 +1224,21 @@ const project = apiRouter<
         body.serviceCalendarId === undefined
           ? current.serviceCalendarId
           : body.serviceCalendarId,
+      serviceCalendarMode:
+        body.serviceCalendarId === undefined
+          ? current.serviceCalendarMode
+          : ("override" as const),
       defaultCommentVisibility: body.defaultCommentVisibility,
     };
-    assertManagedServiceConfiguration(configuration);
+    const effectiveServiceCalendarId = resolveProjectServiceCalendarId({
+      mode: configuration.serviceCalendarMode as "inherit" | "override",
+      overrideId: configuration.serviceCalendarId,
+      workspaceDefaultId: workspaceDefaults.defaultServiceCalendarId,
+    });
+    assertManagedServiceConfiguration({
+      ...configuration,
+      serviceCalendarId: effectiveServiceCalendarId,
+    });
     await assertProjectCalendar(workspaceId, configuration.serviceCalendarId);
     try {
       const updatedProject = await updateProjectCtrl(
@@ -1175,6 +1256,8 @@ const project = apiRouter<
           kind: body.kind,
           supportLevel: body.supportLevel,
           serviceCalendarId: body.serviceCalendarId,
+          serviceCalendarMode:
+            body.serviceCalendarId === undefined ? undefined : "override",
           defaultCommentVisibility: body.defaultCommentVisibility,
           managerId: body.managerId,
           startDate: body.startDate,
@@ -1206,7 +1289,10 @@ const project = apiRouter<
   .openapi(archiveProjectRoute, async (c) => {
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const archivedProject = await archiveProjectCtrl(id, workspaceId);
+    const archivedProject = await archiveProjectCtrl(id, workspaceId, {
+      userId: c.get("userId"),
+      apiKeyId: c.get("apiKey")?.id,
+    });
     return c.json(archivedProject, 200);
   })
   .openapi(unarchiveProjectRoute, async (c) => {
@@ -1214,6 +1300,17 @@ const project = apiRouter<
     const workspaceId = c.get("workspaceId");
     const unarchivedProject = await unarchiveProjectCtrl(id, workspaceId);
     return c.json(unarchivedProject, 200);
+  })
+  .openapi(restoreProjectRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const restoredProject = await restoreProjectCtrl(
+      id,
+      workspaceId,
+      c.get("userId"),
+      c.get("apiKey") ? "api_key" : "person",
+    );
+    return c.json(restoredProject, 200);
   })
   .openapi(listMilestonesRoute, async (c) => {
     const { id } = c.req.valid("param");

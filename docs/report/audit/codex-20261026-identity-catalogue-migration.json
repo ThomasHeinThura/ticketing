@@ -1,0 +1,100 @@
+{
+	"recordedAt": "2026-10-26T05:50:33.310Z",
+	"records": [
+		{
+			"target": "audit",
+			"database": "taskdesk_codex_sit_20261025",
+			"before": {
+				"submissions": 7,
+				"membership_grants": 18,
+				"saved_views": 6,
+				"people": 11,
+				"work_items": 84,
+				"projects": 6,
+				"teams": 36,
+				"aggregates": 33,
+				"coverage": 2,
+				"migrations": 192
+			},
+			"after": {
+				"submissions": 7,
+				"membership_grants": 18,
+				"saved_views": 6,
+				"people": 11,
+				"work_items": 84,
+				"projects": 6,
+				"teams": 36,
+				"aggregates": 33,
+				"coverage": 2,
+				"migrations": 194
+			},
+			"rollbackDump": "backups/codex-sit-20261025/pre-0192-0193-wave194-audit.dump",
+			"dumpFullyDecoded": true
+		},
+		{
+			"target": "performance",
+			"database": "taskdesk_codex_performance_20261025_test",
+			"before": {
+				"submissions": 0,
+				"membership_grants": 1,
+				"saved_views": 0,
+				"people": 1,
+				"work_items": 10000,
+				"projects": 1,
+				"teams": 1,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 192
+			},
+			"after": {
+				"submissions": 0,
+				"membership_grants": 1,
+				"saved_views": 0,
+				"people": 1,
+				"work_items": 10000,
+				"projects": 1,
+				"teams": 1,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 194
+			},
+			"rollbackDump": "backups/codex-sit-20261025/pre-0192-0193-wave194-performance.dump",
+			"dumpFullyDecoded": true
+		},
+		{
+			"target": "sso-browser",
+			"database": "taskdesk_codex_sso_browser_20261025_test",
+			"before": {
+				"submissions": 0,
+				"membership_grants": 0,
+				"saved_views": 0,
+				"people": 1,
+				"work_items": 0,
+				"projects": 0,
+				"teams": 0,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 192
+			},
+			"after": {
+				"submissions": 0,
+				"membership_grants": 0,
+				"saved_views": 0,
+				"people": 1,
+				"work_items": 0,
+				"projects": 0,
+				"teams": 0,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 194
+			},
+			"rollbackDump": "backups/codex-sit-20261025/pre-0192-0193-wave194-sso-browser.dump",
+			"dumpFullyDecoded": true
+		}
+	],
+	"protectedDatabase": "Never targeted; protected live database remains separate on62870",
+	"notes": [
+		"0192 extends explicit identity-link provenance;0193 assigns immutable catalogue keys. Existing business/configuration/report counts remain unchanged.",
+		"Protected live database is never targeted; verified recoverable dumps precede each additive migration."
+	]
+}

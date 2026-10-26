@@ -25,6 +25,7 @@ import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { findAssetWorkspaceScope } from "../asset/repository";
+import { hasElevatedEnforcementClassification } from "../auth/elevated-enforcement";
 import db, { schema } from "../database";
 import { timeEntryTable } from "../database/schema-p5-time";
 import type { RegisteredHttpRoute } from "../observability/metrics.js";
@@ -680,8 +681,6 @@ export async function enforceRegisteredPolicy(
   next: Next,
   registeredRoute?: RegisteredRoute,
 ) {
-  if (enforcedPolicySources.size === 0) return next();
-
   const exactRegisteredMatch = registeredRoute?.terminalHandler
     ? (
         c.req.matchedRoutes as Array<{
@@ -729,7 +728,18 @@ export async function enforceRegisteredPolicy(
 
   const entry = policyRegistry.get(routeKey);
   if (!entry) refuse(500);
-  if (!enforcedPolicySources.has(entry.source)) return next();
+  const assertElevatedClassification = () => {
+    if (
+      entry.policy.elevated === true &&
+      !hasElevatedEnforcementClassification(routeKey)
+    ) {
+      refuse(500);
+    }
+  };
+  if (!enforcedPolicySources.has(entry.source)) {
+    assertElevatedClassification();
+    return next();
+  }
 
   let identity: ResolvedIdentity | null;
   try {
@@ -785,6 +795,11 @@ export async function enforceRegisteredPolicy(
     });
   }
   if (!decision.allowed) refuse(decision.status);
+
+  // A policy declaration must resolve to an explicit enforcement classification at runtime.
+  // This checks route coverage only: the operation handler still consumes the route/body-bound
+  // proof inside its own write transaction.
+  assertElevatedClassification();
 
   // `requiresElevation` is not proof. The protected operation's existing handler must still
   // consume its exact route-bound proof in the same transaction as its mutation.

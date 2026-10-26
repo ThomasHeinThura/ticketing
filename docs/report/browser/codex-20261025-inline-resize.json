@@ -1,0 +1,935 @@
+{
+	"date": "2026-10-25T04:53:11.078Z",
+	"environment": "Chromium trusted TLS on https://ticketing.localhost; LEAD owned CCY workspace/project only",
+	"fixture": {
+		"workspace": "Codex Cost Cycle 20261025",
+		"workspaceId": "vjsgsgt7jrlia8sln5j3rzhm",
+		"project": "Cost Cycle QA",
+		"projectId": "y8onxgpl4vd25fsgq4dnc2fp",
+		"item": "CCY-1"
+	},
+	"captures": [
+		{
+			"layout": "table",
+			"theme": "light",
+			"width": 390,
+			"screenshot": "docs/report/screens/codex-20261025-inline-table-light-390.png",
+			"viewport": 390,
+			"documentWidth": 390,
+			"bodyOverflow": false,
+			"tableMinWidth": 861,
+			"columnWidths": [96, 381, 96, 96, 96, 96],
+			"zeroColumns": 0,
+			"headerCells": [
+				{
+					"text": "Key",
+					"left": 9,
+					"right": 105,
+					"width": 96
+				},
+				{
+					"text": "Title",
+					"left": 105,
+					"right": 486,
+					"width": 381
+				},
+				{
+					"text": "Priority",
+					"left": 486,
+					"right": 582,
+					"width": 96
+				},
+				{
+					"text": "Due date",
+					"left": 582,
+					"right": 678,
+					"width": 96
+				},
+				{
+					"text": "State",
+					"left": 678,
+					"right": 774,
+					"width": 96
+				},
+				{
+					"text": "Assignee",
+					"left": 774,
+					"right": 870,
+					"width": 96
+				}
+			],
+			"overlappingHeaders": [],
+			"scrollContainer": {
+				"clientWidth": 372,
+				"scrollWidth": 889,
+				"scrollLeft": 0,
+				"overflowX": "auto",
+				"horizontal": true
+			},
+			"headerFallbackCount": 0
+		},
+		{
+			"layout": "table",
+			"theme": "light",
+			"width": 768,
+			"screenshot": "docs/report/screens/codex-20261025-inline-table-light-768.png",
+			"viewport": 768,
+			"documentWidth": 768,
+			"bodyOverflow": false,
+			"tableMinWidth": 861,
+			"columnWidths": [96, 381, 96, 96, 96, 96],
+			"zeroColumns": 0,
+			"headerCells": [
+				{
+					"text": "Key",
+					"left": 241,
+					"right": 337,
+					"width": 96
+				},
+				{
+					"text": "Title",
+					"left": 337,
+					"right": 718,
+					"width": 381
+				},
+				{
+					"text": "Priority",
+					"left": 718,
+					"right": 814,
+					"width": 96
+				},
+				{
+					"text": "Due date",
+					"left": 814,
+					"right": 910,
+					"width": 96
+				},
+				{
+					"text": "State",
+					"left": 910,
+					"right": 1006,
+					"width": 96
+				},
+				{
+					"text": "Assignee",
+					"left": 1006,
+					"right": 1102,
+					"width": 96
+				}
+			],
+			"overlappingHeaders": [],
+			"scrollContainer": {
+				"clientWidth": 518,
+				"scrollWidth": 889,
+				"scrollLeft": 0,
+				"overflowX": "auto",
+				"horizontal": true
+			},
+			"headerFallbackCount": 0
+		},
+		{
+			"layout": "table",
+			"theme": "light",
+			"width": 1440,
+			"screenshot": "docs/report/screens/codex-20261025-inline-table-light-1440.png",
+			"viewport": 1440,
+			"documentWidth": 1440,
+			"bodyOverflow": false,
+			"tableMinWidth": 1190.2,
+			"columnWidths": [130.9, 381, 142.8, 154.7, 178.5, 202.3],
+			"zeroColumns": 0,
+			"headerCells": [
+				{
+					"text": "Key",
+					"left": 241,
+					"right": 371.890625,
+					"width": 130.890625
+				},
+				{
+					"text": "Title",
+					"left": 371.890625,
+					"right": 752.890625,
+					"width": 381
+				},
+				{
+					"text": "Priority",
+					"left": 752.890625,
+					"right": 895.6875,
+					"width": 142.796875
+				},
+				{
+					"text": "Due date",
+					"left": 895.6875,
+					"right": 1050.375,
+					"width": 154.6875
+				},
+				{
+					"text": "State",
+					"left": 1050.375,
+					"right": 1228.875,
+					"width": 178.5
+				},
+				{
+					"text": "Assignee",
+					"left": 1228.875,
+					"right": 1431.1875,
+					"width": 202.3125
+				}
+			],
+			"overlappingHeaders": [],
+			"scrollContainer": {
+				"clientWidth": 1190,
+				"scrollWidth": 1190,
+				"scrollLeft": 0,
+				"overflowX": "auto",
+				"horizontal": false
+			},
+			"headerFallbackCount": 0
+		},
+		{
+			"layout": "table",
+			"theme": "dark",
+			"width": 390,
+			"screenshot": "docs/report/screens/codex-20261025-inline-table-dark-390.png",
+			"viewport": 390,
+			"documentWidth": 390,
+			"bodyOverflow": false,
+			"tableMinWidth": 861,
+			"columnWidths": [96, 381, 96, 96, 96, 96],
+			"zeroColumns": 0,
+			"headerCells": [
+				{
+					"text": "Key",
+					"left": 9,
+					"right": 105,
+					"width": 96
+				},
+				{
+					"text": "Title",
+					"left": 105,
+					"right": 486,
+					"width": 381
+				},
+				{
+					"text": "Priority",
+					"left": 486,
+					"right": 582,
+					"width": 96
+				},
+				{
+					"text": "Due date",
+					"left": 582,
+					"right": 678,
+					"width": 96
+				},
+				{
+					"text": "State",
+					"left": 678,
+					"right": 774,
+					"width": 96
+				},
+				{
+					"text": "Assignee",
+					"left": 774,
+					"right": 870,
+					"width": 96
+				}
+			],
+			"overlappingHeaders": [],
+			"scrollContainer": {
+				"clientWidth": 372,
+				"scrollWidth": 889,
+				"scrollLeft": 0,
+				"overflowX": "auto",
+				"horizontal": true
+			},
+			"headerFallbackCount": 0
+		},
+		{
+			"layout": "table",
+			"theme": "dark",
+			"width": 768,
+			"screenshot": "docs/report/screens/codex-20261025-inline-table-dark-768.png",
+			"viewport": 768,
+			"documentWidth": 768,
+			"bodyOverflow": false,
+			"tableMinWidth": 861,
+			"columnWidths": [96, 381, 96, 96, 96, 96],
+			"zeroColumns": 0,
+			"headerCells": [
+				{
+					"text": "Key",
+					"left": 241,
+					"right": 337,
+					"width": 96
+				},
+				{
+					"text": "Title",
+					"left": 337,
+					"right": 718,
+					"width": 381
+				},
+				{
+					"text": "Priority",
+					"left": 718,
+					"right": 814,
+					"width": 96
+				},
+				{
+					"text": "Due date",
+					"left": 814,
+					"right": 910,
+					"width": 96
+				},
+				{
+					"text": "State",
+					"left": 910,
+					"right": 1006,
+					"width": 96
+				},
+				{
+					"text": "Assignee",
+					"left": 1006,
+					"right": 1102,
+					"width": 96
+				}
+			],
+			"overlappingHeaders": [],
+			"scrollContainer": {
+				"clientWidth": 518,
+				"scrollWidth": 889,
+				"scrollLeft": 0,
+				"overflowX": "auto",
+				"horizontal": true
+			},
+			"headerFallbackCount": 0
+		},
+		{
+			"layout": "table",
+			"theme": "dark",
+			"width": 1440,
+			"screenshot": "docs/report/screens/codex-20261025-inline-table-dark-1440.png",
+			"viewport": 1440,
+			"documentWidth": 1440,
+			"bodyOverflow": false,
+			"tableMinWidth": 1190.2,
+			"columnWidths": [130.9, 381, 142.8, 154.7, 178.5, 202.3],
+			"zeroColumns": 0,
+			"headerCells": [
+				{
+					"text": "Key",
+					"left": 241,
+					"right": 371.890625,
+					"width": 130.890625
+				},
+				{
+					"text": "Title",
+					"left": 371.890625,
+					"right": 752.890625,
+					"width": 381
+				},
+				{
+					"text": "Priority",
+					"left": 752.890625,
+					"right": 895.6875,
+					"width": 142.796875
+				},
+				{
+					"text": "Due date",
+					"left": 895.6875,
+					"right": 1050.375,
+					"width": 154.6875
+				},
+				{
+					"text": "State",
+					"left": 1050.375,
+					"right": 1228.875,
+					"width": 178.5
+				},
+				{
+					"text": "Assignee",
+					"left": 1228.875,
+					"right": 1431.1875,
+					"width": 202.3125
+				}
+			],
+			"overlappingHeaders": [],
+			"scrollContainer": {
+				"clientWidth": 1190,
+				"scrollWidth": 1190,
+				"scrollLeft": 0,
+				"overflowX": "auto",
+				"horizontal": false
+			},
+			"headerFallbackCount": 0
+		}
+	],
+	"errors": [],
+	"notes": [
+		"Escape cancellation passed trusted Chromium pointer-drag → Escape while BODY focused → pointerup with zero settings PATCHes and saved width unchanged after reload.",
+		"Pointer save, Home/End bounds, and failed-save rollback were verified; project width restored to 381px.",
+		"All 12 requested list/table, light/dark, 390/768/1440 screenshots were captured. Table layouts at 390 and 768 show column width/header collisions; stopped instead of claiming responsive table pass.",
+		"Member read-only controls and remaining visual checks were not completed after the table collision.",
+		"Root review found project header tabs/mobile navigation still in aria-busy skeleton fallback in the 390/768/1440 captures; regenerate final screenshots after stable header controls are ready.",
+		"Final table screenshots taken only after aria-busy project header fallback disappeared and project navigation rendered.",
+		"List responsive screenshots were not regenerated after header readiness; only table screenshots are final."
+	],
+	"sessionRestore": {
+		"startingWorkspace": "Codex Cost Cycle 20261025",
+		"originalTheme": "dark",
+		"leadRestoredWorkspace": "TaskDesk Service Desk",
+		"restoredTheme": "dark",
+		"restoredViaWorkspaceMenu": true
+	},
+	"outcome": "partial-product-findings",
+	"escapeCancel": {
+		"widthBefore": 381,
+		"draftWidth": 416,
+		"focusBeforeDrag": "BODY",
+		"escapeRestoredWidth": 381,
+		"settingsPatchCount": 0,
+		"pointerUpAfterEscape": true,
+		"reloadedWidth": 381
+	},
+	"widthInteractions": {
+		"pointer": {
+			"before": 381,
+			"after": 413,
+			"patchCount": 1,
+			"status": 200,
+			"reloadedWidth": 413
+		},
+		"keyboard": {
+			"home": {
+				"width": 64,
+				"status": 200,
+				"reloadedWidth": 64
+			},
+			"end": {
+				"width": 800,
+				"status": 200,
+				"reloadedWidth": 800
+			}
+		},
+		"profileRestoredWidth": 381,
+		"failedSave": {
+			"routeAbortedPatch": true,
+			"errorVisible": true,
+			"widthRollback": true,
+			"reloadedWidth": 381
+		}
+	},
+	"inlineInteractions": {
+		"state": {
+			"from": "In Progress",
+			"to": "To Do",
+			"status": 200,
+			"reloaded": "To Do"
+		},
+		"priority": {
+			"from": "No priority",
+			"to": "High",
+			"changeStatus": 200,
+			"restored": "No priority",
+			"restoreStatus": 200,
+			"reloaded": "No priority"
+		},
+		"assignee": {
+			"from": "SIT Audit lead",
+			"to": "SIT Audit member",
+			"confirmed": true,
+			"restored": "SIT Audit lead",
+			"restoreStatus": 200,
+			"reloaded": "SIT Audit lead"
+		},
+		"requiredNote": "No note-required transition was offered by this owned task fixture."
+	},
+	"productFindings": [
+		{
+			"feature": "VW-21 table column sizing",
+			"viewport": 390,
+			"screen": "docs/report/screens/codex-20261025-inline-table-light-390.png",
+			"details": "Header labels Key and Title overlap. DOM measured the Key header at 0px and Title at 381px; the table scroller is 372px wide with 505px scrollWidth and document width remains 390px. The table has six columns but at 390 the saved Title width collapses unspecified columns to zero. The 768px screenshot also shows cramped/overlapping header and body cell text. Likely source path: apps/web/src/components/work-item/work-item-list.tsx (renderFullTable colgroup and width styles); shared table scroll wrapper in packages/ui. Captured project shell/header controls are still the aria-busy skeleton fallback, so these screenshots are diagnostic only and are not final responsive evidence."
+		},
+		{
+			"feature": "VW-21 project view tab keyboard reveal",
+			"viewport": 768,
+			"details": "Real Tab traversal from the active Tasks tab reached Calendar, Gantt, Cycles, Modules and Pages. Gantt was focused while not fully visible in the 241px horizontal scroll area and scrollLeft remained 0; focus/scroll advanced on the next Tab to Cycles. Scroll area eventually reached Pages with scrollLeft 293. Needs a focused visibility review; no full keyboard-visibility pass claimed."
+		}
+	],
+	"memberReadOnly": {
+		"status": "not tested"
+	},
+	"finalTableVerification": {
+		"date": "2026-10-25T05:10:29.875Z",
+		"workspaceStart": "Codex Cost Cycle 20261025",
+		"themeStart": "dark",
+		"captures": [
+			{
+				"layout": "table",
+				"theme": "light",
+				"width": 390,
+				"screenshot": "docs/report/screens/codex-20261025-inline-table-light-390.png",
+				"viewport": 390,
+				"documentWidth": 390,
+				"bodyOverflow": false,
+				"tableMinWidth": 861,
+				"columnWidths": [96, 381, 96, 96, 96, 96],
+				"zeroColumns": 0,
+				"headerCells": [
+					{
+						"text": "Key",
+						"left": 9,
+						"right": 105,
+						"width": 96
+					},
+					{
+						"text": "Title",
+						"left": 105,
+						"right": 486,
+						"width": 381
+					},
+					{
+						"text": "Priority",
+						"left": 486,
+						"right": 582,
+						"width": 96
+					},
+					{
+						"text": "Due date",
+						"left": 582,
+						"right": 678,
+						"width": 96
+					},
+					{
+						"text": "State",
+						"left": 678,
+						"right": 774,
+						"width": 96
+					},
+					{
+						"text": "Assignee",
+						"left": 774,
+						"right": 870,
+						"width": 96
+					}
+				],
+				"overlappingHeaders": [],
+				"scrollContainer": {
+					"clientWidth": 372,
+					"scrollWidth": 889,
+					"scrollLeft": 0,
+					"overflowX": "auto",
+					"horizontal": true
+				},
+				"headerFallbackCount": 0
+			},
+			{
+				"layout": "table",
+				"theme": "light",
+				"width": 768,
+				"screenshot": "docs/report/screens/codex-20261025-inline-table-light-768.png",
+				"viewport": 768,
+				"documentWidth": 768,
+				"bodyOverflow": false,
+				"tableMinWidth": 861,
+				"columnWidths": [96, 381, 96, 96, 96, 96],
+				"zeroColumns": 0,
+				"headerCells": [
+					{
+						"text": "Key",
+						"left": 241,
+						"right": 337,
+						"width": 96
+					},
+					{
+						"text": "Title",
+						"left": 337,
+						"right": 718,
+						"width": 381
+					},
+					{
+						"text": "Priority",
+						"left": 718,
+						"right": 814,
+						"width": 96
+					},
+					{
+						"text": "Due date",
+						"left": 814,
+						"right": 910,
+						"width": 96
+					},
+					{
+						"text": "State",
+						"left": 910,
+						"right": 1006,
+						"width": 96
+					},
+					{
+						"text": "Assignee",
+						"left": 1006,
+						"right": 1102,
+						"width": 96
+					}
+				],
+				"overlappingHeaders": [],
+				"scrollContainer": {
+					"clientWidth": 518,
+					"scrollWidth": 889,
+					"scrollLeft": 0,
+					"overflowX": "auto",
+					"horizontal": true
+				},
+				"headerFallbackCount": 0
+			},
+			{
+				"layout": "table",
+				"theme": "light",
+				"width": 1440,
+				"screenshot": "docs/report/screens/codex-20261025-inline-table-light-1440.png",
+				"viewport": 1440,
+				"documentWidth": 1440,
+				"bodyOverflow": false,
+				"tableMinWidth": 1190.2,
+				"columnWidths": [130.9, 381, 142.8, 154.7, 178.5, 202.3],
+				"zeroColumns": 0,
+				"headerCells": [
+					{
+						"text": "Key",
+						"left": 241,
+						"right": 371.890625,
+						"width": 130.890625
+					},
+					{
+						"text": "Title",
+						"left": 371.890625,
+						"right": 752.890625,
+						"width": 381
+					},
+					{
+						"text": "Priority",
+						"left": 752.890625,
+						"right": 895.6875,
+						"width": 142.796875
+					},
+					{
+						"text": "Due date",
+						"left": 895.6875,
+						"right": 1050.375,
+						"width": 154.6875
+					},
+					{
+						"text": "State",
+						"left": 1050.375,
+						"right": 1228.875,
+						"width": 178.5
+					},
+					{
+						"text": "Assignee",
+						"left": 1228.875,
+						"right": 1431.1875,
+						"width": 202.3125
+					}
+				],
+				"overlappingHeaders": [],
+				"scrollContainer": {
+					"clientWidth": 1190,
+					"scrollWidth": 1190,
+					"scrollLeft": 0,
+					"overflowX": "auto",
+					"horizontal": false
+				},
+				"headerFallbackCount": 0
+			},
+			{
+				"layout": "table",
+				"theme": "dark",
+				"width": 390,
+				"screenshot": "docs/report/screens/codex-20261025-inline-table-dark-390.png",
+				"viewport": 390,
+				"documentWidth": 390,
+				"bodyOverflow": false,
+				"tableMinWidth": 861,
+				"columnWidths": [96, 381, 96, 96, 96, 96],
+				"zeroColumns": 0,
+				"headerCells": [
+					{
+						"text": "Key",
+						"left": 9,
+						"right": 105,
+						"width": 96
+					},
+					{
+						"text": "Title",
+						"left": 105,
+						"right": 486,
+						"width": 381
+					},
+					{
+						"text": "Priority",
+						"left": 486,
+						"right": 582,
+						"width": 96
+					},
+					{
+						"text": "Due date",
+						"left": 582,
+						"right": 678,
+						"width": 96
+					},
+					{
+						"text": "State",
+						"left": 678,
+						"right": 774,
+						"width": 96
+					},
+					{
+						"text": "Assignee",
+						"left": 774,
+						"right": 870,
+						"width": 96
+					}
+				],
+				"overlappingHeaders": [],
+				"scrollContainer": {
+					"clientWidth": 372,
+					"scrollWidth": 889,
+					"scrollLeft": 0,
+					"overflowX": "auto",
+					"horizontal": true
+				},
+				"headerFallbackCount": 0
+			},
+			{
+				"layout": "table",
+				"theme": "dark",
+				"width": 768,
+				"screenshot": "docs/report/screens/codex-20261025-inline-table-dark-768.png",
+				"viewport": 768,
+				"documentWidth": 768,
+				"bodyOverflow": false,
+				"tableMinWidth": 861,
+				"columnWidths": [96, 381, 96, 96, 96, 96],
+				"zeroColumns": 0,
+				"headerCells": [
+					{
+						"text": "Key",
+						"left": 241,
+						"right": 337,
+						"width": 96
+					},
+					{
+						"text": "Title",
+						"left": 337,
+						"right": 718,
+						"width": 381
+					},
+					{
+						"text": "Priority",
+						"left": 718,
+						"right": 814,
+						"width": 96
+					},
+					{
+						"text": "Due date",
+						"left": 814,
+						"right": 910,
+						"width": 96
+					},
+					{
+						"text": "State",
+						"left": 910,
+						"right": 1006,
+						"width": 96
+					},
+					{
+						"text": "Assignee",
+						"left": 1006,
+						"right": 1102,
+						"width": 96
+					}
+				],
+				"overlappingHeaders": [],
+				"scrollContainer": {
+					"clientWidth": 518,
+					"scrollWidth": 889,
+					"scrollLeft": 0,
+					"overflowX": "auto",
+					"horizontal": true
+				},
+				"headerFallbackCount": 0
+			},
+			{
+				"layout": "table",
+				"theme": "dark",
+				"width": 1440,
+				"screenshot": "docs/report/screens/codex-20261025-inline-table-dark-1440.png",
+				"viewport": 1440,
+				"documentWidth": 1440,
+				"bodyOverflow": false,
+				"tableMinWidth": 1190.2,
+				"columnWidths": [130.9, 381, 142.8, 154.7, 178.5, 202.3],
+				"zeroColumns": 0,
+				"headerCells": [
+					{
+						"text": "Key",
+						"left": 241,
+						"right": 371.890625,
+						"width": 130.890625
+					},
+					{
+						"text": "Title",
+						"left": 371.890625,
+						"right": 752.890625,
+						"width": 381
+					},
+					{
+						"text": "Priority",
+						"left": 752.890625,
+						"right": 895.6875,
+						"width": 142.796875
+					},
+					{
+						"text": "Due date",
+						"left": 895.6875,
+						"right": 1050.375,
+						"width": 154.6875
+					},
+					{
+						"text": "State",
+						"left": 1050.375,
+						"right": 1228.875,
+						"width": 178.5
+					},
+					{
+						"text": "Assignee",
+						"left": 1228.875,
+						"right": 1431.1875,
+						"width": 202.3125
+					}
+				],
+				"overlappingHeaders": [],
+				"scrollContainer": {
+					"clientWidth": 1190,
+					"scrollWidth": 1190,
+					"scrollLeft": 0,
+					"overflowX": "auto",
+					"horizontal": false
+				},
+				"headerFallbackCount": 0
+			}
+		],
+		"headerHydration": [
+			{
+				"width": 1440,
+				"ready": "project-view control with aria-current=page visible; no aria-busy fallback"
+			},
+			{
+				"width": 390,
+				"ready": "mobile project navigation button visible; no aria-busy fallback"
+			},
+			{
+				"width": 768,
+				"ready": "project-view control with aria-current=page visible; no aria-busy fallback"
+			},
+			{
+				"width": 1440,
+				"ready": "project-view control with aria-current=page visible; no aria-busy fallback"
+			},
+			{
+				"width": 390,
+				"ready": "mobile project navigation button visible; no aria-busy fallback"
+			},
+			{
+				"width": 768,
+				"ready": "project-view control with aria-current=page visible; no aria-busy fallback"
+			},
+			{
+				"width": 1440,
+				"ready": "project-view control with aria-current=page visible; no aria-busy fallback"
+			},
+			{
+				"width": 768,
+				"ready": "project-view control with aria-current=page visible; no aria-busy fallback"
+			},
+			{
+				"width": 390,
+				"ready": "mobile project navigation button visible; no aria-busy fallback"
+			}
+		],
+		"keyboardNav": {
+			"navInfo": {
+				"current": "Tasks",
+				"area": {
+					"clientWidth": 241,
+					"scrollWidth": 534,
+					"scrollLeft": 0,
+					"overflowX": "scroll",
+					"left": 501.3125,
+					"right": 742
+				},
+				"currentRect": {
+					"left": 585.15625,
+					"right": 651.21875
+				}
+			},
+			"sequence": [
+				{
+					"text": "Calendar",
+					"tag": "BUTTON",
+					"ariaCurrent": null,
+					"inHorizontalArea": true,
+					"fullyVisibleInArea": true,
+					"areaScrollLeft": 0
+				},
+				{
+					"text": "Gantt",
+					"tag": "BUTTON",
+					"ariaCurrent": null,
+					"inHorizontalArea": true,
+					"fullyVisibleInArea": false,
+					"areaScrollLeft": 0
+				},
+				{
+					"text": "Cycles",
+					"tag": "BUTTON",
+					"ariaCurrent": null,
+					"inHorizontalArea": true,
+					"fullyVisibleInArea": true,
+					"areaScrollLeft": 221
+				},
+				{
+					"text": "Modules",
+					"tag": "BUTTON",
+					"ariaCurrent": null,
+					"inHorizontalArea": true,
+					"fullyVisibleInArea": true,
+					"areaScrollLeft": 221
+				},
+				{
+					"text": "Pages",
+					"tag": "BUTTON",
+					"ariaCurrent": null,
+					"inHorizontalArea": true,
+					"fullyVisibleInArea": true,
+					"areaScrollLeft": 293
+				}
+			]
+		},
+		"errors": [],
+		"mobileNavButtons": [
+			"Backlog",
+			"Board",
+			"Calendar",
+			"Gantt",
+			"Cycles",
+			"Modules",
+			"Pages",
+			"Cost Cycle QA",
+			"Add project"
+		],
+		"workspaceAfter": "TaskDesk Service Desk",
+		"themeAfter": "dark"
+	}
+}

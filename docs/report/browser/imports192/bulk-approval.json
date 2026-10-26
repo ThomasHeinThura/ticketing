@@ -1,0 +1,73 @@
+{
+	"recordedAt": "2026-10-26T05:18:52.230Z",
+	"strictTls": true,
+	"scope": "Own QA 51-record import with human-owner browser approval; no unrelated records modified",
+	"checks": [
+		{
+			"name": "Own audit admin session",
+			"pass": true
+		},
+		{
+			"name": "Feature update persisted",
+			"pass": true
+		},
+		{
+			"name": "Resume only own key and import run",
+			"pass": true
+		},
+		{
+			"name": "Preview contains 51 rows",
+			"pass": true
+		},
+		{
+			"name": "Preview has no rejected rows",
+			"pass": true
+		},
+		{
+			"name": "Owner reads exact pending action",
+			"pass": true
+		},
+		{
+			"name": "Pending summary contains no source payload",
+			"pass": true
+		},
+		{
+			"name": "Fresh persisted import report",
+			"pass": true
+		},
+		{
+			"name": "New transport key replays committed chunk",
+			"pass": true
+		},
+		{
+			"name": "Read stable imported links",
+			"pass": true
+		},
+		{
+			"name": "Exactly51 distinct source-to-target links",
+			"pass": true
+		},
+		{
+			"name": "Replay leaves persisted counts unchanged",
+			"pass": true
+		},
+		{
+			"name": "Feature update persisted",
+			"pass": true
+		}
+	],
+	"screenshots": [],
+	"outcome": "passed",
+	"replayResult": {
+		"status": 200,
+		"counts": {
+			"created": 51,
+			"skipped": 0,
+			"updated": 0,
+			"rejected": 0,
+			"processed": 51
+		}
+	},
+	"priorOwnerBrowserEvidence": "bulk-approval-initial-owner-flow.json",
+	"featureRestored": true
+}

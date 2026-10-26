@@ -17,6 +17,7 @@ import {
 } from "../utils/reach-filtered-list";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { committedMinorForBudget } from "./cost-logic";
 import { costEntriesByCurrency } from "./cost-repository";
 import costRouter from "./cost-routes";
 import { TIME_ENTRY_DELETION_ROUTE } from "./deletion-target";
@@ -910,7 +911,7 @@ async function budgetResponse(
     : null;
   return {
     canManage,
-    data: budgets.map(({ budget, actuals }) => ({
+    data: budgets.map(({ budget, actuals, committed }) => ({
       id: budget.id,
       projectId: budget.projectId,
       name: budget.name,
@@ -930,7 +931,13 @@ async function budgetResponse(
             unpricedMinutes: actuals.unpricedMinutes,
           }
         : {}),
-      committedMinor: null,
+      ...(committed
+        ? {
+            committedMinor: committedMinorForBudget(committed, budget.currency),
+            committedByCurrency: committed.byCurrency,
+            committedUnknown: committed.unknown,
+          }
+        : {}),
       createdAt: budget.createdAt,
     })),
     // Minutes next to a cost total let a reader divide out a rate (TC-11), so the breakdowns are

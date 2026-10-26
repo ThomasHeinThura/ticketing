@@ -29,6 +29,7 @@ beforeEach(async () => {
 type Mod = {
   id: string;
   name: string;
+  description: string | null;
   state: string;
   version: number;
   targetDate: string | null;
@@ -73,6 +74,22 @@ const moduleIdOf = async (itemId: string) =>
   )[0]?.moduleId ?? null;
 
 describe("module CRUD and the lead (MO-1)", () => {
+  it("accepts the empty optional description sent by the module dialog", async () => {
+    const created = await makeModule({
+      name: "No description",
+      description: null,
+      leadId: null,
+      state: "planned",
+      targetDate: null,
+    });
+    expect(created.description).toBeNull();
+    const [stored] = await db
+      .select({ description: moduleTable.description })
+      .from(moduleTable)
+      .where(eq(moduleTable.id, created.id));
+    expect(stored?.description).toBeNull();
+  });
+
   it("creates with a lead, state and target date, edits with a version, lists", async () => {
     const created = await makeModule({
       name: "Checkout",

@@ -1,0 +1,18 @@
+{
+	"phase": "restore",
+	"checks": [
+		{
+			"name": "Own page deletion follows the registered click-confirmation contract",
+			"passed": true
+		},
+		{
+			"name": "Deleted-only persisted list shows own page and restore deadline",
+			"passed": true
+		},
+		{
+			"name": "Undelete persists through reload and preserves exact original content",
+			"passed": true
+		}
+	],
+	"fixture": "aie8akibiu6odlm055ichta8"
+}

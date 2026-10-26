@@ -2,6 +2,7 @@ import {
   closestCorners,
   DndContext,
   DragOverlay,
+  pointerWithin,
   useDroppable,
 } from "@dnd-kit/core";
 import {
@@ -21,16 +22,22 @@ import {
   EmptyTitle,
   Skeleton,
 } from "@taskdesk/ui";
-import { useCallback, useMemo } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { ColumnShell } from "@/components/kanban-board/column/column-shell";
+import { getProjectLabels } from "@/fetchers/label/project-labels";
 import getAssignablePeople from "@/fetchers/work-item/get-assignable-people";
 import { useDndAccessibility } from "@/hooks/use-dnd-accessibility";
 import { getInitials } from "@/lib/get-initials";
 import { getPriorityIcon } from "@/lib/priority";
 import {
+  boardGroupItemId,
   buildBoardGroups,
+  type CustomFieldGroupDefinition,
+  type CustomFieldGroupPerson,
+  parseBoardGroupId,
+  parseBoardGroupItemId,
   type WorkItemBoardGroup,
   type WorkItemBoardGroupField,
 } from "@/lib/work-item-board-groups";
@@ -38,6 +45,22 @@ import type { WorkItemRow } from "@/types/work-item";
 import useWorkItemGroupDrag from "./use-work-item-group-drag";
 import { BoardCard } from "./work-item-board";
 import WorkItemContextMenu from "./work-item-context-menu";
+
+const VirtualizedSortableList = lazy(
+  () => import("./virtualization/virtualized-sortable-list"),
+) as unknown as typeof import("./virtualization/virtualized-sortable-list").default;
+
+export function groupedBoardCollisionDetection(
+  args: Parameters<typeof closestCorners>[0],
+) {
+  if (args.pointerCoordinates) {
+    const group = pointerWithin(args).find((collision) =>
+      parseBoardGroupId(collision.id),
+    );
+    return group ? [group] : [];
+  }
+  return closestCorners(args);
+}
 
 /**
  * `VW-13`: the Kaneo board with its columns split by assignee or priority instead of state.
@@ -48,6 +71,8 @@ import WorkItemContextMenu from "./work-item-context-menu";
 export default function WorkItemGroupedBoard({
   projectId,
   field,
+  customField,
+  customFieldPeople = [],
   workItems,
   peopleEnabled,
   isLoading,
@@ -67,6 +92,8 @@ export default function WorkItemGroupedBoard({
 }: {
   projectId: string;
   field: WorkItemBoardGroupField;
+  customField?: CustomFieldGroupDefinition;
+  customFieldPeople?: CustomFieldGroupPerson[];
   workItems: WorkItemRow[] | undefined;
   /** Whether the assignable people may be fetched yet (capabilities have loaded). */
   peopleEnabled: boolean;
@@ -95,6 +122,12 @@ export default function WorkItemGroupedBoard({
     enabled: field === "assignee" && peopleEnabled,
     staleTime: 30_000,
   });
+  const labelsQuery = useQuery({
+    queryKey: ["projects", projectId, "labels"],
+    queryFn: () => getProjectLabels(projectId),
+    enabled: field === "label",
+    staleTime: 30_000,
+  });
   const people = useMemo(
     () =>
       (peopleQuery.data ?? []).map((person) => ({
@@ -103,9 +136,35 @@ export default function WorkItemGroupedBoard({
       })),
     [peopleQuery.data],
   );
+  const labels = useMemo(
+    () =>
+      (labelsQuery.data ?? []).map((label) => ({
+        id: label.id,
+        name: label.name,
+        color: label.color,
+      })),
+    [labelsQuery.data],
+  );
   const groups = useMemo(
-    () => buildBoardGroups(field, workItems ?? [], people),
-    [field, workItems, people],
+    () =>
+      buildBoardGroups(
+        field,
+        workItems ?? [],
+        people,
+        customField,
+        customFieldPeople,
+        labels,
+        canUpdate,
+      ),
+    [
+      field,
+      workItems,
+      people,
+      customField,
+      customFieldPeople,
+      labels,
+      canUpdate,
+    ],
   );
   const drag = useWorkItemGroupDrag({
     projectId,
@@ -114,16 +173,20 @@ export default function WorkItemGroupedBoard({
     groups,
     people,
     canAssign,
+    canUpdate,
     canUnassign: (item) =>
       canUnassignAny ||
       (canUpdate &&
         people.some((person) => person.personId === item.assigneeId)),
     canSetPriority: canUpdate && canSetPriority,
+    customField,
   });
 
   const describeDnd = useCallback(
     (id: string | number) => {
-      const title = workItems?.find((item) => item.id === id)?.title;
+      const active = String(id);
+      const draggedItemId = parseBoardGroupItemId(active)?.itemId ?? active;
+      const title = workItems?.find((item) => item.id === draggedItemId)?.title;
       if (title) return title;
       const group = groups.find((candidate) => candidate.id === id);
       return group ? drag.groupName(group) : undefined;
@@ -131,8 +194,14 @@ export default function WorkItemGroupedBoard({
     [workItems, groups, drag],
   );
   const dndAccessibility = useDndAccessibility(describeDnd);
+  const [retainFocusId, setRetainFocusId] = useState<string>();
+  const onRetainFocus = useCallback(() => setRetainFocusId(undefined), []);
 
-  if (isError || (field === "assignee" && peopleQuery.isError)) {
+  if (
+    isError ||
+    (field === "assignee" && peopleQuery.isError) ||
+    (field === "label" && labelsQuery.isError)
+  ) {
     return (
       <Alert variant="error" data-primary-content-ready="true">
         <AlertTitle>{t("workItems:board.loadErrorTitle")}</AlertTitle>
@@ -144,6 +213,7 @@ export default function WorkItemGroupedBoard({
             onClick={() => {
               onRetry();
               void peopleQuery.refetch();
+              void labelsQuery.refetch();
             }}
           >
             {t("workItems:board.retry")}
@@ -153,7 +223,11 @@ export default function WorkItemGroupedBoard({
     );
   }
 
-  if (isLoading || (field === "assignee" && peopleQuery.isLoading)) {
+  if (
+    isLoading ||
+    (field === "assignee" && peopleQuery.isLoading) ||
+    (field === "label" && labelsQuery.isLoading)
+  ) {
     return (
       <div
         className="flex gap-4 overflow-x-auto p-4"
@@ -184,10 +258,16 @@ export default function WorkItemGroupedBoard({
     <DndContext
       accessibility={dndAccessibility}
       sensors={drag.sensors}
-      collisionDetection={closestCorners}
-      onDragStart={drag.startDrag}
+      collisionDetection={groupedBoardCollisionDetection}
+      onDragStart={(event) => {
+        setRetainFocusId(undefined);
+        drag.startDrag(event);
+      }}
       onDragOver={drag.overDrag}
-      onDragEnd={drag.endDrag}
+      onDragEnd={(event) => {
+        if (event.over) setRetainFocusId(String(event.active.id));
+        drag.endDrag(event);
+      }}
       onDragCancel={drag.cancelDrag}
     >
       <WorkItemContextMenu items={workItems ?? []}>
@@ -225,6 +305,8 @@ export default function WorkItemGroupedBoard({
                   onOpenItem={onOpenItem}
                   busy={drag.busy}
                   canWrite={drag.canWrite}
+                  retainFocusId={retainFocusId}
+                  onRetainFocus={onRetainFocus}
                 />
               ))}
             </div>
@@ -275,8 +357,16 @@ function GroupIcon({ group }: { group: WorkItemBoardGroup }) {
   if (group.field === "priority")
     return (
       <span className="text-muted-foreground [&>svg]:h-4 [&>svg]:w-4">
-        {getPriorityIcon(group.value ?? "no-priority")}
+        {getPriorityIcon(String(group.value ?? "no-priority"))}
       </span>
+    );
+  if (group.field === "label")
+    return (
+      <span
+        aria-hidden="true"
+        className="size-3.5 shrink-0 rounded-full border border-border/50"
+        style={{ backgroundColor: group.color }}
+      />
     );
   return (
     <Avatar className="h-5 w-5">
@@ -299,6 +389,8 @@ function GroupColumn({
   onOpenItem,
   busy,
   canWrite,
+  retainFocusId,
+  onRetainFocus,
 }: {
   group: WorkItemBoardGroup;
   name: string;
@@ -310,6 +402,8 @@ function GroupColumn({
   onOpenItem?: (key: string) => void;
   busy: boolean;
   canWrite: boolean;
+  retainFocusId?: string;
+  onRetainFocus: () => void;
 }) {
   const { t } = useTranslation();
   const { setNodeRef } = useDroppable({
@@ -368,23 +462,73 @@ function GroupColumn({
         }
       >
         <SortableContext
-          items={group.items.map((item) => item.id)}
+          items={group.items.map((item) => boardGroupItemId(group, item.id))}
           strategy={verticalListSortingStrategy}
         >
           {group.items.length === 0 ? (
             <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
               {t("workItems:board.groupEmpty")}
             </p>
+          ) : group.items.length > 50 ? (
+            <Suspense
+              fallback={
+                <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
+                  {group.items.map((item) => (
+                    <BoardCard
+                      key={item.id}
+                      item={item}
+                      sortableId={boardGroupItemId(group, item.id)}
+                      state={{ id: item.stateId, name: item.stateName }}
+                      busy={busy}
+                      canSelect={canSelect}
+                      canTransition={canWrite && group.droppable}
+                      canRank={false}
+                      selected={selectedKeys.includes(item.key)}
+                      onSelectionChange={onSelectionChange}
+                      onOpenItem={onOpenItem}
+                    />
+                  ))}
+                </ul>
+              }
+            >
+              <VirtualizedSortableList
+                items={group.items}
+                getItemId={(item) => boardGroupItemId(group, item.id)}
+                as="ul"
+                className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1"
+                estimateSize={150}
+                gap={8}
+                retainFocusId={retainFocusId}
+                onRetainFocus={onRetainFocus}
+                renderItem={(item, virtualItem) => (
+                  <BoardCard
+                    key={item.id}
+                    item={item}
+                    sortableId={boardGroupItemId(group, item.id)}
+                    state={{ id: item.stateId, name: item.stateName }}
+                    busy={busy}
+                    canSelect={canSelect}
+                    canTransition={canWrite && group.droppable}
+                    canRank={false}
+                    selected={selectedKeys.includes(item.key)}
+                    onSelectionChange={onSelectionChange}
+                    onOpenItem={onOpenItem}
+                    virtualItem={virtualItem}
+                  />
+                )}
+              />
+            </Suspense>
           ) : (
             <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
               {group.items.map((item) => (
                 <BoardCard
                   key={item.id}
                   item={item}
+                  sortableId={boardGroupItemId(group, item.id)}
                   state={{ id: item.stateId, name: item.stateName }}
                   busy={busy}
                   canSelect={canSelect}
-                  canTransition={canWrite}
+                  canTransition={canWrite && group.droppable}
                   canRank={false}
                   selected={selectedKeys.includes(item.key)}
                   onSelectionChange={onSelectionChange}

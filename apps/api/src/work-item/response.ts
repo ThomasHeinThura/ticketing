@@ -1,4 +1,6 @@
+import { CUSTOM_FIELD_FORMATS } from "../custom-field/logic";
 import { workItemCustomFieldSchema } from "../custom-field/response";
+import { optionSchema } from "../custom-field/schema";
 import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
 
 // Plain (unregistered) shape shared by `workItemSchema` and `workItemDetailSchema`, so the
@@ -143,6 +145,13 @@ export const workItemDetailSchema = workItemShape
 // finding, even though nothing about its runtime behaviour would change.
 export const workItemListItemSchema = workItemSchema
   .extend({
+    /** Server-resolved self/nearest epic; null is meaningful only when epicAvailable is true. */
+    epic: z
+      .object({ id: z.string(), key: z.string(), title: z.string() })
+      .nullable()
+      .optional(),
+    /** False means the parent chain cannot be safely resolved or disclosed. */
+    epicAvailable: z.boolean().optional(),
     labels: z
       .array(z.object({ id: z.string(), name: z.string(), color: z.string() }))
       .optional(),
@@ -152,6 +161,8 @@ export const workItemListItemSchema = workItemSchema
         "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
     }),
     assigneeName: z.string().nullable(),
+    /** Selected live custom-column values only; absent for native-only list/search requests. */
+    customFieldValues: z.record(z.string(), z.unknown()).optional(),
     ...assigneeFactsShape,
     ...slaBadgeShape,
   })
@@ -164,6 +175,14 @@ export const workItemPageSchema = z
   })
   .openapi("WorkItemPage");
 
+/** One selected custom-column definition, returned once per page rather than repeated per row. */
+export const workItemCustomFieldColumnSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  format: z.enum(CUSTOM_FIELD_FORMATS),
+  options: z.array(optionSchema),
+});
+
 // `api-design.md`'s collection envelope (`{ data, page, meta }`). `meta.total` is an
 // exact count in this implementation (one extra `count(*)` query over the same
 // filters, not a per-row cost) -- `api-design.md` allows it to be documented as an
@@ -175,6 +194,17 @@ export const workItemListResponseSchema = z
     data: z.array(workItemListItemSchema),
     page: workItemPageSchema,
     meta: z.object({ total: z.number() }),
+    customFieldColumns: z.array(workItemCustomFieldColumnSchema).optional(),
+    /** Project-bound names referenced by visible selected user fields only. */
+    customFieldPeople: z
+      .array(
+        z.object({
+          projectId: z.string(),
+          personId: z.string(),
+          name: z.string().nullable(),
+        }),
+      )
+      .optional(),
   })
   .openapi("WorkItemListResponse");
 

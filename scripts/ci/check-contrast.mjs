@@ -922,6 +922,7 @@ export function observeInheritedForegroundSurfaces(
   sourcePaths,
   tokenNames,
   diagnose,
+  { trackReachability = false } = {},
 ) {
   const parser = new API({ cwd: repoRoot });
   const globalCss = requireFromWeb("node:fs").readFileSync(
@@ -944,15 +945,34 @@ export function observeInheritedForegroundSurfaces(
     );
   }
   const cssBackgroundByClass = new Map();
-  for (const rule of globalCss.matchAll(
-    /\.([A-Za-z_][\w-]*)\s*\{([^{}]*)\}/gu,
-  )) {
-    const token = rule[2].match(
-      /\bbackground(?:-color)?\s*:\s*var\(--([a-z0-9-]+)\)/u,
-    )?.[1];
-    if (token && tokenNames.has(token))
-      cssBackgroundByClass.set(rule[1], token);
+  const loadedCss = new Set();
+  function addCssSurfaces(source) {
+    for (const rule of source.matchAll(
+      /\.([A-Za-z_][\w-]*)\s*\{([^{}]*)\}/gu,
+    )) {
+      const token = rule[2].match(
+        /\bbackground(?:-color)?\s*:\s*var\(--([a-z0-9-]+)\)/u,
+      )?.[1];
+      if (token && tokenNames.has(token))
+        cssBackgroundByClass.set(rule[1], token);
+    }
   }
+  function loadCss(importPath, importer) {
+    const resolved = importPath.startsWith("@/")
+      ? path.join(repoRoot, "apps/web/src", importPath.slice(2))
+      : importPath.startsWith(".")
+        ? path.resolve(path.dirname(importer), importPath)
+        : undefined;
+    if (!resolved || loadedCss.has(resolved)) return;
+    if (!resolved.startsWith(`${repoRoot}${path.sep}`))
+      throw new Error("Contrast CSS import escapes the repository");
+    loadedCss.add(resolved);
+    const source = requireFromWeb("node:fs").readFileSync(resolved, "utf8");
+    for (const match of source.matchAll(/@import\s+["']([^"']+\.css)["']/gu))
+      loadCss(match[1], resolved);
+    addCssSurfaces(source);
+  }
+  addCssSurfaces(globalCss);
   const absolutePaths = sourcePaths.map((sourcePath) =>
     path.join(repoRoot, sourcePath),
   );
@@ -1086,17 +1106,19 @@ export function observeInheritedForegroundSurfaces(
       MenuCheckboxItem: "CheckboxItem",
       MenuRadioItem: "RadioItem",
     };
+    const normalizedTarget =
+      importedTarget && resolveLocalExport(importedTarget);
     const primitive =
-      importedTarget?.file === "packages/ui/src/components/menu.tsx"
-        ? primitiveByWrapper[importedTarget.symbol]
+      normalizedTarget?.file === "packages/ui/src/components/menu-content.tsx"
+        ? primitiveByWrapper[normalizedTarget.symbol]
         : undefined;
     if (!primitive) return false;
     const wrapperSource = requireFromWeb("node:fs").readFileSync(
-      path.join(repoRoot, importedTarget.file),
+      path.join(repoRoot, normalizedTarget.file),
       "utf8",
     );
     const wrapperStart = wrapperSource.search(
-      new RegExp(`function ${importedTarget.symbol}\\b`, "u"),
+      new RegExp(`function ${normalizedTarget.symbol}\\b`, "u"),
     );
     if (wrapperStart < 0) return false;
     const wrapperTail = wrapperSource.slice(wrapperStart);
@@ -1335,33 +1357,44 @@ export function observeInheritedForegroundSurfaces(
   function resolveLocalExport(target) {
     const key = `${target.file}|${target.symbol}`;
     if (localExportCache.has(key)) return localExportCache.get(key);
-    let source;
-    try {
-      source = requireFromWeb("node:fs").readFileSync(
-        path.join(repoRoot, target.file),
-        "utf8",
-      );
-    } catch {
-      localExportCache.set(key, target);
-      return target;
-    }
     let resolved = target;
-    const visited = new Set([target.symbol]);
+    const visited = new Set([`${target.file}|${target.symbol}`]);
     for (let depth = 0; depth < 8; depth += 1) {
+      let source;
+      try {
+        source = requireFromWeb("node:fs").readFileSync(
+          path.join(repoRoot, resolved.file),
+          "utf8",
+        );
+      } catch {
+        break;
+      }
       let nextSymbol;
+      let nextFile = resolved.file;
       for (const block of source.matchAll(/export\s*\{([\s\S]*?)\}/gu)) {
         for (const entry of block[1].split(",")) {
           const [original, exported] = entry.trim().split(/\s+as\s+/u);
           if ((exported ?? original) === resolved.symbol && original) {
             nextSymbol = original;
+            const reexport = source
+              .slice(block.index + block[0].length)
+              .match(/^\s*from\s*["']([^"']+)["']/u);
+            if (reexport?.[1].startsWith(".")) {
+              const relative = path.resolve(
+                path.dirname(path.join(repoRoot, resolved.file)),
+                reexport[1],
+              );
+              nextFile = sourceModulePath(path.relative(repoRoot, relative));
+            }
             break;
           }
         }
         if (nextSymbol) break;
       }
-      if (!nextSymbol || visited.has(nextSymbol)) break;
-      visited.add(nextSymbol);
-      resolved = { ...target, symbol: nextSymbol };
+      const nextKey = nextSymbol && `${nextFile}|${nextSymbol}`;
+      if (!nextKey || visited.has(nextKey)) break;
+      visited.add(nextKey);
+      resolved = { file: nextFile, symbol: nextSymbol };
     }
     localExportCache.set(key, resolved);
     return resolved;
@@ -1494,7 +1527,8 @@ export function observeInheritedForegroundSurfaces(
   }
   function wrapperSurface(target) {
     const normalized = resolveLocalExport(target);
-    if (normalized.symbol !== target.symbol) return wrapperSurface(normalized);
+    if (normalized.file !== target.file || normalized.symbol !== target.symbol)
+      return wrapperSurface(normalized);
     const key = `${target.file}|${target.symbol}`;
     if (wrapperSurfaceCache.has(key)) return wrapperSurfaceCache.get(key);
     if (wrapperSurfaceActive.has(key)) return undefined;
@@ -1555,6 +1589,41 @@ export function observeInheritedForegroundSurfaces(
   }
   function callerWrapperSurface(ancestor, sourceFile, target) {
     if (
+      target.file === "packages/ui/src/components/alert.tsx" &&
+      target.symbol === "Alert"
+    ) {
+      const attributes = ts.isJsxElement(ancestor)
+        ? ancestor.openingElement.attributes
+        : ancestor.attributes;
+      const variantAttribute = attributes.properties.find(
+        (attribute) =>
+          ts.isJsxAttribute(attribute) &&
+          attribute.name.getText(sourceFile) === "variant",
+      );
+      const variant =
+        variantAttribute?.initializer &&
+        ts.isStringLiteral(variantAttribute.initializer)
+          ? variantAttribute.initializer.text
+          : variantAttribute
+            ? undefined
+            : "default";
+      const surfaces = {
+        default: "dark:bg-input/32",
+        error: "bg-destructive/4",
+        info: "bg-info/4",
+        success: "bg-success/4",
+        warning: "bg-warning/4",
+      };
+      const surface = variant ? surfaces[variant] : undefined;
+      const implementation = requireFromWeb("node:fs").readFileSync(
+        path.join(repoRoot, target.file),
+        "utf8",
+      );
+      return surface && implementation.includes(surface.replace(/^dark:/u, ""))
+        ? surface
+        : undefined;
+    }
+    if (
       target.file === "packages/ui/src/components/button.tsx" &&
       target.symbol === "Button"
     ) {
@@ -1601,25 +1670,91 @@ export function observeInheritedForegroundSurfaces(
       );
       return surface && implementation.includes(surface) ? surface : undefined;
     }
+    if (
+      target.file === "packages/ui/src/components/dialog.tsx" &&
+      ["DialogPopup", "DialogContent"].includes(target.symbol)
+    ) {
+      const sourceFile = sourceFilesByPath.get(target.file);
+      let popup;
+      sourceFile?.forEachChild(function find(node) {
+        if (ts.isFunctionDeclaration(node) && node.name?.text === "DialogPopup")
+          node.forEachChild(function findPopup(current) {
+            if (
+              (ts.isJsxElement(current) ||
+                ts.isJsxSelfClosingElement(current)) &&
+              (ts.isJsxElement(current)
+                ? current.openingElement.tagName.getText(sourceFile)
+                : current.tagName.getText(sourceFile)) ===
+                "DialogPrimitive.Popup"
+            )
+              popup = current;
+            current.forEachChild(findPopup);
+          });
+        node.forEachChild(find);
+      });
+      if (!popup || !sourceFile) return undefined;
+      const backgrounds = [
+        ...popup.getText(sourceFile).matchAll(/\bbg-([a-z0-9-]+)(?:\/\d+)?/gu),
+      ]
+        .filter((match) => tokenNames.has(match[1]))
+        .map((match) => match[0]);
+      return backgrounds.length === 1 &&
+        backgrounds[0] === "bg-popover" &&
+        tokenNames.has("popover")
+        ? "bg-popover"
+        : undefined;
+    }
     return wrapperSurface(target);
+  }
+  function wrapperHasTransparentTheme(ancestor, sourceFile, target) {
+    if (
+      target.file !== "packages/ui/src/components/alert.tsx" ||
+      target.symbol !== "Alert"
+    )
+      return false;
+    const attributes = ts.isJsxElement(ancestor)
+      ? ancestor.openingElement.attributes
+      : ancestor.attributes;
+    const variantAttribute = attributes.properties.find(
+      (attribute) =>
+        ts.isJsxAttribute(attribute) &&
+        attribute.name.getText(sourceFile) === "variant",
+    );
+    return (
+      !variantAttribute ||
+      (variantAttribute.initializer &&
+        ts.isStringLiteral(variantAttribute.initializer) &&
+        variantAttribute.initializer.text === "default")
+    );
   }
 
   try {
+    // Component-owned styles are shipping CSS too. Load their real import
+    // declarations before resolving any JSX surface, independent of file order.
     for (const [index, sourcePath] of absolutePaths.entries()) {
-      const sourceFile = snapshot
-        .getDefaultProjectForFile(sourcePath)
-        .program.getSourceFile(sourcePath);
-      if (!sourceFile) {
-        unresolved.set(`${sourcePaths[index]}::<source-file-unavailable>`, {
-          id: `${sourcePaths[index]}::<source-file-unavailable>`,
-          usage: sourcePaths[index],
-          component: "<unavailable>",
-          ancestry: [],
-          foregroundClass: "<source-file-unavailable>",
-        });
-        continue;
+      const project = snapshot.getDefaultProjectForFile(sourcePath);
+      if (!project?.program) {
+        throw new Error(
+          `Contrast analysis cannot load source "${sourcePaths[index]}": TypeScript has no default project for this path. Confirm the file still exists and is included by its owning tsconfig, then rerun after the source inventory stops changing.`,
+        );
       }
+      const sourceFile = project.program.getSourceFile(sourcePath);
+      if (!sourceFile)
+        throw new Error(
+          `Contrast analysis cannot load source "${sourcePaths[index]}": the TypeScript project does not contain its source file. Confirm the file still exists and is included by its owning tsconfig, then rerun after the source inventory stops changing.`,
+        );
       sourceFilesByPath.set(sourcePaths[index], sourceFile);
+      for (const declaration of sourceFile.statements) {
+        if (
+          ts.isImportDeclaration(declaration) &&
+          ts.isStringLiteral(declaration.moduleSpecifier) &&
+          declaration.moduleSpecifier.text.endsWith(".css")
+        )
+          loadCss(declaration.moduleSpecifier.text, sourcePath);
+      }
+    }
+    for (const [index] of absolutePaths.entries()) {
+      const sourceFile = sourceFilesByPath.get(sourcePaths[index]);
       const componentImports = importedComponents(sourcePaths[index]);
       importsByPath.set(sourcePaths[index], componentImports);
       const nonTextComponents = new Set();
@@ -2225,14 +2360,10 @@ export function observeInheritedForegroundSurfaces(
         path.join(repoRoot, "apps/web/src/index.css"),
         "utf8",
       );
-      const bodyBackground = indexCss.match(/body\s*\{([^}]*)\}/su)?.[1];
-      const bodyPaintsBackground =
-        bodyBackground &&
-        (/(?:^|\s)bg-background(?:\s|$)/u.test(bodyBackground) ||
-          /@apply\s+[^;}]*\bbg-background\b/u.test(bodyBackground));
-      if (bodyPaintsBackground) {
+      const backgroundClass = declaredBodyBackground(indexCss);
+      if (backgroundClass) {
         const result = {
-          backgroundClass: "bg-background",
+          backgroundClass,
           chain: [
             `${route.sourcePath}:${route.routePath}`,
             "apps/web/src/index.css:body>@apply bg-background",
@@ -2245,7 +2376,359 @@ export function observeInheritedForegroundSurfaces(
       return undefined;
     }
 
+    function hasUnresolvedPaint(call) {
+      const nonColorBackgroundUtilities = new Set([
+        "bg-auto",
+        "bg-center",
+        "bg-contain",
+        "bg-cover",
+        "bg-fixed",
+        "bg-left",
+        "bg-left-bottom",
+        "bg-left-top",
+        "bg-local",
+        "bg-none",
+        "bg-no-repeat",
+        "bg-repeat",
+        "bg-repeat-round",
+        "bg-repeat-space",
+        "bg-repeat-x",
+        "bg-repeat-y",
+        "bg-right",
+        "bg-right-bottom",
+        "bg-right-top",
+        "bg-scroll",
+        "bg-top",
+      ]);
+      const nodes = [
+        ...(call.paintAncestors ?? []).map((entry) => ({
+          node: entry.ancestor,
+          sourceFile: entry.sourceFile,
+        })),
+        {
+          node: call.node,
+          sourceFile: sourceFilesByPath.get(call.callerPath),
+        },
+      ];
+      for (const { node, sourceFile } of nodes) {
+        if (!node || !sourceFile) continue;
+        const attributes = ts.isJsxElement(node)
+          ? node.openingElement.attributes
+          : ts.isJsxSelfClosingElement(node)
+            ? node.attributes
+            : undefined;
+        const style = attributes?.properties.find(
+          (attribute) =>
+            ts.isJsxAttribute(attribute) &&
+            attribute.name.getText(sourceFile) === "style",
+        );
+        if (
+          style &&
+          /\bbackground(?:Color|Image)?\s*:/iu.test(style.getText(sourceFile))
+        )
+          return true;
+
+        for (const entry of classTokens(node, sourceFile)) {
+          if (!entry.utility.startsWith("bg-")) continue;
+          const token = entry.utility.match(
+            /^bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+          )?.[1];
+          if (
+            entry.utility === "bg-transparent" ||
+            nonColorBackgroundUtilities.has(entry.utility) ||
+            (token && tokenNames.has(token))
+          )
+            continue;
+          return true;
+        }
+      }
+      return false;
+    }
+
     const componentCallSitesCache = new Map();
+    function isJsxChildValue(node, sourceFile) {
+      for (
+        let current = node;
+        current && current !== sourceFile;
+        current = current.parent
+      ) {
+        if (
+          ts.isArrowFunction(current) ||
+          ts.isFunctionExpression(current) ||
+          ts.isFunctionDeclaration(current)
+        )
+          return false;
+        if (ts.isJsxExpression(current)) {
+          const parent = current.parent;
+          return ts.isJsxElement(parent) && parent.children.includes(current);
+        }
+      }
+      return false;
+    }
+    function returnedMapValueCall(node, sourceFile, ownerName) {
+      let callback;
+      for (let current = node.parent; current; current = current.parent) {
+        if (
+          ts.isArrowFunction(current) ||
+          ts.isFunctionExpression(current) ||
+          ts.isFunctionDeclaration(current)
+        ) {
+          callback = current;
+          break;
+        }
+      }
+      if (
+        !callback ||
+        !ts.isCallExpression(callback.parent) ||
+        !callback.parent.arguments.includes(callback) ||
+        !ts.isPropertyAccessExpression(callback.parent.expression) ||
+        callback.parent.expression.name.text !== "map"
+      )
+        return false;
+      let owner;
+      sourceFile.forEachChild((statement) => {
+        if (
+          ts.isFunctionDeclaration(statement) &&
+          statement.name?.text === ownerName
+        )
+          owner = statement;
+        if (ts.isVariableStatement(statement))
+          for (const declaration of statement.declarationList.declarations)
+            if (
+              ts.isIdentifier(declaration.name) &&
+              declaration.name.text === ownerName &&
+              declaration.initializer
+            )
+              owner = wrappedFunctionInitializer(declaration.initializer);
+      });
+      if (!owner?.body) return false;
+      const mapCall = callback.parent;
+      for (
+        let current = mapCall.parent;
+        current && current !== owner.body;
+        current = current.parent
+      ) {
+        if (
+          current !== owner.body &&
+          (ts.isArrowFunction(current) ||
+            ts.isFunctionExpression(current) ||
+            ts.isFunctionDeclaration(current))
+        )
+          return false;
+        if (ts.isReturnStatement(current)) return true;
+      }
+      return ts.isExpression(owner.body) && owner.body === mapCall;
+    }
+    function renderedCallbackValueCall(node, sourceFile, callerPath) {
+      let callback;
+      for (let current = node.parent; current; current = current.parent) {
+        if (
+          ts.isArrowFunction(current) ||
+          ts.isFunctionExpression(current) ||
+          ts.isFunctionDeclaration(current)
+        ) {
+          callback = current;
+          break;
+        }
+      }
+      const expression = callback?.parent;
+      const attribute =
+        callback &&
+        ts.isJsxExpression(expression) &&
+        expression.expression === callback &&
+        ts.isJsxAttribute(expression.parent)
+          ? expression.parent
+          : undefined;
+      const opening = attribute?.parent;
+      if (!attribute || !opening || !ts.isJsxAttributes(opening)) return false;
+      const element = opening.parent;
+      const tag =
+        ts.isJsxOpeningElement(element) || ts.isJsxSelfClosingElement(element)
+          ? element.tagName.getText(sourceFile)
+          : undefined;
+      const target = tag && componentTarget(tag, callerPath);
+      if (!target) return false;
+      // A callback prop is a render path only when the component implementation
+      // demonstrably renders that named slot into JSX.
+      return Boolean(
+        renderedSlotLocations(target, attribute.name.getText(sourceFile))
+          ?.length,
+      );
+    }
+    function renderedObjectValueCall(node, sourceFile, callerPath) {
+      let property;
+      for (let current = node.parent; current; current = current.parent) {
+        if (ts.isPropertyAssignment(current) && current.initializer === node) {
+          property = current;
+          break;
+        }
+        if (ts.isArrowFunction(current) || ts.isFunctionExpression(current)) {
+          const mapCall = current.parent;
+          if (
+            !ts.isCallExpression(mapCall) ||
+            !ts.isPropertyAccessExpression(mapCall.expression) ||
+            mapCall.expression.name.text !== "map" ||
+            mapCall.arguments[0] !== current ||
+            !current.body.getText(sourceFile).includes("{")
+          )
+            return false;
+          // The object is a value produced by a collection renderer. Keep
+          // walking from its map call so the JSX prop and consumer can prove
+          // that this exact property is eventually rendered.
+          current = mapCall;
+          while (current.parent && !ts.isJsxAttribute(current.parent))
+            current = current.parent;
+          if (!ts.isJsxAttribute(current.parent)) return false;
+        } else if (ts.isFunctionDeclaration(current)) return false;
+      }
+      if (!property || !ts.isObjectLiteralExpression(property.parent))
+        return false;
+      const valueProperty = property.name
+        .getText(sourceFile)
+        .replace(/^['"]|['"]$/gu, "");
+      let attribute;
+      let element;
+      for (let current = property.parent; current; current = current.parent) {
+        if (ts.isJsxAttribute(current)) {
+          attribute = current;
+          const parent = current.parent.parent;
+          element = ts.isJsxOpeningElement(parent) ? parent.parent : parent;
+          break;
+        }
+        if (ts.isArrowFunction(current) || ts.isFunctionExpression(current)) {
+          const mapCall = current.parent;
+          if (
+            !ts.isCallExpression(mapCall) ||
+            !ts.isPropertyAccessExpression(mapCall.expression) ||
+            mapCall.expression.name.text !== "map" ||
+            mapCall.arguments[0] !== current
+          )
+            return false;
+          current = mapCall;
+        } else if (ts.isFunctionDeclaration(current)) return false;
+      }
+      if (
+        !attribute ||
+        !element ||
+        (!ts.isJsxSelfClosingElement(element) && !ts.isJsxElement(element))
+      )
+        return false;
+      const collectionProperty = attribute.name.getText(sourceFile);
+      const tag = ts.isJsxElement(element)
+        ? element.openingElement.tagName.getText(sourceFile)
+        : element.tagName.getText(sourceFile);
+      const target = importsByPath.get(callerPath)?.get(tag);
+      const componentFile = target && sourceFilesByPath.get(target.file);
+      if (!target || !componentFile) return false;
+      const componentName =
+        target.symbol === "default"
+          ? componentFile
+              .getText()
+              .match(
+                /export\s+default\s+(?:function\s+)?([A-Za-z_$][\w$]*)/u,
+              )?.[1]
+          : resolveLocalExport(target).symbol;
+      let declaration;
+      componentFile.forEachChild((statement) => {
+        if (
+          ts.isFunctionDeclaration(statement) &&
+          statement.name?.text === componentName
+        )
+          declaration = statement;
+        if (ts.isVariableStatement(statement))
+          for (const item of statement.declarationList.declarations)
+            if (
+              ts.isIdentifier(item.name) &&
+              item.name.text === componentName &&
+              item.initializer
+            )
+              declaration = wrappedFunctionInitializer(item.initializer);
+      });
+      const parameter = declaration?.parameters[0]?.name;
+      if (!parameter || !ts.isObjectBindingPattern(parameter)) return false;
+      const collectionBinding = parameter.elements.find(
+        (item) =>
+          (item.propertyName ?? item.name).getText(componentFile) ===
+          collectionProperty,
+      )?.name;
+      if (!collectionBinding || !ts.isIdentifier(collectionBinding))
+        return false;
+      let mapsCollection;
+      const findMap = (current) => {
+        const receiver =
+          ts.isCallExpression(current) &&
+          ts.isPropertyAccessExpression(current.expression)
+            ? current.expression.expression.getText(componentFile)
+            : undefined;
+        if (
+          ts.isCallExpression(current) &&
+          ts.isPropertyAccessExpression(current.expression) &&
+          current.expression.name.text === "map" &&
+          current.arguments[0] &&
+          (ts.isArrowFunction(current.arguments[0]) ||
+            ts.isFunctionExpression(current.arguments[0])) &&
+          (receiver === collectionBinding.text ||
+            receiver?.startsWith(`${collectionBinding.text}.`))
+        )
+          mapsCollection = current;
+        current.forEachChild(findMap);
+      };
+      if (declaration?.body) findMap(declaration.body);
+      const mapper = mapsCollection?.arguments[0];
+      const itemParameter = mapper?.parameters[0]?.name;
+      if (!itemParameter) return false;
+      let valueBinding;
+      if (ts.isObjectBindingPattern(itemParameter)) {
+        const value = itemParameter.elements.find(
+          (item) =>
+            (item.propertyName ?? item.name).getText(componentFile) ===
+            valueProperty,
+        )?.name;
+        if (value && ts.isIdentifier(value)) valueBinding = value.text;
+      }
+      function renderedValue(current) {
+        if (ts.isJsxExpression(current)) {
+          let found = false;
+          const inspect = (expression) => {
+            if (
+              ts.isIdentifier(expression) &&
+              valueBinding &&
+              expression.text === valueBinding
+            )
+              found = true;
+            if (
+              ts.isPropertyAccessExpression(expression) &&
+              ts.isIdentifier(itemParameter) &&
+              expression.expression.getText(componentFile) ===
+                itemParameter.text &&
+              expression.name.text === valueProperty
+            )
+              found = true;
+            if (
+              ts.isArrowFunction(expression) ||
+              ts.isFunctionExpression(expression) ||
+              ts.isFunctionDeclaration(expression)
+            )
+              return;
+            expression.forEachChild(inspect);
+          };
+          if (current.expression) inspect(current.expression);
+          return found;
+        }
+        if (
+          ts.isArrowFunction(current) ||
+          ts.isFunctionExpression(current) ||
+          ts.isFunctionDeclaration(current)
+        )
+          return false;
+        let found = false;
+        current.forEachChild((child) => {
+          if (renderedValue(child)) found = true;
+        });
+        return found;
+      }
+      return !!mapper?.body && renderedValue(mapper.body);
+    }
     function componentCallSites(target) {
       const targetKey = `${target.file}|${target.symbol}`;
       if (componentCallSitesCache.has(targetKey))
@@ -2319,7 +2802,12 @@ export function observeInheritedForegroundSurfaces(
                 (!attribute.initializer ||
                   attribute.initializer.kind === ts.SyntaxKind.TrueKeyword),
             );
-            if (matchesTarget(imported) && !explicitlyUnstyled) {
+            const localTarget =
+              callerPath === target.file && tag === target.symbol && !imported;
+            if (
+              (matchesTarget(imported) || localTarget) &&
+              !explicitlyUnstyled
+            ) {
               calls.push({
                 node,
                 ancestors,
@@ -2339,7 +2827,15 @@ export function observeInheritedForegroundSurfaces(
             ts.isCallExpression(node) &&
             ts.isIdentifier(node.expression) &&
             node.expression.text === target.symbol;
-          if ((calledImport || calledLocalFunction) && ancestors.length > 0) {
+          const renderedFunctionCall =
+            ts.isCallExpression(node) &&
+            (isJsxChildValue(node, sourceFile) ||
+              returnedMapValueCall(node, sourceFile, owner) ||
+              (calledLocalFunction &&
+                renderedCallbackValueCall(node, sourceFile, callerPath)) ||
+              (calledImport &&
+                renderedObjectValueCall(node, sourceFile, callerPath)));
+          if ((calledImport || calledLocalFunction) && renderedFunctionCall) {
             calls.push({
               node,
               ancestors,
@@ -2479,6 +2975,105 @@ export function observeInheritedForegroundSurfaces(
       find(sourceFile, [], undefined, []);
       return calls;
     }
+    const ownerReachabilityCache = new Map();
+    const hasUnknownDynamicModule = [...sourceFilesByPath.values()].some(
+      (sourceFile) => {
+        let unknown = false;
+        function visit(node) {
+          if (
+            ts.isCallExpression(node) &&
+            node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+            (!node.arguments[0] || !ts.isStringLiteral(node.arguments[0]))
+          )
+            unknown = true;
+          node.forEachChild(visit);
+        }
+        visit(sourceFile);
+        return unknown;
+      },
+    );
+    function isRouteEntryOwner(sourcePath, owner) {
+      const sourceFile = sourceFilesByPath.get(sourcePath);
+      if (!sourceFile || !sourcePath.startsWith("apps/web/src/routes/"))
+        return false;
+      if (owner === "<module>") return true;
+      let referenced = false;
+      function visit(node) {
+        if (
+          ts.isCallExpression(node) &&
+          ts.isIdentifier(node.expression) &&
+          node.expression.text === "createFileRoute"
+        ) {
+          const options = node.parent;
+          if (ts.isCallExpression(options)) {
+            for (const argument of options.arguments) {
+              if (!ts.isObjectLiteralExpression(argument)) continue;
+              for (const property of argument.properties) {
+                if (
+                  !ts.isPropertyAssignment(property) ||
+                  property.name.getText(sourceFile).replace(/["']/gu, "") !==
+                    "component"
+                )
+                  continue;
+                function containsOwner(value) {
+                  if (ts.isIdentifier(value) && value.text === owner)
+                    return true;
+                  if (
+                    ts.isFunctionDeclaration(value) ||
+                    ts.isFunctionExpression(value) ||
+                    ts.isArrowFunction(value)
+                  )
+                    return false;
+                  let found = false;
+                  value.forEachChild((child) => {
+                    if (containsOwner(child)) found = true;
+                  });
+                  return found;
+                }
+                if (containsOwner(property.initializer)) referenced = true;
+              }
+            }
+          }
+        }
+        node.forEachChild(visit);
+      }
+      visit(sourceFile);
+      return referenced;
+    }
+    function ownerIsReachable(sourcePath, owner, active = new Set()) {
+      if (!trackReachability) return true;
+      if (hasUnknownDynamicModule) return true;
+      if (
+        sourcePath === "apps/web/src/main.tsx" &&
+        owner === "bootstrapApplication"
+      )
+        return true;
+      if (isRouteEntryOwner(sourcePath, owner)) return true;
+      const key = `${sourcePath}|${owner}`;
+      if (ownerReachabilityCache.has(key))
+        return ownerReachabilityCache.get(key);
+      if (active.has(key)) return false;
+      const nextActive = new Set(active).add(key);
+      const callers = componentCallSites({ file: sourcePath, symbol: owner });
+      const reachable = callers.some((call) =>
+        call.owner === "<module>" &&
+        call.callerPath.startsWith("apps/web/src/routes/")
+          ? true
+          : call.owner &&
+            ownerIsReachable(call.callerPath, call.owner, nextActive),
+      );
+      ownerReachabilityCache.set(key, reachable);
+      return reachable;
+    }
+    function reachableComponentCallSites(target) {
+      if (!trackReachability) return componentCallSites(target);
+      return componentCallSites(target).filter((call) =>
+        call.owner === "<module>" &&
+        call.callerPath.startsWith("apps/web/src/routes/")
+          ? true
+          : call.owner && ownerIsReachable(call.callerPath, call.owner),
+      );
+    }
     function functionReturnBackgroundOptions(target) {
       const sourceFile = sourceFilesByPath.get(target.file);
       if (!sourceFile) return undefined;
@@ -2499,30 +3094,77 @@ export function observeInheritedForegroundSurfaces(
             ? node.body
             : wrappedFunctionInitializer(node.initializer)?.body;
           if (body) {
+            const aliases = new Map();
+            function collectAliases(current) {
+              if (
+                current !== body &&
+                (ts.isFunctionDeclaration(current) ||
+                  ts.isFunctionExpression(current) ||
+                  ts.isArrowFunction(current))
+              )
+                return;
+              if (
+                ts.isVariableDeclaration(current) &&
+                ts.isIdentifier(current.name) &&
+                current.initializer &&
+                (current.parent.flags & ts.NodeFlags.Const) !== 0
+              ) {
+                const entries = aliases.get(current.name.text) ?? [];
+                entries.push(current.initializer);
+                aliases.set(current.name.text, entries);
+              }
+              current.forEachChild(collectAliases);
+            }
+            if (ts.isBlock(body)) collectAliases(body);
+            function returnedRoot(candidate, active = new Set()) {
+              let expression = candidate;
+              while (ts.isParenthesizedExpression(expression))
+                expression = expression.expression;
+              if (
+                ts.isJsxElement(expression) ||
+                ts.isJsxSelfClosingElement(expression)
+              ) {
+                roots.push(expression);
+                return true;
+              }
+              if (ts.isIdentifier(expression)) {
+                if (active.has(expression.text)) return false;
+                const values = aliases.get(expression.text) ?? [];
+                if (values.length !== 1) return false;
+                return returnedRoot(
+                  values[0],
+                  new Set(active).add(expression.text),
+                );
+              }
+              if (ts.isConditionalExpression(expression)) {
+                const before = roots.length;
+                returnedRoot(expression.whenTrue, active);
+                returnedRoot(expression.whenFalse, active);
+                return roots.length > before;
+              }
+              if (ts.isBinaryExpression(expression)) {
+                const before = roots.length;
+                const logicalOperators = [
+                  ts.SyntaxKind.AmpersandAmpersandToken,
+                  ts.SyntaxKind.BarBarToken,
+                  ts.SyntaxKind.QuestionQuestionToken,
+                ];
+                if (!logicalOperators.includes(expression.operatorToken.kind)) {
+                  return false;
+                }
+                if (
+                  expression.operatorToken.kind !==
+                  ts.SyntaxKind.AmpersandAmpersandToken
+                )
+                  returnedRoot(expression.left, active);
+                returnedRoot(expression.right, active);
+                return roots.length > before;
+              }
+              return false;
+            }
             function findReturns(current) {
               if (ts.isReturnStatement(current) && current.expression) {
-                let expression = current.expression;
-                while (ts.isParenthesizedExpression(expression))
-                  expression = expression.expression;
-                if (
-                  ts.isJsxElement(expression) ||
-                  ts.isJsxSelfClosingElement(expression)
-                )
-                  roots.push(expression);
-                else if (
-                  ts.isConditionalExpression(expression) ||
-                  ts.isBinaryExpression(expression)
-                ) {
-                  function findJsx(value) {
-                    if (
-                      ts.isJsxElement(value) ||
-                      ts.isJsxSelfClosingElement(value)
-                    )
-                      roots.push(value);
-                    else value.forEachChild(findJsx);
-                  }
-                  findJsx(expression);
-                }
+                returnedRoot(current.expression);
               }
               if (
                 current !== body &&
@@ -2542,13 +3184,29 @@ export function observeInheritedForegroundSurfaces(
         node.forEachChild(findDeclaration);
       }
       findDeclaration(sourceFile);
-      const options = [];
+      const optionsByRoot = [];
       for (const root of roots) {
         const backgrounds = paintedBackgroundOptions(root, sourceFile);
         if (backgrounds === undefined) return undefined;
-        options.push(...backgrounds);
+        optionsByRoot.push(backgrounds);
       }
-      return options;
+      if (
+        optionsByRoot.length === 0 ||
+        optionsByRoot.some((options) => options.length === 0)
+      )
+        return [];
+      return optionsByRoot[0].filter((candidate) =>
+        optionsByRoot
+          .slice(1)
+          .every((options) =>
+            options.some(
+              (background) =>
+                background.className === candidate.className &&
+                JSON.stringify(background.themes ?? []) ===
+                  JSON.stringify(candidate.themes ?? []),
+            ),
+          ),
+      );
     }
     function componentTarget(tag, sourcePath) {
       const imports = importsByPath.get(sourcePath) ?? new Map();
@@ -2998,6 +3656,14 @@ export function observeInheritedForegroundSurfaces(
         const slot = containingSlot(ancestor, origin);
         const binding = target && `${target.file}:${target.symbol}.${slot}`;
         const explicit = paintedBackgrounds(ancestor, sourceFile).length > 0;
+        if (
+          !explicit &&
+          target?.file === "packages/ui/src/components/dialog.tsx" &&
+          ["DialogPopup", "DialogContent"].includes(target.symbol)
+        ) {
+          paths = paths.map((prefix) => [...prefix, { ancestor, sourceFile }]);
+          continue;
+        }
         const locations =
           target && !explicit && !active.has(binding)
             ? renderedSlotLocations(target, slot)
@@ -3077,6 +3743,7 @@ export function observeInheritedForegroundSurfaces(
       if (depth > 8) return undefined;
       const callerFile = sourceFilesByPath.get(call.callerPath);
       if (!callerFile) return undefined;
+      const transparentThemes = new Set();
       if (ts.isJsxElement(call.node) || ts.isJsxSelfClosingElement(call.node)) {
         const ownBackgrounds = classTokens(call.node, callerFile).filter(
           (entry) => {
@@ -3127,6 +3794,20 @@ export function observeInheritedForegroundSurfaces(
       let pendingOptions = pending;
       const resolvedOptions = [];
       let unpaintedPossible = false;
+      for (const { ancestor, sourceFile } of call.paintAncestors) {
+        const ancestorImports =
+          importsByPath.get(path.relative(repoRoot, sourceFile.fileName)) ??
+          new Map();
+        const tag = ts.isJsxElement(ancestor)
+          ? ancestor.openingElement.tagName.getText(sourceFile)
+          : ancestor.tagName.getText(sourceFile);
+        const imported = ancestorImports.get(tag);
+        if (
+          imported &&
+          wrapperHasTransparentTheme(ancestor, sourceFile, imported)
+        )
+          transparentThemes.add("light");
+      }
       if (ts.isCallExpression(call.node) && call.target) {
         const returned = functionReturnBackgroundOptions(call.target);
         if (returned === undefined) return undefined;
@@ -3227,6 +3908,18 @@ export function observeInheritedForegroundSurfaces(
             (background) => !stateful(background),
           );
           const statefulTranslucent = translucent.filter(stateful);
+          if (transparentThemes.has("light"))
+            resolvedOptions.push(
+              ...baseOpaque
+                .filter((background) => background.themes.includes("light"))
+                .map((background) => ({
+                  className: background.className,
+                  backdropClass: background.className,
+                  backdropLayers: [],
+                  themes: ["light"],
+                  chain: [...chain, "transparent-wrapper:light"],
+                })),
+            );
           // State surfaces such as hover:bg-accent/50 are painted over the
           // element's ordinary opaque surface. Preserve both contexts, and
           // carry the exact state surface as a composited backdrop when an
@@ -3399,7 +4092,18 @@ export function observeInheritedForegroundSurfaces(
         const buttonOverrideIsBound =
           explicitButtonBaseBackgrounds.length === 1;
         if (buttonOverrideIsBound) continue;
-        if (callerBackground && !unpaintedPossible && !buttonOverrideIsBound)
+        const transparentWrapper = wrapperHasTransparentTheme(
+          ancestor,
+          callerFile,
+          imported,
+        );
+        if (transparentWrapper) transparentThemes.add("light");
+        if (
+          callerBackground &&
+          !unpaintedPossible &&
+          !buttonOverrideIsBound &&
+          !transparentWrapper
+        )
           return undefined;
         const surface = callerWrapperSurface(ancestor, callerFile, imported);
         if (surface) {
@@ -3457,11 +4161,31 @@ export function observeInheritedForegroundSurfaces(
                     chain,
                   },
                 ];
+          if (
+            opaqueBackground({ className: surface }) &&
+            transparentThemes.has("light")
+          )
+            resolvedOptions.push({
+              className: surface,
+              backdropClass: surface,
+              backdropLayers: [],
+              themes: ["light"],
+              chain: [...chain, "transparent-wrapper:light"],
+            });
           return [...resolvedOptions, ...wrapperOptions];
         }
       }
       const routeSurface = routeLayoutSurface(call.callerPath);
-      if (routeSurface)
+      if (routeSurface) {
+        if (hasUnresolvedPaint(call)) return undefined;
+        if (transparentThemes.has("light"))
+          resolvedOptions.push({
+            className: routeSurface.backgroundClass,
+            backdropClass: routeSurface.backgroundClass,
+            backdropLayers: [],
+            themes: ["light"],
+            chain: [...routeSurface.chain, "transparent-wrapper:light"],
+          });
         return [
           ...resolvedOptions,
           ...(pendingOptions.length > 0
@@ -3487,7 +4211,21 @@ export function observeInheritedForegroundSurfaces(
                 },
               ]
             : []),
+          ...(pendingOptions.length === 0 &&
+          resolvedOptions.length === 0 &&
+          !unpaintedPossible
+            ? [
+                {
+                  className: routeSurface.backgroundClass,
+                  backdropClass: routeSurface.backgroundClass,
+                  backdropLayers: [],
+                  themes: ["light", "dark"],
+                  chain: routeSurface.chain,
+                },
+              ]
+            : []),
         ];
+      }
       if (
         call.callerPath.startsWith("packages/ui/src/components/") &&
         call.callerPath.endsWith(".stories.tsx")
@@ -3531,7 +4269,7 @@ export function observeInheritedForegroundSurfaces(
       const key = `${call.callerPath}|${call.owner}`;
       if (active.has(key)) return undefined;
       const nextActive = new Set(active).add(key);
-      const nested = componentCallSites({
+      const nested = reachableComponentCallSites({
         file: call.callerPath,
         symbol: call.owner,
       });
@@ -3624,7 +4362,7 @@ export function observeInheritedForegroundSurfaces(
               ],
             );
         if (!resolved && occurrence.component !== "<module>") {
-          const calls = componentCallSites({
+          const calls = reachableComponentCallSites({
             file: occurrence.usage,
             symbol: occurrence.component,
           });
@@ -3695,6 +4433,13 @@ export function observeInheritedForegroundSurfaces(
     for (const [sourcePath, occurrences] of [...unresolved.entries()]) {
       if (!sourcePath.startsWith("apps/web/src/routes/")) continue;
       const occurrence = occurrences;
+      if (
+        trackReachability &&
+        occurrence.component &&
+        !occurrence.component.startsWith("<") &&
+        !ownerIsReachable(occurrence.usage, occurrence.component)
+      )
+        continue;
       const surface = routeLayoutSurface(occurrence.usage);
       if (!surface) continue;
       const parsedForeground = parseForegroundUtility(
@@ -3855,7 +4600,7 @@ export function observeInheritedForegroundSurfaces(
       )
         continue;
       const target = { file: occurrence.usage, symbol: occurrence.component };
-      const calls = componentCallSites(target);
+      const calls = reachableComponentCallSites(target);
       if (occurrence.component === "SidebarMenuBadge" && calls.length > 0)
         continue;
       if (
@@ -3933,7 +4678,7 @@ export function observeInheritedForegroundSurfaces(
       if (!occurrence.component || occurrence.component.startsWith("<"))
         continue;
       const target = { file: occurrence.usage, symbol: occurrence.component };
-      const calls = componentCallSites(target);
+      const calls = reachableComponentCallSites(target);
       if (calls.length === 0) continue;
       const surfaceOptions = calls.map((call) => callerSurface(call));
       if (surfaceOptions.some((surface) => !surface)) {
@@ -3991,6 +4736,14 @@ export function observeInheritedForegroundSurfaces(
         }
       }
       unresolved.delete(occurrenceId);
+    }
+    for (const [occurrenceId, occurrence] of [...unresolved.entries()]) {
+      if (
+        occurrence.component &&
+        !occurrence.component.startsWith("<") &&
+        !ownerIsReachable(occurrence.usage, occurrence.component)
+      )
+        unresolved.delete(occurrenceId);
     }
   } finally {
     snapshot.dispose();
@@ -4054,6 +4807,19 @@ export function luminance(rgb) {
 export function contrastRatio(a, b) {
   const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (high + 0.05) / (low + 0.05);
+}
+
+export function failsContrastThreshold(foreground, background, minRatio) {
+  return contrastRatio(foreground, background) + 1e-6 < minRatio;
+}
+
+export function declaredBodyBackground(indexCss) {
+  const bodyBackground = indexCss.match(/body\s*\{([^}]*)\}/su)?.[1];
+  return bodyBackground &&
+    (/(?:^|\s)bg-background(?:\s|$)/u.test(bodyBackground) ||
+      /@apply\s+[^;}]*\bbg-background\b/u.test(bodyBackground))
+    ? "bg-background"
+    : undefined;
 }
 
 export function sidebarSurfaceContract(occurrence, source, hasCallers = false) {
@@ -4283,7 +5049,14 @@ async function main() {
     sourcePaths,
     translucentBackgroundTokens,
   );
-  const inherited = observeInheritedForegroundSurfaces(sourcePaths, tokenNames);
+  const inherited = observeInheritedForegroundSurfaces(
+    sourcePaths,
+    tokenNames,
+    undefined,
+    {
+      trackReachability: true,
+    },
+  );
   for (const key of inherited.pairs) observedPairs.add(key);
   observedPairs.inheritedUses = inherited.uses;
   observedPairs.importedUses = inherited.importedUses;
@@ -4331,6 +5104,9 @@ async function main() {
   execFileSync("pnpm", ["--filter", "@taskdesk/web...", "build"], {
     cwd: repoRoot,
     stdio: "inherit",
+    // This gate writes both served bundles. Preserve the production/SIT same-origin
+    // contract even when the caller has no VITE_API_URL in their shell.
+    env: { ...process.env, VITE_API_URL: "" },
   });
   const assetDirs = ["agent", "portal"].map((entry) =>
     path.join(repoRoot, "apps/web/dist", entry, "assets"),
@@ -4593,7 +5369,7 @@ async function main() {
             ? composite(foreground, opaqueBg)
             : foreground.slice(0, 3);
         const ratio = contrastRatio(opaqueFg, opaqueBg);
-        if (ratio + 1e-6 < pair.minRatio) {
+        if (failsContrastThreshold(opaqueFg, opaqueBg, pair.minRatio)) {
           failures.push(
             violation(
               manifestPath,

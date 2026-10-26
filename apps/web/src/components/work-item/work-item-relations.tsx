@@ -56,14 +56,16 @@ export default function WorkItemRelations({
   itemKey,
   workspaceId,
   projectId,
+  readOnly = false,
 }: {
   itemKey: string;
   workspaceId: string;
   projectId: string;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const permission = useWorkspacePermission(workspaceId, projectId);
-  const canEdit = permission.canUpdateTasks();
+  const canEdit = !readOnly && permission.canUpdateTasks();
   const location = useLocation();
   const navigate = useNavigate();
   const cache = useQueryClient();

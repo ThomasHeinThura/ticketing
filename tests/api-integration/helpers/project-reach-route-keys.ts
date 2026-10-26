@@ -7,6 +7,8 @@
 
 /** Writes addressed to one project, directly (`{id}`/`{projectId}`) or through a child row. */
 export const PROJECT_WRITE_ROUTE_KEYS = [
+  "PATCH /api/projects/{projectId}/settings/inheritance",
+  "PATCH /api/projects/{projectId}/state-set",
   "PUT /api/project/{id}",
   "PATCH /api/project/{id}/health",
   "DELETE /api/project/{id}",
@@ -44,8 +46,14 @@ export const PROJECT_WRITE_ROUTE_KEYS = [
   "DELETE /api/workflow-rule/{id}",
 ] as const;
 
+/** Dedicated project-recovery.test.ts covers hidden reach and missing update capability. */
+export const PROJECT_RECOVERY_ROUTE_KEYS = [
+  "PUT /api/project/{id}/restore",
+] as const;
+
 /** Reads of one project's own data. */
 export const PROJECT_READ_ROUTE_KEYS = [
+  "GET /api/projects/{projectId}/settings/inheritance",
   "GET /api/project/{id}",
   "GET /api/project/{id}/health",
   "GET /api/project/{id}/milestones",
@@ -64,6 +72,8 @@ export const PROJECT_READ_ROUTE_KEYS = [
   "GET /api/projects/{projectId}/costs",
   "GET /api/features/resolved",
   "GET /api/projects/{projectId}/work-items",
+  "GET /api/projects/{projectId}/work-items/combined",
+  "POST /api/projects/{projectId}/work-items/combined",
   "GET /api/task/tasks/{projectId}",
   "GET /api/task/export/{projectId}",
   "GET /api/column/{projectId}",

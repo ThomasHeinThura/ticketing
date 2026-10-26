@@ -45,6 +45,7 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   // Strict time_entry:create: gates the Timesheet entry and the work item Time section.
   logTime?: boolean;
   createAttachments?: boolean;
+  triageIntake?: boolean;
 };
 
 // Mirrors apps/api/src/capabilities/response.ts's capabilitiesResponseSchema
@@ -150,6 +151,7 @@ export function useWorkspacePermission(
       canRemoveMembers: () => can.removeMembers,
       canManageServiceCalendars: () => can.manageServiceCalendars,
       canShareSavedViews: () => can.shareSavedViews,
+      canTriageIntake: () => can.triageIntake === true,
       canManageWorkspaceSettings: () => can.manageWorkspaceSettings,
       canCreatePublicComments: () => can.createPublicComments === true,
       canCreateInternalComments: () => can.createInternalComments === true,

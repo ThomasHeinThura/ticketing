@@ -19,6 +19,11 @@ const eligible: HardPurgeFacts = {
   label: "HELP-1",
 };
 
+const organisationTarget = {
+  targetType: "organisation" as const,
+  targetId: "org-1",
+};
+
 describe("PA-13 hard purge checks", () => {
   it("reports a missing target as not found", () => {
     expect(
@@ -80,6 +85,45 @@ describe("PA-13 hard purge checks", () => {
         attachments: 1,
         legalHold: "none",
         retention: "soft_deleted",
+      },
+    });
+  });
+
+  it("includes the organisation graph impact in the exact-name confirmation summary", () => {
+    expect(
+      evaluateHardPurgeTarget(organisationTarget, {
+        ...eligible,
+        workItems: 3,
+        comments: 2,
+        attachments: 2,
+        label: "QA organisation",
+        organisationVersion: { operationId: "delete-1", generation: 2 },
+        organisationImpact: {
+          organisations: 1,
+          projects: 2,
+          people: 1,
+          workItems: 3,
+          comments: 2,
+          submissions: 1,
+          attachments: 2,
+          storageObjectsQueued: 2,
+        },
+      }),
+    ).toMatchObject({
+      status: "eligible",
+      summary: {
+        legalHold: "none",
+        retention: "soft_deleted",
+        impact: {
+          organisations: 1,
+          projects: 2,
+          people: 1,
+          workItems: 3,
+          comments: 2,
+          submissions: 1,
+          attachments: 2,
+          storageObjectsQueued: 2,
+        },
       },
     });
   });

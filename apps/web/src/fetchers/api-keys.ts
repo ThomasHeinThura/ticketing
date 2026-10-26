@@ -1,5 +1,6 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 import { HttpError, readErrorDetail } from "@/lib/http-error";
 import type {
   ApiKey,
@@ -47,4 +48,15 @@ export async function revokeMyApiKey(id: string): Promise<ApiKey> {
   );
   await ensureOk(response, "Failed to revoke API key");
   return (await response.json()) as ApiKey;
+}
+
+/** Requests PA-3 deletion. The key stays until the same human approves in the browser. */
+export async function requestDeleteMyApiKey(
+  id: string,
+): Promise<{ pendingActionId: string }> {
+  const response = await apiFetch(
+    getApiUrl(`/me/api-keys/${encodeURIComponent(id)}`),
+    { method: "DELETE", credentials: "include" },
+  );
+  return readPendingDeletion(response, "Unable to request API key deletion");
 }

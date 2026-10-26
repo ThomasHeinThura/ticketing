@@ -25,6 +25,7 @@ import type { SearchFilter } from "./query";
  */
 
 export const CUSTOM_FIELD_FILTER_KEY = /^cf\.([A-Za-z0-9_-]{1,64})$/u;
+const CUSTOM_FIELD_COLUMN_KEY = /^cf\.([a-z][a-z0-9_]{0,63})$/u;
 export const CUSTOM_FIELD_FILTER_OPS = [
   "eq",
   "neq",
@@ -64,12 +65,25 @@ export function customFieldFilterKeys(filter: SearchFilter | undefined) {
   return keys;
 }
 
+/** The live custom-field keys requested as table columns (`cf.<key>`). */
+export function customFieldColumnKeys(columns: readonly string[] | undefined) {
+  const keys = new Set<string>();
+  for (const column of columns ?? []) {
+    const match = CUSTOM_FIELD_COLUMN_KEY.exec(column);
+    if (match?.[1]) keys.add(match[1]);
+  }
+  return keys;
+}
+
 /** Live field definitions for the referenced keys; an unknown or deleted key is a 422. */
 export async function loadCustomFieldFilterDefinitions(
   workspaceId: string,
   filter: SearchFilter | undefined,
+  columns?: readonly string[],
 ): Promise<CustomFieldFilterDefinitions> {
-  const keys = customFieldFilterKeys(filter);
+  const filterKeys = customFieldFilterKeys(filter);
+  const columnKeys = customFieldColumnKeys(columns);
+  const keys = new Set([...filterKeys, ...columnKeys]);
   const out = new Map<string, CustomFieldFilterDefinition>();
   if (keys.size === 0) return out;
   const rows = await db
@@ -104,7 +118,7 @@ export async function loadCustomFieldFilterDefinitions(
   for (const key of keys)
     if (!out.has(key))
       throw new HTTPException(422, {
-        message: `Filter field unavailable: cf.${key}`,
+        message: `${filterKeys.has(key) ? "Filter" : "Column"} field unavailable: cf.${key}`,
       });
   return out;
 }

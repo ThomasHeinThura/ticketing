@@ -1,0 +1,146 @@
+{
+	"recordedAt": "2026-10-26T13:38:49.782822+00:00",
+	"scanner": "gitleaks dir --redact=100",
+	"scope": "git-tracked and untracked nonignored worktree files; no backups, archives or private configuration",
+	"rawExitCode": 1,
+	"rawFindingCount": 18,
+	"confirmedCredentialExposures": 0,
+	"classifications": {
+		"compiled_artifact_sha256": 6,
+		"public_request_type_identifier": 9,
+		"public_totp_test_vector": 1,
+		"isolated_test_fixture": 2
+	},
+	"rawReportRetainedPrivately": true,
+	"rulesOrAllowlistChanged": false,
+	"independentDispositionReviewPending": true,
+	"source": "https://www.rfc-editor.org/rfc/rfc6238#appendix-B",
+	"findings": [
+		{
+			"file": "apps/web/e2e/mfa-csrf-journey.spec.ts",
+			"line": 69,
+			"rule": "generic-api-key",
+			"classification": "public_totp_test_vector",
+			"assessment": "Decoded test fixture equals the RFC6238 Appendix B SHA1 test seed; not a generated account factor."
+		},
+		{
+			"file": "docs/report/audit/codex-20261025-cf-mcp-storage175-deployment.json",
+			"line": 3,
+			"rule": "generic-api-key",
+			"classification": "compiled_artifact_sha256",
+			"assessment": "Integrity metadata fields apiBundleSha256/compiledApiSha256; each value is a 64-character hexadecimal digest, not an authentication token."
+		},
+		{
+			"file": "docs/report/audit/codex-20261025-jobs173-deployment.json",
+			"line": 2,
+			"rule": "generic-api-key",
+			"classification": "compiled_artifact_sha256",
+			"assessment": "Integrity metadata fields apiBundleSha256/compiledApiSha256; each value is a 64-character hexadecimal digest, not an authentication token."
+		},
+		{
+			"file": "docs/report/audit/codex-20261025-search174-deployment.json",
+			"line": 4,
+			"rule": "generic-api-key",
+			"classification": "compiled_artifact_sha256",
+			"assessment": "Integrity metadata fields apiBundleSha256/compiledApiSha256; each value is a 64-character hexadecimal digest, not an authentication token."
+		},
+		{
+			"file": "docs/report/audit/codex-20261025-search174-deployment.json",
+			"line": 8,
+			"rule": "generic-api-key",
+			"classification": "compiled_artifact_sha256",
+			"assessment": "Integrity metadata fields apiBundleSha256/compiledApiSha256; each value is a 64-character hexadecimal digest, not an authentication token."
+		},
+		{
+			"file": "docs/report/audit/codex-20261025-search174-deployment.json",
+			"line": 12,
+			"rule": "generic-api-key",
+			"classification": "compiled_artifact_sha256",
+			"assessment": "Integrity metadata fields apiBundleSha256/compiledApiSha256; each value is a 64-character hexadecimal digest, not an authentication token."
+		},
+		{
+			"file": "docs/report/audit/codex-20261025-sso-fanout-requester-deployment.json",
+			"line": 6,
+			"rule": "generic-api-key",
+			"classification": "compiled_artifact_sha256",
+			"assessment": "Integrity metadata fields apiBundleSha256/compiledApiSha256; each value is a 64-character hexadecimal digest, not an authentication token."
+		},
+		{
+			"file": "docs/report/browser/intake-queues184/target-preflight.json",
+			"line": 179,
+			"rule": "generic-api-key",
+			"classification": "public_request_type_identifier",
+			"assessment": "All three distinct values match persisted public request_type.key values; nine occurrences across owner and portal responses."
+		},
+		{
+			"file": "docs/report/browser/intake-queues184/target-preflight.json",
+			"line": 186,
+			"rule": "generic-api-key",
+			"classification": "public_request_type_identifier",
+			"assessment": "All three distinct values match persisted public request_type.key values; nine occurrences across owner and portal responses."
+		},
+		{
+			"file": "docs/report/browser/intake-queues184/target-preflight.json",
+			"line": 193,
+			"rule": "generic-api-key",
+			"classification": "public_request_type_identifier",
+			"assessment": "All three distinct values match persisted public request_type.key values; nine occurrences across owner and portal responses."
+		},
+		{
+			"file": "docs/report/browser/intake-queues184/target-preflight.json",
+			"line": 201,
+			"rule": "generic-api-key",
+			"classification": "public_request_type_identifier",
+			"assessment": "All three distinct values match persisted public request_type.key values; nine occurrences across owner and portal responses."
+		},
+		{
+			"file": "docs/report/browser/intake-queues184/target-preflight.json",
+			"line": 208,
+			"rule": "generic-api-key",
+			"classification": "public_request_type_identifier",
+			"assessment": "All three distinct values match persisted public request_type.key values; nine occurrences across owner and portal responses."
+		},
+		{
+			"file": "docs/report/browser/intake-queues184/target-preflight.json",
+			"line": 215,
+			"rule": "generic-api-key",
+			"classification": "public_request_type_identifier",
+			"assessment": "All three distinct values match persisted public request_type.key values; nine occurrences across owner and portal responses."
+		},
+		{
+			"file": "docs/report/browser/intake-queues184/target-preflight.json",
+			"line": 226,
+			"rule": "generic-api-key",
+			"classification": "public_request_type_identifier",
+			"assessment": "All three distinct values match persisted public request_type.key values; nine occurrences across owner and portal responses."
+		},
+		{
+			"file": "docs/report/browser/intake-queues184/target-preflight.json",
+			"line": 244,
+			"rule": "generic-api-key",
+			"classification": "public_request_type_identifier",
+			"assessment": "All three distinct values match persisted public request_type.key values; nine occurrences across owner and portal responses."
+		},
+		{
+			"file": "docs/report/browser/intake-queues184/target-preflight.json",
+			"line": 263,
+			"rule": "generic-api-key",
+			"classification": "public_request_type_identifier",
+			"assessment": "All three distinct values match persisted public request_type.key values; nine occurrences across owner and portal responses."
+		},
+		{
+			"file": "tests/api/portal-attachment-storage.test.ts",
+			"line": 168,
+			"rule": "generic-api-key",
+			"classification": "isolated_test_fixture",
+			"assessment": "Locally defined test-only value: portal finalized-key rejection case or owned _test database webhook replacement case; no production credential loaded."
+		},
+		{
+			"file": "tests/api-integration/webhook-rotate-all-api.test.ts",
+			"line": 236,
+			"rule": "generic-api-key",
+			"classification": "isolated_test_fixture",
+			"assessment": "Locally defined test-only value: portal finalized-key rejection case or owned _test database webhook replacement case; no production credential loaded."
+		}
+	]
+}

@@ -142,6 +142,37 @@ beforeEach(async () => {
 });
 
 describe("S6a invite (POST /api/workspace/{id}/invitations)", () => {
+  it("uses the shared configured CP-22 invitation lifetime", async () => {
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton" })
+      .onConflictDoNothing();
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ invitationLifetimeHours: 4 })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Invite lifetime",
+    );
+    const invited = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "four-hour-invite@example.com", role: "member" },
+    );
+    expect(invited.status).toBe(200);
+    const body = (await invited.json()) as { id: string };
+    const row = await invitationRow(body.id);
+    const lifetimeMs = (row?.expiresAt.getTime() ?? 0) - Date.now();
+    expect(lifetimeMs).toBeGreaterThan(3.9 * 3_600_000);
+    expect(lifetimeMs).toBeLessThanOrEqual(4 * 3_600_000);
+  });
+
   it("an owner invites a new email and an invitation row is created, pending", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);

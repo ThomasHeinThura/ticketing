@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import type { Transaction } from "../../database/executor";
 import { publishEvent } from "../../events";
+import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
 import {
   type lockLegacyTaskRow,
   lockLegacyTaskRowIfPresent,
@@ -35,6 +36,7 @@ export async function deleteLabelInTransaction(
   identity: ResolvedIdentity,
   labelSnapshot: Pick<LabelSnapshot, "id" | "taskId" | "workspaceId" | "name">,
   userId: string,
+  apiKeyId?: string | null,
 ) {
   const id = labelSnapshot.id;
   await lockWorkspaceLabelNames(tx, labelSnapshot.workspaceId, [
@@ -67,6 +69,18 @@ export async function deleteLabelInTransaction(
     if (!deletedLabel) {
       throw new HTTPException(404, { message: "Label not found" });
     }
+    if (!label.workspaceId) {
+      throw new HTTPException(404, { message: "Label not found" });
+    }
+    await recordLegacyTaskCompatibilityEvent(tx, {
+      kind: "task.label_deleted",
+      taskId: lockedTask.id,
+      projectId: lockedTask.projectId,
+      workspaceId: label.workspaceId,
+      identity,
+      apiKeyId,
+      payload: { type: "label_deleted" },
+    });
     return {
       deletedLabel,
       canonicalChanges: [],
@@ -136,6 +150,19 @@ export async function deleteLabelInTransaction(
       ? [{ label: child, taskId, projectId: task.projectId }]
       : [];
   });
+  if (label.workspaceId) {
+    for (const { taskId, projectId } of emittedRows) {
+      await recordLegacyTaskCompatibilityEvent(tx, {
+        kind: "task.label_deleted",
+        taskId,
+        projectId,
+        workspaceId: label.workspaceId,
+        identity,
+        apiKeyId,
+        payload: { type: "label_deleted" },
+      });
+    }
+  }
   return {
     deletedLabel,
     canonicalChanges,
@@ -163,6 +190,7 @@ async function deleteLabel(
   identity: ResolvedIdentity,
   id: string,
   userId: string,
+  apiKeyId?: string | null,
 ) {
   const labelSnapshot = await findLabelById(identity, id);
   if (!labelSnapshot) {
@@ -170,7 +198,7 @@ async function deleteLabel(
   }
 
   const result = await db.transaction((tx) =>
-    deleteLabelInTransaction(tx, identity, labelSnapshot, userId),
+    deleteLabelInTransaction(tx, identity, labelSnapshot, userId, apiKeyId),
   );
   await publishLabelDeletion(result, userId);
   return result.deletedLabel;

@@ -9,7 +9,12 @@ import {
   trackingFeatureEnabled,
 } from "../time-tracking/feature";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
-import { reachPredicate, selectRows } from "./context";
+import {
+  currentReportExecutor,
+  reachPredicate,
+  selectRows,
+  withReportExecutor,
+} from "./context";
 import {
   type CustomQuery,
   customQuerySchema,
@@ -25,7 +30,12 @@ import {
 } from "./export.logic";
 import { workspaceFeatureEnabled } from "./feature";
 import { type ReportWindow, resolveWindow, type WindowInput } from "./logic";
-import { type ReportEnvelope, reportToCsv } from "./present";
+import {
+  type ReportEnvelope,
+  reportCsvPreamble,
+  reportCsvRows,
+  reportToCsv,
+} from "./present";
 import { reportByKey } from "./registry";
 import { type ReportCaps, ReportFeatureDisabledError, runReport } from "./run";
 import type { ReportFilters } from "./types";
@@ -84,14 +94,29 @@ export type RenderedExport = {
  * background job both come through here, so reach, rate stripping (`stripRates`, TC-11) and the
  * CSV shape cannot differ between them.
  */
-export async function renderExport(input: {
+type RenderExportInput = {
   spec: ExportSpec;
   workspaceId: string;
   identity: ResolvedIdentity;
   caps: ReportCaps;
   now: Date;
   exporting: boolean;
-}): Promise<RenderedExport> {
+  executor?: Executor;
+  exportPage?: { offset: number; limit: number };
+};
+
+export async function renderExport(
+  input: RenderExportInput,
+): Promise<RenderedExport> {
+  const executor = input.executor ?? currentReportExecutor() ?? db;
+  return withReportExecutor(executor, () =>
+    renderExportInContext({ ...input, executor }),
+  );
+}
+
+async function renderExportInContext(
+  input: RenderExportInput & { executor: Executor },
+): Promise<RenderedExport> {
   const { spec, now } = input;
   const day = now.toISOString().slice(0, 10);
   if (spec.kind === "report") {
@@ -107,6 +132,8 @@ export async function renderExport(input: {
       options: spec.options,
       now,
       exporting: input.exporting,
+      executor: input.executor,
+      ...(input.exportPage ? { exportPage: input.exportPage } : {}),
     }).catch((error) => {
       if (error instanceof ReportFeatureDisabledError)
         throw new ExportRuleError("feature_disabled");
@@ -132,6 +159,7 @@ export async function renderExport(input: {
     chartType: spec.chartType,
     now,
     exporting: input.exporting,
+    ...(input.exportPage ? { exportPage: input.exportPage } : {}),
   });
   return {
     envelope,
@@ -149,6 +177,9 @@ export async function renderExport(input: {
 export class TooManyExportsError extends Error {}
 
 export type ExportRow = typeof reportExportTable.$inferSelect;
+
+/** Maximum report rows held in the worker before they are appended to stored CSV. */
+export const EXPORT_CSV_PAGE_SIZE = 250;
 
 /**
  * Queues an export. The per-person limit is checked and the row inserted under one advisory lock,
@@ -295,11 +326,15 @@ async function currentCaps(
 async function coveredProjectIds(
   workspaceId: string,
   identity: ResolvedIdentity,
+  executor: Executor,
 ): Promise<string[]> {
-  const rows = await selectRows<{ id: string }>(sql`SELECT p.id
+  const rows = await selectRows<{ id: string }>(
+    sql`SELECT p.id
     FROM project p
     WHERE p.workspace_id = ${workspaceId} AND p.deleted_at IS NULL
-      AND ${reachPredicate(identity, false)}`);
+      AND ${reachPredicate(identity, false, executor)}`,
+    executor,
+  );
   return rows.map((row) => row.id);
 }
 
@@ -366,27 +401,81 @@ export async function processExport(
         return "failed";
       }
     }
-    const rendered = await renderExport({
-      spec,
-      workspaceId: row.workspaceId,
-      identity,
-      caps,
-      now: row.createdAt,
-      exporting: true,
-    });
-    const stored = caps.readAll
-      ? caps
-      : {
-          ...caps,
-          projectIds: await coveredProjectIds(row.workspaceId, identity),
-        };
-    await db.execute(sql`UPDATE report_export
-      SET status = 'ready', content = ${rendered.csv}, filename = ${rendered.filename},
-        row_count = ${rendered.envelope.rows.length}, byte_size = ${Buffer.byteLength(rendered.csv)},
-        truncated = ${rendered.envelope.truncated}, rates_included = ${rendered.ratesIncluded},
-        caps = ${JSON.stringify(stored)}::jsonb,
-        finished_at = now(), expires_at = now() + ${`${EXPORT_TTL_HOURS} hours`}::interval, error = NULL
-      WHERE id = ${row.id}`);
+    await db.transaction(
+      async (tx) => {
+        const def = spec.kind === "report" ? reportByKey(spec.key) : undefined;
+        let filename = "report.csv";
+        let ratesIncluded = false;
+        let rowCount = 0;
+        let byteSize = 0;
+        let truncated = false;
+
+        if (spec.kind === "custom" || def?.pagedExport) {
+          let offset = 0;
+          let first = true;
+          for (;;) {
+            const rendered = await renderExport({
+              spec,
+              workspaceId: row.workspaceId,
+              identity,
+              caps,
+              now: row.createdAt,
+              exporting: true,
+              executor: tx,
+              exportPage: { offset, limit: EXPORT_CSV_PAGE_SIZE },
+            });
+            filename = rendered.filename;
+            ratesIncluded = rendered.ratesIncluded;
+            const chunk = `${first ? reportCsvPreamble(rendered.envelope) : ""}${reportCsvRows(rendered.envelope)}`;
+            await appendExportChunk(
+              tx,
+              row.id,
+              chunk,
+              rendered.envelope.rows.length,
+            );
+            rowCount += rendered.envelope.rows.length;
+            byteSize += Buffer.byteLength(chunk);
+            first = false;
+            if (rendered.envelope.rows.length < EXPORT_CSV_PAGE_SIZE) break;
+            offset += EXPORT_CSV_PAGE_SIZE;
+          }
+        } else {
+          const rendered = await renderExport({
+            spec,
+            workspaceId: row.workspaceId,
+            identity,
+            caps,
+            now: row.createdAt,
+            exporting: true,
+            executor: tx,
+          });
+          filename = rendered.filename;
+          ratesIncluded = rendered.ratesIncluded;
+          rowCount = rendered.envelope.rows.length;
+          byteSize = Buffer.byteLength(rendered.csv);
+          truncated = rendered.envelope.truncated;
+          await appendExportChunk(tx, row.id, rendered.csv, rowCount, true);
+        }
+
+        const stored = caps.readAll
+          ? caps
+          : {
+              ...caps,
+              projectIds: await coveredProjectIds(
+                row.workspaceId,
+                identity,
+                tx,
+              ),
+            };
+        await tx.execute(sql`UPDATE report_export
+          SET status = 'ready', filename = ${filename}, row_count = ${rowCount},
+            byte_size = ${byteSize}, truncated = ${truncated}, rates_included = ${ratesIncluded},
+            caps = ${JSON.stringify(stored)}::jsonb,
+            finished_at = now(), expires_at = now() + ${`${EXPORT_TTL_HOURS} hours`}::interval, error = NULL
+          WHERE id = ${row.id} AND status = 'running'`);
+      },
+      { isolationLevel: "repeatable read" },
+    );
     return "ready";
   } catch (error) {
     const code =
@@ -395,6 +484,25 @@ export async function processExport(
     await failExport(row.id, code);
     return "failed";
   }
+}
+
+async function appendExportChunk(
+  executor: Executor,
+  exportId: string,
+  chunk: string,
+  rows: number,
+  replace = false,
+) {
+  const updated = await executor.execute<{
+    id: string;
+  }>(sql`UPDATE report_export
+    SET content = CASE WHEN ${replace} THEN '' ELSE COALESCE(content, '') END || ${chunk},
+      row_count = CASE WHEN ${replace} THEN 0 ELSE COALESCE(row_count, 0) END + ${rows},
+      byte_size = CASE WHEN ${replace} THEN 0 ELSE COALESCE(byte_size, 0) END + ${Buffer.byteLength(chunk)}
+    WHERE id = ${exportId} AND status = 'running'
+    RETURNING id`);
+  if (updated.rows.length === 0)
+    throw new Error("report export row is no longer running");
 }
 
 /**

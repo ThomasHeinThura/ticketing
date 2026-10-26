@@ -3,6 +3,9 @@
  * ACCEPTED submission owns its work item's attachments; a duplicate must not list them
  * (portal or staff). Also: audit rows for staff writes record the staff PERSON id. */
 import { randomUUID } from "node:crypto";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -129,6 +132,71 @@ const names = async (response: Response) =>
 describe("submission attachment lists respect the duplicate link (CP-16)", () => {
   let t: Tenant;
   beforeEach(async () => resetTestDatabase());
+
+  it("streams authorized portal/staff PDFs and hides duplicate, foreign, and deleted attachments", async () => {
+    const originalRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+    const originalDriver = process.env.TASKDESK_STORAGE_DRIVER;
+    const root = await mkdtemp(path.join(tmpdir(), "taskdesk-submission-pdf-"));
+    process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = root;
+    delete process.env.TASKDESK_STORAGE_DRIVER;
+    try {
+      const s = await seed();
+      t = s.t;
+      const pdfBytes = Buffer.from(
+        "%PDF-1.4\n%Submission preview fixture\n%%EOF\n",
+      );
+      const objectKey = `submission-preview/${randomUUID()}.pdf`;
+      await mkdir(path.join(root, "submission-preview"), { recursive: true });
+      await writeFile(path.join(root, objectKey), pdfBytes);
+      await db
+        .update(schema.attachmentTable)
+        .set({ objectKey, size: pdfBytes.byteLength })
+        .where(eq(schema.attachmentTable.id, s.privateAttachment.id));
+
+      const base = `/api/portal/submissions/SUB-${s.accepted.number}/attachments/${s.privateAttachment.id}/preview`;
+      const portal = await portalRequest(t, s.owner, base);
+      expect(portal.status).toBe(200);
+      expect(Buffer.from(await portal.arrayBuffer())).toEqual(pdfBytes);
+
+      const foreignRequester = await portalRequest(t, s.other, base);
+      expect(foreignRequester.status).toBe(404);
+      const duplicate = await portalRequest(
+        t,
+        s.other,
+        `/api/portal/submissions/SUB-${s.duplicate.number}/attachments/${s.privateAttachment.id}/preview`,
+      );
+      expect(duplicate.status).toBe(404);
+
+      mockAuthenticatedSession(s.t.requester.user);
+      const staff = await t.app.request(
+        `/api/submissions/SUB-${s.accepted.number}/attachments/${s.privateAttachment.id}/preview`,
+      );
+      expect(staff.status).toBe(200);
+      expect(Buffer.from(await staff.arrayBuffer())).toEqual(pdfBytes);
+
+      await db
+        .update(schema.attachmentTable)
+        .set({ state: "pending", deletedAt: null })
+        .where(eq(schema.attachmentTable.id, s.privateAttachment.id));
+      const pending = await portalRequest(t, s.owner, base);
+      expect(pending.status).toBe(404);
+
+      await db
+        .update(schema.attachmentTable)
+        .set({ state: "deleted", deletedAt: new Date() })
+        .where(eq(schema.attachmentTable.id, s.privateAttachment.id));
+      const deleted = await portalRequest(t, s.owner, base);
+      expect(deleted.status).toBe(404);
+    } finally {
+      if (originalRoot === undefined)
+        delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+      else process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
+      if (originalDriver === undefined)
+        delete process.env.TASKDESK_STORAGE_DRIVER;
+      else process.env.TASKDESK_STORAGE_DRIVER = originalDriver;
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 
   it("a duplicate does not expose the linked work item's attachments on the portal", async () => {
     const s = await seed();

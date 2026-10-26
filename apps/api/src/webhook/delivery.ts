@@ -11,8 +11,10 @@ import {
   workItemTable,
 } from "../database/schema";
 import { appendAuditSavepoint } from "../events/audit-savepoint";
-import { enqueueOutboxEvent, eventScope } from "../events/outbox";
+import { type DbTransaction, eventScope } from "../events/outbox";
 import { parseParentEnvelope } from "../events/outbox-consumer";
+import { enqueueNotificationEvent } from "../notification/fanout";
+import { resolveWebhookAutoDisabledRecipients } from "../notification/recipient-resolvers";
 import { fenceLegalHolds } from "../scheduler/soft-delete-purge.repository";
 import { scopedRowUnderOpenHold } from "../utils/legal-hold-scope";
 import {
@@ -317,7 +319,7 @@ async function recordAttempt(
 
 /** `WH-7`: `webhook.auto_disabled` in the same transaction, plus its audit row. */
 async function emitAutoDisabled(
-  tx: Executor,
+  tx: DbTransaction,
   webhook: WebhookRow,
   lastError: string,
   reason: "failing_24h" | "event_removed" = "failing_24h",
@@ -327,27 +329,31 @@ async function emitAutoDisabled(
     SELECT "organisation_id" FROM "workspace" WHERE "id" = ${webhook.workspaceId}
   `)
     .then((result) => result.rows);
-  await enqueueOutboxEvent(tx as never, {
-    id: `evt_${createId()}`,
-    kind: "webhook.auto_disabled",
-    occurredAt: new Date().toISOString(),
-    actor: { type: "system", id: null, name: "TaskDesk" },
-    scope: eventScope({
-      workspaceId: webhook.workspaceId,
-      organisationId: workspace?.organisation_id ?? null,
-      projectId: null,
-    }),
-    payload: {
-      key: webhook.id,
-      url: `/agent/settings/integrations/webhooks/${webhook.id}`,
-      webhookId: webhook.id,
-      ownerPersonId: webhook.createdBy,
-      lastError,
+  await enqueueNotificationEvent(
+    tx,
+    {
+      id: `evt_${createId()}`,
+      kind: "webhook.auto_disabled",
+      occurredAt: new Date().toISOString(),
+      actor: { type: "system", id: null, name: "TaskDesk" },
+      scope: eventScope({
+        workspaceId: webhook.workspaceId,
+        organisationId: workspace?.organisation_id ?? null,
+        projectId: null,
+      }),
+      payload: {
+        key: webhook.id,
+        url: `/agent/settings/integrations/webhooks/${webhook.id}`,
+        webhookId: webhook.id,
+        ownerPersonId: webhook.createdBy,
+        lastError,
+      },
+      causationId: null,
+      depth: 0,
+      originAutomationId: null,
     },
-    causationId: null,
-    depth: 0,
-    originAutomationId: null,
-  });
+    { resolveRecipients: resolveWebhookAutoDisabledRecipients },
+  );
   await appendAuditSavepoint(tx, {
     actorId: null,
     actorType: "system",

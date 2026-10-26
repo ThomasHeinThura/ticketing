@@ -136,13 +136,13 @@ export async function reportsWorld(): Promise<ReportsWorld> {
     return item;
   }
 
-  function get(
+  async function get(
     user: User,
     path: string,
     init: { method?: string; body?: unknown } = {},
-  ) {
+  ): Promise<Response> {
     mockAuthenticatedSession(user);
-    return w.app.request(path, {
+    return await w.app.request(path, {
       method: init.method ?? "GET",
       headers: { "content-type": "application/json" },
       ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
@@ -209,6 +209,7 @@ export type ReportBody = {
   };
   columns: Array<{ key: string; label: string; kind: string }>;
   rows: Array<Record<string, unknown>>;
+  truncated?: boolean;
   empty: null | { reason: string; outsideWindow: number };
   notes: string[];
   costVisible: boolean;

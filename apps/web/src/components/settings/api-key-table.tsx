@@ -17,10 +17,12 @@ import {
   TableHeader,
   TableRow,
 } from "@taskdesk/ui";
-import { Ban } from "lucide-react";
+import { Ban, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import useRequestApiKeyDeletion from "@/hooks/mutations/api-key/use-request-api-key-deletion";
 import useRevokeApiKey from "@/hooks/mutations/api-key/use-revoke-api-key";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
 import type { ApiKey } from "@/types/api-key";
@@ -44,7 +46,10 @@ function formatDate(value: Date | string | null) {
 export function ApiKeyTable({ apiKeys, isLoading }: ApiKeyTableProps) {
   const { t } = useTranslation();
   const { mutateAsync: revokeApiKey } = useRevokeApiKey();
+  const { mutateAsync: requestDeleteApiKey } = useRequestApiKeyDeletion();
+  const openPendingAction = useOpenPendingAction();
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingRevokeId, setPendingRevokeId] = useState<string | null>(null);
 
   const getExpirationState = (expiresAt: string | null) => {
@@ -82,6 +87,22 @@ export function ApiKeyTable({ apiKeys, isLoading }: ApiKeyTableProps) {
       );
     } finally {
       setRevokingId(null);
+    }
+  };
+
+  const handleDelete = async (apiKey: ApiKey) => {
+    setDeletingId(apiKey.id);
+    try {
+      const pending = await requestDeleteApiKey(apiKey.id);
+      await openPendingAction(pending);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("settings:apiKey.table.toastDeleteError"),
+      );
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -201,22 +222,42 @@ export function ApiKeyTable({ apiKeys, isLoading }: ApiKeyTableProps) {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {apiKey.enabled && (
+                    <div className="inline-flex items-center justify-end gap-1">
+                      {apiKey.enabled && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setPendingRevokeId(apiKey.id)}
+                          disabled={
+                            revokingId === apiKey.id || deletingId === apiKey.id
+                          }
+                          aria-label={t("settings:apiKey.table.revokeAria", {
+                            name:
+                              apiKey.name ||
+                              t("settings:apiKey.table.revokeAriaFallback"),
+                          })}
+                        >
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => setPendingRevokeId(apiKey.id)}
-                        disabled={revokingId === apiKey.id}
-                        aria-label={t("settings:apiKey.table.revokeAria", {
+                        onClick={() => void handleDelete(apiKey)}
+                        disabled={
+                          revokingId === apiKey.id || deletingId === apiKey.id
+                        }
+                        aria-label={t("settings:apiKey.table.deleteAria", {
                           name:
                             apiKey.name ||
-                            t("settings:apiKey.table.revokeAriaFallback"),
+                            t("settings:apiKey.table.unnamedKey"),
                         })}
                       >
-                        <Ban className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
+                    </div>
                   </TableCell>
                 </TableRow>
               );

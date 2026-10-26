@@ -4,10 +4,16 @@
  * time_entry:manage_rates on every response surface (TC-11), roll-ups (TC-7), activities (TC-2) and
  * project budgets (TC-15..TC-19).
  */
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
-import { cycleTable } from "../../apps/api/src/database/schema-p5-agile";
+import {
+  cycleTable,
+  estimatePointTable,
+  estimateTable,
+  moduleTable,
+} from "../../apps/api/src/database/schema-p5-agile";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
 import {
@@ -407,6 +413,35 @@ describe("roll-up (TC-7)", () => {
     expect(body.totalMinutes).toBe(25);
   });
 
+  it("rolls a module's time up from the work items assigned to it", async () => {
+    const [module] = await db
+      .insert(moduleTable)
+      .values({
+        workspaceId: w.workspaceId,
+        projectId: w.projectA.id,
+        name: "Module rollup",
+        createdBy: w.owner.user.id,
+      })
+      .returning();
+    await db
+      .update(schema.workItemTable)
+      .set({ moduleId: module?.id })
+      .where(eq(schema.workItemTable.id, w.childItem.id));
+    await log(w.member.user, { minutes: 40 }, w.itemA.id);
+    await log(w.member.user, { minutes: 25 }, w.childItem.id);
+    const response = await w.agent(
+      w.lead.user,
+      `/api/time-entries/summary?workspaceId=${w.workspaceId}&moduleId=${module?.id}`,
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const body = (await response.json()) as {
+      scope: string;
+      totalMinutes: number;
+    };
+    expect(body.scope).toBe("module");
+    expect(body.totalMinutes).toBe(25);
+  });
+
   it("needs time_entry:create (a member then sees only their own time, see below)", async () => {
     const response = await w.agent(
       w.viewer.user,
@@ -571,6 +606,21 @@ describe("project budgets (TC-15..TC-19)", () => {
       plannedAmountMinor: number;
       thresholdReached?: number | null;
       committedMinor: number | null;
+      committedByCurrency?: Array<{
+        currency: string;
+        amountMinor: number;
+        taskCount: number;
+      }>;
+      committedUnknown?: {
+        taskCount: number;
+        reasons: {
+          unscheduled: number;
+          nonTime: number;
+          unassigned: number;
+          unrated: number;
+        };
+        knownRemainingMinutes: number;
+      };
       otherCurrencies?: Array<{ currency: string; costMinor: number }>;
       unpricedMinutes?: number;
     }>;
@@ -622,6 +672,9 @@ describe("project budgets (TC-15..TC-19)", () => {
       "thresholdReached",
       "otherCurrencies",
       "unpricedMinutes",
+      "committedMinor",
+      "committedByCurrency",
+      "committedUnknown",
     ])
       expect(key in row, key).toBe(false);
     expect(JSON.stringify(budget)).not.toContain('"pricedMinutes"');
@@ -635,6 +688,209 @@ describe("project budgets (TC-15..TC-19)", () => {
       expect.objectContaining({ currency: "USD", costMinor: 4500 }),
     ]);
     expect(JSON.stringify(full)).toContain('"pricedMinutes"');
+  });
+
+  it("values only open leaf time estimates due in-period at current rates and reports unknowns", async () => {
+    const today = isoDaysAgo(0);
+    const dueSoon = isoDaysAgo(-10);
+    const dueOutside = isoDaysAgo(-40);
+    const periodEnd = isoDaysAgo(-30);
+    const timeEstimate = (
+      await db
+        .insert(estimateTable)
+        .values({
+          workspaceId: w.workspaceId,
+          projectId: w.projectA.id,
+          system: "time",
+          active: true,
+        })
+        .returning()
+    )[0];
+    const pointsEstimate = (
+      await db
+        .insert(estimateTable)
+        .values({
+          workspaceId: w.workspaceId,
+          projectId: w.projectA.id,
+          system: "points",
+          active: false,
+        })
+        .returning()
+    )[0];
+    if (!timeEstimate || !pointsEstimate) throw new Error("estimate missing");
+    const points = await db
+      .insert(estimatePointTable)
+      .values([
+        {
+          estimateId: timeEstimate.id,
+          key: "two-hours",
+          value: "2h",
+          weight: "120",
+        },
+        {
+          estimateId: timeEstimate.id,
+          key: "half-hour",
+          value: "30m",
+          weight: "30",
+        },
+        {
+          estimateId: timeEstimate.id,
+          key: "one-hour",
+          value: "1h",
+          weight: "60",
+        },
+        {
+          estimateId: timeEstimate.id,
+          key: "ninety",
+          value: "90m",
+          weight: "90",
+        },
+        { estimateId: pointsEstimate.id, key: "five", value: "5", weight: "5" },
+      ])
+      .returning();
+    const point = (key: string) => points.find((row) => row.key === key)?.id;
+    const newRows = await db
+      .insert(schema.workItemTable)
+      .values(
+        [
+          "Unscheduled",
+          "Unassigned",
+          "Unrated",
+          "Non-time estimate",
+          "Outside budget period",
+          "No remaining estimate",
+          "USD estimate",
+        ].map((title, index) => ({
+          workspaceId: w.workspaceId,
+          projectId: w.projectA.id,
+          typeId: w.childItem.typeId,
+          stateId: w.childItem.stateId,
+          title,
+          number: 90_000 + index,
+          key: `TC17-${randomUUID()}`,
+        })),
+      )
+      .returning();
+    const [
+      unscheduled,
+      unassigned,
+      unrated,
+      nonTime,
+      outside,
+      zeroRemaining,
+      pricedUsd,
+    ] = newRows;
+    if (
+      !unscheduled ||
+      !unassigned ||
+      !unrated ||
+      !nonTime ||
+      !outside ||
+      !zeroRemaining ||
+      !pricedUsd
+    )
+      throw new Error("forecast task missing");
+
+    const setForecast = async (
+      itemId: string,
+      input: {
+        dueDate?: string;
+        assigneeId?: string | null;
+        pointId?: string;
+      },
+    ) => {
+      await db
+        .update(schema.workItemTable)
+        .set({
+          dueDate: input.dueDate
+            ? new Date(`${input.dueDate}T00:00:00.000Z`)
+            : null,
+          assigneeId: input.assigneeId ?? null,
+          estimatePointId: input.pointId ?? null,
+        })
+        .where(eq(schema.workItemTable.id, itemId));
+    };
+    await setForecast(w.itemA.id, {
+      dueDate: dueSoon,
+      assigneeId: w.member.personId,
+      pointId: point("two-hours"),
+    });
+    await setForecast(w.childItem.id, {
+      dueDate: dueSoon,
+      assigneeId: w.member.personId,
+      pointId: point("two-hours"),
+    });
+    await setForecast(unscheduled.id, {
+      assigneeId: w.member.personId,
+      pointId: point("one-hour"),
+    });
+    await setForecast(unassigned.id, {
+      dueDate: dueSoon,
+      pointId: point("ninety"),
+    });
+    await setForecast(unrated.id, {
+      dueDate: dueSoon,
+      assigneeId: w.lead.personId,
+      pointId: point("one-hour"),
+    });
+    await setForecast(nonTime.id, {
+      dueDate: dueSoon,
+      assigneeId: w.member.personId,
+      pointId: point("five"),
+    });
+    await setForecast(outside.id, {
+      dueDate: dueOutside,
+      assigneeId: w.member.personId,
+      pointId: point("two-hours"),
+    });
+    await setForecast(zeroRemaining.id, {
+      dueDate: dueSoon,
+      assigneeId: w.member.personId,
+      pointId: point("half-hour"),
+    });
+    await setForecast(pricedUsd.id, {
+      dueDate: dueSoon,
+      assigneeId: w.other.personId,
+      pointId: point("one-hour"),
+    });
+
+    await w.addRate(w.member.personId, isoDaysAgo(20), 6000, "EUR");
+    await w.addRate(w.other.personId, isoDaysAgo(20), 12_000, "USD");
+    await log(w.member.user, { date: today, minutes: 60 }, w.childItem.id);
+    await log(w.member.user, { date: today, minutes: 60 }, zeroRemaining.id);
+    await w.addRate(w.member.personId, today, 9000, "EUR", w.projectA.id);
+
+    await create(w.owner.user, {
+      periodStart: today,
+      periodEnd,
+    });
+    const response = await get(w.owner.user);
+    expect(response.status, await response.clone().text()).toBe(200);
+    const budget = (await response.json()) as Budget;
+    const row = budget.data[0];
+    expect(row).toMatchObject({
+      committedMinor: null,
+      committedByCurrency: [
+        { currency: "EUR", amountMinor: 9000, taskCount: 2 },
+        { currency: "USD", amountMinor: 12_000, taskCount: 1 },
+      ],
+      committedUnknown: {
+        taskCount: 4,
+        reasons: { unscheduled: 1, nonTime: 1, unassigned: 1, unrated: 1 },
+        knownRemainingMinutes: 210,
+      },
+    });
+    expect(JSON.stringify(row?.committedByCurrency)).not.toContain(
+      "Outside budget period",
+    );
+    expect(row?.actualMinor).toBe(12_000);
+
+    const hiddenResponse = await get(w.lead.user);
+    expect(hiddenResponse.status).toBe(200);
+    const hidden = (await hiddenResponse.json()) as Budget;
+    expect(hidden.data[0]).not.toHaveProperty("committedMinor");
+    expect(hidden.data[0]).not.toHaveProperty("committedByCurrency");
+    expect(hidden.data[0]).not.toHaveProperty("committedUnknown");
   });
 
   it("does not let a lead without manage_rates infer a colleague's rate by polling the budget (P5-R3-02)", async () => {

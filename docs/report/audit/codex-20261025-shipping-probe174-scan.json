@@ -1,0 +1,59 @@
+{
+	"checkpoint": "Shipping probe174 before later reach/table/plugin source changes",
+	"scanner": "Trivy image vulnerabilities; no ignored CVEs",
+	"counts": {
+		"LOW": 59,
+		"HIGH": 42,
+		"MEDIUM": 57
+	},
+	"fixable": {},
+	"status": "findings_open",
+	"triage": "Grouped applicability recorded; no scanner findings hidden. Final image rebuild, runtime hardening verification and security review remain pending.",
+	"applicability": {
+		"scope": "Probe174 image; final source including PDF renderer must be rebuilt and scanned. No risk acceptance or suppression.",
+		"distinctHighCves": 7,
+		"groups": [
+			{
+				"source": "util-linux",
+				"records": 36,
+				"cves": [
+					"CVE-2026-76642",
+					"CVE-2026-78408",
+					"CVE-2026-78409",
+					"CVE-2026-78410"
+				],
+				"assessment": "Privileged mount/nsenter or fstab/local-adversary preconditions; no Node application invocation found. Retained open."
+			},
+			{
+				"source": "acl",
+				"records": 1,
+				"cves": ["CVE-2026-54369"],
+				"assessment": "Privileged pathname ACL calls; no direct Node libacl linkage or application ACL invocation. Indirect exposure not fully proven; retained open."
+			},
+			{
+				"source": "systemd",
+				"records": 2,
+				"cves": ["CVE-2026-16742"],
+				"assessment": "systemd-homed service precondition; no homed service in inspected image."
+			},
+			{
+				"source": "ncurses",
+				"records": 3,
+				"cves": ["CVE-2025-69720"],
+				"assessment": "infocmp CLI overflow; executable present, no application invocation found."
+			}
+		],
+		"vendorSeverity": "Debian tracks these Trixie issues as minor/no-DSA; this does not remove Trivy findings.",
+		"primarySources": [
+			"https://security-tracker.debian.org/tracker/CVE-2026-76642",
+			"https://security-tracker.debian.org/tracker/CVE-2026-78408",
+			"https://security-tracker.debian.org/tracker/CVE-2026-78409",
+			"https://security-tracker.debian.org/tracker/CVE-2026-78410",
+			"https://security-tracker.debian.org/tracker/CVE-2026-54369",
+			"https://security-tracker.debian.org/tracker/CVE-2026-16742",
+			"https://security-tracker.debian.org/tracker/CVE-2025-69720"
+		],
+		"directLinkageEvidence": "docs/report/audit/codex-20261025-probe174-node-linkage.json",
+		"deploymentFinding": "Probe174 used read-only root, cap-drop ALL and no-new-privileges, but Compose lacked them. Base Compose now declares them for app and migration services; final boot and writable-volume checks pending."
+	}
+}

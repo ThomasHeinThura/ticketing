@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type db from "../database";
 import defaultDb, { schema } from "../database";
+import { type Executor, executorOrDefault } from "../database/executor";
 
 /**
  * Query ownership for the default-data seeds (issue #580): workspace default roles, the
@@ -91,8 +92,9 @@ export async function insertStaffPersonIfAbsent(
   userId: string,
   organisationId: string,
   now: Date,
+  executor?: Executor,
 ): Promise<void> {
-  await defaultDb
+  await executorOrDefault(executor)
     .insert(schema.personTable)
     .values({
       userId,

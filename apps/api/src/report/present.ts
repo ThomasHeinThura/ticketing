@@ -31,6 +31,12 @@ export type ReportEnvelope = {
    * `mixed` is stored closed days plus a live current day (or a day the job has not stored yet).
    */
   boundary: "live" | "snapshot" | "mixed";
+  /** RP-9: source families and live components that contribute to the returned numbers. */
+  sources: {
+    metricSnapshot: boolean;
+    cycleSnapshot: boolean;
+    liveComponents: string[];
+  };
   /** RP-9: the stored part, stated: how many closed days, how many were missing, and from when. */
   snapshot: {
     closedDays: number;
@@ -104,7 +110,18 @@ function cellText(value: Cell | undefined): string | number | null {
  * RP-10: the report as CSV, as shown: the same filters, the viewer's reach and no rate data for a
  * caller who may not see it. A short preamble states scope, window and as-of time (RP-3, RP-4).
  */
-export function reportToCsv(envelope: ReportEnvelope): string {
+export function reportCsvPreamble(envelope: ReportEnvelope): string {
+  const inclusiveEndDay = (exclusiveBoundary: string) => {
+    const end = new Date(exclusiveBoundary);
+    if (
+      end.getUTCHours() === 0 &&
+      end.getUTCMinutes() === 0 &&
+      end.getUTCSeconds() === 0 &&
+      end.getUTCMilliseconds() === 0
+    )
+      end.setTime(end.getTime() - 1);
+    return isoDay(end);
+  };
   const lines = [
     csvRow([`# ${envelope.title}`]),
     csvRow([
@@ -113,17 +130,47 @@ export function reportToCsv(envelope: ReportEnvelope): string {
     csvRow([
       envelope.window.live
         ? "# Window: live"
-        : `# Window: ${isoDay(new Date(envelope.window.from))} to ${isoDay(new Date(envelope.window.to))}`,
+        : `# Window: ${isoDay(new Date(envelope.window.from))} to ${inclusiveEndDay(envelope.window.to)}`,
     ]),
     csvRow([`# As of: ${envelope.asOf}`]),
   ];
   // RP-9: the same boundary the screen states.
+  const sourceLabels: Record<string, string> = {
+    current_period: "current or partial period",
+    comparison_period: "comparison period",
+    uncovered_days: "closed days without a snapshot",
+    selected_period: "selected period",
+    current_state: "current state",
+    availability: "current availability and capacity",
+    commitments: "current open-item commitments",
+    budget_definitions: "current budget definitions and full-period totals",
+    budget_period: "the selected budgets’ full reporting periods",
+    all_time_feedback: "all-time article feedback",
+    outside_window: "outside-window counts",
+  };
+  const historical = [
+    ...(envelope.sources.metricSnapshot ? ["daily report snapshots"] : []),
+    ...(envelope.sources.cycleSnapshot ? ["completed-cycle snapshots"] : []),
+  ];
+  const live = envelope.sources.liveComponents.map(
+    (key) => sourceLabels[key] ?? "other live data",
+  );
+  lines.push(
+    csvRow([
+      `# Sources: ${
+        [
+          ...(historical.length ? [historical.join(", ")] : []),
+          ...(live.length ? [`live components: ${live.join(", ")}`] : []),
+        ].join("; ") || "source details unavailable"
+      }`,
+    ]),
+  );
   if (envelope.snapshot)
     lines.push(
       csvRow([
         `# Source: ${envelope.snapshot.closedDays} closed day(s) from stored daily snapshots${
           envelope.snapshot.through
-            ? ` up to ${envelope.snapshot.through.slice(0, 10)}`
+            ? ` up to ${inclusiveEndDay(envelope.snapshot.through)}`
             : ""
         }${envelope.boundary === "mixed" ? "; the rest is computed live" : ""}`,
       ]),
@@ -136,11 +183,22 @@ export function reportToCsv(envelope: ReportEnvelope): string {
       ]),
     );
   lines.push(csvRow(envelope.columns.map((column) => column.label)));
-  for (const row of envelope.rows)
-    lines.push(
-      csvRow(envelope.columns.map((column) => cellText(row[column.key]))),
-    );
   return `${lines.join("\r\n")}\r\n`;
+}
+
+/** CSV rows for one already bounded page; embedded newlines remain escaped as CSV cells. */
+export function reportCsvRows(envelope: ReportEnvelope): string {
+  return (
+    envelope.rows
+      .map((row) =>
+        csvRow(envelope.columns.map((column) => cellText(row[column.key]))),
+      )
+      .join("\r\n") + (envelope.rows.length > 0 ? "\r\n" : "")
+  );
+}
+
+export function reportToCsv(envelope: ReportEnvelope): string {
+  return `${reportCsvPreamble(envelope)}${reportCsvRows(envelope)}`;
 }
 
 export { minutesToHours };

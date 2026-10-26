@@ -1,27 +1,32 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@taskdesk/ui";
 import { type CSSProperties, lazy, type ReactNode, Suspense } from "react";
-import { useTranslation } from "react-i18next";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { routes } from "@/lib/routes";
 
 const PortalSidebar = lazy(() => import("./portal-sidebar"));
+const PortalNotificationBell = lazy(() => import("./portal-notification-bell"));
 
 /** Kaneo sidebar/inset shell; customer navigation loads separately from page content. */
 export default function PortalLayout({ children }: { children: ReactNode }) {
-  const { t } = useTranslation("portal");
+  const { t } = usePortalTranslation("portal");
   const location = useLocation();
   const titles = [
     [routes.portalHome.path, "navigation.home"],
     [routes.portalCatalogue.path, "navigation.catalogue"],
     [routes.portalKb.path, "navigation.knowledgeBase"],
+    [routes.portalReleases.path, "navigation.releases"],
     [routes.portalRequests.path, "navigation.requests"],
     [routes.portalApprovals.path, "navigation.approvals"],
+    [routes.portalAccount.path, "navigation.account"],
+    ["/notifications", "notifications.title"],
   ];
   const current =
     titles.find(
       ([path]) =>
         path === location.pathname ||
-        (path === routes.portalKb.path &&
+        ((path === routes.portalKb.path ||
+          path === routes.portalReleases.path) &&
           location.pathname.startsWith(`${path}/`)),
     )?.[1] ?? "navigation.request";
   return (
@@ -54,6 +59,11 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
               <span aria-hidden="true">/</span>
               <span>{t(current)}</span>
             </nav>
+            <div className="ml-auto shrink-0">
+              <Suspense fallback={<span className="block size-9" />}>
+                <PortalNotificationBell />
+              </Suspense>
+            </div>
           </header>
           {children}
         </SidebarInset>

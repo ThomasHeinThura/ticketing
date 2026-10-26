@@ -1,0 +1,19 @@
+{
+	"recordedAt": "2026-10-26T00:29:55.510Z",
+	"results": [
+		{
+			"width": 375,
+			"title": "TaskDesk Phase Report",
+			"overflow": false,
+			"text": "TaskDesk phase report\n\nUpdated 2026-10-26 00:27 UTC · 661 requirements in P0–P5\n\nP0–P5 remain in repair and verification; no fresh phase sign-off. HTTPS SIT is running on owned database copies at migration186. New invitation, service-key and terminology repairs are not deployed. P6 has not started.\n\nSource implementation, tested behavior, browser verification and Thomas acceptance are separate. Counts below require complete requirement evidence; scoped passes are listed in validation details.\n\nReview once at phase end; fix and retry up to three rounds. A fourth round needs Thomas’s approval.\n\nOverall\n621\n33\nImplemented + current test evidence\nBrowser verified\nImplemented; current verification pending\nPartial / open\nMissing\nExternally blocked\nNot audited\nP0 · Foundation\nFresh review pending\n22\n\nImplemented; current verification pending 22 of 22\n\nFull browser verification: 0 / 22 requirements.\n\nGates: 7 pass · 1 fail · 6 pending. Review: 0/3 rounds used · 0 recorded findings.\n\nStill to finish\nFull safety/browser matrix and final gates; fresh independent review.\nGate results\nP1 · Core work\nFresh review pending\n180\n\nImplemented; current verification pending 180 · Partial / open 1 of 18",
+			"errors": []
+		},
+		{
+			"width": 1440,
+			"title": "TaskDesk Phase Report",
+			"overflow": false,
+			"text": "TaskDesk phase report\n\nUpdated 2026-10-26 00:27 UTC · 661 requirements in P0–P5\n\nP0–P5 remain in repair and verification; no fresh phase sign-off. HTTPS SIT is running on owned database copies at migration186. New invitation, service-key and terminology repairs are not deployed. P6 has not started.\n\nSource implementation, tested behavior, browser verification and Thomas acceptance are separate. Counts below require complete requirement evidence; scoped passes are listed in validation details.\n\nReview once at phase end; fix and retry up to three rounds. A fourth round needs Thomas’s approval.\n\nOverall\n621\n33\nImplemented + current test evidence\nBrowser verified\nImplemented; current verification pending\nPartial / open\nMissing\nExternally blocked\nNot audited\nP0 · Foundation\nFresh review pending\n22\n\nImplemented; current verification pending 22 of 22\n\nFull browser verification: 0 / 22 requirements.\n\nGates: 7 pass · 1 fail · 6 pending. Review: 0/3 rounds used · 0 recorded findings.\n\nStill to finish\nFull safety/browser matrix and final gates; fresh independent review.\nGate results\nP1 · Core work\nFresh review pending\n180\n\nImplemented; current verification pending 180 · Partial / open 1 of 18",
+			"errors": []
+		}
+	]
+}

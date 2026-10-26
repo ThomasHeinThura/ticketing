@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   canExport: false,
   exportWorkItems: vi.fn(),
   saveAs: vi.fn(),
+  customFields: [] as unknown[],
 }));
 
 vi.mock("react-i18next", () => ({
@@ -33,6 +34,9 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     isCheckingPermissions: false,
   }),
 }));
+vi.mock("@/hooks/queries/custom-field/use-custom-fields", () => ({
+  useCustomFields: () => ({ data: { data: mocks.customFields } }),
+}));
 
 vi.mock("@/fetchers/work-item/export-work-items", () => ({
   exportWorkItems: (...args: unknown[]) => mocks.exportWorkItems(...args),
@@ -46,6 +50,7 @@ beforeEach(() => {
   mocks.canExport = false;
   mocks.exportWorkItems.mockReset();
   mocks.saveAs.mockReset();
+  mocks.customFields = [];
 });
 
 afterEach(() => {
@@ -54,6 +59,16 @@ afterEach(() => {
 
 describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
   it("toggles and reorders columns when onColumnsChange is provided", async () => {
+    mocks.customFields = [
+      {
+        key: "constructor",
+        name: "Asset tag",
+        deletedAt: null,
+        visibility: [
+          { workItemTypeId: "type-1", visible: true, required: false },
+        ],
+      },
+    ];
     const onColumnsChange = vi.fn();
     render(
       <WorkItemListControls
@@ -78,6 +93,14 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
       "priority",
       "state",
     ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Asset tag" }));
+    expect(onColumnsChange).toHaveBeenLastCalledWith([
+      "key",
+      "title",
+      "priority",
+      "cf.constructor",
+    ]);
   });
 
   it("hides the Export CSV button without exportTasks capability and exports CSV when permitted", async () => {
@@ -91,7 +114,7 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
         projectSlug="WLP"
         sort="priority"
         dir="desc"
-        columns={["key", "title"]}
+        columns={["key", "title", "cf.asset_tag"]}
       />,
     );
     await screen.findByTestId("filter-editor");
@@ -111,7 +134,7 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
         projectSlug="WLP"
         sort="priority"
         dir="desc"
-        columns={["key", "title"]}
+        columns={["key", "title", "cf.asset_tag"]}
       />,
     );
 
@@ -124,7 +147,7 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
       filter: "priority:high",
       sort: "priority",
       dir: "desc",
-      columns: ["key", "title"],
+      columns: ["key", "title", "cf.asset_tag"],
     });
     expect(mocks.saveAs).toHaveBeenCalledOnce();
   });

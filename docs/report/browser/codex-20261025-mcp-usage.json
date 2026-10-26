@@ -1,0 +1,523 @@
+{
+	"name": "MCP usage telemetry browser journey",
+	"runtime": "deployed176",
+	"checks": [
+		{
+			"name": "MCP feature flag has explicit false override available for exact UI restoration",
+			"passed": true
+		},
+		{
+			"name": "owner API key screen is available",
+			"passed": true
+		},
+		{
+			"name": "requested key row exists only for an approved private-key resume",
+			"passed": true
+		},
+		{
+			"name": "private one-time key file state is valid",
+			"passed": true
+		},
+		{
+			"name": "lead key-owner session can read CCY-1 in its owned workspace",
+			"passed": true
+		},
+		{
+			"name": "MCP feature enabled through UI",
+			"passed": true
+		},
+		{
+			"name": "new key is active MCP key and server confirms read-only capabilities",
+			"passed": true
+		},
+		{
+			"name": "stdio MCP server exposes required read tools",
+			"passed": true
+		},
+		{
+			"name": "stdio get_work_item reads the owned CCY-1",
+			"passed": true
+		},
+		{
+			"name": "stdio list_projects reads the owned workspace",
+			"passed": true
+		},
+		{
+			"name": "stdio get_work_item returns the expected missing-item error",
+			"passed": true
+		},
+		{
+			"name": "usage API attempts match read-only audit count",
+			"passed": true,
+			"requestAttempts": 8
+		},
+		{
+			"name": "tool reports match the actual invocation table",
+			"passed": true
+		},
+		{
+			"name": "invocation IDs are unique for the owned key",
+			"passed": true
+		},
+		{
+			"name": "telemetry schema stores no call content",
+			"passed": true
+		},
+		{
+			"name": "whoami identifies the authenticated key owner",
+			"passed": true
+		},
+		{
+			"name": "revoked key remains visible as disabled with persisted counts",
+			"passed": true
+		},
+		{
+			"name": "manual revoke does not fabricate an auto-disable timestamp",
+			"passed": true
+		},
+		{
+			"name": "non-admin session receives usage 403 and Access denied surface",
+			"passed": true,
+			"role": "member"
+		},
+		{
+			"name": "feature flag remains explicit false after the journey",
+			"passed": true
+		},
+		{
+			"name": "R4 stays revoked and its recorded request count persists",
+			"passed": true
+		},
+		{
+			"name": "private one-time key file was removed after revocation",
+			"passed": true
+		},
+		{
+			"name": "responsive page shows disabled R4 metadata",
+			"passed": true,
+			"width": 390,
+			"theme": "light"
+		},
+		{
+			"name": "usage panel counts, error rates and durations match the stored aggregates",
+			"passed": true,
+			"width": 390,
+			"theme": "light"
+		},
+		{
+			"name": "main table count and disabled metadata match the response",
+			"passed": true,
+			"width": 390,
+			"theme": "light"
+		},
+		{
+			"name": "document has no horizontal overflow",
+			"passed": true,
+			"width": 390,
+			"theme": "light"
+		},
+		{
+			"name": "horizontal table overflow stays within its table frame",
+			"passed": true,
+			"width": 390,
+			"theme": "light"
+		},
+		{
+			"name": "requested theme is applied",
+			"passed": true,
+			"width": 390,
+			"theme": "light"
+		},
+		{
+			"name": "responsive page shows disabled R4 metadata",
+			"passed": true,
+			"width": 390,
+			"theme": "dark"
+		},
+		{
+			"name": "usage panel counts, error rates and durations match the stored aggregates",
+			"passed": true,
+			"width": 390,
+			"theme": "dark"
+		},
+		{
+			"name": "main table count and disabled metadata match the response",
+			"passed": true,
+			"width": 390,
+			"theme": "dark"
+		},
+		{
+			"name": "document has no horizontal overflow",
+			"passed": true,
+			"width": 390,
+			"theme": "dark"
+		},
+		{
+			"name": "horizontal table overflow stays within its table frame",
+			"passed": true,
+			"width": 390,
+			"theme": "dark"
+		},
+		{
+			"name": "requested theme is applied",
+			"passed": true,
+			"width": 390,
+			"theme": "dark"
+		},
+		{
+			"name": "responsive page shows disabled R4 metadata",
+			"passed": true,
+			"width": 768,
+			"theme": "light"
+		},
+		{
+			"name": "usage panel counts, error rates and durations match the stored aggregates",
+			"passed": true,
+			"width": 768,
+			"theme": "light"
+		},
+		{
+			"name": "main table count and disabled metadata match the response",
+			"passed": true,
+			"width": 768,
+			"theme": "light"
+		},
+		{
+			"name": "document has no horizontal overflow",
+			"passed": true,
+			"width": 768,
+			"theme": "light"
+		},
+		{
+			"name": "horizontal table overflow stays within its table frame",
+			"passed": true,
+			"width": 768,
+			"theme": "light"
+		},
+		{
+			"name": "requested theme is applied",
+			"passed": true,
+			"width": 768,
+			"theme": "light"
+		},
+		{
+			"name": "responsive page shows disabled R4 metadata",
+			"passed": true,
+			"width": 768,
+			"theme": "dark"
+		},
+		{
+			"name": "usage panel counts, error rates and durations match the stored aggregates",
+			"passed": true,
+			"width": 768,
+			"theme": "dark"
+		},
+		{
+			"name": "main table count and disabled metadata match the response",
+			"passed": true,
+			"width": 768,
+			"theme": "dark"
+		},
+		{
+			"name": "document has no horizontal overflow",
+			"passed": true,
+			"width": 768,
+			"theme": "dark"
+		},
+		{
+			"name": "horizontal table overflow stays within its table frame",
+			"passed": true,
+			"width": 768,
+			"theme": "dark"
+		},
+		{
+			"name": "requested theme is applied",
+			"passed": true,
+			"width": 768,
+			"theme": "dark"
+		},
+		{
+			"name": "responsive page shows disabled R4 metadata",
+			"passed": true,
+			"width": 1440,
+			"theme": "light"
+		},
+		{
+			"name": "usage panel counts, error rates and durations match the stored aggregates",
+			"passed": true,
+			"width": 1440,
+			"theme": "light"
+		},
+		{
+			"name": "main table count and disabled metadata match the response",
+			"passed": true,
+			"width": 1440,
+			"theme": "light"
+		},
+		{
+			"name": "document has no horizontal overflow",
+			"passed": true,
+			"width": 1440,
+			"theme": "light"
+		},
+		{
+			"name": "horizontal table overflow stays within its table frame",
+			"passed": true,
+			"width": 1440,
+			"theme": "light"
+		},
+		{
+			"name": "requested theme is applied",
+			"passed": true,
+			"width": 1440,
+			"theme": "light"
+		},
+		{
+			"name": "responsive page shows disabled R4 metadata",
+			"passed": true,
+			"width": 1440,
+			"theme": "dark"
+		},
+		{
+			"name": "usage panel counts, error rates and durations match the stored aggregates",
+			"passed": true,
+			"width": 1440,
+			"theme": "dark"
+		},
+		{
+			"name": "main table count and disabled metadata match the response",
+			"passed": true,
+			"width": 1440,
+			"theme": "dark"
+		},
+		{
+			"name": "document has no horizontal overflow",
+			"passed": true,
+			"width": 1440,
+			"theme": "dark"
+		},
+		{
+			"name": "horizontal table overflow stays within its table frame",
+			"passed": true,
+			"width": 1440,
+			"theme": "dark"
+		},
+		{
+			"name": "requested theme is applied",
+			"passed": true,
+			"width": 1440,
+			"theme": "dark"
+		},
+		{
+			"name": "final sanitized MCP browser evidence",
+			"passed": true
+		}
+	],
+	"browser": {
+		"adminStates": [
+			{
+				"width": 390,
+				"theme": "light",
+				"status": 200,
+				"noDocumentOverflow": true,
+				"tableOverflowLocal": true
+			},
+			{
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"noDocumentOverflow": true,
+				"tableOverflowLocal": true
+			},
+			{
+				"width": 768,
+				"theme": "light",
+				"status": 200,
+				"noDocumentOverflow": true,
+				"tableOverflowLocal": true
+			},
+			{
+				"width": 768,
+				"theme": "dark",
+				"status": 200,
+				"noDocumentOverflow": true,
+				"tableOverflowLocal": true
+			},
+			{
+				"width": 1440,
+				"theme": "light",
+				"status": 200,
+				"noDocumentOverflow": true,
+				"tableOverflowLocal": true
+			},
+			{
+				"width": 1440,
+				"theme": "dark",
+				"status": 200,
+				"noDocumentOverflow": true,
+				"tableOverflowLocal": true
+			}
+		],
+		"memberDenied": true,
+		"screenshots": [
+			{
+				"width": 390,
+				"theme": "light",
+				"path": "docs/report/browser/screens/mcp-usage175-390-light.png"
+			},
+			{
+				"width": 390,
+				"theme": "dark",
+				"path": "docs/report/browser/screens/mcp-usage175-390-dark.png"
+			},
+			{
+				"width": 768,
+				"theme": "light",
+				"path": "docs/report/browser/screens/mcp-usage175-768-light.png"
+			},
+			{
+				"width": 768,
+				"theme": "dark",
+				"path": "docs/report/browser/screens/mcp-usage175-768-dark.png"
+			},
+			{
+				"width": 1440,
+				"theme": "light",
+				"path": "docs/report/browser/screens/mcp-usage175-1440-light.png"
+			},
+			{
+				"width": 1440,
+				"theme": "dark",
+				"path": "docs/report/browser/screens/mcp-usage175-1440-dark.png"
+			}
+		],
+		"memberRole": "member"
+	},
+	"usage": {
+		"keyName": "CodexMCPUsage175R4",
+		"readOnly": true,
+		"whoamiOwnerMatch": true,
+		"tools": [
+			{
+				"toolName": "get_work_item",
+				"calls": 2,
+				"errors": 1,
+				"errorRate": 0.5,
+				"meanDurationMs": 12,
+				"maxDurationMs": 16
+			},
+			{
+				"toolName": "list_projects",
+				"calls": 1,
+				"errors": 0,
+				"errorRate": 0,
+				"meanDurationMs": 10,
+				"maxDurationMs": 10
+			},
+			{
+				"toolName": "whoami",
+				"calls": 1,
+				"errors": 0,
+				"errorRate": 0,
+				"meanDurationMs": 62,
+				"maxDurationMs": 62
+			}
+		],
+		"toolResults": [
+			{
+				"toolName": "whoami",
+				"succeeded": true,
+				"errorCategory": "success",
+				"ownerIdentityMatched": true
+			},
+			{
+				"toolName": "get_work_item",
+				"succeeded": true,
+				"errorCategory": "success"
+			},
+			{
+				"toolName": "list_projects",
+				"succeeded": true,
+				"errorCategory": "success"
+			},
+			{
+				"toolName": "get_work_item_missing",
+				"succeeded": false,
+				"errorCategory": "not_found",
+				"expectedMissingError": true
+			}
+		],
+		"recordedApiAttempts": 8,
+		"telemetryRows": 4,
+		"telemetryInvocationsUnique": true,
+		"contentFreeSchema": true,
+		"disabledPersists": true,
+		"uiMatchesDatabase": true
+	},
+	"featureFlag": {
+		"originalExplicitOverride": true,
+		"originalEffectiveValue": false,
+		"restored": true
+	},
+	"errors": {
+		"pageErrors": 0,
+		"unexpectedConsoleErrors": 0,
+		"unexpectedHttp": [],
+		"expectedDenials": 2
+	},
+	"passed": true,
+	"failurePhase": null,
+	"attemptHistory": [
+		{
+			"attempt": 1,
+			"status": "stopped_before_writes",
+			"reason": "owner-state belonged to a different workspace and could not read CCY-1"
+		},
+		{
+			"attempt": 2,
+			"status": "stopped_before_key_creation",
+			"reason": "wrong read-only switch label; feature was restored to explicit false"
+		},
+		{
+			"attempt": 3,
+			"status": "key_created_then_revoked",
+			"reason": "runner waited for the success heading inside the closed create dialog; UI cleanup revoked the key, and no MCP calls used it"
+		},
+		{
+			"attempt": 4,
+			"status": "key_created_and_captured",
+			"reason": "R2 was created through the separate success modal; server metadata confirms read-only"
+		},
+		{
+			"attempt": 5,
+			"status": "stdio_start_failed_before_calls",
+			"reason": "Node could not resolve root tsx import; cleanup lookup ran before navigating its new page"
+		},
+		{
+			"attempt": 6,
+			"status": "tls_preflight_fixed",
+			"reason": "Node trusts the local SIT certificate through NODE_EXTRA_CA_CERTS with TLS verification active; stdio and SDK tool listing passed without a key"
+		},
+		{
+			"attempt": 7,
+			"status": "R2_transport_failed_before_api",
+			"reason": "Node TLS rejected the local certificate; database showed zero MCP request audits and zero tool reports; key was revoked"
+		},
+		{
+			"attempt": 8,
+			"status": "R4_calls_and_metadata_verified",
+			"requestAttempts": 8,
+			"clientToolReports": 4,
+			"details": "4 unique reports include whoami, owned item, scoped project list and one not-found read; no call content stored"
+		},
+		{
+			"attempt": 9,
+			"status": "read_only_ui_continuation_complete",
+			"details": "Same-origin member denial and six responsive/theme screenshots collected after R4 revoke"
+		}
+	],
+	"creationHttpStatus": 201,
+	"failureStep": null,
+	"failureClass": null,
+	"cleanup": "owned-key-revoked-through-ui"
+}

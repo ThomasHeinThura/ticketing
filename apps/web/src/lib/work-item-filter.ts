@@ -152,11 +152,13 @@ function validateLeaf(node: Extract<WorkItemFilter, { field: string }>) {
       "state.group",
       "priority",
       "assignee",
+      "requester",
       "watcher",
       "dueDate",
       "createdAt",
       "project",
       "type",
+      "lifecycle",
     ].includes(field)
   )
     return;
@@ -209,9 +211,9 @@ function validateLeaf(node: Extract<WorkItemFilter, { field: string }>) {
     throw new Error("priority has an invalid operator or value.");
   }
 
-  if (field === "assignee") {
+  if (field === "assignee" || field === "requester") {
     if (op === "eq" && value === "@me") return;
-    throw new Error("assignee supports eq @me only.");
+    throw new Error(`${field} supports eq @me only.`);
   }
   if (field === "watcher") {
     if (op === "contains" && value === "@me") return;
@@ -244,6 +246,16 @@ function validateLeaf(node: Extract<WorkItemFilter, { field: string }>) {
       return;
     }
     throw new Error(`${field} supports eq with a string value.`);
+  }
+
+  if (field === "lifecycle") {
+    if (
+      op === "eq" &&
+      typeof value === "string" &&
+      ["active", "archived", "deleted"].includes(value)
+    )
+      return;
+    throw new Error("lifecycle supports active, archived, or deleted.");
   }
 }
 

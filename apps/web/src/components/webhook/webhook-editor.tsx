@@ -756,7 +756,7 @@ function WebhookForm({
       <div className="flex gap-2">
         <Button
           type="submit"
-          disabled={save.isPending || !dirty || (needsStepUp && !stepUp.secret)}
+          disabled={save.isPending || !dirty || (needsStepUp && !stepUp.canRun)}
         >
           {isNew ? t("editor.create") : t("editor.save")}
         </Button>

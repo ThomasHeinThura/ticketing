@@ -5,10 +5,14 @@
  */
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createPersonalApiKey } from "../../apps/api/src/api-key/service";
 import db, { schema } from "../../apps/api/src/database";
-import { kbArticleVersionTable } from "../../apps/api/src/database/schema-p5-kb";
+import {
+  kbArticleTable,
+  kbArticleVersionTable,
+} from "../../apps/api/src/database/schema-p5-kb";
 import { deleteWorkspaceRoleDependents } from "../../apps/api/src/workspace/controllers/delete-workspace-role-dependents";
-import { mockAuthenticatedSession } from "./helpers/auth";
+import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   articleRow,
@@ -56,6 +60,40 @@ async function createDraft(
 }
 
 describe("lifecycle, versions and concurrency", () => {
+  it("exposes person identifiers for owner selection and rejects a login user id", async () => {
+    const { article } = await createDraft(w.member.user);
+    const members = await w.agent(
+      w.owner.user,
+      `/api/workspace/${w.workspaceId}/members`,
+    );
+    expect(members.status).toBe(200);
+    const choices = (await members.json()) as Array<{
+      id: string;
+      personId: string | null;
+    }>;
+    const owner = choices.find((row) => row.id === w.owner.user.id);
+    expect(owner?.personId).toBeTypeOf("string");
+    expect(owner?.personId).not.toBe(w.owner.user.id);
+    const rejected = await w.agent(
+      w.owner.user,
+      `/api/kb/articles/${article.id}`,
+      {
+        method: "PATCH",
+        body: { version: article.version, ownerId: w.owner.user.id },
+      },
+    );
+    expect(rejected.status).toBe(404);
+    const saved = await w.agent(
+      w.owner.user,
+      `/api/kb/articles/${article.id}`,
+      {
+        method: "PATCH",
+        body: { version: article.version, ownerId: owner?.personId },
+      },
+    );
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    expect((await saved.json()).ownerId).toBe(owner?.personId);
+  });
   it("lets a writer draft, a publisher publish, and keeps versions immutable", async () => {
     const { response, article } = await createDraft(w.member.user);
     expect(response.status, await response.clone().text()).toBe(200);
@@ -534,6 +572,56 @@ describe("gates", () => {
 });
 
 describe("search, report and feedback totals", () => {
+  it("finds persisted full-width and decomposed Unicode titles", async () => {
+    const fullWidth = await insertArticle(w.workspaceId, {
+      title: "Ａｌｐｈａ guide",
+    });
+    const decomposed = await insertArticle(w.workspaceId, {
+      title: "Cafe\u0301 reset guide",
+    });
+    const search = async (q: string) => {
+      const response = await w.agent(
+        w.viewer.user,
+        `/api/kb/search?workspaceId=${w.workspaceId}&q=${encodeURIComponent(q)}`,
+      );
+      expect(response.status).toBe(200);
+      return ((await response.json()) as { articles: { id: string }[] })
+        .articles;
+    };
+
+    const [fullWidthResults, decomposedResults] = await Promise.all([
+      search("Ａｌｐｈａ"),
+      search("Cafe\u0301"),
+    ]);
+    expect({
+      fullWidth: fullWidthResults.some(
+        (article) => article.id === fullWidth.id,
+      ),
+      decomposed: decomposedResults.some(
+        (article) => article.id === decomposed.id,
+      ),
+    }).toEqual({ fullWidth: true, decomposed: true });
+
+    const globalSearch = async (q: string) => {
+      const response = await w.agent(
+        w.viewer.user,
+        `/api/search?workspaceId=${w.workspaceId}&type=kb_articles&q=${encodeURIComponent(q)}`,
+      );
+      expect(response.status).toBe(200);
+      return ((await response.json()) as { results: { id: string }[] }).results;
+    };
+    const [globalFullWidth, globalDecomposed] = await Promise.all([
+      globalSearch("Ａｌｐｈａ"),
+      globalSearch("Cafe\u0301"),
+    ]);
+    expect({
+      fullWidth: globalFullWidth.some((article) => article.id === fullWidth.id),
+      decomposed: globalDecomposed.some(
+        (article) => article.id === decomposed.id,
+      ),
+    }).toEqual({ fullWidth: true, decomposed: true });
+  });
+
   it("weights titles above bodies and reports overdue reviews", async () => {
     const body = await insertArticle(w.workspaceId, {
       title: "Unrelated heading",
@@ -551,12 +639,22 @@ describe("search, report and feedback totals", () => {
     });
     const response = await w.agent(
       w.viewer.user,
-      `/api/kb/search?workspaceId=${w.workspaceId}&q=vpn%20certificate`,
+      `/api/kb/search?workspaceId=${w.workspaceId}&q=vpn%20cert`,
     );
     const ids = (
       (await response.json()) as { articles: { id: string }[] }
     ).articles.map((a) => a.id);
     expect(ids).toEqual([title.id, body.id]);
+
+    const globalSearch = await w.agent(
+      w.viewer.user,
+      `/api/search?workspaceId=${w.workspaceId}&type=kb_articles&q=vpn%20cert`,
+    );
+    expect(globalSearch.status).toBe(200);
+    const globalIds = (
+      (await globalSearch.json()) as { results: { id: string }[] }
+    ).results.map((article) => article.id);
+    expect(globalIds).toEqual([title.id, body.id]);
 
     const report = await w.agent(
       w.viewer.user,
@@ -565,6 +663,131 @@ describe("search, report and feedback totals", () => {
     expect(report.status).toBe(200);
     const parsed = (await report.json()) as { overdue: { id: string }[] };
     expect(parsed.overdue.map((a) => a.id)).toEqual([overdue.id]);
+  });
+
+  it("adds readable KB articles to agent search using the staff copy and portal published version", async () => {
+    const article = await insertArticle(w.workspaceId, {
+      title: "Public VPN guide",
+      bodyText: "Public certificate instructions",
+      state: "published",
+      customerVisible: true,
+    });
+    await db
+      .update(kbArticleTable)
+      .set({
+        title: "Working VPN draft",
+        bodyText: "Working certificate instructions",
+      })
+      .where(eq(kbArticleTable.id, article.id));
+
+    const staffQuery = (q: string, type = "all") =>
+      `/api/search?q=${encodeURIComponent(q)}&workspaceId=${w.workspaceId}&type=${type}`;
+    const staffHit = await w.agent(w.viewer.user, staffQuery("Working VPN"));
+    expect(staffHit.status).toBe(200);
+    const staffResults = (await staffHit.json()) as {
+      results: { id: string; type: string; title: string }[];
+    };
+    expect(staffResults.results).toContainEqual(
+      expect.objectContaining({
+        id: article.id,
+        type: "kb_article",
+        title: "Working VPN draft",
+      }),
+    );
+    const typedHit = await w.agent(
+      w.viewer.user,
+      staffQuery("Working VPN", "kb_articles"),
+    );
+    expect(typedHit.status).toBe(200);
+    expect(
+      ((await typedHit.json()) as { results: { id: string }[] }).results,
+    ).toContainEqual(expect.objectContaining({ id: article.id }));
+    const punctuationOnly = await w.agent(
+      w.viewer.user,
+      staffQuery("!!!", "kb_articles"),
+    );
+    expect(
+      ((await punctuationOnly.json()) as { results: { id: string }[] }).results,
+    ).not.toContainEqual(expect.objectContaining({ id: article.id }));
+    expect(
+      (
+        (await (
+          await w.agent(w.viewer.user, staffQuery("Public VPN"))
+        ).json()) as { results: { id: string }[] }
+      ).results,
+    ).not.toContainEqual(expect.objectContaining({ id: article.id }));
+
+    const portalHit = await w.portal(
+      w.customerA.user,
+      `/api/portal/kb?q=${encodeURIComponent("Public VPN")}`,
+    );
+    expect(portalHit.status).toBe(200);
+    const portalResults = (await portalHit.json()) as {
+      articles: { id: string; title: string }[];
+    };
+    expect(portalResults.articles).toContainEqual(
+      expect.objectContaining({
+        id: article.id,
+        title: "Public VPN guide",
+      }),
+    );
+
+    const writer = await w.agent(w.member.user, staffQuery("Working VPN"));
+    expect(
+      ((await writer.json()) as { results: { id: string }[] }).results,
+    ).toContainEqual(expect.objectContaining({ id: article.id }));
+
+    const projectArticle = await insertArticle(w.workspaceId, {
+      title: "Reachable project guide",
+      projectId: w.projectA.id,
+    });
+    const outsideReach = await w.agent(
+      w.member.user,
+      staffQuery("Reachable project"),
+    );
+    expect(
+      ((await outsideReach.json()) as { results: { id: string }[] }).results,
+    ).not.toContainEqual(expect.objectContaining({ id: projectArticle.id }));
+    const withinReach = await w.agent(
+      w.reacher.user,
+      staffQuery("Reachable project"),
+    );
+    expect(
+      ((await withinReach.json()) as { results: { id: string }[] }).results,
+    ).toContainEqual(expect.objectContaining({ id: projectArticle.id }));
+
+    await setKbFlag(w.workspaceId, false);
+    const off = await w.agent(w.viewer.user, staffQuery("Working VPN"));
+    expect(
+      ((await off.json()) as { results: { id: string }[] }).results,
+    ).not.toContainEqual(expect.objectContaining({ id: article.id }));
+  });
+
+  it("respects an API key capability ceiling when adding KB results to global search", async () => {
+    const article = await insertArticle(w.workspaceId, {
+      title: "Needle customer support guide",
+      state: "published",
+      customerVisible: true,
+    });
+    const key = await createPersonalApiKey(
+      { userId: w.owner.user.id },
+      {
+        name: "global search workspace reader",
+        capabilities: ["workspace:read"],
+      },
+    );
+    mockAnonymousSession();
+    const response = await w.app.request(
+      `/api/search?q=Needle&workspaceId=${w.workspaceId}&type=kb_articles`,
+      { headers: { "x-api-key": key.key } },
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const body = (await response.json()) as {
+      results: { id: string; type: string }[];
+    };
+    expect(body.results).not.toContainEqual(
+      expect.objectContaining({ id: article.id, type: "kb_article" }),
+    );
   });
 });
 

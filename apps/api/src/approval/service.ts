@@ -35,6 +35,7 @@ import {
 } from "./repository";
 
 type ActorType = "person" | "api_key";
+type ApprovalTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 function toDomainApproval(
   row: typeof schema.approvalTable.$inferSelect,
@@ -228,127 +229,145 @@ export async function decideApproval(input: {
   approvalId: string;
   identity: ResolvedIdentity;
   actorType: ActorType;
+  apiKeyId?: string;
   action: "approve" | "reject";
   note: string | null;
   isCabMember: boolean;
   target: Awaited<ReturnType<typeof loadApprovalTargetByKey>>;
 }) {
+  return db.transaction((tx) => decideApprovalInTransaction(tx, input));
+}
+
+/** Decide under a caller-owned transaction so a pending MCP action and the approval state,
+ * activity, notification and audit commit or roll back together. */
+export async function decideApprovalInTransaction(
+  tx: ApprovalTransaction,
+  input: {
+    approvalId: string;
+    identity: ResolvedIdentity;
+    actorType: ActorType;
+    apiKeyId?: string;
+    action: "approve" | "reject";
+    note: string | null;
+    isCabMember: boolean;
+    target: Awaited<ReturnType<typeof loadApprovalTargetByKey>>;
+  },
+) {
   if (!(await hasWorkItemReach(input.identity, input.target))) {
     throw new HTTPException(403, {
       message: "Approver no longer has reach on this work item",
     });
   }
   const actorNameValue = await loadApprovalActorName(input.identity.personId);
-  return db.transaction(async (tx) => {
-    const lockedItem = await lockLiveWorkItem(
-      tx,
-      input.identity,
-      input.target.workspaceId,
-      input.target.workItemId,
-    );
-    if (!lockedItem)
-      throw new HTTPException(404, { message: "Approval not found" });
-    const row = await lockApproval(
-      tx,
-      input.identity,
-      input.approvalId,
-      input.target.workItemId,
-      input.target.workspaceId,
-    );
-    if (!row) throw new HTTPException(404, { message: "Approval not found" });
-    if (row.expiresAt.getTime() <= Date.now()) {
-      throw new HTTPException(409, { message: "Approval has expired" });
-    }
-    const decision = evaluateApprovalDecision({
-      approval: toDomainApproval(row),
-      actingPersonId: input.identity.personId,
-      action: input.action,
-      note: input.note,
-      cabMemberIds: input.isCabMember
-        ? new Set([input.identity.personId])
-        : new Set(),
+  const lockedItem = await lockLiveWorkItem(
+    tx,
+    input.identity,
+    input.target.workspaceId,
+    input.target.workItemId,
+  );
+  if (!lockedItem)
+    throw new HTTPException(404, { message: "Approval not found" });
+  const row = await lockApproval(
+    tx,
+    input.identity,
+    input.approvalId,
+    input.target.workItemId,
+    input.target.workspaceId,
+  );
+  if (!row) throw new HTTPException(404, { message: "Approval not found" });
+  if (row.expiresAt.getTime() <= Date.now()) {
+    throw new HTTPException(409, { message: "Approval has expired" });
+  }
+  const decision = evaluateApprovalDecision({
+    approval: toDomainApproval(row),
+    actingPersonId: input.identity.personId,
+    action: input.action,
+    note: input.note,
+    cabMemberIds: input.isCabMember
+      ? new Set([input.identity.personId])
+      : new Set(),
+  });
+  if (!decision.ok) {
+    const status = decision.reasons.includes("not_pending")
+      ? 409
+      : decision.reasons.includes("note_required")
+        ? 422
+        : 403;
+    throw new HTTPException(status, {
+      message: `Approval decision refused: ${decision.reasons.join(", ")}`,
     });
-    if (!decision.ok) {
-      const status = decision.reasons.includes("not_pending")
-        ? 409
-        : decision.reasons.includes("note_required")
-          ? 422
-          : 403;
-      throw new HTTPException(status, {
-        message: `Approval decision refused: ${decision.reasons.join(", ")}`,
-      });
-    }
-    const now = new Date();
-    const updated = await updateApprovalDecision(tx, input.identity, {
-      id: row.id,
-      workspaceId: input.target.workspaceId,
-      state: decision.nextState,
-      decidedAt: now,
-      decisionNote: input.note,
+  }
+  const now = new Date();
+  const updated = await updateApprovalDecision(tx, input.identity, {
+    id: row.id,
+    workspaceId: input.target.workspaceId,
+    state: decision.nextState,
+    decidedAt: now,
+    decisionNote: input.note,
+  });
+  if (!updated)
+    throw new HTTPException(409, {
+      message: "Approval is no longer pending",
     });
-    if (!updated)
-      throw new HTTPException(409, {
-        message: "Approval is no longer pending",
-      });
 
-    await recordWorkItemActivity(tx, [
-      {
-        workspaceId: input.target.workspaceId,
-        workItemId: input.target.workItemId,
-        actorId: input.identity.personId,
-        actorType: input.actorType,
-        verb: "approval.decided",
-        oldValue: "pending",
-        newValue: decision.nextState,
-        payload: {
-          approvalId: row.id,
-          kind: row.kind,
-          decision: decision.nextState,
-        },
-        visibility: "internal",
-      },
-    ]);
-    const eventId = createId();
-    await enqueueNotificationEvent(
-      tx,
-      {
-        id: `evt_${eventId}`,
-        kind: "approval.decided",
-        occurredAt: now.toISOString(),
-        actor: {
-          type: input.actorType,
-          id: input.identity.personId,
-          name: actorNameValue,
-        },
-        scope: eventScope({
-          workspaceId: input.target.workspaceId,
-          organisationId: input.target.organisationId,
-          projectId: input.target.projectId,
-        }),
-        payload: {
-          approvalId: row.id,
-          decision: decision.nextState,
-        },
-        causationId: null,
-        depth: 0,
-        originAutomationId: null,
-      },
-      { resolveRecipients: resolveApprovalEventRecipients },
-    );
-    await appendAuditLog(tx, {
+  await recordWorkItemActivity(tx, [
+    {
+      workspaceId: input.target.workspaceId,
+      workItemId: input.target.workItemId,
       actorId: input.identity.personId,
       actorType: input.actorType,
-      workspaceId: input.target.workspaceId,
-      projectId: input.target.projectId,
-      organisationId: input.target.organisationId,
-      action: "approval.decided",
-      entityType: "approval",
-      entityId: row.id,
-      before: { state: row.state },
-      after: { state: decision.nextState, decidedAt: now.toISOString() },
-    });
-    return updated;
+      verb: "approval.decided",
+      oldValue: "pending",
+      newValue: decision.nextState,
+      payload: {
+        approvalId: row.id,
+        kind: row.kind,
+        decision: decision.nextState,
+      },
+      visibility: "internal",
+    },
+  ]);
+  const eventId = createId();
+  await enqueueNotificationEvent(
+    tx,
+    {
+      id: `evt_${eventId}`,
+      kind: "approval.decided",
+      occurredAt: now.toISOString(),
+      actor: {
+        type: input.actorType,
+        id: input.apiKeyId ?? input.identity.personId,
+        name: actorNameValue,
+      },
+      scope: eventScope({
+        workspaceId: input.target.workspaceId,
+        organisationId: input.target.organisationId,
+        projectId: input.target.projectId,
+      }),
+      payload: {
+        approvalId: row.id,
+        decision: decision.nextState,
+      },
+      causationId: null,
+      depth: 0,
+      originAutomationId: null,
+    },
+    { resolveRecipients: resolveApprovalEventRecipients },
+  );
+  await appendAuditLog(tx, {
+    actorId: input.identity.personId,
+    actorType: input.actorType,
+    apiKeyId: input.apiKeyId ?? null,
+    workspaceId: input.target.workspaceId,
+    projectId: input.target.projectId,
+    organisationId: input.target.organisationId,
+    action: "approval.decided",
+    entityType: "approval",
+    entityId: row.id,
+    before: { state: row.state },
+    after: { state: decision.nextState, decidedAt: now.toISOString() },
   });
+  return updated;
 }
 
 export async function withdrawApproval(input: {

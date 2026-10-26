@@ -32,6 +32,7 @@ import {
   DEFAULT_MCP_WRITE_CEILING_PER_MINUTE,
   effectiveLimit,
   KeyRateLimiter,
+  rateLimitConstraints,
 } from "../../../apps/api/src/api-key/rate-limit";
 import { toApiKeySummary } from "../../../apps/api/src/api-key/summary";
 import { apiKeyCapabilitySubset } from "../../../apps/api/src/utils/require-api-key-permission-scope";
@@ -225,9 +226,77 @@ describe("MC-10 / MC-22 rate limits", () => {
     expect(classifyRequest("POST", { path: "/api/work-items/search" })).toBe(
       "read",
     );
+    // Low-trust tool telemetry uses the total key budget, never MCP write/burst budgets.
+    expect(classifyRequest("POST", { path: "/api/mcp/tool-reports" })).toBe(
+      "read",
+    );
     expect(
       classifyRequest("POST", { path: "/api/work-items/PROJ-1/assign" }),
     ).toBe("write");
+    expect(classifyRequest("POST", { path: "/api/work-items/bulk" })).toBe(
+      "bulk",
+    );
+    expect(
+      classifyRequest("POST", { path: "/api/imports/run-1/records" }),
+    ).toBe("bulk");
+    expect(classifyRequest("POST", { path: "/api/imports/run-1/links" })).toBe(
+      "bulk",
+    );
+    expect(classifyRequest("GET", { path: "/api/imports/run-1/links" })).toBe(
+      "read",
+    );
+    expect(
+      classifyRequest("POST", { path: "/api/imports/run-1/dry-run" }),
+    ).toBe("write");
+    expect(classifyRequest("POST", { path: "/api/imports" })).toBe("write");
+    for (const path of [
+      "/api/imports/run-1/records/extra",
+      "/api/imports//records",
+      "/api/imports/run-1/records-extra",
+      "/api/imports/run-1/links?limit=100",
+    ])
+      expect(classifyRequest("POST", { path }), path).toBe("write");
+  });
+
+  it("composes the total key budget with additional MCP write and bulk budgets", () => {
+    expect(
+      rateLimitConstraints({ isMcp: false, keyLimitPerMinute: 12 }, "write"),
+    ).toEqual([{ bucket: "total", limit: 12 }]);
+    expect(
+      rateLimitConstraints(
+        { isMcp: true, keyLimitPerMinute: 50, mcpWriteCeilingPerMinute: 8 },
+        "read",
+      ),
+    ).toEqual([{ bucket: "total", limit: 50 }]);
+    expect(
+      rateLimitConstraints(
+        { isMcp: true, keyLimitPerMinute: 1, mcpWriteCeilingPerMinute: 8 },
+        classifyRequest("POST", { path: "/api/mcp/tool-reports" }),
+      ),
+    ).toEqual([{ bucket: "total", limit: 1 }]);
+    expect(
+      rateLimitConstraints(
+        { isMcp: true, keyLimitPerMinute: 50, mcpWriteCeilingPerMinute: 8 },
+        "write",
+      ),
+    ).toEqual([
+      { bucket: "total", limit: 50 },
+      { bucket: "mcp_write", limit: 8 },
+    ]);
+    expect(
+      rateLimitConstraints(
+        {
+          isMcp: true,
+          keyLimitPerMinute: 50,
+          mcpWriteCeilingPerMinute: 8,
+        },
+        "bulk",
+      ),
+    ).toEqual([
+      { bucket: "total", limit: 50 },
+      { bucket: "mcp_write", limit: 8 },
+      { bucket: "mcp_bulk", limit: DEFAULT_MCP_BULK_CEILING_PER_MINUTE },
+    ]);
   });
 
   it("limits per key and class, and resets after the window", () => {
@@ -263,7 +332,12 @@ describe("key summary", () => {
     lastUsedIp: null,
     disabledAt: null,
     disabledReason: null,
-    creatorActive: null,
+    adminOwnershipTransferredAt: null,
+    formerCreatorAt: null,
+    reattestationRequiredAt: null,
+    reattestedAt: null,
+    reattestedByPersonId: null,
+    accountabilityVersion: 1,
   };
 
   it("reads a personal key's subset from permissions and flags writes", () => {
@@ -287,26 +361,37 @@ describe("key summary", () => {
     ).toEqual([]);
   });
 
-  it("shows a service key owned by admins once its creator is gone", () => {
+  it("keeps former-creator ownership sticky through reactivation", () => {
     const service = toApiKeySummary({
       ...base,
       workspaceId: "w",
       personId: null,
       capabilities: ["work_item:read", "bogus:cap"],
-      creatorActive: false,
+      adminOwnershipTransferredAt: new Date("2026-10-24T12:00:00Z"),
+      formerCreatorAt: new Date("2026-10-24T12:00:00Z"),
+      reattestationRequiredAt: new Date("2026-10-24T12:00:00Z"),
     });
     expect(service.kind).toBe("service");
     expect(service.capabilities).toEqual(["work_item:read"]);
     expect(service.createdByFormerMember).toBe(true);
+    expect(service.ownedByWorkspaceAdmins).toBe(true);
+    expect(service.requiresReattestation).toBe(true);
     expect(
       toApiKeySummary({
         ...base,
         workspaceId: "w",
         personId: null,
         capabilities: [],
-        creatorActive: true,
-      }).createdByFormerMember,
-    ).toBe(false);
+        adminOwnershipTransferredAt: new Date("2026-10-24T12:00:00Z"),
+        formerCreatorAt: new Date("2026-10-24T12:00:00Z"),
+        reattestationRequiredAt: null,
+        reattestedAt: new Date("2026-10-25T12:00:00Z"),
+      }),
+    ).toMatchObject({
+      createdByFormerMember: true,
+      ownedByWorkspaceAdmins: true,
+      requiresReattestation: false,
+    });
   });
 
   it("a disabled key reads as not enabled", () => {
@@ -336,6 +421,19 @@ describe("api-key route policies", () => {
     }
   });
 
+  it("re-attesting a transferred service key requires elevated workspace admins", () => {
+    expect(
+      apiKeyPolicies["POST /api/workspaces/{id}/api-keys/{keyId}/re-attest"],
+    ).toMatchObject({
+      capability: "api_key:manage",
+      scope: "workspace",
+      scopeSource: "request",
+      reach: "required",
+      elevated: true,
+      sessionOnly: true,
+    });
+  });
+
   it("creating a personal key is session-only; revoking your own is not (AK-6, AK-9)", () => {
     expect(apiKeyPolicies["POST /api/me/api-keys"]).toMatchObject({
       sessionOnly: true,
@@ -343,5 +441,14 @@ describe("api-key route policies", () => {
     expect(
       "sessionOnly" in apiKeyPolicies["POST /api/me/api-keys/{id}/revoke"],
     ).toBe(false);
+  });
+
+  it("deleting a personal key is a session-only elevated self route (AK-11)", () => {
+    expect(apiKeyPolicies["DELETE /api/me/api-keys/{id}"]).toMatchObject({
+      authenticated: true,
+      self: true,
+      elevated: true,
+      sessionOnly: true,
+    });
   });
 });

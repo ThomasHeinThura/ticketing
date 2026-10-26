@@ -11,8 +11,12 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { IdentityConnection } from "@/fetchers/god-mode/identity-connections";
+import {
+  type IdentityConnection,
+  requestIdentityConnectionDeletion,
+} from "@/fetchers/god-mode/identity-connections";
 import { useIdentityConnectionMutations } from "@/hooks/mutations/god-mode/use-identity-connection-mutations";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useServerDraft } from "@/hooks/use-server-draft";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import {
@@ -89,10 +93,27 @@ export function IdentityConnectionEditor({
   const { draft, setDraft } = server;
   const base = server.base;
   const step = useStepUpAction();
+  const openPendingAction = useOpenPendingAction();
   const mutations = useIdentityConnectionMutations(base?.id ?? "new");
   const [errors, setErrors] = useState<ConnectionFieldError[]>([]);
   const [saved, setSaved] = useState<number | null>(null);
   const [unchanged, setUnchanged] = useState(false);
+  const [deletionBusy, setDeletionBusy] = useState(false);
+  const [deletionFailed, setDeletionFailed] = useState(false);
+
+  async function requestDeletion() {
+    if (!base || deletionBusy || step.busy) return;
+    setDeletionBusy(true);
+    setDeletionFailed(false);
+    try {
+      const pendingAction = await requestIdentityConnectionDeletion(base.id);
+      await openPendingAction(pendingAction);
+    } catch {
+      setDeletionFailed(true);
+    } finally {
+      setDeletionBusy(false);
+    }
+  }
 
   const fieldError = (name: ConnectionFieldError) =>
     errors.includes(name) ? t(`editor.errors.${name}`) : undefined;
@@ -487,6 +508,31 @@ export function IdentityConnectionEditor({
           </Button>
         </div>
       </form>
+
+      {base ? (
+        <Alert variant="warning">
+          <AlertTitle>{t("editor.deleteTitle")}</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>{t("editor.deleteDescription")}</p>
+            {deletionFailed ? (
+              <p className="text-sm text-destructive-foreground" role="alert">
+                {t("editor.deleteRequestFailed")}
+              </p>
+            ) : null}
+            <Button
+              className="w-fit"
+              disabled={deletionBusy || step.busy}
+              onClick={requestDeletion}
+              type="button"
+              variant="destructive"
+            >
+              {deletionBusy
+                ? t("editor.deleteSubmitting")
+                : t("editor.deleteTitle")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
     </section>
   );
 }

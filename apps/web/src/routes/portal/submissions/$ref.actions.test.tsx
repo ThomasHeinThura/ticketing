@@ -9,7 +9,7 @@ import {
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PortalActionError } from "@/lib/portal-request";
-import enUS from "../../../../../../i18n/en-US.json";
+import { translate } from "@/test/en-translation";
 import { Route } from "./$ref";
 
 /** A due time that is still in the future but never rolls past local midnight, so "today" holds at any hour. */
@@ -33,6 +33,7 @@ vi.mock("@tanstack/react-router", () => ({
     useRouteContext: () => ({ portalUserId: "customer-a" }),
     useParams: () => ({ ref: "SUB-7" }),
   }),
+  useLocation: () => ({ hash: "" }),
 }));
 
 vi.mock("@/fetchers/intake", () => ({
@@ -52,29 +53,31 @@ vi.mock("@/fetchers/portal-request-actions", () => ({
 }));
 
 // Resolve real English copy so the tests read what a customer reads.
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    i18n: { language: "en-US" },
-    t: (
-      key: string,
-      options?: { defaultValue?: string } & Record<string, unknown>,
-    ) => {
-      const path = (
-        key.includes(":") ? key.replace(":", ".") : `portal.${key}`
-      ).split(".");
-      let node: unknown = enUS;
-      for (const part of path)
-        node = (node as Record<string, unknown> | undefined)?.[part];
-      const text = typeof node === "string" ? node : options?.defaultValue;
-      return (text ?? key).replace(/\{\{(\w+)\}\}/gu, (_m, name: string) =>
-        String(options?.[name] ?? ""),
-      );
-    },
-  }),
+vi.mock("react-i18next", async () => ({
+  ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
+  useTranslation: () => {
+    const i18n = {
+      language: "en-US",
+      resolvedLanguage: "en-US",
+      t: (_key: string, options?: { count?: number }) =>
+        translate(
+          `term:customer.request_${options?.count === 1 ? "one" : "other"}`,
+        ),
+    };
+    return {
+      i18n,
+      t: (key: string, options?: Record<string, unknown>) =>
+        translate(key.includes(":") ? key : `portal:${key}`, options),
+    };
+  },
 }));
 
 const PortalSubmission = (Route as unknown as { component: ComponentType })
   .component;
+const reopenRequestLabel = translate("portal:request.reopen.action");
+const reopenPendingMessage = translate(
+  "portal:request.errors.reopen_pending_review",
+);
 
 const accepted = {
   submission: { state: "accepted", formData: {}, workItemId: "wi-1" },
@@ -228,7 +231,7 @@ describe("reopen (CP-8)", () => {
     mocks.getSubmission.mockResolvedValue({ ...closed, canReopen: true });
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Reopen request" }),
+      await screen.findByRole("button", { name: reopenRequestLabel }),
     );
     await waitFor(() => expect(mocks.reopen).toHaveBeenCalledWith("SUB-7"));
   });
@@ -240,16 +243,12 @@ describe("reopen (CP-8)", () => {
     );
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Reopen request" }),
+      await screen.findByRole("button", { name: reopenRequestLabel }),
     );
-    expect(
-      await screen.findByText(
-        "We've asked our team to review reopening this request.",
-      ),
-    ).toBeVisible();
+    expect(await screen.findByText(reopenPendingMessage)).toBeVisible();
     // The flag is written once: the button is gone for the rest of the visit.
     expect(
-      screen.queryByRole("button", { name: "Reopen request" }),
+      screen.queryByRole("button", { name: reopenRequestLabel }),
     ).not.toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import { type SQL, sql } from "drizzle-orm";
 import type { Executor } from "../database/executor";
+import { retireImportProjectTargets } from "../imports/project-retention";
 import { dbNowUtc } from "../utils/db-time";
 import {
   PROJECT_UNDER_OPEN_HOLD,
@@ -265,6 +266,11 @@ export async function deleteProjectTree(
     if (count === 0) break;
     workItemsDeleted += count;
   }
+  await executor.execute(sql`
+    DELETE FROM organisation_deletion_project_snapshot
+    WHERE project_id = ${projectId}
+  `);
+  await retireImportProjectTargets(executor, [projectId]);
   const project = await executor.execute(
     sql`DELETE FROM "project" WHERE "id" = ${projectId}`,
   );

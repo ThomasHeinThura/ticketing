@@ -1,0 +1,166 @@
+{
+	"date": "2026-10-24T20:45:31.922Z",
+	"method": "Real Chromium against persisted local SIT using the approved admin storage state; TLS errors ignored for local self-signed HTTPS. Unique P5 audit fixtures are created only through UI. Screenshots show UI areas only; no secrets captured.",
+	"fixturePrefix": "P5 20261024204525-dkrt",
+	"viewportCoverage": ["1440x1000 light", "768x1024 dark", "390x844 light"],
+	"results": [
+		{
+			"name": "cycle-create-edit-reload",
+			"workflow": "persisted UI",
+			"detailLoaded": true,
+			"persisted": true,
+			"outcome": "passed",
+			"finalPath": "/agent/projects/HELP/cycles/ngako0rosm7ki6i1cyfgdmx9",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-cycle-create-edit-reload.png"
+		},
+		{
+			"name": "module-create-detail-edit-reload",
+			"workflow": "persisted UI",
+			"persisted": true,
+			"outcome": "passed",
+			"finalPath": "/agent/projects/HELP/modules/qzd0o1b7jybahrac9opyojua",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-module-create-detail-edit-reload.png"
+		},
+		{
+			"name": "page-create-edit-reload",
+			"workflow": "persisted UI",
+			"outcome": "harness_mismatch",
+			"error": "expect(locator).toBeVisible() failed\n\nLocator: getByText('P5 20261024204321-fqz1 child page edited', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('P5 20261024204321-fqz1 child page edited', { exact: true }).first() with timeout 5000ms\n  - waiting for getByText('P5 2026102",
+			"outcomeClass": "harness-or-service",
+			"finalPath": "/agent/projects/HELP/pages/aie8akibiu6odlm055ichta8",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-page-create-edit-reload.png",
+			"harnessCorrection": "The flow locator treated duplicate breadcrumb and heading text as one. The audit-created nested page was then edited with the exact Save button and independently verified after reload in page-edit-reload-confirmation."
+		},
+		{
+			"name": "time-entry-add-keyboard-reload",
+			"workflow": "persisted UI",
+			"keyboardFocus": true,
+			"arrowKeyMoved": true,
+			"gridVisible": true,
+			"entryCount": 7,
+			"persisted": true,
+			"outcome": "passed",
+			"finalPath": "/agent/timesheet",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-time-entry-add-keyboard-reload.png",
+			"arrowKeyBehavior": "focus moves from cell 0:0 to 0:1 after the first ArrowRight collapses the selected value and the next ArrowRight advances"
+		},
+		{
+			"name": "budget-create-period-reload",
+			"workflow": "persisted UI",
+			"persisted": true,
+			"outcome": "passed",
+			"finalPath": "/dashboard/settings/projects/proj-help-sit/budget",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-budget-create-period-reload.png"
+		},
+		{
+			"name": "kb-create-edit-reload",
+			"workflow": "persisted UI",
+			"editorOpened": true,
+			"persisted": true,
+			"visibility": "left as private draft; portal publish not attempted",
+			"outcome": "passed",
+			"finalPath": "/agent/kb/gjapvcek5wrys7jo3hio4smq/edit",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-kb-create-edit-reload.png"
+		},
+		{
+			"name": "service-create-detail-reload",
+			"workflow": "persisted UI",
+			"detailPath": "/agent/service-management/services/vw4k21ae6s9gt1a1jzdxr25q",
+			"persisted": true,
+			"outcome": "passed",
+			"finalPath": "/agent/service-management/services/vw4k21ae6s9gt1a1jzdxr25q",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-service-create-detail-reload.png"
+		},
+		{
+			"name": "release-create-detail-reload",
+			"workflow": "persisted UI",
+			"persisted": true,
+			"outcome": "passed",
+			"finalPath": "/agent/service-management/releases/vendh1lx308zhyz31e2qcjwx",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-release-create-detail-reload.png"
+		},
+		{
+			"name": "report-builder-save-filter-reload",
+			"workflow": "persisted UI",
+			"saved": true,
+			"persisted": true,
+			"outcome": "passed",
+			"finalPath": "/agent/reports/new",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-report-builder-save-filter-reload.png"
+		},
+		{
+			"name": "dashboard-create-widget-reload",
+			"workflow": "persisted UI",
+			"dashboardName": "P5 20261024204525-dkrt dashboard",
+			"defaultSource": "SLA attainment",
+			"persisted": true,
+			"widgetPersisted": true,
+			"outcome": "passed",
+			"finalPath": "/agent/dashboard/edit",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-dashboard-create-widget-reload.png"
+		},
+		{
+			"name": "tablet-dark-cycle",
+			"workflow": "persisted UI",
+			"theme": "dark",
+			"viewport": "768x1024",
+			"horizontalOverflow": false,
+			"keyboardTarget": "BUTTON",
+			"rendered": true,
+			"outcome": "passed",
+			"finalPath": "/agent/projects/HELP/cycles",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-tablet-dark-cycle.png"
+		},
+		{
+			"name": "mobile-light-reports",
+			"workflow": "persisted UI",
+			"theme": "light",
+			"viewport": "390x844",
+			"horizontalOverflow": false,
+			"keyboardTarget": "BUTTON",
+			"rendered": true,
+			"outcome": "passed",
+			"finalPath": "/agent/reports",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-mobile-light-reports.png"
+		},
+		{
+			"name": "mobile-dark-services",
+			"workflow": "persisted UI",
+			"theme": "dark",
+			"viewport": "390x844",
+			"horizontalOverflow": false,
+			"keyboardTarget": "BUTTON",
+			"rendered": true,
+			"outcome": "passed",
+			"finalPath": "/agent/service-management/services",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-mobile-dark-services.png"
+		},
+		{
+			"name": "page-edit-reload-confirmation",
+			"workflow": "persisted UI",
+			"outcome": "passed",
+			"nested": true,
+			"edited": true,
+			"reloaded": true,
+			"finalPath": "/agent/projects/HELP/pages/aie8akibiu6odlm055ichta8",
+			"screenshot": "docs/report/screens/codex-20261025-p5-journeys-page-edit-reload.png"
+		}
+	],
+	"scopeNotes": {
+		"verified": "Unique persisted UI journeys were exercised for cycle creation/detail/reload; module creation/detail/reload; nested page creation and edited title reload; HELP-19 time entry keyboard/grid persistence; budget creation and reload; KB draft edit/reload; service and release create/detail/reload; saved report reload; dashboard rename, widget add and layout reload. Responsive route checks covered 768x1024 dark and 390x844 light/dark with no horizontal overflow.",
+		"notCovered": "Full P5 acceptance remains open: cycle backlog drag and completion/carry-over; module membership add/remove; estimate preview/save; time timer start/stop and past-week edit; rate visibility under restricted capability and activity/rate editing; budget actual reconciliation against time/cost entries; KB publication/version/customer visibility and portal deflection; service owner/dependency/links; change overlap/freeze override and CAB; release publication/change attachment; report CSV export, reach/currency drilldown and customer denial; dashboard drag/resize; pages move/restore.",
+		"records": "All created records used unique P5-prefixed titles. The only existing work item used was HELP-19 for allowed timesheet test additions. No existing customer records were edited."
+	},
+	"productFindings": [
+		{
+			"id": "kb-editor-raw-translation-keys",
+			"severity": "visual defect",
+			"detail": "The KB editor displays the untranslated key “actions.save” on its Save button and “none” in the Category and Project scope controls.",
+			"evidence": "docs/report/screens/codex-20261025-p5-journeys-kb-create-edit-reload.png"
+		}
+	],
+	"harnessNotes": [
+		"An initial cycle attempt collided with a cycle created by this browser audit; the final run selected a non-overlapping 2030 period and persisted successfully.",
+		"The nested-page run had a strict locator ambiguity because the title appears in both breadcrumb and heading; exact Save interaction then edited an audit-created nested page, and its title was verified after reload in page-edit-reload-confirmation."
+	]
+}

@@ -86,6 +86,8 @@ export type WorkItemReachOptions =
        * before request validation without second-guessing those predicates.
        */
       readonly deferCapability?: boolean;
+      /** Allow archived rows only for explicitly opted-in read-only GET routes. */
+      readonly allowArchivedForRead?: true;
     }
   | {
       readonly requireProjectReach: false;
@@ -93,6 +95,7 @@ export type WorkItemReachOptions =
       /** No project reach is resolved on this branch, so there is no capability to defer. */
       readonly deferApiKeyCapability?: never;
       readonly deferCapability?: never;
+      readonly allowArchivedForRead?: never;
     };
 
 export { WORK_ITEM_REACH_MARK, type WorkItemReachMark };
@@ -112,6 +115,11 @@ export function requireWorkItemReach(
     const key = c.req.param(idKey);
     if (!key) {
       throw new HTTPException(400, { message: "Missing work item key" });
+    }
+    if (options.allowArchivedForRead && c.req.method !== "GET") {
+      throw new HTTPException(500, {
+        message: "Archived work-item access is only valid for GET requests",
+      });
     }
     // T4 (independent Opus security review of PR #271, delta round): a NUL byte in `key`
     // reached the `eq(schema.workItemTable.key, key)` lookup below unvalidated -- Postgres
@@ -193,7 +201,9 @@ export function requireWorkItemReach(
           and(
             eq(schema.workItemTable.key, lookupKey),
             isNull(schema.workItemTable.deletedAt),
-            isNull(schema.workItemTable.archivedAt),
+            options.allowArchivedForRead
+              ? undefined
+              : isNull(schema.workItemTable.archivedAt),
             isNull(schema.projectTable.deletedAt),
           ),
         )

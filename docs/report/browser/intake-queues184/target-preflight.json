@@ -1,0 +1,288 @@
+{
+	"method": "Read-only authenticated HTTPS browser preflight; no records changed.",
+	"owner": {
+		"workspaceId": "ws-taskdesk-sit",
+		"projectStatus": 200,
+		"projects": [
+			{
+				"id": "proj-help-sit",
+				"organisationId": "org-acme"
+			},
+			{
+				"id": "ufatpuzu1m1fmqzco20tjztw",
+				"organisationId": "mt5ji3c21wd27ggzo8oropo5"
+			},
+			{
+				"id": "t54bsupvafvutedi1nnd7zjv",
+				"organisationId": null
+			},
+			{
+				"id": "bjmy98yn1jwwusmeyi9u8v4z",
+				"organisationId": null
+			}
+		],
+		"workResults": [
+			{
+				"project": {
+					"id": "proj-help-sit",
+					"organisationId": "org-acme"
+				},
+				"status": 200,
+				"itemKeys": [
+					"HELP-1",
+					"HELP-2",
+					"HELP-3",
+					"HELP-4",
+					"HELP-5",
+					"HELP-6",
+					"HELP-7",
+					"HELP-11",
+					"HELP-12",
+					"HELP-13",
+					"HELP-14",
+					"HELP-15",
+					"HELP-16",
+					"HELP-17",
+					"HELP-18",
+					"HELP-19",
+					"HELP-21",
+					"HELP-22",
+					"HELP-23"
+				],
+				"itemDates": [
+					{
+						"key": "HELP-1",
+						"createdAt": "2026-10-22T06:02:28.680Z"
+					},
+					{
+						"key": "HELP-2",
+						"createdAt": "2026-10-22T06:02:28.680Z"
+					},
+					{
+						"key": "HELP-3",
+						"createdAt": "2026-10-22T06:02:28.680Z"
+					},
+					{
+						"key": "HELP-4",
+						"createdAt": "2026-10-22T06:02:28.680Z"
+					},
+					{
+						"key": "HELP-5",
+						"createdAt": "2026-10-22T06:02:28.680Z"
+					},
+					{
+						"key": "HELP-6",
+						"createdAt": "2026-10-18T06:02:28.680Z"
+					},
+					{
+						"key": "HELP-7",
+						"createdAt": "2026-10-22T06:02:28.680Z"
+					},
+					{
+						"key": "HELP-11",
+						"createdAt": "2026-10-22T09:24:43.498Z"
+					},
+					{
+						"key": "HELP-12",
+						"createdAt": "2026-10-22T09:34:32.126Z"
+					},
+					{
+						"key": "HELP-13",
+						"createdAt": "2026-10-22T11:45:46.404Z"
+					},
+					{
+						"key": "HELP-14",
+						"createdAt": "2026-10-22T11:56:24.427Z"
+					},
+					{
+						"key": "HELP-15",
+						"createdAt": "2026-10-22T12:35:26.284Z"
+					},
+					{
+						"key": "HELP-16",
+						"createdAt": "2026-10-22T12:48:34.044Z"
+					},
+					{
+						"key": "HELP-17",
+						"createdAt": "2026-10-22T13:38:49.710Z"
+					},
+					{
+						"key": "HELP-18",
+						"createdAt": "2026-10-24T19:32:49.774Z"
+					},
+					{
+						"key": "HELP-19",
+						"createdAt": "2026-10-24T20:24:12.288Z"
+					},
+					{
+						"key": "HELP-21",
+						"createdAt": "2026-10-25T06:50:27.281Z"
+					},
+					{
+						"key": "HELP-22",
+						"createdAt": "2026-10-25T16:28:09.571Z"
+					},
+					{
+						"key": "HELP-23",
+						"createdAt": "2026-10-25T16:28:10.880Z"
+					}
+				]
+			},
+			{
+				"project": {
+					"id": "ufatpuzu1m1fmqzco20tjztw",
+					"organisationId": "mt5ji3c21wd27ggzo8oropo5"
+				},
+				"status": 200,
+				"itemKeys": [],
+				"itemDates": []
+			},
+			{
+				"project": {
+					"id": "t54bsupvafvutedi1nnd7zjv",
+					"organisationId": null
+				},
+				"status": 200,
+				"itemKeys": ["QCPQ-1"],
+				"itemDates": [
+					{
+						"key": "QCPQ-1",
+						"createdAt": "2026-10-25T18:48:56.114Z"
+					}
+				]
+			},
+			{
+				"project": {
+					"id": "bjmy98yn1jwwusmeyi9u8v4z",
+					"organisationId": null
+				},
+				"status": 200,
+				"itemKeys": ["QCCQ-1", "QCCQ-2"],
+				"itemDates": [
+					{
+						"key": "QCCQ-1",
+						"createdAt": "2026-10-25T18:48:57.514Z"
+					},
+					{
+						"key": "QCCQ-2",
+						"createdAt": "2026-10-25T18:48:58.882Z"
+					}
+				]
+			}
+		],
+		"submissionStatus": 200,
+		"submissions": [
+			{
+				"ref": "SUB-1",
+				"state": "new",
+				"organisationId": "org-acme",
+				"requestTypeKey": "oao1flmdbp1ajo5om4hs066a",
+				"duplicateCount": 0
+			},
+			{
+				"ref": "SUB-2",
+				"state": "new",
+				"organisationId": "org-acme",
+				"requestTypeKey": "qugqvikd0jmvj0zpfa2e6pia",
+				"duplicateCount": 0
+			},
+			{
+				"ref": "SUB-4",
+				"state": "new",
+				"organisationId": "org-acme",
+				"requestTypeKey": "z5gbihbwx1icilgk0nemic4c",
+				"duplicateCount": 0
+			}
+		],
+		"requestTypeStatus": 200,
+		"requestTypes": [
+			{
+				"id": "og3zvrztrn1lbdk93cl383gt",
+				"key": "oao1flmdbp1ajo5om4hs066a",
+				"name": "Access request",
+				"defaultProjectId": "proj-help-sit",
+				"published": true
+			},
+			{
+				"id": "upq1sflnr7jipr2190jadn9b",
+				"key": "z5gbihbwx1icilgk0nemic4c",
+				"name": "AT9 PDF Preview Fixture",
+				"defaultProjectId": null,
+				"published": true
+			},
+			{
+				"id": "iowfprld5udq0u3eglydl3gp",
+				"key": "qugqvikd0jmvj0zpfa2e6pia",
+				"name": "Report a problem",
+				"defaultProjectId": "proj-help-sit",
+				"published": true
+			}
+		]
+	},
+	"portal": {
+		"status": 200,
+		"types": [
+			{
+				"key": "oao1flmdbp1ajo5om4hs066a",
+				"name": "Access request",
+				"defaultProjectId": null,
+				"fields": [
+					{
+						"key": "summary",
+						"label": "What do you need access to?",
+						"type": "text",
+						"required": true
+					},
+					{
+						"key": "details",
+						"label": "Why do you need it?",
+						"type": "textarea"
+					}
+				]
+			},
+			{
+				"key": "z5gbihbwx1icilgk0nemic4c",
+				"name": "AT9 PDF Preview Fixture",
+				"defaultProjectId": null,
+				"fields": [
+					{
+						"key": "title",
+						"label": "Summary",
+						"type": "text",
+						"required": true
+					},
+					{
+						"key": "evidence",
+						"label": "Evidence",
+						"type": "file",
+						"required": false
+					}
+				]
+			},
+			{
+				"key": "qugqvikd0jmvj0zpfa2e6pia",
+				"name": "Report a problem",
+				"defaultProjectId": null,
+				"fields": [
+					{
+						"key": "summary",
+						"label": "Short summary",
+						"type": "text",
+						"required": true
+					},
+					{
+						"key": "details",
+						"label": "What happened?",
+						"type": "textarea",
+						"required": true
+					},
+					{
+						"key": "impact",
+						"label": "How badly does it affect you?",
+						"type": "select"
+					}
+				]
+			}
+		]
+	}
+}

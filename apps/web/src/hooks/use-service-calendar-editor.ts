@@ -29,9 +29,12 @@ import {
 import { toast } from "@/lib/toast";
 
 export type CalendarMetadata = {
+  key: string;
   name: string;
   timezone: string;
 };
+
+const STABLE_KEY_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/u;
 
 // The app builds with the React Compiler, which memoises `form.register()`
 // props. react-hook-form's reset() otherwise discards its field refs and relies
@@ -105,6 +108,10 @@ export function useServiceCalendarEditor({
   const metadataSchema = useMemo(
     () =>
       z.object({
+        key: z
+          .string()
+          .trim()
+          .regex(STABLE_KEY_PATTERN, t("details.stableKeyInvalid")),
         name: z.string().trim().min(1, t("details.nameRequired")).max(120),
         timezone: z
           .string()
@@ -117,7 +124,7 @@ export function useServiceCalendarEditor({
   const form = useForm<CalendarMetadata>({
     resolver: standardSchemaResolver(metadataSchema),
     mode: "onChange",
-    defaultValues: { name: "", timezone: "" },
+    defaultValues: { key: "", name: "", timezone: "" },
   });
 
   const loading = isWorkspaceLoading || (!isNew && isCalendarLoading);
@@ -130,7 +137,7 @@ export function useServiceCalendarEditor({
       return;
     hydratedCalendarId.current = calendar.id;
     form.reset(
-      { name: calendar.name, timezone: calendar.timezone },
+      { key: calendar.key, name: calendar.name, timezone: calendar.timezone },
       RESET_KEEP_FIELD_REFS,
     );
     setWindows(copyCalendarWindows(calendar.windows));
@@ -172,6 +179,7 @@ export function useServiceCalendarEditor({
         if (!workspace?.id) throw new Error(t("weekly.chooseWorkspace"));
         const created = await createCalendar.mutateAsync({
           workspaceId: workspace.id,
+          key: values.key.trim(),
           ...data,
         });
         toast.success(t("weekly.created"));
@@ -183,7 +191,11 @@ export function useServiceCalendarEditor({
           data,
         });
         form.reset(
-          { name: updated.name, timezone: updated.timezone },
+          {
+            key: updated.key,
+            name: updated.name,
+            timezone: updated.timezone,
+          },
           RESET_KEEP_FIELD_REFS,
         );
         setCalendarConflict(null);
@@ -270,7 +282,7 @@ export function useServiceCalendarEditor({
     if (!latest) return;
     hydratedCalendarId.current = null;
     form.reset(
-      { name: latest.name, timezone: latest.timezone },
+      { key: latest.key, name: latest.name, timezone: latest.timezone },
       RESET_KEEP_FIELD_REFS,
     );
     setWindows(copyCalendarWindows(latest.windows));

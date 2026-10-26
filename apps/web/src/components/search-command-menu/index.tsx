@@ -35,25 +35,11 @@ import {
   readRecentItems,
 } from "./recent-items";
 import {
-  isPaletteResult,
-  type PaletteResultType,
+  type PaletteEntry,
+  projectSearchGroups,
+  type SearchGroup,
   type SearchResultItem,
-  searchResultHref,
 } from "./search-targets";
-
-type PaletteEntry = {
-  id: string;
-  type: PaletteResultType;
-  title: string;
-  description?: string;
-  href: string;
-};
-
-type SearchGroup = {
-  value: string;
-  label: string;
-  items: PaletteEntry[];
-};
 
 type SearchCommandMenuProps = {
   open: boolean;
@@ -66,10 +52,11 @@ function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
   const { data: workspace } = useActiveWorkspace();
   const navigate = useNavigate();
 
-  const searchEnabled = query.trim().length >= 3;
+  const searchTerm = query.trim();
+  const searchEnabled = searchTerm.length >= 1;
 
   const { data: searchResults } = useGlobalSearch({
-    q: searchEnabled ? query.trim() : "",
+    q: searchEnabled ? searchTerm : "",
     type: "all",
     workspaceId: workspace?.id,
     limit: 20,
@@ -126,61 +113,16 @@ function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
     }
   };
 
-  const groupedItems = useMemo<SearchGroup[]>(() => {
-    if (!searchEnabled) {
-      return recentItems.length > 0
-        ? [
-            {
-              value: "recent",
-              label: t("navigation:search.groups.recent"),
-              items: recentItems,
-            },
-          ]
-        : [];
-    }
-    // The API returns results best match first; groups keep that order, so the group holding
-    // the best match (an exact work item key, for instance) comes first (SV-2, SV-4).
-    const grouped = new Map<PaletteResultType, PaletteEntry[]>();
-    for (const item of (searchResults?.results ?? []) as SearchResultItem[]) {
-      if (!isPaletteResult(item)) continue;
-      const href = searchResultHref(item);
-      if (!href) continue;
-      const label = item.type === "work_item" && item.key ? item.key : null;
-      const entry: PaletteEntry = {
-        id: item.id,
-        type: item.type,
-        title: label ? `${label} ${item.title}` : item.title,
-        description: item.description,
-        href,
-      };
-      const bucket = grouped.get(item.type) ?? [];
-      bucket.push(entry);
-      grouped.set(item.type, bucket);
-    }
-
-    const groupLabel = (type: PaletteResultType) => {
-      switch (type) {
-        case "work_item":
-          return t("navigation:search.groups.workItem");
-        case "saved_view":
-          return t("navigation:search.groups.savedView");
-        case "page":
-          return t("navigation:search.groups.page");
-        case "project":
-          return t("navigation:search.groups.project");
-        case "person":
-          return t("navigation:search.groups.person");
-        case "workspace":
-          return t("navigation:search.groups.workspace");
-      }
-    };
-
-    return [...grouped.entries()].map(([type, items]) => ({
-      value: type,
-      label: groupLabel(type),
-      items,
-    }));
-  }, [searchEnabled, searchResults?.results, recentItems, t]);
+  const groupedItems = useMemo<SearchGroup[]>(
+    () =>
+      projectSearchGroups(
+        searchEnabled ? searchTerm : "",
+        (searchResults?.results ?? []) as SearchResultItem[],
+        recentItems,
+        (key) => t(key),
+      ),
+    [searchEnabled, searchTerm, searchResults?.results, recentItems, t],
+  );
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>

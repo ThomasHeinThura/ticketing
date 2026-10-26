@@ -32,6 +32,7 @@ import {
   workspaceTable,
 } from "../database/schema";
 import { getActiveStaffPerson } from "../instance/users/repository";
+import { dbClockUtc } from "../utils/db-time";
 
 export async function getAttachmentSettings(executor: Executor) {
   return await executor
@@ -133,6 +134,7 @@ export async function findAttachmentUploader(
 export async function findAttachmentWorkItemForReach(
   executor: Executor,
   id: string,
+  options: { allowArchivedForRead?: true } = {},
 ) {
   return await executor
     .select({
@@ -153,8 +155,13 @@ export async function findAttachmentWorkItemForReach(
       and(
         eq(attachmentTable.id, id),
         parentCommentLive,
+        ...(options.allowArchivedForRead
+          ? [isNull(attachmentTable.deletedAt)]
+          : []),
         isNull(workItemTable.deletedAt),
-        isNull(workItemTable.archivedAt),
+        ...(options.allowArchivedForRead
+          ? []
+          : [isNull(workItemTable.archivedAt)]),
         isNull(projectTable.deletedAt),
         isNull(projectTable.archivedAt),
       ),
@@ -993,8 +1000,12 @@ export async function listWorkItemAttachments(
   executor: Executor,
   identity: ResolvedIdentity | null,
   workItemId: string,
+  options: {
+    allowArchivedForRead?: true;
+    lifecycle?: "live" | "recoverable";
+  } = {},
 ) {
-  if (!identity || identity.side !== "staff") return [];
+  if (identity?.side !== "staff") return [];
   return await executor
     .select()
     .from(attachmentTable)
@@ -1004,12 +1015,24 @@ export async function listWorkItemAttachments(
     .where(
       and(
         eq(workItemTable.id, workItemId),
-        ne(attachmentTable.state, "deleted"),
-        isNull(attachmentTable.deletedAt),
+        options.lifecycle === "recoverable"
+          ? and(
+              eq(attachmentTable.state, "deleted"),
+              sql`${attachmentTable.deletedAt} > ${dbClockUtc()} - interval '24 hours'`,
+            )
+          : and(
+              ne(attachmentTable.state, "deleted"),
+              isNull(attachmentTable.deletedAt),
+            ),
         parentCommentLive,
         isNull(workItemTable.deletedAt),
-        isNull(workItemTable.archivedAt),
+        ...(options.allowArchivedForRead && options.lifecycle !== "recoverable"
+          ? []
+          : [isNull(workItemTable.archivedAt)]),
         isNull(projectTable.deletedAt),
+        ...(options.lifecycle === "recoverable"
+          ? [isNull(projectTable.archivedAt)]
+          : []),
         currentProjectReachPredicate(
           identity,
           projectTable.id,
@@ -1031,4 +1054,128 @@ export async function listWorkItemAttachments(
           (comment === null || comment.visibility === "public"),
       })),
     );
+}
+
+/**
+ * AT-7 restore lock order: work item → project → comment → attachment. GC locks the
+ * work item → comment → attachment; the project share lock fences project deletion
+ * without introducing a project-to-item wait edge.
+ */
+export async function lockAttachmentRestoreParent(
+  executor: Executor,
+  input: { attachmentId: string },
+) {
+  const [candidate] = await executor
+    .select({
+      attachment: attachmentTable,
+      parentWorkItemId,
+    })
+    .from(attachmentTable)
+    .leftJoin(commentTable, eq(commentTable.id, attachmentTable.commentId))
+    .where(eq(attachmentTable.id, input.attachmentId))
+    .limit(1);
+  const itemId = candidate?.parentWorkItemId;
+  if (!candidate || !itemId || candidate.attachment.submissionId)
+    return undefined;
+
+  const [item] = await executor
+    .select()
+    .from(workItemTable)
+    .where(eq(workItemTable.id, itemId))
+    .for("share")
+    .limit(1);
+  if (
+    !item ||
+    item.deletedAt !== null ||
+    item.archivedAt !== null ||
+    item.workspaceId !== candidate.attachment.workspaceId
+  )
+    return undefined;
+
+  const [project] = await executor
+    .select()
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.id, item.projectId),
+        eq(projectTable.workspaceId, item.workspaceId),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+      ),
+    )
+    .for("share")
+    .limit(1);
+  if (!project) return undefined;
+
+  if (candidate.attachment.commentId) {
+    const [comment] = await executor
+      .select()
+      .from(commentTable)
+      .where(
+        and(
+          eq(commentTable.id, candidate.attachment.commentId),
+          eq(commentTable.workItemId, item.id),
+          isNull(commentTable.deletedAt),
+        ),
+      )
+      .for("share")
+      .limit(1);
+    if (!comment) return undefined;
+  }
+
+  return {
+    attachment: candidate.attachment,
+    item,
+    project,
+  };
+}
+
+export async function lockRecoverableAttachment(
+  executor: Executor,
+  input: {
+    id: string;
+    workItemId: string;
+    workspaceId: string;
+    commentId: string | null;
+  },
+) {
+  return await executor
+    .select()
+    .from(attachmentTable)
+    .where(
+      and(
+        eq(attachmentTable.id, input.id),
+        eq(attachmentTable.workspaceId, input.workspaceId),
+        input.commentId === null
+          ? and(
+              eq(attachmentTable.workItemId, input.workItemId),
+              isNull(attachmentTable.commentId),
+            )
+          : and(
+              isNull(attachmentTable.workItemId),
+              eq(attachmentTable.commentId, input.commentId),
+            ),
+        eq(attachmentTable.state, "deleted"),
+        sql`${attachmentTable.deletedAt} > ${dbClockUtc()} - interval '24 hours'`,
+      ),
+    )
+    .for("update")
+    .limit(1);
+}
+
+export async function restoreAttachmentRow(
+  executor: Executor,
+  input: { id: string },
+) {
+  return await executor
+    .update(attachmentTable)
+    .set({ state: "ready", deletedAt: null, updatedAt: dbClockUtc() })
+    .where(
+      and(
+        eq(attachmentTable.id, input.id),
+        eq(attachmentTable.state, "deleted"),
+        sql`${attachmentTable.deletedAt} > ${dbClockUtc()} - interval '24 hours'`,
+      ),
+    )
+    .returning();
 }

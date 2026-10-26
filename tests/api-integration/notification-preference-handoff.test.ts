@@ -237,6 +237,13 @@ describe("persisted signed preference handoff factories", () => {
     expect(await before.json()).toMatchObject({
       canonicalPreferences: [
         { ...selector, enabled: true, digest: "off", source: "default" },
+        {
+          ...selector,
+          eventKind: "work_item.commented",
+          enabled: false,
+          digest: "off",
+          source: "default",
+        },
       ],
     });
     const saved = await csrfRequest(
@@ -255,12 +262,59 @@ describe("persisted signed preference handoff factories", () => {
     expect(await saved.json()).toMatchObject({
       canonicalPreferences: [
         { ...selector, enabled: false, digest: "off", source: "global" },
+        {
+          ...selector,
+          eventKind: "work_item.commented",
+          enabled: false,
+          digest: "off",
+          source: "default",
+        },
       ],
     });
     expect(
       (await db.execute(sql`SELECT person_id FROM notification_preference`))
         .rows,
     ).toEqual([{ person_id: f.person.id }]);
+    const commentSaved = await csrfRequest(
+      app,
+      "/api/notification-preferences",
+      {
+        method: "PUT",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          canonicalPreference: {
+            ...selector,
+            eventKind: "work_item.commented",
+            enabled: true,
+            digest: "daily",
+          },
+        }),
+      },
+      cookie,
+    );
+    expect(commentSaved.status).toBe(200);
+    expect(await commentSaved.json()).toMatchObject({
+      canonicalPreferences: [
+        { ...selector, enabled: false, digest: "off", source: "global" },
+        {
+          ...selector,
+          eventKind: "work_item.commented",
+          enabled: true,
+          digest: "daily",
+          source: "global",
+        },
+      ],
+    });
+    expect(
+      (
+        await db.execute(
+          sql`SELECT event_kind, digest FROM notification_preference ORDER BY event_kind`,
+        )
+      ).rows,
+    ).toEqual([
+      { event_kind: "work_item.commented", digest: "daily" },
+      { event_kind: "work_item.mentioned", digest: "off" },
+    ]);
     expect(
       (await db.execute(sql`SELECT 1 FROM user_notification_preference`)).rows,
     ).toHaveLength(0);

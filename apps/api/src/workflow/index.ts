@@ -7,6 +7,7 @@ import {
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
 import type { ResolveIdentityInput } from "../permissions/resolve-identity";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
@@ -181,14 +182,20 @@ const publishWorkflowVersionRoute = createRoute({
   summary: "Publish workflow version",
   description:
     "Publish a draft version: it becomes active for new transitions (WF-7). " +
-    "In-flight work items are not migrated.",
+    "In-flight work items are not migrated. `?dryRun=true` returns the read-only validation report and actual affected counts without publishing.",
   middleware: [
     workspaceAccess.fromWorkflow(),
     requireWorkspaceCapability("workflow:manage"),
   ] as const,
-  request: { params: workflowVersionParam },
+  request: {
+    params: workflowVersionParam,
+    query: z.object({ dryRun: z.enum(["true"]).optional() }),
+  },
   responses: {
-    200: jsonResponse("The published version", workflowVersionSchema),
+    200: jsonResponse(
+      "The published version or read-only impact preview",
+      z.union([workflowVersionSchema, workflowVersionValidationSchema]),
+    ),
     400: errorResponse("id must not contain a NUL (\\u0000) byte"),
     403: errorResponse(
       "No workspace access, or missing workflow:manage permission",
@@ -268,6 +275,14 @@ const workflow = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(publishWorkflowVersionRoute, async (c) => {
     const { id, number } = c.req.valid("param");
+    if (c.req.valid("query").dryRun === "true") {
+      const preview = await validateWorkflowVersion(
+        requestIdentityInput(c),
+        id,
+        number,
+      );
+      return c.json(workflowVersionValidationSchema.parse(preview), 200);
+    }
     const published = await publishWorkflowVersion(
       requestIdentityInput(c),
       id,

@@ -8,6 +8,7 @@ export type PaletteResultType =
   | "work_item"
   | "person"
   | "saved_view"
+  | "kb_article"
   | "page"
   | "project"
   | "workspace";
@@ -27,9 +28,24 @@ export type SearchResultItem = {
   status?: string;
 };
 
+export type PaletteEntry = {
+  id: string;
+  type: PaletteResultType;
+  title: string;
+  description?: string;
+  href: string;
+};
+
+export type SearchGroup = {
+  value: string;
+  label: string;
+  items: PaletteEntry[];
+};
+
 export const PALETTE_RESULT_TYPES: readonly PaletteResultType[] = [
   "work_item",
   "saved_view",
+  "kb_article",
   "page",
   "project",
   "person",
@@ -60,6 +76,8 @@ export function searchResultHref(item: SearchResultItem): string | null {
         : null;
     case "saved_view":
       return item.id ? routes.savedView.build({ id: item.id }) : null;
+    case "kb_article":
+      return item.id ? routes.kbArticle.build({ id: item.id }) : null;
     case "person":
       return routes.workspaceMembers.build({ q: item.title });
     case "workspace":
@@ -69,4 +87,71 @@ export function searchResultHref(item: SearchResultItem): string | null {
     default:
       return null;
   }
+}
+
+/** Shared result projection for the Kaneo search dialog and the Cmd+K palette. */
+export function projectSearchGroups(
+  query: string,
+  results: readonly SearchResultItem[],
+  recentItems: readonly PaletteEntry[],
+  translate: (key: string) => string,
+): SearchGroup[] {
+  if (!query.trim()) {
+    return recentItems.length > 0
+      ? [
+          {
+            value: "recent",
+            label: translate("navigation:search.groups.recent"),
+            items: [...recentItems],
+          },
+        ]
+      : [];
+  }
+
+  const grouped = new Map<PaletteResultType, PaletteEntry[]>();
+  for (const item of results) {
+    if (!isPaletteResult(item)) continue;
+    const href = searchResultHref(item);
+    if (!href) continue;
+    const entry: PaletteEntry = {
+      id: item.id,
+      type: item.type,
+      title:
+        item.type === "work_item" && item.key
+          ? `${item.key} ${item.title}`
+          : item.title,
+      description: item.description,
+      href,
+    };
+    const bucket = grouped.get(item.type) ?? [];
+    bucket.push(entry);
+    grouped.set(item.type, bucket);
+  }
+
+  const groupLabel = (type: PaletteResultType) => {
+    switch (type) {
+      case "work_item":
+        return translate("navigation:search.groups.workItem");
+      case "saved_view":
+        return translate("navigation:search.groups.savedView");
+      case "page":
+        return translate("navigation:search.groups.page");
+      case "kb_article":
+        return translate("navigation:sidebar.knowledgeBase");
+      case "project":
+        return translate("navigation:search.groups.project");
+      case "person":
+        return translate("navigation:search.groups.person");
+      case "workspace":
+        return translate("navigation:search.groups.workspace");
+    }
+  };
+
+  // The API's order is the relevance authority. Map insertion order keeps the
+  // group containing the best result first, with each group retaining its rank.
+  return [...grouped.entries()].map(([type, items]) => ({
+    value: type,
+    label: groupLabel(type),
+    items,
+  }));
 }

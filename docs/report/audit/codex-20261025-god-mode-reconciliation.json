@@ -1,0 +1,208 @@
+{
+	"kind": "bounded_source_reconciliation",
+	"date": "2026-10-25",
+	"scope": ["GM-1", "GM-3", "GM-4", "GM-5", "GM-6", "GM-13", "ST-3", "ST-11"],
+	"method": "Read current source, retained contracts, historical P4c rows and selected test assertions. No tests, browser journeys, database operations or formal phase review were run. This is not a phase verdict or sign-off.",
+	"contract": [
+		"docs/technical/feature-contracts-p4.md:1000-1016",
+		"docs/technical/feature-contracts-p4.md:1054-1061",
+		"docs/technical/feature-contracts-p4.md:1323-1334",
+		"docs/technical/architecture-and-experience.md:643-814",
+		"docs/technical/safety-and-runtime.md:1691-1800",
+		"AGENTS.md:8-20"
+	],
+	"retiredIntegrationBoundary": "apps/api/src/plugins/index.ts expressly ships none of Kaneo's six inherited integration routers; apps/api/src/plugins/registry.ts retains an inert historical event registry. Do not restore those routers or treat this registry as a working God Mode plugin contract. Native SMTP, identity, storage, job and delivery administration remain separate retained requirements.",
+	"currentNativeSurfaces": {
+		"implementedOrPartial": [
+			"God Mode Health and secrets rotation",
+			"General instance settings including attachment limits",
+			"Users",
+			"Authentication identity connection list/create/configure",
+			"SMTP notification provider get/save/test",
+			"Feature flags",
+			"Audit",
+			"API keys",
+			"Observability route"
+		],
+		"source": [
+			"apps/web/src/components/settings/instance-settings-frame.tsx:25-71",
+			"apps/api/src/index.ts:1678-1697",
+			"apps/api/src/notification-provider/index.ts:16-85",
+			"apps/api/src/identity/connection-admin.ts:102-340",
+			"apps/api/src/instance/settings/schema.ts:9-54"
+		],
+		"stillAbsentInGodMode": [
+			"Plugin list and schema-generated editor",
+			"Jobs management",
+			"Delivery inspection and requeue",
+			"Storage backend selection, test write and usage",
+			"MCP usage",
+			"Organisation list/create/edit/suspend/delete",
+			"Branding"
+		]
+	},
+	"items": [
+		{
+			"id": "GM-1",
+			"state": "partial",
+			"staleClaim": "Historical row says Plugins, Jobs, Deliveries, Storage, MCP usage, Organisations and Branding are all absent. Native SMTP plugin configuration and General attachment settings exist, so the blanket wording is stale; the named management sections largely remain absent.",
+			"source": [
+				"apps/api/src/instance/settings/index.ts:27-46,100-151",
+				"apps/api/src/notification-provider/service.ts:79-126",
+				"apps/api/src/feature-flag/repository.ts:327-336",
+				"apps/api/src/identity/connection-admin.ts:1022-1038",
+				"apps/web/src/components/settings/instance-settings-frame.tsx:25-71"
+			],
+			"assertions": [
+				"tests/api-integration/secrets-rekey.test.ts:159 checks counts-only audit without secret/key id",
+				"tests/api-integration/notification-provider.test.ts:342 checks failed SMTP test is audited without unsaved config persistence",
+				"tests/api-integration/feature-flag-repository.test.ts:215 checks flag changer and time"
+			],
+			"remaining": "Audit coverage cannot be complete while required management writes are absent. Existing General settings and SMTP writes catch audit failures and preserve the mutation, notifying administrators afterward; decide whether GM-1 requires transactional audit success for these writes, then implement the required semantics consistently. Avoid claiming every change is audited from sampled actions alone.",
+			"recommendation": "Inventory current instance mutations against audit_log actions, add missing native surfaces first, and add targeted assertions for actor, section, changed keys and redacted secrets."
+		},
+		{
+			"id": "GM-3",
+			"state": "partial",
+			"staleClaim": "Historical row says only notification-provider live refresh is proven. Better Auth now rebuilds and atomically swaps agent and customer instances from versioned auth rows, with a 10-second database poll.",
+			"source": [
+				"apps/api/src/auth.ts:1219-1290",
+				"apps/api/src/auth/configuration-version.ts:1-21",
+				"apps/api/src/notification-provider/runtime.ts:72-101",
+				"apps/api/src/ws/index.ts:165-173,213-220",
+				"apps/api/src/identity/connection-admin.ts:918-960"
+			],
+			"assertions": [
+				"tests/api/auth/configuration-version.test.ts:4-83 checks row-id/version vector changes and order invariance",
+				"tests/api/ws/user-broadcast-redis-failure.test.ts:191-200 checks control-message transport",
+				"tests/api-integration/notification-provider.test.ts:212 checks runtime disable overrides bootstrap"
+			],
+			"remaining": "The auth.reload publisher has no production caller; identity/plugin saves therefore rely on the 10-second poll, not the contract's subsecond control path. The stored-row reload code does not prove provider-discovery validation, two-replica convergence or retained in-flight OAuth flow behavior. The same plugin.reload/flags.reload publication pattern is not established by this evidence.",
+			"recommendation": "Publish the existing auth reload control message after committed auth configuration writes; keep the version-vector poll as fallback; add a two-replica/no-Valkey regression and validation-failure retention test."
+		},
+		{
+			"id": "GM-4",
+			"state": "partial",
+			"staleClaim": "Historical row says there is no Plugins page/test contract. That remains true for the retained plugin catalogue, but native SMTP has a real test route and Identity has health discovery.",
+			"source": [
+				"apps/api/src/notification-provider/index.ts:16-85",
+				"apps/api/src/notification-provider/service.ts:139-205",
+				"apps/api/src/identity/connection-admin.ts:102-340",
+				"apps/api/src/plugins/index.ts:1-21",
+				"apps/api/src/plugins/registry.ts:247-266"
+			],
+			"assertions": [
+				"tests/api-integration/notification-provider.test.ts:342 checks private destination refusal and audit",
+				"tests/api-integration/notification-provider.test.ts:375 checks successful connection probe and rate limiting",
+				"tests/api-integration/identity/connection-health-job.test.ts:49 checks unreachable IdP health and recovery"
+			],
+			"remaining": "The SMTP test catches every connection/auth error and returns the same 502 'SMTP verification failed', violating the required wrong-password versus cannot-reach-host distinction. The documented generic POST /api/instance/plugins/{id}/test and God Mode Plugins UI do not exist; identity connection test is not mounted in connection-admin.ts.",
+			"recommendation": "Use native provider contracts and library UI to surface bounded, distinct test failures; add identity connection test and the retained core plugin test surface without reviving deleted integrations."
+		},
+		{
+			"id": "GM-5",
+			"state": "missing",
+			"staleClaim": "No substantive correction: current SMTP, identity and General editors are written specifically for their providers/settings.",
+			"source": [
+				"apps/web/src/components/god-mode/notification-provider-editor.tsx",
+				"apps/web/src/components/god-mode/identity-connection-editor.tsx",
+				"apps/web/src/components/god-mode/instance-settings-form.tsx",
+				"apps/api/src/notification-provider/schema.ts",
+				"apps/api/src/plugins/index.ts:6-20"
+			],
+			"assertions": [
+				"No schema-to-form assertion located; tests for the named editors assert their bespoke controls rather than plugin-schema generation."
+			],
+			"remaining": "No shared plugin config-schema metadata and form renderer are connected to God Mode; packages/plugins-contracts is not present. Zod schemas validate server DTOs but do not generate an administrator form.",
+			"recommendation": "Define a bounded metadata/renderer contract for the currently shipped native provider settings, using Kaneo/packages/ui primitives. Do not invent a broad third-party plugin API or restore retired integration routers."
+		},
+		{
+			"id": "GM-6",
+			"state": "partial",
+			"staleClaim": "Historical row correctly identifies missing organisation and auth-plugin deletion, but existing user deactivation, identity-related safeguards and hard purge should not be described as absent.",
+			"source": [
+				"apps/api/src/instance/purge.ts:20-125",
+				"apps/api/src/instance/users/index.ts:242-655",
+				"apps/api/src/identity/connection-admin.ts:102-340",
+				"apps/api/src/pending-action/deletion-targets.ts",
+				"apps/api/src/pending-action/approval-contract.ts"
+			],
+			"assertions": [
+				"tests/api-integration/instance-users-guards.test.ts:111-135 checks deactivation request returns 202 and pending-action identity",
+				"tests/api-integration/instance-users-guards.test.ts:314 checks proof bound to the pending action",
+				"tests/api-integration/god-mode-p4-operations.test.ts:786 checks webhook deletion uses typed-name and step-up"
+			],
+			"remaining": "No DELETE /api/instance/organisations/{id}, DELETE /api/instance/identity-connections/{id}, or DELETE /api/instance/plugins/{id} handlers are mounted. Thus their server-owned 202 pending-action flows and exact-name+step-up execution are missing.",
+			"recommendation": "Implement each retained native destructive target with server-selected confirmation, target revalidation and audit. Auth-plugin deletion must protect auth.password; never route this through removed project integration APIs."
+		},
+		{
+			"id": "GM-13",
+			"state": "partial_placement_only",
+			"staleClaim": "The API trigger and resumable job are implemented; historical 'no Plugins page' placement gap remains current.",
+			"source": [
+				"apps/api/src/instance/secrets/rotate-secrets.ts:32-116",
+				"apps/api/src/scheduler/secrets-rekey.ts:1-96",
+				"apps/web/src/components/god-mode/rotate-secrets-dialog.tsx",
+				"apps/web/src/components/god-mode/instance-health-panel.tsx:83-103",
+				"apps/web/src/components/settings/instance-settings-frame.tsx:25-71"
+			],
+			"assertions": [
+				"tests/api-integration/god-mode-p4-operations.test.ts:555-626 checks step-up, instance authority, 202, lease and redacted response",
+				"tests/api-integration/secrets-rekey.test.ts:72-179 checks completion, idempotent resume, unreadable-row failure, missing key and counts-only audit"
+			],
+			"remaining": "The Rotate secrets control is on Health and appears only when rekey is incomplete; the contracted God Mode Plugins placement and progress/failure administration surface are absent. Browser verification is pending.",
+			"recommendation": "Expose the existing trigger and progress in the native Plugins section while retaining useful Health status; browser-check the complete flow."
+		},
+		{
+			"id": "ST-3",
+			"state": "partial",
+			"staleClaim": "The historical row misses real SLA inheritance: work-item creation resolves type policy, then project policy, then workspace default.",
+			"source": [
+				"apps/api/src/database/schema.ts:251,509",
+				"apps/api/src/work-item/controllers/create-work-item.ts:114-125",
+				"apps/api/src/project/controllers/create-project.ts:169-196",
+				"apps/api/src/utils/seed-project-states.ts:44-87",
+				"apps/api/src/project/index.ts:1026-1045"
+			],
+			"assertions": [
+				"tests/api-integration/sla-policy.test.ts:574-582 checks project override then workspace fallback",
+				"tests/api-integration/backfill-workspace-project-defaults.test.ts:74 checks one-time state backfill, not live inheritance"
+			],
+			"remaining": "There is no workspace service-calendar default field or resolver. A project stores only its own nullable serviceCalendarId; managed-service creation requires an explicit calendar. Enabled states are copied from workspace templates at project creation and then managed as project rows, so changes do not dynamically inherit. God Mode organisation project-default copy at creation is not found in project creation.",
+			"recommendation": "Implement only the named workspace-to-project inheritance set and explicit inherited/override semantics. Keep organisation project defaults as creation-time copies; add assertions that later organisation edits do not affect existing projects."
+		},
+		{
+			"id": "ST-11",
+			"state": "partial",
+			"staleClaim": "The historical row's three examples are real but are not exhaustive evidence for every registered feature.",
+			"source": [
+				"apps/api/src/feature-flag/repository.ts:350-530",
+				"apps/api/src/approval/repository.ts",
+				"apps/api/src/scheduler/outbox-drain-p4.ts",
+				"apps/api/src/intake",
+				"docs/technical/feature-contracts-p2.md:1550-1705",
+				"docs/technical/feature-contracts-p4.md:1323-1327"
+			],
+			"assertions": [
+				"tests/api-integration/approval-feature-flag.test.ts:31 checks precedence and lock, not the entire existing-approval lifecycle",
+				"tests/api-integration/intake-feature-gate.test.ts:52,77,207 checks unavailable item routes, filtered submissions and catalogue resolution",
+				"tests/api-integration/automation-run-pipeline.test.ts:180 checks no new runs while automation flag is off"
+			],
+			"remaining": "A complete per-feature matrix of disable behavior for existing records (readability/actionability) was not established by the sampled tests. The flag repository's resolution is not itself evidence of feature-specific behavior.",
+			"recommendation": "Reconcile each registered feature against its owning feature contract, then add only missing targeted read/action tests; preserve records on flag writes. Do not replace feature-specific semantics with a global blanket 404."
+		}
+	],
+	"ownerDecision": "No new owner product decision is needed for the listed implementation gaps: retained contracts and the explicit removed-router boundary already define the direction. If a team wants to narrow or retire GM-5's schema-generated form requirement or any named God Mode section, that would be a scope change for Thomas rather than an implementation shortcut.",
+	"postAuditRepairs": [
+		{
+			"id": "GM-3",
+			"status": "implemented_scoped_tests_passed",
+			"evidence": [
+				"apps/api/src/auth/configuration-reload.ts",
+				"tests/api/auth/configuration-reload.test.ts",
+				"tests/api-integration/auth-configuration-reload.test.ts"
+			],
+			"detail": "After this read-only audit, production identity configuration writers gained a post-commit local rebuild and secret-free peer hint.3units+2realValkey/two-process tests pass including rollback/no-hint. Earlier findings above are preserved as dated audit observations, not current no-publisher claims. Native plugin administration, retained in-flight OAuth and full flags/plugin lifecycle validation remain separate scope."
+		}
+	]
+}

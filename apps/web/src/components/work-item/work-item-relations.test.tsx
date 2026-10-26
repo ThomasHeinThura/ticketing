@@ -300,7 +300,9 @@ describe("canonical Kaneo relations section", () => {
     mount();
     fireEvent.contextMenu(await screen.findByText("Linked work"));
     expect(
-      await screen.findByRole("menuitem", { name: "Open task" }),
+      await screen.findByRole("menuitem", {
+        name: translate("tasks:relations.openTask"),
+      }),
     ).toBeVisible();
     expect(
       screen.queryByRole("menuitem", { name: "Remove relation" }),

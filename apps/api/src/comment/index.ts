@@ -182,6 +182,7 @@ const comment = apiRouter()
         c.get("userId"),
         content,
         external,
+        c.get("apiKey")?.id,
       ),
       200,
     );
@@ -195,6 +196,7 @@ const comment = apiRouter()
         c.get("userId"),
         id,
         content,
+        c.get("apiKey")?.id,
       ),
       200,
     );

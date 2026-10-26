@@ -43,9 +43,9 @@ import {
   createWorkflowVersion,
   getWorkflow,
   getWorkflows,
+  previewWorkflowPublication,
   publishWorkflowVersion,
   toTransitionInput,
-  validateWorkflowVersion,
   type WorkflowDetail,
   type WorkflowTransitionInput,
   type WorkflowValidation,
@@ -429,7 +429,7 @@ function WorkflowDetailView({
 
   const validate = useMutation({
     mutationFn: (number: number) =>
-      validateWorkflowVersion({ id: workflowId, number }),
+      previewWorkflowPublication({ id: workflowId, number }),
     onSuccess: (report, number) => setValidating({ number, report }),
   });
   const saveDraft = useMutation({

@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@taskdesk/ui";
-import type { Editor, JSONContent } from "@tiptap/core";
+import type { Editor, Extensions, JSONContent } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Table } from "@tiptap/extension-table";
@@ -63,6 +63,7 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useShikiHighlighterForCode } from "@/hooks/use-shiki-highlighter-for-code";
 import { cn } from "@/lib/cn";
+import "@/components/task/editor-styles.css";
 import { parseTaskListMarkdownToNodes } from "@/lib/editor-task-list-paste";
 import {
   extractIssueKeyFromUrl,
@@ -111,7 +112,14 @@ type CommentEditorProps = {
   enableMentions?: boolean;
   /** Native work-item comments supply person ids from the scoped mention API. */
   mentionMembers?: MentionMember[];
+  /** Optional caller-owned Tiptap nodes/marks for a specialized editor surface. */
+  additionalExtensions?: Extensions;
+  /** Optional caller-owned slash actions; defaults are unchanged for other surfaces. */
+  additionalSlashCommands?: CommentEditorSlashCommand[];
 };
+
+const EMPTY_EXTENSIONS: Extensions = [];
+const EMPTY_SLASH_COMMANDS: CommentEditorSlashCommand[] = [];
 
 export type CommentContentSnapshot = {
   text: string;
@@ -120,7 +128,7 @@ export type CommentContentSnapshot = {
 
 type SlashRange = { from: number; to: number };
 
-type SlashCommand = {
+export type CommentEditorSlashCommand = {
   id: string;
   label: string;
   group: "text" | "lists" | "insert";
@@ -128,6 +136,8 @@ type SlashCommand = {
   search: string;
   run: (editor: Editor, range: SlashRange) => void;
 };
+
+type SlashCommand = CommentEditorSlashCommand;
 
 type SlashMenuState = {
   from: number;
@@ -223,6 +233,8 @@ export default function CommentEditor({
   onContentChange,
   enableMentions = true,
   mentionMembers,
+  additionalExtensions = EMPTY_EXTENSIONS,
+  additionalSlashCommands = EMPTY_SLASH_COMMANDS,
 }: CommentEditorProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder =
@@ -628,8 +640,9 @@ export default function CommentEditor({
           openImagePicker(activeEditor);
         },
       },
+      ...additionalSlashCommands,
     ],
-    [openImagePicker, t],
+    [additionalSlashCommands, openImagePicker, t],
   );
 
   const filteredSlashCommands = useMemo(() => {
@@ -676,6 +689,7 @@ export default function CommentEditor({
         EmbedBlock,
         AttachmentCard,
         WorkItemIssueLink,
+        ...additionalExtensions,
         TaskDeskMention,
         ...(enableMentions
           ? [
@@ -964,7 +978,9 @@ export default function CommentEditor({
       },
     },
     [
+      additionalSlashCommands,
       enableMentions,
+      additionalExtensions,
       editorGeneration,
       handleAssetFileUpload,
       resolvedPlaceholder,

@@ -8,6 +8,8 @@ vi.mock("react-i18next", () => ({
       if (options && "n" in options)
         return `${key} ${options.n}/${options.needed}`;
       if (options && "count" in options) return `${key} ${options.count}`;
+      if (key === "reports:context.window")
+        return `${key} ${options?.from} to ${options?.to}`;
       return options &&
         typeof options.defaultValue === "string" &&
         options.defaultValue
@@ -66,6 +68,11 @@ function report(overrides: Partial<ReportEnvelope> = {}): ReportEnvelope {
     asOf: "2026-10-24T09:30:00.000Z",
     boundary: "live",
     snapshot: null,
+    sources: {
+      metricSnapshot: false,
+      cycleSnapshot: false,
+      liveComponents: ["selected_period"],
+    },
     filters: {},
     options: {},
     choices: [],
@@ -118,6 +125,23 @@ describe("the honesty rule on screen", () => {
     expect(screen.queryByText("100%")).toBeNull();
   });
 
+  it("shows an exact quarter-hour as 0.25 hours", () => {
+    const data = report({
+      metrics: [
+        {
+          key: "hours",
+          label: "Hours logged",
+          unit: "hours",
+          value: 0.25,
+          n: 1,
+          needed: 0,
+        },
+      ],
+    });
+    render(<ReportMetrics metrics={data.metrics} empty={false} />);
+    expect(screen.getByText("0.25 h")).toBeTruthy();
+  });
+
   it("states scope, window, as-of time and that it is computed live (RP-3, RP-4, RP-9)", () => {
     render(<ReportContextLine report={report()} />);
     const line = screen.getByTestId("report-context").textContent ?? "";
@@ -125,6 +149,44 @@ describe("the honesty rule on screen", () => {
     expect(line).toContain("reports:context.window");
     expect(line).toContain("reports:context.asOf");
     expect(line).toContain("reports:context.live");
+    expect(screen.getByTestId("report-sources").textContent).toContain(
+      "reports:context.sourcesLive",
+    );
+  });
+
+  it("shows a custom window's inclusive final date while retaining UTC date semantics", () => {
+    const { rerender } = render(
+      <ReportContextLine
+        report={report({
+          window: {
+            preset: "custom",
+            from: "2026-10-24T00:00:00.000Z",
+            to: "2026-10-25T00:00:00.000Z",
+            days: 1,
+            live: false,
+          },
+        })}
+      />,
+    );
+    expect(screen.getByTestId("report-context").textContent).toContain(
+      "reports:context.window",
+    );
+    expect(screen.getByTestId("report-context").textContent).toContain(
+      "reports:context.window 2026-10-24 to 2026-10-24",
+    );
+    const partialDay = report({
+      window: {
+        preset: "custom",
+        from: "2026-10-24T00:00:00.000Z",
+        to: "2026-10-25T12:00:00.000Z",
+        days: 2,
+        live: false,
+      },
+    });
+    rerender(<ReportContextLine report={partialDay} />);
+    expect(screen.getByTestId("report-context").textContent).toContain(
+      "reports:context.window 2026-10-24 to 2026-10-25",
+    );
   });
 
   it("states the boundary between stored closed days and the live current period (RP-9)", () => {
@@ -134,17 +196,60 @@ describe("the honesty rule on screen", () => {
       computedAt: "2026-10-24T09:00:00.000Z",
       through: "2026-10-24T00:00:00.000Z",
     };
+    const sources = {
+      metricSnapshot: true,
+      cycleSnapshot: false,
+      liveComponents: ["current_period"],
+    };
     const { rerender } = render(
-      <ReportContextLine report={report({ boundary: "mixed", snapshot })} />,
+      <ReportContextLine
+        report={report({ boundary: "mixed", snapshot, sources })}
+      />,
     );
     const text = () => screen.getByTestId("report-boundary").textContent ?? "";
     expect(text()).toBe("reports:context.mixed 28");
     rerender(
-      <ReportContextLine report={report({ boundary: "snapshot", snapshot })} />,
+      <ReportContextLine
+        report={report({
+          boundary: "snapshot",
+          snapshot,
+          sources: { ...sources, liveComponents: [] },
+        })}
+      />,
     );
     expect(text()).toBe("reports:context.snapshot 28");
     rerender(<ReportContextLine report={report()} />);
     expect(text()).toBe("reports:context.live");
+  });
+
+  it("states the cycle snapshot source without inventing a daily snapshot count", () => {
+    render(
+      <ReportContextLine
+        report={report({
+          boundary: "snapshot",
+          snapshot: null,
+          sources: {
+            metricSnapshot: false,
+            cycleSnapshot: true,
+            liveComponents: [],
+          },
+        })}
+      />,
+    );
+    expect(screen.getByTestId("report-boundary").textContent).toBe(
+      "reports:context.cycleSnapshot",
+    );
+    expect(screen.getByTestId("report-sources").textContent).toContain(
+      "reports:context.sourcesHistorical",
+    );
+  });
+
+  it("does not infer provenance for older saved reports without source metadata", () => {
+    const { sources: _sources, ...legacy } = report();
+    render(<ReportContextLine report={legacy} />);
+    expect(screen.getByTestId("report-sources").textContent).toBe(
+      "reports:context.sourcesUnknown",
+    );
   });
 
   it("says a live report is live instead of naming a window", () => {
@@ -301,7 +406,7 @@ describe("drill-down (RP-12)", () => {
           priority: null,
           date: "2026-10-23",
           person: "Ada",
-          hours: 1.5,
+          hours: 0.25,
           workItemKey: "RPT-9",
         },
       ],
@@ -316,13 +421,49 @@ describe("drill-down (RP-12)", () => {
       />,
     );
     expect(screen.getByText("Ada")).toBeTruthy();
-    expect(screen.getByText("1.5")).toBeTruthy();
+    expect(screen.getByText("0.25 h")).toBeTruthy();
     expect(screen.getByText("RPT-9")).toBeTruthy();
     const headings = screen
       .getAllByRole("columnheader")
       .map((cell) => cell.textContent);
     expect(headings).toContain("reports:drill.hours");
     expect(headings.join(" ")).not.toMatch(/rate|cost/i);
+  });
+
+  it("lists cost entries with their description and currency, without rates or amounts", () => {
+    items.data = {
+      data: [
+        {
+          kind: "cost_entry",
+          key: "ce1",
+          title: "Licence — Annual seats",
+          projectKey: "P",
+          state: null,
+          priority: null,
+          date: "2026-10-12",
+          person: "Ada",
+          workItemKey: "RPT-9",
+          currency: "EUR",
+        },
+      ],
+    };
+    render(
+      <ReportDrillDialog
+        workspaceId="w1"
+        reportKey="cost_to_deliver"
+        search={{}}
+        handle="budget:b1"
+        onClose={() => undefined}
+      />,
+    );
+    expect(screen.getByText("Licence — Annual seats")).toBeTruthy();
+    expect(screen.getByText("EUR")).toBeTruthy();
+    expect(screen.getByText("RPT-9")).toBeTruthy();
+    const headings = screen
+      .getAllByRole("columnheader")
+      .map((cell) => cell.textContent);
+    expect(headings).toContain("reports:columns.currency");
+    expect(headings.join(" ")).not.toMatch(/rate|amount/i);
   });
 
   it("lists articles for the knowledge base report", () => {

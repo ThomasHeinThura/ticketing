@@ -94,8 +94,10 @@ function resource(
     projectId: ids.project,
     organisationId: ids.servingOrganisation,
     visibleToPersonIds: null,
+    customerRequestOwnerPersonIds: [ids.requester],
     customerVisible: true,
     staffUrl: null,
+    portalUrl: null,
     ...overrides,
   };
 }
@@ -132,7 +134,7 @@ describe("native inbox current reach", () => {
     ).toBe(false);
   });
 
-  it("keeps private requester/participant audience and public-comment checks", () => {
+  it("keeps private requester visibility but still limits customers to their own requests", () => {
     const privateResource = resource({
       visibleToPersonIds: [ids.requester, ids.participant],
     });
@@ -149,7 +151,7 @@ describe("native inbox current reach", () => {
         candidate(ids.participant),
         privateResource,
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       canReadNativeInboxCandidate(
         customer(ids.nonparticipant),

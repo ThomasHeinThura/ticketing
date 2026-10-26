@@ -15,7 +15,7 @@ import {
   PROJECT_UNDER_OPEN_HOLD,
   WORK_ITEM_UNDER_OPEN_HOLD,
 } from "../utils/legal-hold-scope";
-import { withJobLease } from "./leader-lock";
+import { assertJobExecutionOwned, withJobLease } from "./leader-lock";
 
 type CleanupKind = "pending" | "deleted";
 export type AttachmentCleanupOutcome = {
@@ -261,6 +261,7 @@ export async function collectQueuedAttachmentObjects(
     return { ...outcome, degraded: true };
   }
   for (const { object_key: objectKey } of queued.rows) {
+    await assertJobExecutionOwned();
     outcome.scanned++;
     try {
       const removed = await db.transaction(async (tx) => {
@@ -344,6 +345,7 @@ async function runCleanup(
           break;
         }
         for (const candidate of candidates) {
+          await assertJobExecutionOwned();
           cursor = candidate.id;
           resumeAfter[kind] = cursor;
           outcome.scanned++;

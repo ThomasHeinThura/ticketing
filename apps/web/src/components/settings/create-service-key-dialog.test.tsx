@@ -12,6 +12,11 @@ import { translate } from "@/test/en-translation";
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   prove: vi.fn(),
+  factorStatus: {
+    enabled: false,
+    required: false,
+    availableMethods: ["password"] as string[],
+  },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -32,7 +37,7 @@ vi.mock("@/fetchers/god-mode/instance-users", async (importOriginal) => {
     await importOriginal<typeof import("@/fetchers/god-mode/instance-users")>();
   return {
     ...actual,
-    getCurrentFactorStatus: async () => ({ enabled: false, required: false }),
+    getCurrentFactorStatus: async () => mocks.factorStatus,
   };
 });
 vi.mock("@/fetchers/service-keys", () => ({
@@ -50,8 +55,10 @@ beforeEach(() => {
 afterEach(cleanup);
 
 function renderDialog(onCreated = vi.fn()) {
+  const client = new QueryClient();
+  client.setQueryData(["god-mode", "step-up-factor"], mocks.factorStatus);
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={client}>
       <CreateServiceKeyDialog
         workspaceId="ws-1"
         onClose={vi.fn()}

@@ -110,7 +110,9 @@ function mount() {
   });
   return { ...hook, invalidate };
 }
-function start(hook: ReturnType<typeof mount>, id = "one") {
+type MountedDragHook = Pick<ReturnType<typeof mount>, "result">;
+
+function start(hook: MountedDragHook, id = "one") {
   act(() =>
     hook.result.current.startDrag({
       active: {
@@ -122,11 +124,55 @@ function start(hook: ReturnType<typeof mount>, id = "one") {
     } satisfies DragStartEvent),
   );
 }
-function end(hook: ReturnType<typeof mount>, target = "done") {
+function end(hook: MountedDragHook, target = "done") {
   return hook.result.current.endDrag({
     active: { id: "one" },
     over: { id: target },
   } as DragEndEvent);
+}
+function combinedRows(firstProjectId = "project", secondProjectId = "project") {
+  const [first, second, third] = rows;
+  if (!first || !second || !third) throw new Error("Combined rows missing");
+  return [
+    {
+      ...first,
+      stateTemplateId: "open-template",
+      sourceProject: { id: firstProjectId, key: "HELP", name: "Help" },
+    },
+    {
+      ...second,
+      projectId: secondProjectId,
+      stateTemplateId: "open-template",
+      sourceProject: { id: secondProjectId, key: "CHILD", name: "Child" },
+    },
+    {
+      ...third,
+      stateTemplateId: "done-template",
+      sourceProject: { id: firstProjectId, key: "HELP", name: "Help" },
+    },
+  ];
+}
+function mountCombined(projectId = "project", workItems = combinedRows()) {
+  const client = new QueryClient();
+  const hook = renderHook((props) => useWorkItemDragDrop(props), {
+    initialProps: {
+      projectId,
+      states: [
+        { id: "open-template", name: "Open" },
+        { id: "done-template", name: "Done" },
+      ],
+      workItems,
+      canRank: true,
+      canTransition: true,
+      combined: true,
+      canRankForProject: () => true,
+      canTransitionForProject: () => true,
+    },
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+  return hook;
 }
 beforeEach(() => {
   mocks.children.mockReset();
@@ -192,6 +238,69 @@ it("refreshes a committed old-project transition but never starts its second ran
     queryKey: ["work-items", "project"],
   });
   expect(hook.result.current.notice).toBeUndefined();
+});
+
+it("denies shared-template rank across projects", async () => {
+  const hook = mountCombined("project", combinedRows("project", "child"));
+  start(hook, "one");
+  await act(async () => {
+    await hook.result.current.endDrag({
+      active: { id: "one" },
+      over: { id: "two" },
+    } as DragEndEvent);
+  });
+  expect(mocks.rank).not.toHaveBeenCalled();
+  expect(mocks.transition).not.toHaveBeenCalled();
+  expect(hook.result.current.notice?.kind).toBe("error");
+  expect(hook.result.current.notice?.text).toBe(
+    translate("workItems:board.crossProjectRankDenied"),
+  );
+});
+
+it("ranks shared-template cards only within the source project's concrete state", async () => {
+  const sameProject = combinedRows();
+  const second = sameProject[1];
+  if (!second) throw new Error("Combined target row missing");
+  sameProject[1] = {
+    ...second,
+    projectId: "project",
+    stateId: "open",
+    sourceProject: { id: "project", key: "HELP", name: "Help" },
+  };
+  const hook = mountCombined("project", sameProject);
+  start(hook, "one");
+  await act(async () => {
+    await hook.result.current.endDrag({
+      active: { id: "one" },
+      over: { id: "two" },
+    } as DragEndEvent);
+  });
+  expect(mocks.rank).toHaveBeenCalledWith({
+    key: "HELP-1",
+    beforeId: "two",
+  });
+  expect(mocks.transition).not.toHaveBeenCalled();
+});
+
+it("resolves combined column transitions from the item's real project offer", async () => {
+  const [transitionOffer] = offer;
+  if (!transitionOffer) throw new Error("Transition offer missing");
+  mocks.offers.mockResolvedValue([
+    { ...transitionOffer, toStateTemplateId: "done-template" },
+  ]);
+  const hook = mountCombined();
+  start(hook, "one");
+  await act(async () => {
+    await hook.result.current.endDrag({
+      active: { id: "one" },
+      over: { id: "done-template" },
+    } as DragEndEvent);
+  });
+  expect(mocks.offers).toHaveBeenCalledWith("HELP-1");
+  expect(mocks.transition).toHaveBeenCalledWith({
+    key: "HELP-1",
+    toStateTemplateId: "done-template",
+  });
 });
 it("does not mutate a source that disappeared or changed state during a drag", async () => {
   const hook = mount();

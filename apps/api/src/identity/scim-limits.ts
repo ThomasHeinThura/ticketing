@@ -1,14 +1,20 @@
 import { getConnInfo } from "@hono/node-server/conninfo";
 import type { Context, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { HTTPException } from "hono/http-exception";
 import { trustProxyDepth } from "../utils/auth-request";
 import { resolveClientIp } from "../utils/resolve-client-ip";
+import { recordScimRequestDenied } from "./scim-auth-events";
+import {
+  consumeScimRateLimit,
+  reportScimRateLimitUnavailable,
+} from "./scim-rate-limit-store";
 
 /**
  * `IP-14`: oversized bodies are rejected with a SCIM error, and requests are rate-limited per
- * connection, with anonymous-class limits applying to failed authentication. Both limits are
- * in-memory, per process and bounded; the bucket key is the authenticated connection id (never
- * a caller-supplied header) or, for failures, the trusted client address.
+ * connection, with anonymous-class limits applying to failed authentication. Counters are
+ * database-shared and keyed by scoped HMACs of the authenticated connection id or trusted client
+ * address; neither raw value is persisted.
  */
 
 /** Largest accepted request body. `/Bulk` is unsupported, so only a full group reconciliation is large. */
@@ -123,19 +129,35 @@ export function scimClientKey(c: Context): string {
 /** Per-connection limiter for AUTHENTICATED requests; reads the connection id the auth step set. */
 export function scimConnectionRateLimit(
   connectionIdOf: (c: Context) => string | undefined,
-  counter: WindowCounter = new WindowCounter(
-    SCIM_CONNECTION_LIMIT,
-    SCIM_CONNECTION_WINDOW_MS,
-  ),
+  /** Test seam for deterministic middleware tests; production leaves this unset. */
+  counter?: WindowCounter,
 ): MiddlewareHandler {
   return async (c, next) => {
     const connectionId = connectionIdOf(c);
     if (!connectionId) return scimErrorResponse(c, 401, "Unauthorized");
-    const result = counter.hit(connectionId);
-    if (!result.allowed)
+    let result: { allowed: boolean; retryAfterSeconds: number };
+    if (counter) result = counter.hit(connectionId);
+    else {
+      try {
+        result = await consumeScimRateLimit({
+          bucket: "scim_connection",
+          key: connectionId,
+          limit: SCIM_CONNECTION_LIMIT,
+          windowMs: SCIM_CONNECTION_WINDOW_MS,
+        });
+      } catch {
+        reportScimRateLimitUnavailable();
+        throw new HTTPException(503, {
+          message: "SCIM rate limit unavailable",
+        });
+      }
+    }
+    if (!result.allowed) {
+      await recordScimRequestDenied(connectionId, "rate_limited");
       return scimErrorResponse(c, 429, "Too many requests", undefined, {
         "Retry-After": String(result.retryAfterSeconds),
       });
+    }
     await next();
   };
 }

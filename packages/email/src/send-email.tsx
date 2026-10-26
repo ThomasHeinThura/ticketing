@@ -88,6 +88,15 @@ export type EmailResult = {
   reason?: "SMTP_NOT_CONFIGURED" | "NOT_AUTHORIZED";
 };
 
+export type WorkspaceInvitationSendOptions = {
+  /** Bounded worker deadline; omitted callers retain the established 25 second default. */
+  deadlineMs?: number;
+  /** Stable transport Message-ID key for retry deduplication where the provider supports it. */
+  idempotencyKey?: string;
+  /** A final worker-owned delivery check after rendering and SMTP configuration resolution. */
+  beforeSend?: () => Promise<boolean>;
+};
+
 export type NotificationEmailSendOptions = {
   /** Rechecked after rendering and immediately before handing the message to SMTP. */
   authorize?: () => Promise<boolean>;
@@ -100,10 +109,23 @@ export const sendWorkspaceInvitationEmail = async (
   to: string,
   subject: string,
   data: WorkspaceInvitationEmailProps,
+  options: WorkspaceInvitationSendOptions = {},
 ): Promise<EmailResult> => {
   const emailTemplate = await render(WorkspaceInvitationEmail({ ...data, to }));
-  if (!(await sendRendered(to, subject, emailTemplate)))
-    return { success: false, reason: "SMTP_NOT_CONFIGURED" };
+  const smtp = await resolveSmtpConfiguration();
+  if (!smtp) return { success: false, reason: "SMTP_NOT_CONFIGURED" };
+  if (options.beforeSend && !(await options.beforeSend()))
+    return { success: false, reason: "NOT_AUTHORIZED" };
+  await executeSmtp(
+    smtp,
+    {
+      to,
+      subject,
+      html: emailTemplate,
+      idempotencyKey: options.idempotencyKey,
+    },
+    options,
+  );
   return { success: true };
 };
 

@@ -41,7 +41,11 @@ vi.mock("@/fetchers/god-mode/instance-users", async (importOriginal) => {
     await importOriginal<typeof import("@/fetchers/god-mode/instance-users")>();
   return {
     ...actual,
-    getCurrentFactorStatus: async () => ({ enabled: false, required: false }),
+    getCurrentFactorStatus: async () => ({
+      enabled: false,
+      required: false,
+      availableMethods: ["password"],
+    }),
   };
 });
 vi.mock("@/fetchers/workspace-roles", async (importOriginal) => {
@@ -126,7 +130,13 @@ const isDisabled = (element: HTMLElement) =>
   element.getAttribute("aria-disabled") === "true";
 
 beforeEach(() => {
-  mocks.update.mockReset().mockResolvedValue(role());
+  mocks.update.mockReset().mockImplementation((...args: unknown[]) =>
+    (args[4] as { dryRun?: boolean } | undefined)?.dryRun
+      ? Promise.resolve({
+          affected: { people: 3, workItems: 12, projects: 2 },
+        })
+      : Promise.resolve(role()),
+  );
   mocks.prove.mockReset().mockResolvedValue("step-up-token");
 });
 afterEach(cleanup);
@@ -189,15 +199,23 @@ describe("RoleCapabilitiesPanel", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("RL-9: saving names how many people change immediately, and sends the version it loaded", async () => {
+  it("RL-9/ST-7: previews current impact before confirming, then sends the loaded version", async () => {
     renderPanel(role({ capabilities: ["work_item:read"], holderCount: 3 }));
     fireEvent.click(box("Work item: update"));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(
       await screen.findByText(
-        "This will change permissions for 3 people immediately.",
+        "Potential impact — people: 3; projects: 2; work items: 12.",
       ),
     ).toBeInTheDocument();
+    expect(mocks.update).toHaveBeenNthCalledWith(
+      1,
+      "ws-1",
+      "role-1",
+      expect.objectContaining({ expectedVersion: "100" }),
+      undefined,
+      { dryRun: true },
+    );
     // The save is elevated: it cannot be applied until a fresh verification is entered.
     const apply = screen.getByRole("button", { name: "Save and apply now" });
     expect(apply).toBeDisabled();
@@ -206,7 +224,7 @@ describe("RoleCapabilitiesPanel", () => {
     });
     expect(apply).toBeEnabled();
     fireEvent.click(apply);
-    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
     expect(mocks.update).toHaveBeenCalledWith(
       "ws-1",
       "role-1",
@@ -245,7 +263,8 @@ describe("RoleCapabilitiesPanel", () => {
         "Fresh verification failed. Nothing was changed.",
       ),
     ).not.toHaveLength(0);
-    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.update.mock.calls[0]?.[4]).toEqual({ dryRun: true });
   });
 
   it("asks for a typed confirmation before removing capabilities from your own role", async () => {
@@ -269,8 +288,8 @@ describe("RoleCapabilitiesPanel", () => {
     });
     expect(confirm).toBeEnabled();
     fireEvent.click(confirm);
-    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(1));
-    expect(mocks.update.mock.calls[0]?.[2]).toMatchObject({
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
+    expect(mocks.update.mock.calls[1]?.[2]).toMatchObject({
       confirmSelfEdit: true,
     });
   });

@@ -91,14 +91,17 @@ describe("transition action", () => {
     ).toBe(false);
   });
 
-  it("keeps notify as 422 unavailable (no catalogued event to deliver it through yet)", () => {
+  it("rejects malformed notify configuration as invalid", () => {
     const result = validateRuleDefinition({
       trigger: "work_item.created",
       conditions: [],
       actions: [{ type: "notify", personId: "p" }],
     });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.problems[0]?.code).toBe("unavailable");
+    if (!result.ok) {
+      expect(result.problems[0]?.code).toBe("invalid");
+      expect(result.problems[0]?.path).toBe("actions[0]");
+    }
   });
 });
 

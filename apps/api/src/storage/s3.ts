@@ -10,6 +10,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "dotenv-mono";
+import { browserStorageOrigins } from "./csp-origins";
+import { StorageProbeCollisionError } from "./probe-error";
 import {
   type AssetObject,
   applyKeyPrefix,
@@ -137,6 +139,12 @@ function getStorageConfig(): StorageConfig {
       DEFAULT_PRESIGN_TTL_SECONDS,
     ),
   };
+}
+
+/** Public browser destinations derived without exposing the signing configuration. */
+export function getBrowserStorageOrigins(): string[] {
+  const { endpoint, bucket, forcePathStyle } = getStorageConfig();
+  return browserStorageOrigins({ endpoint, bucket, forcePathStyle });
 }
 
 function getMaxImageUploadBytes() {
@@ -419,4 +427,115 @@ export async function deleteS3Object(key: string): Promise<void> {
       Key: key,
     }),
   );
+}
+
+const STORAGE_PROBE_KEY = /^taskdesk-storage-probe-[0-9a-f-]{36}$/u;
+
+function assertStorageProbeKey(key: string) {
+  if (!STORAGE_PROBE_KEY.test(key))
+    throw new Error("Invalid storage probe key.");
+}
+
+/** Put only the generated reserved probe key, passing cancellation to the S3 SDK request. */
+export async function writeStorageProbeObject(
+  key: string,
+  bytes: Uint8Array,
+  signal: AbortSignal,
+): Promise<void> {
+  assertStorageProbeKey(key);
+  if (signal.aborted) throw signal.reason;
+  const config = getStorageConfig();
+  const client = getClient(config);
+  const objectKey = applyKeyPrefix(config.keyPrefix, key);
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: config.bucket,
+        Key: objectKey,
+        Body: Buffer.from(bytes),
+        ContentLength: bytes.byteLength,
+        ContentType: "application/octet-stream",
+        IfNoneMatch: "*",
+      }),
+      { abortSignal: signal },
+    );
+  } catch (error) {
+    const candidate = error as {
+      name?: string;
+      $metadata?: { httpStatusCode?: number };
+    };
+    if (
+      candidate.name === "PreconditionFailed" ||
+      candidate.$metadata?.httpStatusCode === 412
+    )
+      throw new StorageProbeCollisionError();
+    throw error;
+  }
+  if (signal.aborted) throw signal.reason;
+}
+
+/** Read only a bounded probe object; the S3 response stream is capped even if Range is ignored. */
+export async function readStorageProbeObject(
+  key: string,
+  maxBytes: number,
+  signal: AbortSignal,
+): Promise<Buffer> {
+  assertStorageProbeKey(key);
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || signal.aborted)
+    throw signal.reason ?? new Error("Invalid storage probe read.");
+  const config = getStorageConfig();
+  const client = getClient(config);
+  const objectKey = applyKeyPrefix(config.keyPrefix, key);
+  const head = await client.send(
+    new HeadObjectCommand({ Bucket: config.bucket, Key: objectKey }),
+    { abortSignal: signal },
+  );
+  if (head.ContentLength === undefined || head.ContentLength > maxBytes)
+    throw new Error("Storage probe object size is invalid.");
+  if (head.ContentLength === 0) return Buffer.alloc(0);
+  const response = await client.send(
+    new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: objectKey,
+      Range: `bytes=0-${head.ContentLength - 1}`,
+    }),
+    { abortSignal: signal },
+  );
+  if (!response.Body) throw new Error("Storage probe object is unavailable.");
+
+  const chunks: Buffer[] = [];
+  let length = 0;
+  for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
+    if (signal.aborted) throw signal.reason;
+    const part = Buffer.from(chunk);
+    length += part.byteLength;
+    if (length > maxBytes) {
+      if (
+        "destroy" in response.Body &&
+        typeof response.Body.destroy === "function"
+      )
+        response.Body.destroy();
+      throw new Error("Storage probe response exceeded its bound.");
+    }
+    chunks.push(part);
+  }
+  if (signal.aborted) throw signal.reason;
+  return Buffer.concat(chunks, length);
+}
+
+/** Delete only the generated reserved probe key, passing cancellation to the S3 SDK request. */
+export async function deleteStorageProbeObject(
+  key: string,
+  signal: AbortSignal,
+): Promise<void> {
+  assertStorageProbeKey(key);
+  if (signal.aborted) throw signal.reason;
+  const config = getStorageConfig();
+  const client = getClient(config);
+  const objectKey = applyKeyPrefix(config.keyPrefix, key);
+  await client.send(
+    new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey }),
+    { abortSignal: signal },
+  );
+  if (signal.aborted) throw signal.reason;
 }

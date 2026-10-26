@@ -4,13 +4,11 @@ import {
   type DragStartEvent,
   type DropAnimation,
   defaultDropAnimationSideEffects,
-  KeyboardSensor,
   MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -21,13 +19,19 @@ import { getPriorityLabel } from "@/lib/i18n/domain";
 import { classifyWorkItemWriteError } from "@/lib/work-item-board";
 import {
   type AssignablePerson,
+  type CustomFieldGroupDefinition,
+  type CustomFieldGroupValue,
   itemGroupValue,
+  itemGroupValues,
   parseBoardGroupId,
+  parseBoardGroupItemId,
   type WorkItemBoardGroup,
   type WorkItemBoardGroupField,
 } from "@/lib/work-item-board-groups";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import type { WorkItemPriority, WorkItemRow } from "@/types/work-item";
+import { sortableKeyboardCoordinatesWithVirtualRows } from "./virtualization/sortable-keyboard-coordinates";
+import { SynchronousKeyboardSensor } from "./virtualization/synchronous-keyboard-sensor";
 
 type Notice = { kind: "status" | "error"; text: string };
 
@@ -46,7 +50,9 @@ export default function useWorkItemGroupDrag({
   people,
   canAssign,
   canUnassign,
+  canUpdate,
   canSetPriority,
+  customField,
 }: {
   projectId: string;
   field: WorkItemBoardGroupField;
@@ -54,14 +60,23 @@ export default function useWorkItemGroupDrag({
   groups: WorkItemBoardGroup[];
   people: readonly AssignablePerson[];
   canAssign: boolean;
+  canUpdate: boolean;
   /** Whether the person may clear this item's assignee. */
   canUnassign: (item: WorkItemRow) => boolean;
   canSetPriority: boolean;
+  customField?: CustomFieldGroupDefinition;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [dragged, setDragged] = useState<WorkItemRow>();
-  const draggedRef = useRef<WorkItemRow | undefined>(undefined);
+  const draggedRef = useRef<
+    | {
+        item: WorkItemRow;
+        sourceValue: CustomFieldGroupValue | undefined;
+        sourceGroupId: string;
+      }
+    | undefined
+  >(undefined);
   const [overGroupId, setOverGroupId] = useState<string>();
   const [notice, setNotice] = useState<Notice>();
   const [busy, setBusy] = useState(false);
@@ -75,8 +90,13 @@ export default function useWorkItemGroupDrag({
     useSensor(TouchSensor, {
       activationConstraint: { delay: 250, tolerance: 10 },
     }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+    useSensor(SynchronousKeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinatesWithVirtualRows,
+      keyboardCodes: {
+        start: ["Space"],
+        end: ["Space", "Enter"],
+        cancel: ["Escape"],
+      },
     }),
   );
   const dropAnimation: DropAnimation = {
@@ -110,26 +130,53 @@ export default function useWorkItemGroupDrag({
     setNotice(undefined);
   }, [field]);
 
-  const canWrite = field === "priority" ? canSetPriority : canAssign;
+  const canWrite =
+    field === "priority"
+      ? canSetPriority
+      : field === "assignee"
+        ? canAssign
+        : canUpdate;
 
   function groupName(group: WorkItemBoardGroup): string {
     if (field === "priority")
       return group.value === null
         ? t("workItems:board.groupNoPriority")
-        : getPriorityLabel(group.value);
-    return group.name ?? t("workItems:board.groupUnassigned");
+        : getPriorityLabel(String(group.value));
+    if (group.name) return group.name;
+    if (group.value === undefined) return t("workItems:board.groupUnavailable");
+    if (group.value === null)
+      return field === "assignee"
+        ? t("workItems:board.groupUnassigned")
+        : t("workItems:list.customFieldNotSet");
+    if (field.startsWith("cf.") && customField?.format === "boolean")
+      return group.value === true
+        ? t("workItems:board.groupYes")
+        : t("workItems:board.groupNo");
+    if (
+      field.startsWith("cf.") &&
+      (customField?.format === "user" || customField?.format === "multi_user")
+    )
+      return t("workItems:list.customFieldPersonUnavailable");
+    return String(group.value);
   }
 
   function resolveTarget(overId: unknown): WorkItemBoardGroup | undefined {
+    const composite = parseBoardGroupItemId(overId);
     const direct = parseBoardGroupId(overId);
+    const groupId = composite?.groupId;
+    if (groupId) return groups.find((group) => group.id === groupId);
     if (direct)
       return groups.find(
-        (group) => group.field === direct.field && group.value === direct.value,
+        (group) =>
+          group.field === direct.field &&
+          JSON.stringify(group.value) === JSON.stringify(direct.value),
       );
     const overItem = workItems?.find((candidate) => candidate.id === overId);
     if (!overItem) return undefined;
-    const value = itemGroupValue(overItem, field);
-    return groups.find((group) => group.value === value);
+    const value = itemGroupValue(overItem, field, customField);
+    return groups.find(
+      (group) => JSON.stringify(group.value) === JSON.stringify(value),
+    );
   }
 
   function describeFailure(error: unknown, key: string) {
@@ -140,7 +187,11 @@ export default function useWorkItemGroupDrag({
     });
   }
 
-  async function write(item: WorkItemRow, target: WorkItemBoardGroup) {
+  async function write(
+    item: WorkItemRow,
+    target: WorkItemBoardGroup,
+    sourceValue: CustomFieldGroupValue | undefined,
+  ) {
     const operationGeneration = generation.current;
     if (busyRef.current) return;
     busyRef.current = true;
@@ -153,14 +204,71 @@ export default function useWorkItemGroupDrag({
           version: item.version,
           priority: target.value as WorkItemPriority | null,
         });
-      } else if (target.value === null) {
+      } else if (field === "assignee" && target.value === null) {
         await unassignWorkItem(item.key, item.assigneeId);
-      } else {
+      } else if (field === "assignee") {
         await assignWorkItem({
           key: item.key,
-          assigneeId: target.value,
+          assigneeId: String(target.value),
           expectedCurrentAssigneeId: item.assigneeId,
         });
+      } else if (field === "label") {
+        const current = item.labels ?? [];
+        const next =
+          target.value === null
+            ? []
+            : sourceValue === null
+              ? [
+                  ...new Set([
+                    ...current.map((label) => label.id),
+                    String(target.value),
+                  ]),
+                ]
+              : [
+                  ...new Set([
+                    ...current
+                      .filter((label) => label.id !== sourceValue)
+                      .map((label) => label.id),
+                    String(target.value),
+                  ]),
+                ];
+        await updateWorkItem({
+          key: item.key,
+          version: item.version,
+          labelIds: next,
+        });
+      } else if (field.startsWith("cf.") && customField) {
+        const multi =
+          customField.format === "multi_select" ||
+          customField.format === "multi_user";
+        const currentValue = item.customFieldValues?.[customField.key];
+        const nextValue = multi
+          ? target.value === null
+            ? []
+            : sourceValue === null
+              ? [
+                  ...new Set([
+                    ...(Array.isArray(currentValue) ? currentValue : []),
+                    target.value as string,
+                  ]),
+                ]
+              : [
+                  ...new Set([
+                    ...(Array.isArray(currentValue) ? currentValue : []).filter(
+                      (value) =>
+                        JSON.stringify(value) !== JSON.stringify(sourceValue),
+                    ),
+                    target.value as string,
+                  ]),
+                ]
+          : target.value;
+        await updateWorkItem({
+          key: item.key,
+          version: item.version,
+          customFields: { [customField.key]: nextValue },
+        });
+      } else {
+        throw new Error("The selected board grouping is unavailable");
       }
       result = {
         kind: "status",
@@ -187,8 +295,9 @@ export default function useWorkItemGroupDrag({
 
   function startDrag(event: DragStartEvent) {
     if (busyRef.current || !canWrite) return;
+    const composite = parseBoardGroupItemId(event.active.id);
     const item = workItems?.find(
-      (candidate) => candidate.id === event.active.id,
+      (candidate) => candidate.id === (composite?.itemId ?? event.active.id),
     );
     if (
       !item ||
@@ -196,7 +305,18 @@ export default function useWorkItemGroupDrag({
       item.unavailableFields.includes("key")
     )
       return;
-    draggedRef.current = item;
+    const groupsForItem = groups.filter((group) =>
+      group.items.some((row) => row.id === item.id),
+    );
+    const sourceGroup = composite
+      ? groupsForItem.find((group) => group.id === composite.groupId)
+      : groupsForItem[0];
+    if (!sourceGroup) return;
+    draggedRef.current = {
+      item,
+      sourceValue: sourceGroup.value,
+      sourceGroupId: sourceGroup.id,
+    };
     setDragged(item);
   }
 
@@ -212,11 +332,12 @@ export default function useWorkItemGroupDrag({
   }
 
   async function endDrag(event: DragEndEvent) {
-    const item = draggedRef.current;
+    const draggedState = draggedRef.current;
+    const item = draggedState?.item;
     const target = resolveTarget(event.over?.id);
     cancelDrag();
-    if (!item || !target) return;
-    if (itemGroupValue(item, field) === target.value) return;
+    if (!item || !target || !draggedState) return;
+    if (draggedState.sourceGroupId === target.id) return;
     if (!target.droppable) {
       setNotice({
         kind: "error",
@@ -230,10 +351,13 @@ export default function useWorkItemGroupDrag({
     const allowed =
       field === "priority"
         ? canSetPriority
-        : target.value === null
-          ? canUnassign(item)
-          : canAssign &&
-            people.some((person) => person.personId === target.value);
+        : field === "assignee"
+          ? target.value === null
+            ? canUnassign(item)
+            : canAssign &&
+              people.some((person) => person.personId === target.value)
+          : canUpdate &&
+            itemGroupValues(item, field, customField) !== undefined;
     if (!allowed) {
       setNotice({
         kind: "error",
@@ -241,7 +365,26 @@ export default function useWorkItemGroupDrag({
       });
       return;
     }
-    await write(item, target);
+    if (
+      target.value === null &&
+      field.startsWith("cf.") &&
+      customField?.visibility?.some(
+        (entry) =>
+          entry.workItemTypeId === item.typeId &&
+          entry.visible &&
+          entry.required,
+      )
+    ) {
+      setNotice({
+        kind: "error",
+        text: t("workItems:board.groupNotDroppable", {
+          key: item.key,
+          group: groupName(target),
+        }),
+      });
+      return;
+    }
+    await write(item, target, draggedState.sourceValue);
   }
 
   return {

@@ -127,7 +127,7 @@ export function CreateServiceKeyDialog({
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            if (nameValid && stepUp.secret && !mutation.isPending)
+            if (nameValid && stepUp.canRun && !mutation.isPending)
               mutation.mutate();
           }}
         >
@@ -265,7 +265,7 @@ export function CreateServiceKeyDialog({
             </Button>
             <Button
               type="submit"
-              disabled={mutation.isPending || !nameValid || !stepUp.secret}
+              disabled={mutation.isPending || !nameValid || !stepUp.canRun}
             >
               {mutation.isPending
                 ? t("settings:serviceKeys.create.creating")

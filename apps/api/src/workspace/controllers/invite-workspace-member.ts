@@ -11,6 +11,7 @@ import {
   findWorkspaceInvitationRole,
   findWorkspaceInvitationWorkspace,
   insertWorkspaceInvitation,
+  readInvitationLifetimeHours,
   refreshWorkspaceInvitation,
 } from "../workspace-invitation.repository";
 import { lockWorkspaceRoleAssignment } from "../workspace-role-assignment.repository";
@@ -23,11 +24,6 @@ import {
   UserAlreadyMemberError,
   WorkspaceRoleNotFoundError,
 } from "./workspace-membership-errors";
-
-/** Matches better-auth's own default (`crud-invites.mjs`:
- * `getDate(ctx.context.orgOptions.invitationExpiresIn || 3600 * 48, "sec")`),
- * which `apps/api/src/auth.ts`'s `organization()` config never overrides. */
-const INVITATION_EXPIRY_MS = 48 * 60 * 60 * 1000;
 
 export type InviteWorkspaceMemberInput = {
   workspaceId: string;
@@ -131,7 +127,10 @@ async function inviteWorkspaceMember(
       now,
     );
 
-    const expiresAt = new Date(now.getTime() + INVITATION_EXPIRY_MS);
+    const invitationLifetimeHours = await readInvitationLifetimeHours(tx);
+    const expiresAt = new Date(
+      now.getTime() + invitationLifetimeHours * 3_600_000,
+    );
 
     if (existingInvitation) {
       if (!input.resend) {

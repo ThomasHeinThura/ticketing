@@ -23,6 +23,7 @@ import {
   exists,
   gt,
   inArray,
+  isNotNull,
   isNull,
   lt,
   or,
@@ -43,6 +44,7 @@ import {
 import { logTaskDesk } from "../instance/observability/runtime";
 import { enqueueNotificationEvent } from "../notification/fanout";
 import { resolveSubmissionRepliedRecipients } from "../notification/submission-recipients";
+import { resolveProjectSlaPolicyId } from "../project/effective-settings";
 import { recordWorkItemActivity } from "../work-item/activity";
 import { resolveAssigneeEligibility } from "../work-item/assignee-eligibility";
 import { claimWorkItemNumber } from "../work-item/controllers/claim-work-item-number";
@@ -66,7 +68,14 @@ import {
   type PortalCustomField,
   refusedCustomFieldMappings,
 } from "./custom-field-mapping";
+import { suggestDuplicatesForQueueRows } from "./duplicate-suggestions";
 import {
+  lockRequestTypeGroupOrder,
+  orderPortalCatalogueGroups,
+  synchronizeRequestTypeGroupOrder,
+} from "./group-order";
+import {
+  CLAIMED,
   filtersScope,
   olderThanCutoff,
   type SubmissionListFilters,
@@ -213,6 +222,7 @@ export async function createRequestType(
   actorId: string,
 ) {
   const row = await db.transaction(async (tx) => {
+    await lockRequestTypeGroupOrder(tx, input.workspaceId);
     const [created] = await tx
       .insert(schema.requestTypeTable)
       .values({
@@ -225,6 +235,7 @@ export async function createRequestType(
       throw new HTTPException(500, {
         message: "Could not create request type",
       });
+    await synchronizeRequestTypeGroupOrder(tx, input.workspaceId);
     await appendAuditLog(tx, {
       actorId,
       actorType: "person",
@@ -246,6 +257,14 @@ export async function updateRequestType(
   actorId: string,
 ) {
   return db.transaction(async (tx) => {
+    const [scope] = await tx
+      .select({ workspaceId: schema.requestTypeTable.workspaceId })
+      .from(schema.requestTypeTable)
+      .where(eq(schema.requestTypeTable.id, id))
+      .limit(1);
+    if (!scope)
+      throw new HTTPException(404, { message: "Request type not found" });
+    await lockRequestTypeGroupOrder(tx, scope.workspaceId);
     const [current] = await tx
       .select()
       .from(schema.requestTypeTable)
@@ -254,6 +273,13 @@ export async function updateRequestType(
       .limit(1);
     if (!current)
       throw new HTTPException(404, { message: "Request type not found" });
+    if (
+      current.workspaceId !== scope.workspaceId ||
+      (input.workspaceId && input.workspaceId !== current.workspaceId)
+    )
+      throw new HTTPException(409, {
+        message: "Request type workspace changed",
+      });
     if (current.version !== version)
       throw new HTTPException(409, {
         message: "Request type changed; reload before saving",
@@ -288,6 +314,7 @@ export async function updateRequestType(
       throw new HTTPException(409, {
         message: "Request type changed; reload before saving",
       });
+    await synchronizeRequestTypeGroupOrder(tx, current.workspaceId);
     await appendAuditLog(tx, {
       actorId,
       actorType: "person",
@@ -723,12 +750,31 @@ export async function portalCatalogue(organisationId: string, query = "") {
     (a, b) =>
       a.type.position - b.type.position || a.type.id.localeCompare(b.type.id),
   );
-  const groupOrder = new Map<string, number>();
-  for (const row of ordered) {
-    const current = groupOrder.get(row.type.group);
-    if (current === undefined || row.type.position < current)
-      groupOrder.set(row.type.group, row.type.position);
-  }
+  const storedOrders = workspaceIds.length
+    ? await db
+        .select()
+        .from(schema.requestTypeGroupOrderTable)
+        .where(
+          inArray(schema.requestTypeGroupOrderTable.workspaceId, workspaceIds),
+        )
+    : [];
+  const groupNames = orderPortalCatalogueGroups(
+    [...enabledWorkspaceIds].map((workspaceId) => {
+      const visible = ordered
+        .filter((row) => row.workspaceId === workspaceId)
+        .map((row) => row.type.group);
+      const stored = storedOrders.find(
+        (row) => row.workspaceId === workspaceId,
+      );
+      return {
+        workspaceId,
+        groups: [
+          ...new Set([...(stored?.orderedGroups ?? []), ...visible]),
+        ].filter((group) => visible.includes(group)),
+      };
+    }),
+  );
+  const groupOrder = new Map(groupNames.map((group, index) => [group, index]));
   return ordered
     .filter(({ type }) =>
       `${type.name} ${type.description ?? ""} ${type.group}`
@@ -997,6 +1043,16 @@ async function convertSubmissionInTransaction(
       message:
         "A destination project must be selected before accepting this submission",
     });
+  const [lockedWorkspace] = await tx
+    .select({ id: schema.workspaceTable.id })
+    .from(schema.workspaceTable)
+    .where(eq(schema.workspaceTable.id, workspaceId))
+    .for("share")
+    .limit(1);
+  if (!lockedWorkspace)
+    throw new HTTPException(409, {
+      message: "Submission workspace is unavailable",
+    });
   const [project] = await tx
     .select()
     .from(schema.projectTable)
@@ -1108,8 +1164,11 @@ async function convertSubmissionInTransaction(
   const policyId =
     type.slaPolicyId ??
     requestSlaPolicyId ??
-    project.slaPolicyId ??
-    workspace.slaPolicyId;
+    resolveProjectSlaPolicyId({
+      mode: project.slaPolicyMode as "inherit" | "override",
+      overrideId: project.slaPolicyId,
+      workspaceDefaultId: workspace.slaPolicyId,
+    });
   if (
     policyId &&
     !(await findWorkspaceOwnedSlaPolicyQuery(tx, policyId, workspaceId))[0]
@@ -2059,9 +2118,11 @@ export async function listSubmissions(
       : []),
     ...(filters.assignee === UNCLAIMED
       ? [isNull(schema.submissionTable.claimedBy)]
-      : filters.assignee
-        ? [eq(schema.submissionTable.claimedBy, filters.assignee)]
-        : []),
+      : filters.assignee === CLAIMED
+        ? [isNotNull(schema.submissionTable.claimedBy)]
+        : filters.assignee
+          ? [eq(schema.submissionTable.claimedBy, filters.assignee)]
+          : []),
     ...(filters.olderThanDays !== undefined
       ? [
           lt(
@@ -2386,36 +2447,18 @@ export async function suggestDuplicateWorkItems(
         (row.submission.formData as Record<string, unknown>)[field.key] ?? "",
       ).trim()
     : "";
-  // #740: a suggestion names a work item (key and title), so only items of projects the
-  // triager reaches may be suggested.
-  if (title.length < 2 || reachableProjectIds.length === 0) return [];
-  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const score = sql<number>`similarity(${sql.identifier("work_item")}.${sql.identifier("title")}, ${title})`;
-  return db
-    .select({
-      id: schema.workItemTable.id,
-      key: schema.workItemTable.key,
-      title: schema.workItemTable.title,
-      score,
-    })
-    .from(schema.workItemTable)
-    .innerJoin(
-      schema.projectTable,
-      eq(schema.projectTable.id, schema.workItemTable.projectId),
-    )
-    .where(
-      and(
-        eq(schema.workItemTable.workspaceId, workspaceId),
-        eq(schema.projectTable.organisationId, row.submission.organisationId),
-        inArray(schema.projectTable.id, [...reachableProjectIds]),
-        gt(schema.workItemTable.createdAt, cutoff),
-        gt(score, 0.3),
-        isNull(schema.workItemTable.deletedAt),
-        isNull(schema.workItemTable.archivedAt),
-      ),
-    )
-    .orderBy(desc(score), desc(schema.workItemTable.createdAt))
-    .limit(10);
+  const grouped = await suggestDuplicatesForQueueRows(
+    workspaceId,
+    [
+      {
+        ref,
+        summary: title,
+        organisationId: row.submission.organisationId,
+      },
+    ],
+    reachableProjectIds,
+  );
+  return grouped.get(ref) ?? [];
 }
 
 /**

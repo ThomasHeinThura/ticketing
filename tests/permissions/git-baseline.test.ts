@@ -37,7 +37,13 @@ function scratchDir(prefix: string): string {
 afterEach(() => {
   while (scratchDirs.length > 0) {
     const dir = scratchDirs.pop();
-    if (dir) rmSync(dir, { recursive: true, force: true });
+    if (dir)
+      rmSync(dir, {
+        recursive: true,
+        force: true,
+        maxRetries: 3,
+        retryDelay: 50,
+      });
   }
 });
 

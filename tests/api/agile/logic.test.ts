@@ -350,6 +350,20 @@ describe("velocity (CY-9)", () => {
       ]),
     ).toMatchObject({ status: "insufficient_data", reason: "mixed_units" });
   });
+  it("keeps the last-three window and refuses unknown late-catchup totals", () => {
+    expect(
+      computeVelocity([
+        { ...entry(1, 100), historicalPointsKnown: true },
+        { ...entry(2, 10), historicalPointsKnown: true },
+        { ...entry(3, 20), historicalPointsKnown: false },
+        { ...entry(4, 30), historicalPointsKnown: true },
+      ]),
+    ).toEqual({
+      status: "insufficient_data",
+      cycles: 3,
+      reason: "late_snapshot",
+    });
+  });
 });
 
 describe("module forecast as a range (MO-4)", () => {

@@ -1,0 +1,59 @@
+{
+	"scope": "bounded RH-15 persisted browser verification; attempt history distinguishes harness defects from product results",
+	"tlsVerification": "strict",
+	"fixture": "CCY-5",
+	"controlledItems": [
+		{ "key": "CCY-6", "stateCategory": "unstarted", "parent": "CCY-5" },
+		{ "key": "CCY-7", "stateCategory": "completed", "parent": "CCY-5" }
+	],
+	"privateView": {
+		"id": "cw0xkskpcwgb8dmrybedity7",
+		"name": "QA Epic Roll-up 20261026",
+		"visibility": "private",
+		"layout": "chart",
+		"groupBy": "epic"
+	},
+	"attempts": [
+		{
+			"attempt": 1,
+			"outcome": "harness_timeout",
+			"cause": "Harness searched for Save; live label is Save report.",
+			"postRunReadOnlyCheck": "Exactly the two authorized CCY-5 children existed; the named private view did not exist.",
+			"productVerdict": "not evaluated"
+		},
+		{
+			"attempt": 2,
+			"outcome": "harness_timeout",
+			"cause": "Harness searched for Open; live drill label is View items.",
+			"observed": "The ordinary UI save returned HTTP 200 and persisted the single private view. Preview displayed matching count 3 and progress 1/2 (50%).",
+			"productVerdict": "save and rollup display observed; drill and later checks not completed"
+		},
+		{
+			"attempt": 3,
+			"outcome": "stopped_for_bounded_diagnosis",
+			"cause": "Request observer was over-constrained and showed no progress; the attempt was stopped before its 240-second test timeout.",
+			"observed": "A separate strict-TLS read-only page opened the drill dialog with CCY-5, CCY-6 and CCY-7 and downloaded CSV after HTTP 200.",
+			"productVerdict": "harness incomplete; independent UI path checks succeeded"
+		},
+		{
+			"attempt": 4,
+			"outcome": "harness_payload_accessor_limit",
+			"cause": "Playwright request.postDataJSON returned null although the clicked row opened the dialog.",
+			"observed": "A narrow init-script fetch clone was added to capture only method, path, content type, body availability and the handle field; no credentials or full payload are recorded.",
+			"productVerdict": "not evaluated by the accessor failure"
+		},
+		{
+			"attempt": 5,
+			"outcome": "passed",
+			"observed": "Fetch clone confirmed POST /api/reports/custom/items with application/json and handle epic:g79wqn9u2ptie7idh9oytp8o. HTTP 200 returned exactly CCY-5, CCY-6 and CCY-7. Playwright postDataJSON remained unavailable.",
+			"productVerdict": "scoped RH-15 browser journey passed; see codex-20261026-rh15-epic-browser.json"
+		}
+	],
+	"diagnosticScreens": [
+		"../screens/codex-20261026-rh15-save-dom-inspection.png",
+		"../screens/codex-20261026-rh15-live-readonly-drill.png",
+		"../screens/codex-20261026-rh15-drill-dialog.png",
+		"../screens/codex-20261026-rh15-drill-request-error.png"
+	],
+	"finalBrowserJourney": "passed with strict TLS, reusing the existing QA items and private view"
+}

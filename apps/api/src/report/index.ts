@@ -272,7 +272,7 @@ const customItemsRoute = createRoute({
   tags: ["Reports"],
   summary: "The items behind one group of a tier 3 report",
   description:
-    "Drill-down (RP-12) for a custom report: the same entity, filters, window and reach, narrowed to the group whose label is `handle`. Time entries carry hours only.",
+    "Drill-down (RP-12) for a custom report: the same entity, filters, window and reach, narrowed by the row handle. Epic handles bind an opaque epic ID; other groups retain their existing label handles. Time entries carry hours only.",
   middleware: [
     staffOnly,
     workspaceAccess.fromBody(),

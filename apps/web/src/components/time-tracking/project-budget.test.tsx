@@ -10,9 +10,13 @@ vi.mock("react-i18next", () => ({
     t: (key: string, options?: Record<string, unknown>) =>
       options?.amounts
         ? `${key} ${options.amounts}`
-        : options?.time
-          ? `${key} ${options.time} / ${options.cost}`
-          : key,
+        : options?.amount !== undefined
+          ? `${key} ${options.amount} ${options.count}`
+          : options?.minutes !== undefined
+            ? `${key} ${options.minutes}`
+            : options?.time
+              ? `${key} ${options.time} / ${options.cost}`
+              : key,
   }),
 }));
 vi.mock("@/lib/format", () => ({
@@ -130,6 +134,79 @@ describe("ProjectBudget", () => {
   it("reports other currencies apart, never converted", async () => {
     renderBudget();
     expect(await screen.findByText(/50\.00 USD/u)).toBeTruthy();
+  });
+
+  it("shows committed currency totals separately and labels incomplete forecasts unknown", async () => {
+    const [first] = base.data;
+    mocks.getProjectBudget.mockResolvedValue({
+      ...base,
+      data: [
+        {
+          ...(first as (typeof base.data)[number]),
+          committedMinor: null,
+          committedByCurrency: [
+            { currency: "EUR", amountMinor: 9000, taskCount: 2 },
+            { currency: "USD", amountMinor: 12_000, taskCount: 1 },
+          ],
+          committedUnknown: {
+            taskCount: 2,
+            reasons: {
+              unscheduled: 1,
+              nonTime: 0,
+              unassigned: 0,
+              unrated: 1,
+            },
+            knownRemainingMinutes: 90,
+          },
+        },
+      ],
+    });
+    renderBudget();
+    expect(
+      await screen.findByText("timeTracking:budget.committedUnknownValue"),
+    ).toBeTruthy();
+    expect(screen.getByTestId("committed-currencies").textContent).toContain(
+      "timeTracking:budget.committedCurrencyLine 90.00 EUR 2",
+    );
+    expect(screen.getByTestId("committed-currencies").textContent).toContain(
+      "timeTracking:budget.committedCurrencyLine 120.00 USD 1",
+    );
+    expect(screen.getByTestId("committed-unknown").textContent).toContain(
+      "timeTracking:budget.committedUnknownLine",
+    );
+    expect(screen.getByTestId("committed-unknown").textContent).toContain(
+      "timeTracking:budget.committedUnscheduled",
+    );
+  });
+
+  it("explains when a complete forecast is in a different currency", async () => {
+    const [first] = base.data;
+    mocks.getProjectBudget.mockResolvedValue({
+      ...base,
+      data: [
+        {
+          ...(first as (typeof base.data)[number]),
+          committedMinor: null,
+          committedByCurrency: [
+            { currency: "USD", amountMinor: 12_000, taskCount: 1 },
+          ],
+          committedUnknown: {
+            taskCount: 0,
+            reasons: { unscheduled: 0, nonTime: 0, unassigned: 0, unrated: 0 },
+            knownRemainingMinutes: 0,
+          },
+        },
+      ],
+    });
+    renderBudget();
+    expect(
+      await screen.findByText(
+        "timeTracking:budget.committedSeparateCurrencies",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId("committed-currencies").textContent).toContain(
+      "120.00 USD",
+    );
   });
 
   it("offers the create form only to budget managers and the minutes breakdowns only when returned", async () => {

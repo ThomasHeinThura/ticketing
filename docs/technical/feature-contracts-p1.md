@@ -406,8 +406,7 @@ specified in [settings-hierarchy.md](feature-contracts-p4.md#settings-hierarchy-
   `columns.<projectId>` (the chosen table columns in display order); both approved by the owner and registered with
   their value schemas in the settings whitelist ([`ST-14`](feature-contracts-p4.md#settings-hierarchy-profile-settings-routes)).
   A `columns` URL parameter still wins over the stored choice. Custom-field columns wait for P4.
-- `VW-21` requires its own registered key and value schema in the settings whitelist before persistence; none is
-  approved yet, so column widths are not persisted.
+- `VW-21`: Thomas approved `columnWidths.<projectId>` on 25 October 2026: a map of registered column IDs to integer widths of 64–800 px, at most 100 entries. It uses project-scoped `user_preference` rows and the existing settings API.
 
 **Board**
 
@@ -421,6 +420,9 @@ specified in [settings-hierarchy.md](feature-contracts-p4.md#settings-hierarchy-
 - `VW-13` Grouping may be switched from state to assignee, priority, label or custom
   field. Grouping by anything other than state disables drag-to-transition and enables
   drag-to-set-that-field.
+  Thomas chose all-label grouping on 25 October: a card appears under every assigned
+  label. Dragging between label groups replaces only the source label and preserves
+  the others; dropping into `(None)` clears all labels.
 - `VW-14` Full keyboard drag: focus a card, `Space` to lift, arrows to move, `Space` to
   drop, `Escape` to cancel, with live-region announcements.
 
@@ -1490,8 +1492,9 @@ This document covers behaviour and interface.
   `attachment-gc` and `attachment-pending-cleanup` runs need no second approval (`PA-12`).
 - `AT-8` Images render inline as thumbnails with a lightbox. Everything else shows an icon,
   filename, size and uploader.
-- `AT-9` PDFs preview in a sandboxed viewer. Office documents do not preview — they
-  download. The viewer's CSP and iframe sandboxing are
+- `AT-9` PDFs preview in a sandboxed viewer. Office documents download without preview.
+  Thomas approved `pdfjs-dist` 6.4.299 on 25 October 2026 for a lazy-loaded sandboxed PDF renderer using existing Kaneo dialogs and controls. Preserve authorized staff/portal attachment reads and the download fallback; record the library license in third-party notices.
+  The viewer's CSP and iframe sandboxing follow
   [security-model.md](#pending-01-architecturesecurity-model)'s (§ Transport and headers).
 
 <a id="attachments-upload-experience"></a>

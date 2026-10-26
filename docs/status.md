@@ -1,39 +1,24 @@
-# Current status — 24 October 2026
+# Current status — 26 October 2026
 
-Nothing below is Thomas-accepted. "Reviewed" means an Opus 5.5 code review plus tests; **nothing from P4 or P5 is browser-verified** (scripted sign-in is blocked by the permission classifier, so Thomas must sign in). P0–P5 are only half finished: partials, missing items and external blockers remain per phase. Counts and carries are in [report data](report/data.json) and `docs/report/audit/audit-P*.json`. Branch `feat/batch1-hierarchy-and-parent-editing`, last pushed commit `1de552577`.
+P0–P5 are committed through `aea5d5702` on `feat/batch1-hierarchy-and-parent-editing`, with current audit/fix work uncommitted. **No fresh phase sign-off or Thomas acceptance.** Earlier aggregate counts and completion claims disagreed with item-level evidence. [Report data](report/data.json) now joins the historical audit rows to the requirement index by ID and preserves the previous summaries separately. Every indexed P0–P5 clause now has a current source assessment. Scoped execution evidence and repair reconciliation are recorded separately; final-tree acceptance remains pending.
 
-## Phases
+| Work | Current status |
+| --- | --- |
+| Local SIT | One active deployment using only `deploy/compose.testing.yml`; source 196 image at both HTTPS hosts on port 443. Old deployments and native API are down. Five services plus a completed migration job. |
+| Data safety | Restored testing copy: all 172 table counts matched, checked business counts preserved, attachments copied. Protected live database untouched; no account reseeding or volume deletion. |
+| Source196 — deployed | Deletion/expiry/digest 42, project reach 226, permissions 118, UI 33 and approval contract 212 pass; retry safeguards 9/9. Browser deletion 58, layout 20 and smoke 10 pass. 1,777 deployed artifacts verified; migration rehearsal preserved 172 table counts. No phase sign-off. |
+| Move planning | Eight planner tests pass after preserving concrete state IDs, ignoring unused catalogue entries and retaining SLA origins across repeat moves. Executor still unbuilt; Thomas approved finish/pause and explicit destination rebind. |
+| Latest UI repairs | Separate Account/Workspace/Project/God Mode pages and Properties independent scroll/resize are deployed. 39 browser assertions, focused 42-test and 57-test suites pass. One Compose deployment; 1,667 current artifacts verified. |
+| Catalogue follow-up | Calendar/label/SLA journey completes with 100 checks on resume; earlier partial evidence retained. One intermittent session-check error remains under investigation. |
+| Local mail | Fixed local Mailpit mode approved, built and deployed; actual portal/invitation delivery remains unverified. No owner decision currently pending. |
+| Remaining P0–P5 | Project move endpoint/remapping; remaining settings/notification/admin gaps; catalogue, bulk-link and placeholder-claim browser journeys; final integration/scans and independent reviews. |
+| Runtime follow-up | God Mode Health flags one expired invitation-delivery envelope awaiting cleanup. Diagnose cleanup before sign-off. |
+| Security gates | Final shipping image and staged secret scan pending. Current image scan: 0 critical/42 high after removing unused wget (two high findings removed); applicability and independent disposition remain open. Secret scan: 18 classified findings, no confirmed exposed credentials; raw failure and independent disposition remain open. Previous dependency audit was clean; final refresh required. |
+| P6 | Approved goals: resumable imports; CSV/Jira/JSM/ADO/Plane/Planner/Power Apps adapters; Kaneo wizard; reconciliation and cutover/rollback rehearsal. Shared P4 import prerequisite is deployed; broader P6 waits for P0–P5 exits. |
+| Reviews / Git | 0/3 formal reviews per phase. No new commit/push/PR/merge; HEAD `aea5d5702`. Current work is uncommitted, with verified source/runtime/database backups. |
 
-| Phase | Git state | Opus review | Implemented and tested | Partial or missing | Browser |
-| --- | --- | --- | --- | --- | --- |
-| P0 Foundation | Committed, pushed | 4 rounds, pass with conditions | 12 of 21 | 6 partial, 3 externally blocked | Not verified |
-| P1 Core work | Committed, pushed | 2 rounds, pass with conditions | 140 of 181 | 28 partial, 8 missing, 5 blocked | Board, sheet, calendar, members, templates, states, approval dialog checked earlier |
-| P2 Service desk | Committed, pushed | 2 rounds, pass with conditions | 117 of 137 | 15 partial, 5 blocked | Not verified |
-| P3 Portal and identity | Committed, pushed | 1 round, pass with conditions | 34 of 53 | 9 partial, 10 blocked (real Entra) | Not verified |
-| P4 Governance | `c02a0892b`, pushed | 5 rounds, round 5 pass | 112 of 152 (5 untested) | 30 partial, 4 missing, 1 blocked | None: step-up flows need Thomas to sign in |
-| P5 Planning, insight, knowledge | `95ba4061d`, pushed | Rounds 1-7 found mediums (all fixed); round 8 pass (no high/medium) | 62 of 91 (3 untested) | 22 partial, 4 missing | None |
+Detailed evidence and earlier checkpoints remain in [report](report/report.html), [audit](report/audit/) and [browser evidence](report/browser/).
 
-P5 not built: cost entries (TC-12/13/14) and so budget actuals are time-only, available hours (TC-20), typed-domain SSO (CP-17/18/27-29, IP-9/29). P5 also has partial reports (no snapshots, drill-down on 12 reports), KB editor gaps, CAB opt-in only, no customer release page. The full carry lists are the `carry` fields for P4 and P5 in data.json.
+Fresh independent Sol review follows integrated fixes, local gates and browser evidence. Up to **three new review rounds per phase**; unresolved findings after round three require a report update and Thomas's decision. A passing review permits feature-branch commit/push, PR and merge, then local deployment/testing. It never means Thomas accepted the product.
 
-## Gates
-
-- **P4 (committed):** full integration 314 files / 4241 tests, API unit 1656, permissions 115, packages/permissions 277. Failing: `check:tokens`/contrast (also fails at HEAD) and 3 stale ci-script tests. Not run: browser, Trivy.
-- **P5 (final tree):** API unit 1863, web unit 2651, permissions 115, typechecks clean, `check:policy`, `check:events`, `check:ui:raw-elements`, inventory, env, i18n and drizzle drift pass. Lane integration suites pass. Full integration on the final tree: 5011 of 5011 tests passed (fresh scratch DB; two harmless file-level noises). Same two known failures; Trivy and browser not run.
-- Port-bound MFA fixture tests fail while a local stack holds the ports. Details in [testing](testing.md).
-
-## Environments
-
-- **Local SIT first.** Agent `http://localhost:1337`, portal `http://portal.localhost:1337`. Technexus public SIT follows only after local passes.
-- **Scratch Postgres 62871** for every test run, with a fresh database per run (edited-in-place migrations need it).
-- **Native Postgres 62870** holds Thomas's live database `taskdesk_browser_journey_1022_test`: backup taken 24 Oct, 130 migrations applied, **no P4 or P5 migrations applied yet**. The running local build predates P4 and P5. Migrate only after P5 passes, dry run on a restored copy first, and only with Thomas's explicit go. Check `__drizzle_migrations` order and `local_factor_policy` first (P4 carry).
-- Never rerun the SIT account seeder. Preserve Thomas's records (HELP-12).
-
-## Next actions
-
-1. Fix the open round-6 findings (satisfaction report double count; time-tracking nav for viewers; lows), build the agreed carries (cost entries and available hours, P4 carries, reports gaps), then Opus rounds until no high/medium (up to 8).
-2. Thomas signs in so P4 and P5 screens can be browser-verified ([cases](screen-test-cases.md)); until then screens stay marked built, not verified.
-3. Decide the open P5 items: build cost entries and available hours, or record deferrals; typed-domain SSO needs a contract.
-4. Dry-run migrations on a restored copy of the live backup, then migrate the live database with Thomas's go.
-5. Close P4 carries (migration journal order 0147 before 0145, missing 0158 snapshot, `automation:manage` enforcement), fix `check:tokens` on `packages/ui` pairs.json, then start P6.
-
-Externally blocked, never marked done: real Entra tenant, external penetration test, signed digest-pinned image. Older handover detail is in [handover](handover.md).
+Real Entra validation is reserved for Thomas; typed-domain routing and local regressions are implemented; detailed failure-audit reconciliation and real-provider validation remain separate. Public Technexus deployment follows successful local SIT. No live-database migration or source-system retirement is authorized by this audit.

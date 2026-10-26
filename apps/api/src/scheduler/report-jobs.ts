@@ -11,7 +11,7 @@ import {
   workspaceDaysToWrite,
   writeWorkspaceDays,
 } from "../report/snapshot.repository";
-import { withJobLease } from "./leader-lock";
+import { assertJobExecutionOwned, withJobLease } from "./leader-lock";
 
 export const METRICS_SNAPSHOT_JOB = "metrics-snapshot";
 export const REPORT_EXPORT_JOB = "report-export";
@@ -51,6 +51,7 @@ export async function runMetricsSnapshot(
         await db.execute<{ id: string }>(sql`SELECT id FROM workspace`)
       ).rows;
       for (const { id } of workspaces) {
+        await assertJobExecutionOwned();
         try {
           if (!(await workspaceFeatureEnabled(id, "feature.reports"))) continue;
           const days = await workspaceDaysToWrite(id, now);
@@ -64,6 +65,7 @@ export async function runMetricsSnapshot(
         }
       }
       try {
+        await assertJobExecutionOwned();
         await pruneSnapshots(now);
       } catch (error) {
         outcome.degraded = true;
@@ -102,10 +104,12 @@ export async function runReportExport(
       };
       try {
         for (const row of await claimExports(EXPORTS_PER_RUN)) {
+          await assertJobExecutionOwned();
           const result = await processExport(row);
           outcome.processed += 1;
           if (result === "failed") outcome.failed += 1;
         }
+        await assertJobExecutionOwned();
         await expireExports(now);
       } catch (error) {
         outcome.degraded = true;

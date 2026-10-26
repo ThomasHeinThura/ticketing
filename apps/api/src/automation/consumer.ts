@@ -145,6 +145,8 @@ export async function enqueueAutomationRuns(
   tx: Transaction,
   envelope: ParentEventEnvelope,
 ): Promise<number> {
+  // Configuration corruption must not promote compatibility keys into triggers.
+  if (!isAutomationEventTrigger(envelope.kind)) return 0;
   const scope = envelope.scope as {
     workspaceId?: string;
     organisationId?: string;

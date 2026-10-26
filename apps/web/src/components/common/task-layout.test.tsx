@@ -38,7 +38,7 @@ describe("original shared task page frame", () => {
     expect(screen.getAllByTestId("properties")).toHaveLength(1);
     expect(sidebar.parentElement).toHaveClass(
       "lg:h-full",
-      "lg:overflow-y-auto",
+      "lg:overflow-hidden",
     );
     viewport.compact = true;
     rerender(

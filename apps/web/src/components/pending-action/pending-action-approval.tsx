@@ -26,6 +26,7 @@ import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { parseAttachmentDeletionSummary } from "@/components/pending-action/attachment-deletion-summary";
 import { parseCommentDeletionSummary } from "@/components/pending-action/comment-deletion-summary";
+import { parseImportChunkSummary } from "@/components/pending-action/import-chunk-summary";
 import {
   getCurrentFactorStatus,
   getInstanceUser,
@@ -45,35 +46,13 @@ import { routes } from "@/lib/routes";
 import useProjectStore from "@/store/project";
 import type { ProjectWithTasks } from "@/types/project";
 import type Task from "@/types/task";
+import { registeredDeletionTarget } from "./registered-deletion-targets";
 
 /**
  * Deletions that moved behind the pending-action flow (registered targets). Their summary
  * carries the target `name`; project and workspace additionally require that exact name
  * to be typed together with a fresh step-up.
  */
-const REGISTERED_DELETION_TARGETS = [
-  "project",
-  "workspace",
-  "label",
-  "project_label",
-  "column",
-  "canned_response",
-  "milestone",
-  "prerequisite",
-  "document_link",
-  "workspace_role",
-  "invitation",
-] as const;
-type RegisteredDeletionTarget = (typeof REGISTERED_DELETION_TARGETS)[number];
-
-function registeredDeletionTarget(
-  targetType: string,
-): RegisteredDeletionTarget | null {
-  return (
-    REGISTERED_DELETION_TARGETS.find((target) => target === targetType) ?? null
-  );
-}
-
 /** Registered-target cache prefixes that an approved deletion makes stale. */
 const REGISTERED_DELETION_QUERY_KEYS = [
   "projects",
@@ -88,6 +67,17 @@ const REGISTERED_DELETION_QUERY_KEYS = [
   "columns",
   "canned-responses",
   "tasks",
+  "api-keys",
+  "custom-fields",
+  "teams",
+  "service-management",
+  "time-tracking",
+  "webhooks",
+  "automations",
+  "kb",
+  "agile",
+  "reports",
+  "pages",
 ] as const;
 
 /** The Kaneo task page: `/dashboard/workspace/:workspaceId/project/:projectId/task/:taskId`. */
@@ -137,6 +127,99 @@ function summaryRows(value: unknown): Record<string, unknown>[] {
           row !== null && typeof row === "object" && !Array.isArray(row),
       )
     : [];
+}
+
+type OrganisationPurgeImpact = {
+  organisations: number;
+  projects: number;
+  people: number;
+  workItems: number;
+  comments: number;
+  submissions: number;
+  attachments: number;
+  storageObjectsQueued: number;
+};
+
+type HardPurgeSummary = {
+  targetType: "work_item" | "project" | "organisation";
+  label: string;
+  workItems: number;
+  comments: number;
+  attachments: number;
+  organisationImpact?: OrganisationPurgeImpact;
+};
+
+function isHardPurgeTargetType(
+  value: string,
+): value is HardPurgeSummary["targetType"] {
+  return (
+    value === "work_item" || value === "project" || value === "organisation"
+  );
+}
+
+function parseHardPurgeSummary(action: {
+  action: string;
+  targetType: string;
+  targetIds: string[];
+  summary: Record<string, unknown> | undefined;
+}): HardPurgeSummary | null {
+  if (
+    action.action !== "purge" ||
+    !isHardPurgeTargetType(action.targetType) ||
+    action.targetIds.length !== 1 ||
+    !action.summary ||
+    action.summary.targetType !== action.targetType ||
+    action.summary.targetId !== action.targetIds[0] ||
+    action.summary.legalHold !== "none" ||
+    action.summary.retention !== "soft_deleted" ||
+    typeof action.summary.label !== "string" ||
+    action.summary.label.trim().length === 0
+  )
+    return null;
+  const safeCount = (value: unknown) =>
+    typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+      ? value
+      : null;
+  const workItems = safeCount(action.summary.workItems);
+  const comments = safeCount(action.summary.comments);
+  const attachments = safeCount(action.summary.attachments);
+  if (workItems === null || comments === null || attachments === null)
+    return null;
+
+  if (action.targetType !== "organisation") {
+    return {
+      targetType: action.targetType,
+      label: action.summary.label,
+      workItems,
+      comments,
+      attachments,
+    };
+  }
+
+  const raw = action.summary.impact;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const count = (key: keyof OrganisationPurgeImpact) =>
+    safeCount((raw as Record<string, unknown>)[key]);
+  const organisationImpact = {
+    organisations: count("organisations"),
+    projects: count("projects"),
+    people: count("people"),
+    workItems: count("workItems"),
+    comments: count("comments"),
+    submissions: count("submissions"),
+    attachments: count("attachments"),
+    storageObjectsQueued: count("storageObjectsQueued"),
+  };
+  if (Object.values(organisationImpact).some((value) => value === null))
+    return null;
+  return {
+    targetType: "organisation",
+    label: action.summary.label,
+    workItems,
+    comments,
+    attachments,
+    organisationImpact: organisationImpact as OrganisationPurgeImpact,
+  };
 }
 
 /** The i18n key that explains a failed approval attempt (proof or approve step). */
@@ -203,6 +286,17 @@ export function PendingActionApproval({
   });
   const isUserDeactivation =
     action.data?.action === "delete" && action.data.targetType === "user";
+  const isHardPurge = action.data?.action === "purge";
+  const hardPurgeSummary = action.data
+    ? parseHardPurgeSummary(action.data)
+    : null;
+  const hardPurgeRedacted = isHardPurge && hardPurgeSummary === null;
+  const isHardPurgeTypedName =
+    isHardPurge &&
+    action.data?.confirmation === "typed_name_step_up" &&
+    hardPurgeSummary !== null;
+  const isOrganisationHardPurge =
+    isHardPurge && action.data?.targetType === "organisation";
   const registeredTarget =
     action.data?.action === "delete"
       ? registeredDeletionTarget(action.data.targetType)
@@ -211,6 +305,7 @@ export function PendingActionApproval({
     isUserDeactivation ||
     (registeredTarget !== null &&
       action.data?.confirmation === "typed_name_step_up") ||
+    isHardPurgeTypedName ||
     action.data?.confirmation === "typed_count_step_up";
   const targetUserId = isUserDeactivation
     ? action.data?.targetIds[0]
@@ -235,7 +330,10 @@ export function PendingActionApproval({
     ),
   });
   useEffect(() => {
-    if (factor.data) setMethod(factor.data.enabled ? "totp" : "password");
+    if (factor.data) {
+      setMethod(factor.data.availableMethods[0] ?? "password");
+      setSecret("");
+    }
   }, [factor.data]);
   const approve = useMutation({
     mutationFn: approveOwnPendingAction,
@@ -304,6 +402,10 @@ export function PendingActionApproval({
     action.data.targetType === "work_item" &&
     (action.data.confirmation === "typed_count" ||
       action.data.confirmation === "typed_count_step_up");
+  const isImportChunkTarget = action.data.targetType === "import_chunk";
+  const importChunkSummary = parseImportChunkSummary(action.data);
+  const isImportChunk = importChunkSummary !== null;
+  const importChunkRedacted = isImportChunkTarget && !isImportChunk;
   const bulkSummary =
     isBulkDeletion &&
     action.data.summary?.redacted !== true &&
@@ -383,6 +485,46 @@ export function PendingActionApproval({
     typeof action.data.summary?.projectName === "string"
       ? action.data.summary.projectName
       : null;
+  const registeredProjectImpact = (() => {
+    const raw = action.data.summary?.impact;
+    if (
+      action.data.targetType !== "project" ||
+      action.data.summary?.redacted === true ||
+      raw === null ||
+      typeof raw !== "object" ||
+      Array.isArray(raw)
+    )
+      return null;
+    const count = (key: string) => {
+      const value = (raw as Record<string, unknown>)[key];
+      return typeof value === "number" && Number.isInteger(value) && value >= 0
+        ? value
+        : null;
+    };
+    const workItems = count("workItems");
+    const legacyTasks = count("legacyTasks");
+    const members = count("members");
+    const attachments = count("attachments");
+    const workflowRules = count("workflowRules");
+    const sourceLinks = count("sourceLinks");
+    if (
+      workItems === null ||
+      legacyTasks === null ||
+      members === null ||
+      attachments === null ||
+      workflowRules === null ||
+      sourceLinks === null
+    )
+      return null;
+    return {
+      workItems,
+      legacyTasks,
+      members,
+      attachments,
+      workflowRules,
+      sourceLinks,
+    };
+  })();
   const registeredRedacted = registeredTarget !== null && !registeredName;
   const isRegisteredTypedName =
     registeredTarget !== null &&
@@ -437,9 +579,18 @@ export function PendingActionApproval({
               ? action.data.summary.projectName
               : "",
           requesterName:
-            typeof action.data.summary.requesterName === "string"
-              ? action.data.summary.requesterName
+            typeof action.data.summary.customerRequesterName === "string"
+              ? action.data.summary.customerRequesterName
               : "",
+          requestedByName:
+            typeof action.data.summary.requestedByName === "string"
+              ? action.data.summary.requestedByName
+              : "",
+          customerVisibility:
+            action.data.summary.customerVisibility === "organisation" ||
+            action.data.summary.customerVisibility === "private"
+              ? action.data.summary.customerVisibility
+              : "private",
           // `WI-21`: the item is retained for 30 days, then purged (restore ships in P2).
           recoveryDays:
             typeof action.data.summary.recoveryDays === "number"
@@ -484,32 +635,44 @@ export function PendingActionApproval({
     !relationRedacted &&
     !bulkRedacted &&
     !registeredRedacted &&
+    !hardPurgeRedacted &&
+    !importChunkRedacted &&
     ((isDeactivationContract && email !== null) ||
       isRegisteredTypedName ||
+      isHardPurgeTypedName ||
       isClickContract ||
-      isBulkDeletion);
+      isBulkDeletion ||
+      isImportChunk);
+  const availableMethods = factor.data?.availableMethods ?? [];
+  const effectiveMethod = method;
   const factorUnavailable =
     factor.isLoading ||
     factor.isError ||
     !factor.data ||
-    (factor.data.required && !factor.data.enabled);
-  const effectiveMethod = factor.data?.enabled ? method : "password";
+    availableMethods.length === 0 ||
+    !availableMethods.includes(effectiveMethod);
 
   async function approveAction() {
     if (commentRedacted || attachmentRedacted) return;
     if (registeredRedacted) return;
+    if (hardPurgeRedacted) return;
     if (isDeactivationContract && (!email || typedName !== email)) return;
     if (isRegisteredTypedName && typedName !== registeredName) return;
+    if (isHardPurgeTypedName && typedName !== hardPurgeSummary?.label) return;
     if (
       isBulkDeletion &&
       (!bulkSummary || bulkRedacted || typedCount !== String(bulkSummary.count))
     )
       return;
+    if (isImportChunk && typedCount !== String(importChunkSummary.recordCount))
+      return;
     if (
       !isDeactivationContract &&
       !isRegisteredTypedName &&
+      !isHardPurgeTypedName &&
       !isClickContract &&
-      !isBulkDeletion
+      !isBulkDeletion &&
+      !isImportChunk
     )
       return;
     const capturedIntent = actionLifecycle.capture();
@@ -526,7 +689,9 @@ export function PendingActionApproval({
         if (!isCurrentIntent()) return;
         approved = await approve.mutateAsync({
           id,
-          ...(isDeactivationContract || isRegisteredTypedName
+          ...(isDeactivationContract ||
+          isRegisteredTypedName ||
+          isHardPurgeTypedName
             ? { typedName }
             : { typedCount }),
           stepUpToken,
@@ -592,10 +757,26 @@ export function PendingActionApproval({
               }),
             )
           : []),
+        ...(executed && action.data?.targetType === "identity_connection"
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: ["god-mode", "identity-connections"],
+                refetchType: "all",
+              }),
+            ]
+          : []),
+        ...(isOrganisationHardPurge
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: ["god-mode", "organisations"],
+                refetchType: "all",
+              }),
+            ]
+          : []),
       ]);
       if (!isCurrentIntent()) return;
       if (needsStepUp) setSecret("");
-      if (isRegisteredTypedName) setTypedName("");
+      if (isRegisteredTypedName || isHardPurgeTypedName) setTypedName("");
       if (isDeactivationContract) {
         setSecret("");
         setNotice(t("pendingActions:dynamic.deactivationApproved"));
@@ -603,7 +784,14 @@ export function PendingActionApproval({
       if (executed) onExecuted?.();
     } catch (cause) {
       if (!isCurrentIntent()) return;
-      setError(t(approvalErrorKey(cause, isRegisteredTypedName)));
+      setError(
+        t(
+          approvalErrorKey(
+            cause,
+            isRegisteredTypedName || isHardPurgeTypedName,
+          ),
+        ),
+      );
       setSecret("");
     }
   }
@@ -696,22 +884,41 @@ export function PendingActionApproval({
           approve.isPending ||
           (isDeactivationContract && typedName !== email) ||
           (isRegisteredTypedName && typedName !== registeredName) ||
+          (isHardPurgeTypedName && typedName !== hardPurgeSummary?.label) ||
           (isBulkDeletion && typedCount !== String(bulkSummary?.count)) ||
-          (needsStepUp && (factorUnavailable || secret.length === 0))
+          (isImportChunk &&
+            typedCount !== String(importChunkSummary.recordCount)) ||
+          (needsStepUp &&
+            (factorUnavailable ||
+              (effectiveMethod !== "sso_prompt_login" && secret.length === 0)))
         }
         onClick={() => void approveAction()}
         variant={
-          isClickContract || isBulkDeletion || isRegisteredTypedName
+          isClickContract ||
+          isBulkDeletion ||
+          isImportChunk ||
+          isRegisteredTypedName ||
+          isHardPurgeTypedName
             ? "destructive"
             : "default"
         }
       >
-        {isClickContract || isBulkDeletion || isRegisteredTypedName
-          ? t(
-              action.data.targetType === "relation"
-                ? "tasks:relations.removeRelation"
-                : "common:actions.delete",
-            )
+        {isClickContract ||
+        isBulkDeletion ||
+        isImportChunk ||
+        isRegisteredTypedName ||
+        isHardPurgeTypedName
+          ? isImportChunk
+            ? t(
+                importChunkSummary.operation === "records"
+                  ? "pendingActions:importChunk.approveRecords"
+                  : "pendingActions:importChunk.approveLinks",
+              )
+            : t(
+                action.data.targetType === "relation"
+                  ? "tasks:relations.removeRelation"
+                  : "common:actions.delete",
+              )
           : t("pendingActions:copy.a2b52d875e8b")}
       </Button>
       <Button
@@ -725,27 +932,62 @@ export function PendingActionApproval({
   );
 
   const actionLabel =
-    action.data.action === "delete" && action.data.targetType === "user"
-      ? t("pendingActions:dynamic.deactivatePerson", { email: "" })
-      : action.data.targetType === "attachment"
-        ? t("pendingActions:attachment.action")
-        : action.data.targetType === "comment"
-          ? t("pendingActions:comment.action")
-          : action.data.targetType === "relation"
-            ? t("tasks:relations.removeRelation")
-            : isBulkDeletion
-              ? t("pendingActions:bulk.action")
-              : registeredTarget
-                ? t(`pendingActions:registered.actions.${registeredTarget}`)
-                : action.data.targetType === "work_item"
-                  ? t("tasks:delete.action")
-                  : action.data.action.replaceAll("_", " ");
+    isHardPurge && hardPurgeSummary
+      ? t(
+          hardPurgeSummary.targetType === "organisation"
+            ? "pendingActions:hardPurge.organisationAction"
+            : hardPurgeSummary.targetType === "project"
+              ? "pendingActions:hardPurge.projectAction"
+              : "pendingActions:hardPurge.workItemAction",
+          {
+            defaultValue:
+              hardPurgeSummary.targetType === "organisation"
+                ? "Permanently purge organisation"
+                : hardPurgeSummary.targetType === "project"
+                  ? "Permanently purge project"
+                  : "Permanently purge request",
+          },
+        )
+      : isHardPurge
+        ? t("pendingActions:hardPurge.unavailableTitle", {
+            defaultValue: "Purge summary unavailable",
+          })
+        : action.data.action === "delete" && action.data.targetType === "user"
+          ? t("pendingActions:dynamic.deactivatePerson", { email: "" })
+          : action.data.targetType === "attachment"
+            ? t("pendingActions:attachment.action")
+            : action.data.targetType === "comment"
+              ? t("pendingActions:comment.action")
+              : action.data.targetType === "relation"
+                ? t("tasks:relations.removeRelation")
+                : isBulkDeletion
+                  ? t("pendingActions:bulk.action")
+                  : isImportChunkTarget
+                    ? t(
+                        importChunkSummary
+                          ? importChunkSummary.operation === "records"
+                            ? "pendingActions:importChunk.actionRecords"
+                            : "pendingActions:importChunk.actionLinks"
+                          : "pendingActions:importChunk.unavailable",
+                      )
+                    : registeredTarget
+                      ? t(
+                          `pendingActions:registered.actions.${registeredTarget}`,
+                        )
+                      : action.data.targetType === "work_item"
+                        ? t("tasks:delete.action")
+                        : action.data.action.replaceAll("_", " ");
   // In place, the approval is the one confirmation: it is titled with the destructive
   // action (for example "Delete project"), not a generic "pending action".
   const heading =
     action.data.action === "delete" && action.data.targetType === "user"
       ? t("pendingActions:dynamic.approveDeactivation")
-      : isDialog && (isClickContract || isBulkDeletion || isRegisteredTypedName)
+      : isDialog &&
+          (isClickContract ||
+            isBulkDeletion ||
+            isImportChunk ||
+            isRegisteredTypedName ||
+            isHardPurgeTypedName)
         ? actionLabel
         : t("pendingActions:dynamic.pendingAction");
   const requestedFrom = `${t("pendingActions:dynamic.requestedFrom", {
@@ -762,7 +1004,18 @@ export function PendingActionApproval({
           {t("pendingActions:copy.61ad50a9b918")}
         </dt>
         <dd>
-          {bulkSummary && !bulkRedacted ? (
+          {importChunkSummary ? (
+            <p>
+              {t(
+                importChunkSummary.operation === "records"
+                  ? "pendingActions:importChunk.countRecords"
+                  : "pendingActions:importChunk.countLinks",
+                { count: importChunkSummary.recordCount },
+              )}
+            </p>
+          ) : importChunkRedacted ? (
+            t("pendingActions:importChunk.hidden")
+          ) : bulkSummary && !bulkRedacted ? (
             <div className="space-y-2">
               <p>
                 {t("pendingActions:bulk.count", {
@@ -821,6 +1074,10 @@ export function PendingActionApproval({
             </span>
           ) : relationRedacted ? (
             t("workItems:relations.hidden", { count: 1 })
+          ) : hardPurgeSummary ? (
+            <span>{hardPurgeSummary.label}</span>
+          ) : hardPurgeRedacted ? (
+            t("pendingActions:registered.hidden")
           ) : registeredName ? (
             <span>
               {registeredName}
@@ -995,18 +1252,37 @@ export function PendingActionApproval({
         </p>
       )}
       {workItemSummary && (
-        // `WI-23`: who asked for the deletion and how long the item is retained.
+        // `WI-23`: identify the customer requester, deleting actor, portal effect and retention.
         <section
           className="space-y-1 text-muted-foreground text-sm"
           aria-label={t("workItems:deletion.impact")}
         >
           {workItemSummary.requesterName ? (
             <p>
-              {t("workItems:deletion.requestedBy", {
+              {t("workItems:deletion.customerRequester", {
                 name: workItemSummary.requesterName,
               })}
             </p>
           ) : null}
+          {workItemSummary.requestedByName ? (
+            <p>
+              {t("workItems:deletion.requestedBy", {
+                name: workItemSummary.requestedByName,
+              })}
+            </p>
+          ) : null}
+          <p>
+            {t("workItems:deletion.portalVisibility", {
+              visibility: t(
+                `workItems:deletion.visibility.${workItemSummary.customerVisibility}`,
+              ),
+            })}
+          </p>
+          <p>
+            {t(
+              `workItems:deletion.portalRemoval.${workItemSummary.customerVisibility}`,
+            )}
+          </p>
           <p>
             {t("workItems:deletion.retention", {
               days: workItemSummary.recoveryDays,
@@ -1014,6 +1290,161 @@ export function PendingActionApproval({
           </p>
         </section>
       )}
+      {registeredTarget === "project" && registeredProjectImpact && (
+        <section
+          className="space-y-1 text-muted-foreground text-sm"
+          aria-label={t("pendingActions:registered.projectImpact")}
+        >
+          <p>
+            {t("pendingActions:registered.projectWorkItems", {
+              count: registeredProjectImpact.workItems,
+            })}
+          </p>
+          <p>
+            {t("pendingActions:registered.projectLegacyTasks", {
+              count: registeredProjectImpact.legacyTasks,
+            })}
+          </p>
+          <p>
+            {t("pendingActions:registered.projectMembers", {
+              count: registeredProjectImpact.members,
+            })}
+          </p>
+          <p>
+            {t("pendingActions:registered.projectAttachments", {
+              count: registeredProjectImpact.attachments,
+            })}
+          </p>
+          <p>
+            {t("pendingActions:registered.projectWorkflowRules", {
+              count: registeredProjectImpact.workflowRules,
+            })}
+          </p>
+          <p>
+            {t("pendingActions:registered.projectSourceLinks", {
+              count: registeredProjectImpact.sourceLinks,
+            })}
+          </p>
+          <p>
+            {t("pendingActions:registered.projectRecovery", {
+              days:
+                typeof action.data.summary?.recoveryDays === "number"
+                  ? action.data.summary.recoveryDays
+                  : 30,
+            })}
+          </p>
+        </section>
+      )}
+      {isHardPurge &&
+        (hardPurgeSummary ? (
+          <section
+            className="space-y-3 text-sm"
+            aria-label={t("pendingActions:hardPurge.impactTitle", {
+              defaultValue: "Purge impact",
+            })}
+          >
+            <Alert variant="warning">
+              <AlertTitle>
+                {t("pendingActions:hardPurge.impactTitle", {
+                  defaultValue: "Purge impact",
+                })}
+              </AlertTitle>
+              <AlertDescription>
+                {t(
+                  isOrganisationHardPurge
+                    ? "pendingActions:hardPurge.irreversibleImpact"
+                    : "pendingActions:hardPurge.irreversibleTargetImpact",
+                  {
+                    defaultValue: isOrganisationHardPurge
+                      ? "This permanently removes the organisation and its customer data. Audit history is retained, and unrelated projects in shared workspaces are preserved."
+                      : "This permanently removes the selected soft-deleted target and its retained data. Audit history is retained.",
+                  },
+                )}
+              </AlertDescription>
+            </Alert>
+            <ul className="space-y-1 text-muted-foreground">
+              <li>
+                {t("pendingActions:hardPurge.workItemsCount", {
+                  count: hardPurgeSummary.workItems,
+                  defaultValue: `Requests and work items: ${hardPurgeSummary.workItems}`,
+                })}
+              </li>
+              <li>
+                {t("pendingActions:hardPurge.commentsCount", {
+                  count: hardPurgeSummary.comments,
+                  defaultValue: `Comments: ${hardPurgeSummary.comments}`,
+                })}
+              </li>
+              <li>
+                {t("pendingActions:hardPurge.attachmentsCount", {
+                  count: hardPurgeSummary.attachments,
+                  defaultValue: `Attachments: ${hardPurgeSummary.attachments}`,
+                })}
+              </li>
+              {hardPurgeSummary.organisationImpact ? (
+                <>
+                  <li>
+                    {t("pendingActions:hardPurge.organisationsCount", {
+                      count: hardPurgeSummary.organisationImpact.organisations,
+                      defaultValue: `Organisations: ${hardPurgeSummary.organisationImpact.organisations}`,
+                    })}
+                  </li>
+                  <li>
+                    {t("pendingActions:hardPurge.projectsCount", {
+                      count: hardPurgeSummary.organisationImpact.projects,
+                      defaultValue: `Projects: ${hardPurgeSummary.organisationImpact.projects}`,
+                    })}
+                  </li>
+                  <li>
+                    {t("pendingActions:hardPurge.peopleCount", {
+                      count: hardPurgeSummary.organisationImpact.people,
+                      defaultValue: `People: ${hardPurgeSummary.organisationImpact.people}`,
+                    })}
+                  </li>
+                  <li>
+                    {t("pendingActions:hardPurge.submissionsCount", {
+                      count: hardPurgeSummary.organisationImpact.submissions,
+                      defaultValue: `Portal submissions: ${hardPurgeSummary.organisationImpact.submissions}`,
+                    })}
+                  </li>
+                  <li>
+                    {t("pendingActions:hardPurge.storageObjectsCount", {
+                      count:
+                        hardPurgeSummary.organisationImpact
+                          .storageObjectsQueued,
+                      defaultValue: `Storage objects queued for cleanup: ${hardPurgeSummary.organisationImpact.storageObjectsQueued}`,
+                    })}
+                  </li>
+                </>
+              ) : null}
+            </ul>
+            <p>
+              {t("pendingActions:hardPurge.noLegalHold", {
+                defaultValue: "Legal hold check: none found.",
+              })}
+            </p>
+            <p>
+              {t("pendingActions:hardPurge.retention", {
+                defaultValue:
+                  "Retention check: this target is already soft-deleted.",
+              })}
+            </p>
+          </section>
+        ) : (
+          <Alert variant="error">
+            <AlertTitle>
+              {t("pendingActions:hardPurge.unavailableTitle", {
+                defaultValue: "Purge summary unavailable",
+              })}
+            </AlertTitle>
+            <AlertDescription>
+              {t("pendingActions:hardPurge.unavailableDescription", {
+                defaultValue:
+                  "Reload this pending action before approving. The target and eligibility details could not be verified.",
+              })}
+            </AlertDescription>
+          </Alert>
+        ))}
       {action.data.action === "delete" && action.data.targetType === "user" && (
         <p className="text-sm text-muted-foreground">
           {t("pendingActions:copy.71f269fe7eee")}
@@ -1061,10 +1492,22 @@ export function PendingActionApproval({
               <p className="text-xs text-muted-foreground">{email}</p>
             </div>
           )}
-          {isRegisteredTypedName && registeredName && (
+          {(isRegisteredTypedName && registeredName) ||
+          (isHardPurgeTypedName && hardPurgeSummary) ? (
             <div className="space-y-2">
               <Label htmlFor="confirm-target-name">
-                {t("pendingActions:registered.confirmName")}
+                {t(
+                  isHardPurgeTypedName
+                    ? "pendingActions:hardPurge.confirmTarget"
+                    : registeredTarget === "project"
+                      ? "pendingActions:registered.confirmProjectKey"
+                      : "pendingActions:registered.confirmName",
+                  {
+                    defaultValue: isHardPurgeTypedName
+                      ? "Type the exact target label"
+                      : "Type the exact name",
+                  },
+                )}
               </Label>
               <Input
                 id="confirm-target-name"
@@ -1072,9 +1515,11 @@ export function PendingActionApproval({
                 value={typedName}
                 onChange={(event) => setTypedName(event.target.value)}
               />
-              <p className="text-xs text-muted-foreground">{registeredName}</p>
+              <p className="text-xs text-muted-foreground">
+                {hardPurgeSummary?.label ?? registeredName}
+              </p>
             </div>
-          )}
+          ) : null}
           {isBulkDeletion && bulkSummary && (
             <div className="space-y-2">
               <Label htmlFor="confirm-item-count">
@@ -1091,61 +1536,101 @@ export function PendingActionApproval({
               />
             </div>
           )}
+          {isImportChunk && importChunkSummary && (
+            <div className="space-y-2">
+              <Label htmlFor="confirm-import-chunk-count">
+                {t(
+                  importChunkSummary.operation === "records"
+                    ? "pendingActions:importChunk.confirmRecords"
+                    : "pendingActions:importChunk.confirmLinks",
+                  { count: importChunkSummary.recordCount },
+                )}
+              </Label>
+              <Input
+                id="confirm-import-chunk-count"
+                inputMode="numeric"
+                autoComplete="off"
+                value={typedCount}
+                onChange={(event) => setTypedCount(event.currentTarget.value)}
+              />
+            </div>
+          )}
           {needsStepUp && (
             <>
-              {factor.data?.enabled && (
+              {availableMethods.length > 1 && (
                 <div className="space-y-2">
                   <Label htmlFor="pending-action-step-up-method">
                     {t("pendingActions:copy.3a725803c822")}
                   </Label>
                   <Select
                     value={method}
-                    onValueChange={(value) =>
-                      setMethod(
-                        value === "backup_code" ? "backup_code" : "totp",
-                      )
-                    }
+                    onValueChange={(value) => {
+                      if (availableMethods.includes(value as StepUpMethod)) {
+                        setMethod(value as StepUpMethod);
+                        setSecret("");
+                      }
+                    }}
                   >
                     <SelectTrigger id="pending-action-step-up-method">
                       <SelectValue>
-                        {method === "backup_code"
-                          ? t("pendingActions:copy.2a8367498e23")
-                          : t("pendingActions:copy.2908b4e9c428")}
+                        {method === "password"
+                          ? t("pendingActions:dynamic.accountPassword")
+                          : method === "totp"
+                            ? t("pendingActions:copy.2908b4e9c428")
+                            : method === "backup_code"
+                              ? t("pendingActions:copy.2a8367498e23")
+                              : t("identityConnections:stepUp.ssoPromptLogin")}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="totp">
-                        {t("pendingActions:copy.2908b4e9c428")}
-                      </SelectItem>
-                      <SelectItem value="backup_code">
-                        {t("pendingActions:copy.2a8367498e23")}
-                      </SelectItem>
+                      {availableMethods.map((availableMethod) => (
+                        <SelectItem
+                          key={availableMethod}
+                          value={availableMethod}
+                        >
+                          {availableMethod === "password"
+                            ? t("pendingActions:dynamic.accountPassword")
+                            : availableMethod === "totp"
+                              ? t("pendingActions:copy.2908b4e9c428")
+                              : availableMethod === "backup_code"
+                                ? t("pendingActions:copy.2a8367498e23")
+                                : t(
+                                    "identityConnections:stepUp.ssoPromptLogin",
+                                  )}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               )}
-              <div className="space-y-2">
-                <Label htmlFor="pending-action-step-up-secret">
-                  {t(
-                    effectiveMethod === "password"
-                      ? "pendingActions:dynamic.accountPassword"
-                      : effectiveMethod === "totp"
-                        ? "pendingActions:dynamic.authenticatorCode"
-                        : "pendingActions:dynamic.backupCode",
-                  )}
-                </Label>
-                <Input
-                  id="pending-action-step-up-secret"
-                  type={effectiveMethod === "password" ? "password" : "text"}
-                  autoComplete={
-                    effectiveMethod === "password"
-                      ? "current-password"
-                      : "one-time-code"
-                  }
-                  value={secret}
-                  onChange={(event) => setSecret(event.target.value)}
-                />
-              </div>
+              {effectiveMethod === "sso_prompt_login" ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("identityConnections:stepUp.ssoPromptLoginDescription")}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="pending-action-step-up-secret">
+                    {t(
+                      effectiveMethod === "password"
+                        ? "pendingActions:dynamic.accountPassword"
+                        : effectiveMethod === "totp"
+                          ? "pendingActions:dynamic.authenticatorCode"
+                          : "pendingActions:dynamic.backupCode",
+                    )}
+                  </Label>
+                  <Input
+                    id="pending-action-step-up-secret"
+                    type={effectiveMethod === "password" ? "password" : "text"}
+                    autoComplete={
+                      effectiveMethod === "password"
+                        ? "current-password"
+                        : "one-time-code"
+                    }
+                    value={secret}
+                    onChange={(event) => setSecret(event.target.value)}
+                  />
+                </div>
+              )}
               {factorUnavailable && (
                 <Alert variant="error">
                   <AlertTitle>

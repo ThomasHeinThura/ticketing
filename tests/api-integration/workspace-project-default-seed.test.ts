@@ -13,6 +13,10 @@ import { and, eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import {
+  APPROVED_TEMPLATE_KEY,
+  CAB_WORKFLOW_KEY,
+} from "../../apps/api/src/service-management/cab-template";
 import { DEFAULT_STATE_TEMPLATES } from "../../apps/api/src/utils/default-state-templates";
 import { DEFAULT_WORK_ITEM_TYPES } from "../../apps/api/src/utils/default-work-item-types";
 import { defaultWorkflowId } from "../../apps/api/src/utils/seed-default-workflow";
@@ -46,7 +50,7 @@ describe("API integration: workspace/project default seeding (#309)", () => {
     await resetTestDatabase();
   });
 
-  it("seeds the default work item types and state templates for a fresh workspace", async () => {
+  it("seeds default types, CAB-required change workflow and states for a fresh workspace", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
 
@@ -71,20 +75,81 @@ describe("API integration: workspace/project default seeding (#309)", () => {
         isEpic: expected.isEpic ?? false,
         isChange: expected.isChange ?? false,
       });
-      expect(row?.workflowId).toBe(defaultWorkflowId(workspace.id));
+      if (expected.isChange) {
+        const workflow = await db.query.workflowTable.findFirst({
+          where: eq(schema.workflowTable.id, row?.workflowId ?? ""),
+        });
+        expect(workflow?.key).toBe(CAB_WORKFLOW_KEY);
+      } else {
+        expect(row?.workflowId).toBe(defaultWorkflowId(workspace.id));
+      }
     }
+
+    const change = types.find((t) => t.key === "change");
+    const changeWorkflow = await db.query.workflowTable.findFirst({
+      where: eq(schema.workflowTable.id, change?.workflowId ?? ""),
+    });
+    const changeEdges = await db.query.workflowTransitionTable.findMany({
+      where: eq(
+        schema.workflowTransitionTable.versionId,
+        changeWorkflow?.activeVersionId ?? "",
+      ),
+    });
+    expect(changeWorkflow?.key).toBe(CAB_WORKFLOW_KEY);
+    expect(changeEdges.some((edge) => edge.requiresCab)).toBe(true);
+    expect(
+      changeEdges.filter((edge) => edge.requiresCab).length,
+    ).toBeGreaterThan(0);
 
     const templates = await db.query.stateTemplateTable.findMany({
       where: eq(schema.stateTemplateTable.workspaceId, workspace.id),
     });
-    expect(templates).toHaveLength(DEFAULT_STATE_TEMPLATES.length);
+    expect(templates).toHaveLength(DEFAULT_STATE_TEMPLATES.length + 1);
     expect(new Set(templates.map((t) => t.key))).toEqual(
-      new Set(DEFAULT_STATE_TEMPLATES.map((t) => t.key)),
+      new Set([
+        ...DEFAULT_STATE_TEMPLATES.map((t) => t.key),
+        APPROVED_TEMPLATE_KEY,
+      ]),
     );
     for (const expected of DEFAULT_STATE_TEMPLATES) {
       const row = templates.find((t) => t.key === expected.key);
       expect(row).toMatchObject({ name: expected.name, group: expected.group });
     }
+    expect(
+      templates.find((t) => t.key === APPROVED_TEMPLATE_KEY),
+    ).toMatchObject({
+      name: "Approved",
+      group: "unstarted",
+    });
+    const toDo = templates.find((t) => t.key === "to-do");
+    const inProgress = templates.find((t) => t.key === "in-progress");
+    const approved = templates.find((t) => t.key === APPROVED_TEMPLATE_KEY);
+    expect(
+      changeEdges.some(
+        (edge) =>
+          edge.fromStateTemplateId === toDo?.id &&
+          edge.toStateTemplateId === inProgress?.id,
+      ),
+    ).toBe(false);
+    expect(
+      changeEdges.some(
+        (edge) =>
+          edge.fromStateTemplateId === toDo?.id &&
+          edge.toStateTemplateId === approved?.id &&
+          edge.requiresCab,
+      ),
+    ).toBe(true);
+
+    const templateStatus = await app.request(
+      `/api/change-cab-template?workspaceId=${workspace.id}`,
+      { headers: { cookie: owner.cookie } },
+    );
+    expect(templateStatus.status).toBe(200);
+    expect(await templateStatus.json()).toMatchObject({
+      applied: true,
+      changeTypeCount: 1,
+      adoptedProjectIds: [],
+    });
   });
 
   it("seeds a fresh project's concrete states from the workspace templates, with exactly one default, and a work item can then be created with no fixture SQL", async () => {
@@ -115,7 +180,16 @@ describe("API integration: workspace/project default seeding (#309)", () => {
     const states = await db.query.stateTable.findMany({
       where: eq(schema.stateTable.projectId, project.id),
     });
-    expect(states).toHaveLength(DEFAULT_STATE_TEMPLATES.length);
+    expect(states).toHaveLength(DEFAULT_STATE_TEMPLATES.length + 1);
+    const approvedTemplate = await db.query.stateTemplateTable.findFirst({
+      where: and(
+        eq(schema.stateTemplateTable.workspaceId, workspace.id),
+        eq(schema.stateTemplateTable.key, APPROVED_TEMPLATE_KEY),
+      ),
+    });
+    expect(
+      states.some((state) => state.stateTemplateId === approvedTemplate?.id),
+    ).toBe(true);
 
     const defaults = states.filter((s) => s.isDefault);
     expect(defaults).toHaveLength(1);
@@ -126,6 +200,7 @@ describe("API integration: workspace/project default seeding (#309)", () => {
         defaults[0]?.stateTemplateId ?? "",
       ),
     });
+    expect(defaultTemplate?.key).toBe("to-do");
     expect(defaultTemplate?.group).toBe("unstarted");
 
     // No fixture SQL from here: the type comes from the workspace's own seeded rows.
@@ -159,6 +234,46 @@ describe("API integration: workspace/project default seeding (#309)", () => {
     expect(workItem.key).toBe(`${project.slug}-1`);
     expect(workItem.typeId).toBe(type?.id);
     expect(workItem.stateId).toBe(defaults[0]?.id);
+
+    const changeType = await db.query.workItemTypeTable.findFirst({
+      where: and(
+        eq(schema.workItemTypeTable.workspaceId, workspace.id),
+        eq(schema.workItemTypeTable.key, "change"),
+      ),
+    });
+    const changeResponse = await csrfRequest(
+      app,
+      `/api/projects/${project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: owner.cookie },
+        body: JSON.stringify({
+          typeId: changeType?.id,
+          title: "Planned change",
+        }),
+      },
+      owner.cookie,
+    );
+    expect(changeResponse.status).toBe(200);
+    const changeItem = (await changeResponse.json()) as { key: string };
+    const transitionsResponse = await app.request(
+      `/api/work-items/${changeItem.key}/transitions`,
+      { headers: { cookie: owner.cookie } },
+    );
+    expect(transitionsResponse.status).toBe(200);
+    const transitions = (await transitionsResponse.json()) as Array<{
+      toStateName: string;
+      requiresCab: boolean;
+    }>;
+    expect(
+      transitions.some(
+        (transition) =>
+          transition.toStateName === "Approved" && transition.requiresCab,
+      ),
+    ).toBe(true);
+    expect(
+      transitions.map((transition) => transition.toStateName),
+    ).not.toContain("In Progress");
   });
 
   it("is idempotent: seeding the same workspace or project twice never double-seeds", async () => {

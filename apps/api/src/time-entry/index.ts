@@ -94,6 +94,7 @@ const createTimeEntryRoute = createRoute({
     workspaceAccess.fromTaskId("taskId", {
       requireProjectReach: true,
       deferCapability: true,
+      requireLiveProjectForTask: true,
     }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
@@ -169,6 +170,7 @@ const timeEntry = apiRouter()
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : undefined,
         description,
+        apiKeyId: c.get("apiKey")?.id,
       }),
       200,
     );

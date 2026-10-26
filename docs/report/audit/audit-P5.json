@@ -7,637 +7,2853 @@
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/database/schema-p5-agile.ts cycle (migration 0148_p5_agile_planning.sql); apps/api/src/agile/cycle.repository.ts; apps/web/src/components/agile/cycles-list.tsx, cycle-form-dialog.tsx; tests/api-integration/p5-agile-cycles.test.ts 'creates by project key or id, derives status, lists newest first' [integration test present, not run by this audit]; cycle-form-dialog.test.tsx, cycles-list.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-agile-cycles.test.ts:78",
+					"tests/api-integration/p5-agile-cycles.test.ts:79"
+				],
+				"assertions": [
+					"cycle CRUD, status and overlap (CY-1..CY-3)",
+					"creates by project key or id, derives status, lists newest first"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/cycle.repository.ts",
+					"apps/api/src/database/schema-p5-agile.ts",
+					"apps/web/src/components/agile/cycles-list.tsx",
+					"apps/web/src/lib/routes.ts",
+					"apps/web/src/fetchers/agile/index.ts",
+					"apps/web/src/components/agile/cycle-form-dialog.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:40"
+			}
 		},
 		{
 			"id": "CY-2",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/agile/logic.ts overlap check + cycle.repository.ts; p5-agile-cycles.test.ts 'refuses an overlapping cycle and names the conflicting one (CY-2)', 'refuses two concurrent overlapping creates (one wins)' [integration test present, not run by this audit]; tests/api/agile/logic.test.ts [U1 API unit green]; cycle-form-dialog.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/agile/logic.test.ts:53",
+					"tests/api-integration/p5-agile-cycles.test.ts:128",
+					"tests/api-integration/p5-agile-cycles.test.ts:155"
+				],
+				"assertions": [
+					"overlap (CY-2)",
+					"refuses an overlapping cycle and names the conflicting one (CY-2)",
+					"refuses two concurrent overlapping creates (one wins)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/logic.ts",
+					"apps/api/src/agile/cycle.repository.ts",
+					"apps/api/src/agile/index.ts",
+					"apps/api/drizzle/0148_p5_agile_planning.sql",
+					"apps/api/src/database/schema-p5-agile.ts",
+					"apps/web/src/fetchers/agile/index.ts",
+					"apps/web/src/components/agile/cycle-form-dialog.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:41"
+			}
 		},
 		{
 			"id": "CY-3",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/agile/logic.ts derived status (upcoming/active/completed), not stored; p5-agile-cycles.test.ts 'cannot set status by hand and refuses invalid dates' [integration test present, not run by this audit]; tests/api/agile/logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/agile/logic.test.ts:31",
+					"tests/api-integration/p5-agile-cycles.test.ts:78",
+					"tests/api-integration/p5-agile-cycles.test.ts:101"
+				],
+				"assertions": [
+					"cycle status derivation (CY-3)",
+					"cycle CRUD, status and overlap (CY-1..CY-3)",
+					"cannot set status by hand and refuses invalid dates"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/logic.ts",
+					"apps/api/src/agile/response.ts",
+					"apps/api/drizzle/0148_p5_agile_planning.sql",
+					"apps/api/src/database/schema-p5-agile.ts",
+					"apps/web/src/components/agile/cycles-list.tsx",
+					"apps/web/src/components/agile/cycle-form-dialog.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:43"
+			}
 		},
 		{
 			"id": "CY-4",
 			"state": "implemented_tested",
 			"evidence": "work_item.cycle_id single reference; apps/api/src/agile/cycle.repository.ts; p5-agile-cycles.test.ts 'adds in bulk, moves an item out of another cycle, refuses foreign keys', 'sets and clears an item's cycle from the work item (PUT)' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-agile-cycles.test.ts:181",
+					"tests/api-integration/p5-agile-cycles.test.ts:182",
+					"tests/api-integration/p5-agile-cycles.test.ts:281"
+				],
+				"assertions": [
+					"adding items (CY-4, CY-5, CY-8)",
+					"adds in bulk, moves an item out of another cycle, refuses foreign keys",
+					"sets and clears an item"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/cycle.repository.ts",
+					"apps/api/src/agile/index.ts",
+					"apps/api/src/agile/response.ts",
+					"apps/api/drizzle/0148_p5_agile_planning.sql",
+					"apps/web/src/components/work-item/work-item-agile-rows.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:45"
+			}
 		},
 		{
 			"id": "CY-5",
 			"state": "partial",
 			"evidence": "apps/web/src/components/agile/cycle-backlog-panel.tsx (dnd-kit useDraggable) dropped on cycle-detail.tsx DndContext; bulk-agile-dialog.tsx/bulk-agile-actions.tsx; p5-agile-cycles.test.ts 'adds in bulk...' [integration test present, not run by this audit]; bulk-agile-dialog.test.tsx [U2 web unit green]",
 			"gap": "No test drives the drag path (only the bulk add API and dialog are asserted). Not browser-verified. [Corrected after Opus P5 review round 2: the untested clause keeps this row from implemented_tested.]",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-agile-cycles.test.ts:181",
+					"apps/web/src/components/agile/bulk-agile-dialog.test.tsx:112"
+				],
+				"assertions": [
+					"adding items (CY-4, CY-5, CY-8)",
+					"BulkAgileDialog (CY-5)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [
+					"DndContext/useDraggable/useDroppable and the bulk route are present; no persisted browser drag was run by this audit."
+				],
+				"paths": [
+					"apps/web/src/components/agile/cycle-detail.tsx",
+					"apps/web/src/components/agile/cycle-backlog-panel.tsx",
+					"apps/api/src/agile/cycle.repository.ts",
+					"apps/api/src/agile/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:46"
+			}
 		},
 		{
 			"id": "CY-6",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/agile/logic.ts + cycle.repository.ts completion with incompletePolicy and dry run; apps/web/src/components/agile/complete-cycle-dialog.tsx (project default pre-selected); p5-agile-cycles.test.ts 'previews with a dry run...', 'uses the project default when no policy is chosen...', 'refuses next_cycle without a next cycle' [integration test present, not run by this audit]; complete-cycle-dialog.test.tsx [U2 web unit green]; tests/api/agile/logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/agile/logic.test.ts:103",
+					"tests/api/agile/logic.test.ts:121",
+					"tests/api-integration/p5-agile-cycles.test.ts:335"
+				],
+				"assertions": [
+					"completion policy (CY-6)",
+					"refuses next_cycle without a next cycle instead of dropping work",
+					"completion (CY-6) and velocity (CY-9)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/logic.ts",
+					"apps/api/src/agile/cycle.repository.ts",
+					"apps/web/src/components/agile/complete-cycle-dialog.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/estimates.tsx",
+					"apps/api/src/database/schema-p5-agile.ts",
+					"apps/web/src/components/agile/estimate-settings.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:47"
+			}
 		},
 		{
 			"id": "CY-7",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/agile/logic.ts summary/burndown; apps/web/src/components/agile/burndown-chart.tsx, cycle-summary-line.tsx, cycle-detail.tsx; p5-agile-cycles.test.ts 'reports no scope for an empty cycle', 'replays scope with scope added after the start...' [integration test present, not run by this audit]; burndown-chart.test.tsx [U2 web unit green]; logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/agile/logic.test.ts:165",
+					"tests/api/agile/logic.test.ts:293",
+					"tests/api-integration/p5-agile-cycles.test.ts:496"
+				],
+				"assertions": [
+					"burndown arithmetic (CY-7, CY-8)",
+					"summary and unestimated share (CY-7, ES-5)",
+					"burndown and summary (CY-7, ES-5)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/logic.ts",
+					"apps/web/src/components/agile/burndown-chart.tsx",
+					"apps/web/src/components/agile/cycle-detail.tsx",
+					"apps/web/src/components/agile/cycles-list.tsx",
+					"apps/web/src/components/agile/cycle-summary-line.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:50"
+			}
 		},
 		{
 			"id": "CY-8",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/agile/logic.ts + response.ts scope-change marking; cycle-detail.tsx scope-change log; p5-agile-cycles.test.ts 'marks items added after the start as scope change and after the end as retrospective' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/agile/logic.test.ts:165",
+					"tests/api-integration/p5-agile-cycles.test.ts:181",
+					"tests/api-integration/p5-agile-cycles.test.ts:226"
+				],
+				"assertions": [
+					"burndown arithmetic (CY-7, CY-8)",
+					"adding items (CY-4, CY-5, CY-8)",
+					"marks items added after the start as scope change and after the end as retrospective"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/logic.ts",
+					"apps/api/src/agile/response.ts",
+					"apps/api/drizzle/0148_p5_agile_planning.sql",
+					"apps/api/src/database/schema-p5-agile.ts",
+					"apps/web/src/components/agile/cycle-detail.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:52"
+			}
 		},
 		{
 			"id": "CY-9",
 			"state": "partial",
 			"evidence": "apps/api/src/agile/logic.ts computeVelocity (insufficient_data below three, no mixed units); cycle.repository.ts velocityFor inner-joins cycle_snapshot, which is written only by the completion action (cycle.repository.ts ~648); p5-agile-cycles.test.ts 'shows insufficient data until three completed cycles, then the mean of the last three' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
 			"gap": "A cycle that becomes completed by its end date without the completion action has no cycle_snapshot row and is left out of velocity; the daily cycle snapshot job is not built (schema-p5-agile.ts comment). Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/agile/logic.test.ts:319",
+					"tests/api-integration/p5-agile-cycles.test.ts:335",
+					"tests/api-integration/p5-agile-cycles.test.ts:459"
+				],
+				"assertions": [
+					"velocity (CY-9)",
+					"completion (CY-6) and velocity (CY-9)",
+					"shows insufficient data until three completed cycles, then the mean of the last three"
+				],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/logic.ts",
+					"apps/api/src/agile/cycle.repository.ts",
+					"apps/api/drizzle/0148_p5_agile_planning.sql",
+					"apps/web/src/lib/routes.ts",
+					"apps/api/src/database/schema-p5-agile.ts",
+					"apps/web/src/fetchers/agile/index.ts",
+					"apps/web/src/components/agile/cycle-detail.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:54",
+				"latestEvidence": "Daily leased natural-completion snapshots record actual capture date and provenance; late or unknown endpoints produce insufficient velocity instead of historical backdating. Selects actual latest three completed cycles without skipping unknown recent cycles; bounded 100+1 scan verified. 27 PostgreSQL, 41 logic and 4 UI tests passed. Fresh-fixture browser covers logged totals only; historical provenance browser is pending.",
+				"repairReconciledAt": "2026-10-25T02:52:15.646445+00:00",
+				"independentReview": "pending"
+			}
 		},
 		{
 			"id": "MO-1",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/database/schema-p5-agile.ts module; apps/api/src/agile/module.repository.ts; apps/web/src/components/agile/modules-list.tsx, module-form-dialog.tsx, module-detail.tsx; tests/api-integration/p5-agile-modules.test.ts 'creates with a lead, state and target date, edits with a version, lists', 'refuses a lead who is not staff of this workspace' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-agile-modules.test.ts:76",
+					"tests/api-integration/p5-agile-modules.test.ts:93",
+					"tests/api-integration/p5-agile-modules.test.ts:135"
+				],
+				"assertions": [
+					"module CRUD and the lead (MO-1)",
+					"creates with a lead, state and target date, edits with a version, lists",
+					"refuses a lead who is not staff of this workspace"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/module.repository.ts",
+					"apps/api/src/database/schema-p5-agile.ts",
+					"apps/web/src/components/agile/modules-list.tsx",
+					"apps/web/src/lib/routes.ts",
+					"apps/web/src/fetchers/agile/index.ts",
+					"apps/web/src/components/agile/module-form-dialog.tsx",
+					"apps/web/src/components/agile/module-detail.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:63"
+			}
 		},
 		{
 			"id": "MO-2",
 			"state": "implemented_tested",
 			"evidence": "work_item.module_id; apps/api/src/agile/index.ts; p5-agile-modules.test.ts 'holds at most one module per item and is independent of cycles' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-agile-modules.test.ts:154",
+					"tests/api-integration/p5-agile-modules.test.ts:155"
+				],
+				"assertions": [
+					"membership (MO-2, MO-3)",
+					"holds at most one module per item and is independent of cycles"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/index.ts",
+					"apps/api/drizzle/0148_p5_agile_planning.sql",
+					"apps/web/src/components/work-item/work-item-agile-rows.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:65"
+			}
 		},
 		{
 			"id": "MO-3",
 			"state": "implemented_tested",
 			"evidence": "p5-agile-modules.test.ts 'holds at most one module per item and is independent of cycles', 'hides modules while feature.modules is off (independent of cycles)' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-agile-modules.test.ts:154",
+					"tests/api-integration/p5-agile-modules.test.ts:155",
+					"tests/api-integration/p5-agile-modules.test.ts:330"
+				],
+				"assertions": [
+					"membership (MO-2, MO-3)",
+					"holds at most one module per item and is independent of cycles",
+					"hides modules while feature.modules is off (independent of cycles) and restores them"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/index.ts",
+					"apps/api/src/database/schema-p5-agile.ts",
+					"apps/web/src/components/agile/module-detail.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:66"
+			}
 		},
 		{
 			"id": "MO-4",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/agile/logic.ts forecast range; apps/web/src/components/agile/module-forecast.tsx; p5-agile-modules.test.ts 'counts progress... never extrapolates from little data', 'forecasts a range when the recent completion rate is known', 'has no forecast without a target date' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/agile/logic.test.ts:355",
+					"tests/api/agile/logic.test.ts:358",
+					"tests/api-integration/p5-agile-modules.test.ts:259"
+				],
+				"assertions": [
+					"module forecast as a range (MO-4)",
+					"has no forecast without a target date",
+					"progress and forecast (MO-4)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/logic.ts",
+					"apps/web/src/components/agile/module-forecast.tsx",
+					"apps/web/src/lib/routes.ts",
+					"apps/web/src/fetchers/agile/index.ts",
+					"apps/web/src/components/agile/modules-list.tsx",
+					"apps/web/src/components/agile/module-detail.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:67"
+			}
 		},
 		{
 			"id": "ES-1",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/database/schema-p5-agile.ts estimate/estimate_point; apps/api/src/agile/estimate.repository.ts; apps/web/src/components/agile/estimate-settings.tsx (settings/projects/$projectId/estimates route); tests/api-integration/p5-agile-estimates.test.ts 'starts with none, then adopts the default Fibonacci scale', 'offers categories and time scales', 'allows at most one active system (database guard)' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/agile/logic.test.ts:409",
+					"tests/api-integration/p5-agile-estimates.test.ts:79",
+					"tests/api-integration/p5-agile-estimates.test.ts:80"
+				],
+				"assertions": [
+					"estimates (ES-1..ES-4)",
+					"choosing the system (ES-1)",
+					"starts with none, then adopts the default Fibonacci scale"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/estimate.repository.ts",
+					"apps/api/src/agile/index.ts",
+					"apps/api/src/agile/response.ts",
+					"apps/api/src/agile/logic.ts",
+					"apps/api/src/database/schema-p5-agile.ts",
+					"apps/web/src/components/agile/estimate-settings.tsx",
+					"apps/api/drizzle/0148_p5_agile_planning.sql"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:73"
+			}
 		},
 		{
 			"id": "ES-2",
 			"state": "implemented_tested",
 			"evidence": "work_item.estimate_point_id reference; p5-agile-estimates.test.ts 'stores a reference to a point row and refuses points outside the scale', 'renaming a point keeps every estimate on it' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-agile-estimates.test.ts:154",
+					"tests/api-integration/p5-agile-estimates.test.ts:155",
+					"tests/api-integration/p5-agile-estimates.test.ts:191"
+				],
+				"assertions": [
+					"setting an estimate and the roll-up (ES-2, ES-4, ES-5)",
+					"stores a reference to a point row and refuses points outside the scale",
+					"renaming a point keeps every estimate on it (history is not rewritten)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/estimate.repository.ts",
+					"apps/api/drizzle/0148_p5_agile_planning.sql",
+					"apps/api/src/database/schema-p5-agile.ts",
+					"apps/web/src/components/work-item/work-item-agile-rows.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:81"
+			}
 		},
 		{
 			"id": "ES-3",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/agile/estimate.repository.ts dry-run preview + confirmation; apps/web/src/components/agile/estimate-preview-dialog.tsx; p5-agile-estimates.test.ts 'the dry-run preview matches what the applied change does, and clearing needs confirmation' [integration test present, not run by this audit]; estimate-preview-dialog.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-agile-estimates.test.ts:296",
+					"tests/api-integration/p5-agile-estimates.test.ts:311"
+				],
+				"assertions": [
+					"changing the system (ES-3)",
+					"the dry-run preview matches what the applied change does, and clearing needs confirmation"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/estimate.repository.ts",
+					"apps/api/src/agile/index.ts",
+					"apps/api/src/agile/logic.ts",
+					"apps/web/src/components/agile/estimate-preview-dialog.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/estimates.tsx",
+					"apps/web/src/lib/routes.ts",
+					"apps/web/src/fetchers/agile/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:83"
+			}
 		},
 		{
 			"id": "ES-4",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/agile/logic.ts roll-up; apps/web/src/components/work-item/work-item-agile-rows.tsx; p5-agile-estimates.test.ts 'rolls a parent up from its children only when it has no estimate; the discrepancy is shown' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/agile/logic.test.ts:409",
+					"tests/api-integration/p5-agile-estimates.test.ts:154",
+					"tests/api-integration/p5-agile-estimates.test.ts:217"
+				],
+				"assertions": [
+					"estimates (ES-1..ES-4)",
+					"setting an estimate and the roll-up (ES-2, ES-4, ES-5)",
+					"rolls a parent up from its children only when it has no estimate; the discrepancy is shown"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/logic.ts",
+					"apps/api/src/agile/response.ts",
+					"apps/api/src/agile/estimate.repository.ts",
+					"apps/web/src/components/work-item/work-item-agile-rows.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:86"
+			}
 		},
 		{
 			"id": "ES-5",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/agile/logic.ts unestimated share; p5-agile-estimates.test.ts 'reports unestimated work instead of counting it as zero (cycle summary)' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/agile/logic.test.ts:293",
+					"tests/api-integration/p5-agile-cycles.test.ts:496",
+					"tests/api-integration/p5-agile-estimates.test.ts:154"
+				],
+				"assertions": [
+					"summary and unestimated share (CY-7, ES-5)",
+					"burndown and summary (CY-7, ES-5)",
+					"setting an estimate and the roll-up (ES-2, ES-4, ES-5)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/agile/logic.ts",
+					"apps/api/src/agile/response.ts",
+					"apps/web/src/fetchers/agile/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:89"
+			}
 		},
 		{
 			"id": "TC-1",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/database/schema-p5-time.ts time_entry integer minutes (migration 0149_p5_time_and_cost.sql); apps/api/src/time-tracking/index.ts; apps/web/src/components/time-tracking/work-item-time.tsx, timesheet.tsx; tests/api-integration/p5-time-entries.test.ts 'records integer minutes against the caller...', 'rejects fractional, zero and over-a-day minutes...' [integration test present, not run by this audit]; work-item-time.test.tsx, timesheet.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-time-entries.test.ts:63"],
+				"assertions": ["logging time (TC-1..TC-3)"],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/index.ts",
+					"apps/api/src/database/schema-p5-time.ts",
+					"apps/web/src/components/time-tracking/work-item-time.tsx",
+					"apps/web/src/lib/time-minutes.ts",
+					"apps/web/src/lib/money-minor.ts",
+					"apps/web/src/fetchers/time-tracking/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:193"
+			}
 		},
 		{
 			"id": "TC-2",
 			"state": "implemented_tested",
 			"evidence": "time_activity table and required activityId; apps/web/src/components/time-tracking/time-activities-settings.tsx; p5-time-entries.test.ts '...a missing activity and a foreign activity'; p5-time-rates-budget.test.ts 'lists the four defaults...', 'lets a settings manager add, rename and archive...' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-time-rates-budget.test.ts:427"],
+				"assertions": ["activity types (TC-2)"],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/repository.ts",
+					"apps/web/src/components/time-tracking/time-activities-settings.tsx",
+					"apps/api/drizzle/0149_p5_time_and_cost.sql",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/time-activities.tsx",
+					"apps/api/src/database/schema-p5-time.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:196"
+			}
 		},
 		{
 			"id": "TC-3",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/time-tracking/repository.ts project billable default; time-settings.tsx; p5-time-entries.test.ts 'defaults billable from the project and lets the caller override it' [integration test present, not run by this audit]; time-settings.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-time-entries.test.ts:63",
+					"tests/api-integration/p5-time-entries.test.ts:76",
+					"tests/api-integration/p5-time-entries.test.ts:162"
+				],
+				"assertions": [
+					"logging time (TC-1..TC-3)",
+					"defaults billable from the project and lets the caller override it",
+					"time settings (TC-3, TC-4)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/repository.ts",
+					"apps/api/src/time-tracking/index.ts",
+					"apps/api/src/time-tracking/schema.ts",
+					"apps/api/drizzle/0149_p5_time_and_cost.sql",
+					"apps/web/src/components/time-tracking/time-settings.tsx",
+					"apps/api/src/database/schema.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:198"
+			}
 		},
 		{
 			"id": "TC-4",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/time-tracking/logic.ts backdating window (default 30, per workspace) + time_entry:log_backdated; p5-time-entries.test.ts 'the backdating window (TC-4)' block (4 cases) [integration test present, not run by this audit]; tests/api/time-tracking/logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/time-tracking/logic.test.ts:198",
+					"tests/api-integration/p5-time-entries.test.ts:162",
+					"tests/api-integration/p5-time-entries.test.ts:245"
+				],
+				"assertions": [
+					"backdating window (TC-4)",
+					"time settings (TC-3, TC-4)",
+					"the backdating window (TC-4)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/logic.ts",
+					"apps/api/src/time-tracking/index.ts",
+					"apps/api/src/time-tracking/repository.ts",
+					"apps/api/src/time-tracking/schema.ts",
+					"apps/api/drizzle/0149_p5_time_and_cost.sql",
+					"apps/web/src/components/time-tracking/time-settings.tsx",
+					"apps/api/src/database/schema.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:199"
+			}
 		},
 		{
 			"id": "TC-5",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/time-tracking/policy.ts own/any; p5-time-entries.test.ts 'lets a person edit their own entry and not anyone else's', 'refuses to delete someone else's entry without delete_any' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-time-entries.test.ts:289",
+					"tests/api-integration/p5-time-entries.test.ts:290",
+					"tests/api-integration/p5-time-entries.test.ts:444"
+				],
+				"assertions": [
+					"own versus any (TC-5)",
+					"lets a person edit their own entry and not anyone else",
+					"refuses to delete someone else"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": ["apps/api/src/time-tracking/policy.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:201"
+			}
 		},
 		{
 			"id": "TC-6",
 			"state": "implemented_tested",
 			"evidence": "running_timer table; apps/api/src/scheduler/index.ts timer sweeper; timer in apps/web/src/components/work-item/work-item-detail.tsx; tests/api-integration/p5-time-timer.test.ts 'survives a reload: the timer is read back from the server...', 'stops into one entry of whole minutes', 12 h cap and sweeper cases [integration test present, not run by this audit]",
 			"gap": "Reload survival asserted at API level only. Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-time-timer.test.ts:96"],
+				"assertions": [
+					"stops into one entry of whole minutes and clears the timer"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/repository.ts",
+					"apps/api/src/scheduler/index.ts",
+					"apps/web/src/components/work-item/work-item-detail.tsx",
+					"apps/api/src/database/schema-p5-time.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:203"
+			}
 		},
 		{
 			"id": "TC-7",
 			"state": "partial",
 			"evidence": "apps/api/src/time-tracking/repository.ts summarise (work item with descendants, projectId, cycleId, moduleId); p5-time-rates-budget.test.ts 'includes descendants of a work item...', 'rolls a cycle's time up from the work items assigned to it' [integration test present, not run by this audit]",
 			"gap": "Module roll-up has no test; cycle and module detail screens do not show logged time (work item Time section and timesheet only). Not browser-verified. [Corrected after Opus P5 review round 2: the untested clause keeps this row from implemented_tested.]",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-time-rates-budget.test.ts:340",
+					"tests/api-integration/p5-time-rates-budget.test.ts:380"
+				],
+				"assertions": ["roll-up (TC-7)", "rolls a cycle"],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/repository.ts",
+					"apps/api/src/time-tracking/cost-repository.ts",
+					"apps/web/src/components/time-tracking/work-item-time.tsx",
+					"apps/api/src/database/schema-p5-time.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:205",
+				"latestEvidence": "Cycle/module detail rollups query persisted time summary with feature/capability guards.",
+				"scopedExecution": "57 agile/time integration and2UI tests"
+			}
 		},
 		{
 			"id": "TC-8",
 			"state": "implemented_tested",
 			"evidence": "hourly_rate (person, optional project, effective_from) in schema-p5-time.ts; apps/web/src/components/time-tracking/rates-settings.tsx; p5-time-rates-budget.test.ts 'creates, lists and audits rates, refusing a duplicate effective date and a bad currency' [integration test present, not run by this audit]; time-tracking/logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/time-tracking/logic.test.ts:122",
+					"tests/api-integration/p5-time-rates-budget.test.ts:255"
+				],
+				"assertions": [
+					"effective-rate selection (TC-8..TC-10)",
+					"creates, lists and audits rates, refusing a duplicate effective date and a bad currency"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/logic.ts",
+					"apps/api/src/time-tracking/repository.ts",
+					"apps/web/src/components/time-tracking/rates-settings.tsx",
+					"apps/api/drizzle/0149_p5_time_and_cost.sql",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/rates.tsx",
+					"apps/api/src/database/schema-p5-time.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:211"
+			}
 		},
 		{
 			"id": "TC-9",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/time-tracking/logic.ts effective-rate selection, rate captured on the entry (owner decision D4); p5-time-rates-budget.test.ts 'prices an entry at the rate effective on its date and keeps it when rates change later', 'captures the rate again when an entry moves to another date' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-time-rates-budget.test.ts:57",
+					"tests/api-integration/p5-time-rates-budget.test.ts:58",
+					"tests/api-integration/p5-time-rates-budget.test.ts:131"
+				],
+				"assertions": [
+					"the rate is captured on the entry (D4, TC-9)",
+					"prices an entry at the rate effective on its date and keeps it when rates change later",
+					"captures the rate again when an entry moves to another date, and not for other edits"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": ["apps/api/src/time-tracking/logic.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:213"
+			}
 		},
 		{
 			"id": "TC-10",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/time-tracking/logic.ts default vs project rate; p5-time-rates-budget.test.ts 'lets a project-specific rate win over the person's default on that project' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/time-tracking/logic.test.ts:122",
+					"tests/api-integration/p5-time-rates-budget.test.ts:114"
+				],
+				"assertions": [
+					"effective-rate selection (TC-8..TC-10)",
+					"lets a project-specific rate win over the person"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/logic.ts",
+					"apps/api/src/time-tracking/schema.ts",
+					"apps/api/drizzle/0149_p5_time_and_cost.sql",
+					"apps/api/src/database/schema-p5-time.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:215"
+			}
 		},
 		{
 			"id": "TC-11",
 			"state": "partial",
 			"evidence": "time_entry:manage_rates gate in time-tracking/policy.ts, response stripping, report/present.ts stripRates; p5-time-rates-budget.test.ts 'strips rate and cost from create, patch, list and summary responses', 'refuses the rates API to everyone without the capability'; p5-reports-data.test.ts 'removes every rate-derived field for everyone else', 'keeps cost out of the CSV, the export audit row and the widget data' [integration test present, not run by this audit]; tests/api/report/logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified. [Round 3: budget actuals now stripped without manage_rates; row kept partial until a clean review pass.]",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/report/logic.test.ts:304",
+					"apps/web/src/components/time-tracking/project-budget.test.tsx:153",
+					"tests/api-integration/p5-cost-entries.test.ts:350"
+				],
+				"assertions": [
+					"rate stripping (TC-11)",
+					"renders a budget stripped of priced figures without crashing (TC-11)",
+					"permissions and amount stripping (TC-11)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [
+					"Rate-field redaction is present in source; no persisted browser verification by this audit."
+				],
+				"paths": [
+					"apps/api/src/time-tracking/cost-repository.ts",
+					"apps/api/src/time-tracking/audit.ts",
+					"apps/api/src/time-tracking/index.ts",
+					"apps/api/src/time-tracking/policy.ts",
+					"apps/api/src/time-tracking/response.ts",
+					"apps/api/src/time-tracking/http.ts",
+					"apps/api/src/time-tracking/cost-routes.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:216"
+			}
 		},
 		{
 			"id": "TC-12",
 			"state": "missing",
 			"evidence": "No cost_type table, schema or route: no match for cost_type/costType in apps/api/src or apps/api/drizzle/0149_p5_time_and_cost.sql",
 			"gap": "Cost types (name, unit, default rate) not built.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-cost-entries.test.ts:124",
+					"tests/api-integration/p5-cost-entries.test.ts:169"
+				],
+				"assertions": [
+					"Rate manager creates/lists/edits/archives cost type; duplicate name and archived type refused."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/drizzle/0155_p5_cost_and_capacity.sql",
+					"apps/api/src/time-tracking/cost-routes.ts",
+					"apps/api/src/time-tracking/cost-repository.ts",
+					"apps/web/src/components/time-tracking/cost-types-settings.tsx",
+					"apps/api/src/time-tracking/policy.ts",
+					"apps/api/src/time-tracking/response.ts",
+					"apps/api/src/time-tracking/schema.ts",
+					"apps/api/src"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:223"
+			}
 		},
 		{
 			"id": "TC-13",
 			"state": "missing",
 			"evidence": "No cost_entry table, schema or route in apps/api/src",
 			"gap": "Cost entries with captured rate not built.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-cost-entries.test.ts:230",
+					"tests/api-integration/p5-cost-entries.test.ts:250"
+				],
+				"assertions": [
+					"Units price from default and captured row rate survives later default change; explicit rate/currency or 422 when unpriced."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/drizzle/0155_p5_cost_and_capacity.sql",
+					"apps/api/src/time-tracking/cost-repository.ts",
+					"apps/api/src/time-tracking/cost-logic.ts",
+					"apps/web/src/components/time-tracking/work-item-costs.tsx",
+					"apps/web/src/components/time-tracking/cost-entry-edit-dialog.tsx",
+					"apps/api/src/time-tracking/cost-routes.ts",
+					"apps/api/src/time-tracking/schema.ts",
+					"apps/api/src"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:225"
+			}
 		},
 		{
 			"id": "TC-14",
 			"state": "missing",
 			"evidence": "No cost_entry attachment to work item or project",
 			"gap": "Not built (depends on TC-13).",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-cost-entries.test.ts:235",
+					"tests/api-integration/p5-cost-entries.test.ts:271"
+				],
+				"assertions": [
+					"A project-direct entry is returned with null workItemId.",
+					"A work-item linked entry and child item roll-up are returned; another project work item is refused with 404."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/cost-routes.ts",
+					"apps/api/src/time-tracking/cost-repository.ts",
+					"apps/web/src/components/time-tracking/work-item-costs.tsx",
+					"apps/api/src/time-tracking/policy.ts",
+					"apps/api/src/time-tracking/response.ts",
+					"apps/api/src/time-tracking/schema.ts",
+					"apps/api/drizzle/0155_p5_cost_and_capacity.sql"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:227"
+			}
 		},
 		{
 			"id": "TC-15",
 			"state": "implemented_tested",
 			"evidence": "budget table in schema-p5-time.ts; apps/web/src/components/time-tracking/project-budget.tsx (settings/projects/$projectId/budget); p5-time-rates-budget.test.ts 'project budgets (TC-15..TC-19)' block [integration test present, not run by this audit]; project-budget.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-time-rates-budget.test.ts:544"],
+				"assertions": ["project budgets (TC-15..TC-19)"],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/repository.ts",
+					"apps/web/src/components/time-tracking/project-budget.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/budget.tsx",
+					"apps/web/src/lib/routes.ts",
+					"apps/api/src/database/schema-p5-time.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:232"
+			}
 		},
 		{
 			"id": "TC-16",
 			"state": "partial",
 			"evidence": "apps/api/src/time-tracking/repository.ts actuals from captured time-entry rates inside the period, per currency; p5-time-rates-budget.test.ts 'computes actuals from captured rates inside the period, per currency, and reports thresholds' [integration test present, not run by this audit]",
 			"gap": "Actuals are time-only: cost entries (TC-12..TC-14) do not exist, so the '+ cost entries' half is absent.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-cost-entries.test.ts:653",
+					"tests/api-integration/p5-time-rates-budget.test.ts:581"
+				],
+				"assertions": [
+					"budget actuals include cost entries (TC-16)",
+					"computes actuals from captured rates inside the period, per currency, and reports thresholds"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/index.ts",
+					"apps/api/src/time-tracking/cost-repository.ts",
+					"apps/web/src/components/time-tracking/project-budget.tsx",
+					"apps/api/src/time-tracking/repository.ts",
+					"apps/api/src/time-tracking/response.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:233"
+			}
 		},
 		{
 			"id": "TC-17",
 			"state": "partial",
 			"evidence": "apps/api/src/time-tracking/response.ts committedMinor 'remaining-work estimates do not exist yet, so committed is null rather than guessed'; project-budget.tsx shows planned and actual",
 			"gap": "Committed (estimated remaining work at current rates) is always null.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-time-rates-budget.test.ts",
+					"apps/web/src/components/time-tracking/project-budget.test.tsx"
+				],
+				"assertions": [],
+				"executed": true,
+				"browser": "scoped_pass",
+				"gaps": [],
+				"paths": ["apps/api/src/time-tracking/response.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:235",
+				"latestEvidence": "Owner-approved open-leaf remaining-time forecast at current rates, due-date period allocation, separate currencies and explicit unknown reasons. 32 PostgreSQL, 17 logic and 10 UI tests passed. Real persisted browser verified EUR30 actual / EUR90 and USD120 committed; member rate figures omitted.",
+				"browserEvidence": "docs/report/browser/codex-20261025-cost-cycle.json",
+				"repairReconciledAt": "2026-10-25T02:52:15.646451+00:00",
+				"independentReview": "pending"
+			}
 		},
 		{
 			"id": "TC-18",
 			"state": "partial",
 			"evidence": "apps/api/src/time-tracking/logic.ts budgetThreshold (75/90) returned as thresholdReached; p5-time-rates-budget.test.ts '...reports thresholds' [integration test present, not run by this audit]; tests/api/time-tracking/logic.test.ts [U1 API unit green]",
 			"gap": "Thresholds are computed and shown but raise no notification to the project manager.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-cost-thresholds.test.ts:111",
+					"tests/api-integration/p5-cost-thresholds.test.ts:141"
+				],
+				"assertions": [
+					"Manager inbox gets 75% and 90% once each; cost entries can trigger without exposing amount."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/budget-notify.ts",
+					"apps/api/src/time-tracking/cost-repository.ts",
+					"apps/web/src/components/time-tracking/project-budget.tsx",
+					"apps/api/src/time-tracking/logic.ts",
+					"apps/api/src/time-tracking/response.ts",
+					"apps/api/src/time-tracking/cost-logic.ts",
+					"apps/api/drizzle/0155_p5_cost_and_capacity.sql",
+					"apps/api/src/database/schema-p5-time.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:237"
+			}
 		},
 		{
 			"id": "TC-19",
 			"state": "implemented_tested",
 			"evidence": "currency per row on hourly_rate/budget; time-tracking/repository.ts and report/reports/time.ts group by currency; p5-time-rates-budget.test.ts 'shows cost per currency, never summed, to a rate manager' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-cost-entries.test.ts:295",
+					"tests/api-integration/p5-time-rates-budget.test.ts:186",
+					"tests/api-integration/p5-time-rates-budget.test.ts:544"
+				],
+				"assertions": [
+					"groups totals per currency and never sums across currencies (TC-19)",
+					"shows cost per currency, never summed, to a rate manager",
+					"project budgets (TC-15..TC-19)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/cost-repository.ts",
+					"apps/api/src/time-tracking/response.ts",
+					"apps/api/src/time-tracking/repository.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/budget.tsx",
+					"apps/api/src/report/reports/time.ts",
+					"apps/api/src/report/reports/leadership.ts",
+					"apps/web/src/components/time-tracking/project-budget.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:238"
+			}
 		},
 		{
 			"id": "TC-20",
 			"state": "missing",
 			"evidence": "No available_hours table or route; capacity exists only as P4 team.capacity_days_per_week x team_member allocation (read by apps/api/src/report/reports/people.ts)",
 			"gap": "Per-person available hours for a period not built.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-time-capacity.test.ts:74",
+					"tests/api-integration/p5-time-capacity.test.ts:98"
+				],
+				"assertions": [
+					"Settings manager writes dated per-person hours; duplicate date, foreign person and invalid amount refused."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/drizzle/0155_p5_cost_and_capacity.sql",
+					"apps/api/src/time-tracking/cost-routes.ts",
+					"apps/api/src/time-tracking/cost-repository.ts",
+					"apps/web/src/components/time-tracking/time-settings.tsx",
+					"apps/api/src/time-tracking/policy.ts",
+					"apps/api/src/time-tracking/response.ts",
+					"apps/api/src/time-tracking/cost-logic.ts",
+					"apps/api/src/time-tracking/schema.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:245"
+			}
 		},
 		{
 			"id": "TC-21",
 			"state": "partial",
 			"evidence": "apps/api/src/report/reports/people.ts utilisation = logged hours / team capacity_days_per_week x allocation, notes no_capacity_set; p5-reports-data.test.ts 'measures utilisation against team capacity and says when none is set' [integration test present, not run by this audit]",
 			"gap": "Denominator is team capacity, not available_hours (TC-20 missing).",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-time-capacity.test.ts:195",
+					"tests/api-integration/p5-time-capacity.test.ts:208"
+				],
+				"assertions": [
+					"Utilisation divides logged hours by effective per-person available hours, with team fallback stated."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/cost-logic.ts",
+					"apps/api/src/report/reports/time.ts",
+					"apps/web/src/components/time-tracking/time-settings.tsx",
+					"apps/api/src/report/reports/people.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:246"
+			}
 		},
 		{
 			"id": "TC-22",
 			"state": "partial",
 			"evidence": "apps/api/src/report/reports/people.ts 'capacity' report; no assignment path reads capacity",
 			"gap": "No available_hours entity; no test asserts capacity stays out of assignment.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-time-capacity.test.ts:242"],
+				"assertions": [
+					"Team capacity derives from person available hours and allocation; no assignment automation path is asserted here."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/time-tracking/cost-logic.ts",
+					"apps/api/src/report/reports/time.ts",
+					"apps/web/src/components/time-tracking/time-settings.tsx",
+					"apps/api/src/time-tracking/cost-routes.ts",
+					"apps/api/src/report/reports/people.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:247"
+			}
 		},
 		{
 			"id": "RP-1",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/report/logic.ts sampled null; apps/web/src/components/reports/report-format.ts, report-view.tsx; p5-reports-core.test.ts 'returns null with its sample, never 0% or 100%, below the minimum (RP-1)' [integration test present, not run by this audit]; tests/api/report/logic.test.ts [U1 API unit green]; report-view.test.tsx, dashboard-widget.test.tsx, report-chart.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/report/logic.test.ts:129",
+					"apps/web/src/components/reports/report-format.test.ts:23",
+					"apps/web/src/components/reports/report-chart.test.tsx:24"
+				],
+				"assertions": [
+					"the honesty rule (RP-1)",
+					"shows insufficient data as its reason, never a number (RP-1)",
+					"breaks a line at a gap and never draws a gap as zero (RP-1)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/logic.ts",
+					"apps/api/src/report/types.ts",
+					"apps/web/src/components/reports/report-format.ts",
+					"apps/web/src/components/reports/report-view.tsx",
+					"apps/web/src/components/reports/report-chart.tsx",
+					"apps/web/src/fetchers/report/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:352"
+			}
 		},
 		{
 			"id": "RP-2",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/report/logic.ts buckets; p5-reports-core.test.ts 'shows age as buckets and no mean (RP-2)'; p5-reports-data.test.ts 'buckets created-to-resolved durations' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/report/logic.test.ts:103",
+					"tests/api-integration/p5-reports-core.test.ts:138",
+					"tests/api-integration/p5-reports-data.test.ts:199"
+				],
+				"assertions": [
+					"buckets (RP-2)",
+					"shows age as buckets and no mean (RP-2)",
+					"buckets created-to-resolved durations"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": ["apps/api/src/report/logic.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:354"
+			}
 		},
 		{
 			"id": "RP-3",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/report/present.ts, run.ts scope kind; report-view.tsx; p5-reports-core.test.ts 'states scope, window and as-of time (RP-3, RP-4)' [integration test present, not run by this audit]; report-view.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/reports/report-view.test.tsx:121",
+					"tests/api-integration/p5-reports-core.test.ts:156"
+				],
+				"assertions": [
+					"states scope, window, as-of time and that it is computed live (RP-3, RP-4, RP-9)",
+					"states scope, window and as-of time (RP-3, RP-4)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/present.ts",
+					"apps/api/src/report/run.ts",
+					"apps/web/src/components/reports/report-view.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:356"
+			}
 		},
 		{
 			"id": "RP-4",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/report/present.ts window/asOf; p5-reports-core.test.ts 'states scope, window and as-of time (RP-3, RP-4)' [integration test present, not run by this audit]; report-view.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/reports/report-view.test.tsx:121",
+					"tests/api-integration/p5-reports-core.test.ts:156"
+				],
+				"assertions": [
+					"states scope, window, as-of time and that it is computed live (RP-3, RP-4, RP-9)",
+					"states scope, window and as-of time (RP-3, RP-4)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/present.ts",
+					"apps/web/src/components/reports/report-view.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:358"
+			}
 		},
 		{
 			"id": "RP-5",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/report/present.ts, reports/shared.ts empty explanation; p5-reports-core.test.ts 'shows an empty population as empty with the total outside the window (RP-5)' [integration test present, not run by this audit]; report-view.test.tsx, dashboard-widget.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/reports/report-view.test.tsx:191",
+					"apps/web/src/components/reports/dashboard-widget.test.tsx:160",
+					"tests/api-integration/p5-reports-core.test.ts:174"
+				],
+				"assertions": [
+					"shows an empty report as a dash with an explanation, and no chart (RP-5)",
+					"shows an empty report as a dash with its explanation, not a chart of nothing (RP-5)",
+					"shows an empty population as empty with the total outside the window (RP-5)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/present.ts",
+					"apps/api/src/report/reports/shared.ts",
+					"apps/api/src/report/run.ts",
+					"apps/api/src/report/types.ts",
+					"apps/web/src/components/reports/report-view.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:359"
+			}
 		},
 		{
 			"id": "RP-6",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/report/logic.ts trend; p5-reports-core.test.ts 'draws no trend arrow without two comparable periods...'; p5-reports-data.test.ts 'shows volume change only against a previous period large enough to compare' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]; report-view.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/report/logic.test.ts:144",
+					"apps/web/src/components/reports/report-view.test.tsx:161",
+					"tests/api-integration/p5-reports-data.test.ts:146"
+				],
+				"assertions": [
+					"trends (RP-6)",
+					"says when a trend cannot be drawn (RP-6)",
+					"shows volume change only against a previous period large enough to compare (RP-6)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/logic.ts",
+					"apps/api/src/report/reports/customers.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:361"
+			}
 		},
 		{
 			"id": "RP-7",
 			"state": "implemented_untested",
 			"evidence": "apps/api/src/report/types.ts FILTER_KEYS (projectId, organisationId, teamId, typeId, priority), context.ts, schema.ts windows 7/30/60/90/custom; apps/web/src/components/reports/report-filters.tsx; p5-reports-core.test.ts 'filters by project and keeps the filter in the response', 'rejects an invalid or oversized custom window' [integration test present, not run by this audit]; logic.test.ts [U1 API unit green]",
 			"gap": "Only the project filter is exercised end to end; organisation, team, type and priority filters have no integration assertion. Not browser-verified. [Corrected after Opus P5 review round 2: the untested clause keeps this row from implemented_tested.]",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/report/logic.test.ts:27",
+					"tests/api-integration/p5-reports-core.test.ts:204",
+					"tests/api-integration/p5-reports-core.test.ts:278"
+				],
+				"assertions": [
+					"windows (RP-7)",
+					"rejects an invalid or oversized custom window",
+					"filters by project and keeps the filter in the response (RP-7, RP-8)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/types.ts",
+					"apps/api/src/report/logic.ts",
+					"apps/api/src/report/context.ts",
+					"apps/api/src/report/schema.ts",
+					"apps/web/src/components/reports/report-filters.tsx",
+					"apps/web/src/lib/report-search.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:472"
+			}
 		},
 		{
 			"id": "RP-8",
 			"state": "implemented_tested",
 			"evidence": "apps/web/src/lib/report-search.ts, lib/routes.ts, routes/agent/_layout/_authenticated/agent/reports_.$key.tsx; lib/report-search.test.ts 'keeps the whole filter state', 'builds the same query for the URL and... the API' [U2 web unit green]; p5-reports-core.test.ts (RP-7, RP-8) [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/lib/report-search.test.ts:10",
+					"apps/web/src/lib/report-search.test.ts:17",
+					"tests/api-integration/p5-reports-core.test.ts:278"
+				],
+				"assertions": [
+					"report search (RP-8)",
+					"keeps the whole filter state",
+					"filters by project and keeps the filter in the response (RP-7, RP-8)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/schema.ts",
+					"apps/web/src/lib/report-search.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.$key.tsx",
+					"apps/web/src/components/reports/report-filters.tsx",
+					"apps/web/src/lib/routes.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:474"
+			}
 		},
 		{
 			"id": "RP-9",
 			"state": "partial",
 			"evidence": "migration 0156 (metric_snapshot at day grain, metric_snapshot_day coverage marker); apps/api/src/report/snapshot.logic.ts (split of a window into stored whole closed UTC days and live edges), snapshot.repository.ts (one metric definition used by the job and by live reads), scheduler/report-jobs.ts runMetricsSnapshot ('metrics-snapshot', hourly, 15 min lease, registered in scheduler/index.ts); promises.ts sla_attainment and sla_trend and delivery.ts throughput read loadDaily; present.ts boundary live|snapshot|mixed plus snapshot {closedDays, uncoveredDays, computedAt, through}; report-view.tsx boundaryText states it, CSV preamble repeats it. tests/api-integration/p5-reports-snapshots.test.ts 9/9 on a fresh scratch DB (job writes closed days only and is idempotent, a stored read equals a live read over windows 7/30/90, priority, project and first-response filters, boundary mixed/live/team-filter live, stored day followed after the next run, reach kept on stored days, tenant isolation, project delete removes rows); tests/api/report/snapshot.logic.test.ts [U1 green]; report-view.test.tsx boundary cases [U2 green]",
 			"gap": "Day grain only (the contract's hourly grain and 00:15 rollup are not built), and only the SLA outcome (both clocks) and throughput metrics are stored: there is no backlog metric and no report reads one, and the other windowed reports (customer volume trend, work mix, cycle time, escalations, time) still compute live. A team filter reads live (it follows current membership). A stored day is refreshed for three days; a later change to an older day shows in the live view but not in the stored one until the day leaves retention (the contract names no retention; 800 days chosen to cover the widest window plus its comparison). Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/report/snapshot.logic.test.ts:34",
+					"apps/web/src/components/reports/report-view.test.tsx:121",
+					"apps/web/src/components/reports/report-view.test.tsx:130",
+					"tests/api-integration/p5-reports-snapshots.test.ts",
+					"tests/api-integration/p5-reports-core.test.ts",
+					"tests/api-integration/p5-reports-data.test.ts",
+					"tests/api-integration/p5-reports-drill.test.ts",
+					"tests/api-integration/p5-reports-export.test.ts"
+				],
+				"assertions": [
+					"which part of a window is read from snapshots (RP-9)",
+					"states scope, window, as-of time and that it is computed live (RP-3, RP-4, RP-9)",
+					"states the boundary between stored closed days and the live current period (RP-9)"
+				],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/snapshot.logic.ts",
+					"apps/api/src/report/reports/delivery.ts",
+					"apps/api/src/report/reports/promises.ts",
+					"apps/api/src/report/run.ts",
+					"apps/api/src/report/present.ts",
+					"apps/api/src/report/snapshot.repository.ts",
+					"apps/api/src/report/types.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:477",
+				"contractReconciliation": "Maintained RP-9 says snapshots are computed hourly; it does not require hourly storage grain or a00:15rollup. Those historical audit claims are not treated as requirements. Day-grain aggregates can satisfy date-based closed periods, subject to complete metric/filter coverage and truthful boundary metadata.",
+				"testEvidenceStatus": "scoped_current_pass",
+				"independentReview": "pending",
+				"auditEvidence": "docs/report/audit/codex-20261025-report-facts.json",
+				"latestEvidence": "Twelve historical fact families now use version-2 closed-day coverage. Source transactions invalidate coverage; person deletion purges opaque cached references; held days are retained whole. Snapshot integration19/19 and related report suites66/66 pass, including team/own-time/rates/global-KB filters, old-day corrections, rollback/concurrency, v1 fallback and selected-window boundary. Current point-in-time/availability/budget components remain explicitly live. Final browser/phase gates and independent review pending."
+			}
 		},
 		{
 			"id": "RP-10",
 			"state": "partial",
 			"evidence": "POST /api/reports/{key}/export, POST /api/reports/custom/export, POST /api/dashboards/{id}/widgets/{wid}/export (apps/api/src/report/index.ts runExport): a small export is the CSV (report.exported audited), a screen run that was truncated or above 150 rows becomes a report_export row (migration 0156, report.export_requested audited, per-person limit of three under an advisory lock) rendered by the 'report-export' job (export.service.ts, scheduler/report-jobs.ts; SKIP LOCKED claim, requester re-resolved and rights ANDed with the ones held when asking, row cap lifted to 5000 through ctx.exporting), polled at GET /api/report-exports/{id}, downloaded from the authenticated GET /api/report-exports/{id}/download (own export only, 404 otherwise; rates re-checked; report.exported audited on download), expiry after 24 h and cleanup in the job; CSV states truncation and the snapshot boundary; web report-export.tsx (queued status panel and authenticated download) on report detail, builder and dashboard widgets. tests/api-integration/p5-reports-export.test.ts 13/13 on a fresh scratch DB (lifecycle with 210 rows past the 200-row screen cap, other person/workspace/customer 404/403, limit 429, expiry 410, not-ready 409, requester gone fails closed, queue path strips rates and refuses a rate file to a caller who lost the right, impersonated request refused, custom and widget exports incl. saved-view widget); tests/api/report/snapshot.logic.test.ts threshold cases [U1 green]; report-export.test.tsx, dashboard-widget-live.test.tsx [U2 green]",
 			"gap": "The reports in people.ts, leadership.ts and customers.ts cap their own rows at 200/500 and do not read the export cap, so a queued export of those is not larger than the screen; the contract's emailed link is not built (the requester polls and downloads from an authenticated route); the CSV is stored in the database until expiry rather than in object storage; the stored CSV reflects the requester's project reach at render time for up to 24 h (a download is refused only when the render used report:read_all or rates and the caller has lost that right, not when a single project's access was removed); an API-key request is never queued (the job cannot reproduce a key's clamp), it gets the synchronous CSV with truncation stated, and impersonated requests are refused by the platform rule. Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-reports-export.test.ts"],
+				"assertions": [
+					"CSV (RP-10)",
+					"when an export is queued (RP-10)",
+					"a queued export (RP-10)"
+				],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/index.ts",
+					"apps/api/src/report/reports/shared.ts",
+					"apps/api/src/report/run.ts",
+					"apps/api/src/report/custom.ts",
+					"apps/api/src/report/export.logic.ts",
+					"apps/api/src/report/present.ts",
+					"apps/api/src/report/response.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:479",
+				"latestEvidence": "Full-population server-side CSV pages through one repeatable-read transaction with the same reach/filters; no arbitrary success cap. 18 export tests include 5205 unique rows, last-row coverage and later-page rollback; 16 core and 100 related integration tests passed. CSV browser download remains pending.",
+				"repairReconciledAt": "2026-10-25T02:52:15.646458+00:00",
+				"independentReview": "pending"
+			}
 		},
 		{
 			"id": "RP-11",
 			"state": "implemented_tested",
 			"evidence": "apps/web/src/components/reports/report-view.tsx chart/table tabs, report-table.tsx, dashboard-widget.tsx; report-view.test.tsx 'a chart always has its table (RP-11)'; dashboard-widget.test.tsx 'gives a chart widget its table equivalent (RP-11)' [U2 web unit green]",
 			"gap": "Keyboard reachability not checked in a browser. Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/reports/report-view.test.tsx:215",
+					"apps/web/src/components/reports/dashboard-widget.test.tsx:146"
+				],
+				"assertions": [
+					"a chart always has its table (RP-11)",
+					"gives a chart widget its table equivalent (RP-11)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/reports/report-view.tsx",
+					"apps/web/src/components/reports/dashboard-widget.tsx",
+					"apps/web/src/components/reports/report-table.tsx",
+					"apps/web/src/components/reports/report-chart.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:481"
+			}
 		},
 		{
 			"id": "RP-12",
 			"state": "implemented_tested",
 			"evidence": "All 24 tier 1 reports now drill: 12 own drillItems plus apps/api/src/report/reports/drill-extra.ts for breach_analysis, satisfaction, utilisation, capacity, time_logged, cost_to_deliver, portfolio_health, predictability, escalations, kb_deflection, cycle_burndown and cycle_velocity (run.ts gives each row its handle, the drill route falls back to it); tier 3 reports drill at POST /api/reports/custom/items (group label as handle, work items or time entries) and dashboard widgets at GET /api/dashboards/{id}/widgets/{wid}/items; DrillItem has a kind (work_item, time_entry, article), time entries carry hours only; web report-drill.tsx (DrillItemsDialog with a table per kind, report/widget/custom wrappers), report-builder.tsx and dashboard-widget-live.tsx. tests/api-integration/p5-reports-drill.test.ts 10/10 on a fresh scratch DB (each of the 12 new drills lists the row's population, reach and time_entry:read_any kept, no rate/cost field in any time drill, project-scoped article hidden without reach, custom and widget drill, 404 for another person's widget, 403 for a customer); p5-reports-core.test.ts (policy-wide customer 403 over every new route); report-view.test.tsx time-entry and article cases [U2 green]",
 			"gap": "Time and cost drills list hours, never a cost, even for a rate manager (TC-11 by construction); the cost-to-deliver drill lists time entries in the window, not the budget period; the burndown drill lists the cycle's items (resolved that day when a day is chosen), the velocity drill the items of the last three completed cycles, and the breach drill every item due in the window for the row (breached first). Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-reports-drill.test.ts:254",
+					"apps/web/src/components/reports/report-view.test.tsx:328"
+				],
+				"assertions": [
+					"Budget-specific cost drill returns full-period time and cost entries with distinct handles; UI lists cost description/currency without rate or amount."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/reports/drill-extra.ts",
+					"apps/api/src/report/reports/leadership.ts",
+					"apps/api/src/report/types.ts",
+					"apps/web/src/components/reports/report-drill.tsx",
+					"apps/api/src/report/reports/shared.ts",
+					"apps/api/src/report/run.ts",
+					"apps/api/src/report/custom.ts",
+					"apps/api/src/report/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:483"
+			}
 		},
 		{
 			"id": "RP-13",
 			"state": "implemented_tested",
 			"evidence": "dashboard and dashboard_widget in apps/api/src/database/schema-p5-reports.ts (0152_p5_reports_dashboards.sql); apps/web/src/components/reports/dashboard-view.tsx, dashboard-widget.tsx; p5-reports-dashboards.test.ts 'widget data' and tier 3 widget cases [integration test present, not run by this audit]; dashboard-widget.test.tsx 'a dashboard widget (RP-13)' [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/reports/dashboard-widget.test.tsx:116",
+					"tests/api-integration/p5-reports-dashboards.test.ts:338"
+				],
+				"assertions": ["a dashboard widget (RP-13)", "widget data"],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema-p5-reports.ts",
+					"apps/web/src/components/reports/dashboard-view.tsx",
+					"apps/api/drizzle/0152_p5_reports_dashboards.sql",
+					"apps/api/src/audit/actions.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/dashboard.tsx",
+					"apps/web/src/components/reports/dashboard-widget.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:489"
+			}
 		},
 		{
 			"id": "RP-14",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/report/policy.ts; p5-reports-dashboards.test.ts 'keeps a personal dashboard to its owner', 'lets only workspace:manage_settings create and change a workspace dashboard' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-reports-dashboards.test.ts:132",
+					"tests/api-integration/p5-reports-dashboards.test.ts:133",
+					"tests/api-integration/p5-reports-dashboards.test.ts:150"
+				],
+				"assertions": [
+					"personal and workspace dashboards (RP-14)",
+					"keeps a personal dashboard to its owner",
+					"lets only workspace:manage_settings create and change a workspace dashboard"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/policy.ts",
+					"apps/api/src/report/index.ts",
+					"apps/api/src/database/schema-p5-reports.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:490"
+			}
 		},
 		{
 			"id": "RP-15",
 			"state": "implemented_tested",
 			"evidence": "apps/web/src/components/reports/dashboard-editor.tsx (dnd-kit drag with keyboard sensor, step resize controls), lib/dashboard-layout.ts; report/dashboard.repository.ts atomic versioned save; p5-reports-dashboards.test.ts 'saves a drag and a resize atomically, keeps widget ids and bumps the version', 'refuses a stale version, overlapping widgets...' [integration test present, not run by this audit]; dashboard-editor.test.tsx, dashboard-layout.test.ts [U2 web unit green]",
 			"gap": "Resize is by step buttons in a separate edit route (dashboard_.edit.tsx), not a drag handle. Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/report/logic.test.ts:348",
+					"apps/web/src/components/reports/dashboard-editor.test.tsx:174",
+					"apps/web/src/lib/dashboard-layout.test.ts:16"
+				],
+				"assertions": [
+					"dashboard layout (RP-15)",
+					"dashboard editor (RP-15)",
+					"dashboard grid (RP-15)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [
+					"Dashboard drag and step-button resize are wired to persisted layout; no persisted browser interaction was run by this audit."
+				],
+				"paths": [
+					"apps/api/src/report/dashboard.repository.ts",
+					"apps/web/src/components/reports/dashboard-editor.tsx",
+					"apps/web/src/components/reports/dashboard-grid.tsx",
+					"apps/api/src/audit/actions.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/dashboard_.edit.tsx",
+					"apps/web/src/lib/dashboard-layout.ts",
+					"apps/api/src/database/schema-p5-reports.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:492"
+			}
 		},
 		{
 			"id": "RP-16",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/report/dashboard.logic.ts default dashboard; p5-reports-dashboards.test.ts 'gives a new person a useful dashboard on first use, once', 'does not create a personal default when the workspace already has a dashboard' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-reports-dashboards.test.ts:96",
+					"tests/api-integration/p5-reports-dashboards.test.ts:97",
+					"tests/api-integration/p5-reports-dashboards.test.ts:118"
+				],
+				"assertions": [
+					"the default dashboard (RP-16)",
+					"gives a new person a useful dashboard on first use, once",
+					"does not create a personal default when the workspace already has a dashboard"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/dashboard.logic.ts",
+					"apps/api/src/report/dashboard.repository.ts",
+					"apps/api/src/report/index.ts",
+					"apps/api/drizzle/0152_p5_reports_dashboards.sql",
+					"apps/web/src/components/reports/dashboard-view.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:493"
+			}
 		},
 		{
 			"id": "RP-17",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/report/context.ts, policy.ts reach filter and report:read_all; p5-reports-core.test.ts 'shows two people different numbers and says why', 'widens to the whole workspace with report:read_all and never past it', 'refuses a workspace the caller is not in'; p5-reports-data.test.ts 'never counts another workspace's items' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-reports-core.test.ts:223",
+					"tests/api-integration/p5-reports-core.test.ts:224",
+					"tests/api-integration/p5-reports-core.test.ts:245"
+				],
+				"assertions": [
+					"reach and tenancy (RP-17)",
+					"shows two people different numbers and says why",
+					"widens to the whole workspace with report:read_all and never past it"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/context.ts",
+					"apps/api/src/report/policy.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:507"
+			}
 		},
 		{
 			"id": "RP-18",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/report/http.ts, policy.ts staff-only; p5-reports-core.test.ts 'answers 403 on every report and dashboard route, with the feature on and off' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-reports-core.test.ts:33",
+					"tests/api-integration/p5-reports-core.test.ts:34"
+				],
+				"assertions": [
+					"customers see no reports (RP-18)",
+					"answers 403 on every report and dashboard route, with the feature on and off"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/report/http.ts",
+					"apps/api/src/report/policy.ts",
+					"apps/web/src/fetchers/report/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:509"
+			}
 		},
 		{
 			"id": "KB-1",
 			"state": "implemented_tested",
 			"evidence": "kb_article.project_id in apps/api/src/database/schema-p5-kb.ts (0150_p5_knowledge_base.sql); p5-kb-articles.test.ts 'KB-1 project scope and reach' block [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-kb-articles.test.ts:280"],
+				"assertions": ["KB-1 project scope and reach"],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema-p5-kb.ts",
+					"apps/api/drizzle/0150_p5_knowledge_base.sql"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:612"
+			}
 		},
 		{
 			"id": "KB-2",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/kb/visibility.ts, portal-repository.ts; p5-kb-portal.test.ts 'KB-2 the double gate' block (4 cases) [integration test present, not run by this audit]; tests/api/kb/kb-logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-kb-portal.test.ts:77"],
+				"assertions": ["KB-2 the double gate"],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/visibility.ts",
+					"apps/api/src/kb/index.ts",
+					"apps/api/src/kb/logic.ts",
+					"apps/api/src/kb/portal-repository.ts",
+					"apps/api/src/database/schema-p5-kb.ts",
+					"apps/web/src/components/kb/kb-badges.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:614"
+			}
 		},
 		{
 			"id": "KB-3",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/kb/repository.ts immutable versions, /kb/articles/{id}/versions and /versions/{number}/restore; p5-kb-articles.test.ts 'lets a writer draft, a publisher publish, and keeps versions immutable' (incl. version restore, kb_article.version_restored audit) [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-kb-articles.test.ts:59"],
+				"assertions": [
+					"lets a writer draft, a publisher publish, and keeps versions immutable"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/repository.ts",
+					"apps/api/drizzle/0150_p5_knowledge_base.sql",
+					"apps/api/src/audit/actions.ts",
+					"apps/api/src/database/schema-p5-kb.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:616"
+			}
 		},
 		{
 			"id": "KB-4",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/kb/logic.ts submit/publish; /kb/settings; p5-kb-articles.test.ts 'requires submit then publish when switched on, and only a manager may switch it' [integration test present, not run by this audit]; kb-logic.test.ts [U1 API unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/kb/kb-logic.test.ts:12",
+					"tests/api-integration/p5-kb-articles.test.ts:238",
+					"tests/api-integration/p5-kb-articles.test.ts:239"
+				],
+				"assertions": [
+					"KB-4 article lifecycle",
+					"KB-4 review step",
+					"requires submit then publish when switched on, and only a manager may switch it"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/logic.ts",
+					"apps/api/src/audit/actions.ts",
+					"apps/api/src/database/schema.ts",
+					"apps/web/src/components/kb/agent/kb-report.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:617"
+			}
 		},
 		{
 			"id": "KB-5",
 			"state": "partial",
 			"evidence": "apps/web/src/components/kb/agent/kb-article-editor.tsx reuses Kaneo CommentEditor (StarterKit headings/lists, Table, ShikiCodeBlock, Image); apps/api/src/kb/sanitise.ts; kb-article-content.tsx renders callouts; tests/api/kb/kb-sanitise.test.ts [U1 API unit green]; kb-article-content.test.tsx [U2 web unit green]; p5-kb-articles.test.ts 'sanitises a hostile body on write' [integration test present, not run by this audit]",
 			"gap": "Callouts cannot be authored: apps/web/src/components/activity/comment-editor.tsx has no callout extension (only the renderer and sanitiser know them).",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/kb/kb-sanitise.test.ts:20",
+					"tests/api-integration/p5-kb-articles.test.ts:182"
+				],
+				"assertions": [
+					"KB-5 body sanitiser",
+					"sanitises a hostile body on write"
+				],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/sanitise.ts",
+					"apps/web/src/components/kb/agent/kb-article-editor.tsx",
+					"apps/web/src/components/kb/kb-article-content.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:619",
+				"latestEvidence": "KB-only callout extension and slash controls reuse shared editor; info/internal variants align sanitizer.",
+				"scopedExecution": "18 focused editor/live-reference/renderer tests"
+			}
 		},
 		{
 			"id": "KB-6",
 			"state": "partial",
 			"evidence": "apps/web/src/components/kb/agent/kb-work-item-reference.tsx renders key, title and state live on the staff view; kb-article-content.test.tsx 'renders a work item reference only through the staff renderer' [U2 web unit green]; p5-kb-portal.test.ts 'strips internal callouts and work item references' [integration test present, not run by this audit]",
 			"gap": "No editor control inserts a work item reference, so articles cannot embed one through the UI.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/kb/kb-article-content.test.tsx:96",
+					"tests/api-integration/p5-kb-portal.test.ts:176"
+				],
+				"assertions": [
+					"renders a work item reference only through the staff renderer",
+					"strips internal callouts and work item references and exposes no staff metadata"
+				],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/kb/agent/kb-work-item-reference.tsx",
+					"apps/web/src/components/kb/kb-article-content.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:621",
+				"latestEvidence": "KB slash command inserts work-item reference prefix and existing issue-link input rule stores/renders live reference.",
+				"scopedExecution": "18 focused editor/live-reference/renderer tests"
+			}
 		},
 		{
 			"id": "KB-7",
 			"state": "partial",
 			"evidence": "kb_article.owner_id and review_due_at (schema-p5-kb.ts); kb/logic.ts overdue; kb-report.tsx overdue list; editor has the review date; p5-kb-articles.test.ts 'weights titles above bodies and reports overdue reviews' [integration test present, not run by this audit]; kb-logic.test.ts [U1 API unit green]",
 			"gap": "Owner is accepted by the API and shown on the article view but cannot be set in the article editor.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/kb/kb-logic.test.ts:68",
+					"tests/api-integration/p5-kb-articles.test.ts:537"
+				],
+				"assertions": [
+					"KB-7 review dates and snippets",
+					"weights titles above bodies and reports overdue reviews"
+				],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/logic.ts",
+					"apps/api/src/kb/repository.ts",
+					"apps/api/src/database/schema-p5-kb.ts",
+					"apps/web/src/components/kb/agent/kb-report.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:622",
+				"latestEvidence": "Owner selection uses active workspace members and persists ownerId/null; review date retained.",
+				"scopedExecution": "18 focused editor/live-reference/renderer tests"
+			}
 		},
 		{
 			"id": "KB-8",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/kb/portal-repository.ts suggestions; apps/web/src/components/kb/portal/portal-kb-deflection.tsx on routes/portal/catalogue.tsx; p5-kb-portal.test.ts 'suggests inline, records a candidate, and counts an abandoned form as a deflection' [integration test present, not run by this audit]; portal-kb-deflection.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/kb/portal/portal-kb-deflection.test.tsx:61",
+					"tests/api-integration/p5-kb-portal.test.ts:419"
+				],
+				"assertions": [
+					"PortalKbSuggestions (KB-8, KB-11)",
+					"suggests inline, records a candidate, and counts an abandoned form as a deflection"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/portal-repository.ts",
+					"apps/api/src/kb/logic.ts",
+					"apps/web/src/components/kb/portal/portal-kb-deflection.tsx",
+					"apps/web/src/fetchers/kb/portal.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:630"
+			}
 		},
 		{
 			"id": "KB-9",
 			"state": "partial",
 			"evidence": "apps/api/src/kb/repository.ts 'Relevance (KB-9): the canonical search's lower-cased LIKE matching, weighted to titles'; p5-kb-articles.test.ts 'weights titles above bodies' [integration test present, not run by this audit]",
 			"gap": "Matching mirrors canonical search's LIKE scan with title weighting; there is no full-text index behind it.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-kb-articles.test.ts"],
+				"assertions": [],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/drizzle/0164_kb_full_text_search.sql",
+					"apps/api/src/kb/full-text.ts",
+					"apps/api/src/kb/logic.ts",
+					"apps/api/src/kb/portal-repository.ts",
+					"apps/api/src/kb/repository.ts",
+					"tests/api-integration/p5-kb-articles.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:632",
+				"latestEvidence": "Weighted PostgreSQL full-text prefix query and matching GIN expression indexes now replace LIKE for deflection and KB search; raw title/body lexemes match query tokenization, including combining marks.",
+				"scopedExecution": "KB integration20/20+helper3/3, or CAB/bootstrap/seed/change40/40; these are scoped results, not complete phase acceptance."
+			}
 		},
 		{
 			"id": "KB-10",
 			"state": "implemented_tested",
 			"evidence": "kb deflection_event (schema-p5-kb.ts), /portal/kb/deflection and /abandon; report/reports/kb.ts; p5-kb-portal.test.ts 'suggests inline, records a candidate, and counts an abandoned form as a deflection'; p5-reports-data.test.ts 'counts opened and abandoned...' [integration test present, not run by this audit]; portal-kb-deflection.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/kb/portal/portal-kb-deflection.test.tsx:107",
+					"tests/api-integration/p5-kb-portal.test.ts:419"
+				],
+				"assertions": [
+					"usePortalKbDeflection (KB-10)",
+					"suggests inline, records a candidate, and counts an abandoned form as a deflection"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/portal-repository.ts",
+					"apps/api/src/report/reports/kb.ts",
+					"apps/web/src/routes/portal/catalogue.tsx",
+					"apps/api/src/database/schema-p5-kb.ts",
+					"apps/web/src/components/kb/agent/kb-report.tsx",
+					"apps/web/src/components/kb/portal/portal-kb-deflection.tsx",
+					"apps/web/src/fetchers/kb/portal.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:633"
+			}
 		},
 		{
 			"id": "KB-11",
 			"state": "implemented_tested",
 			"evidence": "apps/web/src/components/kb/portal/portal-kb-deflection.tsx offers inline with no confirmation step; portal-kb-deflection.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/kb/portal/portal-kb-deflection.test.tsx:61"
+				],
+				"assertions": ["PortalKbSuggestions (KB-8, KB-11)"],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": ["apps/web/src/components/kb/portal/portal-kb-deflection.tsx"],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:635"
+			}
 		},
 		{
 			"id": "KB-12",
 			"state": "implemented_tested",
 			"evidence": "apps/web/src/components/kb/agent/kb-triage-suggestions.tsx on routes/agent/_layout/_authenticated/agent/triage.tsx; p5-kb-portal.test.ts 'offers staff the same suggestions while triaging, including internal articles' [integration test present, not run by this audit]; kb-triage-suggestions.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/kb/agent/kb-triage-suggestions.test.tsx:53",
+					"tests/api-integration/p5-kb-portal.test.ts:479"
+				],
+				"assertions": [
+					"KbTriageSuggestions (KB-12)",
+					"offers staff the same suggestions while triaging, including internal articles"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/index.ts",
+					"apps/api/src/kb/response.ts",
+					"apps/api/src/kb/repository.ts",
+					"apps/web/src/components/kb/agent/kb-triage-suggestions.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+					"apps/web/src/fetchers/kb/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:638"
+			}
 		},
 		{
 			"id": "KB-13",
 			"state": "partial",
 			"evidence": "/kb/search and /portal/kb?q (apps/api/src/kb/repository.ts, portal-repository.ts) scoped by reach/visibility; portal-kb-browse.tsx; p5-kb-articles.test.ts 'weights titles above bodies...', 'hides a project-scoped article from staff who do not reach the project' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified. [Corrected after Opus P5 review round 2: the untested clause keeps this row from implemented_tested.]",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-kb-articles.test.ts:281"],
+				"assertions": [
+					"hides a project-scoped article from staff who do not reach the project"
+				],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/full-text.ts",
+					"apps/api/src/kb/repository.ts",
+					"apps/api/src/search",
+					"apps/web/src/components/kb/portal/portal-kb-browse.tsx",
+					"apps/web/src/lib/routes.ts",
+					"tests/api-integration/p5-kb-articles.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:644",
+				"latestEvidence": "Staff global KB search uses weighted full-text rank, capability/key-scope/feature/reach checks; portal uses immutable published versions with customer visibility.",
+				"scopedExecution": "KB integration20/20+helper3/3, or CAB/bootstrap/seed/change40/40; these are scoped results, not complete phase acceptance."
+			}
 		},
 		{
 			"id": "KB-14",
 			"state": "implemented_tested",
 			"evidence": "kb categories (schema-p5-kb.ts); kb-categories.tsx, portal-kb-browse.tsx; p5-kb-portal.test.ts 'lists only categories that hold visible articles'; p5-kb-articles.test.ts categories block [integration test present, not run by this audit]; kb-categories.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-kb-portal.test.ts:335"],
+				"assertions": ["lists only categories that hold visible articles"],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/web/src/lib/routes.ts",
+					"apps/api/src/database/schema-p5-kb.ts",
+					"apps/web/src/components/kb/agent/kb-categories.tsx",
+					"apps/web/src/components/kb/portal/portal-kb-browse.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:645"
+			}
 		},
 		{
 			"id": "KB-15",
 			"state": "implemented_untested",
 			"evidence": "apps/api/src/kb/repository.ts relatedArticles, portal-repository.ts portalRelated; portal-kb-article.tsx related section; portal-kb-article.test.tsx renders supplied related articles [U2 web unit green]",
 			"gap": "No test asserts the related selection (shared category plus text similarity).",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/kb/portal/portal-kb-article.test.tsx"
+				],
+				"assertions": [],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [
+					"Test file locator(s) copied from historical evidence; decisive assertion was not independently traced in current source."
+				],
+				"paths": [
+					"apps/api/src/kb/repository.ts",
+					"apps/api/src/kb/portal-repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:646"
+			}
 		},
 		{
 			"id": "KB-16",
 			"state": "implemented_untested",
 			"evidence": "apps/api/src/kb/portal-repository.ts list sort 'recent' | 'popular'; portal-kb-browse.tsx; p5-kb-portal.test.ts 'counts a portal read as a view but never changes updated_at' [integration test present, not run by this audit]",
 			"gap": "No test asserts the most-viewed or recently-updated ordering.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-kb-portal.test.ts:498"],
+				"assertions": [
+					"counts a portal read as a view but never changes updated_at"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/portal-repository.ts",
+					"apps/web/src/lib/routes.ts",
+					"apps/web/src/components/kb/portal/portal-kb-browse.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:647"
+			}
 		},
 		{
 			"id": "KB-17",
 			"state": "implemented_tested",
 			"evidence": "kb feedback (schema-p5-kb.ts), /portal/kb/{id}/feedback; kb-report.tsx unhelpful list; p5-kb-portal.test.ts 'records one answer per customer, replaces it, and feeds the agent report' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-kb-portal.test.ts:368"],
+				"assertions": [
+					"records one answer per customer, replaces it, and feeds the agent report"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/repository.ts",
+					"apps/api/drizzle/0150_p5_knowledge_base.sql",
+					"apps/api/src/database/schema-p5-kb.ts",
+					"apps/web/src/components/kb/agent/kb-report.tsx",
+					"apps/web/src/components/kb/portal/portal-kb-article.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:648"
+			}
 		},
 		{
 			"id": "SVC-1",
 			"state": "implemented_tested",
 			"evidence": "service (name, description, category, owning team, support_level, service_calendar_id) in apps/api/src/database/schema-p5-service.ts (0151_p5_service_management.sql); services-list.tsx; p5-service-catalogue.test.ts 'creates a service with owner team, support level, links, dependencies and a release checklist (SVC-1, SVC-2)' [integration test present, not run by this audit]; services-list.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/service-management/services-list.test.tsx:92",
+					"tests/api-integration/p5-service-catalogue.test.ts:34"
+				],
+				"assertions": [
+					"lists services with their owner, status and counts (SVC-1, SVC-3, SVC-4)",
+					"creates a service with owner team, support level, links, dependencies and a release checklist (SVC-1, SVC-2)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema-p5-service.ts",
+					"apps/api/drizzle/0151_p5_service_management.sql",
+					"apps/web/src/components/service-management/services-list.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:753"
+			}
 		},
 		{
 			"id": "SVC-2",
 			"state": "implemented_tested",
 			"evidence": "service_link (documentation | project | kb_article) in schema-p5-service.ts; service-detail.tsx; p5-service-catalogue.test.ts (SVC-1, SVC-2), 'refuses a dependency or link that points into another workspace' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-service-catalogue.test.ts:34",
+					"tests/api-integration/p5-service-catalogue.test.ts:415"
+				],
+				"assertions": [
+					"creates a service with owner team, support level, links, dependencies and a release checklist (SVC-1, SVC-2)",
+					"refuses a dependency or link that points into another workspace"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/service-management/service-detail.tsx",
+					"apps/api/src/database/schema-p5-service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:755"
+			}
 		},
 		{
 			"id": "SVC-3",
 			"state": "implemented_tested",
 			"evidence": "work_item.service_id; POST /api/work-items/{key}/service; change-section.tsx service picker for every work item type; p5-service-catalogue.test.ts 'counts incidents per service from work item references (SVC-3)' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/service-management/services-list.test.tsx:92",
+					"tests/api-integration/p5-service-catalogue.test.ts:214"
+				],
+				"assertions": [
+					"lists services with their owner, status and counts (SVC-1, SVC-3, SVC-4)",
+					"counts incidents per service from work item references (SVC-3)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-management/response.ts",
+					"apps/api/src/service-management/service-repository.ts",
+					"apps/api/src/service-management/change-repository.ts",
+					"apps/api/drizzle/0151_p5_service_management.sql",
+					"apps/web/src/components/service-management/change-section.tsx",
+					"apps/web/src/fetchers/service-management/index.ts",
+					"apps/api/src/database/schema-p5-service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:757"
+			}
 		},
 		{
 			"id": "SVC-4",
 			"state": "implemented_tested",
 			"evidence": "/api/services/{id}/status (apps/api/src/service-management/index.ts); p5-service-catalogue.test.ts 'status is set by a person and audited, never computed (SVC-4)' [integration test present, not run by this audit]; services-list.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/service-management/services-list.test.tsx:92",
+					"tests/api-integration/p5-service-catalogue.test.ts:105"
+				],
+				"assertions": [
+					"lists services with their owner, status and counts (SVC-1, SVC-3, SVC-4)",
+					"status is set by a person and audited, never computed (SVC-4)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-management/index.ts",
+					"apps/web/src/components/service-management/services-list.tsx",
+					"apps/api/src/database/schema-p5-service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:759"
+			}
 		},
 		{
 			"id": "SVC-5",
 			"state": "implemented_tested",
 			"evidence": "service_dependency; /api/services/{id}/impact; packages/domain/src/service-management/service-management.ts impact walk; p5-service-catalogue.test.ts 'walks the impact list level by level with the customers served', 'permits a circular dependency but flags it' [integration test present, not run by this audit]; service-management.test.ts [U3 domain unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/service-management/service-management.test.ts:247",
+					"tests/api-integration/p5-service-changes.test.ts:318",
+					"tests/api-integration/p5-service-catalogue.test.ts:126"
+				],
+				"assertions": [
+					"traverseImpact (SVC-5)",
+					"reports how many services and customers a change affects (CH-1, SVC-5)",
+					"walks the impact list level by level with the customers served (SVC-5)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-management/service-repository.ts",
+					"packages/domain/src/service-management/service-management.ts",
+					"apps/web/src/components/service-management/service-detail.tsx",
+					"apps/api/src/database/schema-p5-service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:761"
+			}
 		},
 		{
 			"id": "CH-1",
 			"state": "implemented_tested",
 			"evidence": "change_detail and change_service in schema-p5-service.ts; apps/api/src/service-management/change-repository.ts; change-section.tsx; p5-service-changes.test.ts 'only a change type has change detail', 'reports how many services and customers a change affects (CH-1, SVC-5)' [integration test present, not run by this audit]; change-section.test.tsx [U2 web unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-service-changes.test.ts:118",
+					"tests/api-integration/p5-service-changes.test.ts:132",
+					"tests/api-integration/p5-service-changes.test.ts:318"
+				],
+				"assertions": [
+					"only a change type has change detail",
+					"feeds risk and rollback plan into change_risk_at_most and field_required guards (CH-1, CH-3, CH-6)",
+					"reports how many services and customers a change affects (CH-1, SVC-5)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-management/change-repository.ts",
+					"apps/api/src/service-management/service-repository.ts",
+					"apps/api/drizzle/0151_p5_service_management.sql",
+					"packages/domain/src/workflow/types.ts",
+					"apps/api/src/work-item/workflow-transition-context.ts",
+					"apps/web/src/components/service-management/change-section.tsx",
+					"apps/api/src/database/schema-p5-service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:776"
+			}
 		},
 		{
 			"id": "CH-2",
 			"state": "partial",
 			"evidence": "apps/api/src/service-management/cab-template.ts opt-in CAB workflow (requires_cab edges into Approved, bypass edges removed); apps/web/src/components/workflow/cab-template-panel.tsx; p5-service-cab-template.test.ts 'gates change approval on CAB, leaves other types alone and cannot be bypassed', 'is not applied to a fresh workspace' [integration test present, not run by this audit]; cab-template-panel.test.tsx [U2 web unit green]",
 			"gap": "Opt-in only: a fresh workspace's change workflow has no CAB edge until an administrator applies the template.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-service-cab-template.test.ts:133",
+					"tests/api-integration/p5-service-cab-template.test.ts:134",
+					"tests/api-integration/p5-service-cab-template.test.ts:153"
+				],
+				"assertions": [
+					"the CAB workflow template (CH-2)",
+					"is not applied to a fresh workspace: no CAB edges, status says so",
+					"gates change approval on CAB, leaves other types alone and cannot be bypassed"
+				],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/audit/actions.ts",
+					"apps/api/src/service-management/cab-template.ts",
+					"apps/api/src/service-management/index.ts",
+					"apps/api/src/service-management/policy.ts",
+					"apps/api/src/service-management/schema.ts",
+					"apps/api/src/workspace/controllers/create-workspace.ts",
+					"apps/web/src/components/workflow/cab-template-panel.tsx",
+					"apps/web/src/fetchers/service-management/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:778",
+				"latestEvidence": "Fresh workspace bootstrap now publishes/binds built-in CAB workflow transactionally. Existing-workspace opt-in is preserved; ordinary tasks keep To Do/default workflow.",
+				"scopedExecution": "KB integration20/20+helper3/3, or CAB/bootstrap/seed/change40/40; these are scoped results, not complete phase acceptance."
+			}
 		},
 		{
 			"id": "CH-3",
 			"state": "partial",
 			"evidence": "packages/domain/src/service-management/service-management.ts CAB-required from risk [U3 domain unit green]; change-repository.ts preApprovalCeiling reads change_risk_at_most; p5-service-changes.test.ts 'derives whether CAB is required from risk (CH-3)', 'applies the rollback and freeze gates to a risk-guarded pre-approval edge too' [integration test present, not run by this audit]",
 			"gap": "The low-risk pre-approval edge is not generated by the CAB template (cab-template.ts:45); it must be hand-authored in the workflow editor with a role split.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/service-management/service-management.test.ts:20",
+					"tests/api-integration/p5-service-changes.test.ts:132",
+					"tests/api-integration/p5-service-changes.test.ts:170"
+				],
+				"assertions": [
+					"requiresCabApproval (CH-3)",
+					"feeds risk and rollback plan into change_risk_at_most and field_required guards (CH-1, CH-3, CH-6)",
+					"derives whether CAB is required from risk (CH-3) and reports it"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-management/cab-template.ts",
+					"packages/domain/src/service-management/service-management.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:780",
+				"latestEvidence": "Retained CH-3 permits low-risk preapproval by configuration; it does not mandate a bypass in the built-in default. Existing workflow risk guards remain available; safe CAB default applies to every fresh change. No new default bypass introduced."
+			}
 		},
 		{
 			"id": "CH-4",
 			"state": "partial",
 			"evidence": "change_freeze in schema-p5-service.ts; freeze-dialog.tsx, override-freeze-dialog.tsx; override needs flag, reason, change:manage and a step-up proof; p5-service-changes.test.ts 'blocks approval while the window overlaps an active freeze...', 'creates, edits and cancels a freeze, audited (CH-4)', 'freeze override (CH-4)' block (step-up refusal, one-proof spend, prominent audit) [integration test present, not run by this audit]; override-freeze-dialog.test.tsx [U2 web unit green]; service-management.test.ts [U3 domain unit green]",
 			"gap": "Round 4: approval with no window is now blocked while a freeze covers now (step-up override, audited); an approved change cannot be planned into an active freeze without an override (409 change.frozen). Gate still fires only on CAB or risk-guarded edges (opt-in CAB template, CH-2 partial); a freeze declared after approval only flags the change. Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/service-management/service-management.test.ts:37",
+					"apps/web/src/components/service-management/change-section.test.tsx:154",
+					"tests/api-integration/p5-service-changes.test.ts:202"
+				],
+				"assertions": [
+					"window and freeze overlap (CH-4)",
+					"flags a freeze and offers the override only to someone who manages changes (CH-4)",
+					"applies the rollback and freeze gates to a risk-guarded pre-approval edge too (CH-3, CH-4, CH-6)"
+				],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/drizzle/0151_p5_service_management.sql",
+					"apps/api/src/service-management/cab-template.ts",
+					"apps/api/src/service-management/change-repository.ts",
+					"apps/api/src/service-management/index.ts",
+					"apps/api/src/work-item/controllers/list-work-item-transitions.ts",
+					"apps/api/src/work-item/controllers/move-work-item.ts",
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"packages/domain/src/service-management/service-management.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:782",
+				"latestEvidence": "Fresh workspace built-in CAB approval path includes existing freeze protection; existing-workspace opt-in remains explicit.",
+				"scopedExecution": "KB integration20/20+helper3/3, or CAB/bootstrap/seed/change40/40; these are scoped results, not complete phase acceptance."
+			}
 		},
 		{
 			"id": "CH-5",
 			"state": "implemented_tested",
 			"evidence": "apps/web/src/components/service-management/change-calendar.tsx; p5-service-changes.test.ts 'shows windows and freezes and flags two changes to the same service in the same window (CH-5)', 'limits the range to 400 days' [integration test present, not run by this audit]; change-calendar.test.ts [U2 web unit green]; service-management.test.ts [U3 domain unit green]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/service-management/service-management.test.ts:219",
+					"apps/web/src/components/service-management/change-section.test.tsx:202",
+					"tests/api-integration/p5-service-changes.test.ts:561"
+				],
+				"assertions": [
+					"findChangeConflicts (CH-5)",
+					"lists same-service conflicts (CH-5)",
+					"shows windows and freezes and flags two changes to the same service in the same window (CH-5)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/service-management/change-calendar.tsx",
+					"packages/domain/src/service-management/service-management.ts",
+					"apps/web/src/lib/routes.ts",
+					"apps/web/src/components/calendar/calendar-task-bar.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:785"
+			}
 		},
 		{
 			"id": "CH-6",
 			"state": "partial",
 			"evidence": "apps/api/src/work-item/workflow-transition-context.ts + change-repository.ts rollback guard; p5-service-changes.test.ts 'requires a rollback plan before the CAB-gated approval even without a guard (CH-6)' [integration test present, not run by this audit]; service-management.test.ts [U3 domain unit green]",
 			"gap": "Not browser-verified. [Round 3: same edge dependency as CH-4.]",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/service-management/service-management.test.ts:207",
+					"apps/web/src/components/service-management/change-section.test.tsx:144",
+					"tests/api-integration/p5-service-changes.test.ts:132"
+				],
+				"assertions": [
+					"requires a non-blank rollback plan (CH-6)",
+					"explains a missing rollback plan (CH-6)",
+					"feeds risk and rollback plan into change_risk_at_most and field_required guards (CH-1, CH-3, CH-6)"
+				],
+				"executed": true,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-management/cab-template.ts",
+					"apps/api/src/service-management/change-repository.ts",
+					"apps/api/src/work-item/controllers/list-work-item-transitions.ts",
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"apps/api/src/work-item/workflow-transition-context.ts",
+					"apps/web/src/components/service-management/change-section.tsx",
+					"packages/domain/src/service-management/service-management.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:787",
+				"latestEvidence": "Fresh workspace built-in CAB approval path includes existing rollback-plan guard.",
+				"scopedExecution": "KB integration20/20+helper3/3, or CAB/bootstrap/seed/change40/40; these are scoped results, not complete phase acceptance."
+			}
 		},
 		{
 			"id": "REL-1",
 			"state": "implemented_tested",
 			"evidence": "release in schema-p5-service.ts; releases-list.tsx, release-detail.tsx; p5-service-releases.test.ts 'creates a release for a service, groups changes and instantiates the checklist (REL-1, REL-2, REL-3)' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-service-releases.test.ts:83"],
+				"assertions": [
+					"creates a release for a service, groups changes and instantiates the checklist (REL-1, REL-2, REL-3)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/drizzle/0151_p5_service_management.sql",
+					"apps/web/src/components/service-management/releases-list.tsx",
+					"apps/api/src/database/schema-p5-service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:796"
+			}
 		},
 		{
 			"id": "REL-2",
 			"state": "implemented_tested",
 			"evidence": "apps/api/src/service-management/release-repository.ts change association; p5-service-releases.test.ts (REL-1..3), 'refuses ... a non-change work item and a change in a project the caller cannot reach' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-service-releases.test.ts:83"],
+				"assertions": [
+					"creates a release for a service, groups changes and instantiates the checklist (REL-1, REL-2, REL-3)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-management/release-repository.ts",
+					"apps/api/src/service-management/schema.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:797"
+			}
 		},
 		{
 			"id": "REL-3",
 			"state": "implemented_tested",
 			"evidence": "service_release_checklist_item per service instantiated per release; p5-service-releases.test.ts (REL-1..3), 'ticks checklist items and refuses a stale version' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-service-releases.test.ts:83",
+					"tests/api-integration/p5-service-releases.test.ts:197"
+				],
+				"assertions": [
+					"creates a release for a service, groups changes and instantiates the checklist (REL-1, REL-2, REL-3)",
+					"ticks checklist items and refuses a stale version"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-management/index.ts",
+					"apps/api/src/service-management/release-repository.ts",
+					"apps/api/src/service-management/schema.ts",
+					"apps/api/drizzle/0151_p5_service_management.sql",
+					"apps/web/src/components/service-management/service-detail.tsx",
+					"apps/api/src/database/schema-p5-service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:798"
+			}
 		},
 		{
 			"id": "REL-4",
 			"state": "implemented_tested",
 			"evidence": "packages/domain/src/service-management/service-management.ts notes generation [U3 domain unit green]; /api/releases/{id}/notes; release-detail.tsx; p5-service-releases.test.ts 'generates notes from the changes, keeps an edit, and regenerates on demand (REL-4)' [integration test present, not run by this audit]",
 			"gap": "Not browser-verified.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/service-management/service-management.test.ts:295",
+					"tests/api-integration/p5-service-releases.test.ts:129"
+				],
+				"assertions": [
+					"generateReleaseNotes (REL-4)",
+					"generates notes from the changes, keeps an edit, and regenerates on demand (REL-4)"
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/service-management/service-management.ts",
+					"apps/web/src/components/service-management/release-detail.tsx",
+					"apps/api/src/database/schema-p5-service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:799"
+			}
 		},
 		{
 			"id": "REL-5",
 			"state": "partial",
 			"evidence": "release.publish_to_portal, published only when released (release-repository.ts:383), notes locked after; p5-service-releases.test.ts 'publishes to the portal only when switched on and released, and then locks the notes (REL-5)' [integration test present, not run by this audit]",
 			"gap": "No portal route or screen lists published releases (nothing in apps/api/src/portal-client-routes.ts or apps/web/src/routes/portal), so customers cannot see what changed.",
-			"browser_verified": false
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-service-releases.test.ts:162"],
+				"assertions": [
+					"publishes to the portal only when switched on and released, and then locks the notes (REL-5)"
+				],
+				"executed": true,
+				"browser": "scoped_pass",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-management/release-repository.ts",
+					"apps/web/src/components/service-management/releases-list.tsx",
+					"apps/api/src/database/schema-p5-service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:801",
+				"latestEvidence": "25 real persisted Chromium checks passed: publication default/off, immutable snapshot, customer reach, feature off/on and cleanup. 12 list/detail captures across widths/themes refreshed after sidebar readiness. 15 PostgreSQL and 3 UI tests passed; independent AI phase review pending.",
+				"scopedExecution": "15 release integration and3UI tests",
+				"browserEvidence": "docs/report/browser/codex-20261025-release-portal.json",
+				"repairReconciledAt": "2026-10-25T02:52:15.646463+00:00",
+				"independentReview": "pending",
+				"browserInspection": "Root visually inspected all12 refreshed list/detail captures at390/768/1440 in light/dark; no clipped text or missing sidebar.25 functional browser checks and cleanup remain recorded; independent phase review pending."
+			}
+		},
+		{
+			"id": "PG-1",
+			"state": "partial",
+			"evidence": "Added to requirements index 25 Oct; no historical P5 audit row.",
+			"gap": "Historical audit did not assess this newly indexed retained clause.",
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-pages-behaviour.test.ts",
+					"apps/web/src/components/pages/pages-list.test.tsx"
+				],
+				"assertions": [
+					"Create stores one project-scoped page; tree preserves parent and title order."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pages/repository.ts",
+					"apps/api/src/database/schema-p5-pages.ts",
+					"apps/web/src/components/pages/pages-list.tsx",
+					"apps/api/drizzle/0154_p5_project_pages.sql",
+					"apps/web/src/fetchers/pages/index.ts",
+					"apps/web/src/lib/routes.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:749"
+			}
+		},
+		{
+			"id": "PG-2",
+			"state": "partial",
+			"evidence": "Added to requirements index 25 Oct; no historical P5 audit row.",
+			"gap": "Historical audit did not assess this newly indexed retained clause.",
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-pages-reach.test.ts",
+					"tests/api-integration/p5-pages-feature-gate.test.ts"
+				],
+				"assertions": [
+					"Every page route gives a customer constant-shape 404 and writes nothing."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pages/access.ts",
+					"apps/api/src/pages/policy.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:750"
+			}
+		},
+		{
+			"id": "PG-3",
+			"state": "partial",
+			"evidence": "Added to requirements index 25 Oct; no historical P5 audit row.",
+			"gap": "Historical audit did not assess this newly indexed retained clause.",
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["apps/web/src/components/pages/page-detail.test.tsx:129"],
+				"assertions": [
+					"Edit renders a mocked CommentEditor; source imports confirm Page and KB wrappers share CommentEditor, but the test does not assert real toolbar parity."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [
+					"Both wrappers import the same CommentEditor; the unit test mocks it, so real toolbar/extension parity requires browser comparison."
+				],
+				"paths": [
+					"apps/web/src/components/activity/comment-editor.tsx",
+					"apps/web/src/components/kb/agent/kb-article-editor.tsx",
+					"apps/web/src/components/pages/page-detail.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/pages_.$pageId.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:751"
+			}
+		},
+		{
+			"id": "PG-4",
+			"state": "partial",
+			"evidence": "Added to requirements index 25 Oct; no historical P5 audit row.",
+			"gap": "Historical audit did not assess this newly indexed retained clause.",
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-pages-behaviour.test.ts"],
+				"assertions": [
+					"Save writes an immutable version; restore creates a new version."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pages/repository.ts",
+					"apps/web/src/components/pages/page-detail.tsx",
+					"apps/api/drizzle/0154_p5_project_pages.sql",
+					"apps/api/src/database/schema-p5-pages.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:752"
+			}
+		},
+		{
+			"id": "PG-5",
+			"state": "partial",
+			"evidence": "Added to requirements index 25 Oct; no historical P5 audit row.",
+			"gap": "Historical audit did not assess this newly indexed retained clause.",
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-pages-behaviour.test.ts"],
+				"assertions": [
+					"Stale expectedVersion returns 409 and leaves current version intact."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pages/repository.ts",
+					"apps/web/src/components/pages/page-detail.tsx",
+					"apps/api/src/pages/response.ts",
+					"apps/api/src/pages/logic.ts",
+					"apps/api/src/pages/schema.ts",
+					"apps/web/src/fetchers/pages/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:753"
+			}
+		},
+		{
+			"id": "PG-6",
+			"state": "partial",
+			"evidence": "Added to requirements index 25 Oct; no historical P5 audit row.",
+			"gap": "Historical audit did not assess this newly indexed retained clause.",
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-pages-behaviour.test.ts",
+					"tests/api-integration/p5-pages-feature-gate.test.ts"
+				],
+				"assertions": [
+					"Canonical staff search reaches pages only under project reach and feature gate."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/search/repository.ts",
+					"apps/api/src/pages/access.ts",
+					"apps/api/src/pages/search.ts",
+					"apps/api/src/search/controllers/global-search.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:754"
+			}
+		},
+		{
+			"id": "PG-7",
+			"state": "partial",
+			"evidence": "Added to requirements index 25 Oct; no historical P5 audit row.",
+			"gap": "Historical audit did not assess this newly indexed retained clause.",
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-pages-behaviour.test.ts",
+					"tests/api-integration/p5-pages-lifecycle.test.ts"
+				],
+				"assertions": [
+					"Deletion requests a pending action; undelete works inside the window and purge follows it."
+				],
+				"executed": true,
+				"browser": "scoped_pass",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pages/deletion-target.ts",
+					"apps/api/src/pages/index.ts",
+					"apps/api/src/scheduler/page-purge.ts",
+					"apps/web/src/components/pages/page-detail.tsx",
+					"apps/api/src/pages/logic.ts",
+					"apps/api/src/pages/repository.ts",
+					"apps/api/src/scheduler/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:755",
+				"latestEvidence": "Shared approval registry now matches all24 registered deletion targets.27 focused UI/registry tests passed. Real persisted browser confirmed own-page click-contract deletion, recently-deleted deadline, restore, reload and exact content preservation. Root inspected recovery/restored screens; full role matrix and phase review pending.",
+				"scopedExecution": "68 page integration and5UI tests; API-key-ceiling assertion separately rerun",
+				"browserEvidence": "docs/report/browser/codex-20261025-page-recovery.json"
+			}
+		},
+		{
+			"id": "PG-8",
+			"state": "partial",
+			"evidence": "Added to requirements index 25 Oct; no historical P5 audit row.",
+			"gap": "Historical audit did not assess this newly indexed retained clause.",
+			"browser_verified": false,
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-pages-behaviour.test.ts"],
+				"assertions": [
+					"Page mutations write audit metadata without a body copy."
+				],
+				"executed": false,
+				"browser": "pending",
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pages/audit.ts",
+					"apps/api/src/pages/repository.ts",
+					"apps/api/drizzle/0154_p5_project_pages.sql",
+					"apps/web/src/fetchers/pages/index.ts",
+					"apps/web/src/lib/routes.ts",
+					"apps/api/src/audit/actions.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p5.md:756"
+			}
 		}
 	],
 	"top_gaps": [
@@ -658,5 +2874,78 @@
 		"Reports: decide whether day-grain snapshots of three metrics satisfy RP-9 or the hourly grain and more metrics are wanted; let the people, leadership and customers reports read the export row cap, and decide on the emailed download link (RP-10); browser-verify the export status panel, drill dialogs and the snapshot boundary line.",
 		"KB: add callout and work-item-reference insertion and an owner picker to the editor using Kaneo/packages/ui Tiptap pieces (KB-5..7); add tests for related selection and popular/recent ordering (KB-15, KB-16).",
 		"Service management: add a portal release-notes surface (REL-5); decide whether CAB becomes default and how the low-risk pre-approval edge is authored (CH-2, CH-3); snapshot cycles that end by date for velocity (CY-9)."
-	]
+	],
+	"currentAssessment": {
+		"sourceHead": "aea5d5702ea9ac553573f598e02f425cd79cde87",
+		"method": "Provisional source-only per-ID assessment of enforcing paths and available test-assertion locators, with historical state/evidence/gap retained. An assertion label may be a suite heading; such rows say so. Historical test locators not independently traced are labelled in row gaps. This auditor executed no tests, browser journeys, migrations or database operations and gives no phase sign-off.",
+		"historicalStatesNotCurrentVerdicts": true,
+		"browser": "pending",
+		"executedTests": false,
+		"independentReview": false,
+		"uncommittedWorkingTree": true,
+		"localFindings": [
+			{
+				"severity": "medium",
+				"ids": ["TC-17"],
+				"summary": "Budget committedMinor remains null because point estimates do not encode remaining time; planned-versus-actual-versus-committed is not fulfilled without a conversion contract or explicit owner exception.",
+				"paths": [
+					"apps/api/src/time-tracking/index.ts",
+					"apps/api/src/time-tracking/response.ts"
+				]
+			},
+			{
+				"severity": "medium",
+				"ids": ["RP-9"],
+				"summary": "Snapshot job stores day grain and only selected metrics while the retained contract calls for hourly closed-period snapshots.",
+				"paths": [
+					"apps/api/src/scheduler/report-jobs.ts",
+					"apps/api/src/report/snapshot.logic.ts"
+				]
+			},
+			{
+				"severity": "medium",
+				"ids": ["RP-10"],
+				"summary": "People, leadership and customer report queries hard-cap rows at 200/500 before CSV export, so large export cannot preserve full filtered populations.",
+				"paths": [
+					"apps/api/src/report/reports/people.ts",
+					"apps/api/src/report/reports/leadership.ts",
+					"apps/api/src/report/reports/customers.ts"
+				]
+			},
+			{
+				"severity": "medium",
+				"ids": ["CH-2", "CH-3", "CH-4", "CH-6"],
+				"summary": "CAB workflow is opt-in for a fresh workspace and its template lacks the low-risk preapproval edge; freeze and rollback gates therefore depend on an applied template.",
+				"paths": [
+					"apps/api/src/service-management/cab-template.ts",
+					"apps/api/src/service-management/change-repository.ts"
+				]
+			},
+			{
+				"severity": "medium",
+				"ids": ["REL-5"],
+				"summary": "A release may be marked for portal publication, but no customer-safe portal list/detail route or page exposes it.",
+				"paths": [
+					"apps/api/src/service-management/index.ts",
+					"apps/api/src/portal-client-routes.ts"
+				]
+			},
+			{
+				"severity": "medium",
+				"ids": ["KB-9", "KB-13"],
+				"summary": "Knowledge-base search uses lower-cased LIKE over title/body rather than the retained full-text index; title weighting exists but index/search semantics do not.",
+				"paths": [
+					"apps/api/src/kb/repository.ts",
+					"apps/api/src/kb/portal-repository.ts"
+				]
+			}
+		],
+		"contractExceptionsChecked": [
+			"TC-12/13/14 cost types and entries, TC-16 cost actuals, TC-18 threshold notifications, and TC-20/21/22 available-hours capacity have current API/schema/UI paths and test assertions; old missing/partial claims are historical.",
+			"RP-12 cost-entry drill now has API and UI paths plus added assertions; previous mismatch is historical and tests were not executed by this auditor.",
+			"CY-5 drag source uses DndContext and a backlog draggable; no browser drag was run by this auditor.",
+			"PG-1..PG-8 were added from current requirements-index; PG-7 has API undelete but no web caller was found.",
+			"PG-3 Page and KB editors compose the same CommentEditor; visual toolbar parity remains pending."
+		]
+	}
 }

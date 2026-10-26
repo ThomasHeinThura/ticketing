@@ -1,5 +1,9 @@
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { schema } from "../database";
+import { projectPageTable } from "../database/schema-p5-pages";
 import {
+  type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
@@ -43,6 +47,41 @@ export const pageDeletionTarget: RegisteredDeletionTarget = {
         deletedAt: page.deletedAt,
       }),
     };
+  },
+  readScope: async (
+    tx,
+    id,
+  ): Promise<RegisteredDeletionReadScope | undefined> => {
+    const [page] = await tx
+      .select({
+        id: projectPageTable.id,
+        workspaceId: projectPageTable.workspaceId,
+        projectId: projectPageTable.projectId,
+      })
+      .from(projectPageTable)
+      .where(
+        and(eq(projectPageTable.id, id), isNull(projectPageTable.deletedAt)),
+      )
+      .limit(1);
+    if (!page) return undefined;
+    const [project] = await tx
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(
+        and(
+          eq(schema.projectTable.id, page.projectId),
+          isNull(schema.projectTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    return project
+      ? {
+          id: page.id,
+          workspaceId: page.workspaceId,
+          projectId: page.projectId,
+          organisationId: null,
+        }
+      : undefined;
   },
   assertDeletable: async (tx, loaded) => {
     if ((await liveChildCount(tx, loaded.id)) > 0)

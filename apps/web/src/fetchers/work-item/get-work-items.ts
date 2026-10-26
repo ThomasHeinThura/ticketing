@@ -1,6 +1,10 @@
 import { client } from "@taskdesk/libs";
 import { HttpError } from "@/lib/http-error";
-import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
+import type { WorkItemSortDirection } from "@/lib/routes";
+import type {
+  WorkItemCustomFieldColumn,
+  WorkItemCustomFieldPerson,
+} from "@/types/work-item";
 import { parseWorkItemRow, type WorkItemRow } from "@/types/work-item";
 
 /** A cycle or module whose members a list read is narrowed to (P5 agile). */
@@ -20,13 +24,17 @@ export type WorkItemsResult = {
   hasMore: boolean;
   /** `page.nextCursor`: list and board consumers follow it to load further pages of one project. */
   nextCursor?: string | null;
+  /** Search-only metadata for currently selected custom-field columns. */
+  customFieldColumns?: WorkItemCustomFieldColumn[];
+  /** Search-only, project-bound names referenced by visible custom-field values. */
+  customFieldPeople?: WorkItemCustomFieldPerson[];
 };
 
 /** Read one validated canonical project page in server order. Cursor traversal is
  * live, not a snapshot: concurrent edits may shift rows between pages. */
 async function getWorkItems(
   projectId: string,
-  sort: WorkItemSortField,
+  sort: "key" | "position" | "title" | "priority" | "dueDate",
   dir: WorkItemSortDirection,
   options: {
     cursor?: string;

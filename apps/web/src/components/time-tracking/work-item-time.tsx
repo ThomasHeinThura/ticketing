@@ -50,7 +50,13 @@ import WorkItemCosts from "./work-item-costs";
  * item, the total, a quick-add and the timer. Your own entries by default; with
  * `time_entry:read_any` the section can show everyone's.
  */
-export default function WorkItemTime({ item }: { item: WorkItemDetailRow }) {
+export default function WorkItemTime({
+  item,
+  readOnly = false,
+}: {
+  item: WorkItemDetailRow;
+  readOnly?: boolean;
+}) {
   const { t } = useTranslation();
   const message = useTimeErrorMessage();
   const invalidate = useInvalidateTime();
@@ -151,109 +157,113 @@ export default function WorkItemTime({ item }: { item: WorkItemDetailRow }) {
         ) : null}
       </div>
 
-      <ReviewNotice count={reviews.data?.data.length ?? 0} />
-      {timer.data && running ? (
+      {!readOnly ? (
+        <ReviewNotice count={reviews.data?.data.length ?? 0} />
+      ) : null}
+      {!readOnly && timer.data && running ? (
         <RunningTimerBar
           state={timer.data}
           dataUpdatedAt={timer.dataUpdatedAt}
         />
       ) : null}
 
-      <form
-        className="grid grid-cols-2 gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (canSubmit) add.mutate();
-        }}
-      >
-        <div className="space-y-1">
-          <Label htmlFor="time-duration" className="text-xs">
-            {t("timeTracking:fields.duration")}
-          </Label>
-          <Input
-            id="time-duration"
-            placeholder={t("timeTracking:fields.durationPlaceholder")}
-            value={duration}
-            aria-invalid={duration !== "" && minutes === null}
-            disabled={add.isPending}
-            onChange={(event) => setDuration(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="time-activity" className="text-xs">
-            {t("timeTracking:fields.activity")}
-          </Label>
-          <ActivitySelect
-            id="time-activity"
-            activities={activities.data ?? []}
-            value={activityId}
-            onChange={setActivityPick}
-            disabled={add.isPending}
-            label={t("timeTracking:fields.activity")}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="time-date" className="text-xs">
-            {t("timeTracking:fields.date")}
-          </Label>
-          <DateField
-            id="time-date"
-            value={date || today}
-            max={today}
-            min={earliest}
-            disabled={add.isPending}
-            onChange={setDate}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="time-description" className="text-xs">
-            {t("timeTracking:fields.description")}
-          </Label>
-          <Input
-            id="time-description"
-            maxLength={2000}
-            value={description}
-            disabled={add.isPending}
-            onChange={(event) => setDescription(event.target.value)}
-          />
-        </div>
-        <div className="col-span-2 flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="time-billable"
-              checked={billable ?? true}
-              onCheckedChange={setBillable}
-            />
-            <Label htmlFor="time-billable" className="text-xs">
-              {t("timeTracking:fields.billable")}
+      {!readOnly ? (
+        <form
+          className="grid grid-cols-2 gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (canSubmit) add.mutate();
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="time-duration" className="text-xs">
+              {t("timeTracking:fields.duration")}
             </Label>
+            <Input
+              id="time-duration"
+              placeholder={t("timeTracking:fields.durationPlaceholder")}
+              value={duration}
+              aria-invalid={duration !== "" && minutes === null}
+              disabled={add.isPending}
+              onChange={(event) => setDuration(event.target.value)}
+            />
           </div>
-          <Button
-            type="submit"
-            size="sm"
-            className="ml-auto"
-            disabled={!canSubmit}
-          >
-            {t("timeTracking:section.add")}
-          </Button>
-          {!running ? (
+          <div className="space-y-1">
+            <Label htmlFor="time-activity" className="text-xs">
+              {t("timeTracking:fields.activity")}
+            </Label>
+            <ActivitySelect
+              id="time-activity"
+              activities={activities.data ?? []}
+              value={activityId}
+              onChange={setActivityPick}
+              disabled={add.isPending}
+              label={t("timeTracking:fields.activity")}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="time-date" className="text-xs">
+              {t("timeTracking:fields.date")}
+            </Label>
+            <DateField
+              id="time-date"
+              value={date || today}
+              max={today}
+              min={earliest}
+              disabled={add.isPending}
+              onChange={setDate}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="time-description" className="text-xs">
+              {t("timeTracking:fields.description")}
+            </Label>
+            <Input
+              id="time-description"
+              maxLength={2000}
+              value={description}
+              disabled={add.isPending}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </div>
+          <div className="col-span-2 flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="time-billable"
+                checked={billable ?? true}
+                onCheckedChange={setBillable}
+              />
+              <Label htmlFor="time-billable" className="text-xs">
+                {t("timeTracking:fields.billable")}
+              </Label>
+            </div>
             <Button
-              type="button"
+              type="submit"
               size="sm"
-              variant="outline"
-              disabled={start.isPending || activityId === null}
-              onClick={() => start.mutate()}
+              className="ml-auto"
+              disabled={!canSubmit}
             >
-              <Play aria-hidden="true" />
-              {t("timeTracking:timer.start")}
+              {t("timeTracking:section.add")}
             </Button>
-          ) : runningHere ? null : (
-            <span className="text-muted-foreground text-xs">
-              {t("timeTracking:timer.runningElsewhere")}
-            </span>
-          )}
-        </div>
-      </form>
+            {!running ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={start.isPending || activityId === null}
+                onClick={() => start.mutate()}
+              >
+                <Play aria-hidden="true" />
+                {t("timeTracking:timer.start")}
+              </Button>
+            ) : runningHere ? null : (
+              <span className="text-muted-foreground text-xs">
+                {t("timeTracking:timer.runningElsewhere")}
+              </span>
+            )}
+          </div>
+        </form>
+      ) : null}
 
       {list.data.length === 0 ? (
         <p className="text-muted-foreground text-xs">
@@ -281,8 +291,8 @@ export default function WorkItemTime({ item }: { item: WorkItemDetailRow }) {
           <TableBody>
             {list.data.map((entry) => {
               const own = entry.personId === list.callerPersonId;
-              const canEdit = own || list.canUpdateAny;
-              const canDelete = own || list.canDeleteAny;
+              const canEdit = !readOnly && (own || list.canUpdateAny);
+              const canDelete = !readOnly && (own || list.canDeleteAny);
               return (
                 <TableRow key={entry.id} data-testid="time-entry-row">
                   <TableCell className="whitespace-nowrap tabular-nums">
@@ -346,7 +356,7 @@ export default function WorkItemTime({ item }: { item: WorkItemDetailRow }) {
           </TableBody>
         </Table>
       )}
-      {editing ? (
+      {!readOnly && editing ? (
         <TimeEntryEditDialog
           entry={editing}
           activities={activities.data ?? []}

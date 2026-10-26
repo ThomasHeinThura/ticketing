@@ -31,10 +31,15 @@ export function ApiKeyCreatedModal({
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(apiKey);
-    setCopied(true);
-    toast.success(t("settings:apiKey.createdModal.toastCopied"));
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      setCopied(true);
+      toast.success(t("settings:apiKey.createdModal.toastCopied"));
+    } catch {
+      setCopied(false);
+      toast.error(t("settings:apiKey.createdModal.clipboardFailed"));
+    }
   };
 
   return (

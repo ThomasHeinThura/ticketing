@@ -1,4 +1,12 @@
+import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
+import {
+  decryptDeliveryEnvelope,
+  encryptDeliveryEnvelope,
+  reencryptDeliveryEnvelope,
+} from "../../../apps/api/src/customer-invitation/delivery/envelope";
+import { CustomerInvitationDeliveryKeyring } from "../../../apps/api/src/customer-invitation/delivery/keyring";
+import { hashCredential } from "../../../apps/api/src/customer-invitation/logic";
 import {
   currentEncryptionKeyId,
   decryptIdentityClientSecret,
@@ -38,6 +46,76 @@ describe("GM-12..GM-14 secrets re-encryption", () => {
     expect(decryptIdentityClientSecret("row-1", next)).toBe(
       "plugin-credential",
     );
+  });
+
+  it("rekeys a live invitation envelope without losing its row AAD bindings", () => {
+    const deliveryId = "delivery-01";
+    const invitationId = "invitation-01";
+    const credential = "A".repeat(43);
+    const credentialHash = hashCredential(credential);
+    const ownerId = randomUUID();
+    const keyring = new CustomerInvitationDeliveryKeyring({
+      ownerId,
+      scheduleCleanup: false,
+    });
+    const key = keyring.reserve(deliveryId);
+    process.env[currentName] = oldKey;
+    delete process.env[previousName];
+    const oldEnvelope = encryptDeliveryEnvelope({
+      deliveryId,
+      invitationId,
+      credentialHash,
+      credential,
+      key,
+    });
+    keyring.activate(deliveryId);
+
+    process.env[currentName] = newKey;
+    process.env[previousName] = oldKey;
+    const next = reencryptDeliveryEnvelope({
+      deliveryId,
+      invitationId,
+      credentialHash,
+      envelope: oldEnvelope,
+    });
+    expect(envelopeKeyId(Buffer.from(next, "base64url"))).toBe(
+      currentEncryptionKeyId(),
+    );
+    expect(
+      decryptDeliveryEnvelope({
+        deliveryId,
+        invitationId,
+        credentialHash,
+        envelope: next,
+        ownerId,
+        keyring,
+      }).credential,
+    ).toBe(credential);
+    expect(() =>
+      reencryptDeliveryEnvelope({
+        deliveryId: "other-delivery",
+        invitationId,
+        credentialHash,
+        envelope: oldEnvelope,
+      }),
+    ).toThrow();
+    expect(() =>
+      reencryptDeliveryEnvelope({
+        deliveryId,
+        invitationId: "other-invitation",
+        credentialHash,
+        envelope: oldEnvelope,
+      }),
+    ).toThrow();
+    expect(() =>
+      reencryptDeliveryEnvelope({
+        deliveryId,
+        invitationId,
+        credentialHash: "0".repeat(64),
+        envelope: oldEnvelope,
+      }),
+    ).toThrow();
+    keyring.dispose();
   });
 
   it("keeps each envelope bound to its own row", () => {

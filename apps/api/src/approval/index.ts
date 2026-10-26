@@ -1,6 +1,7 @@
 import type { Capability } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import {
   apiRouter,
@@ -8,6 +9,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { requestMcpApprovalDecision } from "../pending-action/mcp-approval-decision";
 import { isCustomerSidePerson } from "../utils/is-customer-principal";
 import { markReach } from "../utils/reach-mark";
 import { requireSessionOnly } from "../utils/require-session-only";
@@ -42,6 +44,7 @@ import {
   approvalRequestContextSchema,
   createApprovalBody,
   decideApprovalBody,
+  mcpApprovalDecisionRequestSchema,
   workItemKeyParam,
 } from "./schema";
 import { createApproval, decideApproval, withdrawApproval } from "./service";
@@ -199,6 +202,10 @@ async function withdrawApprovalForIdentity(input: {
 // and the approver predicates stay with the handler. Customer-side callers go straight to
 // the handler, which owns their addressed-approval rules (403 for requesting).
 const staffReach = requireWorkItemReach("key", { deferCapability: true });
+const staffReadReach = requireWorkItemReach("key", {
+  deferCapability: true,
+  allowArchivedForRead: true,
+});
 const approvalRequestReach = markReach(
   async (c: Context, next: Next) => {
     const userId = c.get("userId");
@@ -207,12 +214,23 @@ const approvalRequestReach = markReach(
   },
   { projectReach: true },
 );
+const approvalReadReach = markReach(
+  async (c: Context, next: Next) => {
+    const userId = c.get("userId");
+    if (userId && (await isCustomerSidePerson(userId))) return next();
+    return staffReadReach(c, next);
+  },
+  { projectReach: true },
+);
 
 const listWorkItemApprovalsRoute = createRoute({
   method: "get",
   operationId: "listWorkItemApprovals",
   path: "/work-items/{key}/approvals",
-  middleware: [approvalWorkItemEvidence()] as const,
+  middleware: [
+    approvalReadReach,
+    approvalWorkItemEvidence({ allowArchivedForRead: true }),
+  ] as const,
   tags: ["Approvals"],
   summary: "List a work item's approvals",
   request: { params: workItemKeyParam },
@@ -289,9 +307,7 @@ const decideApprovalRoute = createRoute({
   method: "post",
   operationId: "decideApproval",
   path: "/approvals/{id}/decide",
-  // F12 / PA-14: a key (API or MCP) can never decide an approval until the `mcp_destructive`
-  // pending action exists; the credential check runs before the evidence and policy layers.
-  middleware: [requireSessionOnly(), approvalIdEvidence()] as const,
+  middleware: [approvalIdEvidence()] as const,
   tags: ["Approvals"],
   summary: "Decide an approval",
   request: {
@@ -302,6 +318,10 @@ const decideApprovalRoute = createRoute({
     },
   },
   responses: {
+    202: jsonResponse(
+      "MCP approval decision opened as a pending action for the key owner",
+      mcpApprovalDecisionRequestSchema,
+    ),
     200: jsonResponse(
       "Decision recorded",
       approvalListResponseSchema.shape.approvals.element,
@@ -309,7 +329,7 @@ const decideApprovalRoute = createRoute({
     400: errorResponse("Invalid request"),
     401: errorResponse("Authentication required"),
     403: errorResponse(
-      "Caller is not the named eligible approver, or is not a browser session (session_required)",
+      "Caller is not the named eligible approver or has no current authority",
     ),
     404: errorResponse("Approval not found"),
     409: errorResponse("Approval is no longer pending"),
@@ -421,6 +441,8 @@ function approvalRouter() {
       const target = await loadApprovalTargetByKey(
         identity,
         c.req.valid("param").key,
+        undefined,
+        identity.side === "staff" ? { allowArchivedForRead: true } : {},
       );
       if (!(await hasWorkItemReach(identity, target))) {
         throw new HTTPException(404, { message: "Work item not found" });
@@ -435,6 +457,8 @@ function approvalRouter() {
         identity,
         target.workItemId,
         target.workspaceId,
+        false,
+        identity.side === "staff" ? { allowArchivedForRead: true } : {},
       );
       const visible =
         identity.side === "customer"
@@ -522,6 +546,29 @@ function approvalRouter() {
     .openapi(decideApprovalRoute, async (c) => {
       const identity = await requestApprovalIdentity(c);
       const id = c.req.valid("param").id;
+      const apiKey = c.get("apiKey") as { id: string } | undefined;
+      const body = c.req.valid("json");
+      if (apiKey) {
+        const pending = await requestMcpApprovalDecision({
+          approvalId: id,
+          identity,
+          apiKey,
+          decision: { action: body.action, note: body.note ?? null },
+          actorIp: clientIpForContext(c),
+          userAgent: c.req.header("user-agent") ?? null,
+        });
+        return c.json(mcpApprovalDecisionRequestSchema.parse(pending), 202);
+      }
+      const session = c.get("session") as {
+        id?: string;
+        impersonatedBy?: string | null;
+      } | null;
+      if (!session?.id || session.impersonatedBy) {
+        throw new HTTPException(403, { message: "session_required" });
+      }
+      if (identity.credential !== "session") {
+        throw new HTTPException(403, { message: "session_required" });
+      }
       const target = await loadApprovalTargetByApprovalId(id, identity);
       if (!target)
         throw new HTTPException(404, { message: "Approval not found" });
@@ -557,7 +604,6 @@ function approvalRouter() {
       ) {
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
-      const body = c.req.valid("json");
       const updated = await decideApproval({
         approvalId: id,
         identity,

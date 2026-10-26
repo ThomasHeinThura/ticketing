@@ -83,7 +83,13 @@ export const workItemKeysBody = z.object({
 
 export const createModuleBody = z.object({
   name: name(MAX_MODULE_NAME_LENGTH),
-  description: z.string().trim().max(2000).refine(noNul, NO_NUL).optional(),
+  description: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine(noNul, NO_NUL)
+    .nullable()
+    .optional(),
   leadId: id.nullable().optional(),
   state: z.enum(MODULE_STATES).optional(),
   targetDate: calendarDate.nullable().optional(),

@@ -1,3 +1,4 @@
+import { Dialog } from "@taskdesk/ui";
 import {
   cleanup,
   fireEvent,
@@ -12,7 +13,13 @@ import { PendingActionApproval } from "./pending-action-approval";
 
 const mocks = vi.hoisted(() => ({
   action: { current: {} as Record<string, unknown> },
+  factor: {
+    enabled: false,
+    required: false,
+    availableMethods: ["password"],
+  },
   approve: vi.fn(),
+  proof: vi.fn(),
   navigate: vi.fn(),
   pathname: { current: "" },
   invalidate: vi.fn(),
@@ -32,7 +39,13 @@ vi.mock("@tanstack/react-query", () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) =>
     queryKey[0] === "me"
       ? { data: mocks.action.current, isLoading: false, isError: false }
-      : { data: undefined, isLoading: false, isError: false },
+      : queryKey[0] === "god-mode"
+        ? {
+            data: mocks.factor,
+            isLoading: false,
+            isError: false,
+          }
+        : { data: undefined, isLoading: false, isError: false },
   useQueryClient: () => ({
     invalidateQueries: mocks.invalidate,
     removeQueries: mocks.remove,
@@ -51,7 +64,16 @@ vi.mock("@tanstack/react-query", () => ({
   }),
 }));
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ i18n: { language: "en" }, t: (key: string) => key }),
+  useTranslation: () => ({
+    i18n: { language: "en" },
+    t: (key: string, options?: { count?: number }) =>
+      key.includes("countRecords") ||
+      key.includes("countLinks") ||
+      key.includes("confirmRecords") ||
+      key.includes("confirmLinks")
+        ? `${key}:${options?.count ?? ""}`
+        : key,
+  }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/fetchers/god-mode/instance-users", () => ({
@@ -61,7 +83,7 @@ vi.mock("@/fetchers/god-mode/instance-users", () => ({
 vi.mock("@/fetchers/pending-actions", () => ({
   approveOwnPendingAction: (value: unknown) => mocks.approve(value),
   cancelOwnPendingAction: vi.fn(),
-  createPendingActionProof: vi.fn(),
+  createPendingActionProof: (value: unknown) => mocks.proof(value),
   getOwnPendingAction: vi.fn(),
 }));
 vi.mock("@/hooks/queries/god-mode/use-instance-users", () => ({
@@ -210,13 +232,16 @@ describe("executed work-item deletion", () => {
 
 describe("WI-23 single work-item deletion dialog content", () => {
   afterEach(cleanup);
-  it("names the project, who asked for the deletion and the retention period, with no restore or portal claim", () => {
+  it("shows the customer requester, deleting actor, portal impact and retention", () => {
     mocks.action.current = workItemAction({
       summary: {
         key: "WLP-1",
         title: "One",
         projectName: "Help desk",
-        requesterName: "Riley",
+        customerRequesterName: "Casey Customer",
+        requestedByName: "Riley Staff",
+        customerVisibility: "organisation",
+        recoveryDays: 30,
         childrenAffected: 0,
       },
     });
@@ -224,12 +249,199 @@ describe("WI-23 single work-item deletion dialog content", () => {
     expect(screen.getByText(/WLP-1 · One/)).toBeInTheDocument();
     expect(screen.getByText("workItems:deletion.project")).toBeInTheDocument();
     expect(
+      screen.getByText("workItems:deletion.customerRequester"),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText("workItems:deletion.requestedBy"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("workItems:deletion.portalImpact")).toBeNull();
+    expect(
+      screen.getByText("workItems:deletion.portalVisibility"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("workItems:deletion.portalRemoval.organisation"),
+    ).toBeInTheDocument();
     expect(screen.queryByText("workItems:deletion.recovery")).toBeNull();
     expect(
       screen.getByText("workItems:deletion.retention"),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("MCP import chunk pending-action confirmation", () => {
+  beforeEach(() => {
+    mocks.approve.mockReset().mockResolvedValue({ state: "executed" });
+    mocks.proof.mockReset().mockResolvedValue("step-up-proof");
+    mocks.invalidate.mockReset().mockResolvedValue(undefined);
+    mocks.action.current = {
+      id: "pa-import",
+      action: "mcp_destructive",
+      targetType: "import_chunk",
+      targetIds: ["opaque-chunk-id"],
+      confirmation: "typed_count_step_up",
+      approvalSupported: true,
+      state: "pending",
+      origin: "mcp",
+      expiresAt: "2026-10-26T00:00:00.000Z",
+      summary: {
+        kind: "mcp_import_chunk",
+        operation: "records",
+        recordCount: 3,
+        pluginId: "import.mcp",
+      },
+    };
+  });
+  afterEach(cleanup);
+
+  it("requires the exact count and fresh authentication, then approves the chunk", async () => {
+    render(<PendingActionApproval id="pa-import" layout="page" />);
+
+    expect(
+      screen.getByText("pendingActions:importChunk.countRecords:3"),
+    ).toBeInTheDocument();
+    const countInput = screen.getByRole("textbox", {
+      name: "pendingActions:importChunk.confirmRecords:3",
+    });
+    const password = screen.getByLabelText(
+      "pendingActions:dynamic.accountPassword",
+    );
+    const approveButton = screen.getByRole("button", {
+      name: "pendingActions:importChunk.approveRecords",
+    });
+
+    fireEvent.change(password, { target: { value: "fresh-password" } });
+    fireEvent.change(countInput, { target: { value: "2" } });
+    expect(approveButton).toBeDisabled();
+    expect(mocks.proof).not.toHaveBeenCalled();
+
+    fireEvent.change(countInput, { target: { value: "3" } });
+    expect(countInput).toHaveValue("3");
+    expect(password).toHaveValue("fresh-password");
+    expect(screen.queryByText("pendingActions:copy.02c7fa45ff1a")).toBeNull();
+    await waitFor(() => expect(approveButton).toBeEnabled());
+    fireEvent.click(approveButton);
+
+    await waitFor(() =>
+      expect(mocks.approve).toHaveBeenCalledWith({
+        id: "pa-import",
+        typedCount: "3",
+        stepUpToken: "step-up-proof",
+      }),
+    );
+    expect(mocks.proof).toHaveBeenCalledWith({
+      pendingActionId: "pa-import",
+      method: "password",
+      secret: "fresh-password",
+    });
+    expect(screen.queryByText("opaque-chunk-id")).toBeNull();
+  });
+
+  it("labels import-link batches distinctly while keeping their targets hidden", () => {
+    const summary = mocks.action.current.summary as Record<string, unknown>;
+    mocks.action.current = {
+      ...mocks.action.current,
+      summary: { ...summary, operation: "links" },
+    };
+    render(<PendingActionApproval id="pa-import" layout="page" />);
+
+    expect(
+      screen.getByText("pendingActions:importChunk.actionLinks"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("pendingActions:importChunk.countLinks:3"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", {
+        name: "pendingActions:importChunk.confirmLinks:3",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("opaque-chunk-id")).toBeNull();
+  });
+
+  it("hides malformed expanded import metadata and blocks approval", () => {
+    const summary = mocks.action.current.summary as Record<string, unknown>;
+    mocks.action.current = {
+      ...mocks.action.current,
+      summary: { ...summary, sourceRef: "private-source" },
+    };
+    render(
+      <Dialog open>
+        <PendingActionApproval id="pa-import" layout="dialog" />
+      </Dialog>,
+    );
+
+    expect(
+      screen.getByText("pendingActions:importChunk.hidden"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("private-source")).toBeNull();
+    expect(screen.queryByText("opaque-chunk-id")).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: "pendingActions:importChunk.approveRecords",
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("PR-20 project deletion confirmation", () => {
+  afterEach(cleanup);
+  it("uses the project key and explains the server-counted impact", () => {
+    mocks.action.current = {
+      id: "pa-project",
+      action: "delete",
+      targetType: "project",
+      targetIds: ["project-1"],
+      confirmation: "typed_name_step_up",
+      approvalSupported: true,
+      state: "pending",
+      summary: {
+        name: "WLP",
+        projectName: "Help desk",
+        recoveryDays: 30,
+        impact: {
+          workItems: 3,
+          legacyTasks: 6,
+          members: 2,
+          attachments: 4,
+          workflowRules: 1,
+          sourceLinks: 5,
+        },
+      },
+    };
+    render(<PendingActionApproval id="pa-project" layout="page" />);
+    expect(
+      screen.getByText("pendingActions:registered.confirmProjectKey"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("pendingActions:registered.projectImpact"),
+    ).toHaveTextContent("pendingActions:registered.projectSourceLinks");
+    expect(
+      screen.getByLabelText("pendingActions:registered.projectImpact"),
+    ).toHaveTextContent("pendingActions:registered.projectRecovery");
+  });
+});
+
+describe("personal API-key deletion confirmation", () => {
+  afterEach(cleanup);
+
+  it("renders the key's server name and exact-name confirmation", () => {
+    mocks.action.current = {
+      id: "pa-api-key",
+      action: "delete",
+      targetType: "api_key",
+      targetIds: ["key-1"],
+      confirmation: "typed_name_step_up",
+      approvalSupported: true,
+      state: "pending",
+      origin: "web",
+      expiresAt: "2026-10-25T00:00:00.000Z",
+      summary: { name: "Retired local credential", kind: "personal" },
+    };
+    render(<PendingActionApproval id="pa-api-key" layout="page" />);
+    expect(
+      screen.getAllByText("Retired local credential").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText("pendingActions:registered.confirmName"),
     ).toBeInTheDocument();
   });
 });

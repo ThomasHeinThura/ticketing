@@ -5,6 +5,7 @@ import {
 } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { auditOriginForApiKey } from "../audit/mcp-origin";
 import db from "../database";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { projectAncestryFor } from "../utils/project-ancestry";
@@ -40,11 +41,12 @@ export async function identityOf(c: Context): Promise<ResolvedIdentity> {
 }
 
 export function actorOf(c: Context): TimeActor {
-  const apiKey = c.get("apiKey") as { id: string } | undefined;
+  const apiKey = c.get("apiKey") as { id: string; isMcp?: boolean } | undefined;
   return {
     userId: c.get("userId") as string,
     actorType: apiKey ? "api_key" : "person",
     apiKeyId: apiKey?.id ?? null,
+    auditOrigin: auditOriginForApiKey(apiKey),
   };
 }
 

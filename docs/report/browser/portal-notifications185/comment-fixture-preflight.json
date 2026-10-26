@@ -1,0 +1,27 @@
+{
+	"method": "strict HTTPS read-only owner/customer API preflight",
+	"customerSessionPage": true,
+	"ownInboxHasSub5": true,
+	"customerIsRequester": true,
+	"acceptedAndLinked": true,
+	"itemKeyMatches": true,
+	"projectOrgMatchesCustomer": true,
+	"customerBacklogPinsSub5ToHelp22": true,
+	"statuses": {
+		"item": 200,
+		"staffSubmission": 200,
+		"projects": 200,
+		"customerSubmission": 200,
+		"inbox": 200,
+		"backlog": 200
+	},
+	"details": {
+		"submissionState": "accepted",
+		"linkedItemMatches": true,
+		"projectFound": true,
+		"customerOrgMatch": true,
+		"backlogState": "Backlog",
+		"ownNotificationRefs": ["SUB-6", "SUB-5", "SUB-3"]
+	},
+	"readyToCreateComment": true
+}

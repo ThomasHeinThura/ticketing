@@ -45,7 +45,7 @@ export function RotateSecretDialog({
 }) {
   const { t } = useTranslation("webhooks");
   const [secret, setSecret] = useState(() => generateWebhookSecret());
-  const valid = secret.length >= 24 && stepUp.secret.length > 0;
+  const valid = secret.length >= 24 && stepUp.canRun;
   return (
     <Dialog
       open

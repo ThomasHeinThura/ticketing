@@ -1,0 +1,16 @@
+{
+	"method": "Real Chromium form login using additive audit users; credentials kept private; no bypass",
+	"results": [
+		{
+			"role": "viewer",
+			"loginHttp": 200,
+			"finalPath": "/agent",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nKnowledge base\nTimesheet\nReports\nDashboard\nService management\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nProjects\nCreate project\nTitle\tProgress\tDue date\tStatus\n\nCustomer Support Desk\n\t\nx\n7%\n\tOct 21, 2026\tIn progress",
+			"screenshot": "docs/report/screens/codex-20261025-viewer-login.png"
+		},
+		{
+			"role": "customer",
+			"error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /continue/i })\u001b[22m\n"
+		}
+	]
+}
