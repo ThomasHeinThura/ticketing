@@ -75,3 +75,77 @@ describe("CustomFieldValueInput user value labels", () => {
     expect(onChange).toHaveBeenLastCalledWith(["person-new"]);
   });
 });
+
+describe("CustomFieldValueInput inline pickers", () => {
+  const options = Array.from({ length: 10 }, (_, index) => ({
+    key: `k${index}`,
+    label: `Choice ${index}`,
+  }));
+
+  it("uses a popover picker for an inline select and keeps the Select in forms", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <>
+        <Label htmlFor="tier">Tier</Label>
+        <CustomFieldValueInput
+          inline
+          id="tier"
+          field={{
+            name: "Tier",
+            format: "select",
+            options: options.slice(0, 3),
+          }}
+          value="k1"
+          onChange={onChange}
+        />
+      </>,
+    );
+    const trigger = screen.getByRole("button", { name: "Tier" });
+    expect(trigger).toHaveTextContent("Choice 1");
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("button", { name: "Choice 2" }));
+    expect(onChange).toHaveBeenCalledWith("k2");
+    rerender(
+      <>
+        <Label htmlFor="tier">Tier</Label>
+        <CustomFieldValueInput
+          id="tier"
+          field={{
+            name: "Tier",
+            format: "select",
+            options: options.slice(0, 3),
+          }}
+          value="k1"
+          onChange={onChange}
+        />
+      </>,
+    );
+    expect(screen.getByRole("combobox", { name: "Tier" })).toBeInTheDocument();
+  });
+
+  it("filters a long multi-select and toggles a choice", async () => {
+    const onChange = vi.fn();
+    render(
+      <>
+        <Label htmlFor="tags">Tags</Label>
+        <CustomFieldValueInput
+          inline
+          id="tags"
+          field={{ name: "Tags", format: "multi_select", options }}
+          value={["k1"]}
+          onChange={onChange}
+        />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Tags" }));
+    fireEvent.change(
+      await screen.findByRole("combobox", { name: "Search options" }),
+      {
+        target: { value: "Choice 7" },
+      },
+    );
+    expect(screen.queryByText("Choice 2")).toBeNull();
+    fireEvent.click(screen.getByText("Choice 7"));
+    expect(onChange).toHaveBeenCalledWith(["k1", "k7"]);
+  });
+});

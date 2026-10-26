@@ -1,0 +1,38 @@
+[
+	{
+		"id": "53000001-aaaa-4bbb-8ccc-000000000977",
+		"name": "bug",
+		"color": "#3366cc",
+		"project": "33000003-aaaa-4bbb-8ccc-000000002931"
+	},
+	{
+		"id": "53000002-aaaa-4bbb-8ccc-000000001954",
+		"name": "feature",
+		"color": "#3366cc",
+		"project": "33000003-aaaa-4bbb-8ccc-000000002931"
+	},
+	{
+		"id": "53000003-aaaa-4bbb-8ccc-000000002931",
+		"name": "tech-debt",
+		"color": "#3366cc",
+		"project": "33000003-aaaa-4bbb-8ccc-000000002931"
+	},
+	{
+		"id": "53000004-aaaa-4bbb-8ccc-000000003908",
+		"name": "customer",
+		"color": "#3366cc",
+		"project": "33000003-aaaa-4bbb-8ccc-000000002931"
+	},
+	{
+		"id": "53000005-aaaa-4bbb-8ccc-000000004885",
+		"name": "security",
+		"color": "#3366cc",
+		"project": "33000003-aaaa-4bbb-8ccc-000000002931"
+	},
+	{
+		"id": "53000006-aaaa-4bbb-8ccc-000000005862",
+		"name": "docs",
+		"color": "#3366cc",
+		"project": "33000003-aaaa-4bbb-8ccc-000000002931"
+	}
+]

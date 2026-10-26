@@ -1,0 +1,14 @@
+{
+	"id": "7d1f0c2e-0000-4000-8000-000000000003",
+	"name": "Legacy ERP",
+	"state": "wellFormed",
+	"capabilities": {
+		"versioncontrol": {
+			"sourceControlType": "Git"
+		},
+		"processTemplate": {
+			"templateName": "CMMI",
+			"templateTypeId": "cmmi-template"
+		}
+	}
+}

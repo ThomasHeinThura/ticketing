@@ -126,15 +126,23 @@ function PortalSignIn() {
 
   async function finishSignIn() {
     queryClient.clear();
-    storeEmail(null);
-    if (search.invitationId) {
-      await navigate({
-        to: routes.portalInvite.path,
-        params: { id: search.invitationId },
-      });
-      return;
+    // The portal root swaps this page out of its sign-in frame as soon as the location changes,
+    // which can remount this component before the navigation commits. The remounted page reads
+    // the email back from storage; if it were already cleared it would see "password stage, no
+    // email", reset itself to the email stage and cancel the navigation (a sign-in loop). Keep
+    // the stored address until the navigation has finished.
+    try {
+      if (search.invitationId) {
+        await navigate({
+          to: routes.portalInvite.path,
+          params: { id: search.invitationId },
+        });
+        return;
+      }
+      await navigate({ to: "/catalogue" });
+    } finally {
+      storeEmail(null);
     }
-    await navigate({ to: "/catalogue" });
   }
 
   async function submitPassword(event: FormEvent<HTMLFormElement>) {

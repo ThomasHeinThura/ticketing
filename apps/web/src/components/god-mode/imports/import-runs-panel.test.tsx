@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Button } from "@taskdesk/ui";
 import {
   cleanup,
   fireEvent,
@@ -25,6 +26,25 @@ vi.mock("@/fetchers/workspace/get-workspaces", () => ({
 }));
 vi.mock("./import-run-create-dialog", () => ({
   ImportRunCreateDialog: () => null,
+}));
+vi.mock("./wizard/connect-step", () => ({
+  ConnectStep: ({
+    workspaceId,
+    onCreated,
+    onCancel,
+  }: {
+    workspaceId: string;
+    onCreated: (run: { id: string; workspaceId: string }) => void;
+    onCancel: () => void;
+  }) => (
+    <section aria-label="Connect step">
+      {workspaceId}
+      <Button onClick={() => onCreated({ id: "run-9", workspaceId })}>
+        finish connect
+      </Button>
+      <Button onClick={onCancel}>cancel connect</Button>
+    </section>
+  ),
 }));
 
 import { ImportRunsPanel } from "./import-runs-panel";
@@ -141,5 +161,47 @@ describe("ImportRunsPanel", () => {
         limit: 50,
       });
     });
+  });
+
+  it("starts the wizard from New import and opens the new run at the discover step", async () => {
+    const onNewImport = vi.fn();
+    const onOpenRun = vi.fn();
+    const onCloseWizard = vi.fn();
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <ImportRunsPanel
+          workspaceId="workspace-1"
+          onOpenRun={onOpenRun}
+          onWorkspaceChange={vi.fn()}
+          onNewImport={onNewImport}
+        />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "wizard.newImport" }),
+    );
+    expect(onNewImport).toHaveBeenCalled();
+
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <ImportRunsPanel
+          workspaceId="workspace-1"
+          step="connect"
+          onOpenRun={onOpenRun}
+          onWorkspaceChange={vi.fn()}
+          onNewImport={onNewImport}
+          onCloseWizard={onCloseWizard}
+        />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByLabelText("Connect step")).toBeInTheDocument();
+    expect(screen.queryByText("mcp:source-1")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "finish connect" }));
+    expect(onOpenRun).toHaveBeenCalledWith("run-9", "workspace-1", "discover");
+    fireEvent.click(screen.getByRole("button", { name: "cancel connect" }));
+    expect(onCloseWizard).toHaveBeenCalled();
   });
 });

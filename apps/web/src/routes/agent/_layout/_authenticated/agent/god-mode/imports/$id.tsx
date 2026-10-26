@@ -43,6 +43,10 @@ function GodModeImportRunRoute() {
       {isAdmin ? (
         <ImportRunDetailPanel
           runId={id}
+          step={search.step}
+          onStepChange={(step) =>
+            void navigate({ search: { ...search, step }, replace: true })
+          }
           onWorkspaceResolved={(workspaceId) => {
             if (search.workspaceId !== workspaceId)
               void navigate({

@@ -387,6 +387,123 @@ describe("canonical tool set", () => {
     ).toThrow();
   });
 
+  it("accepts record schema v2 members unchanged and keeps v1 records valid", async () => {
+    const { call, calls } = harness((path, init) => {
+      if (path === "/api/imports") return { id: "run-1", version: 1 };
+      if (path === "/api/imports/run-1/dry-run")
+        return {
+          runId: "run-1",
+          chunkId: (JSON.parse(String(init?.body)) as { chunkId: string })
+            .chunkId,
+          previewDigest: "a".repeat(64),
+          runVersion: 2,
+          expiresAt: "2026-10-26T10:00:00.000Z",
+          counts: {
+            created: 1,
+            updated: 0,
+            skipped: 0,
+            rejected: 0,
+            processed: 1,
+          },
+          rows: [],
+        };
+      return {};
+    });
+    const v2 = {
+      sourceType: "external_issue",
+      sourceId: "ISSUE-9",
+      sourceUpdatedAt: "2026-10-01T10:00:00.000Z",
+      sourceResolvedAt: "2026-10-02T10:00:00.000Z",
+      sourceAuthorName: "Ada",
+      assigneeEmail: "ada@example.test",
+      stateId: "state-1",
+      parent: { sourceType: "external_issue", sourceId: "ISSUE-1" },
+      comments: [
+        { sourceId: "c1", body: "Hello", visibility: "public" as const },
+        { sourceId: "c2", body: { type: "doc" as const, content: [] } },
+      ],
+      attachments: [
+        {
+          sourceId: "a1",
+          url: "https://files.example.test/a.png",
+          filename: "a.png",
+          size: 10,
+        },
+      ],
+      relations: [
+        {
+          type: "blocks" as const,
+          target: { sourceType: "external_issue", sourceId: "ISSUE-2" },
+        },
+      ],
+      customFields: [{ key: "severity", value: "high" }],
+      history: [
+        {
+          sourceId: "h1",
+          at: "2026-10-01T10:00:00.000Z",
+          field: "state",
+          from: "a",
+          to: "b",
+        },
+      ],
+      item: { typeId: "type-1", title: "v2 item" },
+    };
+    await call("bulk_create_work_items", {
+      action: "preview",
+      idempotencyKey: FIXTURE_ID,
+      workspaceId: "workspace-1",
+      projectId: "project-1",
+      sourceRef: "tracker:team-a",
+      records: [v2, ...importRecords],
+    });
+    const body = JSON.parse(String(calls[1]?.init?.body)) as {
+      records: unknown[];
+    };
+    expect(body.records).toEqual([v2, ...importRecords]);
+  });
+
+  it("rejects malformed v2 members before any request", async () => {
+    const { call, calls } = harness();
+    const base = {
+      action: "preview" as const,
+      idempotencyKey: FIXTURE_ID,
+      workspaceId: "workspace-1",
+      projectId: "project-1",
+      sourceRef: "tracker:team-a",
+    };
+    const item = { typeId: "type-1", title: "x" };
+    for (const extra of [
+      { comments: [{ sourceId: "c", body: "" }] },
+      {
+        attachments: [
+          {
+            sourceId: "a",
+            url: "http://insecure.test/a.png",
+            filename: "a.png",
+          },
+        ],
+      },
+      {
+        attachments: [
+          { sourceId: "a", url: "https://x.test/a", filename: "../a.png" },
+        ],
+      },
+      {
+        relations: [
+          { type: "owns", target: { sourceType: "t", sourceId: "1" } },
+        ],
+      },
+      { unknownMember: true },
+    ])
+      await expect(
+        call("bulk_create_work_items", {
+          ...base,
+          records: [{ sourceType: "t", sourceId: "1", item, ...extra }],
+        }),
+      ).rejects.toThrow();
+    expect(calls).toEqual([]);
+  });
+
   it("rejects duplicate source identities and confirm-like flags before importing", async () => {
     const { call, calls } = harness();
     await expect(

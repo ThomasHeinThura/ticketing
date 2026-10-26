@@ -57,9 +57,13 @@ const SECTION_TITLE_KEYS: Record<string, string> = {
   "god-mode": "navigation:sidebar.godMode",
   "service-management": "navigation:sidebar.serviceManagement",
   "work-items": "navigation:sidebar.workItem",
+  kb: "navigation:sidebar.knowledgeBase",
+  reports: "navigation:sidebar.reports",
+  timesheet: "navigation:sidebar.timesheet",
+  dashboard: "navigation:sidebar.dashboard",
 };
 
-function agentSectionTitleKey(pathname: string): string {
+export function agentSectionTitleKey(pathname: string): string {
   const section = pathname.replace(/^\/agent\/?/, "").split("/")[0] ?? "";
   return SECTION_TITLE_KEYS[section] ?? "navigation:sidebar.overview";
 }

@@ -28,6 +28,13 @@ export const pendingActionApprovalContracts = [
     executor: "import_chunk",
   },
   {
+    action: "mcp_destructive",
+    targetType: "import_run",
+    confirmationRequired: "typed_count_step_up",
+    routeKey: "POST /api/imports/{id}/execute",
+    executor: "import_run",
+  },
+  {
     action: "delete",
     targetType: "attachment",
     confirmationRequired: "click",

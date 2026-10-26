@@ -1,0 +1,14 @@
+{
+	"id": "7d1f0c2e-0000-4000-8000-000000000001",
+	"name": "Contoso Web",
+	"state": "wellFormed",
+	"capabilities": {
+		"versioncontrol": {
+			"sourceControlType": "Git"
+		},
+		"processTemplate": {
+			"templateName": "Agile",
+			"templateTypeId": "agile-template"
+		}
+	}
+}

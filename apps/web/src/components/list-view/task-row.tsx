@@ -288,7 +288,7 @@ function TaskRow({
             {stateControl ? (
               <InlineControlSlot>{stateControl}</InlineControlSlot>
             ) : null}
-            <span className="text-sm text-foreground truncate">
+            <span className="min-w-0 flex-1 truncate text-left text-sm text-foreground">
               {taskHref ? (
                 <a
                   href={taskHref}

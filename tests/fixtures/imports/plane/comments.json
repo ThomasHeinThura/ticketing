@@ -1,0 +1,426 @@
+{
+	"22000001-aaaa-4bbb-8ccc-000000000977": [
+		{
+			"id": "a0000010-aaaa-4bbb-8ccc-000000009770",
+			"issue": "22000001-aaaa-4bbb-8ccc-000000000977",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-04T10:33:00.000Z",
+			"updated_at": "2025-09-05T11:44:00.000Z"
+		},
+		{
+			"id": "a0000011-aaaa-4bbb-8ccc-000000010747",
+			"issue": "22000001-aaaa-4bbb-8ccc-000000000977",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/1\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-05T11:44:00.000Z",
+			"updated_at": "2025-09-06T12:55:00.000Z"
+		}
+	],
+	"22000002-aaaa-4bbb-8ccc-000000001954": [
+		{
+			"id": "a0000020-aaaa-4bbb-8ccc-000000019540",
+			"issue": "22000002-aaaa-4bbb-8ccc-000000001954",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-05T11:44:00.000Z",
+			"updated_at": "2025-09-06T12:55:00.000Z"
+		},
+		{
+			"id": "a0000021-aaaa-4bbb-8ccc-000000020517",
+			"issue": "22000002-aaaa-4bbb-8ccc-000000001954",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_by": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/2\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-06T12:55:00.000Z",
+			"updated_at": "2025-09-07T13:06:00.000Z"
+		},
+		{
+			"id": "a0000022-aaaa-4bbb-8ccc-000000021494",
+			"issue": "22000002-aaaa-4bbb-8ccc-000000001954",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-07T13:06:00.000Z",
+			"updated_at": "2025-09-08T14:17:00.000Z"
+		}
+	],
+	"22000004-aaaa-4bbb-8ccc-000000003908": [
+		{
+			"id": "a0000040-aaaa-4bbb-8ccc-000000039080",
+			"issue": "22000004-aaaa-4bbb-8ccc-000000003908",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-07T13:06:00.000Z",
+			"updated_at": "2025-09-08T14:17:00.000Z"
+		},
+		{
+			"id": "a0000041-aaaa-4bbb-8ccc-000000040057",
+			"issue": "22000004-aaaa-4bbb-8ccc-000000003908",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/4\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-08T14:17:00.000Z",
+			"updated_at": "2025-09-09T15:28:00.000Z"
+		},
+		{
+			"id": "a0000042-aaaa-4bbb-8ccc-000000041034",
+			"issue": "22000004-aaaa-4bbb-8ccc-000000003908",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-09T15:28:00.000Z",
+			"updated_at": "2025-09-10T16:39:00.000Z"
+		},
+		{
+			"id": "a0000043-aaaa-4bbb-8ccc-000000042011",
+			"issue": "22000004-aaaa-4bbb-8ccc-000000003908",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_by": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/4\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-10T16:39:00.000Z",
+			"updated_at": "2025-09-11T07:50:00.000Z"
+		}
+	],
+	"22000005-aaaa-4bbb-8ccc-000000004885": [
+		{
+			"id": "a0000050-aaaa-4bbb-8ccc-000000048850",
+			"issue": "22000005-aaaa-4bbb-8ccc-000000004885",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-08T14:17:00.000Z",
+			"updated_at": "2025-09-09T15:28:00.000Z"
+		}
+	],
+	"22000007-aaaa-4bbb-8ccc-000000006839": [
+		{
+			"id": "a0000070-aaaa-4bbb-8ccc-000000068390",
+			"issue": "22000007-aaaa-4bbb-8ccc-000000006839",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_by": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-10T16:39:00.000Z",
+			"updated_at": "2025-09-11T07:50:00.000Z"
+		},
+		{
+			"id": "a0000071-aaaa-4bbb-8ccc-000000069367",
+			"issue": "22000007-aaaa-4bbb-8ccc-000000006839",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/7\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-11T07:50:00.000Z",
+			"updated_at": "2025-09-12T08:01:00.000Z"
+		}
+	],
+	"22000008-aaaa-4bbb-8ccc-000000007816": [
+		{
+			"id": "a0000080-aaaa-4bbb-8ccc-000000078160",
+			"issue": "22000008-aaaa-4bbb-8ccc-000000007816",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-11T07:50:00.000Z",
+			"updated_at": "2025-09-12T08:01:00.000Z"
+		}
+	],
+	"22000009-aaaa-4bbb-8ccc-000000008793": [
+		{
+			"id": "a0000090-aaaa-4bbb-8ccc-000000087930",
+			"issue": "22000009-aaaa-4bbb-8ccc-000000008793",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-12T08:01:00.000Z",
+			"updated_at": "2025-09-13T09:12:00.000Z"
+		}
+	],
+	"22000011-aaaa-4bbb-8ccc-000000010747": [
+		{
+			"id": "a0000110-aaaa-4bbb-8ccc-000000107470",
+			"issue": "22000011-aaaa-4bbb-8ccc-000000010747",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_by": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-14T10:23:00.000Z",
+			"updated_at": "2025-09-15T11:34:00.000Z"
+		},
+		{
+			"id": "a0000111-aaaa-4bbb-8ccc-000000108447",
+			"issue": "22000011-aaaa-4bbb-8ccc-000000010747",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/11\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-15T11:34:00.000Z",
+			"updated_at": "2025-09-16T12:45:00.000Z"
+		}
+	],
+	"22000012-aaaa-4bbb-8ccc-000000011724": [
+		{
+			"id": "a0000120-aaaa-4bbb-8ccc-000000117240",
+			"issue": "22000012-aaaa-4bbb-8ccc-000000011724",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-15T11:34:00.000Z",
+			"updated_at": "2025-09-16T12:45:00.000Z"
+		},
+		{
+			"id": "a0000121-aaaa-4bbb-8ccc-000000118217",
+			"issue": "22000012-aaaa-4bbb-8ccc-000000011724",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/12\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-16T12:45:00.000Z",
+			"updated_at": "2025-09-17T13:56:00.000Z"
+		}
+	],
+	"22000013-aaaa-4bbb-8ccc-000000012701": [
+		{
+			"id": "a0000130-aaaa-4bbb-8ccc-000000127010",
+			"issue": "22000013-aaaa-4bbb-8ccc-000000012701",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-16T12:45:00.000Z",
+			"updated_at": "2025-09-17T13:56:00.000Z"
+		},
+		{
+			"id": "a0000131-aaaa-4bbb-8ccc-000000127987",
+			"issue": "22000013-aaaa-4bbb-8ccc-000000012701",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/13\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-17T13:56:00.000Z",
+			"updated_at": "2025-09-18T14:07:00.000Z"
+		},
+		{
+			"id": "a0000132-aaaa-4bbb-8ccc-000000128964",
+			"issue": "22000013-aaaa-4bbb-8ccc-000000012701",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_by": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-18T14:07:00.000Z",
+			"updated_at": "2025-09-19T15:18:00.000Z"
+		}
+	],
+	"22000015-aaaa-4bbb-8ccc-000000014655": [
+		{
+			"id": "a0000150-aaaa-4bbb-8ccc-000000146550",
+			"issue": "22000015-aaaa-4bbb-8ccc-000000014655",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_by": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-18T14:07:00.000Z",
+			"updated_at": "2025-09-19T15:18:00.000Z"
+		}
+	],
+	"22000017-aaaa-4bbb-8ccc-000000016609": [
+		{
+			"id": "a0000170-aaaa-4bbb-8ccc-000000166090",
+			"issue": "22000017-aaaa-4bbb-8ccc-000000016609",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-20T16:29:00.000Z",
+			"updated_at": "2025-09-21T07:40:00.000Z"
+		},
+		{
+			"id": "a0000171-aaaa-4bbb-8ccc-000000167067",
+			"issue": "22000017-aaaa-4bbb-8ccc-000000016609",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/17\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-21T07:40:00.000Z",
+			"updated_at": "2025-09-22T08:51:00.000Z"
+		}
+	],
+	"22000019-aaaa-4bbb-8ccc-000000018563": [
+		{
+			"id": "a0000190-aaaa-4bbb-8ccc-000000185630",
+			"issue": "22000019-aaaa-4bbb-8ccc-000000018563",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_by": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-22T08:51:00.000Z",
+			"updated_at": "2025-09-23T09:02:00.000Z"
+		},
+		{
+			"id": "a0000191-aaaa-4bbb-8ccc-000000186607",
+			"issue": "22000019-aaaa-4bbb-8ccc-000000018563",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/19\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-23T09:02:00.000Z",
+			"updated_at": "2025-09-24T10:13:00.000Z"
+		}
+	],
+	"22000020-aaaa-4bbb-8ccc-000000019540": [
+		{
+			"id": "a0000200-aaaa-4bbb-8ccc-000000195400",
+			"issue": "22000020-aaaa-4bbb-8ccc-000000019540",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-23T09:02:00.000Z",
+			"updated_at": "2025-09-24T10:13:00.000Z"
+		}
+	],
+	"22000022-aaaa-4bbb-8ccc-000000021494": [
+		{
+			"id": "a0000220-aaaa-4bbb-8ccc-000000214940",
+			"issue": "22000022-aaaa-4bbb-8ccc-000000021494",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-25T11:24:00.000Z",
+			"updated_at": "2025-09-26T12:35:00.000Z"
+		}
+	],
+	"22000024-aaaa-4bbb-8ccc-000000023448": [
+		{
+			"id": "a0000240-aaaa-4bbb-8ccc-000000234480",
+			"issue": "22000024-aaaa-4bbb-8ccc-000000023448",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-27T13:46:00.000Z",
+			"updated_at": "2025-09-28T14:57:00.000Z"
+		},
+		{
+			"id": "a0000241-aaaa-4bbb-8ccc-000000235457",
+			"issue": "22000024-aaaa-4bbb-8ccc-000000023448",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/24\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-28T14:57:00.000Z",
+			"updated_at": "2025-09-29T15:08:00.000Z"
+		}
+	],
+	"22000025-aaaa-4bbb-8ccc-000000024425": [
+		{
+			"id": "a0000250-aaaa-4bbb-8ccc-000000244250",
+			"issue": "22000025-aaaa-4bbb-8ccc-000000024425",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-09-28T14:57:00.000Z",
+			"updated_at": "2025-09-29T15:08:00.000Z"
+		}
+	],
+	"22000028-aaaa-4bbb-8ccc-000000027356": [
+		{
+			"id": "a0000280-aaaa-4bbb-8ccc-000000273560",
+			"issue": "22000028-aaaa-4bbb-8ccc-000000027356",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-10-01T07:30:00.000Z",
+			"updated_at": "2025-10-02T08:41:00.000Z"
+		}
+	],
+	"22000029-aaaa-4bbb-8ccc-000000028333": [
+		{
+			"id": "a0000290-aaaa-4bbb-8ccc-000000283330",
+			"issue": "22000029-aaaa-4bbb-8ccc-000000028333",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-10-02T08:41:00.000Z",
+			"updated_at": "2025-10-03T09:52:00.000Z"
+		},
+		{
+			"id": "a0000291-aaaa-4bbb-8ccc-000000284307",
+			"issue": "22000029-aaaa-4bbb-8ccc-000000028333",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/29\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-10-03T09:52:00.000Z",
+			"updated_at": "2025-10-04T10:03:00.000Z"
+		}
+	],
+	"22000030-aaaa-4bbb-8ccc-000000029310": [
+		{
+			"id": "a0000300-aaaa-4bbb-8ccc-000000293100",
+			"issue": "22000030-aaaa-4bbb-8ccc-000000029310",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-10-03T09:52:00.000Z",
+			"updated_at": "2025-10-04T10:03:00.000Z"
+		}
+	],
+	"22000032-aaaa-4bbb-8ccc-000000031264": [
+		{
+			"id": "a0000320-aaaa-4bbb-8ccc-000000312640",
+			"issue": "22000032-aaaa-4bbb-8ccc-000000031264",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-10-05T11:14:00.000Z",
+			"updated_at": "2025-10-06T12:25:00.000Z"
+		}
+	],
+	"22000033-aaaa-4bbb-8ccc-000000032241": [
+		{
+			"id": "a0000330-aaaa-4bbb-8ccc-000000322410",
+			"issue": "22000033-aaaa-4bbb-8ccc-000000032241",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"comment_html": "<p>Pushed a fix to the branch, ready for review.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-10-06T12:25:00.000Z",
+			"updated_at": "2025-10-07T13:36:00.000Z"
+		},
+		{
+			"id": "a0000331-aaaa-4bbb-8ccc-000000323387",
+			"issue": "22000033-aaaa-4bbb-8ccc-000000032241",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"comment_html": "<p>Checked with the customer: see <a href=\"https://acme.example/t/33\">thread</a>.</p>",
+			"comment_stripped": "Comment",
+			"created_at": "2025-10-07T13:36:00.000Z",
+			"updated_at": "2025-10-08T14:47:00.000Z"
+		}
+	]
+}

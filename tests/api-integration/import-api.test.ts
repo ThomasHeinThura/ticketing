@@ -759,4 +759,93 @@ describe("MCP import API contract", () => {
       102,
     );
   });
+  it("accepts source authorship, timestamps and v2 members (D3) and keeps the record schema strict", async () => {
+    const { workspace, project, type, fullKey } = await fixture();
+    const { app } = createApp();
+    const run = await createRun(
+      app,
+      fullKey.key,
+      workspace.id,
+      project.id,
+      "v2-record",
+    );
+    const base = {
+      sourceType: "issue",
+      sourceId: "v2-1",
+      sourceCreatedAt: "2020-01-02T03:04:05.000Z",
+      sourceAuthorEmail: "Source.Author@Example.TEST",
+      item: { typeId: type.id, title: "v2 record" },
+      comments: [
+        {
+          sourceId: "c-1",
+          body: "plain",
+          authorEmail: "Source.Author@Example.TEST",
+        },
+      ],
+    };
+    const previewBody = (records: unknown[]) =>
+      idempotentJson("POST", { chunkId: "v2", expectedVersion: 1, records });
+    // unknown members stay rejected: the schema is strict at every level
+    const unknownTop = await request(
+      app,
+      fullKey.key,
+      `/api/imports/${run.id}/dry-run`,
+      previewBody([{ ...base, surprise: true }]),
+    );
+    expect(unknownTop.status).toBe(400);
+    const unknownNested = await request(
+      app,
+      fullKey.key,
+      `/api/imports/${run.id}/dry-run`,
+      previewBody([
+        { ...base, comments: [{ sourceId: "c-1", body: "x", surprise: 1 }] },
+      ]),
+    );
+    expect(unknownNested.status).toBe(400);
+    const credentialUrl = await request(
+      app,
+      fullKey.key,
+      `/api/imports/${run.id}/dry-run`,
+      previewBody([
+        {
+          ...base,
+          attachments: [
+            {
+              sourceId: "a",
+              url: "https://files.example.test/a.png?token=secret",
+              filename: "a.png",
+            },
+          ],
+        },
+      ]),
+    );
+    expect(credentialUrl.status).toBe(400);
+    const accepted = await request(
+      app,
+      fullKey.key,
+      `/api/imports/${run.id}/dry-run`,
+      previewBody([base]),
+    );
+    expect(accepted.status, await accepted.clone().text()).toBe(200);
+    const body = (await accepted.json()) as {
+      counts: Record<string, number>;
+      rejectionCodes: Record<string, number>;
+      plan: Record<string, number>;
+    };
+    expect(body.counts).toMatchObject({ created: 1, rejected: 0 });
+    expect(body.rejectionCodes).toEqual({});
+    expect(body.plan).toMatchObject({
+      comments: 1,
+      authorAddresses: 1,
+      placeholdersToCreate: 1,
+    });
+    // a dry run writes nothing: no work item, no placeholder
+    expect(await db.select().from(schema.workItemTable)).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.isPlaceholder, true)),
+    ).toHaveLength(0);
+  });
 });

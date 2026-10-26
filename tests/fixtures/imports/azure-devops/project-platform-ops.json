@@ -1,0 +1,14 @@
+{
+	"id": "7d1f0c2e-0000-4000-8000-000000000002",
+	"name": "Platform Ops",
+	"state": "wellFormed",
+	"capabilities": {
+		"versioncontrol": {
+			"sourceControlType": "Git"
+		},
+		"processTemplate": {
+			"templateName": "Scrum",
+			"templateTypeId": "scrum-template"
+		}
+	}
+}

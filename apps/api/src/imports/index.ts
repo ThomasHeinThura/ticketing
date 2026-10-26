@@ -1,9 +1,15 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { IMPORT_PLUGIN_IDS } from "../database/schema-imports";
 import { requireCurrentInstanceAdmin } from "../instance/require-instance-admin";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import { ensureImportAdaptersRegistered } from "./adapters";
+import { createImportEngineRouter } from "./engine/routes";
+import type { ImportRunApprovalRequest } from "./engine/service";
 import { createImportLinks, listImportLinks } from "./links";
+import { requestImportRunApproval } from "./pending-action";
+import { createImportReconciliationRouter } from "./reconciliation";
 import {
   createImportRunBody,
   dryRunImportBody,
@@ -28,7 +34,7 @@ const run = z.object({
   id: z.string(),
   workspaceId: z.string(),
   projectId: z.string().nullable(),
-  pluginId: z.literal("import.mcp"),
+  pluginId: z.enum(IMPORT_PLUGIN_IDS),
   sourceRef: z.string(),
   profileId: z.string().nullable(),
   state: z.enum(["queued", "running", "paused", "completed", "failed"]),
@@ -210,7 +216,10 @@ function requireIdempotencyKey(c: Context) {
 
 export function createImportRouter(options: {
   requestImportChunkApproval: ImportApprovalRequest;
+  /** P6 run-level approval (D2); defaults to the pending-action implementation. */
+  requestImportRunApproval?: ImportRunApprovalRequest;
 }) {
+  ensureImportAdaptersRegistered();
   return apiRouter()
     .openapi(createRouteDef, async (c) => {
       await requireCurrentInstanceAdmin(c, "POST", "/api/imports");
@@ -283,7 +292,15 @@ export function createImportRouter(options: {
         await listImportLinks(c, c.req.valid("param").id, c.req.valid("query")),
         200,
       );
-    });
+    })
+    .route("/", createImportReconciliationRouter())
+    .route(
+      "/",
+      createImportEngineRouter({
+        requestImportRunApproval:
+          options.requestImportRunApproval ?? requestImportRunApproval,
+      }),
+    );
 }
 
 export default createImportRouter;

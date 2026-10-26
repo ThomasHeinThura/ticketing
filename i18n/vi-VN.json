@@ -191,6 +191,21 @@
 		"pendingDeletion": {
 			"requested": "Deletion requested. Approve it to complete.",
 			"requestFailed": "Deletion could not be requested."
+		},
+		"audit": {
+			"columns": {
+				"action": "Action",
+				"actor": "Actor",
+				"entity": "Entity",
+				"timestamp": "Timestamp",
+				"workspace": "Workspace"
+			},
+			"loadFailed": "An error occurred loading the audit log.",
+			"rows": "{{count}} rows"
+		},
+		"picker": {
+			"noResults": "No matching options",
+			"search": "Search options"
 		}
 	},
 	"auth": {
@@ -2044,7 +2059,8 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Cài đặt",
 			"backToWorkspace": "Quay lại không gian làm việc",
-			"settingsWorkspaceTab": "Không gian làm việc"
+			"settingsWorkspaceTab": "Không gian làm việc",
+			"settingsAccountTab": "Tài khoản"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_other}}"
@@ -2104,7 +2120,13 @@
 			"columnRequestedBy": "Requested by",
 			"kindCab": "CAB",
 			"kindCustomer": "Customer",
-			"watching": "Watching"
+			"watching": "Watching",
+			"empty": {
+				"assignedDescription": "{{term_work_item_other}} assigned to you in any {{term_project_one}} will show up here.",
+				"assignedTitle": "Nothing assigned to you",
+				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
+				"watchingTitle": "You are not watching anything"
+			}
 		}
 	},
 	"notifications": {
@@ -4297,6 +4319,17 @@
 			"countRecords_other": "{{count}} records will be imported.",
 			"countLinks_one": "{{count}} link will be created.",
 			"countLinks_other": "{{count}} links will be created."
+		},
+		"importRun": {
+			"action": "Run import",
+			"approve": "Approve import run",
+			"confirm": "Type {{count}} to confirm this import run.",
+			"count_other": "{{count}} records in this run.",
+			"hidden": "The safe import summary is unavailable. This action cannot be approved.",
+			"open": "Open import run",
+			"source": "Source: {{plugin}}, mapping version {{version}}.",
+			"unavailable": "Import run summary unavailable",
+			"writes_other": "{{count}} records will be created or updated."
 		}
 	},
 	"intake": {
@@ -4378,7 +4411,28 @@
 			"update": "Save changes",
 			"conflict": "This queue changed. Reload it before saving.",
 			"savedState": "Queue state: {{state}}"
-		}
+		},
+		"attachmentStates": {
+			"failed": "Failed",
+			"pending": "Pending",
+			"ready": "Ready"
+		},
+		"chooseProject": "Choose a project",
+		"chooseWorkItemType": "Choose a work item type",
+		"destinationProject": "Destination project",
+		"loadingDetails": "Loading details…",
+		"states": {
+			"accepted": "Accepted",
+			"clarifying": "Clarifying",
+			"declined": "Declined",
+			"duplicate": "Duplicate",
+			"new": "New",
+			"withdrawn": "Withdrawn"
+		},
+		"statusFilter": "Submission status filter",
+		"submissionFallback": "Submission",
+		"submissionRegion": "Submission {{ref}}",
+		"workItemType": "Work item type"
 	},
 	"requestTypes": {
 		"addField": "Add field",
@@ -8675,6 +8729,270 @@
 			"chunk_rejected": "Chunk rejected",
 			"approval_requested": "Approval requested",
 			"target_project_purged": "Target project purged"
+		},
+		"wizard": {
+			"connect": {
+				"connectedTitle": "Connected source",
+				"connection": "Connection",
+				"credentialHint": "Sent once and stored encrypted. It is never shown again.",
+				"credentialStored": "Credential stored",
+				"errorDescription": "Check the details and try again.",
+				"errorTitle": "Could not connect",
+				"fileError": "The file could not be read or is larger than 5 MB.",
+				"fileHint": "Choose a UTF-8 CSV file, up to 5 MB.",
+				"fileLoaded": "Loaded {{name}}.",
+				"name": "Connection name",
+				"nameTaken": "A connection with this name already exists. Choose another name or reuse the saved connection.",
+				"newConnection": "New connection",
+				"reasons": {
+					"auth_failed": "The source refused the credential.",
+					"csv_text_missing": "No file contents were supplied.",
+					"export_text_missing": "No export contents were supplied.",
+					"file_too_large": "The file is larger than the 5 MB limit.",
+					"invalid_configuration": "The connection settings are incomplete or invalid.",
+					"invalid_export": "The export could not be read as a valid export file.",
+					"missing_required_column": "The file is missing a required column such as the title.",
+					"not_found": "The source, project or organisation was not found.",
+					"source_error": "The source could not be read.",
+					"too_many_columns": "The file has more columns than the 200 column limit.",
+					"too_many_rows": "The file has more rows than the 50,000 row limit.",
+					"unreachable": "The source could not be reached.",
+					"unterminated_quote": "The file has a quoted value that is never closed."
+				},
+				"reuseHint": "The saved connection and its mapping are reused.",
+				"savedConnection": "Saved connection",
+				"source": "Source",
+				"submit": "Connect and continue",
+				"targetProject": "Target project"
+			},
+			"discover": {
+				"continue": "Continue to mapping",
+				"description": "Connect to the source and list what it holds: projects, types, states, people and fields. Nothing is written.",
+				"emptyDescription": "Run discovery to see the size of the job before mapping it.",
+				"emptyTitle": "Nothing discovered yet",
+				"errorDescription": "The source could not be reached or read. Check the connection and try again.",
+				"errorTitle": "Discovery failed",
+				"found": "What was found",
+				"records": "Records: {{count}}",
+				"rerun": "Discover again",
+				"run": "Run discovery",
+				"totalRecords": "Records"
+			},
+			"domains": {
+				"custom_field": "Custom field",
+				"cycle": "Cycle",
+				"label": "Label",
+				"module": "Module",
+				"person": "Person",
+				"priority": "Priority",
+				"project": "Project",
+				"state": "State",
+				"type": "Work item type"
+			},
+			"dryRun": {
+				"approvalRequired": "This import writes a large number of records and needs approval before it starts.",
+				"blockedTitle": "The import cannot start from this report",
+				"blockers": {
+					"incomplete": "The mapping is incomplete.",
+					"noReport": "There is no dry run.",
+					"stale": "The mapping changed after this dry run. Run it again."
+				},
+				"blockingEntry": "{{domain}} \"{{value}}\": records affected {{count}}",
+				"byType": "By record type",
+				"conflictDescription": "The run changed while the dry run was computed. Reload and try again.",
+				"continue": "Continue to import",
+				"counts": {
+					"created": "Create",
+					"processed": "Processed",
+					"rejected": "Reject",
+					"skipped": "Skip",
+					"updated": "Update"
+				},
+				"cycleBreaks": "Circular parent links to break: {{count}}",
+				"description": "Classify every record against the saved mapping without writing anything. The digest from this report is what the import binds to.",
+				"digest": "Digest",
+				"emptyDescription": "Run a dry run to see what the import would do.",
+				"emptyTitle": "No dry run yet",
+				"errorDescription": "The source could not be read. Try again.",
+				"errorTitle": "Dry run failed",
+				"loadErrorDescription": "Refresh and try again.",
+				"loadErrorTitle": "Could not load the dry run",
+				"losses": "Losses",
+				"lossRecords": "Records affected: {{count}}",
+				"mappingVersion": "Mapping version {{version}}",
+				"noLosses": "No data would be lost.",
+				"outcome": "Outcome",
+				"readyDescription": "The mapping is complete and the dry run matches it.",
+				"readyTitle": "Ready to import",
+				"rejections": "Rejections",
+				"rerun": "Run dry run again",
+				"run": "Run dry run",
+				"sourceType": "Record type"
+			},
+			"execute": {
+				"approvalDescription": "This import writes a large number of records, so it needs your explicit approval first. Review the pending action, approve it, then start the import.",
+				"approvalTitle": "Approval required",
+				"approved": "Approved. You can start the import.",
+				"backToDryRun": "Go to dry run",
+				"blockedTitle": "The import cannot start",
+				"blockers": {
+					"mappingIncomplete": "The mapping is incomplete.",
+					"noDryRun": "There is no dry run.",
+					"stale": "The mapping changed after the dry run. Run it again."
+				},
+				"bound": "{{total}} records, {{writes}} writes, mapping version {{version}}. Starting binds the import to exactly this dry run.",
+				"controlError": "The request could not be completed. Try again.",
+				"done": "Records: {{done}} of {{total}} ({{percent}}%)",
+				"failed": "The import failed. Review the run history for the cause.",
+				"noDryRun": "Run a dry run first.",
+				"pause": "Pause",
+				"pausedTitle": "Import paused",
+				"progress": "Import progress",
+				"ready": "Start the import",
+				"resume": "Resume",
+				"resumeBlocked": "The run needs a new dry run and approval before it can resume.",
+				"resumeBlockedTitle": "Cannot resume yet",
+				"reviewApproval": "Review approval",
+				"start": "Start import",
+				"startConflict": "The dry run, mapping or approval no longer matches. Run the dry run again.",
+				"startErrorDescription": "Try again.",
+				"startErrorTitle": "Could not start the import",
+				"toReconcile": "Continue to reconcile"
+			},
+			"fields": {
+				"baseUrl": "Base URL",
+				"credential": "API token or personal access token",
+				"csvText": "CSV file",
+				"email": "Account email",
+				"jqlFilter": "JQL filter (optional)",
+				"organization": "Organisation",
+				"project": "Project (optional)",
+				"projectKey": "Project key",
+				"workspace": "Workspace slug"
+			},
+			"lossCodes": {
+				"attachment_too_large": "Attachment too large",
+				"revision_not_imported": "History not imported",
+				"rich_text_lossy": "Rich text converted with loss",
+				"writer_unavailable": "Not yet supported by the importer"
+			},
+			"losses": {
+				"code": "Code",
+				"count": "Count",
+				"detail": "Detail",
+				"errorDescription": "Try again.",
+				"errorTitle": "Could not load losses",
+				"none": "Nothing was lost.",
+				"record": "Record",
+				"sourceUrl": "Source URL",
+				"title": "Losses"
+			},
+			"mapping": {
+				"affected": "Records",
+				"blockedDescription": "Rows that still need a decision: {{count}}. The import will not start until every row is confirmed.",
+				"blockedTitle": "Mapping is incomplete",
+				"catalogueError": "Targets could not be loaded for: {{domains}}.",
+				"chooseTarget": "Choose a target",
+				"confirmedCount": "Confirmed: {{count}}",
+				"confirmProposals": "Confirm proposals",
+				"conflictDescription": "Your edit was not saved because someone else changed the mapping. The latest mapping is loaded; retry your edit against it.",
+				"conflictRetry": "Retry edit",
+				"conflictTitle": "The mapping changed elsewhere",
+				"continue": "Continue to dry run",
+				"domain": "Type",
+				"emptyDescription": "Run discovery first.",
+				"emptyTitle": "Nothing to map",
+				"executingWarning": "Changing the mapping stops the running import and clears the dry run and its approval.",
+				"ignore": "Do not import",
+				"loadErrorDescription": "Refresh and try again.",
+				"loadErrorTitle": "Could not load the mapping",
+				"onlyOpen": "Only rows that need a decision",
+				"placeholder": "Inactive placeholder person",
+				"proposedCount": "Proposed: {{count}}",
+				"saveErrorDescription": "Your edit was rolled back. Try again.",
+				"saveErrorTitle": "Could not save the mapping",
+				"showMore": "Show more ({{count}} left)",
+				"sourceValue": "Source value",
+				"status": "Status",
+				"statuses": {
+					"confirmed": "Confirmed",
+					"proposed": "Proposed",
+					"unmapped": "Unmapped"
+				},
+				"summary": "Mapping summary",
+				"target": "Target",
+				"targetFor": "Target for {{value}}",
+				"unknownTarget": "Existing target",
+				"unmappedCount": "Unmapped: {{count}}"
+			},
+			"newImport": "New import",
+			"newTitle": "New import",
+			"pausedReasons": {
+				"approval_invalid": "Paused because the approval no longer matches the dry run.",
+				"approved_count_exceeded": "Paused because the source returned more records than were approved.",
+				"authority_lost": "Paused because the person who started the import lost authority.",
+				"chunk_failed": "Paused because a chunk failed to commit.",
+				"conflict": "Paused because of a concurrent change.",
+				"mapping_changed": "Paused because the mapping changed. Run the dry run again and approve it before resuming.",
+				"operator": "Paused by an operator.",
+				"project_reach_lost": "Paused because the target project is no longer reachable.",
+				"source_error": "Paused because the source could not be read."
+			},
+			"plugins": {
+				"azureDevops": "Azure DevOps",
+				"azureDevopsHint": "REST API with a personal access token. Read-only.",
+				"csv": "Generic CSV",
+				"csvHint": "Upload a CSV file (up to 5 MB). The universal fallback.",
+				"jira": "Jira",
+				"jiraHint": "REST API for one project. Read-only.",
+				"jsm": "Jira Service Management",
+				"jsmHint": "REST API for one service project. Read-only.",
+				"mcp": "MCP agent",
+				"plane": "Plane",
+				"planeHint": "REST API with a workspace API token. Read-only.",
+				"planner": "Microsoft Planner",
+				"plannerHint": "Upload the CSV exported from one Planner plan.",
+				"powerApps": "Power Apps ticketing",
+				"powerAppsHint": "Upload a CSV export of the ticket list.",
+				"unknown": "Unknown source"
+			},
+			"priorities": {
+				"high": "High",
+				"low": "Low",
+				"medium": "Medium",
+				"urgent": "Urgent"
+			},
+			"reconcile": {
+				"counts": "Counts",
+				"differs": "Differs",
+				"error": "Reconciliation could not be loaded or recomputed. Try again.",
+				"expected": "Expected",
+				"item": "Item",
+				"lossTotal": "Losses: {{count}}",
+				"match": "Match",
+				"mismatch": "{{done}} records were processed but the dry run expected {{total}}.",
+				"notComputed": "Not computed yet. Recompute to compare the source with the target.",
+				"recompute": "Recompute",
+				"source": "Source",
+				"sourceVsTarget": "Source compared with target",
+				"target": "Target"
+			},
+			"stateGroups": {
+				"backlog": "Backlog",
+				"cancelled": "Cancelled",
+				"completed": "Completed",
+				"started": "Started",
+				"unstarted": "Unstarted"
+			},
+			"steps": {
+				"connect": "Connect",
+				"discover": "Discover",
+				"dry-run": "Dry run",
+				"execute": "Import",
+				"label": "Import steps",
+				"mapping": "Map",
+				"reconcile": "Reconcile"
+			}
 		}
 	}
 }

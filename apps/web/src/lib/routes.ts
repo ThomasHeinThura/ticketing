@@ -299,8 +299,20 @@ export function parseIdentityConnectionEditorSearchFromQueryString(
 }
 
 export type PendingActionsSearch = { cursor?: string };
-/** Workspace selected in the God Mode import history and retained on run detail links. */
-export type GodModeImportsSearch = { workspaceId?: string };
+export const IMPORT_WIZARD_STEPS = [
+  "connect",
+  "discover",
+  "mapping",
+  "dry-run",
+  "execute",
+  "reconcile",
+] as const;
+export type ImportWizardStep = (typeof IMPORT_WIZARD_STEPS)[number];
+/** Workspace selected in the God Mode import history and retained on run detail links; `step` is the open import-wizard step. */
+export type GodModeImportsSearch = {
+  workspaceId?: string;
+  step?: ImportWizardStep;
+};
 /** Workspace customer invitations: which customer organisation is selected (CP-20). */
 export type CustomerInvitationsSearch = { organisation?: string };
 export type SavedViewsSearch = { query?: string };
@@ -365,14 +377,21 @@ function boundedId(value: unknown): string | undefined {
 export function parseGodModeImportsSearch(raw: unknown): GodModeImportsSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
   const workspaceId = boundedId(value.workspaceId);
-  return workspaceId ? { workspaceId } : {};
+  const step = (IMPORT_WIZARD_STEPS as readonly unknown[]).includes(value.step)
+    ? (value.step as ImportWizardStep)
+    : undefined;
+  return {
+    ...(workspaceId ? { workspaceId } : {}),
+    ...(step ? { step } : {}),
+  };
 }
 
 function godModeImportsQuery(search: GodModeImportsSearch) {
   const resolved = parseGodModeImportsSearch(search);
-  return resolved.workspaceId
-    ? `?${new URLSearchParams({ workspaceId: resolved.workspaceId })}`
-    : "";
+  const query = new URLSearchParams();
+  if (resolved.workspaceId) query.set("workspaceId", resolved.workspaceId);
+  if (resolved.step) query.set("step", resolved.step);
+  return query.size ? `?${query}` : "";
 }
 
 /**

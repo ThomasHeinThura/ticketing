@@ -700,6 +700,7 @@ export default function WorkItemInlineFields({
           <div className="min-w-0 max-w-full">
             <CustomFieldValueInput
               id={`work-item-inline-custom-field-${field.key}`}
+              inline
               field={field}
               value={customFieldDraft}
               people={editablePeople}

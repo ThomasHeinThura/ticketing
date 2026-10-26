@@ -17,6 +17,7 @@ import {
 } from "@taskdesk/ui";
 import { RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import PageTitle from "@/components/page-title";
 import { useDensityPreference } from "@/hooks/use-density-preference";
 import { useLocale } from "@/hooks/use-locale";
 import {
@@ -95,6 +96,7 @@ function RouteComponent() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
+      <PageTitle title={t("settings:preferencesPage.title")} />
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">
           {t("settings:preferencesPage.title")}

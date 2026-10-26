@@ -38,16 +38,23 @@ function GodModeImportsRoute() {
       {isAdmin ? (
         <ImportRunsPanel
           workspaceId={search.workspaceId}
+          step={search.step}
+          onNewImport={() =>
+            void navigate({ search: { ...search, step: "connect" } })
+          }
+          onCloseWizard={() =>
+            void navigate({ search: { workspaceId: search.workspaceId } })
+          }
           onWorkspaceChange={(workspaceId) =>
             void navigate({
               search: { workspaceId },
             })
           }
-          onOpenRun={(id, workspaceId) =>
+          onOpenRun={(id, workspaceId, step) =>
             void navigate({
               to: routes.godModeImportRun.path,
               params: { id },
-              search: { ...search, workspaceId },
+              search: { workspaceId, ...(step ? { step } : {}) },
             })
           }
         />

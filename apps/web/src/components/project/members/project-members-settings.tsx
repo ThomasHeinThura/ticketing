@@ -40,6 +40,7 @@ import { EllipsisIcon, TrashIcon, TriangleAlert, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/avatar";
+import { PickerPopover } from "@/components/common/picker-popover";
 import {
   useAddProjectMember,
   useRemoveProjectMember,
@@ -243,36 +244,20 @@ function ProjectMembersSettings({ projectId }: Props) {
                   </TableCell>
                   <TableCell className="py-3">
                     {canManage && !member.managedExternally ? (
-                      <Select
-                        items={rosterRoleItems(
+                      <PickerPopover
+                        options={rosterRoleItems(
                           assignableRoles(roles, callerRank, member.roleKey),
                         )}
                         value={member.roleKey}
                         disabled={isChangingRole}
-                        onValueChange={(value) =>
+                        onChange={(value) =>
                           void handleChangeRole(member, value)
                         }
-                      >
-                        <SelectTrigger
-                          size="sm"
-                          className="h-8 w-40"
-                          aria-label={t(
-                            "settings:projectMembers.changeRoleFor",
-                            { name: member.displayName ?? member.personId },
-                          )}
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {rosterRoleItems(
-                            assignableRoles(roles, callerRank, member.roleKey),
-                          ).map((item) => (
-                            <SelectItem key={item.value} value={item.value}>
-                              {item.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        className="h-8 w-40"
+                        ariaLabel={t("settings:projectMembers.changeRoleFor", {
+                          name: member.displayName ?? member.personId,
+                        })}
+                      />
                     ) : (
                       <Badge variant="secondary">{member.roleName}</Badge>
                     )}

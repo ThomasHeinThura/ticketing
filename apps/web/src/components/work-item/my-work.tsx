@@ -85,6 +85,7 @@ export default function MyWork({
 }
 
 function MyWorkItems({ lens }: { lens: "assigned" | "watching" }) {
+  const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
   const [sort, setSort] = useState<WorkItemSortField>("dueDate");
   const [dir, setDir] = useState<WorkItemSortDirection>("asc");
@@ -113,6 +114,8 @@ function MyWorkItems({ lens }: { lens: "assigned" | "watching" }) {
       isLoading={results.isLoading || !workspace}
       isError={results.isError}
       isFiltered
+      emptyTitle={t(`navigation:myWork.empty.${lens}Title`)}
+      emptyDescription={t(`navigation:myWork.empty.${lens}Description`)}
       sort={sort}
       dir={dir}
       onSortChange={(nextSort, nextDir) => {

@@ -1,0 +1,16 @@
+[
+	{
+		"id": "71000001-aaaa-4bbb-8ccc-000000000977",
+		"name": "Cycle 7",
+		"start_date": "2025-09-01",
+		"end_date": "2025-09-14",
+		"project": "33000001-aaaa-4bbb-8ccc-000000000977"
+	},
+	{
+		"id": "71000002-aaaa-4bbb-8ccc-000000001954",
+		"name": "Cycle 6",
+		"start_date": "2025-09-15",
+		"end_date": "2025-09-28",
+		"project": "33000001-aaaa-4bbb-8ccc-000000000977"
+	}
+]

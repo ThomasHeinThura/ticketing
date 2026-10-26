@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   foreignKey,
   index,
@@ -13,6 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 import {
   apikeyTable,
+  externalLinkTable,
   pendingActionTable,
   personTable,
   projectTable,
@@ -86,6 +88,86 @@ export const importMappingProfileTable = pgTable(
   ],
 );
 
+export const IMPORT_PLUGIN_IDS = [
+  "import.csv",
+  "import.jira",
+  "import.jsm",
+  "import.azure-devops",
+  "import.plane",
+  "import.planner",
+  "import.power-apps",
+  "import.mcp",
+] as const;
+export type ImportPluginId = (typeof IMPORT_PLUGIN_IDS)[number];
+export type ImportEnginePhase =
+  | "created"
+  | "discovered"
+  | "dry_run_ready"
+  | "executing"
+  | "completed";
+export type ImportPausedReason =
+  | "operator"
+  | "authority_lost"
+  | "project_reach_lost"
+  | "mapping_changed"
+  | "approval_invalid"
+  | "approved_count_exceeded"
+  | "source_error"
+  | "chunk_failed"
+  | "conflict";
+const pluginIdSql = sql.raw(IMPORT_PLUGIN_IDS.map((id) => `'${id}'`).join(","));
+
+/** P6: a read-only source connection. The credential is an enc:v2 envelope, never plaintext. */
+export const importSourceConnectionTable = pgTable(
+  "import_source_connection",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    pluginId: text("plugin_id").$type<ImportPluginId>().notNull(),
+    name: text("name").notNull(),
+    config: jsonb("config")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    credentialCiphertext: text("credential_ciphertext"),
+    readOnly: boolean("read_only").notNull().default(true),
+    createdBy: text("created_by").references(() => personTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("import_source_connection_scope_key").on(t.workspaceId, t.id),
+    unique("import_source_connection_name_key").on(
+      t.workspaceId,
+      t.pluginId,
+      t.name,
+    ),
+    check(
+      "import_source_connection_plugin_allowed",
+      sql`${t.pluginId} IN (${pluginIdSql})`,
+    ),
+    check("import_source_connection_read_only", sql`${t.readOnly} = true`),
+    check(
+      "import_source_connection_config_object",
+      sql`jsonb_typeof(${t.config}) = 'object'`,
+    ),
+  ],
+);
+
 /** Immutable destination/source scope; credentials never belong in sourceRef, stats or log. */
 export const importRunTable = pgTable(
   "import_run",
@@ -125,6 +207,37 @@ export const importRunTable = pgTable(
     }),
     nextCursor: text("next_cursor"),
     lastCommittedChunk: integer("last_committed_chunk").notNull().default(-1),
+    // --- P6 Lane A (import engine, migration 0196) ---
+    sourceConnectionId: text("source_connection_id"),
+    enginePhase: text("engine_phase").$type<ImportEnginePhase>(),
+    /** Adapter cursor wrapper: { cursor: string | null, exhausted: boolean }. */
+    sourceCursor: jsonb("source_cursor").$type<{
+      cursor: string | null;
+      exhausted: boolean;
+    } | null>(),
+    pausedReason: text("paused_reason").$type<ImportPausedReason>(),
+    approvedDigest: text("approved_digest"),
+    approvedCount: integer("approved_count"),
+    approvedMappingVersion: integer("approved_mapping_version"),
+    approvalPendingActionId: text("approval_pending_action_id").references(
+      () => pendingActionTable.id,
+      { onDelete: "set null", onUpdate: "cascade" },
+    ),
+    engineDiscovery: jsonb("engine_discovery").$type<Record<
+      string,
+      unknown
+    > | null>(),
+    engineDryRunDigest: text("engine_dry_run_digest"),
+    engineDryRunMappingVersion: integer("engine_dry_run_mapping_version"),
+    engineDryRunReport: jsonb("engine_dry_run_report").$type<Record<
+      string,
+      unknown
+    > | null>(),
+    engineDryRunAt: timestamp("engine_dry_run_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    // --- end P6 Lane A ---
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -143,6 +256,16 @@ export const importRunTable = pgTable(
       name: "import_run_project_scope_fk",
       columns: [t.workspaceId, t.projectId],
       foreignColumns: [projectTable.workspaceId, projectTable.id],
+    })
+      .onDelete("no action")
+      .onUpdate("cascade"),
+    foreignKey({
+      name: "import_run_source_connection_scope_fk",
+      columns: [t.workspaceId, t.sourceConnectionId],
+      foreignColumns: [
+        importSourceConnectionTable.workspaceId,
+        importSourceConnectionTable.id,
+      ],
     })
       .onDelete("no action")
       .onUpdate("cascade"),
@@ -179,8 +302,33 @@ export const importRunTable = pgTable(
       "import_run_preview_binding",
       sql`(${t.dryRunDigest} IS NULL) = (${t.dryRunExpiresAt} IS NULL) AND (${t.dryRunDigest} IS NULL OR ${t.dryRunDigest} ~ '^[a-f0-9]{64}$')`,
     ),
+    check("import_run_plugin_allowed", sql`${t.pluginId} IN (${pluginIdSql})`),
+    check(
+      "import_run_engine_phase_allowed",
+      sql`${t.enginePhase} IS NULL OR ${t.enginePhase} IN ('created','discovered','dry_run_ready','executing','completed')`,
+    ),
+    check(
+      "import_run_paused_reason_allowed",
+      sql`${t.pausedReason} IS NULL OR ${t.pausedReason} IN ('operator','authority_lost','project_reach_lost','mapping_changed','approval_invalid','approved_count_exceeded','source_error','chunk_failed','conflict')`,
+    ),
+    check(
+      "import_run_engine_approval_shape",
+      sql`(${t.approvedDigest} IS NULL) = (${t.approvedCount} IS NULL) AND (${t.approvedDigest} IS NULL) = (${t.approvedMappingVersion} IS NULL) AND (${t.approvedDigest} IS NULL OR ${t.approvedDigest} ~ '^[a-f0-9]{64}$') AND (${t.approvedCount} IS NULL OR ${t.approvedCount} >= 0) AND (${t.engineDryRunDigest} IS NULL OR ${t.engineDryRunDigest} ~ '^[a-f0-9]{64}$')`,
+    ),
   ],
 );
+
+export type ImportTargetType =
+  | "work_item"
+  | "comment"
+  | "attachment"
+  | "relation"
+  | "activity"
+  | "person"
+  | "label"
+  | "cycle"
+  | "module"
+  | "custom_field";
 
 /** One canonical source identity across reruns, pinned to the run's immutable workspace/source. */
 export const importRecordLinkTable = pgTable(
@@ -203,7 +351,7 @@ export const importRecordLinkTable = pgTable(
     sourceId: text("source_id").notNull(),
     sourceHash: text("source_hash"),
     targetContentHash: text("target_content_hash"),
-    targetType: text("target_type").$type<"work_item">().notNull(),
+    targetType: text("target_type").$type<ImportTargetType>().notNull(),
     targetId: text("target_id").notNull(),
     sourceUrl: text("source_url"),
     firstSeenAt: timestamp("first_seen_at", {
@@ -253,7 +401,7 @@ export const importRecordLinkTable = pgTable(
     index("import_link_current_run_idx").on(t.importRunId, t.id),
     check(
       "import_link_target_type_allowed",
-      sql`${t.targetType} = 'work_item'`,
+      sql`${t.targetType} IN ('work_item','comment','attachment','relation','activity','person','label','cycle','module','custom_field')`,
     ),
     check(
       "import_link_hash_valid",
@@ -367,3 +515,63 @@ export const importPlaceholderClaimTable = pgTable(
     ),
   ],
 );
+
+/** P6 loss report: one fixed-code row per record that lost or could not carry something. */
+export const importLossTable = pgTable(
+  "import_loss",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    importRunId: text("import_run_id")
+      .notNull()
+      .references(() => importRunTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    importChunkId: text("import_chunk_id").references(
+      () => importChunkTable.id,
+      {
+        onDelete: "set null",
+        onUpdate: "cascade",
+      },
+    ),
+    sourceType: text("source_type").notNull(),
+    sourceId: text("source_id").notNull(),
+    code: text("code").notNull(),
+    detailCode: text("detail_code").notNull().default(""),
+    sourceUrl: text("source_url"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("import_loss_run_source_code_key").on(
+      t.importRunId,
+      t.sourceType,
+      t.sourceId,
+      t.code,
+      t.detailCode,
+    ),
+    index("import_loss_run_idx").on(t.importRunId, t.id),
+    check(
+      "import_loss_code_shape",
+      sql`${t.code} ~ '^[a-z][a-z0-9_]{1,63}$' AND (${t.detailCode} = '' OR ${t.detailCode} ~ '^[a-z][a-z0-9_]{1,63}$')`,
+    ),
+  ],
+);
+
+// --- P6 Lane B: import provenance (0198) -----------------------------------------------------
+/**
+ * Entity provenance lives on the physical `external_link` table (data-model.md section 11):
+ * system, external id and URL for an imported work item, comment or attachment. One Drizzle
+ * definition (`externalLinkTable` in schema.ts) so migration tooling sees one table; this alias
+ * names the import writer's use of it.
+ */
+export const importProvenanceTable = externalLinkTable;

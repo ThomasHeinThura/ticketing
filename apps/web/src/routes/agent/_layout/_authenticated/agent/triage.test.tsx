@@ -10,6 +10,7 @@ import {
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { IntakeQueueSearch } from "@/lib/routes";
+import { translate } from "@/test/en-translation";
 import { Route } from "./triage";
 
 const mocks = vi.hoisted(() => ({
@@ -106,12 +107,16 @@ vi.mock("@/hooks/queries/project/use-get-projects", () => ({
   default: () => ({ data: [], isLoading: false }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
+const REAL_ENGLISH_KEYS =
+  /^(statusFilter|states\..+|attachmentStates\..+|submissionRegion|submissionFallback|loadingDetails|destinationProject|chooseProject|workItemType|chooseWorkItemType|download)$/u;
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (
       key: string,
       options?: { defaultValue?: string; state?: string; [k: string]: unknown },
     ) => {
+      if (REAL_ENGLISH_KEYS.test(key))
+        return translate(`intake:${key}`, options);
       const value =
         key === "actionError"
           ? "The intake action failed or the submission changed. Reload the queue and try again."
@@ -462,12 +467,12 @@ describe("intake triage route", () => {
     const filter = screen.getByRole("button", {
       name: "Submission status filter",
     });
-    expect(filter).toHaveTextContent("Status: new");
+    expect(filter).toHaveTextContent("Status: New");
     fireEvent.click(filter);
     expect(
-      await screen.findByRole("menuitemcheckbox", { name: "new" }),
+      await screen.findByRole("menuitemcheckbox", { name: "New" }),
     ).toHaveAttribute("aria-checked", "true");
-    const accepted = screen.getByRole("menuitemcheckbox", { name: "accepted" });
+    const accepted = screen.getByRole("menuitemcheckbox", { name: "Accepted" });
     expect(accepted).toHaveAttribute("aria-checked", "false");
     fireEvent.click(accepted);
     expect(mocks.navigate).toHaveBeenCalledWith({
@@ -555,7 +560,7 @@ describe("intake triage route", () => {
     // jsdom has no layout: assert the class contract measured in Chromium at
     // 375 px (a flex child with min-width:auto would grow to its select text).
     for (const name of ["Destination project", "Work item type"]) {
-      const trigger = await screen.findByRole("combobox", { name });
+      const trigger = await screen.findByRole("button", { name });
       const wrapper = trigger.closest("div.flex-col") as HTMLElement;
       expect(wrapper.className).toContain("min-w-0");
       expect(wrapper.className).toContain("max-w-full");

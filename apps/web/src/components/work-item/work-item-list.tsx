@@ -115,6 +115,9 @@ export type WorkItemListProps = {
   customFieldPeople?: WorkItemCustomFieldPerson[];
   /** A structured filter is applied, so an empty result means "no match", not "no items". */
   isFiltered?: boolean;
+  /** Overrides the empty-state copy where the project-scoped default is wrong (cross-project pages). */
+  emptyTitle?: string;
+  emptyDescription?: string;
   /** More matching pages exist; the list offers to load them. */
   hasMore?: boolean;
   onLoadMore?: () => void;
@@ -308,6 +311,23 @@ const COLUMN_WIDTH_FACTORS: Record<NativeWorkItemSearchColumn, number> = {
 
 const CUSTOM_COLUMN_WIDTH_FACTOR = 0.16;
 
+/** Narrowest width that keeps a header label and its sort icon readable. */
+const COLUMN_MIN_WIDTHS: Record<NativeWorkItemSearchColumn, number> = {
+  key: 104,
+  title: 280,
+  priority: 120,
+  dueDate: 128,
+  state: 132,
+  assignee: 152,
+};
+const CUSTOM_COLUMN_MIN_WIDTH = 144;
+
+function columnMinWidth(column: WorkItemSearchColumn): number {
+  return column.startsWith("cf.")
+    ? CUSTOM_COLUMN_MIN_WIDTH
+    : COLUMN_MIN_WIDTHS[column as NativeWorkItemSearchColumn];
+}
+
 function columnWidthFactor(column: WorkItemSearchColumn): number {
   return column.startsWith("cf.")
     ? CUSTOM_COLUMN_WIDTH_FACTOR
@@ -414,6 +434,8 @@ function WorkItemListPresentation({
   customFieldColumns = [],
   customFieldPeople = [],
   isFiltered = false,
+  emptyTitle,
+  emptyDescription,
   hasMore = false,
   onLoadMore,
   isLoadingMore = false,
@@ -660,14 +682,16 @@ function WorkItemListPresentation({
             <ListTodo />
           </EmptyMedia>
           <EmptyTitle>
-            {isFiltered
-              ? t("workItems:list.emptyFilteredTitle")
-              : t("workItems:list.emptyTitle")}
+            {emptyTitle ??
+              (isFiltered
+                ? t("workItems:list.emptyFilteredTitle")
+                : t("workItems:list.emptyTitle"))}
           </EmptyTitle>
           <EmptyDescription>
-            {isFiltered
-              ? t("workItems:list.emptyFilteredDescription")
-              : t("workItems:list.emptyDescription")}
+            {emptyDescription ??
+              (isFiltered
+                ? t("workItems:list.emptyFilteredDescription")
+                : t("workItems:list.emptyDescription"))}
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent />
@@ -689,7 +713,7 @@ function WorkItemListPresentation({
     (column) =>
       columnWidths[column] ??
       Math.max(
-        96,
+        columnMinWidth(column),
         (fullTableColumnSpace * columnWidthFactor(column)) / columnFactorTotal,
       ),
   );
@@ -1174,6 +1198,7 @@ function WorkItemListPresentation({
             columns={columns}
             getRowId={(item) => item.id}
             columnWidthFactors={columnWidthFactors}
+            columnMinWidths={columns.map(columnMinWidth)}
             columnWidths={columnWidths}
             renderResizeHandle={(column, width) =>
               renderResizeHandle(column, width)

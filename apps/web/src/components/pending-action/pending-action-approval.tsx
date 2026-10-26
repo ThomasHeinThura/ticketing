@@ -27,6 +27,7 @@ import PageTitle from "@/components/page-title";
 import { parseAttachmentDeletionSummary } from "@/components/pending-action/attachment-deletion-summary";
 import { parseCommentDeletionSummary } from "@/components/pending-action/comment-deletion-summary";
 import { parseImportChunkSummary } from "@/components/pending-action/import-chunk-summary";
+import { parseImportRunSummary } from "@/components/pending-action/import-run-summary";
 import {
   getCurrentFactorStatus,
   getInstanceUser,
@@ -406,6 +407,10 @@ export function PendingActionApproval({
   const importChunkSummary = parseImportChunkSummary(action.data);
   const isImportChunk = importChunkSummary !== null;
   const importChunkRedacted = isImportChunkTarget && !isImportChunk;
+  const importRunSummary = parseImportRunSummary(action.data);
+  const isImportRun = importRunSummary !== null;
+  const importRunRedacted =
+    action.data.targetType === "import_run" && !isImportRun;
   const bulkSummary =
     isBulkDeletion &&
     action.data.summary?.redacted !== true &&
@@ -637,12 +642,14 @@ export function PendingActionApproval({
     !registeredRedacted &&
     !hardPurgeRedacted &&
     !importChunkRedacted &&
+    !importRunRedacted &&
     ((isDeactivationContract && email !== null) ||
       isRegisteredTypedName ||
       isHardPurgeTypedName ||
       isClickContract ||
       isBulkDeletion ||
-      isImportChunk);
+      isImportChunk ||
+      isImportRun);
   const availableMethods = factor.data?.availableMethods ?? [];
   const effectiveMethod = method;
   const factorUnavailable =
@@ -666,13 +673,16 @@ export function PendingActionApproval({
       return;
     if (isImportChunk && typedCount !== String(importChunkSummary.recordCount))
       return;
+    if (isImportRun && typedCount !== String(importRunSummary.totalCount))
+      return;
     if (
       !isDeactivationContract &&
       !isRegisteredTypedName &&
       !isHardPurgeTypedName &&
       !isClickContract &&
       !isBulkDeletion &&
-      !isImportChunk
+      !isImportChunk &&
+      !isImportRun
     )
       return;
     const capturedIntent = actionLifecycle.capture();
@@ -888,6 +898,7 @@ export function PendingActionApproval({
           (isBulkDeletion && typedCount !== String(bulkSummary?.count)) ||
           (isImportChunk &&
             typedCount !== String(importChunkSummary.recordCount)) ||
+          (isImportRun && typedCount !== String(importRunSummary.totalCount)) ||
           (needsStepUp &&
             (factorUnavailable ||
               (effectiveMethod !== "sso_prompt_login" && secret.length === 0)))
@@ -897,6 +908,7 @@ export function PendingActionApproval({
           isClickContract ||
           isBulkDeletion ||
           isImportChunk ||
+          isImportRun ||
           isRegisteredTypedName ||
           isHardPurgeTypedName
             ? "destructive"
@@ -906,19 +918,22 @@ export function PendingActionApproval({
         {isClickContract ||
         isBulkDeletion ||
         isImportChunk ||
+        isImportRun ||
         isRegisteredTypedName ||
         isHardPurgeTypedName
-          ? isImportChunk
-            ? t(
-                importChunkSummary.operation === "records"
-                  ? "pendingActions:importChunk.approveRecords"
-                  : "pendingActions:importChunk.approveLinks",
-              )
-            : t(
-                action.data.targetType === "relation"
-                  ? "tasks:relations.removeRelation"
-                  : "common:actions.delete",
-              )
+          ? isImportRun
+            ? t("pendingActions:importRun.approve")
+            : isImportChunk
+              ? t(
+                  importChunkSummary.operation === "records"
+                    ? "pendingActions:importChunk.approveRecords"
+                    : "pendingActions:importChunk.approveLinks",
+                )
+              : t(
+                  action.data.targetType === "relation"
+                    ? "tasks:relations.removeRelation"
+                    : "common:actions.delete",
+                )
           : t("pendingActions:copy.a2b52d875e8b")}
       </Button>
       <Button
@@ -962,21 +977,27 @@ export function PendingActionApproval({
                 ? t("tasks:relations.removeRelation")
                 : isBulkDeletion
                   ? t("pendingActions:bulk.action")
-                  : isImportChunkTarget
+                  : action.data.targetType === "import_run"
                     ? t(
-                        importChunkSummary
-                          ? importChunkSummary.operation === "records"
-                            ? "pendingActions:importChunk.actionRecords"
-                            : "pendingActions:importChunk.actionLinks"
-                          : "pendingActions:importChunk.unavailable",
+                        importRunSummary
+                          ? "pendingActions:importRun.action"
+                          : "pendingActions:importRun.unavailable",
                       )
-                    : registeredTarget
+                    : isImportChunkTarget
                       ? t(
-                          `pendingActions:registered.actions.${registeredTarget}`,
+                          importChunkSummary
+                            ? importChunkSummary.operation === "records"
+                              ? "pendingActions:importChunk.actionRecords"
+                              : "pendingActions:importChunk.actionLinks"
+                            : "pendingActions:importChunk.unavailable",
                         )
-                      : action.data.targetType === "work_item"
-                        ? t("tasks:delete.action")
-                        : action.data.action.replaceAll("_", " ");
+                      : registeredTarget
+                        ? t(
+                            `pendingActions:registered.actions.${registeredTarget}`,
+                          )
+                        : action.data.targetType === "work_item"
+                          ? t("tasks:delete.action")
+                          : action.data.action.replaceAll("_", " ");
   // In place, the approval is the one confirmation: it is titled with the destructive
   // action (for example "Delete project"), not a generic "pending action".
   const heading =
@@ -986,6 +1007,7 @@ export function PendingActionApproval({
           (isClickContract ||
             isBulkDeletion ||
             isImportChunk ||
+            isImportRun ||
             isRegisteredTypedName ||
             isHardPurgeTypedName)
         ? actionLabel
@@ -1004,7 +1026,35 @@ export function PendingActionApproval({
           {t("pendingActions:copy.61ad50a9b918")}
         </dt>
         <dd>
-          {importChunkSummary ? (
+          {importRunSummary ? (
+            <div className="space-y-2">
+              <p>
+                {t("pendingActions:importRun.count", {
+                  count: importRunSummary.totalCount,
+                })}
+              </p>
+              <p>
+                {t("pendingActions:importRun.writes", {
+                  count: importRunSummary.writes,
+                })}
+              </p>
+              <p className="text-muted-foreground">
+                {t("pendingActions:importRun.source", {
+                  plugin: importRunSummary.pluginId,
+                  version: importRunSummary.mappingVersion,
+                })}
+              </p>
+              <Link
+                to={routes.godModeImportRun.path}
+                params={{ id: importRunSummary.runId }}
+                className="underline underline-offset-4"
+              >
+                {t("pendingActions:importRun.open")}
+              </Link>
+            </div>
+          ) : importRunRedacted ? (
+            t("pendingActions:importRun.hidden")
+          ) : importChunkSummary ? (
             <p>
               {t(
                 importChunkSummary.operation === "records"
@@ -1548,6 +1598,22 @@ export function PendingActionApproval({
               </Label>
               <Input
                 id="confirm-import-chunk-count"
+                inputMode="numeric"
+                autoComplete="off"
+                value={typedCount}
+                onChange={(event) => setTypedCount(event.currentTarget.value)}
+              />
+            </div>
+          )}
+          {isImportRun && importRunSummary && (
+            <div className="space-y-2">
+              <Label htmlFor="confirm-import-run-count">
+                {t("pendingActions:importRun.confirm", {
+                  count: importRunSummary.totalCount,
+                })}
+              </Label>
+              <Input
+                id="confirm-import-run-count"
                 inputMode="numeric"
                 autoComplete="off"
                 value={typedCount}

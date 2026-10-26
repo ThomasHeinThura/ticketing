@@ -21,6 +21,8 @@ type Props<Row, Column extends string, RowControl = undefined> = {
   columns: readonly Column[];
   getRowId: (row: Row) => string;
   columnWidthFactors: readonly number[];
+  /** Per-column floor so headers stay readable; the table scrolls inside its container instead. */
+  columnMinWidths?: readonly number[];
   renderHeader: (column: Column) => ReactNode;
   columnWidths?: Partial<Record<Column, number>>;
   renderResizeHandle?: (column: Column, width: number) => ReactNode;
@@ -84,6 +86,7 @@ export default function WorkItemTable<
   columns,
   getRowId,
   columnWidthFactors,
+  columnMinWidths,
   renderHeader,
   columnWidths: savedColumnWidths,
   renderResizeHandle,
@@ -122,11 +125,18 @@ export default function WorkItemTable<
         (column, index) =>
           savedColumnWidths?.[column] ??
           Math.max(
-            MIN_COLUMN_WIDTH,
+            columnMinWidths?.[index] ?? MIN_COLUMN_WIDTH,
             (columnSpace * (columnWidthFactors[index] ?? 1)) / factorTotal,
           ),
       ),
-    [columnSpace, columnWidthFactors, columns, factorTotal, savedColumnWidths],
+    [
+      columnMinWidths,
+      columnSpace,
+      columnWidthFactors,
+      columns,
+      factorTotal,
+      savedColumnWidths,
+    ],
   );
   const totalColumnWidth = columnWidths.reduce((sum, width) => sum + width, 0);
   const totalTableWidth = totalColumnWidth + fixedWidth;

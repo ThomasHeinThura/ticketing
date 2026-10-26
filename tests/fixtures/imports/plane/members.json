@@ -1,0 +1,50 @@
+[
+	{
+		"id": "11000001-aaaa-4bbb-8ccc-000000000977",
+		"email": "priya.shah@acme.example",
+		"display_name": "priya",
+		"first_name": "Priya",
+		"last_name": "Shah",
+		"role": 20
+	},
+	{
+		"id": "11000002-aaaa-4bbb-8ccc-000000001954",
+		"email": "marcus.lee@acme.example",
+		"display_name": "marcus",
+		"first_name": "Marcus",
+		"last_name": "Lee",
+		"role": 15
+	},
+	{
+		"id": "11000003-aaaa-4bbb-8ccc-000000002931",
+		"email": "sofia.rossi@acme.example",
+		"display_name": "sofia",
+		"first_name": "Sofia",
+		"last_name": "Rossi",
+		"role": 15
+	},
+	{
+		"id": "11000004-aaaa-4bbb-8ccc-000000003908",
+		"email": "tomas.novak@acme.example",
+		"display_name": "tomas",
+		"first_name": "Tomas",
+		"last_name": "Novak",
+		"role": 15
+	},
+	{
+		"id": "11000005-aaaa-4bbb-8ccc-000000004885",
+		"email": "ana.pereira@acme.example",
+		"display_name": "ana",
+		"first_name": "Ana",
+		"last_name": "Pereira",
+		"role": 5
+	},
+	{
+		"id": "11000006-aaaa-4bbb-8ccc-000000005862",
+		"email": "kenji.mori@acme.example",
+		"display_name": "kenji",
+		"first_name": "Kenji",
+		"last_name": "Mori",
+		"role": 5
+	}
+]

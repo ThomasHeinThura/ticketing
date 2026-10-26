@@ -18,11 +18,6 @@ import {
   EmptyTitle,
   Input,
   Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   Switch,
   Table,
@@ -38,6 +33,7 @@ import {
 import { Plus, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
 import { createKbArticle } from "@/fetchers/kb";
 import {
@@ -192,53 +188,47 @@ function ArticlesView({
         </div>
         <div className="space-y-1">
           <Label htmlFor="kb-filter-state">{t("kb:fields.status")}</Label>
-          <Select
+          <PickerPopover
+            id="kb-filter-state"
+            className="w-40"
             value={search.state ?? ALL}
-            onValueChange={(value) => {
+            options={[
+              { value: ALL, label: t("kb:list.allStates") },
+              ...KB_STATES.map((state) => ({
+                value: state,
+                label: t(`kb:state.${state}`),
+              })),
+            ]}
+            onChange={(value) => {
               setPage(0);
               onSearchChange({
                 ...search,
                 state: KB_STATES.find((state) => state === value) ?? undefined,
               });
             }}
-          >
-            <SelectTrigger id="kb-filter-state" className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>{t("kb:list.allStates")}</SelectItem>
-              {KB_STATES.map((state) => (
-                <SelectItem key={state} value={state}>
-                  {t(`kb:state.${state}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor="kb-filter-category">{t("kb:fields.category")}</Label>
-          <Select
+          <PickerPopover
+            id="kb-filter-category"
+            className="w-48"
             value={search.category ?? ALL}
-            onValueChange={(value) => {
+            options={[
+              { value: ALL, label: t("kb:list.allCategories") },
+              ...(categories.data?.categories ?? []).map((category) => ({
+                value: category.id,
+                label: category.name,
+              })),
+            ]}
+            onChange={(value) => {
               setPage(0);
               onSearchChange({
                 ...search,
-                category: value && value !== ALL ? value : undefined,
+                category: value !== ALL ? value : undefined,
               });
             }}
-          >
-            <SelectTrigger id="kb-filter-category" className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>{t("kb:list.allCategories")}</SelectItem>
-              {(categories.data?.categories ?? []).map((category) => (
-                <SelectItem key={category.id} value={category.id}>
-                  {category.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         </div>
         <div className="flex items-center gap-2 pb-2">
           <Switch

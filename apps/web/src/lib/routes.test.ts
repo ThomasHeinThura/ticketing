@@ -892,6 +892,24 @@ describe("God Mode import routes", () => {
       routes.godModeImportRun.path,
     );
   });
+
+  it("keeps the import wizard step in the URL and drops unknown steps", () => {
+    expect(
+      routes.godModeImportRun.build(
+        { id: "run-1" },
+        { workspaceId: "workspace-1", step: "mapping" },
+      ),
+    ).toBe(
+      "/agent/god-mode/imports/run-1?workspaceId=workspace-1&step=mapping",
+    );
+    expect(routes.godModeImports.build({ step: "connect" })).toBe(
+      "/agent/god-mode/imports?step=connect",
+    );
+    expect(parseGodModeImportsSearch({ step: "dry-run" })).toEqual({
+      step: "dry-run",
+    });
+    expect(parseGodModeImportsSearch({ step: "nope" })).toEqual({});
+  });
 });
 
 describe("routes.projectBacklog and ?item={key} side pane URL state (VW-4)", () => {

@@ -19,6 +19,7 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
   createIntakeQueue,
@@ -164,32 +165,22 @@ export function IntakeQueuePicker({
 
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <Select
+      <PickerPopover
         value={selectable ? queueId : CURRENT_QUEUE}
-        onValueChange={(value) =>
-          onSelect(value && value !== CURRENT_QUEUE ? value : undefined)
+        onChange={(value) =>
+          onSelect(value !== CURRENT_QUEUE ? value : undefined)
         }
-      >
-        <SelectTrigger
-          className="w-full min-w-48 max-w-72"
-          aria-label={t("queue.choose")}
-        >
-          <SelectValue placeholder={t("queue.choose")}>
-            {selectable
-              ? (queues.data?.find((queue) => queue.id === queueId)?.name ??
-                t("queue.current"))
-              : t("queue.current")}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={CURRENT_QUEUE}>{t("queue.current")}</SelectItem>
-          {(queues.data ?? []).map((queue) => (
-            <SelectItem key={queue.id} value={queue.id}>
-              {queue.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        ariaLabel={t("queue.choose")}
+        placeholder={t("queue.choose")}
+        className="w-full min-w-48 max-w-72"
+        options={[
+          { value: CURRENT_QUEUE, label: t("queue.current") },
+          ...(queues.data ?? []).map((queue) => ({
+            value: queue.id,
+            label: queue.name,
+          })),
+        ]}
+      />
       {queues.isLoading && <span role="status">{t("queue.loading")}</span>}
       {canCreate && (
         <Button

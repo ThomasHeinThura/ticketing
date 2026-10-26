@@ -12,11 +12,6 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Textarea,
 } from "@taskdesk/ui";
 import { Filter } from "lucide-react";
@@ -26,6 +21,7 @@ import PdfPreviewDialog, {
   type PdfPreviewAttachment,
 } from "@/components/attachments/pdf-preview-dialog";
 import Layout from "@/components/common/layout";
+import { PickerPopover } from "@/components/common/picker-popover";
 import { IntakeQueuePanel } from "@/components/intake/queue-panel";
 import { IntakeQueuePicker } from "@/components/intake/queue-picker";
 import {
@@ -273,10 +269,6 @@ function IntakeRoute() {
         }>;
       }
     | undefined;
-  const selectedProjectId = projectId || current?.version?.defaultProjectId;
-  const selectedProject = projects.data?.find(
-    (project) => project.id === selectedProjectId,
-  );
   const selectedWorkItemTypeId =
     workItemTypeId || current?.version?.workItemTypeId;
   const selectedWorkItemType = workItemTypes.data?.find(
@@ -312,14 +304,12 @@ function IntakeRoute() {
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="xs"
-                aria-label="Submission status filter"
-              >
+              <Button variant="ghost" size="xs" aria-label={t("statusFilter")}>
                 <Filter className="size-3" />
                 {t("status", { defaultValue: "Status" })}
-                {state ? `: ${state}` : ""}
+                {state
+                  ? `: ${t(`states.${state}`, { defaultValue: state })}`
+                  : ""}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -343,7 +333,7 @@ function IntakeRoute() {
                     })
                   }
                 >
-                  {value}
+                  {t(`states.${value}`, { defaultValue: value })}
                 </DropdownMenuCheckboxItem>
               ))}
             </DropdownMenuContent>
@@ -502,13 +492,13 @@ function IntakeRoute() {
         {ref && (
           <section
             className="flex min-w-0 flex-col gap-4 border-t p-4"
-            aria-label={`Submission ${ref}`}
+            aria-label={t("submissionRegion", { ref })}
           >
             <h2 className="font-semibold text-xl">
-              {ref} · {current?.requestType?.name ?? "Submission"}
+              {ref} · {current?.requestType?.name ?? t("submissionFallback")}
             </h2>
             {detail.isLoading ? (
-              <p role="status">Loading details…</p>
+              <p role="status">{t("loadingDetails")}</p>
             ) : (
               current && (
                 <>
@@ -520,7 +510,13 @@ function IntakeRoute() {
                   >
                     <p>
                       {t("status", { defaultValue: "Status" })}:{" "}
-                      <strong>{current.submission?.state}</strong>
+                      <strong>
+                        {current.submission?.state
+                          ? t(`states.${current.submission.state}`, {
+                              defaultValue: current.submission.state,
+                            })
+                          : null}
+                      </strong>
                     </p>
                     {current.submission?.claimedAt ? (
                       <p className="text-muted-foreground text-sm">
@@ -566,7 +562,10 @@ function IntakeRoute() {
                       key={file.id}
                     >
                       <span className="min-w-0 wrap-anywhere">
-                        {file.filename} · {file.state}
+                        {file.filename} ·{" "}
+                        {t(`attachmentStates.${file.state}`, {
+                          defaultValue: file.state,
+                        })}
                       </span>
                       <div className="flex items-center gap-2">
                         {file.state === "ready" &&
@@ -605,7 +604,7 @@ function IntakeRoute() {
                           onClick={() => download.mutate(file)}
                           disabled={file.state !== "ready"}
                         >
-                          Download
+                          {t("download")}
                         </Button>
                       </div>
                     </div>
@@ -615,58 +614,40 @@ function IntakeRoute() {
                     <>
                       <div className="flex flex-wrap items-end gap-2">
                         <div className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
-                          Destination project
-                          <Select
+                          {t("destinationProject")}
+                          <PickerPopover
                             value={
                               projectId ||
                               current.version?.defaultProjectId ||
                               undefined
                             }
-                            onValueChange={(value: string | null) => {
-                              if (value !== null) setProjectId(value);
-                            }}
-                          >
-                            <SelectTrigger aria-label="Destination project">
-                              <SelectValue placeholder="Choose a project">
-                                {selectedProject
-                                  ? `${selectedProject.name} (${selectedProject.slug})`
-                                  : undefined}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {projects.data?.map((project) => (
-                                <SelectItem key={project.id} value={project.id}>
-                                  {project.name} ({project.slug})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onChange={setProjectId}
+                            ariaLabel={t("destinationProject")}
+                            placeholder={t("chooseProject")}
+                            className="w-56"
+                            options={(projects.data ?? []).map((project) => ({
+                              value: project.id,
+                              label: `${project.name} (${project.slug})`,
+                            }))}
+                          />
                         </div>
                         <div className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
-                          Work item type
-                          <Select
+                          {t("workItemType")}
+                          <PickerPopover
                             value={
                               workItemTypeId ||
                               current.version?.workItemTypeId ||
                               undefined
                             }
-                            onValueChange={(value: string | null) => {
-                              if (value !== null) setWorkItemTypeId(value);
-                            }}
-                          >
-                            <SelectTrigger aria-label="Work item type">
-                              <SelectValue placeholder="Choose a work item type">
-                                {selectedWorkItemType?.name}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {workItemTypes.data?.map((type) => (
-                                <SelectItem key={type.id} value={type.id}>
-                                  {type.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onChange={setWorkItemTypeId}
+                            ariaLabel={t("workItemType")}
+                            placeholder={t("chooseWorkItemType")}
+                            className="w-56"
+                            options={(workItemTypes.data ?? []).map((type) => ({
+                              value: type.id,
+                              label: type.name,
+                            }))}
+                          />
                         </div>
                         {selectedWorkItemType?.name ? (
                           <p className="text-sm">

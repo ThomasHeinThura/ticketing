@@ -1899,15 +1899,15 @@ export const externalLinkTable = pgTable(
     id: text("id")
       .$defaultFn(() => createId())
       .primaryKey(),
-    taskId: text("task_id")
-      .notNull()
-      .references(() => taskTable.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
+    // Kaneo's task link. Null for an entity provenance row (0198, P6 import), which anchors to a
+    // work item through `workspace_id` + `work_item_id` instead (data-model.md section 11).
+    taskId: text("task_id").references(() => taskTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
     resourceType: text("resource_type").notNull(),
     externalId: text("external_id").notNull(),
-    url: text("url").notNull(),
+    url: text("url"),
     title: text("title"),
     metadata: text("metadata"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -1915,11 +1915,65 @@ export const externalLinkTable = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
+    // 0198 provenance columns. Imported rows carry the source system, id and URL of a work item,
+    // comment or attachment, the SOURCE times, and a stale marker for a source record that vanished.
+    workspaceId: text("workspace_id"),
+    workItemId: text("work_item_id"),
+    entityType: text("entity_type").$type<
+      "work_item" | "comment" | "attachment"
+    >(),
+    entityId: text("entity_id"),
+    system: text("system"),
+    projectId: text("project_id"),
+    organisationId: text("organisation_id"),
+    origin: text("origin").$type<"imported">(),
+    importRunId: text("import_run_id"),
+    sourceCreatedAt: timestamp("source_created_at", { mode: "date" }),
+    sourceUpdatedAt: timestamp("source_updated_at", { mode: "date" }),
+    sourceResolvedAt: timestamp("source_resolved_at", { mode: "date" }),
+    lastSeenAt: timestamp("last_seen_at", { mode: "date" }),
+    staleAt: timestamp("stale_at", { mode: "date" }),
+    deferredLinks: jsonb("deferred_links").$type<Record<
+      string,
+      unknown
+    > | null>(),
   },
   (table) => [
     index("external_link_taskId_idx").on(table.taskId),
     index("external_link_externalId_idx").on(table.externalId),
     index("external_link_resourceType_idx").on(table.resourceType),
+    check(
+      "external_link_anchor_check",
+      sql`${table.taskId} IS NOT NULL OR (${table.workspaceId} IS NOT NULL AND ${table.workItemId} IS NOT NULL AND ${table.entityType} IS NOT NULL AND ${table.entityId} IS NOT NULL AND ${table.system} IS NOT NULL)`,
+    ),
+    check(
+      "external_link_entity_type_allowed",
+      sql`${table.entityType} IN ('work_item', 'comment', 'attachment')`,
+    ),
+    check("external_link_origin_allowed", sql`${table.origin} IN ('imported')`),
+    check(
+      "external_link_deferred_shape",
+      sql`${table.deferredLinks} IS NULL OR jsonb_typeof(${table.deferredLinks}) = 'object'`,
+    ),
+    foreignKey({
+      name: "external_link_work_item_fk",
+      columns: [table.workspaceId, table.workItemId],
+      foreignColumns: [workItemTable.workspaceId, workItemTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("no action"),
+    uniqueIndex("external_link_imported_source_unique")
+      .on(table.workspaceId, table.system, table.entityType, table.externalId)
+      .where(sql`${table.origin} = 'imported'`),
+    index("external_link_work_item_idx")
+      .on(table.workItemId)
+      .where(sql`${table.workItemId} IS NOT NULL`),
+    index("external_link_entity_idx")
+      .on(table.workspaceId, table.entityType, table.entityId)
+      .where(sql`${table.workspaceId} IS NOT NULL`),
+    index("external_link_deferred_idx")
+      .on(table.workspaceId, table.system)
+      .where(sql`${table.deferredLinks} IS NOT NULL`),
   ],
 );
 
@@ -4778,8 +4832,18 @@ export const activityTable = pgTable(
     // `created_at`, never a reference, never in an API response, never a primary key --
     // the named exception to "surrogate ids are never sequential" (Conventions).
     seq: bigint("seq", { mode: "bigint" }).generatedAlwaysAsIdentity(),
+    // 0198 (P6 import): `'imported'` marks a row written by an import run, whose `created_at`
+    // is the SOURCE system's time (IM-6); `imported_at` is when TaskDesk actually wrote it.
+    // Native rows keep both null.
+    origin: text("origin"),
+    importedAt: timestamp("imported_at", { mode: "date" }),
   },
   (table) => [
+    check("activity_origin_allowed", sql`${table.origin} IN ('imported')`),
+    check(
+      "activity_origin_import_time",
+      sql`(${table.origin} IS NULL) = (${table.importedAt} IS NULL)`,
+    ),
     // "## Indexing": create index on activity (work_item_id, created_at desc); `seq`
     // added as an explicit tiebreak for rows sharing one `created_at` (decision log
     // 2026-09-23, detail 2).
@@ -4895,8 +4959,16 @@ export const commentTable = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
+    // 0198 (P6 import): same imported-origin marker as `activity`.
+    origin: text("origin"),
+    importedAt: timestamp("imported_at", { mode: "date" }),
   },
   (table) => [
+    check("comment_origin_allowed", sql`${table.origin} IN ('imported')`),
+    check(
+      "comment_origin_import_time",
+      sql`(${table.origin} IS NULL) = (${table.importedAt} IS NULL)`,
+    ),
     index("comment_work_item_id_created_at_idx").on(
       table.workItemId,
       table.createdAt,

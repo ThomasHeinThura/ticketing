@@ -8,15 +8,11 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
 } from "@taskdesk/ui";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
 import {
   useDashboard,
@@ -73,27 +69,20 @@ export function DashboardView({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {list.length > 0 ? (
-              <Select
+              <PickerPopover
                 value={chosen?.id ?? ""}
-                onValueChange={(id) => id && onSearchChange({ id })}
-              >
-                <SelectTrigger
-                  aria-label={t("reports:dashboard.choose")}
-                  className="w-56"
-                >
-                  <SelectValue>{chosen?.name ?? ""}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {list.map((entry) => (
-                    <SelectItem key={entry.id} value={entry.id}>
-                      {entry.name}
-                      {entry.scope === "workspace"
-                        ? ` (${t("reports:dashboard.workspaceScope")})`
-                        : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(id) => id && onSearchChange({ id })}
+                ariaLabel={t("reports:dashboard.choose")}
+                className="w-56"
+                options={list.map((entry) => ({
+                  value: entry.id,
+                  label: `${entry.name}${
+                    entry.scope === "workspace"
+                      ? ` (${t("reports:dashboard.workspaceScope")})`
+                      : ""
+                  }`,
+                }))}
+              />
             ) : null}
             <Button
               variant="outline"

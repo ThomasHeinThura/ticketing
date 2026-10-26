@@ -16,7 +16,6 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import SortControl from "@/components/common/sort-control";
 import PageTitle from "@/components/page-title";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
@@ -107,6 +106,7 @@ const WorkItemCreateTrigger = lazy(
 const WorkItemBoardView = lazy(
   () => import("@/components/work-item/work-item-board-view"),
 );
+const SortControl = lazy(() => import("@/components/common/sort-control"));
 const GroupControl = lazy(() => import("@/components/common/group-control"));
 const BulkAssignToolbar = lazy(
   () => import("@/components/work-item/bulk-assign-toolbar"),
@@ -851,29 +851,31 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                     ? t("workItems:filter.toggleActive")
                     : t("common:actions.filter")}
                 </Button>
-                <SortControl
-                  fields={
-                    layout === "board" && isFiltered
-                      ? ["title", "priority", "dueDate", "number"]
-                      : ["position", "title", "priority", "dueDate", "number"]
-                  }
-                  sort={{
-                    field:
-                      (layout === "board" ? boardSort : sort) === "key"
-                        ? "number"
-                        : layout === "board"
-                          ? boardSort
-                          : sort,
-                    direction: layout === "board" ? boardDir : dir,
-                  }}
-                  onSortChange={(next) => {
-                    if (next.field === "createdAt") return;
-                    handleSortChange(
-                      next.field === "number" ? "key" : next.field,
-                      next.direction,
-                    );
-                  }}
-                />
+                <Suspense fallback={null}>
+                  <SortControl
+                    fields={
+                      layout === "board" && isFiltered
+                        ? ["title", "priority", "dueDate", "number"]
+                        : ["position", "title", "priority", "dueDate", "number"]
+                    }
+                    sort={{
+                      field:
+                        (layout === "board" ? boardSort : sort) === "key"
+                          ? "number"
+                          : layout === "board"
+                            ? boardSort
+                            : sort,
+                      direction: layout === "board" ? boardDir : dir,
+                    }}
+                    onSortChange={(next) => {
+                      if (next.field === "createdAt") return;
+                      handleSortChange(
+                        next.field === "number" ? "key" : next.field,
+                        next.direction,
+                      );
+                    }}
+                  />
+                </Suspense>
                 {layout === "board" ? (
                   <>
                     {!combinedActive ? (

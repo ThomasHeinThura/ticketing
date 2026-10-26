@@ -12,11 +12,6 @@ import {
   EmptyHeader,
   EmptyTitle,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   Table,
   TableBody,
@@ -26,6 +21,7 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
 import PageTitle from "@/components/page-title";
 import { useInstanceAudit } from "@/hooks/queries/god-mode/use-instance-audit";
@@ -102,27 +98,23 @@ function GodModeAuditRoute() {
             />
           </div>
           <div className="w-32">
-            <Select
+            <PickerPopover
               value={String(limit)}
-              onValueChange={(val) =>
+              onChange={(val) =>
                 void navigate({
                   search: { action: actionFilter, limit: Number(val) || 50 },
                 })
               }
-            >
-              <SelectTrigger
-                aria-label={t("common:audit.limit", {
-                  defaultValue: "Row limit",
-                })}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="25">25 rows</SelectItem>
-                <SelectItem value="50">50 rows</SelectItem>
-                <SelectItem value="100">100 rows</SelectItem>
-              </SelectContent>
-            </Select>
+              ariaLabel={t("common:audit.limit", {
+                defaultValue: "Row limit",
+              })}
+              className="w-full"
+              options={[
+                { value: "25", label: t("common:audit.rows", { count: 25 }) },
+                { value: "50", label: t("common:audit.rows", { count: 50 }) },
+                { value: "100", label: t("common:audit.rows", { count: 100 }) },
+              ]}
+            />
           </div>
           <Button
             variant="outline"
@@ -143,8 +135,7 @@ function GodModeAuditRoute() {
             </AlertTitle>
             <AlertDescription className="flex items-center justify-between">
               <span>
-                {query.error?.message ||
-                  "An error occurred loading the audit log."}
+                {query.error?.message || t("common:audit.loadFailed")}
               </span>
               <Button
                 size="sm"
@@ -188,11 +179,11 @@ function GodModeAuditRoute() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Entity</TableHead>
-                  <TableHead>Actor</TableHead>
-                  <TableHead>Workspace</TableHead>
+                  <TableHead>{t("common:audit.columns.timestamp")}</TableHead>
+                  <TableHead>{t("common:audit.columns.action")}</TableHead>
+                  <TableHead>{t("common:audit.columns.entity")}</TableHead>
+                  <TableHead>{t("common:audit.columns.actor")}</TableHead>
+                  <TableHead>{t("common:audit.columns.workspace")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -773,6 +773,25 @@ describe("WorkItemList", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("workItems:list.emptyTitle")).toBeNull();
   });
+
+  it("uses caller-supplied empty copy on cross-project pages such as My work", () => {
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        isFiltered
+        emptyTitle="Nothing assigned to you"
+        emptyDescription="Items assigned to you show up here."
+        workItems={[]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    expect(screen.getByText("Nothing assigned to you")).toBeInTheDocument();
+    expect(screen.queryByText("workItems:list.emptyFilteredTitle")).toBeNull();
+    expect(
+      screen.queryByText("workItems:list.emptyFilteredDescription"),
+    ).toBeNull();
+  });
 });
 
 describe("WorkItemList: canonical and filtered pagination", () => {

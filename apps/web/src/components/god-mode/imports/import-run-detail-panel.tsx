@@ -30,6 +30,9 @@ import {
 } from "@/fetchers/god-mode/imports";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
+import { ImportWizard } from "./wizard/import-wizard";
+import { useEngineRun } from "./wizard/use-engine-run";
+import { pluginLabelKey, type WizardStep } from "./wizard/wizard-model";
 
 function stateVariant(state: ImportRunState) {
   if (state === "completed") return "success" as const;
@@ -38,7 +41,56 @@ function stateVariant(state: ImportRunState) {
   return "outline" as const;
 }
 
+/**
+ * Engine runs (a source connection plus a wizard) open the import wizard; MCP runs, which have
+ * no source connection, keep the retained run detail. The engine endpoint answers 404 for them.
+ */
 export function ImportRunDetailPanel({
+  runId,
+  onWorkspaceResolved,
+  step,
+  onStepChange,
+}: {
+  runId: string;
+  onWorkspaceResolved?: (workspaceId: string) => void;
+  step?: WizardStep;
+  onStepChange?: (step: WizardStep) => void;
+}) {
+  const { t } = useTranslation("godModeImports");
+  const engine = useEngineRun(runId);
+  if (engine.isPending) return <Skeleton className="h-80 w-full" />;
+  if (engine.data)
+    return (
+      <ImportWizard
+        runId={runId}
+        step={step}
+        onStepChange={(next) => onStepChange?.(next)}
+        onWorkspaceResolved={onWorkspaceResolved}
+      />
+    );
+  if (engine.error instanceof HttpError && engine.error.status === 403)
+    return (
+      <Alert variant="info">
+        <AlertTitle>{t("forbiddenTitle")}</AlertTitle>
+        <AlertDescription>{t("forbiddenDescription")}</AlertDescription>
+      </Alert>
+    );
+  if (!(engine.error instanceof HttpError && engine.error.status === 404))
+    return (
+      <Alert variant="error">
+        <AlertTitle>{t("detailLoadErrorTitle")}</AlertTitle>
+        <AlertDescription>{t("detailLoadErrorDescription")}</AlertDescription>
+      </Alert>
+    );
+  return (
+    <McpImportRunDetail
+      runId={runId}
+      onWorkspaceResolved={onWorkspaceResolved}
+    />
+  );
+}
+
+function McpImportRunDetail({
   runId,
   onWorkspaceResolved,
 }: {
@@ -119,7 +171,10 @@ export function ImportRunDetailPanel({
         <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
           <Detail label={t("workspaceId")} value={current.workspaceId} />
           <Detail label={t("projectId")} value={current.projectId ?? "—"} />
-          <Detail label={t("plugin")} value={current.pluginId} />
+          <Detail
+            label={t("plugin")}
+            value={t(`wizard.plugins.${pluginLabelKey(current.pluginId)}`)}
+          />
           <Detail label={t("profileId")} value={current.profileId ?? "—"} />
           <Detail label={t("version")} value={String(current.version)} />
           <Detail

@@ -114,6 +114,7 @@ function FieldRow({
       {canEdit ? (
         <CustomFieldValueInput
           id={inputId}
+          inline
           field={field}
           value={draft}
           people={people}

@@ -130,6 +130,14 @@ export type CreatePendingActionInput = {
     expectedRunVersion: number;
     recordCount: number;
   };
+  /** Internal server-side run-level import approval binding (P6 D2); never accepted from a request body. */
+  importRun?: {
+    runId: string;
+    digest: string;
+    totalCount: number;
+    mappingVersion: number;
+    writes: number;
+  };
   /** Rejected until PA-6 defines a target-version encoding. */
   targetVersions?: Record<string, unknown> | null;
   /** Optional scope assertions. Persisted scope always comes from target rows. */
@@ -1838,6 +1846,15 @@ async function resolveRequestScope(
     return resolveImportChunkRequestScope(tx, input);
 
   if (
+    input.action === "mcp_destructive" &&
+    input.targetType === "import_run" &&
+    input.routeKey === "POST /api/imports/{id}/execute" &&
+    input.targetIds.length === 1 &&
+    input.importRun
+  )
+    return resolveImportRunRequestScope(tx, input);
+
+  if (
     input.action === "purge" &&
     input.routeKey === "POST /api/instance/purge" &&
     input.targetIds.length === 1
@@ -2013,6 +2030,103 @@ async function resolveImportChunkRequestScope(
         expectedRunVersion: run.version + 1,
         recordCount: chunk.recordCount,
         operation: binding.operation,
+      },
+    },
+    confirmationRequired: "typed_count_step_up",
+  };
+}
+
+async function resolveImportRunRequestScope(
+  tx: PendingActionTransaction,
+  input: CreatePendingActionInput,
+): Promise<ResolvedRequestScope> {
+  const binding = input.importRun;
+  const runId = input.targetIds[0];
+  if (
+    !binding ||
+    !runId ||
+    binding.runId !== runId ||
+    !/^[a-f0-9]{64}$/u.test(binding.digest) ||
+    !Number.isSafeInteger(binding.totalCount) ||
+    binding.totalCount < 1 ||
+    !Number.isSafeInteger(binding.mappingVersion) ||
+    binding.mappingVersion < 1 ||
+    !Number.isSafeInteger(binding.writes) ||
+    binding.writes <= 50 ||
+    binding.writes > binding.totalCount
+  )
+    throw new HTTPException(409, { message: "pending_action_target_changed" });
+  const [run] = await tx
+    .select()
+    .from(schema.importRunTable)
+    .where(eq(schema.importRunTable.id, runId))
+    .for("update")
+    .limit(1);
+  if (!run?.projectId || !run.sourceConnectionId)
+    throw new HTTPException(404, { message: "Import run not found" });
+  const report = run.engineDryRunReport as {
+    counts?: { processed?: number; created?: number; updated?: number };
+  } | null;
+  if (
+    (run.state !== "queued" && run.state !== "paused") ||
+    run.enginePhase !== "dry_run_ready" ||
+    run.engineDryRunDigest !== binding.digest ||
+    run.engineDryRunMappingVersion !== binding.mappingVersion ||
+    report?.counts?.processed !== binding.totalCount ||
+    (report?.counts?.created ?? 0) + (report?.counts?.updated ?? 0) !==
+      binding.writes
+  )
+    throw new HTTPException(409, { message: "pending_action_target_changed" });
+  const [project] = await tx
+    .select({ organisationId: schema.projectTable.organisationId })
+    .from(schema.projectTable)
+    .where(
+      and(
+        eq(schema.projectTable.id, run.projectId),
+        eq(schema.projectTable.workspaceId, run.workspaceId),
+        isNull(schema.projectTable.archivedAt),
+        isNull(schema.projectTable.deletedAt),
+      ),
+    )
+    .for("share")
+    .limit(1);
+  if (!project)
+    throw new HTTPException(404, { message: "Import run not found" });
+  const [requester] = await tx
+    .select({
+      userId: personTable.userId,
+      name: userTable.name,
+      active: personTable.active,
+      side: personTable.side,
+    })
+    .from(personTable)
+    .innerJoin(userTable, eq(userTable.id, personTable.userId))
+    .where(eq(personTable.id, input.requesterPersonId))
+    .limit(1);
+  if (
+    !requester?.active ||
+    requester.side !== "staff" ||
+    requester.userId !== input.actorId
+  )
+    throw new HTTPException(403, { message: "Forbidden" });
+  return {
+    workspaceId: run.workspaceId,
+    projectId: run.projectId,
+    organisationId: project.organisationId,
+    actorName: requester.name,
+    summary: {
+      kind: "import_run",
+      pluginId: run.pluginId,
+      totalCount: binding.totalCount,
+      writes: binding.writes,
+      mappingVersion: binding.mappingVersion,
+    },
+    targetVersions: {
+      [runId]: {
+        digest: binding.digest,
+        totalCount: binding.totalCount,
+        mappingVersion: binding.mappingVersion,
+        writes: binding.writes,
       },
     },
     confirmationRequired: "typed_count_step_up",

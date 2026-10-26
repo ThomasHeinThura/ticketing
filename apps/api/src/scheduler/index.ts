@@ -17,6 +17,7 @@ import { runAuditPurgeJob } from "./audit-purge";
 import { runCustomFieldPurgeJob } from "./custom-field-purge";
 import { checkDueDateReminders } from "./due-date-reminders";
 import { runImportPreviewCleanup } from "./import-preview-cleanup";
+import { IMPORT_RUN_JOB, runImportRunSweep } from "./import-run";
 import { runNotificationDigest } from "./notification-digest";
 import { runQuietHoursRelease } from "./notification-digest-release";
 import { drainOutbox } from "./outbox-drain";
@@ -236,6 +237,16 @@ function createOnDemandJobDefinitions(): ReadonlyArray<RegisteredJobDefinition> 
       onDemand: true,
       pattern: "0 0 1 1 *",
       handler: () => runSecretsRekeyJob({ userId: null }),
+      manualRunAllowed: false,
+    },
+    {
+      // P6: executes engine import runs as their starter; started by /execute and /resume (resume
+      // also re-kicks a run left `running`). Not clock-fired and not manually runnable: the
+      // sweep handler exists for the job registry only.
+      name: IMPORT_RUN_JOB,
+      onDemand: true,
+      pattern: "0 0 1 1 *",
+      handler: () => runImportRunSweep(),
       manualRunAllowed: false,
     },
   ];

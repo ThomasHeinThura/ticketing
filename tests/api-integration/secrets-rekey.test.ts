@@ -5,6 +5,7 @@ import { decryptDeliveryEnvelope } from "../../apps/api/src/customer-invitation/
 import db, { schema } from "../../apps/api/src/database";
 import { webhookTable } from "../../apps/api/src/database/schema";
 import { customerInvitationDeliveryTable } from "../../apps/api/src/database/schema-customer-invitation-delivery";
+import { importSourceConnectionTable } from "../../apps/api/src/database/schema-imports";
 import {
   currentEncryptionKeyId,
   decryptIdentityClientSecret,
@@ -244,6 +245,33 @@ describe("GM-12..GM-14 secrets-rekey", () => {
       .from(schema.userNotificationPreferenceTable)
       .where(eq(schema.userNotificationPreferenceTable.userId, user.id));
     expect(decryptSecret(pref?.ntfyToken)).toBe("ntfy-token");
+  });
+
+  it("P6: import source connection credentials survive a key rotation", async () => {
+    useKeys(oldKey);
+    const { workspace } = await createWorkspaceMember();
+    const [connection] = await db
+      .insert(importSourceConnectionTable)
+      .values({
+        workspaceId: workspace.id,
+        pluginId: "import.jira",
+        name: "Rekey source",
+        config: {},
+        credentialCiphertext: encryptSecret("jira-api-token") as string,
+      })
+      .returning();
+    useKeys(newKey, oldKey);
+    expect((await getSecretsRekeyProgress()).pending.textSecrets).toBe(1);
+    const outcome = await runSecretsRekey();
+    expect(outcome.rekeyed.textSecrets).toBe(1);
+    expect(outcome.failed.textSecrets).toBe(0);
+    expect((await getSecretsRekeyProgress()).complete).toBe(true);
+    useKeys(newKey);
+    const [after] = await db
+      .select()
+      .from(importSourceConnectionTable)
+      .where(eq(importSourceConnectionTable.id, connection?.id ?? ""));
+    expect(decryptSecret(after?.credentialCiphertext)).toBe("jira-api-token");
   });
 
   it("rekeys only live invitation envelopes and erases expired ciphertext before decrypt", async () => {

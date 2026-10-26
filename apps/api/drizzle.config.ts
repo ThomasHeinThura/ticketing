@@ -20,6 +20,7 @@ export default defineConfig({
     "./src/database/schema-instance-jobs.ts",
     "./src/database/schema-mcp-telemetry.ts",
     "./src/database/schema-imports.ts",
+    "./src/database/schema-import-reconciliation.ts",
     "./src/database/schema-customer-invitation-delivery.ts",
   ],
   dialect: "postgresql",

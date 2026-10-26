@@ -100,7 +100,7 @@ afterEach(() => vi.clearAllMocks());
 describe("IntakeQueuePicker", () => {
   it("renders human labels instead of current and visibility value ids", async () => {
     renderPicker({ canCreate: true, queueId: "pair-1" });
-    const picker = await screen.findByRole("combobox", {
+    const picker = await screen.findByRole("button", {
       name: "queue.choose",
     });
     await waitFor(() => expect(picker).toHaveTextContent("Saved support"));
@@ -126,12 +126,11 @@ describe("IntakeQueuePicker", () => {
 
   it("shows reachable saved queues and reports the selected pair", async () => {
     const { onSelect } = renderPicker();
-    await screen.findByRole("combobox", { name: "queue.choose" });
-    fireEvent.click(screen.getByRole("combobox", { name: "queue.choose" }));
-    const option = await screen.findByRole("option", { name: "Saved support" });
-    fireEvent.pointerDown(option);
-    fireEvent.pointerUp(option);
-    fireEvent.click(option);
+    await screen.findByRole("button", { name: "queue.choose" });
+    fireEvent.click(screen.getByRole("button", { name: "queue.choose" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Saved support" }),
+    );
     expect(onSelect).toHaveBeenCalledWith("pair-1");
     expect(mocks.listQueues).toHaveBeenCalledWith("workspace-1");
   });

@@ -42,7 +42,10 @@ const TARGETS: readonly Target[] = [
  * encode the 12-byte `TDK1` + key id header.
  */
 type TextTarget = {
-  table: "webhook" | "user_notification_preference";
+  table:
+    | "webhook"
+    | "user_notification_preference"
+    | "import_source_connection";
   column: string;
 };
 
@@ -52,6 +55,8 @@ const TEXT_TARGETS: readonly TextTarget[] = [
   { table: "user_notification_preference", column: "ntfy_token" },
   { table: "user_notification_preference", column: "gotify_token" },
   { table: "user_notification_preference", column: "webhook_secret" },
+  // P6: import source connection credentials (`encryptSecret`, `enc:v2:`).
+  { table: "import_source_connection", column: "credential_ciphertext" },
 ];
 
 const BATCH_SIZE = 100;

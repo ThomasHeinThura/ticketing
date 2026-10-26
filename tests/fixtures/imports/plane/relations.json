@@ -1,0 +1,82 @@
+{
+	"22000002-aaaa-4bbb-8ccc-000000001954": {
+		"blocking": ["22000003-aaaa-4bbb-8ccc-000000002931"],
+		"blocked_by": [],
+		"duplicate": [],
+		"relates_to": [],
+		"start_after": [],
+		"start_before": [],
+		"finish_after": [],
+		"finish_before": []
+	},
+	"22000003-aaaa-4bbb-8ccc-000000002931": {
+		"blocking": [],
+		"blocked_by": ["22000002-aaaa-4bbb-8ccc-000000001954"],
+		"duplicate": [],
+		"relates_to": [],
+		"start_after": [],
+		"start_before": [],
+		"finish_after": [],
+		"finish_before": []
+	},
+	"22000004-aaaa-4bbb-8ccc-000000003908": {
+		"blocking": [],
+		"blocked_by": [],
+		"duplicate": [],
+		"relates_to": ["22000005-aaaa-4bbb-8ccc-000000004885"],
+		"start_after": [],
+		"start_before": [],
+		"finish_after": [],
+		"finish_before": []
+	},
+	"22000007-aaaa-4bbb-8ccc-000000006839": {
+		"blocking": [],
+		"blocked_by": [],
+		"duplicate": ["22000008-aaaa-4bbb-8ccc-000000007816"],
+		"relates_to": [],
+		"start_after": [],
+		"start_before": [],
+		"finish_after": [],
+		"finish_before": []
+	},
+	"22000020-aaaa-4bbb-8ccc-000000019540": {
+		"blocking": ["22000021-aaaa-4bbb-8ccc-000000020517"],
+		"blocked_by": [],
+		"duplicate": [],
+		"relates_to": [],
+		"start_after": [],
+		"start_before": [],
+		"finish_after": [],
+		"finish_before": []
+	},
+	"22000021-aaaa-4bbb-8ccc-000000020517": {
+		"blocking": [],
+		"blocked_by": ["22000020-aaaa-4bbb-8ccc-000000019540"],
+		"duplicate": [],
+		"relates_to": [],
+		"start_after": [],
+		"start_before": [],
+		"finish_after": [],
+		"finish_before": []
+	},
+	"22000024-aaaa-4bbb-8ccc-000000023448": {
+		"blocking": [],
+		"blocked_by": [],
+		"duplicate": [],
+		"relates_to": ["22000019-aaaa-4bbb-8ccc-000000018563"],
+		"start_after": [],
+		"start_before": [],
+		"finish_after": [],
+		"finish_before": []
+	},
+	"22000033-aaaa-4bbb-8ccc-000000032241": {
+		"blocking": [],
+		"blocked_by": [],
+		"duplicate": [],
+		"relates_to": ["22000030-aaaa-4bbb-8ccc-000000029310"],
+		"start_after": [],
+		"start_before": [],
+		"finish_after": [],
+		"finish_before": []
+	}
+}

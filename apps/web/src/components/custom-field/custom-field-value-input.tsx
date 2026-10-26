@@ -17,6 +17,11 @@ import { CalendarDays, Check, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  PICKER_SEARCH_THRESHOLD,
+  PickerPopover,
+  PickerSearchList,
+} from "@/components/common/picker-popover";
+import {
   type CustomFieldFormat,
   type CustomFieldOption,
   formatValue,
@@ -40,6 +45,11 @@ export type CustomFieldValueInputProps = {
   onBlur?: () => void;
   disabled?: boolean;
   people?: readonly CustomFieldPerson[];
+  /**
+   * Inline property editor (work item panel, table cells): single choices use Kaneo's
+   * popover picker. Leave unset inside forms and dialogs, which keep the `Select`.
+   */
+  inline?: boolean;
 };
 
 function ListChoice({
@@ -99,29 +109,51 @@ function MultiChoice({
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-1" align="start">
-        <div className="flex max-h-60 flex-col overflow-y-auto">
-          {choices.length === 0 ? (
-            <p className="px-2 py-1.5 text-muted-foreground text-xs">
-              {t("customFields:value.noChoices")}
-            </p>
-          ) : (
-            choices.map((choice) => (
-              <ListChoice
-                key={choice.key}
-                label={choice.label}
-                selected={selected.includes(choice.key)}
-                onSelect={() =>
-                  onChange(
-                    selected.includes(choice.key)
-                      ? selected.filter((key) => key !== choice.key)
-                      : [...selected, choice.key],
-                  )
-                }
-              />
-            ))
-          )}
-        </div>
+      <PopoverContent
+        className={
+          choices.length > PICKER_SEARCH_THRESHOLD ? "w-64 p-0" : "w-56 p-1"
+        }
+        align="start"
+      >
+        {choices.length > PICKER_SEARCH_THRESHOLD ? (
+          <PickerSearchList
+            options={choices.map((choice) => ({
+              value: choice.key,
+              label: choice.label,
+            }))}
+            isSelected={(key) => selected.includes(key)}
+            onSelect={(key) =>
+              onChange(
+                selected.includes(key)
+                  ? selected.filter((candidate) => candidate !== key)
+                  : [...selected, key],
+              )
+            }
+          />
+        ) : (
+          <div className="flex max-h-60 flex-col overflow-y-auto">
+            {choices.length === 0 ? (
+              <p className="px-2 py-1.5 text-muted-foreground text-xs">
+                {t("customFields:value.noChoices")}
+              </p>
+            ) : (
+              choices.map((choice) => (
+                <ListChoice
+                  key={choice.key}
+                  label={choice.label}
+                  selected={selected.includes(choice.key)}
+                  onSelect={() =>
+                    onChange(
+                      selected.includes(choice.key)
+                        ? selected.filter((key) => key !== choice.key)
+                        : [...selected, choice.key],
+                    )
+                  }
+                />
+              ))
+            )}
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
@@ -139,6 +171,7 @@ export function CustomFieldValueInput({
   onBlur,
   disabled,
   people = [],
+  inline = false,
 }: CustomFieldValueInputProps) {
   const { t } = useTranslation();
   const [dateOpen, setDateOpen] = useState(false);
@@ -330,6 +363,28 @@ export function CustomFieldValueInput({
         />
       );
     case "select":
+      if (inline) {
+        const known = field.options.some((option) => option.key === value);
+        return (
+          <PickerPopover
+            id={id}
+            value={typeof value === "string" ? value : undefined}
+            placeholder={t("customFields:value.notSet")}
+            disabled={disabled}
+            className="w-full min-w-0 max-w-full"
+            onChange={(next) => onChange(next)}
+            options={[
+              ...field.options.map((option) => ({
+                value: option.key,
+                label: option.label,
+              })),
+              ...(typeof value === "string" && !known
+                ? [{ value, label: formatValue(field, value) }]
+                : []),
+            ]}
+          />
+        );
+      }
       return (
         <Select
           value={typeof value === "string" ? value : null}
@@ -364,6 +419,28 @@ export function CustomFieldValueInput({
         />
       );
     case "user":
+      if (inline) {
+        const known = people.some((person) => person.personId === value);
+        return (
+          <PickerPopover
+            id={id}
+            value={typeof value === "string" ? value : undefined}
+            placeholder={t("customFields:value.notSet")}
+            disabled={disabled}
+            className="w-full min-w-0 max-w-full"
+            onChange={(next) => onChange(next)}
+            options={[
+              ...people.map((person) => ({
+                value: person.personId,
+                label: person.name ?? unavailablePersonLabel,
+              })),
+              ...(typeof value === "string" && !known
+                ? [{ value, label: unavailablePersonLabel }]
+                : []),
+            ]}
+          />
+        );
+      }
       return (
         <Select
           value={typeof value === "string" ? value : null}

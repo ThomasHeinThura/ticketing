@@ -43,6 +43,8 @@ import {
   IMPORT_CHUNK_ROUTE,
   IMPORT_CHUNK_TARGET,
   IMPORT_LINK_CHUNK_ROUTE,
+  IMPORT_RUN_ROUTE,
+  IMPORT_RUN_TARGET,
 } from "../imports/pending-action-contract";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
@@ -1836,7 +1838,11 @@ export function isStepUpPendingDeletion(action: {
       action.targetType === IMPORT_CHUNK_TARGET &&
       action.confirmation === "typed_count_step_up" &&
       (action.routeKey === IMPORT_CHUNK_ROUTE ||
-        action.routeKey === IMPORT_LINK_CHUNK_ROUTE))
+        action.routeKey === IMPORT_LINK_CHUNK_ROUTE)) ||
+    (action.action === "mcp_destructive" &&
+      action.targetType === IMPORT_RUN_TARGET &&
+      action.confirmation === "typed_count_step_up" &&
+      action.routeKey === IMPORT_RUN_ROUTE)
   );
 }
 
@@ -1854,7 +1860,7 @@ export async function pendingDeletionStepUpAccess(
   );
 }
 
-/** Current original-key and browser-session access for the two registered import chunk routes. */
+/** Current original-credential and browser-session access for the registered import chunk and run-level routes. */
 async function importChunkStepUpAccess(
   executor: typeof db | PendingActionTransaction,
   input: { id: string; requesterPersonId: string; sessionId: string },
@@ -1876,12 +1882,16 @@ async function importChunkStepUpAccess(
       1,
     );
     if (!row || row.expiresAt <= new Date()) return undefined;
+    const isChunk =
+      row.targetType === IMPORT_CHUNK_TARGET &&
+      (row.routeKey === IMPORT_CHUNK_ROUTE ||
+        row.routeKey === IMPORT_LINK_CHUNK_ROUTE);
+    const isRun =
+      row.targetType === IMPORT_RUN_TARGET && row.routeKey === IMPORT_RUN_ROUTE;
     if (
       row.action !== "mcp_destructive" ||
-      row.targetType !== IMPORT_CHUNK_TARGET ||
       row.confirmationRequired !== "typed_count_step_up" ||
-      (row.routeKey !== IMPORT_CHUNK_ROUTE &&
-        row.routeKey !== IMPORT_LINK_CHUNK_ROUTE)
+      (!isChunk && !isRun)
     )
       return undefined;
     const accessOptions = {

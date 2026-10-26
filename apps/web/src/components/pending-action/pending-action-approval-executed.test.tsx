@@ -70,7 +70,9 @@ vi.mock("react-i18next", () => ({
       key.includes("countRecords") ||
       key.includes("countLinks") ||
       key.includes("confirmRecords") ||
-      key.includes("confirmLinks")
+      key.includes("confirmLinks") ||
+      (key.startsWith("pendingActions:importRun.") &&
+        options?.count !== undefined)
         ? `${key}:${options?.count ?? ""}`
         : key,
   }),
@@ -377,6 +379,90 @@ describe("MCP import chunk pending-action confirmation", () => {
     expect(
       screen.queryByRole("button", {
         name: "pendingActions:importChunk.approveRecords",
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("import run pending-action confirmation", () => {
+  const runAction = (summary: Record<string, unknown> | undefined) => ({
+    id: "pa-run",
+    action: "mcp_destructive",
+    targetType: "import_run",
+    targetIds: ["run-1"],
+    confirmation: "typed_count_step_up",
+    approvalSupported: true,
+    state: "pending",
+    origin: "agent",
+    expiresAt: "2026-10-26T00:00:00.000Z",
+    summary,
+  });
+  beforeEach(() => {
+    mocks.approve.mockReset().mockResolvedValue({ state: "executed" });
+    mocks.proof.mockReset().mockResolvedValue("step-up-proof");
+    mocks.invalidate.mockReset().mockResolvedValue(undefined);
+    mocks.action.current = runAction({
+      kind: "import_run",
+      pluginId: "import.jira",
+      totalCount: 120,
+      writes: 80,
+      mappingVersion: 2,
+    });
+  });
+  afterEach(cleanup);
+
+  it("shows the run, requires the exact total count and step-up, then approves", async () => {
+    render(<PendingActionApproval id="pa-run" layout="page" />);
+
+    expect(
+      screen.getByText("pendingActions:importRun.count:120"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("pendingActions:importRun.writes:80"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("pendingActions:importRun.open"),
+    ).toBeInTheDocument();
+    const countInput = screen.getByRole("textbox", {
+      name: "pendingActions:importRun.confirm:120",
+    });
+    const password = screen.getByLabelText(
+      "pendingActions:dynamic.accountPassword",
+    );
+    const approveButton = screen.getByRole("button", {
+      name: "pendingActions:importRun.approve",
+    });
+
+    fireEvent.change(password, { target: { value: "fresh-password" } });
+    fireEvent.change(countInput, { target: { value: "80" } });
+    expect(approveButton).toBeDisabled();
+    expect(mocks.proof).not.toHaveBeenCalled();
+
+    fireEvent.change(countInput, { target: { value: "120" } });
+    await waitFor(() => expect(approveButton).toBeEnabled());
+    fireEvent.click(approveButton);
+
+    await waitFor(() => expect(mocks.approve).toHaveBeenCalledTimes(1));
+    expect(mocks.proof).toHaveBeenCalledWith(
+      expect.objectContaining({ pendingActionId: "pa-run" }),
+    );
+    expect(mocks.approve).toHaveBeenCalledWith({
+      id: "pa-run",
+      typedCount: "120",
+      stepUpToken: "step-up-proof",
+    });
+  });
+
+  it("fails closed when the run summary is not the closed contract", () => {
+    mocks.action.current = runAction({ kind: "import_run", sourceRef: "x" });
+    render(<PendingActionApproval id="pa-run" layout="page" />);
+
+    expect(
+      screen.getByText("pendingActions:importRun.hidden"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "pendingActions:importRun.approve",
       }),
     ).toBeNull();
   });

@@ -1,6 +1,9 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { approveImportChunk } from "../imports/pending-action";
+import {
+  approveImportChunk,
+  approveImportRun,
+} from "../imports/pending-action";
 import {
   type ApiKey,
   apiRouter,
@@ -281,19 +284,28 @@ const pendingAction = apiRouter()
                           })
                         : contract.executor === "mcp_approval_decision"
                           ? approveMcpApprovalDecision(executionInput)
-                          : contract.executor === "import_chunk"
-                            ? approveImportChunk({
+                          : contract.executor === "import_run"
+                            ? approveImportRun({
                                 ...executionInput,
-                                routeKey: executionTarget.routeKey as
-                                  | "POST /api/imports/{id}/records"
-                                  | "POST /api/imports/{id}/links",
                                 typedCount: c.req.valid("json").typedCount,
                                 stepUpToken:
                                   c.req.valid("header")[
                                     "x-taskdesk-step-up-token"
                                   ],
                               })
-                            : approveSavedViewDeletion(executionInput),
+                            : contract.executor === "import_chunk"
+                              ? approveImportChunk({
+                                  ...executionInput,
+                                  routeKey: executionTarget.routeKey as
+                                    | "POST /api/imports/{id}/records"
+                                    | "POST /api/imports/{id}/links",
+                                  typedCount: c.req.valid("json").typedCount,
+                                  stepUpToken:
+                                    c.req.valid("header")[
+                                      "x-taskdesk-step-up-token"
+                                    ],
+                                })
+                              : approveSavedViewDeletion(executionInput),
     );
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(

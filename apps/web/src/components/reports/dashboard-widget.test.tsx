@@ -175,6 +175,48 @@ describe("a dashboard widget (RP-13)", () => {
     expect(container.querySelector("svg")).toBeNull();
   });
 
+  it("shows the empty text instead of a blank chart when every value is missing", () => {
+    const { container } = show(
+      {
+        ...base,
+        chart: {
+          type: "line",
+          unit: "percent",
+          categories: ["a", "b"],
+          series: [
+            { key: "attainment", label: "Attainment", values: [null, null] },
+          ],
+        },
+      },
+      "line",
+    );
+    expect(screen.getByTestId("dashboard-widget-empty")).toBeTruthy();
+    expect(screen.getByText("reports:empty.noData")).toBeTruthy();
+    expect(container.querySelector("svg")).toBeNull();
+  });
+
+  it("keeps the view toggle and the export action in the same header row", () => {
+    widgetData.current = {
+      data: base,
+      isLoading: false,
+      isError: false,
+      error: null,
+    };
+    render(
+      <DashboardWidgetCard
+        workspaceId="w"
+        dashboardId="d"
+        version={1}
+        widget={widget("bar")}
+        headerAction={() => <span data-testid="export-action" />}
+      />,
+    );
+    const toggle = screen.getByRole("button", { name: "reports:views.table" });
+    expect(
+      screen.getByTestId("export-action").parentElement?.contains(toggle),
+    ).toBe(true);
+  });
+
   it("explains a refusal in words", () => {
     widgetData.current = {
       data: undefined,

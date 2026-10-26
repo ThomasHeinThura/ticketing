@@ -1,0 +1,47 @@
+[
+	{
+		"id": "42000001-aaaa-4bbb-8ccc-000000000977",
+		"name": "Backlog",
+		"group": "backlog",
+		"color": "#888888",
+		"sequence": 15000,
+		"default": true,
+		"project": "33000002-aaaa-4bbb-8ccc-000000001954"
+	},
+	{
+		"id": "42000002-aaaa-4bbb-8ccc-000000001954",
+		"name": "Todo",
+		"group": "unstarted",
+		"color": "#888888",
+		"sequence": 25000,
+		"default": false,
+		"project": "33000002-aaaa-4bbb-8ccc-000000001954"
+	},
+	{
+		"id": "42000003-aaaa-4bbb-8ccc-000000002931",
+		"name": "Doing",
+		"group": "started",
+		"color": "#888888",
+		"sequence": 35000,
+		"default": false,
+		"project": "33000002-aaaa-4bbb-8ccc-000000001954"
+	},
+	{
+		"id": "42000004-aaaa-4bbb-8ccc-000000003908",
+		"name": "Done",
+		"group": "completed",
+		"color": "#888888",
+		"sequence": 45000,
+		"default": false,
+		"project": "33000002-aaaa-4bbb-8ccc-000000001954"
+	},
+	{
+		"id": "42000005-aaaa-4bbb-8ccc-000000004885",
+		"name": "Cancelled",
+		"group": "cancelled",
+		"color": "#888888",
+		"sequence": 55000,
+		"default": false,
+		"project": "33000002-aaaa-4bbb-8ccc-000000001954"
+	}
+]

@@ -1,0 +1,666 @@
+{
+	"rehearsalId": "rehearsal-2026-10-26T17-28-32-701Z",
+	"database": "taskdesk_p6e_test",
+	"startedAt": "2026-10-26T17:28:32.701Z",
+	"baseline": {
+		"workItems": 0,
+		"importRuns": 0,
+		"importLinks": 0,
+		"importedProvenance": 0,
+		"importLosses": 0,
+		"migrations": 200
+	},
+	"restored": {
+		"workItems": 0,
+		"importRuns": 0,
+		"importLinks": 0,
+		"importedProvenance": 0,
+		"importLosses": 0,
+		"migrations": 200
+	},
+	"attachmentsBefore": {
+		"files": 1,
+		"sha256": "1118b18c8f1279f5ade0b39bb6d513cdc7a3621870469caa8010a91168aa883a"
+	},
+	"attachmentsAfter": {
+		"files": 1,
+		"sha256": "1118b18c8f1279f5ade0b39bb6d513cdc7a3621870469caa8010a91168aa883a"
+	},
+	"status": "passed",
+	"finishedAt": "2026-10-26T17:28:38.130Z",
+	"totalMs": 5429,
+	"freezeBoundary": {
+		"definition": "rehearsal-defined; no product freeze contract exists (import-and-cutover.md)",
+		"sourceFrozenAt": "2026-10-26T17:28:33.949Z",
+		"baseSnapshotSha256": "242bd8a5f516f59c0d00b32ab061822c202c3006205e744ad8e235756a3c00d3",
+		"deltaSnapshotSha256": "e83b100c60117bd28d3b09805f5bda715593d568e3c6b9dfaf6fbdc655f6c46f",
+		"backupTakenAt": "2026-10-26T17:28:33.050Z",
+		"baseRunId": "n8eudgnddndrscy676yko35l",
+		"writesToSourceAfterFreeze": 0,
+		"lastCommittedChunkAtKill": 3
+	},
+	"steps": [
+		{
+			"name": "guard and migration check",
+			"status": "passed",
+			"ms": 30
+		},
+		{
+			"name": "provision throwaway workspace",
+			"status": "passed",
+			"ms": 117,
+			"detail": {
+				"workspaceProvisioned": true,
+				"projectProvisioned": true
+			}
+		},
+		{
+			"name": "baseline counts",
+			"status": "passed",
+			"ms": 4,
+			"detail": {
+				"workItems": 0,
+				"importRuns": 0,
+				"importLinks": 0,
+				"importedProvenance": 0,
+				"importLosses": 0,
+				"migrations": 200
+			}
+		},
+		{
+			"name": "backup database and attachments",
+			"status": "passed",
+			"ms": 194,
+			"detail": {
+				"takenAt": "2026-10-26T17:28:33.050Z",
+				"dumpBytes": 725333,
+				"dumpSha256": "ebae006ac3bcb52495c32a294271aacc83f62a15b342e87b02a1bf5b2a075db6",
+				"restoreListEntries": 1431,
+				"attachmentsTarBytes": 6656
+			}
+		},
+		{
+			"name": "staged CSV import (dry run, approve, execute)",
+			"status": "passed",
+			"ms": 881,
+			"detail": {
+				"dryRun": {
+					"created": 47,
+					"updated": 0,
+					"skipped": 0,
+					"rejected": 1,
+					"processed": 48
+				},
+				"stats": {
+					"created": 47,
+					"skipped": 0,
+					"updated": 0,
+					"rejected": 1,
+					"processed": 48,
+					"mappingVersion": 0,
+					"profileVersion": 0
+				}
+			}
+		},
+		{
+			"name": "delta re-import prepared",
+			"status": "passed",
+			"ms": 194,
+			"detail": {
+				"dryRun": {
+					"created": 3,
+					"updated": 5,
+					"skipped": 40,
+					"rejected": 1,
+					"processed": 49
+				},
+				"writes": 8
+			}
+		},
+		{
+			"name": "worker killed mid-run (SIGKILL)",
+			"status": "passed",
+			"ms": 2225,
+			"detail": {
+				"committedChunksAtKill": 3,
+				"lastCommittedChunk": 3,
+				"cursor": {
+					"cursor": "16",
+					"exhausted": false
+				},
+				"leaseReleasedBySql": true
+			}
+		},
+		{
+			"name": "resume from the last committed chunk (API)",
+			"status": "passed",
+			"ms": 471,
+			"detail": {
+				"stats": {
+					"created": 3,
+					"skipped": 40,
+					"updated": 5,
+					"rejected": 1,
+					"processed": 49,
+					"mappingVersion": 0,
+					"profileVersion": 0
+				}
+			}
+		},
+		{
+			"name": "rerun proves 0 duplicates",
+			"status": "passed",
+			"ms": 594,
+			"detail": {
+				"stats": {
+					"created": 0,
+					"skipped": 48,
+					"updated": 0,
+					"rejected": 1,
+					"processed": 49,
+					"mappingVersion": 0,
+					"profileVersion": 0
+				},
+				"duplicates": {
+					"links": 50,
+					"distinctSources": 50,
+					"distinctTargets": 50,
+					"prov": 50,
+					"provDistinct": 50,
+					"items": 50,
+					"duplicateKeys": 0
+				},
+				"linksBefore": 50
+			}
+		},
+		{
+			"name": "reconciliation",
+			"status": "passed",
+			"ms": 29,
+			"detail": {
+				"base": {
+					"via": "service",
+					"status": "attention",
+					"failedChecks": [
+						{
+							"code": "no_rejections",
+							"severity": "warn"
+						},
+						{
+							"code": "no_losses",
+							"severity": "warn"
+						}
+					]
+				},
+				"delta": {
+					"via": "service",
+					"status": "attention",
+					"failedChecks": [
+						{
+							"code": "no_rejections",
+							"severity": "warn"
+						},
+						{
+							"code": "no_losses",
+							"severity": "warn"
+						},
+						{
+							"code": "no_stale_links",
+							"severity": "warn"
+						}
+					]
+				},
+				"rerun": {
+					"via": "service",
+					"status": "attention",
+					"failedChecks": [
+						{
+							"code": "no_rejections",
+							"severity": "warn"
+						},
+						{
+							"code": "no_losses",
+							"severity": "warn"
+						},
+						{
+							"code": "no_stale_links",
+							"severity": "warn"
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "rollback: restore from backup",
+			"status": "passed",
+			"ms": 651
+		},
+		{
+			"name": "rollback proof: baseline counts and attachments restored",
+			"status": "passed",
+			"ms": 0,
+			"detail": {
+				"baseline": {
+					"workItems": 0,
+					"importRuns": 0,
+					"importLinks": 0,
+					"importedProvenance": 0,
+					"importLosses": 0,
+					"migrations": 200
+				},
+				"restored": {
+					"workItems": 0,
+					"importRuns": 0,
+					"importLinks": 0,
+					"importedProvenance": 0,
+					"importLosses": 0,
+					"migrations": 200
+				},
+				"attachmentsBefore": {
+					"files": 1,
+					"sha256": "1118b18c8f1279f5ade0b39bb6d513cdc7a3621870469caa8010a91168aa883a"
+				},
+				"attachmentsAfter": {
+					"files": 1,
+					"sha256": "1118b18c8f1279f5ade0b39bb6d513cdc7a3621870469caa8010a91168aa883a"
+				}
+			}
+		}
+	],
+	"timings": {
+		"guard and migration check": 30,
+		"provision throwaway workspace": 117,
+		"baseline counts": 4,
+		"backup database and attachments": 194,
+		"staged CSV import (dry run, approve, execute)": 881,
+		"delta re-import prepared": 194,
+		"worker killed mid-run (SIGKILL)": 2225,
+		"resume from the last committed chunk (API)": 471,
+		"rerun proves 0 duplicates": 594,
+		"reconciliation": 29,
+		"rollback: restore from backup": 651
+	},
+	"evidence": {
+		"base": {
+			"runId": "n8eudgnddndrscy676yko35l",
+			"dryRun": {
+				"created": 47,
+				"updated": 0,
+				"skipped": 0,
+				"rejected": 1,
+				"processed": 48
+			},
+			"stats": {
+				"created": 47,
+				"skipped": 0,
+				"updated": 0,
+				"rejected": 1,
+				"processed": 48,
+				"mappingVersion": 0,
+				"profileVersion": 0
+			}
+		},
+		"delta": {
+			"runId": "a4dgo7eylfxgvmu0znmix6r1",
+			"dryRun": {
+				"created": 3,
+				"updated": 5,
+				"skipped": 40,
+				"rejected": 1,
+				"processed": 49
+			},
+			"killed": {
+				"committedChunksAtKill": 3,
+				"lastCommittedChunk": 3,
+				"cursor": {
+					"cursor": "16",
+					"exhausted": false
+				},
+				"leaseReleasedBySql": true
+			},
+			"resumed": {
+				"created": 3,
+				"skipped": 40,
+				"updated": 5,
+				"rejected": 1,
+				"processed": 49,
+				"mappingVersion": 0,
+				"profileVersion": 0
+			}
+		},
+		"rerun": {
+			"runId": "sh42deomxtvthsmrojf1r5lu",
+			"stats": {
+				"created": 0,
+				"skipped": 48,
+				"updated": 0,
+				"rejected": 1,
+				"processed": 49,
+				"mappingVersion": 0,
+				"profileVersion": 0
+			},
+			"duplicates": {
+				"links": 50,
+				"distinctSources": 50,
+				"distinctTargets": 50,
+				"prov": 50,
+				"provDistinct": 50,
+				"items": 50,
+				"duplicateKeys": 0
+			}
+		},
+		"reconciliations": {
+			"base": {
+				"via": "service",
+				"httpStatus": 404,
+				"status": "attention",
+				"version": 1,
+				"rows": [
+					{
+						"key": "total",
+						"label": "Records",
+						"source": 48,
+						"target": 48
+					},
+					{
+						"key": "outcomes",
+						"label": "Created, updated, skipped, rejected",
+						"source": 48,
+						"target": 48
+					},
+					{
+						"key": "rejected",
+						"label": "Rejected",
+						"source": 1,
+						"target": 1
+					},
+					{
+						"key": "linked",
+						"label": "Work items linked to source",
+						"source": 47,
+						"target": 47
+					},
+					{
+						"key": "source_type:issue",
+						"label": "Source type issue",
+						"source": 47,
+						"target": 47
+					},
+					{
+						"key": "type:vfjga6cztru90k8mkaaf60br",
+						"label": "Type task",
+						"source": 47,
+						"target": 47
+					},
+					{
+						"key": "state_group:backlog",
+						"label": "State group backlog",
+						"source": 16,
+						"target": 16
+					},
+					{
+						"key": "state_group:completed",
+						"label": "State group completed",
+						"source": 15,
+						"target": 15
+					},
+					{
+						"key": "state_group:started",
+						"label": "State group started",
+						"source": 16,
+						"target": 16
+					},
+					{
+						"key": "project:e1fot0277u5wyoae1s4865sz",
+						"label": "Project Integration Project",
+						"source": 47,
+						"target": 47
+					}
+				],
+				"failedChecks": [
+					{
+						"code": "no_rejections",
+						"severity": "warn"
+					},
+					{
+						"code": "no_losses",
+						"severity": "warn"
+					}
+				],
+				"losses": [
+					{
+						"code": "record_rejected",
+						"count": 1
+					},
+					{
+						"code": "title_missing",
+						"count": 1
+					}
+				],
+				"rejections": [
+					{
+						"code": "unmapped_value",
+						"count": 1
+					}
+				],
+				"staleLinks": 0,
+				"spotCheck": {
+					"seed": "44e3cbc291f22760",
+					"items": 20
+				}
+			},
+			"delta": {
+				"via": "service",
+				"httpStatus": 404,
+				"status": "attention",
+				"version": 1,
+				"rows": [
+					{
+						"key": "total",
+						"label": "Records",
+						"source": 49,
+						"target": 49
+					},
+					{
+						"key": "outcomes",
+						"label": "Created, updated, skipped, rejected",
+						"source": 49,
+						"target": 49
+					},
+					{
+						"key": "rejected",
+						"label": "Rejected",
+						"source": 1,
+						"target": 1
+					},
+					{
+						"key": "linked",
+						"label": "Work items linked to source",
+						"source": 48,
+						"target": 48
+					},
+					{
+						"key": "source_type:issue",
+						"label": "Source type issue",
+						"source": 48,
+						"target": 48
+					},
+					{
+						"key": "type:vfjga6cztru90k8mkaaf60br",
+						"label": "Type task",
+						"source": 48,
+						"target": 48
+					},
+					{
+						"key": "state_group:backlog",
+						"label": "State group backlog",
+						"source": 16,
+						"target": 16
+					},
+					{
+						"key": "state_group:completed",
+						"label": "State group completed",
+						"source": 16,
+						"target": 16
+					},
+					{
+						"key": "state_group:started",
+						"label": "State group started",
+						"source": 16,
+						"target": 16
+					},
+					{
+						"key": "project:e1fot0277u5wyoae1s4865sz",
+						"label": "Project Integration Project",
+						"source": 48,
+						"target": 48
+					}
+				],
+				"failedChecks": [
+					{
+						"code": "no_rejections",
+						"severity": "warn"
+					},
+					{
+						"code": "no_losses",
+						"severity": "warn"
+					},
+					{
+						"code": "no_stale_links",
+						"severity": "warn"
+					}
+				],
+				"losses": [
+					{
+						"code": "record_rejected",
+						"count": 1
+					},
+					{
+						"code": "title_missing",
+						"count": 1
+					}
+				],
+				"rejections": [
+					{
+						"code": "unmapped_value",
+						"count": 1
+					}
+				],
+				"staleLinks": 2,
+				"spotCheck": {
+					"seed": "8e001b50eb097403",
+					"items": 20
+				}
+			},
+			"rerun": {
+				"via": "service",
+				"httpStatus": 404,
+				"status": "attention",
+				"version": 1,
+				"rows": [
+					{
+						"key": "total",
+						"label": "Records",
+						"source": 49,
+						"target": 49
+					},
+					{
+						"key": "outcomes",
+						"label": "Created, updated, skipped, rejected",
+						"source": 49,
+						"target": 49
+					},
+					{
+						"key": "rejected",
+						"label": "Rejected",
+						"source": 1,
+						"target": 1
+					},
+					{
+						"key": "linked",
+						"label": "Work items linked to source",
+						"source": 48,
+						"target": 48
+					},
+					{
+						"key": "source_type:issue",
+						"label": "Source type issue",
+						"source": 48,
+						"target": 48
+					},
+					{
+						"key": "type:vfjga6cztru90k8mkaaf60br",
+						"label": "Type task",
+						"source": 48,
+						"target": 48
+					},
+					{
+						"key": "state_group:backlog",
+						"label": "State group backlog",
+						"source": 16,
+						"target": 16
+					},
+					{
+						"key": "state_group:completed",
+						"label": "State group completed",
+						"source": 16,
+						"target": 16
+					},
+					{
+						"key": "state_group:started",
+						"label": "State group started",
+						"source": 16,
+						"target": 16
+					},
+					{
+						"key": "project:e1fot0277u5wyoae1s4865sz",
+						"label": "Project Integration Project",
+						"source": 48,
+						"target": 48
+					}
+				],
+				"failedChecks": [
+					{
+						"code": "no_rejections",
+						"severity": "warn"
+					},
+					{
+						"code": "no_losses",
+						"severity": "warn"
+					},
+					{
+						"code": "no_stale_links",
+						"severity": "warn"
+					}
+				],
+				"losses": [
+					{
+						"code": "record_rejected",
+						"count": 1
+					},
+					{
+						"code": "title_missing",
+						"count": 1
+					}
+				],
+				"rejections": [
+					{
+						"code": "unmapped_value",
+						"count": 1
+					}
+				],
+				"staleLinks": 2,
+				"spotCheck": {
+					"seed": "5221d1993439a17b",
+					"items": 20
+				}
+			}
+		}
+	},
+	"limitations": [
+		"Rehearsal on a restored copy; no source system was contacted and no cutover occurred.",
+		"The worker interruption is a real SIGKILL; the per-run lease it held was released by SQL, which stands in for lease expiry (one hour in production).",
+		"The freeze boundary is rehearsal-defined; the product has no freeze or atomic-cutover contract.",
+		"Recovery is restore from backup; there is no whole-run undo."
+	]
+}

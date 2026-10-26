@@ -1,0 +1,3252 @@
+{
+	"4122": {
+		"count": 3,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4122,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-17T08:54:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Self-service checkout"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4122,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-23T14:36:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-22T13:29:00.000Z",
+						"newValue": "2025-11-23T14:36:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4122,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-26T08:57:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					}
+				}
+			}
+		]
+	},
+	"4123": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4123,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-11-18T09:01:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Observability uplift"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4123,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-11-24T15:43:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "In Progress"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-23T14:36:00.000Z",
+						"newValue": "2025-11-24T15:43:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4125": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4125,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-11-20T11:15:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Saved payment methods"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4125,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-11-26T08:57:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-25T16:50:00.000Z",
+						"newValue": "2025-11-26T08:57:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4126": {
+		"count": 3,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4126,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-11-21T12:22:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Invoice approval workflow"
+					},
+					"System.State": {
+						"newValue": "Proposed"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4126,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-11-27T09:04:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Proposed",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-26T08:57:00.000Z",
+						"newValue": "2025-11-27T09:04:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4126,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-30T12:25:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					}
+				}
+			}
+		]
+	},
+	"4128": {
+		"count": 4,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4128,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-11-23T14:36:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Guest checkout"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4128,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-11-29T11:18:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-28T10:11:00.000Z",
+						"newValue": "2025-11-29T11:18:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4128,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-11-30T12:25:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Resolved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-29T11:18:00.000Z",
+						"newValue": "2025-11-30T12:25:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4128,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-12-01T13:32:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Resolved",
+						"newValue": "Closed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-30T12:25:00.000Z",
+						"newValue": "2025-12-01T13:32:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4129": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4129,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-11-24T15:43:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Intranet refresh"
+					},
+					"System.State": {
+						"newValue": "To Do"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4129,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-11-30T12:25:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "To Do",
+						"newValue": "Doing"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-29T11:18:00.000Z",
+						"newValue": "2025-11-30T12:25:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4131": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4131,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-11-26T08:57:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Central log pipeline"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4131,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-12-02T14:39:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "In Progress"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-12-01T13:32:00.000Z",
+						"newValue": "2025-12-02T14:39:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4132": {
+		"count": 3,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4132,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-11-27T09:04:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "As a shopper I can save a card"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4132,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-12-03T15:46:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-12-02T14:39:00.000Z",
+						"newValue": "2025-12-03T15:46:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4132,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-07T09:07:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					}
+				}
+			}
+		]
+	},
+	"4134": {
+		"count": 1,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4134,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-11-29T11:18:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "As a shopper I can remove a saved card"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			}
+		]
+	},
+	"4135": {
+		"count": 4,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4135,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-11-30T12:25:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Ship logs to central store"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4135,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-10-07T09:07:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Approved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-06T08:00:00.000Z",
+						"newValue": "2025-10-07T09:07:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4135,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-10-08T10:14:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Approved",
+						"newValue": "Committed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-07T09:07:00.000Z",
+						"newValue": "2025-10-08T10:14:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4135,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-10T12:28:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					}
+				}
+			}
+		]
+	},
+	"4137": {
+		"count": 5,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4137,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-12-02T14:39:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Guest can check out with email only"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4137,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-10-09T11:21:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-08T10:14:00.000Z",
+						"newValue": "2025-10-09T11:21:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4137,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-10-10T12:28:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Resolved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-09T11:21:00.000Z",
+						"newValue": "2025-10-10T12:28:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4137,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-10-11T13:35:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Resolved",
+						"newValue": "Closed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-10T12:28:00.000Z",
+						"newValue": "2025-10-11T13:35:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 5,
+				"rev": 5,
+				"workItemId": 4137,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-12T14:42:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 4,
+						"newValue": 5
+					}
+				}
+			}
+		]
+	},
+	"4138": {
+		"count": 4,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4138,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-12-03T15:46:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Supplier onboarding form"
+					},
+					"System.State": {
+						"newValue": "Proposed"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4138,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-10-10T12:28:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Proposed",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-09T11:21:00.000Z",
+						"newValue": "2025-10-10T12:28:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4138,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-10-11T13:35:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Resolved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-10T12:28:00.000Z",
+						"newValue": "2025-10-11T13:35:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4138,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-13T15:49:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					}
+				}
+			}
+		]
+	},
+	"4140": {
+		"count": 4,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4140,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-10-06T08:00:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Show delivery estimate on cart"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4140,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-10-12T14:42:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-11T13:35:00.000Z",
+						"newValue": "2025-10-12T14:42:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4140,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-10-13T15:49:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Resolved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-12T14:42:00.000Z",
+						"newValue": "2025-10-13T15:49:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4140,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-15T08:03:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					}
+				}
+			}
+		]
+	},
+	"4141": {
+		"count": 3,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4141,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-10-07T09:07:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "News feed layout broken on tablets"
+					},
+					"System.State": {
+						"newValue": "To Do"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4141,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-10-13T15:49:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "To Do",
+						"newValue": "Doing"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-12T14:42:00.000Z",
+						"newValue": "2025-10-13T15:49:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4141,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-16T09:10:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					}
+				}
+			}
+		]
+	},
+	"4143": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4143,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-10-09T11:21:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Retention policy per service"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4143,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-10-15T08:03:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Approved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-14T16:56:00.000Z",
+						"newValue": "2025-10-15T08:03:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4144": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4144,
+				"revisedBy": {
+					"displayName": "Project Collection Build Service (contoso)",
+					"uniqueName": "Build\\a1b2c3d4"
+				},
+				"revisedDate": "2025-10-10T12:28:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Legacy wishlist sync"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4144,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-16T09:10:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Removed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Removed from the backlog"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-15T08:03:00.000Z",
+						"newValue": "2025-10-16T09:10:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4146": {
+		"count": 3,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4146,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-12T14:42:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Order history filters"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4146,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-18T11:24:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-17T10:17:00.000Z",
+						"newValue": "2025-10-18T11:24:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4146,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-19T12:31:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Resolved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-18T11:24:00.000Z",
+						"newValue": "2025-10-19T12:31:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4147": {
+		"count": 1,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4147,
+				"revisedBy": {
+					"displayName": "Project Collection Build Service (contoso)",
+					"uniqueName": "Build\\a1b2c3d4"
+				},
+				"revisedDate": "2025-10-13T15:49:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Alert on error-rate spike"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			}
+		]
+	},
+	"4149": {
+		"count": 3,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4149,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-10-15T08:03:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Design card form states"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4149,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-10-21T14:45:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-20T13:38:00.000Z",
+						"newValue": "2025-10-21T14:45:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4149,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-10-22T15:52:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Closed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-21T14:45:00.000Z",
+						"newValue": "2025-10-22T15:52:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4150": {
+		"count": 4,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4150,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-10-16T09:10:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Month-end close checklist"
+					},
+					"System.State": {
+						"newValue": "Proposed"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4150,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-10-22T15:52:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Proposed",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-21T14:45:00.000Z",
+						"newValue": "2025-10-22T15:52:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4150,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-10-23T16:59:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Resolved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-22T15:52:00.000Z",
+						"newValue": "2025-10-23T16:59:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4150,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-10-24T08:06:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Resolved",
+						"newValue": "Closed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-23T16:59:00.000Z",
+						"newValue": "2025-10-24T08:06:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4152": {
+		"count": 3,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4152,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-10-18T11:24:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Implement tokenised card API call"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4152,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-10-24T08:06:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-23T16:59:00.000Z",
+						"newValue": "2025-10-24T08:06:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4152,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-27T11:27:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					}
+				}
+			}
+		]
+	},
+	"4153": {
+		"count": 1,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4153,
+				"revisedBy": {
+					"displayName": "Project Collection Build Service (contoso)",
+					"uniqueName": "Build\\a1b2c3d4"
+				},
+				"revisedDate": "2025-10-19T12:31:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Search returns archived pages"
+					},
+					"System.State": {
+						"newValue": "To Do"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			}
+		]
+	},
+	"4155": {
+		"count": 5,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4155,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-10-21T14:45:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Dashboard for queue depth"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4155,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-10-27T11:27:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Approved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-26T10:20:00.000Z",
+						"newValue": "2025-10-27T11:27:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4155,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-10-28T12:34:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Approved",
+						"newValue": "Committed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-27T11:27:00.000Z",
+						"newValue": "2025-10-28T12:34:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4155,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-10-29T13:41:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Committed",
+						"newValue": "Done"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-28T12:34:00.000Z",
+						"newValue": "2025-10-29T13:41:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 5,
+				"rev": 5,
+				"workItemId": 4155,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-30T14:48:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 4,
+						"newValue": 5
+					}
+				}
+			}
+		]
+	},
+	"4156": {
+		"count": 1,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4156,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-10-22T15:52:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Write card form unit tests"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			}
+		]
+	},
+	"4158": {
+		"count": 3,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4158,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-10-24T08:06:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Guest email validation"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4158,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-10-30T14:48:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-29T13:41:00.000Z",
+						"newValue": "2025-10-30T14:48:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4158,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-10-31T15:55:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Closed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-30T14:48:00.000Z",
+						"newValue": "2025-10-31T15:55:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4159": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4159,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-10-25T09:13:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Drop legacy syslog forwarder"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4159,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-10-31T15:55:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Removed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Removed from the backlog"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-10-30T14:48:00.000Z",
+						"newValue": "2025-10-31T15:55:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4161": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4161,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-10-27T11:27:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Delivery estimate component"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4161,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-11-02T08:09:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Removed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Removed from the backlog"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-01T16:02:00.000Z",
+						"newValue": "2025-11-02T08:09:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4162": {
+		"count": 1,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4162,
+				"revisedBy": {
+					"displayName": "Project Collection Build Service (contoso)",
+					"uniqueName": "Build\\a1b2c3d4"
+				},
+				"revisedDate": "2025-10-28T12:34:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Archive legacy cost centres"
+					},
+					"System.State": {
+						"newValue": "Proposed"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			}
+		]
+	},
+	"4164": {
+		"count": 4,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4164,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-10-30T14:48:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Card number field loses focus on iOS"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4164,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-11-05T11:30:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-04T10:23:00.000Z",
+						"newValue": "2025-11-05T11:30:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4164,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-08T14:51:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4164,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-09T15:58:00.000Z",
+				"fields": {
+					"System.Tags": {
+						"oldValue": "triage",
+						"newValue": "ios; regression"
+					},
+					"Microsoft.VSTS.Common.Priority": {
+						"oldValue": 3,
+						"newValue": 1
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					}
+				}
+			}
+		]
+	},
+	"4165": {
+		"count": 3,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4165,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-10-31T15:55:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Broken link in footer"
+					},
+					"System.State": {
+						"newValue": "To Do"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4165,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-06T12:37:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "To Do",
+						"newValue": "Doing"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-05T11:30:00.000Z",
+						"newValue": "2025-11-06T12:37:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4165,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-07T13:44:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Doing",
+						"newValue": "Done"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-06T12:37:00.000Z",
+						"newValue": "2025-11-07T13:44:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4167": {
+		"count": 3,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4167,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-11-02T08:09:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Provision log storage bucket"
+					},
+					"System.State": {
+						"newValue": "To Do"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4167,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-11-08T14:51:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "To Do",
+						"newValue": "In Progress"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-07T13:44:00.000Z",
+						"newValue": "2025-11-08T14:51:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4167,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-11-09T15:58:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "In Progress",
+						"newValue": "Done"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-08T14:51:00.000Z",
+						"newValue": "2025-11-09T15:58:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4168": {
+		"count": 5,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4168,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-11-03T09:16:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Keyboard dismisses while typing card number"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4168,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-11-09T15:58:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-08T14:51:00.000Z",
+						"newValue": "2025-11-09T15:58:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4168,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-11-10T16:05:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Resolved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-09T15:58:00.000Z",
+						"newValue": "2025-11-10T16:05:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4168,
+				"revisedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"revisedDate": "2025-11-11T08:12:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Resolved",
+						"newValue": "Closed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-10T16:05:00.000Z",
+						"newValue": "2025-11-11T08:12:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 5,
+				"rev": 5,
+				"workItemId": 4168,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-12T09:19:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 4,
+						"newValue": 5
+					}
+				}
+			}
+		]
+	},
+	"4170": {
+		"count": 4,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4170,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-05T11:30:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Totals rounding off by one cent"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4170,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-11T08:12:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-10T16:05:00.000Z",
+						"newValue": "2025-11-11T08:12:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4170,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-12T09:19:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Resolved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-11T08:12:00.000Z",
+						"newValue": "2025-11-12T09:19:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4170,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-14T11:33:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					}
+				}
+			}
+		]
+	},
+	"4171": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4171,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-11-06T12:37:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Write forwarder config"
+					},
+					"System.State": {
+						"newValue": "To Do"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4171,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-11-12T09:19:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "To Do",
+						"newValue": "In Progress"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-11T08:12:00.000Z",
+						"newValue": "2025-11-12T09:19:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4173": {
+		"count": 1,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4173,
+				"revisedBy": {
+					"displayName": "Project Collection Build Service (contoso)",
+					"uniqueName": "Build\\a1b2c3d4"
+				},
+				"revisedDate": "2025-11-08T14:51:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Cart badge shows stale count"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			}
+		]
+	},
+	"4174": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4174,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-11-09T15:58:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Build approval screen"
+					},
+					"System.State": {
+						"newValue": "Proposed"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4174,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-11-15T12:40:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Proposed",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-14T11:33:00.000Z",
+						"newValue": "2025-11-15T12:40:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4176": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4176,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-11T08:12:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Duplicate of badge issue"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4176,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-17T14:54:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Removed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Removed from the backlog"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-16T13:47:00.000Z",
+						"newValue": "2025-11-17T14:54:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4177": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4177,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-11-12T09:19:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Rework news card grid"
+					},
+					"System.State": {
+						"newValue": "To Do"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4177,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-11-18T15:01:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "To Do",
+						"newValue": "Doing"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-17T14:54:00.000Z",
+						"newValue": "2025-11-18T15:01:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4179": {
+		"count": 1,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4179,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-11-14T11:33:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Document retention tiers"
+					},
+					"System.State": {
+						"newValue": "To Do"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			}
+		]
+	},
+	"4180": {
+		"count": 1,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4180,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-11-15T12:40:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Apple Pay on mobile web"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			}
+		]
+	},
+	"4182": {
+		"count": 5,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4182,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-11-17T14:54:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Dashboard times out above 10k series"
+					},
+					"System.State": {
+						"newValue": "New"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4182,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-11-23T11:36:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "New",
+						"newValue": "Approved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-22T10:29:00.000Z",
+						"newValue": "2025-11-23T11:36:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4182,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-11-24T12:43:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Approved",
+						"newValue": "Committed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-23T11:36:00.000Z",
+						"newValue": "2025-11-24T12:43:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4182,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-26T14:57:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					}
+				}
+			},
+			{
+				"id": 5,
+				"rev": 5,
+				"workItemId": 4182,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-11-27T15:04:00.000Z",
+				"fields": {
+					"System.Tags": {
+						"oldValue": "triage",
+						"newValue": "perf"
+					},
+					"Microsoft.VSTS.Common.Priority": {
+						"oldValue": 3,
+						"newValue": 1
+					},
+					"System.Rev": {
+						"oldValue": 4,
+						"newValue": 5
+					}
+				}
+			}
+		]
+	},
+	"4183": {
+		"count": 1,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4183,
+				"revisedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"revisedDate": "2025-11-18T15:01:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Waiting for storage budget approval"
+					},
+					"System.State": {
+						"newValue": "Open"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			}
+		]
+	},
+	"4185": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4185,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-11-20T08:15:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "VPN access for contractor"
+					},
+					"System.State": {
+						"newValue": "Open"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4185,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-11-26T14:57:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Open",
+						"newValue": "Closed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-25T13:50:00.000Z",
+						"newValue": "2025-11-26T14:57:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4186": {
+		"count": 4,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4186,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-11-21T09:22:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Import supplier list"
+					},
+					"System.State": {
+						"newValue": "Proposed"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4186,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-11-27T15:04:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Proposed",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-26T14:57:00.000Z",
+						"newValue": "2025-11-27T15:04:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4186,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-11-28T16:11:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Resolved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-27T15:04:00.000Z",
+						"newValue": "2025-11-28T16:11:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4186,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-11-29T08:18:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Resolved",
+						"newValue": "Closed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-28T16:11:00.000Z",
+						"newValue": "2025-11-29T08:18:00.000Z"
+					}
+				}
+			}
+		]
+	},
+	"4188": {
+		"count": 4,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4188,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-11-23T11:36:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Approval email not sent for amounts over limit"
+					},
+					"System.State": {
+						"newValue": "Proposed"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4188,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-11-29T08:18:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Proposed",
+						"newValue": "Active"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-28T16:11:00.000Z",
+						"newValue": "2025-11-29T08:18:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 3,
+				"rev": 3,
+				"workItemId": 4188,
+				"revisedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"revisedDate": "2025-11-30T09:25:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Active",
+						"newValue": "Resolved"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Implementation started"
+					},
+					"System.Rev": {
+						"oldValue": 2,
+						"newValue": 3
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-11-29T08:18:00.000Z",
+						"newValue": "2025-11-30T09:25:00.000Z"
+					}
+				}
+			},
+			{
+				"id": 4,
+				"rev": 4,
+				"workItemId": 4188,
+				"revisedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"revisedDate": "2025-12-02T11:39:00.000Z",
+				"fields": {
+					"Microsoft.VSTS.Common.BacklogPriority": {
+						"oldValue": 1000,
+						"newValue": 2000
+					},
+					"System.Rev": {
+						"oldValue": 3,
+						"newValue": 4
+					}
+				}
+			}
+		]
+	},
+	"4189": {
+		"count": 1,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4189,
+				"revisedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"revisedDate": "2025-11-24T12:43:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Add tablet breakpoint tests"
+					},
+					"System.State": {
+						"newValue": "To Do"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			}
+		]
+	},
+	"4191": {
+		"count": 2,
+		"value": [
+			{
+				"id": 1,
+				"rev": 1,
+				"workItemId": 4191,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-11-26T14:57:00.000Z",
+				"fields": {
+					"System.Title": {
+						"newValue": "Supplier VAT id rejected"
+					},
+					"System.State": {
+						"newValue": "Proposed"
+					},
+					"System.Rev": {
+						"newValue": 1
+					}
+				}
+			},
+			{
+				"id": 2,
+				"rev": 2,
+				"workItemId": 4191,
+				"revisedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"revisedDate": "2025-12-02T11:39:00.000Z",
+				"fields": {
+					"System.State": {
+						"oldValue": "Proposed",
+						"newValue": "Removed"
+					},
+					"System.Reason": {
+						"oldValue": "New",
+						"newValue": "Removed from the backlog"
+					},
+					"System.Rev": {
+						"oldValue": 1,
+						"newValue": 2
+					},
+					"System.ChangedDate": {
+						"oldValue": "2025-12-01T10:32:00.000Z",
+						"newValue": "2025-12-02T11:39:00.000Z"
+					}
+				}
+			}
+		]
+	}
+}

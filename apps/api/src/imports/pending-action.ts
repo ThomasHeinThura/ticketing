@@ -16,12 +16,19 @@ import {
   requireImportProjectCapability,
 } from "./access";
 import { sha256Canonical } from "./content";
+import {
+  grantRunApproval,
+  type ImportRunApprovalRequest,
+} from "./engine/service";
 import { commitApprovedImportLinks, lockRun as lockImportRun } from "./links";
 import {
   type IMPORT_CHUNK_ROUTE,
   IMPORT_CHUNK_TARGET,
   type IMPORT_LINK_CHUNK_ROUTE,
+  IMPORT_RUN_ROUTE,
+  IMPORT_RUN_TARGET,
   readImportChunkBinding,
+  readImportRunBinding,
 } from "./pending-action-contract";
 import { importRecordsSchema, linkImportBody } from "./schema";
 import {
@@ -323,4 +330,135 @@ async function executeApprovedChunk(
     updateResults: [],
     ...(committed.auditFailure ? { auditFailure: true } : {}),
   } as Awaited<ReturnType<typeof commitImportChunk>>;
+}
+
+// --- Run-level approval (P6 D2) ----------------------------------------------------------------
+
+/**
+ * Opens the run-level approval for an engine run that would write more than 50 records. Bound to the
+ * dry-run digest, the total record count and the mapping version; any change to any of them (a new
+ * dry run, a mapping edit) invalidates it (`engine/service.ts` marks the row `invalidated`).
+ */
+export const requestImportRunApproval: ImportRunApprovalRequest = async (
+  tx,
+  input,
+) => {
+  const result = await createPendingActionInTransaction(tx, {
+    requesterPersonId: input.requesterPersonId,
+    credentialType: input.credentialType,
+    credentialId: input.credentialId,
+    origin: input.origin,
+    action: "mcp_destructive",
+    routeKey: IMPORT_RUN_ROUTE,
+    targetType: IMPORT_RUN_TARGET,
+    targetIds: [input.runId],
+    actorId: input.actorId,
+    actorType: input.actorType,
+    actorIp: input.ip,
+    userAgent: input.userAgent,
+    importRun: {
+      runId: input.runId,
+      digest: input.digest,
+      totalCount: input.totalCount,
+      mappingVersion: input.mappingVersion,
+      writes: input.writes,
+    },
+  });
+  return {
+    pendingActionId: result.pendingActionId,
+    auditFailure: result.auditFailure,
+  };
+};
+
+/**
+ * Approval of a run-level request: the requester types the exact total record count and supplies a
+ * fresh step-up proof (same contract as an import chunk). Executing it only GRANTS the approval to the
+ * run, bound again to the digest, count and mapping version; the run is then started by the operator's
+ * `execute` call, or by the wizard.
+ */
+export async function approveImportRun(input: {
+  id: string;
+  requesterPersonId: string;
+  userId: string;
+  sessionId: string;
+  traceId: string;
+  typedCount?: string;
+  stepUpToken?: string;
+}) {
+  return approveClickDeletion<{ runId: string; totalCount: number }>(input, {
+    action: "mcp_destructive",
+    targetType: IMPORT_RUN_TARGET,
+    routeKey: IMPORT_RUN_ROUTE,
+    confirmation: ["typed_count_step_up"],
+    beforeLock: (tx) => lockInstanceAdminSerialization(tx),
+    confirm: async (tx, row) => {
+      const binding = readImportRunBinding(
+        row.targetVersions,
+        row.targetIds,
+        row.routeKey,
+      );
+      if (!binding)
+        throw new HTTPException(409, {
+          message: "pending_action_target_changed",
+        });
+      if (input.typedCount !== String(binding.totalCount))
+        throw new HTTPException(400, { message: "confirmation_mismatch" });
+      const proof = await consumePendingActionProof(tx, {
+        token: input.stepUpToken ?? "",
+        personId: input.requesterPersonId,
+        sessionId: input.sessionId,
+        userId: input.userId,
+        pendingActionId: row.id,
+      });
+      if (!proof) {
+        await appendPendingActionStepUpAudit(tx, {
+          action: "auth.step_up_denied",
+          actorId: input.userId,
+          personId: input.requesterPersonId,
+          pendingActionId: row.id,
+          traceId: input.traceId,
+        });
+        return {
+          supplied: {},
+          denied: input.stepUpToken
+            ? ("step_up_expired" as const)
+            : ("step_up_required" as const),
+        };
+      }
+      await appendPendingActionStepUpAudit(tx, {
+        action: "auth.step_up_consumed",
+        actorId: input.userId,
+        personId: input.requesterPersonId,
+        pendingActionId: row.id,
+        traceId: input.traceId,
+      });
+      return {
+        supplied: { typedCount: binding.totalCount, stepUp: true },
+        stepUpTokenId: proof.id,
+      };
+    },
+    summaryResult: (result) => ({
+      runId: result.runId,
+      totalCount: result.totalCount,
+    }),
+    execute: failOnExecutorError(async (tx, row) => {
+      const binding = readImportRunBinding(
+        row.targetVersions,
+        row.targetIds,
+        row.routeKey,
+      );
+      if (!binding || row.workspaceId === null || row.projectId === null)
+        throw new HTTPException(409, {
+          message: "pending_action_target_changed",
+        });
+      await grantRunApproval(tx, {
+        runId: binding.runId,
+        pendingActionId: row.id,
+        digest: binding.digest,
+        totalCount: binding.totalCount,
+        mappingVersion: binding.mappingVersion,
+      });
+      return { runId: binding.runId, totalCount: binding.totalCount };
+    }),
+  });
 }

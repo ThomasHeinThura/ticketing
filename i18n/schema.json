@@ -8297,13 +8297,17 @@
 						},
 						"settingsWorkspaceTab": {
 							"type": "string"
+						},
+						"settingsAccountTab": {
+							"type": "string"
 						}
 					},
 					"required": [
 						"projectsTitle",
 						"settingsTitle",
 						"backToWorkspace",
-						"settingsWorkspaceTab"
+						"settingsWorkspaceTab",
+						"settingsAccountTab"
 					]
 				},
 				"projectSettings": {

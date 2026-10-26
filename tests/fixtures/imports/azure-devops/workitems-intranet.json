@@ -1,0 +1,264 @@
+{
+	"count": 6,
+	"value": [
+		{
+			"id": 4129,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4129,
+				"System.TeamProject": "Intranet",
+				"System.WorkItemType": "Epic",
+				"System.Title": "Intranet refresh",
+				"System.State": "Doing",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Intranet",
+				"System.IterationPath": "Intranet\\Q1",
+				"System.CreatedDate": "2025-11-24T15:43:00.000Z",
+				"System.ChangedDate": "2025-10-15T08:03:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 2,
+				"System.Description": "<p>Intranet refresh &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4141",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4153",
+					"attributes": {
+						"name": "Child"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4129"
+		},
+		{
+			"id": 4141,
+			"rev": 3,
+			"fields": {
+				"System.Id": 4141,
+				"System.TeamProject": "Intranet",
+				"System.WorkItemType": "Issue",
+				"System.Title": "News feed layout broken on tablets",
+				"System.State": "Doing",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Intranet",
+				"System.IterationPath": "Intranet\\Q1",
+				"System.CreatedDate": "2025-10-07T09:07:00.000Z",
+				"System.ChangedDate": "2025-10-27T11:27:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Rev": 3,
+				"System.AssignedTo": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Tags": "layout",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"System.Description": "<p>News feed layout broken on tablets &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4129",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4177",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4189",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/0000713b-1111-4222-8333-00000000d249",
+					"attributes": {
+						"name": "checkout-flow.png",
+						"resourceSize": 30423,
+						"resourceCreatedDate": "2025-10-09T11:21:00.000Z",
+						"comment": ""
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4141"
+		},
+		{
+			"id": 4153,
+			"rev": 1,
+			"fields": {
+				"System.Id": 4153,
+				"System.TeamProject": "Intranet",
+				"System.WorkItemType": "Issue",
+				"System.Title": "Search returns archived pages",
+				"System.State": "To Do",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Intranet",
+				"System.IterationPath": "Intranet\\Q1",
+				"System.CreatedDate": "2025-10-19T12:31:00.000Z",
+				"System.ChangedDate": "2025-11-08T14:51:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Project Collection Build Service (contoso)",
+					"uniqueName": "Build\\a1b2c3d4"
+				},
+				"System.Rev": 1,
+				"System.Tags": "search",
+				"Microsoft.VSTS.Common.Priority": 3,
+				"System.Description": "<p>Search returns archived pages &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4129",
+					"attributes": {
+						"name": "Parent"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4153"
+		},
+		{
+			"id": 4165,
+			"rev": 3,
+			"fields": {
+				"System.Id": 4165,
+				"System.TeamProject": "Intranet",
+				"System.WorkItemType": "Issue",
+				"System.Title": "Broken link in footer",
+				"System.State": "Done",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Intranet",
+				"System.IterationPath": "Intranet\\Q1",
+				"System.CreatedDate": "2025-10-31T15:55:00.000Z",
+				"System.ChangedDate": "2025-11-20T08:15:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"System.Rev": 3,
+				"System.AssignedTo": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 4,
+				"Microsoft.VSTS.Common.ClosedDate": "2025-11-15T12:40:00.000Z",
+				"Microsoft.VSTS.Scheduling.TargetDate": "2025-11-30T09:25:00.000Z",
+				"System.Description": "<div><b>Context</b></div><ul><li>Requested by support</li><li>Seen by 8 customers</li></ul><p>See <a href=\"https://wiki.contoso.example/x/4165\">the wiki page</a>.</p>"
+			},
+			"relations": [
+				{
+					"rel": "ArtifactLink",
+					"url": "vstfs:///Git/Commit/aaaa%2fbbbb%2f4165",
+					"attributes": {
+						"name": "Fixed in Commit"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4165"
+		},
+		{
+			"id": 4177,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4177,
+				"System.TeamProject": "Intranet",
+				"System.WorkItemType": "Task",
+				"System.Title": "Rework news card grid",
+				"System.State": "Doing",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Intranet",
+				"System.IterationPath": "Intranet\\Q1",
+				"System.CreatedDate": "2025-11-12T09:19:00.000Z",
+				"System.ChangedDate": "2025-12-02T11:39:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 4,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 4,
+				"System.Description": "<p>Rework news card grid &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4141",
+					"attributes": {
+						"name": "Parent"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4177"
+		},
+		{
+			"id": 4189,
+			"rev": 1,
+			"fields": {
+				"System.Id": 4189,
+				"System.TeamProject": "Intranet",
+				"System.WorkItemType": "Task",
+				"System.Title": "Add tablet breakpoint tests",
+				"System.State": "To Do",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Intranet",
+				"System.IterationPath": "Intranet\\Q1",
+				"System.CreatedDate": "2025-11-24T12:43:00.000Z",
+				"System.ChangedDate": "2025-10-15T14:03:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Rev": 1,
+				"System.AssignedTo": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 4,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 4,
+				"System.Description": "<p>Add tablet breakpoint tests &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4141",
+					"attributes": {
+						"name": "Parent"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4189"
+		}
+	]
+}

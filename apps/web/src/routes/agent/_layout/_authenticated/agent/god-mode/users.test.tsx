@@ -123,6 +123,19 @@ async function flushActionContextEffect() {
   });
 }
 
+describe("God Mode Users table", () => {
+  afterEach(() => cleanup());
+
+  it("shows a status badge for an ordinary active account and titles truncated cells", () => {
+    mocks.search = {};
+    render(<Harness />);
+    expect(
+      screen.getAllByText("instanceUsers:dynamic.personActive").length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByTitle("a@example.test").length).toBeGreaterThan(0);
+  });
+});
+
 describe("God Mode Users action context", () => {
   afterEach(() => cleanup());
 

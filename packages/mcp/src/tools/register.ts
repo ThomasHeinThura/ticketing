@@ -172,6 +172,113 @@ const importItemSchema = z
   })
   .strict();
 
+// Record schema v2 (P6): every member below is optional, so a v1 record parses exactly as before.
+// The shapes and caps mirror apps/api/src/imports/schema.ts; the API stays the authority.
+const noNul = (value: unknown) => !JSON.stringify(value)?.includes("\\u0000");
+const opaqueString = (max: number) =>
+  z
+    .string()
+    .min(1)
+    .max(max)
+    .refine((value) =>
+      [...value].every((character) => {
+        const code = character.codePointAt(0) ?? 0;
+        return code >= 32 && code !== 127;
+      }),
+    );
+const importSourceEmail = z.string().email().max(320);
+const importPersonName = z
+  .string()
+  .min(1)
+  .max(200)
+  .refine((value) => !value.includes("\u0000"));
+const importHttpsUrl = z
+  .string()
+  .url()
+  .max(2048)
+  .refine((value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password;
+    } catch {
+      return false;
+    }
+  });
+const importSourceRefSchema = z
+  .object({ sourceType: opaqueString(80), sourceId: opaqueString(512) })
+  .strict();
+const importCommentSchema = z
+  .object({
+    sourceId: opaqueString(512),
+    authorEmail: importSourceEmail.optional(),
+    authorName: importPersonName.optional(),
+    createdAt: isoDateTimeSchema.optional(),
+    updatedAt: isoDateTimeSchema.optional(),
+    visibility: z.enum(["public", "internal"]).optional(),
+    body: z.union([
+      z
+        .string()
+        .min(1)
+        .max(100_000)
+        .refine((value) => !value.includes("\u0000")),
+      z
+        .object({ type: z.literal("doc") })
+        .passthrough()
+        .refine(noNul)
+        .refine((value) => JSON.stringify(value).length <= 256 * 1024),
+    ]),
+  })
+  .strict();
+const importAttachmentSchema = z
+  .object({
+    sourceId: opaqueString(512),
+    url: importHttpsUrl,
+    filename: z
+      .string()
+      .min(1)
+      .max(255)
+      .refine(
+        (value) =>
+          !value.includes("/") &&
+          !value.includes("\\") &&
+          [...value].every(
+            (character) => (character.codePointAt(0) ?? 0) >= 32,
+          ),
+      ),
+    mimeType: z.string().min(1).max(200).optional(),
+    size: z.number().int().nonnegative().safe().optional(),
+    authorEmail: importSourceEmail.optional(),
+    authorName: importPersonName.optional(),
+    createdAt: isoDateTimeSchema.optional(),
+  })
+  .strict();
+const importRelationSchema = z
+  .object({
+    type: z.enum(["relates", "blocks", "duplicates", "precedes", "requires"]),
+    target: importSourceRefSchema,
+  })
+  .strict();
+const importHistoryValue = z.union([
+  z.string().max(2000),
+  z.number().finite(),
+  z.boolean(),
+  z.null(),
+]);
+const importHistorySchema = z
+  .object({
+    sourceId: opaqueString(512),
+    at: isoDateTimeSchema,
+    authorEmail: importSourceEmail.optional(),
+    authorName: importPersonName.optional(),
+    field: opaqueString(120),
+    from: importHistoryValue.optional(),
+    to: importHistoryValue.optional(),
+  })
+  .strict();
+const importCustomFieldSchema = z
+  .object({ key: opaqueString(120), value: z.unknown().refine(noNul) })
+  .strict();
+
 const importRecordSchema = z
   .object({
     sourceType: nonEmptyString.max(80),
@@ -194,7 +301,18 @@ const importRecordSchema = z
       .regex(/^[a-f0-9]{64}$/u)
       .optional(),
     sourceCreatedAt: isoDateTimeSchema.optional(),
+    sourceUpdatedAt: isoDateTimeSchema.optional(),
+    sourceResolvedAt: isoDateTimeSchema.optional(),
     sourceAuthorEmail: z.string().email().max(320).optional(),
+    sourceAuthorName: importPersonName.optional(),
+    assigneeEmail: importSourceEmail.optional(),
+    stateId: opaqueString(128).optional(),
+    parent: importSourceRefSchema.optional(),
+    comments: z.array(importCommentSchema).max(500).optional(),
+    attachments: z.array(importAttachmentSchema).max(100).optional(),
+    relations: z.array(importRelationSchema).max(200).optional(),
+    customFields: z.array(importCustomFieldSchema).max(100).optional(),
+    history: z.array(importHistorySchema).max(1000).optional(),
     item: importItemSchema,
   })
   .strict();
@@ -679,7 +797,7 @@ export function registerTools(
   registerTool(
     "bulk_create_work_items",
     {
-      description: `Create work items through the canonical import run and chunk API (POST /api/imports, /dry-run, then /records; needs instance:admin and project work_item:create). ${IMPORT_WRITE_NOTICE} This tool has two explicit actions. First call action "preview" with workspaceId, projectId, sourceRef, and records. Review the row outcomes. To write, call action "execute" with the returned runId, chunkId, runVersion as expectedVersion, previewDigest, and the exact same records. Each POST has a deterministic idempotency key derived from your required idempotencyKey. A chunk holds at most 500 records. More than 50 records returns a pending human approval request; this tool cannot approve it and has no confirm flag. Unsupported source authorship/timestamps are reported as rejected rows.`,
+      description: `Create work items through the canonical import run and chunk API (POST /api/imports, /dry-run, then /records; needs instance:admin and project work_item:create). ${IMPORT_WRITE_NOTICE} This tool has two explicit actions. First call action "preview" with workspaceId, projectId, sourceRef, and records. Review the row outcomes. To write, call action "execute" with the returned runId, chunkId, runVersion as expectedVersion, previewDigest, and the exact same records. Each POST has a deterministic idempotency key derived from your required idempotencyKey. A chunk holds at most 500 records. More than 50 records returns a pending human approval request; this tool cannot approve it and has no confirm flag. Record schema v2 members (comments, attachments, relations, custom fields, history, parent, state, authorship and source timestamps) are optional; a record without them behaves exactly as before, and anything the writer cannot persist is reported as a loss.`,
       inputSchema: z.discriminatedUnion("action", [
         bulkPreviewSchema,
         bulkExecuteSchema,

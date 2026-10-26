@@ -179,9 +179,14 @@ import {
   workspaceUserTable,
 } from "./schema";
 import {
+  cutoverRehearsalTable,
+  importReconciliationTable,
+} from "./schema-import-reconciliation";
+import {
   importChunkTable,
   importMappingProfileTable,
   importPlaceholderClaimTable,
+  importProvenanceTable,
   importRecordLinkTable,
   importRunTable,
 } from "./schema-imports";
@@ -239,10 +244,13 @@ export const schema = {
   invitationTable,
   customerInvitationAuthContinuationTable,
   importRunTable,
+  importReconciliationTable,
+  cutoverRehearsalTable,
   importMappingProfileTable,
   importRecordLinkTable,
   importChunkTable,
   importPlaceholderClaimTable,
+  importProvenanceTable,
   jobLeaseTable,
   labelTable,
   workItemLabelTable,

@@ -1,0 +1,29 @@
+{
+	"count": 4,
+	"value": [
+		{
+			"id": "7d1f0c2e-0000-4000-8000-000000000001",
+			"name": "Contoso Web",
+			"state": "wellFormed",
+			"visibility": "private"
+		},
+		{
+			"id": "7d1f0c2e-0000-4000-8000-000000000002",
+			"name": "Platform Ops",
+			"state": "wellFormed",
+			"visibility": "private"
+		},
+		{
+			"id": "7d1f0c2e-0000-4000-8000-000000000003",
+			"name": "Legacy ERP",
+			"state": "wellFormed",
+			"visibility": "private"
+		},
+		{
+			"id": "7d1f0c2e-0000-4000-8000-000000000004",
+			"name": "Intranet",
+			"state": "wellFormed",
+			"visibility": "private"
+		}
+	]
+}

@@ -7,11 +7,6 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   Timeline,
   TimelineContent,
@@ -42,6 +37,7 @@ import CommentEditor, {
   type CommentContentSnapshot,
 } from "@/components/activity/comment-editor";
 import CommentVersionHistory from "@/components/activity/comment-version-history";
+import { PickerPopover } from "@/components/common/picker-popover";
 import { listWorkItemAttachments } from "@/fetchers/attachment/work-item-attachments";
 import { enqueueWorkItemUploads } from "@/fetchers/attachment/work-item-upload-queue";
 import getCommentMentionCandidates from "@/fetchers/work-item/get-comment-mention-candidates";
@@ -442,33 +438,17 @@ function WorkItemActivity({
         <h2 id="work-item-activity-heading" className="font-medium text-lg">
           {t("activity:timeline.heading")}
         </h2>
-        <Select
-          items={[
+        <PickerPopover
+          ariaLabel={t("activity:timeline.filterLabel")}
+          className="w-44"
+          options={[
             { value: "everything", label: t("activity:timeline.everything") },
             { value: "comments", label: t("activity:timeline.comments") },
             { value: "public", label: t("activity:timeline.publicOnly") },
           ]}
           value={filter}
-          onValueChange={(value) => onFilterChange(value as ActivityFilter)}
-        >
-          <SelectTrigger
-            aria-label={t("activity:timeline.filterLabel")}
-            className="w-44"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="everything">
-              {t("activity:timeline.everything")}
-            </SelectItem>
-            <SelectItem value="comments">
-              {t("activity:timeline.comments")}
-            </SelectItem>
-            <SelectItem value="public">
-              {t("activity:timeline.publicOnly")}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+          onChange={(value) => onFilterChange(value as ActivityFilter)}
+        />
       </div>
 
       {!readOnly ? (

@@ -1,0 +1,520 @@
+{
+	"22000001-aaaa-4bbb-8ccc-000000000977": [
+		{
+			"id": "c0000010-aaaa-4bbb-8ccc-000000009770",
+			"issue": "22000001-aaaa-4bbb-8ccc-000000000977",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "In Progress",
+			"verb": "updated",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-09-06T12:55:00.000Z"
+		},
+		{
+			"id": "c0000011-aaaa-4bbb-8ccc-000000010747",
+			"issue": "22000001-aaaa-4bbb-8ccc-000000000977",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "high",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-09-07T13:06:00.000Z"
+		},
+		{
+			"id": "c0000012-aaaa-4bbb-8ccc-000000011724",
+			"issue": "22000001-aaaa-4bbb-8ccc-000000000977",
+			"field": "name",
+			"old_value": "Untitled",
+			"new_value": "Rate limit public API",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-09-08T14:17:00.000Z"
+		}
+	],
+	"22000002-aaaa-4bbb-8ccc-000000001954": [
+		{
+			"id": "c0000020-aaaa-4bbb-8ccc-000000019540",
+			"issue": "22000002-aaaa-4bbb-8ccc-000000001954",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "In Review",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-09-07T13:06:00.000Z"
+		},
+		{
+			"id": "c0000021-aaaa-4bbb-8ccc-000000020517",
+			"issue": "22000002-aaaa-4bbb-8ccc-000000001954",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "high",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-09-08T14:17:00.000Z"
+		},
+		{
+			"id": "c0000022-aaaa-4bbb-8ccc-000000021494",
+			"issue": "22000002-aaaa-4bbb-8ccc-000000001954",
+			"field": "name",
+			"old_value": "Untitled",
+			"new_value": "Token bucket middleware",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-09T15:28:00.000Z"
+		}
+	],
+	"22000003-aaaa-4bbb-8ccc-000000002931": [
+		{
+			"id": "c0000030-aaaa-4bbb-8ccc-000000029310",
+			"issue": "22000003-aaaa-4bbb-8ccc-000000002931",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Todo",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-09-08T14:17:00.000Z"
+		}
+	],
+	"22000004-aaaa-4bbb-8ccc-000000003908": [
+		{
+			"id": "c0000040-aaaa-4bbb-8ccc-000000039080",
+			"issue": "22000004-aaaa-4bbb-8ccc-000000003908",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Done",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-09T15:28:00.000Z"
+		},
+		{
+			"id": "c0000041-aaaa-4bbb-8ccc-000000040057",
+			"issue": "22000004-aaaa-4bbb-8ccc-000000003908",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "urgent",
+			"verb": "updated",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-09-10T16:39:00.000Z"
+		},
+		{
+			"id": "c0000042-aaaa-4bbb-8ccc-000000041034",
+			"issue": "22000004-aaaa-4bbb-8ccc-000000003908",
+			"field": "name",
+			"old_value": "Untitled",
+			"new_value": "Dashboard widgets crash on empty data",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-09-11T07:50:00.000Z"
+		},
+		{
+			"id": "c0000043-aaaa-4bbb-8ccc-000000042011",
+			"issue": "22000004-aaaa-4bbb-8ccc-000000003908",
+			"field": "description",
+			"old_value": "",
+			"new_value": "Dashboard widgets crash on empty data",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-09-12T08:01:00.000Z"
+		}
+	],
+	"22000005-aaaa-4bbb-8ccc-000000004885": [
+		{
+			"id": "c0000050-aaaa-4bbb-8ccc-000000048850",
+			"issue": "22000005-aaaa-4bbb-8ccc-000000004885",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Done",
+			"verb": "updated",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-09-10T16:39:00.000Z"
+		},
+		{
+			"id": "c0000051-aaaa-4bbb-8ccc-000000049827",
+			"issue": "22000005-aaaa-4bbb-8ccc-000000004885",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "medium",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-09-11T07:50:00.000Z"
+		}
+	],
+	"22000007-aaaa-4bbb-8ccc-000000006839": [
+		{
+			"id": "c0000070-aaaa-4bbb-8ccc-000000068390",
+			"issue": "22000007-aaaa-4bbb-8ccc-000000006839",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "In Progress",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-09-12T08:01:00.000Z"
+		},
+		{
+			"id": "c0000071-aaaa-4bbb-8ccc-000000069367",
+			"issue": "22000007-aaaa-4bbb-8ccc-000000006839",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "medium",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-13T09:12:00.000Z"
+		}
+	],
+	"22000008-aaaa-4bbb-8ccc-000000007816": [
+		{
+			"id": "c0000080-aaaa-4bbb-8ccc-000000078160",
+			"issue": "22000008-aaaa-4bbb-8ccc-000000007816",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Cancelled",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-13T09:12:00.000Z"
+		},
+		{
+			"id": "c0000081-aaaa-4bbb-8ccc-000000079137",
+			"issue": "22000008-aaaa-4bbb-8ccc-000000007816",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "low",
+			"verb": "updated",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-09-14T10:23:00.000Z"
+		}
+	],
+	"22000011-aaaa-4bbb-8ccc-000000010747": [
+		{
+			"id": "c0000110-aaaa-4bbb-8ccc-000000107470",
+			"issue": "22000011-aaaa-4bbb-8ccc-000000010747",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Won't Fix",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-09-16T12:45:00.000Z"
+		}
+	],
+	"22000012-aaaa-4bbb-8ccc-000000011724": [
+		{
+			"id": "c0000120-aaaa-4bbb-8ccc-000000117240",
+			"issue": "22000012-aaaa-4bbb-8ccc-000000011724",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Done",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-17T13:56:00.000Z"
+		},
+		{
+			"id": "c0000121-aaaa-4bbb-8ccc-000000118217",
+			"issue": "22000012-aaaa-4bbb-8ccc-000000011724",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "medium",
+			"verb": "updated",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-09-18T14:07:00.000Z"
+		},
+		{
+			"id": "c0000122-aaaa-4bbb-8ccc-000000119194",
+			"issue": "22000012-aaaa-4bbb-8ccc-000000011724",
+			"field": "name",
+			"old_value": "Untitled",
+			"new_value": "Audit log retention setting",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-09-19T15:18:00.000Z"
+		}
+	],
+	"22000013-aaaa-4bbb-8ccc-000000012701": [
+		{
+			"id": "c0000130-aaaa-4bbb-8ccc-000000127010",
+			"issue": "22000013-aaaa-4bbb-8ccc-000000012701",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "In Review",
+			"verb": "updated",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-09-18T14:07:00.000Z"
+		},
+		{
+			"id": "c0000131-aaaa-4bbb-8ccc-000000127987",
+			"issue": "22000013-aaaa-4bbb-8ccc-000000012701",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "high",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-09-19T15:18:00.000Z"
+		}
+	],
+	"22000016-aaaa-4bbb-8ccc-000000015632": [
+		{
+			"id": "c0000160-aaaa-4bbb-8ccc-000000156320",
+			"issue": "22000016-aaaa-4bbb-8ccc-000000015632",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Done",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-21T07:40:00.000Z"
+		}
+	],
+	"22000017-aaaa-4bbb-8ccc-000000016609": [
+		{
+			"id": "c0000170-aaaa-4bbb-8ccc-000000166090",
+			"issue": "22000017-aaaa-4bbb-8ccc-000000016609",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "In Progress",
+			"verb": "updated",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-09-22T08:51:00.000Z"
+		},
+		{
+			"id": "c0000171-aaaa-4bbb-8ccc-000000167067",
+			"issue": "22000017-aaaa-4bbb-8ccc-000000016609",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "urgent",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-09-23T09:02:00.000Z"
+		},
+		{
+			"id": "c0000172-aaaa-4bbb-8ccc-000000168044",
+			"issue": "22000017-aaaa-4bbb-8ccc-000000016609",
+			"field": "name",
+			"old_value": "Untitled",
+			"new_value": "Stale session after password reset",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-09-24T10:13:00.000Z"
+		}
+	],
+	"22000019-aaaa-4bbb-8ccc-000000018563": [
+		{
+			"id": "c0000190-aaaa-4bbb-8ccc-000000185630",
+			"issue": "22000019-aaaa-4bbb-8ccc-000000018563",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Doing",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-09-24T10:13:00.000Z"
+		},
+		{
+			"id": "c0000191-aaaa-4bbb-8ccc-000000186607",
+			"issue": "22000019-aaaa-4bbb-8ccc-000000018563",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "urgent",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-25T11:24:00.000Z"
+		}
+	],
+	"22000020-aaaa-4bbb-8ccc-000000019540": [
+		{
+			"id": "c0000200-aaaa-4bbb-8ccc-000000195400",
+			"issue": "22000020-aaaa-4bbb-8ccc-000000019540",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Todo",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-25T11:24:00.000Z"
+		}
+	],
+	"22000022-aaaa-4bbb-8ccc-000000021494": [
+		{
+			"id": "c0000220-aaaa-4bbb-8ccc-000000214940",
+			"issue": "22000022-aaaa-4bbb-8ccc-000000021494",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Done",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-09-27T13:46:00.000Z"
+		},
+		{
+			"id": "c0000221-aaaa-4bbb-8ccc-000000215917",
+			"issue": "22000022-aaaa-4bbb-8ccc-000000021494",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "high",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-09-28T14:57:00.000Z"
+		},
+		{
+			"id": "c0000222-aaaa-4bbb-8ccc-000000216894",
+			"issue": "22000022-aaaa-4bbb-8ccc-000000021494",
+			"field": "name",
+			"old_value": "Untitled",
+			"new_value": "Patch bastion hosts",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-29T15:08:00.000Z"
+		}
+	],
+	"22000023-aaaa-4bbb-8ccc-000000022471": [
+		{
+			"id": "c0000230-aaaa-4bbb-8ccc-000000224710",
+			"issue": "22000023-aaaa-4bbb-8ccc-000000022471",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Cancelled",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-09-28T14:57:00.000Z"
+		}
+	],
+	"22000024-aaaa-4bbb-8ccc-000000023448": [
+		{
+			"id": "c0000240-aaaa-4bbb-8ccc-000000234480",
+			"issue": "22000024-aaaa-4bbb-8ccc-000000023448",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Doing",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-29T15:08:00.000Z"
+		},
+		{
+			"id": "c0000241-aaaa-4bbb-8ccc-000000235457",
+			"issue": "22000024-aaaa-4bbb-8ccc-000000023448",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "medium",
+			"verb": "updated",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-09-30T16:19:00.000Z"
+		}
+	],
+	"22000025-aaaa-4bbb-8ccc-000000024425": [
+		{
+			"id": "c0000250-aaaa-4bbb-8ccc-000000244250",
+			"issue": "22000025-aaaa-4bbb-8ccc-000000024425",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Done",
+			"verb": "updated",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-09-30T16:19:00.000Z"
+		}
+	],
+	"22000028-aaaa-4bbb-8ccc-000000027356": [
+		{
+			"id": "c0000280-aaaa-4bbb-8ccc-000000273560",
+			"issue": "22000028-aaaa-4bbb-8ccc-000000027356",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Done",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-10-03T09:52:00.000Z"
+		}
+	],
+	"22000029-aaaa-4bbb-8ccc-000000028333": [
+		{
+			"id": "c0000290-aaaa-4bbb-8ccc-000000283330",
+			"issue": "22000029-aaaa-4bbb-8ccc-000000028333",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "In Progress",
+			"verb": "updated",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-10-04T10:03:00.000Z"
+		},
+		{
+			"id": "c0000291-aaaa-4bbb-8ccc-000000284307",
+			"issue": "22000029-aaaa-4bbb-8ccc-000000028333",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "high",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-10-05T11:14:00.000Z"
+		}
+	],
+	"22000030-aaaa-4bbb-8ccc-000000029310": [
+		{
+			"id": "c0000300-aaaa-4bbb-8ccc-000000293100",
+			"issue": "22000030-aaaa-4bbb-8ccc-000000029310",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Published",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-10-05T11:14:00.000Z"
+		},
+		{
+			"id": "c0000301-aaaa-4bbb-8ccc-000000294077",
+			"issue": "22000030-aaaa-4bbb-8ccc-000000029310",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "medium",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-10-06T12:25:00.000Z"
+		},
+		{
+			"id": "c0000302-aaaa-4bbb-8ccc-000000295054",
+			"issue": "22000030-aaaa-4bbb-8ccc-000000029310",
+			"field": "name",
+			"old_value": "Untitled",
+			"new_value": "Landing page copy",
+			"verb": "updated",
+			"actor": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-10-07T13:36:00.000Z"
+		}
+	],
+	"22000031-aaaa-4bbb-8ccc-000000030287": [
+		{
+			"id": "c0000310-aaaa-4bbb-8ccc-000000302870",
+			"issue": "22000031-aaaa-4bbb-8ccc-000000030287",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Dropped",
+			"verb": "updated",
+			"actor": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-10-06T12:25:00.000Z"
+		}
+	],
+	"22000033-aaaa-4bbb-8ccc-000000032241": [
+		{
+			"id": "c0000330-aaaa-4bbb-8ccc-000000322410",
+			"issue": "22000033-aaaa-4bbb-8ccc-000000032241",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "Published",
+			"verb": "updated",
+			"actor": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-10-08T14:47:00.000Z"
+		},
+		{
+			"id": "c0000331-aaaa-4bbb-8ccc-000000323387",
+			"issue": "22000033-aaaa-4bbb-8ccc-000000032241",
+			"field": "priority",
+			"old_value": "none",
+			"new_value": "urgent",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-10-09T15:58:00.000Z"
+		}
+	],
+	"22000034-aaaa-4bbb-8ccc-000000033218": [
+		{
+			"id": "c0000340-aaaa-4bbb-8ccc-000000332180",
+			"issue": "22000034-aaaa-4bbb-8ccc-000000033218",
+			"field": "state",
+			"old_value": "Todo",
+			"new_value": "In Progress",
+			"verb": "updated",
+			"actor": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-10-09T15:58:00.000Z"
+		}
+	]
+}

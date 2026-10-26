@@ -13,11 +13,6 @@ import {
   MenuItem,
   MenuPopup,
   MenuTrigger,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Table,
   TableBody,
   TableCell,
@@ -34,6 +29,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import useCancelInvitation from "@/hooks/mutations/workspace-user/use-cancel-invitation";
 import useDeleteWorkspaceUser from "@/hooks/mutations/workspace-user/use-delete-workspace-user";
 import useUpdateWorkspaceUserRole from "@/hooks/mutations/workspace-user/use-update-workspace-user-role";
@@ -266,43 +262,44 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                       {t("team:roles.owner", { defaultValue: "Owner" })}
                     </Badge>
                   ) : showRoleSelect ? (
-                    <Select
+                    <PickerPopover
                       value={member.role}
-                      onValueChange={(value) => {
-                        if (typeof value === "string" && value) {
-                          handleChangeRole(member, value);
-                        }
+                      onChange={(value) => {
+                        if (value) handleChangeRole(member, value);
                       }}
-                    >
-                      <SelectTrigger size="sm" className="h-8 w-32">
-                        <SelectValue>
-                          {t(`team:roles.${member.role}`, {
-                            defaultValue: capitalize(member.role),
-                          })}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="viewer">
-                          {t("team:roles.viewer", { defaultValue: "Viewer" })}
-                        </SelectItem>
-                        <SelectItem value="member">
-                          {t("team:roles.member", { defaultValue: "Member" })}
-                        </SelectItem>
-                        <SelectItem value="admin">
-                          {t("team:roles.admin", { defaultValue: "Admin" })}
-                        </SelectItem>
-                        {/* Owner is intentionally NOT offered here: ownership
-                            moves only through the dedicated transfer-ownership
-                            flow in workspace settings, never through this
-                            per-row role picker -- and the server enforces the
-                            same rule (see update-workspace-member-role.ts). */}
-                        {customRoles.map((r) => (
-                          <SelectItem key={r.id} value={r.role}>
-                            {r.name || capitalize(r.role)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      ariaLabel={t(`team:roles.${member.role}`, {
+                        defaultValue: capitalize(member.role),
+                      })}
+                      className="h-8 w-32"
+                      options={[
+                        {
+                          value: "viewer",
+                          label: t("team:roles.viewer", {
+                            defaultValue: "Viewer",
+                          }),
+                        },
+                        {
+                          value: "member",
+                          label: t("team:roles.member", {
+                            defaultValue: "Member",
+                          }),
+                        },
+                        {
+                          value: "admin",
+                          label: t("team:roles.admin", {
+                            defaultValue: "Admin",
+                          }),
+                        },
+                        // Owner is intentionally NOT offered here: ownership moves only
+                        // through the dedicated transfer-ownership flow in workspace
+                        // settings, and the server enforces the same rule
+                        // (see update-workspace-member-role.ts).
+                        ...customRoles.map((r) => ({
+                          value: r.role,
+                          label: r.name || capitalize(r.role),
+                        })),
+                      ]}
+                    />
                   ) : (
                     <Badge variant="secondary" className="capitalize">
                       {t(`team:roles.${member.role}`, {

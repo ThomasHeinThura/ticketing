@@ -199,7 +199,7 @@ export function NavMain() {
   ];
   const settingsItems = [
     {
-      title: t("settings:account"),
+      title: t("navigation:page.settingsAccountTab"),
       url: "/dashboard/settings/account/information",
       isActive:
         path.startsWith("/dashboard/settings/account") ||

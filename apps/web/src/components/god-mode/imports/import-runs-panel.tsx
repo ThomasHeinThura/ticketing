@@ -34,7 +34,10 @@ import {
 import getWorkspaces from "@/fetchers/workspace/get-workspaces";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
+import type { ImportWizardStep } from "@/lib/routes";
 import { ImportRunCreateDialog } from "./import-run-create-dialog";
+import { ConnectStep } from "./wizard/connect-step";
+import { pluginLabelKey } from "./wizard/wizard-model";
 
 function stateVariant(state: ImportRunState) {
   if (state === "completed") return "success" as const;
@@ -47,10 +50,21 @@ export function ImportRunsPanel({
   workspaceId,
   onWorkspaceChange,
   onOpenRun,
+  step,
+  onNewImport,
+  onCloseWizard,
 }: {
   workspaceId?: string;
   onWorkspaceChange: (workspaceId: string) => void;
-  onOpenRun: (runId: string, workspaceId: string) => void;
+  onOpenRun: (
+    runId: string,
+    workspaceId: string,
+    step?: ImportWizardStep,
+  ) => void;
+  /** `connect` shows the import wizard's first step instead of the history. */
+  step?: ImportWizardStep;
+  onNewImport?: () => void;
+  onCloseWizard?: () => void;
 }) {
   const { t } = useTranslation("godModeImports");
   const [createOpen, setCreateOpen] = useState(false);
@@ -101,6 +115,17 @@ export function ImportRunsPanel({
     );
 
   const entries = runs.data?.pages.flatMap((page) => page.runs) ?? [];
+  if (step === "connect" && selectedWorkspaceId)
+    return (
+      <div className="min-w-0 space-y-4">
+        <h2 className="text-lg font-semibold">{t("wizard.newTitle")}</h2>
+        <ConnectStep
+          workspaceId={selectedWorkspaceId}
+          onCancel={() => onCloseWizard?.()}
+          onCreated={(run) => onOpenRun(run.id, run.workspaceId, "discover")}
+        />
+      </div>
+    );
   return (
     <div className="min-w-0 space-y-4">
       <h2 className="text-lg font-semibold">{t("historyTitle")}</h2>
@@ -135,8 +160,18 @@ export function ImportRunsPanel({
           >
             {t("refresh")}
           </Button>
+          {onNewImport ? (
+            <Button
+              size="sm"
+              disabled={availableWorkspaces.length === 0}
+              onClick={onNewImport}
+            >
+              {t("wizard.newImport")}
+            </Button>
+          ) : null}
           <Button
             size="sm"
+            variant={onNewImport ? "outline" : "default"}
             disabled={availableWorkspaces.length === 0}
             onClick={() => setCreateOpen(true)}
           >
@@ -177,10 +212,11 @@ export function ImportRunsPanel({
         </Empty>
       ) : (
         <Frame className="min-w-0 overflow-x-auto">
-          <Table className="min-w-[780px]">
+          <Table className="min-w-[860px]">
             <TableHeader>
               <TableRow>
                 <TableHead>{t("sourceRef")}</TableHead>
+                <TableHead>{t("plugin")}</TableHead>
                 <TableHead>{t("state")}</TableHead>
                 <TableHead>{t("stats")}</TableHead>
                 <TableHead>{t("lastCommittedChunk")}</TableHead>
@@ -239,6 +275,9 @@ function RunRow({ run, onOpen }: { run: ImportRun; onOpen: () => void }) {
       <TableCell className="max-w-64 break-all">
         <span className="font-medium">{run.sourceRef}</span>
         <p className="text-muted-foreground mt-1 text-xs">{run.id}</p>
+      </TableCell>
+      <TableCell>
+        {t(`wizard.plugins.${pluginLabelKey(run.pluginId)}`)}
       </TableCell>
       <TableCell>
         <Badge variant={stateVariant(run.state)}>

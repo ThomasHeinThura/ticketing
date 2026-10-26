@@ -31,7 +31,10 @@ import {
   IMPORT_CHUNK_ROUTE,
   IMPORT_CHUNK_TARGET,
   IMPORT_LINK_CHUNK_ROUTE,
+  IMPORT_RUN_ROUTE,
+  IMPORT_RUN_TARGET,
   readImportChunkBinding,
+  readImportRunBinding,
 } from "../imports/pending-action-contract";
 import {
   HARD_PURGE_TARGET_TYPES,
@@ -195,6 +198,19 @@ export async function evaluateActionRequiredAccess(
       input.routeKey === IMPORT_LINK_CHUNK_ROUTE)
   )
     return evaluateImportChunkAccess(
+      tx,
+      input,
+      identity,
+      capabilityPolicy,
+      options.readOnly === true,
+    );
+
+  if (
+    input.action === "mcp_destructive" &&
+    input.targetType === IMPORT_RUN_TARGET &&
+    input.routeKey === IMPORT_RUN_ROUTE
+  )
+    return evaluateImportRunAccess(
       tx,
       input,
       identity,
@@ -372,6 +388,21 @@ async function evaluateImportChunkAccess(
   ).limit(1);
   if (!chunk || chunk.report.operation !== binding.binding.operation)
     return { allowed: false, failure: "target_version", status: 409 };
+  return evaluateImportProjectAccess(
+    tx,
+    identity,
+    { workspaceId: run.workspaceId, projectId: run.projectId },
+    input.organisationId,
+  );
+}
+
+/** Project existence, reach and `work_item:create` for the project an import run writes into. */
+async function evaluateImportProjectAccess(
+  tx: PendingActionTransaction,
+  identity: ResolvedIdentity,
+  run: { workspaceId: string; projectId: string },
+  expectedOrganisationId: string | null,
+): Promise<RequiredAccessDecision> {
   const [project] = await tx
     .select({
       id: projectTable.id,
@@ -392,7 +423,7 @@ async function evaluateImportChunkAccess(
     !project ||
     project.archivedAt ||
     project.deletedAt ||
-    project.organisationId !== input.organisationId
+    project.organisationId !== expectedOrganisationId
   )
     return { allowed: false, failure: "reach", status: 404 };
 
@@ -426,6 +457,83 @@ async function evaluateImportChunkAccess(
   if (!can(identity, "work_item:create", "project", target))
     return { allowed: false, failure: "capability", status: 403 };
   return { allowed: true };
+}
+
+async function evaluateImportRunAccess(
+  tx: PendingActionTransaction,
+  input: ActionRequiredAccessInput,
+  identity: ResolvedIdentity,
+  capabilityPolicy: CapabilityPolicy | undefined,
+  readOnly: boolean,
+): Promise<RequiredAccessDecision> {
+  const binding = readImportRunBinding(
+    input.targetVersions,
+    input.targetIds,
+    input.routeKey,
+  );
+  if (
+    !binding ||
+    input.confirmationRequired !== "typed_count_step_up" ||
+    input.workspaceId === null ||
+    input.projectId === null ||
+    input.organisationId === undefined ||
+    !capabilityPolicy ||
+    capabilityPolicy.capability !== "instance:admin" ||
+    capabilityPolicy.scope !== "instance"
+  )
+    return { allowed: false, failure: "unsupported", status: 409 };
+
+  const routeDecision = evaluatePolicy(capabilityPolicy, {
+    identity,
+    target: {},
+    scope: instanceScope(),
+    inReach: NO_SINGLE_RESOURCE,
+  });
+  if (!routeDecision.allowed)
+    return {
+      allowed: false,
+      failure: routeDecision.status === 404 ? "reach" : "capability",
+      status: routeDecision.status,
+    };
+
+  const runQuery = tx
+    .select()
+    .from(schema.importRunTable)
+    .where(
+      and(
+        eq(schema.importRunTable.id, binding.runId),
+        eq(schema.importRunTable.workspaceId, input.workspaceId),
+        eq(schema.importRunTable.projectId, input.projectId),
+      ),
+    );
+  const [run] = await (readOnly
+    ? runQuery.for("share")
+    : runQuery.for("update")
+  ).limit(1);
+  if (!run?.projectId || !run.sourceConnectionId)
+    return { allowed: false, failure: "target_version", status: 409 };
+  // The approval is only good for the exact dry run, count and mapping it was requested for.
+  const report = run.engineDryRunReport as {
+    counts?: { processed?: number; created?: number; updated?: number };
+  } | null;
+  if (
+    (run.state !== "queued" && run.state !== "paused") ||
+    run.enginePhase !== "dry_run_ready" ||
+    run.engineDryRunDigest !== binding.digest ||
+    run.engineDryRunMappingVersion !== binding.mappingVersion ||
+    report?.counts?.processed !== binding.totalCount ||
+    (report?.counts?.created ?? 0) + (report?.counts?.updated ?? 0) !==
+      binding.writes
+  )
+    return { allowed: false, failure: "target_version", status: 409 };
+  if (identity.side !== "staff")
+    return { allowed: false, failure: "reach", status: 404 };
+  return evaluateImportProjectAccess(
+    tx,
+    identity,
+    { workspaceId: run.workspaceId, projectId: run.projectId },
+    input.organisationId,
+  );
 }
 
 async function evaluateMcpApprovalDecisionAccess(

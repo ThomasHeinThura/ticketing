@@ -31,6 +31,7 @@ import {
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
 import {
   createRelease,
@@ -265,8 +266,10 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
           <Label htmlFor="release-filter-service">
             {t("releases.list.filterService")}
           </Label>
-          <Select
-            items={[
+          <PickerPopover
+            id="release-filter-service"
+            className="w-full"
+            options={[
               { value: ALL, label: t("releases.list.allServices") },
               ...(services.data ?? []).map((service) => ({
                 value: service.id,
@@ -274,27 +277,13 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
               })),
             ]}
             value={search.serviceId ?? ALL}
-            onValueChange={(value) =>
+            onChange={(value) =>
               void navigate({
                 to: routes.serviceManagementReleases.path,
-                search: value ? { serviceId: value } : {},
+                search: value && value !== ALL ? { serviceId: value } : {},
               })
             }
-          >
-            <SelectTrigger id="release-filter-service">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>
-                {t("releases.list.allServices")}
-              </SelectItem>
-              {(services.data ?? []).map((service) => (
-                <SelectItem key={service.id} value={service.id}>
-                  {service.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         </div>
         {releases.isLoading || !workspace ? (
           <LoadingRows />

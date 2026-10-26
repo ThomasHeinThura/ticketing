@@ -19,6 +19,7 @@ import {
 import { readWorkItemContentHash, sha256Canonical } from "./content";
 import {
   appendImportAudit,
+  assertRetainedChunkRun,
   type ImportApprovalRequest,
   reportImportAuditWriteFailure,
 } from "./service";
@@ -406,6 +407,7 @@ export async function createImportLinks(
       if (entries.length > 50) await lockPendingActionLifecycle(tx);
       const origin = await importOrigin(tx, actor);
       const run = await lockRun(tx, actor, runId, "work_item:create", "update");
+      assertRetainedChunkRun(run);
       if (!run.projectId)
         throw new HTTPException(409, {
           message: "Import run is no longer writable",

@@ -2,15 +2,11 @@ import {
   Button,
   Input,
   Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   ToggleGroup,
   ToggleGroupItem,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import type { ReportEnvelope } from "@/fetchers/report";
 import useCustomerOrganisations from "@/hooks/queries/project/use-customer-organisations";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -44,28 +40,20 @@ function FilterSelect({
   /** A report option always has a value; only a filter can be "all". */
   allowAll?: boolean;
 }) {
-  const chosen = options.find((option) => option.value === value);
   return (
     <div className="space-y-1">
       <Label htmlFor={id}>{label}</Label>
-      <Select
+      <PickerPopover
+        id={id}
+        className="w-44"
         value={value ?? ALL}
-        onValueChange={(next) =>
-          onChange(next && next !== ALL ? next : undefined)
-        }
-      >
-        <SelectTrigger id={id} className="w-44">
-          <SelectValue>{chosen?.label ?? allLabel}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {allowAll ? <SelectItem value={ALL}>{allLabel}</SelectItem> : null}
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        onChange={(next) => onChange(next && next !== ALL ? next : undefined)}
+        placeholder={allLabel}
+        options={[
+          ...(allowAll ? [{ value: ALL, label: allLabel }] : []),
+          ...options,
+        ]}
+      />
     </div>
   );
 }

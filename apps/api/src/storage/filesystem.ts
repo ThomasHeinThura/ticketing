@@ -754,6 +754,34 @@ export async function writeAttachmentUploadedObject(params: {
 }
 
 /**
+ * Server-side put of a complete attachment object at a caller-derived key (P6 import writer): the
+ * same path-safety checks and atomic publish as the presigned upload path, without a token because
+ * the bytes never leave this process. `maxBytes` bounds the write.
+ */
+export async function putAttachmentObject(params: {
+  key: string;
+  bytes: Uint8Array;
+  maxBytes: number;
+}): Promise<void> {
+  if (params.bytes.byteLength > params.maxBytes)
+    throw new StoragePathError("Object exceeds the maximum size.");
+  const config = await getCanonicalFilesystemConfig();
+  const candidate = resolveWithinRoot(config.root, params.key);
+  const dir = path.dirname(candidate);
+  await assertNoSymlinkEscape(dir, config.root);
+  await fsp.mkdir(dir, { recursive: true });
+  await assertNoSymlinkEscape(dir, config.root);
+  const stream = Readable.toWeb(
+    Readable.from([Buffer.from(params.bytes)]),
+  ) as unknown as ReadableStream<Uint8Array>;
+  await writeStreamToFile(
+    stream,
+    candidate,
+    Math.max(1, params.bytes.byteLength),
+  );
+}
+
+/**
  * The local equivalent of a presigned S3 GET (`attachments.md` AT-5): a short-lived,
  * key-scoped download token, verified the same way the upload token is. `filename` is
  * carried through only to name the download when it is served (`GET

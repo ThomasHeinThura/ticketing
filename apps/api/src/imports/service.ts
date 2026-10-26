@@ -8,7 +8,11 @@ import {
   appendAuditLog,
 } from "../audit/audit-writer";
 import db, { schema } from "../database";
-import type { Transaction } from "../database/executor";
+import type { Executor, Transaction } from "../database/executor";
+import {
+  type ImportPluginId,
+  importLossTable,
+} from "../database/schema-imports";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
@@ -37,6 +41,7 @@ import {
   readWorkItemContentHash,
   sha256Canonical,
 } from "./content";
+import { engineAttachmentAuth } from "./engine/attachment-auth";
 import {
   publishImportedWorkItemUpdate,
   updateImportedWorkItemInTransaction,
@@ -46,6 +51,23 @@ import {
   type ImportRunRequest,
   importRecordsSchema,
 } from "./schema";
+import {
+  createImportWriterContext,
+  findStaffPersonByEmail,
+  type ImportAttachmentAuth,
+  type ImportAttachmentJob,
+  type ImportLoss,
+  importAttachmentJobKey,
+  isImportLossCode,
+  listPendingImportAttachmentJobs,
+  MAX_REPORTED_LOSSES,
+  processImportAttachmentJobs,
+  resolveDeferredImportLinks,
+  resolveImportedAssigneeId,
+  settleChunkAttachments,
+  tallyLosses,
+  writeImportedRecordExtras,
+} from "./writer";
 
 const RUN = schema.importRunTable;
 const CHUNK = schema.importChunkTable;
@@ -94,7 +116,7 @@ export async function reportImportAuditWriteFailure(failed: boolean) {
   await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
 }
 
-function canonicalRecords(records: ImportRecord[]) {
+export function canonicalRecords(records: ImportRecord[]) {
   return records.map((record) => ({
     ...record,
     item: {
@@ -103,6 +125,41 @@ function canonicalRecords(records: ImportRecord[]) {
       dueDate: record.item.dueDate?.toISOString() ?? null,
     },
   }));
+}
+
+type DigestRun = {
+  id: string;
+  workspaceId: string;
+  projectId: string | null;
+  pluginId: string;
+  sourceRef: string;
+  profileId: string | null;
+  stats: Record<string, number>;
+};
+
+/**
+ * The one chunk digest formula: run identity, the run's own `pluginId`, profile binding, chunk id and
+ * the canonical record list. `dryRunImport`, `stageImportChunk` (engine) and `commitImportChunk` all
+ * call this, so a preview and its commit can never disagree. For MCP runs `pluginId` is always
+ * `import.mcp`, so every digest produced before the engine existed is unchanged.
+ */
+export function importChunkDigest(
+  run: DigestRun,
+  chunkId: string,
+  records: ImportRecord[],
+): string {
+  return sha256Canonical({
+    runId: run.id,
+    workspaceId: run.workspaceId,
+    projectId: run.projectId,
+    pluginId: run.pluginId,
+    sourceRef: run.sourceRef,
+    profileId: run.profileId,
+    profileVersion: run.profileId ? run.stats.profileVersion : null,
+    mappingVersion: run.profileId ? run.stats.mappingVersion : null,
+    chunkId,
+    records: canonicalRecords(records),
+  });
 }
 
 function fixedRejectCode(error: unknown): string {
@@ -255,7 +312,7 @@ function safeRun(run: typeof RUN.$inferSelect) {
     id: run.id,
     workspaceId: run.workspaceId,
     projectId: run.projectId,
-    pluginId: "import.mcp" as const,
+    pluginId: run.pluginId as ImportPluginId,
     sourceRef: run.sourceRef,
     profileId: run.profileId,
     state: run.state,
@@ -283,6 +340,50 @@ function safeCounts(value: Record<string, number>): Record<string, number> {
       result[key] = count;
   }
   return result;
+}
+
+/** Fixed-code losses of a chunk (IM-4), allowlisted so an unknown code can never leak free text. */
+function safeLossReport(report: Record<string, unknown>) {
+  const stored = Array.isArray(report.losses)
+    ? (report.losses as Array<Record<string, unknown>>)
+    : [];
+  const losses = stored
+    .filter(
+      (loss) =>
+        isImportLossCode(loss.code) &&
+        typeof loss.sourceType === "string" &&
+        typeof loss.sourceId === "string",
+    )
+    .slice(0, MAX_REPORTED_LOSSES)
+    .map((loss) => ({
+      code: loss.code as string,
+      entity: typeof loss.entity === "string" ? loss.entity : "work_item",
+      sourceType: loss.sourceType as string,
+      sourceId: loss.sourceId as string,
+      ...(typeof loss.entitySourceId === "string"
+        ? { entitySourceId: loss.entitySourceId }
+        : {}),
+      ...(typeof loss.sourceUrl === "string"
+        ? { sourceUrl: loss.sourceUrl }
+        : {}),
+    }));
+  const lossCounts: Record<string, number> = {};
+  if (
+    typeof report.lossCounts === "object" &&
+    report.lossCounts !== null &&
+    !Array.isArray(report.lossCounts)
+  )
+    for (const [code, count] of Object.entries(report.lossCounts))
+      if (
+        isImportLossCode(code) &&
+        typeof count === "number" &&
+        Number.isSafeInteger(count) &&
+        count >= 0
+      )
+        lossCounts[code] = count;
+  return losses.length || Object.keys(lossCounts).length
+    ? { losses, lossCounts }
+    : {};
 }
 
 function safeLog(value: { code: string; at: string; chunkId?: string }[]) {
@@ -431,6 +532,14 @@ export async function getImportReport(c: Context, runId: string) {
                 rows.map((row) => ({ outcome: row.outcome ?? "reject" })),
               ),
           rejectionCodes,
+          ...safeLossReport(chunk.report),
+          ...(Array.isArray(chunk.report.pendingAttachments) &&
+          chunk.report.pendingAttachments.length
+            ? { pendingAttachments: chunk.report.pendingAttachments.length }
+            : {}),
+          ...(isSafeCountsObject(chunk.report.plan)
+            ? { plan: chunk.report.plan }
+            : {}),
           createdAt: chunk.createdAt.toISOString(),
           committedAt: chunk.committedAt?.toISOString() ?? null,
         };
@@ -457,6 +566,194 @@ export async function getImportRun(c: Context, runId: string) {
     }
     return safeRun(run);
   });
+}
+
+/**
+ * The retained chunk routes (`/dry-run`, `/records`, `/links`) belong to MCP runs. A run created for
+ * an engine source (`source_connection_id` set) is staged and committed only by the runner, which
+ * binds every chunk to the approved whole-run dry run; letting a caller stage or commit a chunk on it
+ * would bypass that approval.
+ */
+export function assertRetainedChunkRun(run: {
+  sourceConnectionId: string | null;
+}) {
+  if (run.sourceConnectionId)
+    throw new HTTPException(409, {
+      message: "Import run is managed by the import engine",
+    });
+}
+
+export type ClassifiedRow = {
+  sourceType: string;
+  sourceId: string;
+  outcome: "create" | "update" | "skip" | "reject";
+  code?: string;
+};
+
+type ClassifyRun = Pick<
+  typeof RUN.$inferSelect,
+  "id" | "workspaceId" | "pluginId" | "sourceRef"
+> & { projectId: string };
+
+/** Per-record decision (create / update / skip / reject) against live target configuration. */
+export async function classifyImportRecords(
+  tx: Transaction,
+  run: ClassifyRun,
+  actor: ImportActor,
+  records: ImportRecord[],
+): Promise<ClassifiedRow[]> {
+  const rows: ClassifiedRow[] = [];
+  for (const record of records) {
+    const base = { sourceType: record.sourceType, sourceId: record.sourceId };
+    try {
+      await prepareWorkItemCreation(tx, {
+        workspaceId: run.workspaceId,
+        projectId: run.projectId,
+        typeId: record.item.typeId,
+        startDate: record.item.startDate,
+        dueDate: record.item.dueDate,
+        labelIds: record.item.labelIds,
+        assigneeId: record.item.assigneeId,
+        authorization: {
+          userId: actor.userId,
+          ...(actor.apiKey ? { apiKey: actor.apiKey } : {}),
+          impersonatedBy: actor.impersonatedBy,
+        },
+      });
+    } catch (error) {
+      rows.push({ ...base, outcome: "reject", code: fixedRejectCode(error) });
+      continue;
+    }
+    const [link] = await tx
+      .select()
+      .from(LINK)
+      .where(
+        and(
+          eq(LINK.workspaceId, run.workspaceId),
+          eq(LINK.pluginId, run.pluginId),
+          eq(LINK.sourceRef, run.sourceRef),
+          eq(LINK.sourceType, record.sourceType),
+          eq(LINK.sourceId, record.sourceId),
+          eq(LINK.targetType, "work_item"),
+        ),
+      )
+      .for("share")
+      .limit(1);
+    if (!link) {
+      rows.push({ ...base, outcome: "create" });
+      continue;
+    }
+    const current = await readWorkItemContentHash(tx, {
+      workspaceId: run.workspaceId,
+      projectId: run.projectId,
+      targetId: link.targetId,
+    });
+    if (!current) {
+      rows.push({
+        ...base,
+        outcome: "reject",
+        code: "linked_target_unavailable",
+      });
+      continue;
+    }
+    if (
+      record.item.assigneeId !== undefined &&
+      record.item.assigneeId !== current.row.assigneeId
+    ) {
+      rows.push({
+        ...base,
+        outcome: "reject",
+        code: "assignment_update_requires_manual_action",
+      });
+      continue;
+    }
+    const candidate = sha256Canonical(
+      normalizeImportItemAgainstCurrent(record.item, current),
+    );
+    rows.push({
+      ...base,
+      outcome: current.hash === candidate ? "skip" : "update",
+    });
+  }
+  return rows;
+}
+
+/**
+ * Stages one chunk inside the caller's transaction: the `previewed` chunk row (digest, canonical
+ * payload, row outcomes, v2 plan) and the run's bound dry-run digest and expiry. `run` must be the row
+ * just locked FOR UPDATE by the caller. Used by `dryRunImport` (MCP) and by the engine runner, which
+ * stages and commits in one transaction so a crash leaves no orphan preview. Does not authorise: the
+ * caller has already checked the actor's authority.
+ */
+export async function stageImportChunk(
+  tx: Transaction,
+  input: {
+    actor: ImportActor;
+    run: typeof RUN.$inferSelect & { projectId: string };
+    chunkId: string;
+    records: ImportRecord[];
+    /** Row outcomes already classified by the caller (same order as `records`). */
+    rows?: ClassifiedRow[];
+    sourceCursor?: string | null;
+  },
+) {
+  const { run } = input;
+  const rows =
+    input.rows ??
+    (await classifyImportRecords(tx, run, input.actor, input.records));
+  const normalized = canonicalRecords(input.records);
+  const digest = importChunkDigest(run, input.chunkId, input.records);
+  const plan = await planImportRecords(tx, run, input.records, rows);
+  const report = {
+    runId: run.id,
+    chunkId: input.chunkId,
+    operation: "records" as const,
+    previewDigest: digest,
+    counts: countOutcomes(rows),
+    rejectionCodes: safeRejectionCodes(null, rows),
+    plan,
+    rows,
+  };
+  const sequence =
+    (
+      await tx
+        .select({ max: sql<number>`coalesce(max(${CHUNK.sequence}), -1)` })
+        .from(CHUNK)
+        .where(eq(CHUNK.importRunId, run.id))
+    )[0]?.max ?? -1;
+  const expiresAt = new Date(Date.now() + MAX_PREVIEW_AGE_MS);
+  const [chunk] = await tx
+    .insert(CHUNK)
+    .values({
+      importRunId: run.id,
+      chunkId: input.chunkId,
+      sequence: sequence + 1,
+      state: "previewed",
+      expectedRunVersion: run.version + 1,
+      inputDigest: digest,
+      inputPayload: { operation: "records", records: normalized },
+      report,
+      recordCount: input.records.length,
+      sourceCursor: input.sourceCursor ?? null,
+      expiresAt,
+    })
+    .returning({ id: CHUNK.id });
+  await tx
+    .update(RUN)
+    .set({
+      version: run.version + 1,
+      dryRunDigest: digest,
+      dryRunExpiresAt: expiresAt,
+      updatedAt: new Date(),
+    })
+    .where(eq(RUN.id, run.id));
+  return {
+    digest,
+    chunkRowId: chunk?.id ?? null,
+    expectedVersion: run.version + 1,
+    expiresAt,
+    report,
+  };
 }
 
 export async function dryRunImport(
@@ -488,6 +785,7 @@ export async function dryRunImport(
       run.projectId,
       "work_item:create",
     );
+    assertRetainedChunkRun(run);
     if (run.version !== input.expectedVersion)
       throw new HTTPException(409, { message: "Import run version conflict" });
     if (run.state !== "running")
@@ -529,163 +827,14 @@ export async function dryRunImport(
         message: "An import preview is still active",
       });
 
-    const normalized = canonicalRecords(input.records);
-    const digest = sha256Canonical({
-      runId: run.id,
-      workspaceId: run.workspaceId,
-      projectId: run.projectId,
-      pluginId: "import.mcp",
-      sourceRef: run.sourceRef,
-      profileId: run.profileId,
-      profileVersion: run.profileId ? run.stats.profileVersion : null,
-      mappingVersion: run.profileId ? run.stats.mappingVersion : null,
+    const staged = await stageImportChunk(tx, {
+      actor,
+      run: { ...run, projectId: run.projectId },
       chunkId: input.chunkId,
-      records: normalized,
+      records: input.records,
     });
-    const rows: Array<{
-      sourceType: string;
-      sourceId: string;
-      outcome: "create" | "update" | "skip" | "reject";
-      code?: string;
-    }> = [];
-    for (const record of input.records) {
-      if (record.sourceCreatedAt || record.sourceAuthorEmail) {
-        rows.push({
-          sourceType: record.sourceType,
-          sourceId: record.sourceId,
-          outcome: "reject",
-          code: "unsupported_authorship_or_timestamp",
-        });
-        continue;
-      }
-      try {
-        await prepareWorkItemCreation(tx, {
-          workspaceId: run.workspaceId,
-          projectId: run.projectId,
-          typeId: record.item.typeId,
-          startDate: record.item.startDate,
-          dueDate: record.item.dueDate,
-          labelIds: record.item.labelIds,
-          assigneeId: record.item.assigneeId,
-          authorization: {
-            userId: actor.userId,
-            ...(actor.apiKey ? { apiKey: actor.apiKey } : {}),
-            impersonatedBy: actor.impersonatedBy,
-          },
-        });
-      } catch (error) {
-        rows.push({
-          sourceType: record.sourceType,
-          sourceId: record.sourceId,
-          outcome: "reject",
-          code: fixedRejectCode(error),
-        });
-        continue;
-      }
-      const [link] = await tx
-        .select()
-        .from(LINK)
-        .where(
-          and(
-            eq(LINK.workspaceId, run.workspaceId),
-            eq(LINK.pluginId, run.pluginId),
-            eq(LINK.sourceRef, run.sourceRef),
-            eq(LINK.sourceType, record.sourceType),
-            eq(LINK.sourceId, record.sourceId),
-            eq(LINK.targetType, "work_item"),
-          ),
-        )
-        .for("share")
-        .limit(1);
-      if (!link) {
-        rows.push({
-          sourceType: record.sourceType,
-          sourceId: record.sourceId,
-          outcome: "create",
-        });
-        continue;
-      }
-      const current = await readWorkItemContentHash(tx, {
-        workspaceId: run.workspaceId,
-        projectId: run.projectId,
-        targetId: link.targetId,
-      });
-      if (!current) {
-        rows.push({
-          sourceType: record.sourceType,
-          sourceId: record.sourceId,
-          outcome: "reject",
-          code: "linked_target_unavailable",
-        });
-        continue;
-      }
-      if (
-        record.item.assigneeId !== undefined &&
-        record.item.assigneeId !== current.row.assigneeId
-      ) {
-        rows.push({
-          sourceType: record.sourceType,
-          sourceId: record.sourceId,
-          outcome: "reject",
-          code: "assignment_update_requires_manual_action",
-        });
-        continue;
-      }
-      const targetCandidate = sha256Canonical(
-        normalizeImportItemAgainstCurrent(record.item, current),
-      );
-      if (current.hash === targetCandidate) {
-        rows.push({
-          sourceType: record.sourceType,
-          sourceId: record.sourceId,
-          outcome: "skip",
-        });
-      } else {
-        rows.push({
-          sourceType: record.sourceType,
-          sourceId: record.sourceId,
-          outcome: "update",
-        });
-      }
-    }
-    const report = {
-      runId: run.id,
-      chunkId: input.chunkId,
-      operation: "records" as const,
-      previewDigest: digest,
-      counts: countOutcomes(rows),
-      rejectionCodes: safeRejectionCodes(null, rows),
-      rows,
-    };
-    const sequence =
-      (
-        await tx
-          .select({ max: sql<number>`coalesce(max(${CHUNK.sequence}), -1)` })
-          .from(CHUNK)
-          .where(eq(CHUNK.importRunId, run.id))
-      )[0]?.max ?? -1;
-    const expiresAt = new Date(Date.now() + MAX_PREVIEW_AGE_MS);
-    await tx.insert(CHUNK).values({
-      importRunId: run.id,
-      chunkId: input.chunkId,
-      sequence: sequence + 1,
-      state: "previewed",
-      expectedRunVersion: run.version + 1,
-      inputDigest: digest,
-      inputPayload: { operation: "records", records: normalized },
-      report,
-      recordCount: input.records.length,
-      expiresAt,
-    });
-    await tx
-      .update(RUN)
-      .set({
-        version: run.version + 1,
-        dryRunDigest: digest,
-        dryRunExpiresAt: expiresAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(RUN.id, run.id));
+    const { report, expiresAt } = staged;
+    const rows = report.rows;
     const auditFailure = await appendImportAudit(tx, {
       actorId: actor.userId,
       actorType: actor.actorType,
@@ -715,6 +864,64 @@ export async function dryRunImport(
   });
   await reportImportAuditWriteFailure(outcome.auditFailure);
   return outcome.result;
+}
+
+/**
+ * Dry-run summary of what the v2 members of the records would write (IM-2). Nothing is written:
+ * author addresses are looked up read-only, so the report says how many placeholder people a
+ * commit would create. Rejected rows are excluded.
+ */
+async function planImportRecords(
+  tx: Transaction,
+  run: typeof RUN.$inferSelect,
+  records: ImportRecord[],
+  rows: Array<{ outcome: string }>,
+) {
+  const plan = {
+    comments: 0,
+    attachments: 0,
+    relations: 0,
+    history: 0,
+    customFields: 0,
+    parents: 0,
+    authorAddresses: 0,
+    placeholdersToCreate: 0,
+  };
+  const emails = new Set<string>();
+  records.forEach((record, index) => {
+    if (rows[index]?.outcome === "reject") return;
+    plan.comments += record.comments?.length ?? 0;
+    plan.attachments += record.attachments?.length ?? 0;
+    plan.relations += record.relations?.length ?? 0;
+    plan.history += record.history?.length ?? 0;
+    plan.customFields += record.customFields?.length ?? 0;
+    if (record.parent) plan.parents += 1;
+    for (const email of [
+      record.sourceAuthorEmail,
+      ...(record.comments ?? []).map((comment) => comment.authorEmail),
+      ...(record.history ?? []).map((entry) => entry.authorEmail),
+      ...(record.attachments ?? []).map((entry) => entry.authorEmail),
+    ])
+      if (email) emails.add(email.trim().toLowerCase());
+  });
+  plan.authorAddresses = emails.size;
+  if (emails.size === 0 || !run.projectId) return plan;
+  const writerContext = await createImportWriterContext(tx, {
+    id: run.id,
+    workspaceId: run.workspaceId,
+    projectId: run.projectId,
+    pluginId: run.pluginId,
+    sourceRef: run.sourceRef,
+  });
+  for (const email of emails) {
+    const match = await findStaffPersonByEmail(
+      tx,
+      writerContext.organisationId,
+      email,
+    );
+    if (!match) plan.placeholdersToCreate += 1;
+  }
+  return plan;
 }
 
 export function countOutcomes(rows: Array<{ outcome: string }>) {
@@ -807,18 +1014,7 @@ export async function commitImportChunk(
     run.projectId,
     "work_item:create",
   );
-  const submittedDigest = sha256Canonical({
-    runId: run.id,
-    workspaceId: run.workspaceId,
-    projectId: run.projectId,
-    pluginId: run.pluginId,
-    sourceRef: run.sourceRef,
-    profileId: run.profileId,
-    profileVersion: run.profileId ? run.stats.profileVersion : null,
-    mappingVersion: run.profileId ? run.stats.mappingVersion : null,
-    chunkId: input.chunkId,
-    records: canonicalRecords(input.records),
-  });
+  const submittedDigest = importChunkDigest(run, input.chunkId, input.records);
   const [chunk] = await tx
     .select()
     .from(CHUNK)
@@ -849,6 +1045,10 @@ export async function commitImportChunk(
         rows,
         createdResults: [],
         updateResults: [],
+        ...({} as {
+          attachmentJobs?: ImportAttachmentJob[];
+          writerLosses?: ImportLoss[];
+        }),
         auditFailure: false,
       };
     }
@@ -1006,6 +1206,38 @@ export async function commitImportChunk(
 
   const createdResults: CreatedWorkItemTransactionResult[] = [];
   const updateResults: import("./reconcile").ImportUpdateResult[] = [];
+  const writer = await createImportWriterContext(tx, {
+    id: run.id,
+    workspaceId: run.workspaceId,
+    projectId: run.projectId,
+    pluginId: run.pluginId,
+    sourceRef: run.sourceRef,
+  });
+  const attachmentJobs: ImportAttachmentJob[] = [];
+  const extrasTotals = {
+    comments: 0,
+    history: 0,
+    relations: 0,
+    parents: 0,
+    attachmentsQueued: 0,
+  };
+  const writeExtras = async (
+    record: ImportRecord,
+    workItemId: string,
+    createdNow: boolean,
+  ) => {
+    const extras = await writeImportedRecordExtras(writer, {
+      record,
+      workItemId,
+      created: createdNow,
+      chunkRowId: chunk.id,
+    });
+    attachmentJobs.push(...extras.attachmentJobs);
+    for (const key of Object.keys(extrasTotals) as Array<
+      keyof typeof extrasTotals
+    >)
+      extrasTotals[key] += extras.counts[key];
+  };
   const rows: Array<{
     sourceType: string;
     sourceId: string;
@@ -1073,6 +1305,7 @@ export async function commitImportChunk(
         existingLink.targetContentHash,
         existingLink.id,
       );
+      await writeExtras(record, existingLink.targetId, false);
       continue;
     }
     if (preview.outcome === "update") {
@@ -1129,6 +1362,7 @@ export async function commitImportChunk(
         content.hash,
         existingLink.id,
       );
+      await writeExtras(record, existingLink.targetId, false);
       rows.push({
         sourceType: record.sourceType,
         sourceId: record.sourceId,
@@ -1152,7 +1386,9 @@ export async function commitImportChunk(
       startDate: record.item.startDate,
       dueDate: record.item.dueDate,
       labelIds: record.item.labelIds,
-      assigneeId: record.item.assigneeId ?? undefined,
+      assigneeId:
+        record.item.assigneeId ??
+        (await resolveImportedAssigneeId(writer, record)),
       actorId: actor.userId,
       actorType: actor.actorType,
       eventSource: "import",
@@ -1180,6 +1416,7 @@ export async function commitImportChunk(
       run.id,
       contentHash.hash,
     );
+    await writeExtras(record, created.created.id, true);
     rows.push({
       sourceType: record.sourceType,
       sourceId: record.sourceId,
@@ -1188,6 +1425,10 @@ export async function commitImportChunk(
       outcome: "create",
     });
   }
+  // Targets that arrived in a later chunk than their parent or relation: retry now.
+  await resolveDeferredImportLinks(writer);
+  const losses = writer.losses.slice(0, MAX_REPORTED_LOSSES);
+  const lossCounts = tallyLosses(losses);
 
   const counts = countOutcomes(rows);
   const rejectionCodes = safeRejectionCodes(null, rows);
@@ -1195,6 +1436,17 @@ export async function commitImportChunk(
     runId: run.id,
     chunkId: chunk.chunkId,
     counts,
+    ...(Object.values(extrasTotals).some((value) => value > 0) ||
+    writer.stats.placeholdersCreated > 0 ||
+    losses.length > 0
+      ? {
+          writer: {
+            ...extrasTotals,
+            placeholdersCreated: writer.stats.placeholdersCreated,
+            lossCounts,
+          },
+        }
+      : {}),
     ...(origin ? { origin } : {}),
   };
   const auditFailure = await appendImportAudit(tx, {
@@ -1220,7 +1472,24 @@ export async function commitImportChunk(
     .set({
       state: "committed",
       inputPayload: null,
-      report: { counts, rejectionCodes, rows },
+      report: {
+        counts,
+        rejectionCodes,
+        rows,
+        ...(losses.length ? { losses, lossCounts } : {}),
+        ...(attachmentJobs.length
+          ? { pendingAttachments: attachmentJobs }
+          : {}),
+        ...(Object.values(extrasTotals).some((value) => value > 0) ||
+        writer.stats.placeholdersCreated > 0
+          ? {
+              writer: {
+                ...extrasTotals,
+                placeholdersCreated: writer.stats.placeholdersCreated,
+              },
+            }
+          : {}),
+      },
       committedAt: now,
     })
     .where(eq(CHUNK.id, chunk.id));
@@ -1268,6 +1537,10 @@ export async function commitImportChunk(
     rows,
     createdResults,
     updateResults,
+    ...(attachmentJobs.length ? { attachmentJobs } : {}),
+    ...(losses.length ? { lossCounts } : {}),
+    /** Internal: every loss the writer recorded in this transaction (the report keeps a capped copy). */
+    ...(writer.losses.length ? { writerLosses: writer.losses } : {}),
     ...(auditFailure ? { auditFailure: true } : {}),
   };
 }
@@ -1326,8 +1599,13 @@ function addCounts(
   };
 }
 
+export type ImportAttachmentAuthForRun = (
+  runId: string,
+) => Promise<ImportAttachmentAuth | null>;
+
 export async function publishCommittedImport(
   result: Awaited<ReturnType<typeof commitImportChunk>>,
+  options: { attachmentAuth?: ImportAttachmentAuthForRun } = {},
 ) {
   if (result.kind !== "committed") return;
   await reportImportAuditWriteFailure(result.auditFailure === true);
@@ -1335,6 +1613,129 @@ export async function publishCommittedImport(
     await publishCreatedWorkItem(created);
   for (const updated of result.updateResults)
     await publishImportedWorkItemUpdate(updated);
+  await drainImportAttachmentJobs(result.attachmentJobs ?? [], options);
+}
+
+/**
+ * `import_loss` rows for writer and attachment losses (the per-run loss report the wizard and
+ * `GET /imports/{id}/losses` read). One row per run, record, code and entity kind; the chunk report
+ * keeps the entity-level list. Idempotent.
+ */
+export async function insertImportLossRows(
+  executor: Executor,
+  scope: {
+    workspaceId: string;
+    importRunId: string;
+    importChunkId: string | null;
+  },
+  losses: readonly ImportLoss[],
+) {
+  const rows = new Map<string, typeof importLossTable.$inferInsert>();
+  for (const loss of losses.slice(0, 20_000)) {
+    const detailCode = loss.entity === "work_item" ? "" : loss.entity;
+    const key = JSON.stringify([
+      loss.sourceType,
+      loss.sourceId,
+      loss.code,
+      detailCode,
+    ]);
+    if (rows.has(key)) continue;
+    rows.set(key, {
+      workspaceId: scope.workspaceId,
+      importRunId: scope.importRunId,
+      importChunkId: scope.importChunkId,
+      sourceType: loss.sourceType,
+      sourceId: loss.sourceId,
+      code: loss.code,
+      detailCode,
+      sourceUrl: loss.sourceUrl ?? null,
+    });
+  }
+  const values = [...rows.values()];
+  for (let offset = 0; offset < values.length; offset += 500)
+    await executor
+      .insert(importLossTable)
+      .values(values.slice(offset, offset + 500))
+      .onConflictDoNothing();
+}
+
+/**
+ * Download and store a committed chunk's attachments (outside any transaction) and add what could
+ * not be stored to the chunk's loss report. Safe to call again: already-imported attachments are
+ * recognised by their provenance row and skipped.
+ */
+export async function drainImportAttachmentJobs(
+  jobs: readonly ImportAttachmentJob[],
+  options: { attachmentAuth?: ImportAttachmentAuthForRun } = {},
+): Promise<{ written: number; losses: ImportLoss[] }> {
+  if (!jobs.length) return { written: 0, losses: [] };
+  let written = 0;
+  const losses: ImportLoss[] = [];
+  const failed = (list: readonly ImportAttachmentJob[]) =>
+    list.map((job) => ({
+      code: "attachment_storage_unavailable" as const,
+      sourceType: job.sourceType,
+      sourceId: job.sourceId,
+      entity: "attachment" as const,
+      entitySourceId: job.attachment.sourceId,
+      sourceUrl: job.attachment.url,
+    }));
+  // Credentials are resolved per run at download time and never stored with the job.
+  for (const runId of new Set(jobs.map((job) => job.runId))) {
+    const runJobs = jobs.filter((job) => job.runId === runId);
+    try {
+      const auth = await (options.attachmentAuth ?? engineAttachmentAuth)(
+        runId,
+      ).catch(() => null);
+      const outcome = await processImportAttachmentJobs(runJobs, { auth });
+      written += outcome.written;
+      losses.push(...outcome.losses);
+    } catch {
+      // Never lose the report of a failure: every job becomes a loss with its source URL.
+      losses.push(...failed(runJobs));
+    }
+  }
+  const lossKey = (loss: ImportLoss) =>
+    importAttachmentJobKey({
+      sourceType: loss.sourceType,
+      sourceId: loss.sourceId,
+      attachment: { sourceId: loss.entitySourceId ?? "" },
+    });
+  for (const chunkRowId of new Set(jobs.map((job) => job.chunkRowId))) {
+    const chunkJobs = jobs.filter((job) => job.chunkRowId === chunkRowId);
+    const keys = new Set(chunkJobs.map(importAttachmentJobKey));
+    const chunkLosses = losses.filter((loss) => keys.has(lossKey(loss)));
+    await settleChunkAttachments(chunkRowId, chunkJobs, chunkLosses);
+    const first = chunkJobs[0];
+    if (first && chunkLosses.length)
+      // The chunk report above already holds every loss durably; the per-run table is the index the
+      // wizard reads, so a failure here must not fail the import.
+      await insertImportLossRows(
+        db,
+        {
+          workspaceId: first.workspaceId,
+          importRunId: first.runId,
+          importChunkId: chunkRowId,
+        },
+        chunkLosses,
+      ).catch(() => undefined);
+  }
+  return { written, losses };
+}
+
+/**
+ * Finish attachments a committed chunk planned but a crash or timeout left unprocessed. Idempotent:
+ * anything already stored is recognised by its provenance row and skipped. Lane A's runner calls
+ * this for a run before it is marked completed.
+ */
+export async function resumePendingImportAttachments(
+  runId: string,
+  options: { attachmentAuth?: ImportAttachmentAuthForRun } = {},
+) {
+  return drainImportAttachmentJobs(
+    await listPendingImportAttachmentJobs(runId),
+    options,
+  );
 }
 
 export async function commitImportChunkRoute(
@@ -1351,15 +1752,21 @@ export async function commitImportChunkRoute(
   const actor = importActor(c);
   let result: Awaited<ReturnType<typeof commitImportChunk>>;
   try {
-    result = await db.transaction((tx) =>
-      commitImportChunk(tx, {
+    result = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select({ sourceConnectionId: RUN.sourceConnectionId })
+        .from(RUN)
+        .where(eq(RUN.id, input.runId))
+        .limit(1);
+      if (existing) assertRetainedChunkRun(existing);
+      return commitImportChunk(tx, {
         actor,
         ...input,
         requestApproval,
         ip: clientIpForContext(c),
         userAgent: c.req.header("user-agent") ?? null,
-      }),
-    );
+      });
+    });
   } catch (error) {
     if (isUniqueViolation(error, "import_link_stable_source_key"))
       throw new HTTPException(409, {
@@ -1383,6 +1790,8 @@ export async function commitImportChunkRoute(
   const {
     createdResults: _created,
     updateResults: _updated,
+    attachmentJobs: _attachmentJobs,
+    writerLosses: _writerLosses,
     auditFailure: _auditFailure,
     ...safe
   } = result;

@@ -222,6 +222,22 @@ export async function createAttachmentUploadUrl(
   );
 }
 
+/**
+ * P6 import writer: store a complete attachment object server-side at `key`, regardless of
+ * driver. The caller has already enforced the size and type limits.
+ */
+export async function putAttachmentObject(
+  key: string,
+  bytes: Uint8Array,
+  contentType: string,
+  maxBytes: number,
+): Promise<void> {
+  if (getStorageDriver() === "s3") {
+    return s3Driver.putAttachmentObject({ key, bytes, contentType });
+  }
+  return filesystemDriver.putAttachmentObject({ key, bytes, maxBytes });
+}
+
 /** Issue #28 -- presigned download (`attachments.md` AT-5), regardless of driver. */
 export async function createAttachmentDownloadUrl(
   key: string,

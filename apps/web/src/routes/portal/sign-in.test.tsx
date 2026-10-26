@@ -300,6 +300,54 @@ describe("portal sign-in", () => {
     ).toBeNull();
   });
 
+  it("keeps the stored email until the post-sign-in navigation finishes (no sign-in loop)", async () => {
+    // The portal root remounts this page as soon as the location changes, before the
+    // navigation commits. The remount reads the email from storage; clearing it early makes
+    // it reset to the email stage and cancel the navigation.
+    window.sessionStorage.setItem(
+      "taskdesk:portal-sign-in-email",
+      "customer@example.test",
+    );
+    mocks.search = {
+      stage: "password",
+      factor: "totp",
+      invitationId: undefined,
+    };
+    mocks.signIn.mockResolvedValue({ data: { token: "opaque" } });
+    mocks.getSession.mockResolvedValue({
+      data: { session: { id: "session" } },
+    });
+    let finishNavigation: () => void = () => undefined;
+    mocks.navigate.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishNavigation = resolve;
+        }),
+    );
+    renderSignIn();
+    fireEvent.change(await screen.findByLabelText("auth:forms.password"), {
+      target: { value: "valid-password" },
+    });
+    fireEvent.submit(
+      screen
+        .getByLabelText("auth:forms.password")
+        .closest("form") as HTMLFormElement,
+    );
+
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/catalogue" }),
+    );
+    expect(window.sessionStorage.getItem("taskdesk:portal-sign-in-email")).toBe(
+      "customer@example.test",
+    );
+    finishNavigation();
+    await waitFor(() =>
+      expect(
+        window.sessionStorage.getItem("taskdesk:portal-sign-in-email"),
+      ).toBeNull(),
+    );
+  });
+
   it("returns an invited password session to its invitation without exposing a credential", async () => {
     window.sessionStorage.setItem(
       "taskdesk:portal-sign-in-email",

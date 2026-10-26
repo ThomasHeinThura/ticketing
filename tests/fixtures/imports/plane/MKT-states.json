@@ -1,0 +1,38 @@
+[
+	{
+		"id": "43000001-aaaa-4bbb-8ccc-000000000977",
+		"name": "Backlog",
+		"group": "backlog",
+		"color": "#888888",
+		"sequence": 15000,
+		"default": true,
+		"project": "33000003-aaaa-4bbb-8ccc-000000002931"
+	},
+	{
+		"id": "43000002-aaaa-4bbb-8ccc-000000001954",
+		"name": "In Progress",
+		"group": "started",
+		"color": "#888888",
+		"sequence": 25000,
+		"default": false,
+		"project": "33000003-aaaa-4bbb-8ccc-000000002931"
+	},
+	{
+		"id": "43000003-aaaa-4bbb-8ccc-000000002931",
+		"name": "Published",
+		"group": "completed",
+		"color": "#888888",
+		"sequence": 35000,
+		"default": false,
+		"project": "33000003-aaaa-4bbb-8ccc-000000002931"
+	},
+	{
+		"id": "43000004-aaaa-4bbb-8ccc-000000003908",
+		"name": "Dropped",
+		"group": "cancelled",
+		"color": "#888888",
+		"sequence": 45000,
+		"default": false,
+		"project": "33000003-aaaa-4bbb-8ccc-000000002931"
+	}
+]

@@ -418,6 +418,25 @@ export async function finalizeAttachmentObject(
   );
 }
 
+/** Server-side put of a complete attachment object (P6 import writer); same key handling as the presigned PUT. */
+export async function putAttachmentObject(params: {
+  key: string;
+  bytes: Uint8Array;
+  contentType: string;
+}): Promise<void> {
+  const config = getStorageConfig();
+  const client = getClient(config);
+  await client.send(
+    new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: applyKeyPrefix(config.keyPrefix, params.key),
+      Body: Buffer.from(params.bytes),
+      ContentLength: params.bytes.byteLength,
+      ContentType: params.contentType,
+    }),
+  );
+}
+
 export async function deleteS3Object(key: string): Promise<void> {
   const config = getStorageConfig();
   const client = getClient(config);

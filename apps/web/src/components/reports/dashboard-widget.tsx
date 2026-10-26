@@ -6,6 +6,10 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
@@ -58,12 +62,19 @@ export function DashboardWidgetCard({
   const first = report?.metrics[0];
   const showTable =
     widget.chartType === "table" || !report?.chart || showing === "table";
+  // A chart with nothing plottable (every value missing) or a table with no rows is no data, not a
+  // blank frame; say so in the same words as an empty report.
+  const noPlottableData = showTable
+    ? (report?.rows.length ?? 0) === 0
+    : !report?.chart?.series.some((series) =>
+        series.values.some((value) => value !== null),
+      );
   return (
     <Card
       className="flex h-full flex-col overflow-hidden"
       data-testid="dashboard-widget"
     >
-      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 pb-2">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
         <CardTitle className="truncate text-base">
           {widget.reportKey ? (
             <Link
@@ -78,27 +89,29 @@ export function DashboardWidgetCard({
             title
           )}
         </CardTitle>
-        {headerAction?.(title)}
-        {widget.chartType !== "number" &&
-        widget.chartType !== "table" &&
-        report?.chart ? (
-          <ToggleGroup
-            size="sm"
-            aria-label={t("reports:dashboard.widgetView", { title })}
-            value={[showing]}
-            onValueChange={(values) => {
-              const next = values[values.length - 1];
-              if (next === "chart" || next === "table") setShowing(next);
-            }}
-          >
-            <ToggleGroupItem value="chart">
-              {t("reports:views.chart")}
-            </ToggleGroupItem>
-            <ToggleGroupItem value="table">
-              {t("reports:views.table")}
-            </ToggleGroupItem>
-          </ToggleGroup>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-1">
+          {widget.chartType !== "number" &&
+          widget.chartType !== "table" &&
+          report?.chart ? (
+            <ToggleGroup
+              size="sm"
+              aria-label={t("reports:dashboard.widgetView", { title })}
+              value={[showing]}
+              onValueChange={(values) => {
+                const next = values[values.length - 1];
+                if (next === "chart" || next === "table") setShowing(next);
+              }}
+            >
+              <ToggleGroupItem value="chart">
+                {t("reports:views.chart")}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="table">
+                {t("reports:views.table")}
+              </ToggleGroupItem>
+            </ToggleGroup>
+          ) : null}
+          {headerAction?.(title)}
+        </div>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 space-y-2 overflow-auto pt-0">
         {footer}
@@ -127,6 +140,13 @@ export function DashboardWidgetCard({
               </AlertDescription>
             </Alert>
           )
+        ) : noPlottableData ? (
+          <Empty data-testid="dashboard-widget-empty">
+            <EmptyHeader>
+              <EmptyTitle>—</EmptyTitle>
+              <EmptyDescription>{t("reports:empty.noData")}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : showTable ? (
           <ReportTable
             columns={report.columns}

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { cleanupExpiredImportChunks } from "../../apps/api/src/imports/expiry-cleanup";
@@ -327,5 +327,30 @@ describe("import persistence and destination retention", () => {
       .where(eq(schema.importChunkTable.pendingActionId, approval.id));
     expect(scrubbed?.inputPayload).toBeNull();
     expect(JSON.stringify(scrubbed)).not.toContain("private");
+  });
+  it("carries imported-origin markers on the journal and the comment stream", async () => {
+    const columns = await db.execute<{
+      table_name: string;
+      column_name: string;
+    }>(
+      sql`SELECT table_name, column_name FROM information_schema.columns
+          WHERE table_name IN ('activity', 'comment') AND column_name IN ('origin', 'imported_at')
+          ORDER BY table_name, column_name`,
+    );
+    expect(
+      columns.rows.map((row) => `${row.table_name}.${row.column_name}`),
+    ).toEqual([
+      "activity.imported_at",
+      "activity.origin",
+      "comment.imported_at",
+      "comment.origin",
+    ]);
+    const constraints = await db.execute<{ conname: string }>(
+      sql`SELECT conname FROM pg_constraint
+          WHERE conname IN ('activity_origin_allowed', 'activity_origin_import_time',
+            'comment_origin_allowed', 'comment_origin_import_time', 'external_link_work_item_fk')
+          ORDER BY conname`,
+    );
+    expect(constraints.rows).toHaveLength(5);
   });
 });

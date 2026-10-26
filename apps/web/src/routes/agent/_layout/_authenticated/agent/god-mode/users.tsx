@@ -438,19 +438,19 @@ function InstanceUsersPage() {
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)]">
           <Card className="min-w-0 overflow-hidden">
             <CardContent className="p-0">
-              <Table>
+              <Table className="sm:min-w-[44rem] sm:table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>
+                    <TableHead className="sm:w-[44%]">
                       {t("instanceUsers:copy.9f8a2389a20c")}
                     </TableHead>
-                    <TableHead className="max-sm:hidden">
+                    <TableHead className="max-sm:hidden sm:w-24">
                       {t("instanceUsers:copy.3deb74565196")}
                     </TableHead>
-                    <TableHead className="max-sm:hidden">
+                    <TableHead className="max-sm:hidden sm:w-[22%]">
                       {t("instanceUsers:copy.6e99c1d3b150")}
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="sm:w-40">
                       {t("instanceUsers:copy.bae7d5be7082")}
                     </TableHead>
                   </TableRow>
@@ -476,10 +476,16 @@ function InstanceUsersPage() {
                             email: user.email,
                           })}
                         >
-                          <span className="block break-words font-medium">
+                          <span
+                            className="block break-words font-medium sm:truncate"
+                            title={user.name}
+                          >
                             {user.name}
                           </span>
-                          <span className="block break-all text-xs text-muted-foreground">
+                          <span
+                            className="block break-all text-xs text-muted-foreground sm:truncate"
+                            title={user.email}
+                          >
                             {user.email}
                           </span>
                         </Link>
@@ -502,7 +508,10 @@ function InstanceUsersPage() {
                           ? t(`instanceUsers:dynamic.side.${user.person.side}`)
                           : t("instanceUsers:dynamic.unlinked")}
                       </TableCell>
-                      <TableCell className="max-sm:hidden">
+                      <TableCell
+                        className="max-sm:hidden sm:truncate"
+                        title={user.person?.organisationName ?? undefined}
+                      >
                         {user.person?.organisationName ?? "—"}
                       </TableCell>
                       <TableCell className="whitespace-normal">
@@ -522,6 +531,12 @@ function InstanceUsersPage() {
                               {t("instanceUsers:copy.09af574c7f20")}
                             </Badge>
                           )}
+                          {!user.isSuspended &&
+                            (!user.person || user.person.active) && (
+                              <Badge variant="outline">
+                                {t("instanceUsers:dynamic.personActive")}
+                              </Badge>
+                            )}
                         </div>
                       </TableCell>
                     </TableRow>

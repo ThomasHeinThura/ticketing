@@ -68,6 +68,7 @@ describe("preferences page density setter (#673)", () => {
       </QueryClientProvider>,
     );
     expect(document.documentElement).not.toHaveClass("compact-mode");
+    expect(document.title).toContain("settings:preferencesPage.title");
 
     for (const label of [
       "theme",

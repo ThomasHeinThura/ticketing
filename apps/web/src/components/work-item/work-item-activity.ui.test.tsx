@@ -347,10 +347,11 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
 
   it("maps the activity filter value to its translated label and resolves permissions for the item's workspace", () => {
     const view = renderActivity("item-workspace-B");
-    const [filter] = within(view.container).getAllByRole("combobox");
+    const filter = within(view.container).getByRole("button", {
+      name: /filterLabel|filter/i,
+    });
 
-    expect(filter).toHaveValue("everything");
-    expect(filter).toHaveAttribute("data-selected-label", "Everything");
+    expect(filter).toHaveTextContent("Everything");
     expect(mocks.permissionWorkspaces).toContain("item-workspace-B");
   });
 

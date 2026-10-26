@@ -39,6 +39,7 @@ import {
   workspaceTable,
   workspaceUserTable,
 } from "../database/schema";
+import { taskExternalLinkColumns } from "../external-link/repository";
 
 /** Current persisted reach for the addressed outer project row. */
 function currentProjectRowReach(
@@ -608,7 +609,7 @@ export async function listExternalLinksForTasks(
 ) {
   const executor = executorOrDefault();
   return await executor
-    .select()
+    .select(taskExternalLinkColumns)
     .from(externalLinkTable)
     .where(
       and(
