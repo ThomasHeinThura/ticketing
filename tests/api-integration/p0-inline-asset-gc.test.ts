@@ -70,6 +70,13 @@ const row = async (id: string) =>
       .from(schema.assetTable)
       .where(eq(schema.assetTable.id, id))
   )[0];
+const purgeAudits = (id: string) =>
+  db
+    .select()
+    .from(schema.auditLogTable)
+    .where(
+      sql`${schema.auditLogTable.action} = 'asset.purged' AND ${schema.auditLogTable.entityId} = ${id}`,
+    );
 const ageDetached = (id: string, interval = "25 hours") =>
   db.execute(
     sql`UPDATE asset SET detached_at = now() - ${interval}::interval WHERE id = ${id}`,
@@ -169,7 +176,7 @@ describe("API integration: inline asset detach, recovery window and GC", () => {
   });
 
   it("GC leaves a detached asset inside the recovery window and deletes it after", async () => {
-    const { s, asset } = await arrange();
+    const { world, s, asset } = await arrange();
     await asset("img3");
     await db.execute(
       sql`UPDATE asset SET detached_at = now() WHERE id = 'img3'`,
@@ -185,6 +192,23 @@ describe("API integration: inline asset detach, recovery window and GC", () => {
     expect(storage.deleteStorageObject).toHaveBeenCalledWith("key/img3");
     expect(await row("img3")).toBeUndefined();
     expect(s.taskId).toBeTruthy();
+    // P0R2-02: the collected asset is recorded by id, workspace and project (system actor).
+    const audits = await purgeAudits("img3");
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      actorId: null,
+      actorType: "system",
+      entityType: "asset",
+      entityId: "img3",
+      workspaceId: world.workspaceId,
+      projectId: world.project.id,
+    });
+    expect(audits[0]?.before).toMatchObject({
+      taskId: s.taskId,
+      filename: "img3.png",
+      mimeType: "image/png",
+      size: 1,
+    });
   });
 
   it("GC keeps the row when the storage delete fails", async () => {
@@ -196,6 +220,8 @@ describe("API integration: inline asset detach, recovery window and GC", () => {
     const outcome = await collectDetachedAssets();
     expect(outcome.degraded).toBe(true);
     expect(await row("img4")).toBeDefined();
+    // The purge record rolls back with the failed storage call.
+    expect(await purgeAudits("img4")).toHaveLength(0);
   });
 
   it("an open legal hold on the uploader blocks GC until it is lifted", async () => {
@@ -220,6 +246,7 @@ describe("API integration: inline asset detach, recovery window and GC", () => {
     expect(await cleanDetachedAsset("img5")).toBe(false);
     expect(storage.deleteStorageObject).not.toHaveBeenCalled();
     expect(await row("img5")).toBeDefined();
+    expect(await purgeAudits("img5")).toHaveLength(0);
 
     await db
       .update(schema.legalHoldTable)
@@ -227,6 +254,7 @@ describe("API integration: inline asset detach, recovery window and GC", () => {
       .where(eq(schema.legalHoldTable.id, hold?.id ?? ""));
     expect(await cleanDetachedAsset("img5")).toBe(true);
     expect(await row("img5")).toBeUndefined();
+    expect(await purgeAudits("img5")).toHaveLength(1);
   });
 
   it("GC restores instead of deleting an asset a comment references again", async () => {

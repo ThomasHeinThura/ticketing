@@ -3812,6 +3812,10 @@
 			"title": "Customer portal unavailable",
 			"description": "Customer access is not available yet. Contact your service desk administrator for help."
 		},
+		"temporarilyUnavailable": {
+			"title": "Customer portal temporarily unavailable",
+			"description": "The customer portal can't be reached right now. Please try again in a moment."
+		},
 		"notFound": {
 			"title": "Page not found",
 			"description": "This page isn't available. Check the address and try again."
@@ -6477,6 +6481,10 @@
 			"timeline": {
 				"title": "Gantt is off for this {{term_project_one}}",
 				"description": "A {{term_project_one}} admin can switch on Gantt in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
+			},
+			"sla": {
+				"title": "SLAs are off for this workspace",
+				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on."
 			}
 		},
 		"cycles": {

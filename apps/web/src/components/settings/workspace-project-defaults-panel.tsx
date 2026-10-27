@@ -22,6 +22,7 @@ import {
   type ServiceCalendar,
 } from "@/fetchers/service-calendar";
 import { getSlaPolicies } from "@/fetchers/sla-policy";
+import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 
@@ -57,15 +58,19 @@ export function WorkspaceProjectDefaultsPanel({
   const { canManageWorkspaceSettings, isCheckingPermissions } =
     useWorkspacePermission(workspaceId);
   const canEdit = canManageWorkspaceSettings();
+  // P4R2-M1: the default SLA policy and service calendar are `feature.sla` settings; while the
+  // flag is off for the workspace the panel is not offered (the lists would answer 404).
+  const workspaceFeatures = useWorkspaceFeatures(workspaceId);
+  const slaOn = workspaceFeatures.isOn("feature.sla");
   const queryKey = ["workspace", workspaceId, "project-settings"] as const;
   const settings = useQuery({
     queryKey,
     queryFn: () => getWorkspaceProjectSettings(workspaceId),
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(workspaceId) && slaOn,
   });
   const slaQuery = useQuery({
     queryKey: ["workspace", workspaceId, "project-default-sla-options"],
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(workspaceId) && slaOn,
     queryFn: async () => {
       const pages = await allPages((cursor) =>
         getSlaPolicies(workspaceId, cursor),
@@ -75,7 +80,7 @@ export function WorkspaceProjectDefaultsPanel({
   });
   const calendarQuery = useQuery({
     queryKey: ["workspace", workspaceId, "project-default-calendar-options"],
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(workspaceId) && slaOn,
     queryFn: async () => {
       const pages = await allPages((cursor) =>
         getServiceCalendars(workspaceId, cursor),
@@ -191,8 +196,12 @@ export function WorkspaceProjectDefaultsPanel({
     }
   };
 
+  if (!workspaceFeatures.isLoading && !slaOn) return null;
   const loading =
-    settings.isLoading || slaQuery.isLoading || calendarQuery.isLoading;
+    workspaceFeatures.isLoading ||
+    settings.isLoading ||
+    slaQuery.isLoading ||
+    calendarQuery.isLoading;
   const loadError =
     settings.isError || slaQuery.isError || calendarQuery.isError;
   if (loading) {

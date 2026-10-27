@@ -84626,6 +84626,54 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "The flag exists at instance level only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "enum": [
+                        "feature_instance_only"
+                      ]
+                    },
+                    "key": {
+                      "type": "string",
+                      "enum": [
+                        "feature.cycles",
+                        "feature.modules",
+                        "feature.estimates",
+                        "feature.intake",
+                        "feature.sla",
+                        "feature.approvals",
+                        "feature.time_tracking",
+                        "feature.cost_tracking",
+                        "feature.knowledge_base",
+                        "feature.service_catalogue",
+                        "feature.customer_portal",
+                        "feature.reports",
+                        "feature.automations",
+                        "feature.timeline",
+                        "feature.calendar",
+                        "feature.pages",
+                        "feature.mcp",
+                        "feature.scim",
+                        "feature.import",
+                        "feature.public_boards",
+                        "feature.dev_links"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "key"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -85201,6 +85249,102 @@
                     "message",
                     "key"
                   ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The flag exists at instance level only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "enum": [
+                        "feature_instance_only"
+                      ]
+                    },
+                    "key": {
+                      "type": "string",
+                      "enum": [
+                        "feature.cycles",
+                        "feature.modules",
+                        "feature.estimates",
+                        "feature.intake",
+                        "feature.sla",
+                        "feature.approvals",
+                        "feature.time_tracking",
+                        "feature.cost_tracking",
+                        "feature.knowledge_base",
+                        "feature.service_catalogue",
+                        "feature.customer_portal",
+                        "feature.reports",
+                        "feature.automations",
+                        "feature.timeline",
+                        "feature.calendar",
+                        "feature.pages",
+                        "feature.mcp",
+                        "feature.scim",
+                        "feature.import",
+                        "feature.public_boards",
+                        "feature.dev_links"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "key"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/feature-state": {
+      "get": {
+        "operationId": "getPortalFeatureState",
+        "tags": [
+          "Portal"
+        ],
+        "summary": "Whether the customer portal is on for the caller's organisation",
+        "description": "`off` when `feature.customer_portal` resolves off for every project and workspace serving the organisation; `unavailable` when it cannot be read.",
+        "responses": {
+          "200": {
+            "description": "The portal state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "on",
+                        "off",
+                        "unavailable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "state"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Not a customer portal session",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }

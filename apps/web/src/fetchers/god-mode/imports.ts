@@ -284,6 +284,8 @@ export type ImportSetupJob = {
   status: "running" | "completed" | "failed";
   startedAt: string;
   updatedAt: string;
+  /** Last liveness stamp of the worker holding the job's lease; null until the first one. */
+  heartbeatAt: string | null;
   pagesRead: number;
   /** Dry run: records classified so far. Discovery: records read so far. */
   recordsProcessed: number;

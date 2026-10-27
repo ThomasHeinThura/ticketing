@@ -31,10 +31,32 @@ const UPGRADE_FLAGS = [
   "feature.timeline",
 ] as const;
 
+const seededRowsMigration = readFileSync(
+  resolve(
+    currentDir,
+    "../../apps/api/drizzle/0209_feature_flag_upgrade_seeded_rows.sql",
+  ),
+  "utf8",
+);
+
 async function applyMigration() {
-  for (const statement of migration.split("--> statement-breakpoint")) {
-    if (statement.trim()) await db.execute(sql.raw(statement));
+  for (const file of [migration, seededRowsMigration]) {
+    for (const statement of file.split("--> statement-breakpoint")) {
+      if (statement.trim()) await db.execute(sql.raw(statement));
+    }
   }
+}
+
+// The rows migration 0096 seeds on every installation: all four flags off, version 1, no author.
+async function seedRowsAs0096() {
+  await db.insert(schema.instanceFeatureFlagTable).values(
+    UPGRADE_FLAGS.map((featureKey) => ({
+      featureKey,
+      enabled: false,
+      locked: false,
+      version: 1,
+    })),
+  );
 }
 
 async function instanceRows() {
@@ -78,6 +100,35 @@ describe("0206 feature-flag upgrade defaults", () => {
 
     await applyMigration();
     expect(await instanceRows()).toEqual(rows);
+  });
+
+  it("switches on rows still exactly as 0096 seeded them on an upgraded installation", async () => {
+    const { workspace } = await createWorkspaceMember();
+    await seedRowsAs0096();
+    for (const flag of UPGRADE_FLAGS)
+      expect(await workspaceFeatureEnabled(flag, workspace.id)).toBe(false);
+
+    await applyMigration();
+    const rows = await instanceRows();
+    expect(rows).toEqual(
+      UPGRADE_FLAGS.map((key) => ({
+        key,
+        enabled: true,
+        locked: false,
+        version: 2,
+      })),
+    );
+    for (const flag of UPGRADE_FLAGS)
+      expect(await workspaceFeatureEnabled(flag, workspace.id)).toBe(true);
+
+    await applyMigration();
+    expect(await instanceRows()).toEqual(rows);
+  });
+
+  it("leaves 0096's seeded rows off on a fresh install", async () => {
+    await seedRowsAs0096();
+    await applyMigration();
+    expect((await instanceRows()).every((row) => !row.enabled)).toBe(true);
   });
 
   it("never overrides an administrator's explicit instance or workspace choice", async () => {

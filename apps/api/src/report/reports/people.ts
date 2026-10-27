@@ -7,7 +7,15 @@ import { dayOf, itemFrom, num, OPEN, selectRows, tsn } from "../context";
 import { countValue, DAY_MS, minutesToHours, ratePercent, utc } from "../logic";
 import { loadFactRows } from "../snapshot.repository";
 import type { ReportContext, ReportDefinition, Row } from "../types";
-import { cell, col, emptyBody, itemsOf, pageLimit, pageRows } from "./shared";
+import {
+  cell,
+  col,
+  emptyBody,
+  itemsOf,
+  pageLimit,
+  pageRows,
+  textArray,
+} from "./shared";
 
 const WORKING_HOURS_PER_DAY = 8;
 const NAME = sql`COALESCE(pe.display_name, u.name, 'Unknown')`;
@@ -218,10 +226,7 @@ async function loadAvailableHours(
     sql`SELECT person_id, minutes_per_week, to_char(effective_from, 'YYYY-MM-DD') AS effective_from
       FROM available_hours
       WHERE workspace_id = ${ctx.workspaceId}
-        AND person_id IN (${sql.join(
-          personIds.map((id) => sql`${id}`),
-          sql`, `,
-        )})`,
+        AND person_id = ANY(${textArray(personIds)})`,
   );
   for (const row of rows) {
     const list = byPerson.get(row.person_id) ?? [];
@@ -267,10 +272,7 @@ const utilisation: ReportDefinition = {
     ctx.snapshots.use.liveParts = true;
     const loggedPersonIds = [...loggedByPerson.keys()];
     const loggedPeople = loggedPersonIds.length
-      ? sql`pe.id IN (${sql.join(
-          loggedPersonIds.map((id) => sql`${id}`),
-          sql`, `,
-        )})`
+      ? sql`pe.id = ANY(${textArray(loggedPersonIds)})`
       : sql`false`;
     const loggedOrder = loggedPersonIds.length
       ? sql`CASE pe.id ${sql.join(
@@ -485,10 +487,7 @@ const capacity: ReportDefinition = {
           }>(sql`SELECT tm.team_id, count(*) AS n
       ${itemFrom(ctx, sql`JOIN person pa ON pa.id = w.assignee_id JOIN team_member tm ON tm.user_id = pa.user_id JOIN team tt ON tt.id = tm.team_id AND tt.workspace_id = ${ctx.workspaceId}`)}
       AND ${OPEN}
-      AND tm.team_id IN (${sql.join(
-        selectedTeamIds.map((id) => sql`${id}`),
-        sql`, `,
-      )})
+      AND tm.team_id = ANY(${textArray(selectedTeamIds)})
       GROUP BY 1`)
         : [];
     const openBy = new Map(open.map((row) => [row.team_id, num(row.n)]));

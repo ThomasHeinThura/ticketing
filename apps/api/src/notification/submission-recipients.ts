@@ -8,6 +8,7 @@ import type { NotificationRecipientCandidate } from "./fanout";
 import { configuredMentionChannels } from "./fanout.repository";
 import {
   findNotificationPerson,
+  findSubmissionLastHandlerId,
   findSubmissionNotificationContext,
 } from "./repository";
 
@@ -18,8 +19,9 @@ import {
  * - `by: "staff"` (a clarification or any triager message): the request's requester, who must
  *   still be an active customer with a login.
  * - `by: "customer"` (the reply, IQ-13): the triager who last handled the submission
- *   (`claimed_by`), only while they still hold `intake:triage` in the submission's workspace.
- *   There is no fallback recipient: an unclaimed submission has no "last handler", and the
+ *   (`findSubmissionLastHandlerId`: the author of the latest triager message, else
+ *   `claimed_by`), only while they still hold `intake:triage` in the submission's workspace.
+ *   There is no fallback recipient: an untouched submission has no "last handler", and the
  *   triage queue is told about new submissions by `submission.received`, not by replies.
  *
  * The payload carries only the reference (`SUB-n`) and the side, so the row text never copies
@@ -48,7 +50,9 @@ export async function resolveSubmissionRepliedRecipients(
     return [];
 
   const recipientPersonId =
-    by === "staff" ? submission.requesterId : submission.claimedBy;
+    by === "staff"
+      ? submission.requesterId
+      : await findSubmissionLastHandlerId(tx, submission);
   if (!recipientPersonId) return [];
   const person = await findNotificationPerson(tx, recipientPersonId);
   if (!person?.active || !person.userId) return [];
@@ -169,7 +173,8 @@ async function resolveSubmissionDeclinedRecipients(
 /**
  * Send-time recipient check for a `submission` delivery (`current-eligibility.ts`): the customer
  * must still be the submission's requester, and a staff recipient the triager who last handled
- * it while still holding `intake:triage` in its workspace. Fails closed.
+ * it (`findSubmissionLastHandlerId`) while still holding `intake:triage` in its workspace.
+ * Fails closed.
  */
 export async function isCurrentSubmissionNotificationRecipient(
   tx: DbTransaction,
@@ -178,6 +183,7 @@ export async function isCurrentSubmissionNotificationRecipient(
 ): Promise<boolean> {
   const [row] = await tx
     .select({
+      id: schema.submissionTable.id,
       requesterId: schema.submissionTable.requesterId,
       claimedBy: schema.submissionTable.claimedBy,
       organisationId: schema.submissionTable.organisationId,
@@ -195,7 +201,7 @@ export async function isCurrentSubmissionNotificationRecipient(
     return identity.personId === row.requesterId;
   return (
     identity.side === "staff" &&
-    identity.personId === row.claimedBy &&
+    identity.personId === (await findSubmissionLastHandlerId(tx, row)) &&
     can(identity, "intake:triage", "workspace", {
       workspaceId: row.workspaceId,
     })

@@ -19,6 +19,7 @@ import {
   emptyBody,
   itemsOf,
   MIN,
+  textArray,
   weekAxis,
   weekKey,
 } from "./shared";
@@ -125,10 +126,7 @@ const workMix: ReportDefinition = {
     ];
     const typeNames = typeIds.length
       ? await selectRows<{ id: string; name: string }>(
-          sql`SELECT id,name FROM work_item_type WHERE id IN (${sql.join(
-            typeIds.map((id) => sql`${id}`),
-            sql`, `,
-          )})`,
+          sql`SELECT id,name FROM work_item_type WHERE id = ANY(${textArray(typeIds)})`,
         )
       : [];
     const nameById = new Map(typeNames.map((row) => [row.id, row.name]));
@@ -310,14 +308,7 @@ const cycleTime: ReportDefinition = {
       .map((row) => row.key)
       .slice(0, limit);
     if (keys.length === 0) return [];
-    return itemsOf(
-      ctx,
-      sql`w.key IN (${sql.join(
-        keys.map((key) => sql`${key}`),
-        sql`, `,
-      )})`,
-      limit,
-    );
+    return itemsOf(ctx, sql`w.key = ANY(${textArray(keys)})`, limit);
   },
 };
 
@@ -401,10 +392,7 @@ const ageing: ReportDefinition = {
     if (keys.length === 0) return [];
     return itemsOf(
       ctx,
-      sql`w.key IN (${sql.join(
-        keys.map((key) => sql`${key}`),
-        sql`, `,
-      )})`,
+      sql`w.key = ANY(${textArray(keys)})`,
       limit,
       sql`w.created_at ASC`,
     );
@@ -442,7 +430,10 @@ const flow: ReportDefinition = {
           { key: "m1", label: "8-30 days", maxDays: 31 },
           { key: "over", label: "Over 30 days", maxDays: null },
         ]);
-        const oldest = Math.max(...entry.ages);
+        const oldest = entry.ages.reduce(
+          (a, b) => Math.max(a, b),
+          Number.NEGATIVE_INFINITY,
+        );
         return {
           oldest,
           row: {

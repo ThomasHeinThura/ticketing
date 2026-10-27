@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { schema } from "../database";
 import type { Executor } from "../database/executor";
 import type { DbTransaction } from "../events/outbox";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import {
   type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
@@ -124,7 +125,7 @@ export const requestTypeDeletionTarget: RegisteredDeletionTarget = {
     );
     if (blockers.length > 0) throw requestTypeDeletionRefusal(blockers);
   },
-  execute: async (tx, { loaded, identity }) => {
+  execute: async (tx, { loaded, identity, input }) => {
     const executor = tx as unknown as DbTransaction;
     await executor
       .delete(schema.organisationRequestTypeTable)
@@ -141,7 +142,10 @@ export const requestTypeDeletionTarget: RegisteredDeletionTarget = {
         message: "pending_action_target_changed",
       });
     await synchronizeRequestTypeGroupOrder(executor, loaded.workspaceId);
-    await appendIntakeAudit(executor, {
+    // The approval runs outside the intake routes' audit store, so a failed append is returned
+    // here and administrators are told once the approval transaction has committed (AU-14,
+    // `P2R2-01`), like every other `appendAuditSavepoint` path.
+    const auditFailed = await appendIntakeAudit(executor, {
       actorId: identity.personId,
       actorType: "person",
       workspaceId: loaded.workspaceId,
@@ -149,7 +153,13 @@ export const requestTypeDeletionTarget: RegisteredDeletionTarget = {
       entityType: "request_type",
       entityId: loaded.id,
       before: { name: loaded.name },
+      traceId: input.traceId,
     });
-    return {};
+    return auditFailed
+      ? {
+          afterCommit: () =>
+            notifyCurrentInstanceAdminsOfAuditFailure("mutation"),
+        }
+      : {};
   },
 };

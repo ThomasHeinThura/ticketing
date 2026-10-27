@@ -10,7 +10,10 @@ import { createPersonalApiKey } from "../../apps/api/src/api-key/service";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
-import { searchCanonicalWorkItems } from "../../apps/api/src/search/canonical-repository";
+import {
+  commentRecentWindow,
+  searchCanonicalWorkItems,
+} from "../../apps/api/src/search/canonical-repository";
 import { escapeLikePattern } from "../../apps/api/src/search/like-pattern";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { createCustomerPrincipal } from "./helpers/customer-principal";
@@ -394,6 +397,98 @@ describe("API integration: canonical global search", () => {
     expect(threeChars.map((r) => r.id).sort()).toEqual(
       items.map((item) => item.id).sort(),
     );
+  });
+
+  it("P1R3-1: the newest-first comment probe and the trigram fallback both return exactly the newest matching items", async () => {
+    const { member, project, type } = await seedWorld();
+    const [state] = await db
+      .select({ id: schema.stateTable.id })
+      .from(schema.stateTable)
+      .where(eq(schema.stateTable.projectId, project.id));
+    if (!state) throw new Error("state fixture failed");
+    const limit = 3;
+    const total = commentRecentWindow(limit) + 30;
+    const base = Date.now();
+    const slug = `P${randomUUID().slice(0, 6).toUpperCase()}`;
+    const items = Array.from({ length: total }, (_, index) => ({
+      id: randomUUID(),
+      projectId: project.id,
+      workspaceId: member.workspace.id,
+      typeId: type.id,
+      stateId: state.id,
+      number: 10_000 + index,
+      key: `${slug}-${10_000 + index}`,
+      title: `Bulk item ${index}`,
+      // index 0 is the newest
+      createdAt: new Date(base - index * 60_000),
+      updatedAt: new Date(base),
+    }));
+    for (let start = 0; start < items.length; start += 200)
+      await db
+        .insert(schema.workItemTable)
+        .values(items.slice(start, start + 200));
+    const at = (index: number) => {
+      const item = items[index];
+      if (!item) throw new Error("index out of range");
+      return item;
+    };
+    const comment = (index: number, text: string, deleted = false) =>
+      db.insert(schema.commentTable).values({
+        workspaceId: member.workspace.id,
+        workItemId: at(index).id,
+        authorId: member.user.id,
+        actorType: "person",
+        visibility: "internal",
+        deletedAt: deleted ? new Date() : null,
+        body: deleted
+          ? null
+          : {
+              type: "doc",
+              content: [
+                { type: "paragraph", content: [{ type: "text", text }] },
+              ],
+            },
+      });
+    // Common near the top: the probe fills the page inside the window. Index 0 only has a
+    // deleted comment and index 3 is archived, so neither may appear.
+    await comment(0, "alphaword", true);
+    for (const index of [1, 2, 3, 5, 9, 40])
+      await comment(index, "the alphaword note");
+    await db
+      .update(schema.workItemTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.workItemTable.id, at(3).id));
+    // Sparse: one hit inside the window, the rest beyond it, so the fallback answers.
+    const outside = commentRecentWindow(limit);
+    for (const index of [200, outside + 10, outside + 5, outside + 20])
+      await comment(index, "Betaword follow-up");
+    await comment(outside + 1, "betaword", true);
+
+    const ids = async (term: string) =>
+      (
+        await searchCanonicalWorkItems({
+          workspaceId: member.workspace.id,
+          reachableProjectIds: [project.id],
+          term,
+          limit,
+        })
+      ).map((row) => row.id);
+
+    expect(await ids("alphaword")).toEqual([at(1).id, at(2).id, at(5).id]);
+    expect(await ids("BETAWORD")).toEqual([
+      at(200).id,
+      at(outside + 5).id,
+      at(outside + 10).id,
+    ]);
+    // Reach still applies to both strategies.
+    expect(
+      await searchCanonicalWorkItems({
+        workspaceId: member.workspace.id,
+        reachableProjectIds: [],
+        term: "alphaword",
+        limit,
+      }),
+    ).toEqual([]);
   });
 
   it("falls back to trigram similarity for a typo", async () => {

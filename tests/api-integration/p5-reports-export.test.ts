@@ -8,6 +8,7 @@ import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db from "../../apps/api/src/database";
 import { reportExportTable } from "../../apps/api/src/database/schema-p5-reports";
+import { exportLimits } from "../../apps/api/src/report/export.service";
 import { runReportExport } from "../../apps/api/src/scheduler/report-jobs";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -261,17 +262,20 @@ describe("synchronous and queued exports (RP-10)", () => {
     );
     expect(queued.status).toBe(202);
     const { data } = (await queued.json()) as { data: ExportDto };
+    // Pages are appended as chunk rows (P5-R2-04): fail the second chunk's INSERT.
     await db.execute(sql`CREATE OR REPLACE FUNCTION public.test_fail_report_export_second_chunk()
       RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN
-        IF OLD.content IS NOT NULL THEN
+        IF NEW.seq > 0 THEN
           RAISE EXCEPTION 'injected later page failure';
         END IF;
         RETURN NEW;
       END $$`);
     await db.execute(sql`CREATE TRIGGER test_fail_report_export_second_chunk
-      BEFORE UPDATE OF content ON report_export FOR EACH ROW
+      BEFORE INSERT ON report_export_chunk FOR EACH ROW
       EXECUTE FUNCTION public.test_fail_report_export_second_chunk()`);
+    const limitsBefore = { ...exportLimits };
+    exportLimits.pageSize = 100;
     try {
       const done = await settle(w.owner.user, data.id);
       expect(done.status).toBe("failed");
@@ -283,9 +287,14 @@ describe("synchronous and queued exports (RP-10)", () => {
       expect(stored?.status).toBe("failed");
       expect(stored?.content).toBeNull();
       expect(stored?.rowCount).toBeNull();
+      const chunks = await db.execute<{ n: string }>(
+        sql`SELECT count(*) AS n FROM report_export_chunk WHERE export_id = ${data.id}`,
+      );
+      expect(Number(chunks.rows[0]?.n)).toBe(0);
     } finally {
+      Object.assign(exportLimits, limitsBefore);
       await db.execute(
-        sql`DROP TRIGGER IF EXISTS test_fail_report_export_second_chunk ON report_export`,
+        sql`DROP TRIGGER IF EXISTS test_fail_report_export_second_chunk ON report_export_chunk`,
       );
       await db.execute(
         sql`DROP FUNCTION IF EXISTS public.test_fail_report_export_second_chunk()`,

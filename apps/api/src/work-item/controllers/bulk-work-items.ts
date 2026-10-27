@@ -3,6 +3,7 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
+import type { AuditRequestContext } from "../../audit/request-context";
 import db from "../../database";
 import { labelTable, projectTable, workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
@@ -36,6 +37,7 @@ import {
   SlaPauseConflictError,
   TransitionBlockedError,
   TransitionConflictError,
+  type TransitionWorkItemInput,
   transitionWorkItem,
 } from "./transition-work-item";
 
@@ -84,6 +86,14 @@ export type BulkWorkItemOperation =
       operation: "transition";
       toStateTemplateId: string;
       identity: ResolvedIdentity;
+      /**
+       * `P2R1-16`: the route's API key, MCP origin and request facts, handed to every item's
+       * transition exactly as the single-item route does. Absent for automation callers.
+       */
+      request?: Pick<
+        TransitionWorkItemInput,
+        "auditOrigin" | "apiKey" | "audit"
+      >;
     };
 
 export type BulkWorkItemFailure = { id: string; reason: string };
@@ -301,6 +311,10 @@ async function transitionWorkItemByKey(
   actorType: ActivityActorType,
   identity: ResolvedIdentity,
   toStateTemplateId: string,
+  request: Pick<
+    TransitionWorkItemInput,
+    "auditOrigin" | "apiKey" | "audit"
+  > = {},
 ): Promise<void> {
   const [row] = await db
     .select({
@@ -330,7 +344,7 @@ async function transitionWorkItemByKey(
     identity.personId,
     actorId,
     actorType,
-    { toStateTemplateId },
+    { toStateTemplateId, ...request },
   );
 }
 
@@ -376,6 +390,7 @@ async function runOne(
     actorType,
     op.identity,
     op.toStateTemplateId,
+    op.request,
   );
 }
 
@@ -392,6 +407,8 @@ export async function bulkWorkItems(
    * act on fails with "Insufficient permissions", as the single-item route would answer 403.
    */
   authorise: (key: string) => Promise<BulkItemDecision>,
+  /** `P2R1-16`: request facts for the `bulk.performed` summary row (route callers only). */
+  audit?: Partial<AuditRequestContext>,
 ): Promise<BulkWorkItemResult> {
   if (op.operation === "delete")
     throw new HTTPException(409, { message: "pending_action_required" });
@@ -428,6 +445,7 @@ export async function bulkWorkItems(
   }
 
   await appendAuditLog(db, {
+    ...audit,
     actorId,
     actorType,
     workspaceId,

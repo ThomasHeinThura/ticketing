@@ -5,6 +5,7 @@ import {
   projectAncestryFor,
   projectOwnerTeamFor,
 } from "../utils/project-ancestry";
+import { CUSTOMER_APPROVAL_EVENT_KINDS } from "./customer-event-audience";
 import type { NotificationRecipientCandidate } from "./fanout";
 import { configuredMentionChannels } from "./fanout.repository";
 import {
@@ -178,6 +179,7 @@ export async function resolveApprovalEventRecipients(
     if (person.side !== "staff") {
       if (
         person.side !== "customer" ||
+        !CUSTOMER_APPROVAL_EVENT_KINDS.has(event.kind) ||
         personId !== row.approverId ||
         row.kind !== "customer" ||
         !(await isApprovalApproverStillValid(tx, row))

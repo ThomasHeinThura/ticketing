@@ -1,5 +1,8 @@
-import type { Context } from "hono";
+import { eq } from "drizzle-orm";
+import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { portalForHost } from "../auth";
+import db, { schema } from "../database";
 import { requireCurrentInstanceAdmin } from "../instance/require-instance-admin";
 import {
   apiRouter,
@@ -13,12 +16,15 @@ import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { customerPortalStateForOrganisation } from "./enforce";
 import {
   type FeatureActor,
   FeatureFlagConflictError,
+  FeatureFlagScopeError,
   listInstanceFeatures,
   listProjectFeatures,
   listWorkspaceFeatures,
+  lowerLevelFeatures,
   patchInstanceFeatures,
   patchProjectFeatures,
   patchWorkspaceFeatures,
@@ -28,11 +34,13 @@ import {
 import {
   featureConflictSchema,
   featureProjectParam,
+  featureScopeErrorSchema,
   featureWorkspaceParam,
   instanceFeaturesSchema,
   levelFeaturesSchema,
   patchInstanceFeaturesBody,
   patchLevelFeaturesBody,
+  portalFeatureStateSchema,
   resolvedFeaturesQuery,
   resolvedFeaturesSchema,
   workspaceResolvedFeaturesSchema,
@@ -172,6 +180,10 @@ const patchWorkspaceRoute = createRoute({
     200: jsonResponse("Updated workspace flags", levelFeaturesSchema),
     403: errorResponse("Missing workspace:manage_settings permission"),
     409: jsonResponse("Locked flag or version conflict", featureConflictSchema),
+    422: jsonResponse(
+      "The flag exists at instance level only",
+      featureScopeErrorSchema,
+    ),
   },
 });
 
@@ -215,6 +227,10 @@ const patchProjectRoute = createRoute({
     403: errorResponse("Missing project:manage_settings permission"),
     404: errorResponse("Project not found or out of reach"),
     409: jsonResponse("Locked flag or version conflict", featureConflictSchema),
+    422: jsonResponse(
+      "The flag exists at instance level only",
+      featureScopeErrorSchema,
+    ),
   },
 });
 
@@ -236,6 +252,56 @@ const resolvedRoute = createRoute({
     404: errorResponse("Project not found or out of reach"),
   },
 });
+
+/**
+ * The signed-in customer's own organisation (policy predicate `own_organisation`). Anything
+ * else (agent host, staff or API-key caller, no customer person) answers 404.
+ */
+async function portalCustomerOrganisation(c: Ctx, next: Next) {
+  const session = c.get("session") as { portal?: string } | null;
+  const userId = c.get("userId") as string | undefined;
+  if (
+    !userId ||
+    c.get("apiKey") ||
+    portalForHost(c.req.header("host")) !== "customer" ||
+    session?.portal !== "customer"
+  )
+    throw new HTTPException(404, { message: "Not found" });
+  const [person] = await db
+    .select({
+      organisationId: schema.personTable.organisationId,
+      side: schema.personTable.side,
+    })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (person?.side !== "customer")
+    throw new HTTPException(404, { message: "Not found" });
+  c.set("portalPredicateSatisfied", true);
+  c.set("policyOrganisationId", person.organisationId);
+  c.set("policyOrganisationIdSource", "row");
+  c.set("portalOrganisationId", person.organisationId);
+  await next();
+}
+
+const portalFeatureStateRoute = createRoute({
+  method: "get",
+  operationId: "getPortalFeatureState",
+  path: "/portal/feature-state",
+  tags: ["Portal"],
+  summary: "Whether the customer portal is on for the caller's organisation",
+  description:
+    "`off` when `feature.customer_portal` resolves off for every project and workspace serving the organisation; `unavailable` when it cannot be read.",
+  middleware: [portalCustomerOrganisation] as const,
+  responses: {
+    200: jsonResponse("The portal state", portalFeatureStateSchema),
+    404: errorResponse("Not a customer portal session"),
+  },
+});
+
+function scopeError(error: FeatureFlagScopeError) {
+  return { message: error.code, key: error.key };
+}
 
 function conflict(error: FeatureFlagConflictError) {
   return {
@@ -268,7 +334,12 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(getWorkspaceRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
-    return c.json({ features: await listWorkspaceFeatures(workspaceId) }, 200);
+    return c.json(
+      {
+        features: lowerLevelFeatures(await listWorkspaceFeatures(workspaceId)),
+      },
+      200,
+    );
   })
   .openapi(getWorkspaceResolvedRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
@@ -288,17 +359,28 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
         actor,
       );
     } catch (error) {
+      if (error instanceof FeatureFlagScopeError)
+        return c.json(scopeError(error), 422);
       if (error instanceof FeatureFlagConflictError)
         return c.json(conflict(error), 409);
       throw error;
     }
-    return c.json({ features: await listWorkspaceFeatures(workspaceId) }, 200);
+    return c.json(
+      {
+        features: lowerLevelFeatures(await listWorkspaceFeatures(workspaceId)),
+      },
+      200,
+    );
   })
   .openapi(getProjectRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     return c.json(
-      { features: await listProjectFeatures(projectId, workspaceId) },
+      {
+        features: lowerLevelFeatures(
+          await listProjectFeatures(projectId, workspaceId),
+        ),
+      },
       200,
     );
   })
@@ -314,12 +396,28 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
         actor,
       );
     } catch (error) {
+      if (error instanceof FeatureFlagScopeError)
+        return c.json(scopeError(error), 422);
       if (error instanceof FeatureFlagConflictError)
         return c.json(conflict(error), 409);
       throw error;
     }
     return c.json(
-      { features: await listProjectFeatures(projectId, workspaceId) },
+      {
+        features: lowerLevelFeatures(
+          await listProjectFeatures(projectId, workspaceId),
+        ),
+      },
+      200,
+    );
+  })
+  .openapi(portalFeatureStateRoute, async (c) => {
+    const state = await customerPortalStateForOrganisation(
+      c.get("portalOrganisationId") as string,
+    );
+    c.header("Cache-Control", "no-store");
+    return c.json(
+      { state: state === "unknown" ? ("unavailable" as const) : state },
       200,
     );
   })

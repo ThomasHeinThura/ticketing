@@ -15,7 +15,10 @@ import {
   projectOwnerTeamFor,
 } from "../utils/project-ancestry";
 import { isActiveTeamNotificationRecipient } from "./automation-team-recipients";
-import { isCustomerEligibleNotificationEvent } from "./customer-event-audience";
+import {
+  CUSTOMER_APPROVAL_EVENT_KINDS,
+  isCustomerEligibleNotificationEvent,
+} from "./customer-event-audience";
 import { isCurrentCustomerOwnRequest } from "./customer-request-scope";
 import type { NotificationProjection } from "./outbox-drain";
 import { resolveNotificationPreference } from "./preferences";
@@ -345,6 +348,15 @@ export async function evaluateCurrentNotificationReachAndPreference(
     );
     if (!approval || approval.workspaceId !== delivery.workspaceId)
       return { kind: "suppress", reason: "resource_unavailable" };
+    // A customer is only ever an approval's addressed approver (`P2R2-04`).
+    if (
+      identity.side === "customer" &&
+      !CUSTOMER_APPROVAL_EVENT_KINDS.has(delivery.eventKind)
+    )
+      return {
+        kind: "suppress",
+        reason: "approval_not_addressed_to_recipient",
+      };
     let currentRecipient = false;
     switch (delivery.eventKind) {
       case "approval.requested":

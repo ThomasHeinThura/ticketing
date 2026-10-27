@@ -49,6 +49,7 @@ export function setupJob(
     status: "running",
     startedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    heartbeatAt: null,
     pagesRead: 0,
     recordsProcessed: 0,
     totalRecords: null,

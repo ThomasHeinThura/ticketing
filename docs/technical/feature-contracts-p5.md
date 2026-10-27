@@ -494,11 +494,17 @@ Carried from v1's set, which was well chosen, grouped by the question being aske
 - `RP-9` Closed periods read from `metric_snapshot`, computed hourly. The current partial
   period is computed live. The boundary is stated.
 - `RP-10` Every report exports to CSV, respecting filters and the viewer's reach. Exports
-  are audited. *Implemented:* a small
-  export is the CSV itself; a large one is queued and the requester downloads it from the
-  authenticated route `GET /api/report-exports/{id}/download` (the requester's session or key, the
-  caps they hold now ANDed with those at request time). Nothing is emailed. A paged export stops
-  at a hard ceiling of pages and bytes and then fails with `export_too_large`.
+  are audited. *Implemented:* a small export is the CSV itself; a large one is queued as a job
+  and, when ready, the requester is emailed once a link to the authenticated route
+  `GET /api/report-exports/{id}/download` (no signed or public URL: the download needs the
+  requester's session or key, with the caps they hold now ANDed with those at request time). The
+  email is on by default and honours a stored `report.export_ready` email preference, which the
+  preferences screen does not offer yet (so the email has no unsubscribe link). The file
+  is written as appended chunks, one per page of 5,000 rows, and streamed back on download. Caps:
+  1,000,000 rows, 200 pages and 512 MB; beyond them the export fails with `export_too_large`
+  (nothing is emailed). A 500,000-row export is within the caps. Rates follow `TC-11` at project
+  scope: a project-filtered report resolves `time_entry:manage_rates` at that project, and a
+  workspace-wide report shows no rates while a project role override removes the capability.
 - `RP-11` Every chart has an accessible table equivalent, reachable by keyboard, because a
   chart alone is not readable by a screen reader.
 - `RP-12` Drill-down from any number to the underlying list, filtered identically.
@@ -572,7 +578,7 @@ different `layout` and query shape.
 | Fewer than the minimum sample | `null`, rendered as "not enough data (n of m)" |
 | Project archived mid-window | Included, marked archived |
 | SLA policy changed mid-window | Each item evaluated against the policy version effective at its creation. The report notes that a change occurred |
-| Export of 500,000 rows | Queued as a job; the requester downloads it from the authenticated export route when ready (no emailed link); beyond the page and byte ceiling it fails with `export_too_large` |
+| Export of 500,000 rows | Queued as a job; a download link is emailed when ready |
 | Viewer loses reach mid-session | Numbers change on refresh. The scope line explains |
 | Two currencies | Grouped, never summed |
 | Tier 3 report grouped by a custom field later deleted | Report retained; the group renders "(deleted field)" rather than failing |

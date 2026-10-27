@@ -21,6 +21,7 @@ import {
 import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import { WorkspaceFeatureGate } from "@/components/settings/workspace-feature-gate";
 import { SlaPolicySummaryCard } from "@/components/sla-policy/sla-policy-summary-card";
 import { useSlaPolicies } from "@/hooks/queries/sla-policy/use-sla-policies";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -34,7 +35,16 @@ export const Route = createFileRoute(
   component: SlaPoliciesRoute,
 });
 
+/** P4R2-M1: the list and its detail routes exist only while `feature.sla` is on. */
 function SlaPoliciesRoute() {
+  return (
+    <WorkspaceFeatureGate feature="feature.sla" off="sla">
+      <SlaPoliciesRouteContent />
+    </WorkspaceFeatureGate>
+  );
+}
+
+function SlaPoliciesRouteContent() {
   const { t } = useTranslation("slaPolicies");
   const location = useLocation();
   const navigate = useNavigate({ from: Route.fullPath });

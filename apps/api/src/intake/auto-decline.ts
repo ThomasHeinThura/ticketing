@@ -10,7 +10,7 @@ import { eventScope } from "../events/outbox";
 import { logTaskDesk } from "../instance/observability/runtime";
 import { enqueueNotificationEvent } from "../notification/fanout";
 import { resolveSubmissionRepliedRecipients } from "../notification/submission-recipients";
-import { appendIntakeAudit, withIntakeAudit } from "./audit";
+import { appendIntakeAudit, intakeAuditUnit, withIntakeAudit } from "./audit";
 
 /**
  * IQ-15: a submission `clarifying` for longer than `instance_setting.clarification_window_days`
@@ -201,7 +201,9 @@ export async function autoDeclineStaleClarifications(
       for (const { id } of due) {
         outcome.scanned++;
         try {
-          if ((await declineOne(id, days)) === "declined") outcome.declined++;
+          // A row that throws rolled back with its audit row: no failure notice for it.
+          const result = await intakeAuditUnit(() => declineOne(id, days));
+          if (result === "declined") outcome.declined++;
         } catch {
           outcome.degraded = true;
           logTaskDesk({

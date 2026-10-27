@@ -328,7 +328,9 @@ export async function loadFactRows(
       liveRanges.push(...runsOf(missing));
     }
   }
-  for (const range of liveRanges) rows.push(...(await live(range)));
+  // A loop, not push(...rows): spreading a 100k-row result overflows the call stack (P5-R2-02).
+  for (const range of liveRanges)
+    for (const row of await live(range)) rows.push(row);
   return rows;
 }
 
@@ -449,7 +451,7 @@ export async function loadDaily(
     const read = closedKeys.filter((key) => covered.has(key));
     if (read.length > 0) {
       ctx.snapshots.sources.metricSnapshot = true;
-      rows.push(...stored.rows);
+      for (const row of stored.rows) rows.push(row);
       for (const key of read) {
         const start = dayFromKey(key);
         if (!shown(start)) continue;
@@ -469,7 +471,9 @@ export async function loadDaily(
     }
     liveRanges.push(...runsOf(missing));
   }
-  for (const range of liveRanges) rows.push(...(await live(range)));
+  // A loop, not push(...rows): spreading a 100k-row result overflows the call stack (P5-R2-02).
+  for (const range of liveRanges)
+    for (const row of await live(range)) rows.push(row);
   return fold(rows);
 }
 
@@ -478,12 +482,16 @@ export async function loadDaily(
 // ---------------------------------------------------------------------------------------------
 
 /**
- * A marker is trusted only while the workspace epoch it was computed under is current: sources that
- * can change facts of any day (project, state, KB article, person link) bump the epoch (0203).
+ * A marker is trusted only while the workspace epoch it was computed under is current (sources
+ * that can change facts of any day, such as a project, state or KB article update, bump the epoch;
+ * 0202), and only while its day's generation is current: every fact write to a closed day bumps
+ * `metric_snapshot_day_gen`, whatever the writer's isolation level (0208, P5-R2-05).
  */
 function markerCurrent(alias: string): SQL {
   const a = sql.raw(alias);
-  return sql`${a}.epoch = COALESCE((SELECT e.epoch FROM metric_snapshot_epoch e WHERE e.workspace_id = ${a}.workspace_id), 0)`;
+  return sql`(${a}.epoch = COALESCE((SELECT e.epoch FROM metric_snapshot_epoch e WHERE e.workspace_id = ${a}.workspace_id), 0)
+    AND ${a}.gen = COALESCE((SELECT g.gen FROM metric_snapshot_day_gen g
+      WHERE g.workspace_id = ${a}.workspace_id AND g.period_start = ${a}.period_start), 0))`;
 }
 
 export type SnapshotRunStats = { days: number; rows: number };
@@ -517,10 +525,24 @@ export async function writeWorkspaceDays(
       await tx.execute(
         sql`SELECT set_config('taskdesk.snapshot_writer', 'on', true)`,
       );
-      const epochRows = await tx.execute<{ epoch: string }>(
-        sql`SELECT COALESCE((SELECT epoch FROM metric_snapshot_epoch WHERE workspace_id = ${workspaceId}), 0) AS epoch`,
+      // Read under the exclusive day lock, before any fact: the epoch, the day's generation (a fact
+      // write that commits later bumps it, so this marker stops being trusted even when that write
+      // cannot see the marker, P5-R2-05), and the database clock. A day is certified only once it
+      // has ended by the same clock the source trigger uses to decide whether to bump a generation.
+      const fenceRows = await tx.execute<{
+        epoch: string;
+        gen: string;
+        closed: boolean;
+      }>(
+        sql`SELECT COALESCE((SELECT epoch FROM metric_snapshot_epoch WHERE workspace_id = ${workspaceId}), 0) AS epoch,
+          COALESCE((SELECT gen FROM metric_snapshot_day_gen
+            WHERE workspace_id = ${workspaceId} AND period_start = ${dayStart.toISOString()}::timestamptz), 0) AS gen,
+          clock_timestamp() >= ${range.to.toISOString()}::timestamptz AS closed`,
       );
-      const epoch = String(epochRows.rows[0]?.epoch ?? "0");
+      const fence = fenceRows.rows[0];
+      if (!fence?.closed) return;
+      const epoch = String(fence.epoch ?? "0");
+      const gen = String(fence.gen ?? "0");
       await withReportExecutor(tx, async () => {
         const perMetric = new Map<
           SnapshotMetric,
@@ -594,10 +616,10 @@ export async function writeWorkspaceDays(
             await tx.execute(sql`INSERT INTO metric_snapshot
             (id, workspace_id, period_start, period_end, grain, metric_key, project_id, organisation_id, dimensions, measures, computed_at)
             VALUES ${sql.join(values.slice(i, i + 500), sql`, `)}`);
-          await tx.execute(sql`INSERT INTO metric_snapshot_day (workspace_id, period_start, computed_at, snapshot_version, epoch)
-          VALUES (${workspaceId}, ${start.toISOString()}::timestamptz, now(), ${SNAPSHOT_FAMILY_VERSION}, ${epoch}::bigint)
+          await tx.execute(sql`INSERT INTO metric_snapshot_day (workspace_id, period_start, computed_at, snapshot_version, epoch, gen)
+          VALUES (${workspaceId}, ${start.toISOString()}::timestamptz, now(), ${SNAPSHOT_FAMILY_VERSION}, ${epoch}::bigint, ${gen}::bigint)
           ON CONFLICT (workspace_id, period_start) DO UPDATE
-          SET computed_at = now(), snapshot_version = EXCLUDED.snapshot_version, epoch = EXCLUDED.epoch`);
+          SET computed_at = now(), snapshot_version = EXCLUDED.snapshot_version, epoch = EXCLUDED.epoch, gen = EXCLUDED.gen`);
           stats.days += 1;
           stats.rows += values.length;
         }
@@ -675,6 +697,13 @@ export async function pruneSnapshots(now: Date = new Date()): Promise<void> {
             SELECT 1 FROM metric_snapshot h
             WHERE h.workspace_id=d.workspace_id AND h.period_start=d.period_start
               AND ${dayProtectedByHold("h")})`);
+      // A day generation outlives nothing it guards: only days whose marker is gone are dropped
+      // (a missing generation reads as 0, which can only distrust a marker, never trust one).
+      await tx.execute(sql`DELETE FROM metric_snapshot_day_gen g
+        WHERE g.workspace_id=${workspaceId} AND g.period_start < ${cutoff.toISOString()}::timestamptz
+          AND NOT EXISTS (
+            SELECT 1 FROM metric_snapshot_day d
+            WHERE d.workspace_id=g.workspace_id AND d.period_start=g.period_start)`);
     });
   }
 }

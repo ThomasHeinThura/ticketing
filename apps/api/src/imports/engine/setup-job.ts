@@ -188,18 +188,68 @@ export async function runSetupJob(
   if (!(await claimJobLease(name, owner, ttl)))
     return { status: "idle", pages: 0 };
   let renewedAt = Date.now();
-  const heartbeat = async () => {
-    if (Date.now() - renewedAt < LEASE_RENEW_EVERY_MS) return;
+  /** Set once the lease or the job is no longer ours; the next per-page heartbeat then stops. */
+  let lost = false;
+  const renew = async () => {
     // A lapsed lease (a slow page) is re-claimed; one another worker has taken is not ours: stop.
     if (
       !(await renewJobLease(name, owner, ttl)) &&
       !(await claimJobLease(name, owner, ttl))
-    )
+    ) {
+      lost = true;
       throw new JobSuperseded();
+    }
     renewedAt = Date.now();
   };
+  const heartbeat = async () => {
+    if (lost) throw new JobSuperseded();
+    if (Date.now() - renewedAt < LEASE_RENEW_EVERY_MS) return;
+    await renew();
+  };
+  /**
+   * P6-R2-02: liveness independent of page progress. While this worker is alive it renews the
+   * lease and stamps `heartbeatAt` on the job every `LEASE_RENEW_EVERY_MS`, even inside one slow
+   * adapter call (a long discovery scan or a slow page). The wizard bases its "stalled" warning on
+   * that stamp, so a live job never looks abandoned and a killed one does within the threshold.
+   */
+  const keepAlive = (jobId: string) => {
+    let inFlight: Promise<void> | null = null;
+    const tick = async () => {
+      try {
+        if (Date.now() - renewedAt >= LEASE_RENEW_EVERY_MS) await renew();
+        if (
+          !(await patchJob(runId, jobId, {
+            heartbeatAt: new Date().toISOString(),
+          }))
+        )
+          lost = true;
+      } catch (error) {
+        if (error instanceof JobSuperseded) return;
+        // A transient write failure is not proof the job is lost; the next tick retries.
+        console.error(
+          JSON.stringify({
+            job: IMPORT_SETUP_JOB,
+            runId,
+            outcome: "heartbeat_failed",
+            error: error instanceof Error ? error.name : "unknown",
+          }),
+        );
+      }
+    };
+    const timer = setInterval(() => {
+      if (inFlight || lost) return;
+      inFlight = tick().finally(() => {
+        inFlight = null;
+      });
+    }, LEASE_RENEW_EVERY_MS);
+    timer.unref?.();
+    return async () => {
+      clearInterval(timer);
+      await inFlight;
+    };
+  };
   try {
-    return await executeSetupJob(runId, options, heartbeat);
+    return await executeSetupJob(runId, options, heartbeat, keepAlive);
   } finally {
     await releaseJobLease(name, owner).catch((error) =>
       console.error(
@@ -319,10 +369,12 @@ async function executeSetupJob(
   runId: string,
   options: SetupJobOptions,
   heartbeat: () => Promise<void>,
+  keepAlive: (jobId: string) => () => Promise<void>,
 ): Promise<SetupJobOutcome> {
   const claimed = await claimJob(runId);
   if (!claimed) return { status: "idle", pages: 0 };
   const { run, job } = claimed;
+  const stopKeepAlive = keepAlive(job.id);
   let pages = 0;
   try {
     const adapter = getImportAdapter(run.pluginId);
@@ -358,6 +410,8 @@ async function executeSetupJob(
     const code = failureCode(error);
     await failJob(run.id, job.id, code);
     return { status: "failed", pages, failure: code };
+  } finally {
+    await stopKeepAlive();
   }
 }
 

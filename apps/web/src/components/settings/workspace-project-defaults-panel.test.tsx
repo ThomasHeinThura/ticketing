@@ -45,6 +45,14 @@ vi.mock("@/fetchers/service-calendar", () => ({
   getServiceCalendars: mocks.getCalendars,
 }));
 vi.mock("@/fetchers/sla-policy", () => ({ getSlaPolicies: mocks.getPolicies }));
+// P4R2-M1: the SLA areas follow the workspace's resolved `feature.sla`.
+const workspaceFeatureState = vi.hoisted(() => ({ sla: true, loading: false }));
+vi.mock("@/hooks/queries/feature-flag/use-workspace-features", () => ({
+  default: () => ({
+    isOn: (key: string) => key === "feature.sla" && workspaceFeatureState.sla,
+    isLoading: workspaceFeatureState.loading,
+  }),
+}));
 
 import { WorkspaceProjectDefaultsPanel } from "./workspace-project-defaults-panel";
 
@@ -62,6 +70,10 @@ function renderPanel() {
 afterEach(() => {
   cleanup();
   mocks.canEdit = true;
+  workspaceFeatureState.sla = true;
+  workspaceFeatureState.loading = false;
+  mocks.getPolicies.mockClear();
+  mocks.getCalendars.mockClear();
 });
 
 describe("WorkspaceProjectDefaultsPanel", () => {
@@ -105,5 +117,14 @@ describe("WorkspaceProjectDefaultsPanel", () => {
         name: "settings:workspaceProjectDefaults.save",
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it("is not offered and loads no SLA lists while feature.sla is off (P4R2-M1)", async () => {
+    workspaceFeatureState.sla = false;
+    const { container } = renderPanel();
+    await Promise.resolve();
+    expect(container).toBeEmptyDOMElement();
+    expect(mocks.getPolicies).not.toHaveBeenCalled();
+    expect(mocks.getCalendars).not.toHaveBeenCalled();
   });
 });

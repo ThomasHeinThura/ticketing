@@ -20,7 +20,9 @@ vi.mock("../../apps/api/src/feature-flag/enforce", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("../../apps/api/src/feature-flag/enforce")
   >()),
-  featureEnabledSomewhere: async () => true,
+  featureStateSomewhere: async () => "on" as const,
+  customerPortalStateForUser: async () => null,
+  customerPortalStateForSubmission: async () => "on" as const,
 }));
 
 const PORTAL = "http://portal.localhost:5174";

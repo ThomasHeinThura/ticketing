@@ -70,7 +70,12 @@ import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
 import featureFlag from "./feature-flag";
-import { featureEnabledSomewhere } from "./feature-flag/enforce";
+import {
+  customerPortalStateForSubmission,
+  customerPortalStateForUser,
+  type FeatureLookupState,
+  featureStateSomewhere,
+} from "./feature-flag/enforce";
 import { accountLinkApi as accountLinkRouter } from "./identity/account-link";
 import identityConnectionAdmin from "./identity/connection-admin";
 import identityConnectionDeletion from "./identity/connection-deletion";
@@ -229,6 +234,7 @@ import { buildAuthRequest } from "./utils/auth-request";
 import {
   authenticateApiRequest,
   hasInvalidExplicitCredential,
+  resolveOptionalCookieSession,
 } from "./utils/authenticate-api-request";
 import {
   type ReachableAsset,
@@ -309,6 +315,8 @@ type AppVariables = {
     apiKey?: ApiKey;
     appOrigin: "agent" | "portal" | "unknown";
     appPublicOrigin?: string;
+    /** Set on the portal host while `feature.customer_portal` is not on (P3-R2-03, P4R2-L1). */
+    portalFeatureState?: PortalFeatureOffState;
   };
 };
 
@@ -738,6 +746,10 @@ function registerStaticServing(
     const surface = c.get("appOrigin");
     if (surface !== "agent" && surface !== "portal") return next();
     const staticRoot = staticRoots[surface];
+    const portalOff =
+      surface === "portal" ? c.get("portalFeatureState") : undefined;
+    if (!staticRoot && portalOff)
+      return portalFeatureOffResponse(c.req.path, portalOff);
     if (!staticRoot) {
       return c.req.method === "HEAD"
         ? c.body(null, 503, { "content-type": "application/json" })
@@ -765,18 +777,31 @@ function registerStaticServing(
         c.req.path,
       );
       const nonce = cspNonceForContext(c);
-      if (
-        nonce &&
-        assetResponse.headers.get("content-type")?.startsWith("text/html")
-      ) {
-        return serveNoncedHtml(assetResponse, nonce);
+      const isHtml = assetResponse.headers
+        .get("content-type")
+        ?.startsWith("text/html");
+      const htmlResponse =
+        nonce && isHtml
+          ? await serveNoncedHtml(assetResponse, nonce)
+          : assetResponse;
+      // "/" is served here as the directory index: mark it like the SPA fallback below.
+      if (surface === "portal" && isHtml) {
+        const offState = portalOff ?? (await customerPortalDocumentState(c));
+        if (offState) return markPortalShell(htmlResponse, offState);
       }
-      return assetResponse;
+      return htmlResponse;
     }
     const serveNoncedIndex = async () => {
       const response = await serveIndex(c, next);
       const nonce = cspNonceForContext(c);
-      return nonce ? serveNoncedHtml(response ?? c.res, nonce) : response;
+      const shell = nonce
+        ? await serveNoncedHtml(response ?? c.res, nonce)
+        : response;
+      if (surface !== "portal" || !shell) return shell;
+      // P3-R2-03: a switched-off portal is still the portal app, which renders the
+      // library-built feature-off state from this marker; never a hand-written page.
+      const offState = portalOff ?? (await customerPortalDocumentState(c));
+      return offState ? markPortalShell(shell, offState) : shell;
     };
 
     const lastSegment = c.req.path.split("/").pop() ?? "";
@@ -793,20 +818,134 @@ function registerStaticServing(
   app.use("*", serveStaticOrSpaShell);
 }
 
-function portalDisabledResponse(path: string): Response {
-  const headers = {
+type PortalFeatureOffState = Exclude<FeatureLookupState, "on">;
+
+/** Seconds a client should wait before retrying while the portal flag cannot be read. */
+const PORTAL_STATE_RETRY_AFTER_SECONDS = "5";
+
+/**
+ * The portal host while `feature.customer_portal` is off (404) or cannot be read (503,
+ * "temporarily unavailable", fail closed; P4R2-L1). API calls get JSON; a document request
+ * gets the portal app itself, which shows its feature-off state (P3-R2-03), so this response is
+ * only used for API paths, non-GET requests and an installation without a portal build.
+ */
+function portalFeatureOffResponse(
+  path: string,
+  state: PortalFeatureOffState,
+): Response {
+  const unavailable = state === "unknown";
+  const headers: Record<string, string> = {
     "cache-control": "no-store",
     "x-content-type-options": "nosniff",
+    ...(unavailable ? { "retry-after": PORTAL_STATE_RETRY_AFTER_SECONDS } : {}),
   };
+  const status = unavailable ? 503 : 404;
   if (isApiRequestPath(path))
-    return Response.json({ message: "Not found" }, { status: 404, headers });
+    return Response.json(
+      { message: unavailable ? "temporarily_unavailable" : "Not found" },
+      { status, headers },
+    );
   return new Response(
-    '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Customer portal unavailable</title></head><body><h1>Customer portal unavailable</h1><p>The customer portal is not enabled for this instance.</p></body></html>',
+    unavailable
+      ? '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Customer portal temporarily unavailable</title></head><body><h1>Customer portal temporarily unavailable</h1><p>Please try again in a moment.</p></body></html>'
+      : '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Customer portal unavailable</title></head><body><h1>Customer portal unavailable</h1><p>The customer portal is not enabled for this instance.</p></body></html>',
     {
-      status: 404,
+      status,
       headers: { ...headers, "content-type": "text/html; charset=utf-8" },
     },
   );
+}
+
+/** The `<meta>` the portal app reads to show its feature-off state instead of signing in. */
+const PORTAL_STATE_META_NAME = "taskdesk-portal-state";
+
+/**
+ * Marks the served portal shell as switched off ("disabled") or unreadable ("unavailable") and
+ * gives it the matching status, so clients and monitoring can tell the two apart while the page
+ * itself renders the library-built feature-off state.
+ */
+async function markPortalShell(
+  response: Response,
+  state: PortalFeatureOffState,
+): Promise<Response> {
+  const headers = new Headers(response.headers);
+  headers.set("cache-control", "no-store");
+  headers.delete("content-length");
+  headers.delete("etag");
+  headers.delete("last-modified");
+  const unavailable = state === "unknown";
+  if (unavailable) headers.set("retry-after", PORTAL_STATE_RETRY_AFTER_SECONDS);
+  const status = unavailable ? 503 : 404;
+  if (
+    response.body === null ||
+    !headers.get("content-type")?.toLowerCase().startsWith("text/html")
+  )
+    return new Response(response.body, { status, headers });
+  const meta = `<meta name="${PORTAL_STATE_META_NAME}" content="${unavailable ? "unavailable" : "disabled"}">`;
+  const html = await response.text();
+  const marked = /<head\b[^>]*>/i.test(html)
+    ? html.replace(/<head\b[^>]*>/i, (tag) => `${tag}${meta}`)
+    : /^\s*<!doctype[^>]*>/i.test(html)
+      ? html.replace(/^\s*<!doctype[^>]*>/i, (doctype) => `${doctype}${meta}`)
+      : `${meta}${html}`;
+  return new Response(marked, { status, headers });
+}
+
+/**
+ * The per-organisation `feature.customer_portal` state for a portal document request that
+ * carries a customer session (P4R2-M2), so a customer whose organisation's workspaces have the
+ * portal off sees the same feature-off state. No cookie, no session or a staff session: none.
+ */
+async function customerPortalDocumentState(
+  c: Context<AppVariables>,
+): Promise<PortalFeatureOffState | undefined> {
+  if (!c.req.header("cookie")) return undefined;
+  try {
+    const session = await resolveOptionalCookieSession(c.req.raw.headers);
+    if (!session?.user) return undefined;
+    const state = await customerPortalStateForUser(session.user.id);
+    return state === null || state === "on" ? undefined : state;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Portal data routes that belong to a customer's organisation, gated per organisation (and per
+ * submission) on `feature.customer_portal` (P4R2-M2). Sign-in, session, CSRF, terminology,
+ * invitations and notification preferences stay open so the portal app can always load and show
+ * its state.
+ */
+const PORTAL_FEATURE_DATA_PREFIXES = [
+  "/api/portal/approvals",
+  "/api/portal/catalogue",
+  "/api/portal/kb",
+  "/api/portal/releases",
+  "/api/portal/requests",
+  "/api/portal/submissions",
+] as const;
+
+function isPortalFeatureDataPath(path: string): boolean {
+  return PORTAL_FEATURE_DATA_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
+}
+
+async function enforceCustomerPortalFeature(
+  c: Context<ApiVariables>,
+): Promise<Response | undefined> {
+  if (!isPortalFeatureDataPath(c.req.path)) return undefined;
+  const userId = c.get("userId");
+  if (!userId) return undefined;
+  let state = await customerPortalStateForUser(userId);
+  if (state === null) return undefined;
+  const submission =
+    /^\/api\/portal\/submissions\/SUB-([1-9]\d{0,9})(?:\/|$)/.exec(c.req.path);
+  if (state === "on" && submission?.[1])
+    state = await customerPortalStateForSubmission(Number(submission[1]));
+  return state === "on"
+    ? undefined
+    : portalFeatureOffResponse(c.req.path, state);
 }
 
 export function createApp(
@@ -957,8 +1096,21 @@ export function createApp(
     if (selected === "portal") {
       // `feature.customer_portal` off: the portal router answers 404 and the portal host serves a
       // disabled notice (features.md). A flag cannot unbind a hostname, so the host stays up.
-      if (!(await featureEnabledSomewhere("feature.customer_portal")))
-        return portalDisabledResponse(c.req.path);
+      // A lookup failure is "unknown": still closed, but answered 503 "temporarily
+      // unavailable" rather than the disabled 404 (P4R2-L1). Document GETs fall through to the
+      // portal app (static assets and client routes only), which shows the feature-off state.
+      const portalState = await featureStateSomewhere(
+        "feature.customer_portal",
+      );
+      if (portalState !== "on") {
+        if (
+          isApiRequestPath(c.req.path) ||
+          (c.req.method !== "GET" && c.req.method !== "HEAD")
+        )
+          return portalFeatureOffResponse(c.req.path, portalState);
+        c.set("portalFeatureState", portalState);
+        return securityHeaders(c, next);
+      }
       const portalAllowed =
         (c.req.method === "POST" && c.req.path === "/api/public/csp-report") ||
         (c.req.method === "GET" && c.req.path === "/api/public/terminology") ||
@@ -1660,6 +1812,11 @@ export function createApp(
       await enforceLocalFactorEnrollment(c);
       const csrfResponse = await csrfProtectionMiddleware()(c, async () => {});
       if (csrfResponse instanceof Response) return csrfResponse;
+      // P4R2-M2: the customer's own organisation must have the portal on, not just "somewhere".
+      if (portalForHost(c.req.header("host")) === "customer") {
+        const portalOff = await enforceCustomerPortalFeature(c);
+        if (portalOff) return portalOff;
+      }
       // Issue #8: refuses outright (never silently serves) a route below this guard that
       // has no entry at all in the declarative policy registry -- see
       // `route-classification-guard.ts`'s own doc comment for exactly what this does and

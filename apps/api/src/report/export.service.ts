@@ -8,6 +8,7 @@ import {
   COST_TRACKING_FEATURE_KEY,
   trackingFeatureEnabled,
 } from "../time-tracking/feature";
+import { holdsAtProject } from "../time-tracking/http";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import {
   currentReportExecutor,
@@ -36,7 +37,9 @@ import {
   reportCsvRows,
   reportToCsv,
 } from "./present";
+import { projectOverridesAllowRates } from "./rates";
 import { reportByKey } from "./registry";
+import { textArray } from "./reports/shared";
 import { type ReportCaps, ReportFeatureDisabledError, runReport } from "./run";
 import type { ReportFilters } from "./types";
 
@@ -179,13 +182,19 @@ export class TooManyExportsError extends Error {}
 
 export type ExportRow = typeof reportExportTable.$inferSelect;
 
-/** Maximum report rows held in the worker before they are appended to stored CSV. */
-export const EXPORT_CSV_PAGE_SIZE = 250;
+/** Report rows held in the worker per page; each page is appended to the file as one chunk. */
+export const EXPORT_CSV_PAGE_SIZE = 5000;
 
-/** Hard ceilings of one paged export: a report that never ends its pages fails instead of looping. */
+/**
+ * Hard ceilings of one paged export (RP-10, P5-R2-02). A 500,000-row export completes (100 pages);
+ * a report that never ends its pages, or a file above 1,000,000 rows or 512 MB, fails with
+ * `export_too_large` instead of looping or filling the database. Mutable for tests only.
+ */
 export const exportLimits = {
-  maxPages: 400,
-  maxBytes: 50 * 1024 * 1024,
+  pageSize: EXPORT_CSV_PAGE_SIZE,
+  maxPages: 200,
+  maxRows: 1_000_000,
+  maxBytes: 512 * 1024 * 1024,
 };
 
 /**
@@ -288,15 +297,26 @@ export async function claimExports(limit: number): Promise<ExportRow[]> {
 }
 
 async function failExport(id: string, code: string): Promise<void> {
-  await db.execute(sql`UPDATE report_export
-    SET status = 'failed', error = ${code}, finished_at = now(), content = NULL
-    WHERE id = ${id}`);
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`UPDATE report_export
+      SET status = 'failed', error = ${code}, finished_at = now(), content = NULL
+      WHERE id = ${id}`);
+    await tx.execute(
+      sql`DELETE FROM report_export_chunk WHERE export_id = ${id}`,
+    );
+  });
 }
 
-/** What the requester can do right now, read without a request. */
+/**
+ * What the requester can do right now, read without a request. Rates follow the same project rule
+ * as the request (`callerCaps`, P5-R2-03): at the report's project filter when it has one, and
+ * otherwise only while no project role override in the workspace removes them.
+ */
 async function currentCaps(
   workspaceId: string,
   userId: string,
+  identity: ResolvedIdentity,
+  projectId: string | undefined,
 ): Promise<ReportCaps | null> {
   const holds = async (
     capability: Parameters<typeof assertCallerHasCapability>[2],
@@ -313,14 +333,22 @@ async function currentCaps(
   if (!(await holds("report:export"))) return null;
   const [readAll, manageRates, readAnyTime] = await Promise.all([
     holds("report:read_all"),
-    holds("time_entry:manage_rates"),
+    projectId === undefined
+      ? holds("time_entry:manage_rates")
+      : holdsAtProject(
+          identity,
+          "time_entry:manage_rates",
+          workspaceId,
+          projectId,
+        ),
     holds("time_entry:read_any"),
   ]);
   return {
     readAll,
     showRates:
       manageRates &&
-      (await trackingFeatureEnabled(COST_TRACKING_FEATURE_KEY, workspaceId)),
+      (await trackingFeatureEnabled(COST_TRACKING_FEATURE_KEY, workspaceId)) &&
+      (await projectOverridesAllowRates(identity, workspaceId, projectId)),
     readAnyTime,
   };
 }
@@ -366,10 +394,7 @@ export async function exportReachLost(
   const [lost] = await selectRows<{ n: string }>(sql`SELECT count(*) AS n
     FROM project p
     WHERE p.workspace_id = ${row.workspaceId} AND p.deleted_at IS NULL
-      AND p.id IN (${sql.join(
-        ids.map((id) => sql`${id}`),
-        sql`, `,
-      )})
+      AND p.id = ANY(${textArray(ids)})
       AND NOT (${reachPredicate(identity, false)})`);
   return Number(lost?.n ?? 0) > 0;
 }
@@ -389,7 +414,16 @@ export async function processExport(
       return "failed";
     }
     const identity = await resolveRequestIdentity({ userId: row.userId });
-    const now = await currentCaps(row.workspaceId, row.userId);
+    const spec = row.spec as unknown as ExportSpec;
+    const now =
+      identity?.side === "staff"
+        ? await currentCaps(
+            row.workspaceId,
+            row.userId,
+            identity,
+            spec.kind === "report" ? spec.filters?.projectId : undefined,
+          )
+        : null;
     if (identity?.side !== "staff" || !now) {
       await failExport(row.id, "forbidden");
       return "failed";
@@ -400,7 +434,6 @@ export async function processExport(
       showRates: asked.showRates && now.showRates,
       readAnyTime: asked.readAnyTime && now.readAnyTime,
     };
-    const spec = row.spec as unknown as ExportSpec;
     if (spec.kind === "custom") {
       const parsed = customQuerySchema.safeParse(spec.query);
       if (!parsed.success) {
@@ -416,10 +449,14 @@ export async function processExport(
         let rowCount = 0;
         let byteSize = 0;
         let truncated = false;
+        // A rerun of the same row (a released claim) starts its file again.
+        await tx.execute(
+          sql`DELETE FROM report_export_chunk WHERE export_id = ${row.id}`,
+        );
 
         if (spec.kind === "custom" || def?.pagedExport) {
+          const { pageSize } = exportLimits;
           let offset = 0;
-          let first = true;
           for (let page = 0; ; page += 1) {
             if (page >= exportLimits.maxPages)
               throw new ExportRuleError("export_too_large");
@@ -431,24 +468,22 @@ export async function processExport(
               now: row.createdAt,
               exporting: true,
               executor: tx,
-              exportPage: { offset, limit: EXPORT_CSV_PAGE_SIZE },
+              exportPage: { offset, limit: pageSize },
             });
             filename = rendered.filename;
             ratesIncluded = rendered.ratesIncluded;
-            const chunk = `${first ? reportCsvPreamble(rendered.envelope) : ""}${reportCsvRows(rendered.envelope)}`;
-            await appendExportChunk(
-              tx,
-              row.id,
-              chunk,
-              rendered.envelope.rows.length,
-            );
+            const chunk = `${page === 0 ? reportCsvPreamble(rendered.envelope) : ""}${reportCsvRows(rendered.envelope)}`;
             rowCount += rendered.envelope.rows.length;
             byteSize += Buffer.byteLength(chunk);
-            first = false;
-            if (byteSize > exportLimits.maxBytes)
+            if (
+              rowCount > exportLimits.maxRows ||
+              byteSize > exportLimits.maxBytes
+            )
               throw new ExportRuleError("export_too_large");
-            if (rendered.envelope.rows.length < EXPORT_CSV_PAGE_SIZE) break;
-            offset += EXPORT_CSV_PAGE_SIZE;
+            // Append-only (P5-R2-04): each page is its own row, nothing written before is rewritten.
+            await appendExportChunk(tx, row.id, page, chunk);
+            if (rendered.envelope.rows.length < pageSize) break;
+            offset += pageSize;
           }
         } else {
           const rendered = await renderExport({
@@ -465,7 +500,9 @@ export async function processExport(
           rowCount = rendered.envelope.rows.length;
           byteSize = Buffer.byteLength(rendered.csv);
           truncated = rendered.envelope.truncated;
-          await appendExportChunk(tx, row.id, rendered.csv, rowCount, true);
+          if (byteSize > exportLimits.maxBytes)
+            throw new ExportRuleError("export_too_large");
+          await appendExportChunk(tx, row.id, 0, rendered.csv);
         }
 
         const stored = caps.readAll
@@ -478,12 +515,18 @@ export async function processExport(
                 tx,
               ),
             };
-        await tx.execute(sql`UPDATE report_export
+        const finished = await tx.execute<{
+          id: string;
+        }>(sql`UPDATE report_export
           SET status = 'ready', filename = ${filename}, row_count = ${rowCount},
             byte_size = ${byteSize}, truncated = ${truncated}, rates_included = ${ratesIncluded},
-            caps = ${JSON.stringify(stored)}::jsonb,
+            caps = ${JSON.stringify(stored)}::jsonb, content = NULL,
             finished_at = now(), expires_at = now() + ${`${EXPORT_TTL_HOURS} hours`}::interval, error = NULL
-          WHERE id = ${row.id} AND status = 'running'`);
+          WHERE id = ${row.id} AND status = 'running'
+          RETURNING id`);
+        // Abandoned meanwhile (worker_lost): roll the chunks back with it.
+        if (finished.rows.length === 0)
+          throw new Error("report export row is no longer running");
       },
       { isolationLevel: "repeatable read" },
     );
@@ -500,20 +543,47 @@ export async function processExport(
 async function appendExportChunk(
   executor: Executor,
   exportId: string,
+  seq: number,
   chunk: string,
-  rows: number,
-  replace = false,
 ) {
-  const updated = await executor.execute<{
-    id: string;
-  }>(sql`UPDATE report_export
-    SET content = CASE WHEN ${replace} THEN '' ELSE COALESCE(content, '') END || ${chunk},
-      row_count = CASE WHEN ${replace} THEN 0 ELSE COALESCE(row_count, 0) END + ${rows},
-      byte_size = CASE WHEN ${replace} THEN 0 ELSE COALESCE(byte_size, 0) END + ${Buffer.byteLength(chunk)}
-    WHERE id = ${exportId} AND status = 'running'
-    RETURNING id`);
-  if (updated.rows.length === 0)
-    throw new Error("report export row is no longer running");
+  await executor.execute(sql`INSERT INTO report_export_chunk (export_id, seq, content)
+    VALUES (${exportId}, ${seq}, ${chunk})`);
+}
+
+/**
+ * The stored file of a ready export, chunk by chunk in `seq` order (one chunk in memory at a
+ * time). A file written before 0208 is still the single `content` value.
+ */
+export function exportCsvStream(
+  row: Pick<ExportRow, "id" | "content">,
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  if (row.content !== null) {
+    const legacy = row.content;
+    return new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(legacy));
+        controller.close();
+      },
+    });
+  }
+  let next = 0;
+  return new ReadableStream({
+    async pull(controller) {
+      const result = await db.execute<{ seq: number; content: string }>(
+        sql`SELECT seq, content FROM report_export_chunk
+          WHERE export_id = ${row.id} AND seq >= ${next}
+          ORDER BY seq LIMIT 1`,
+      );
+      const chunk = result.rows[0];
+      if (!chunk) {
+        controller.close();
+        return;
+      }
+      next = Number(chunk.seq) + 1;
+      controller.enqueue(encoder.encode(chunk.content));
+    },
+  });
 }
 
 /**
@@ -528,6 +598,10 @@ export async function expireExports(now: Date = new Date()): Promise<void> {
     SET status = 'failed', error = 'worker_lost', finished_at = now(), content = NULL
     WHERE status = 'running'
       AND started_at < ${now.toISOString()}::timestamptz - ${`${EXPORT_STALE_RUNNING_MINUTES} minutes`}::interval`);
+  // An expired or failed export keeps its metadata row, never its file.
+  await db.execute(sql`DELETE FROM report_export_chunk c
+    USING report_export e
+    WHERE e.id = c.export_id AND e.status IN ('expired', 'failed')`);
   await db.execute(sql`DELETE FROM report_export
     WHERE status IN ('expired', 'failed')
       AND created_at < ${now.toISOString()}::timestamptz - ${`${EXPORT_ROW_RETENTION_DAYS} days`}::interval`);

@@ -86,9 +86,10 @@ import {
 } from "./step-up-ext";
 import {
   checkStepUpProofBudget,
-  clearStepUpProofFailures,
   consumeStepUpChallengeBudget,
-  recordStepUpProofFailure,
+  reserveStepUpProofAttempt,
+  type StepUpBudgetDecision,
+  settleStepUpProofAttempt,
 } from "./step-up-limits";
 import {
   createIdentityConnectionChallenge,
@@ -2103,15 +2104,32 @@ const routes = apiRouter()
         return null;
       }
     };
+    let proofBudgetRefusal: StepUpBudgetDecision | null = null;
     const verifyAuthentication = async (
       executor: StepUpExecutor,
     ): Promise<VerifiedStepUpAuthentication | null> => {
+      // P0R2-01: the failed-proof slot is reserved atomically before the credential is
+      // checked, so concurrent proofs cannot all slip past the early check above. The counters
+      // live outside the verification transaction on purpose: a failed proof stays counted
+      // even though the lifecycle transaction rolls back.
+      const reservation = await reserveStepUpProofAttempt(budgetSubject);
+      if (!reservation.allowed) {
+        proofBudgetRefusal = reservation;
+        return null;
+      }
       const verified = await verifyCredential(executor);
-      // The counters live outside the verification transaction on purpose: a failed proof
-      // is counted even though the lifecycle transaction rolls back.
-      if (verified) await clearStepUpProofFailures(budgetSubject);
-      else await recordStepUpProofFailure(budgetSubject);
+      await settleStepUpProofAttempt(
+        budgetSubject,
+        reservation,
+        verified !== null,
+      );
       return verified;
+    };
+    const refuseSpentProofBudget = () => {
+      if (!proofBudgetRefusal) return;
+      c.header("Retry-After", String(proofBudgetRefusal.retryAfterSeconds));
+      setShadowLegacyAuthorization(c, "denied");
+      throw new HTTPException(429, { message: "step_up_attempt_limit" });
     };
     if (input.kind === "pending_action") {
       const [action] = await getPendingActionForStepUp(
@@ -2149,6 +2167,7 @@ const routes = apiRouter()
         verifyAuthentication,
       );
       if (!token) {
+        refuseSpentProofBudget();
         await appendPendingActionStepUpAudit(db, {
           action: "auth.step_up_denied",
           actorId: c.get("userId"),
@@ -2297,6 +2316,7 @@ const routes = apiRouter()
                         verifyAuthentication,
                       );
     if (!token) {
+      refuseSpentProofBudget();
       await appendStepUpAudit(db, {
         action: "auth.step_up_denied",
         actorId: c.get("userId"),

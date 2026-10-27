@@ -5,7 +5,15 @@ import db from "../../database";
 import { dayOf, num, selectRows } from "../context";
 import { countValue, utc } from "../logic";
 import type { ReportContext, ReportDefinition, Row } from "../types";
-import { cell, col, emptyBody, pageLimit, pageRows, rowCap } from "./shared";
+import {
+  cell,
+  col,
+  emptyBody,
+  pageLimit,
+  pageRows,
+  rowCap,
+  textArray,
+} from "./shared";
 
 type CycleChoice = {
   id: string;
@@ -176,10 +184,7 @@ const cycleVelocity: ReportDefinition = {
             JOIN LATERAL (
               SELECT cs.* FROM cycle_snapshot cs WHERE cs.cycle_id = c.id ORDER BY cs.date DESC LIMIT 1
             ) snap ON true
-            WHERE c.project_id IN (${sql.join(
-              projectIds.map((id) => sql`${id}`),
-              sql`, `,
-            )})
+            WHERE c.project_id = ANY(${textArray(projectIds)})
               AND c.completed_at IS NOT NULL
           ) SELECT * FROM history WHERE position <= 3 ORDER BY project_id, position`)
       : [];

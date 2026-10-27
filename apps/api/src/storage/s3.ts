@@ -299,6 +299,10 @@ export function buildAttachmentStorageKey(rawKey: string): string {
  * (a stricter bound than the signature alone) and deletes oversize objects. `finalize` copies
  * to a never-presigned key and removes this one, so a replay of the URL after `complete` can at
  * most re-create one orphan of the declared size at this pending key.
+ *
+ * P1R3-2 (AT-2 "and the declared content type"): Content-Type is signed too, so the object can
+ * only be stored with the type the presign route validated against the file extension. The
+ * caller must send exactly the returned `headers`.
  */
 export async function createAttachmentUploadUrl(
   key: string,
@@ -332,7 +336,7 @@ export async function createAttachmentUploadUrl(
 
   const uploadUrl = await getSignedUrl(client, command, {
     expiresIn: config.presignTtlSeconds,
-    signableHeaders: new Set(["content-length"]),
+    signableHeaders: new Set(["content-length", "content-type"]),
   });
 
   return {

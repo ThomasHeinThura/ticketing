@@ -9,6 +9,7 @@ import {
   emptyBody,
   pageLimit,
   pageRows,
+  textArray,
   weekAxis,
   weekKey,
 } from "./shared";
@@ -182,10 +183,7 @@ const predictability: ReportDefinition = {
         }>(sql`SELECT c.id,c.name AS cycle,p.slug
           FROM cycle c JOIN project p ON p.id=c.project_id
           WHERE c.workspace_id=${ctx.workspaceId} AND p.deleted_at IS NULL AND ${ctx.reach}
-            AND ${projectFilterSql(ctx)} AND c.id IN (${sql.join(
-              cycleIds.map((id) => sql`${id}`),
-              sql`, `,
-            )})`)
+            AND ${projectFilterSql(ctx)} AND c.id = ANY(${textArray(cycleIds)})`)
       : [];
     const cycleById = new Map(currentCycles.map((row) => [row.id, row]));
     const allRows = facts
@@ -403,10 +401,7 @@ const costToDeliver: ReportDefinition = {
     const hourProjectIds = [...currentHours.keys()];
     const hourProjects = hourProjectIds.length
       ? await selectRows<{ id: string; slug: string; name: string }>(
-          sql`SELECT id,slug,name FROM project WHERE id IN (${sql.join(
-            hourProjectIds.map((id) => sql`${id}`),
-            sql`, `,
-          )})`,
+          sql`SELECT id,slug,name FROM project WHERE id = ANY(${textArray(hourProjectIds)})`,
         )
       : [];
     const hourProjectById = new Map(hourProjects.map((row) => [row.id, row]));

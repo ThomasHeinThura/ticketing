@@ -8,7 +8,7 @@ import {
   workspaceTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { workspaceFeatureEnabled } from "../../feature-flag/enforce";
+import { projectFeatureEnabled } from "../../feature-flag/enforce";
 import { resolveProjectDefaultAssignee } from "../../project/default-assignee";
 import { resolveProjectSlaPolicyId } from "../../project/effective-settings";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
@@ -131,12 +131,9 @@ export async function createWorkItemInTransaction(
   if (!workspace) {
     throw new Error("Work item's workspace disappeared during creation");
   }
-  // P4R1-M2: with `feature.sla` off no SLA clock starts; items created then stay unpinned.
-  const slaOn = await workspaceFeatureEnabled(
-    "feature.sla",
-    project.workspaceId,
-    tx,
-  );
+  // P4R1-M2 / P4R2-M2: with `feature.sla` off for the project no SLA clock starts; items
+  // created then stay unpinned.
+  const slaOn = await projectFeatureEnabled("feature.sla", project.id, tx);
   const policyId =
     input.sla === "none" || !slaOn
       ? null

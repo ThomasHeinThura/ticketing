@@ -12,6 +12,7 @@
 import { createHmac } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import db, { schema } from "../database";
+import { rateLimitClientAddress } from "../identity/home-realm-rate-limit";
 import { resolveAuthSecret } from "../utils/require-auth-secret";
 
 export type StepUpBudgetBucket = "step_up_challenge" | "step_up_proof_failure";
@@ -57,8 +58,11 @@ function scopes(
     ["person", subject.personId],
   ];
   // Without a resolvable client address only the session and person budgets apply: one shared
-  // "unknown address" bucket would let any caller exhaust step-up for everyone.
-  if (subject.clientIp) keyed.push(["ip", subject.clientIp]);
+  // "unknown address" bucket would let any caller exhaust step-up for everyone. IPv6 is keyed on
+  // its /64 (IPv4-mapped on the embedded IPv4) so rotating addresses inside one prefix does not
+  // reset the budget.
+  if (subject.clientIp)
+    keyed.push(["ip", rateLimitClientAddress(subject.clientIp)]);
   return keyed;
 }
 
@@ -113,15 +117,37 @@ async function hit(bucket: StepUpBudgetBucket, scope: Scope, value: string) {
         ELSE ${table}.expires_at
       END,
       updated_at = EXCLUDED.updated_at
-    RETURNING count, window_started_at, clock_timestamp() AS now
+    RETURNING count, window_started_at, clock_timestamp() AS now,
+      (extract(epoch FROM window_started_at) * 1000000)::bigint::text AS window_us
   `);
-  const row = result.rows[0] as CounterRow | undefined;
+  const row = result.rows[0] as
+    | (CounterRow & { window_us: string })
+    | undefined;
   if (!row) throw new Error("Step-up limiter unavailable");
   return {
     allowed: row.count <= limit,
     retryAfterSeconds: retryAfter(row),
     limit,
+    keyHash,
+    // Microsecond window identity: a JavaScript Date would drop the precision PostgreSQL keeps.
+    windowKey: row.window_us,
   };
+}
+
+/** Gives back one slot taken by `hit`, only while the same window is still current. */
+async function refund(
+  bucket: StepUpBudgetBucket,
+  keyHash: string,
+  windowKey: string,
+) {
+  const table = schema.requestRateLimitCounterTable;
+  await db.execute(sql`
+    UPDATE ${table}
+    SET count = GREATEST(${table}.count - 1, 0), updated_at = clock_timestamp()
+    WHERE ${table}.bucket = ${bucket}
+      AND ${table}.key_hash = ${keyHash}
+      AND (extract(epoch FROM ${table}.window_started_at) * 1000000)::bigint = ${windowKey}::bigint
+  `);
 }
 
 async function peek(bucket: StepUpBudgetBucket, scope: Scope, value: string) {
@@ -170,7 +196,10 @@ export async function consumeStepUpChallengeBudget(
   return merge(decisions);
 }
 
-/** Refuses a proof attempt while a failed-proof budget is spent; does not count. */
+/**
+ * Refuses a proof attempt while a failed-proof budget is spent; does not count. A cheap early
+ * refusal only: the binding decision is `reserveStepUpProofAttempt`.
+ */
 export async function checkStepUpProofBudget(
   subject: StepUpBudgetSubject,
 ): Promise<StepUpBudgetDecision> {
@@ -178,6 +207,58 @@ export async function checkStepUpProofBudget(
   for (const [scope, value] of scopes(subject))
     decisions.push(await peek("step_up_proof_failure", scope, value));
   return merge(decisions);
+}
+
+export type StepUpProofReservation = StepUpBudgetDecision & {
+  /** Slots this reservation took; refunded when the proof verifies. */
+  held: ReadonlyArray<{ scope: Scope; keyHash: string; windowKey: string }>;
+};
+
+/**
+ * P0R2-01: atomically takes one failed-proof slot from every budget BEFORE the credential is
+ * verified, so concurrent proofs on distinct challenges cannot all pass a separate check. Each
+ * slot is an `INSERT … ON CONFLICT DO UPDATE … RETURNING` under the counter row lock. When any
+ * budget refuses, the slots taken from the others are given back and the attempt must not be
+ * verified. Settle with `settleStepUpProofAttempt` once the outcome is known.
+ */
+export async function reserveStepUpProofAttempt(
+  subject: StepUpBudgetSubject,
+): Promise<StepUpProofReservation> {
+  const taken: Array<Awaited<ReturnType<typeof hit>> & { scope: Scope }> = [];
+  for (const [scope, value] of scopes(subject)) {
+    const slot = await hit("step_up_proof_failure", scope, value);
+    taken.push({ ...slot, scope });
+    // Stop at the first refusal: a refused attempt never touches the wider budgets, so one
+    // spent session cannot inflate its person or address counters.
+    if (!slot.allowed) break;
+  }
+  const decision = merge(taken);
+  const held = taken
+    .filter((slot) => slot.allowed)
+    .map(({ scope, keyHash, windowKey }) => ({ scope, keyHash, windowKey }));
+  if (!decision.allowed) {
+    // A refused budget never increments past `limit + 1`, so only the accepted slots return.
+    for (const slot of held)
+      await refund("step_up_proof_failure", slot.keyHash, slot.windowKey);
+    return { ...decision, held: [] };
+  }
+  return { ...decision, held };
+}
+
+/**
+ * A failed proof keeps its reserved slots (it is the counted failure). A verified proof clears
+ * the person and session counters and refunds its address slot, which only the window drains.
+ */
+export async function settleStepUpProofAttempt(
+  subject: Pick<StepUpBudgetSubject, "personId" | "sessionId">,
+  reservation: StepUpProofReservation,
+  verified: boolean,
+): Promise<void> {
+  if (!verified) return;
+  await clearStepUpProofFailures(subject);
+  for (const slot of reservation.held)
+    if (slot.scope === "ip")
+      await refund("step_up_proof_failure", slot.keyHash, slot.windowKey);
 }
 
 /** Counts one failed credential verification (password, TOTP or backup code). */

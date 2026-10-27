@@ -296,6 +296,8 @@ export type SetupJob = {
   status: SetupJobStatus;
   startedAt: string;
   updatedAt: string;
+  /** Last liveness stamp from the worker holding the lease (renewed even within one slow page). */
+  heartbeatAt?: string;
   actor: { userId: string; apiKeyId: string | null };
   /** `import_run.version` the job started against; a different version at the end means it is stale. */
   runVersion: number;
@@ -338,6 +340,8 @@ export function setupJobDto(run: EngineRun) {
     status: job.status,
     startedAt: job.startedAt,
     updatedAt: job.updatedAt,
+    /** The wizard's "stalled" test: a live worker refreshes this while it holds the lease. */
+    heartbeatAt: job.heartbeatAt ?? null,
     pagesRead: job.pagesRead,
     recordsProcessed: job.recordsProcessed,
     /** Records the source holds, once discovery has counted them (drives a percentage). */

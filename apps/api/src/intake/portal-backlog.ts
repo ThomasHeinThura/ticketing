@@ -15,6 +15,7 @@ import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import db, { schema } from "../database";
 import type { Transaction } from "../database/executor";
+import { customerPortalCondition } from "../feature-flag/enforce";
 import {
   hasDenseRankPositions,
   lockRankPartition,
@@ -296,6 +297,11 @@ export async function listPortalBacklog(
   const predicates = [
     portalBacklogReach(viewer),
     inArray(workItemTable.workspaceId, workspaceIds),
+    // P4R2-M2: only items whose project has the customer portal on.
+    await customerPortalCondition(
+      workItemTable.workspaceId,
+      workItemTable.projectId,
+    ),
     isNull(workItemTable.deletedAt),
     isNull(workItemTable.archivedAt),
     isNull(projectTable.archivedAt),
@@ -452,6 +458,10 @@ export async function rankPortalBacklog(
       message: "Rank neighbours must be distinct",
     });
   const viewer = await loadPortalViewer(personId);
+  const portalOn = await customerPortalCondition(
+    workItemTable.workspaceId,
+    workItemTable.projectId,
+  );
   const result = await db.transaction(async (tx) => {
     const targetRows = await tx
       .select({
@@ -466,7 +476,13 @@ export async function rankPortalBacklog(
         submissionTable,
         eq(submissionTable.workItemId, workItemTable.id),
       )
-      .where(and(eq(workItemTable.key, input.key), portalBacklogReach(viewer)))
+      .where(
+        and(
+          eq(workItemTable.key, input.key),
+          portalBacklogReach(viewer),
+          portalOn,
+        ),
+      )
       .limit(1);
     const targetAnchor = targetRows[0];
     if (!targetAnchor)

@@ -12,7 +12,7 @@ import {
   personTable,
   workItemTable,
 } from "../database/schema";
-import { requireWorkspaceFeature } from "../feature-flag/enforce";
+import { requireProjectFeature } from "../feature-flag/enforce";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import {
@@ -572,8 +572,9 @@ const getWorkItemSlaRoute = createRoute({
   middleware: [
     requireWorkItemReach("key", { allowArchivedForRead: true }),
     requireWorkspaceCapability("work_item:read"),
-    // The SLA panel is hidden while `feature.sla` is off (ST-11: no persisted record is deleted).
-    requireWorkspaceFeature("feature.sla"),
+    // The SLA panel is hidden while `feature.sla` is off for the item's project (ST-1, P4R2-M2;
+    // ST-11: no persisted record is deleted).
+    requireProjectFeature("feature.sla"),
   ] as const,
   request: { params: workItemKeyParam },
   responses: {
@@ -2596,6 +2597,7 @@ const workItem = apiRouter<
       return c.json(pendingBulkDeletionRequestSchema.parse(result.data), 202);
     }
 
+    const bulkAudit = auditRequestContext(c);
     let bulkOp: Parameters<typeof bulkWorkItems>[4];
     if (operation === "assign") {
       bulkOp = {
@@ -2630,6 +2632,12 @@ const workItem = apiRouter<
         operation: "transition",
         toStateTemplateId: toStateTemplateId as string,
         identity,
+        // P2R1-16: the same request facts the single-item transition route records.
+        request: {
+          auditOrigin: auditOriginForApiKey(c.get("apiKey")),
+          apiKey: c.get("apiKey"),
+          audit: bulkAudit,
+        },
       };
     }
 
@@ -2640,6 +2648,7 @@ const workItem = apiRouter<
       workItemKeys,
       bulkOp,
       await workItemBulkAuthoriser(c, userId, workspaceId, operationCapability),
+      bulkAudit,
     );
     return c.json(result, 200);
   })

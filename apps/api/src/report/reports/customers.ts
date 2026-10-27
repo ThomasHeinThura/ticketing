@@ -12,6 +12,7 @@ import {
   MIN,
   memoryPage,
   pageRows,
+  textArray,
   weekAxis,
   weekKey,
 } from "./shared";
@@ -87,10 +88,7 @@ const customerPerformance: ReportDefinition = {
     ];
     const orgNames = orgIds.length
       ? await selectRows<{ id: string; name: string }>(
-          sql`SELECT id,name FROM organisation WHERE id IN (${sql.join(
-            orgIds.map((id) => sql`${id}`),
-            sql`, `,
-          )})`,
+          sql`SELECT id,name FROM organisation WHERE id = ANY(${textArray(orgIds)})`,
         )
       : [];
     const orgNameById = new Map(orgNames.map((row) => [row.id, row.name]));
@@ -247,10 +245,7 @@ const customerVolumeTrend: ReportDefinition = {
     ];
     const orgNames = orgIds.length
       ? await selectRows<{ id: string; name: string }>(
-          sql`SELECT id,name FROM organisation WHERE id IN (${sql.join(
-            orgIds.map((id) => sql`${id}`),
-            sql`, `,
-          )})`,
+          sql`SELECT id,name FROM organisation WHERE id = ANY(${textArray(orgIds)})`,
         )
       : [];
     const orgNameById = new Map(orgNames.map((row) => [row.id, row.name]));
@@ -369,16 +364,10 @@ const satisfaction: ReportDefinition = {
     const labels = ids.length
       ? by === "customer"
         ? await selectRows<{ id: string; name: string }>(
-            sql`SELECT id,name FROM organisation WHERE id IN (${sql.join(
-              ids.map((id) => sql`${id}`),
-              sql`, `,
-            )})`,
+            sql`SELECT id,name FROM organisation WHERE id = ANY(${textArray(ids)})`,
           )
         : await selectRows<{ id: string; name: string }>(
-            sql`SELECT id,name FROM request_type WHERE id IN (${sql.join(
-              ids.map((id) => sql`${id}`),
-              sql`, `,
-            )})`,
+            sql`SELECT id,name FROM request_type WHERE id = ANY(${textArray(ids)})`,
           )
       : [];
     const labelById = new Map(labels.map((row) => [row.id, row.name]));

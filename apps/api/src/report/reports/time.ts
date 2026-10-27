@@ -3,7 +3,7 @@ import { num, selectRows } from "../context";
 import { countValue, minutesToHours, ratePercent } from "../logic";
 import { loadFactRows } from "../snapshot.repository";
 import type { ReportDefinition, Row } from "../types";
-import { cell, col, emptyBody, MIN, pageRows } from "./shared";
+import { cell, col, emptyBody, MIN, pageRows, textArray } from "./shared";
 
 function money(minor: number, currency: string): string {
   try {
@@ -74,10 +74,7 @@ const timeLogged: ReportDefinition = {
     if (ids.length) {
       if (by === "project") {
         const labels = await selectRows<{ id: string; label: string }>(
-          sql`SELECT id, name || ' (' || slug || ')' AS label FROM project WHERE id IN (${sql.join(
-            ids.map((id) => sql`${id}`),
-            sql`, `,
-          )})`,
+          sql`SELECT id, name || ' (' || slug || ')' AS label FROM project WHERE id = ANY(${textArray(ids)})`,
         );
         for (const label of labels) {
           const row = grouped.get(label.id);
@@ -85,10 +82,7 @@ const timeLogged: ReportDefinition = {
         }
       } else if (by === "person") {
         const labels = await selectRows<{ id: string; label: string }>(
-          sql`SELECT pe.id, COALESCE(pe.display_name,u.name,'Unknown') AS label FROM person pe LEFT JOIN "user" u ON u.id=pe.user_id WHERE pe.id IN (${sql.join(
-            ids.map((id) => sql`${id}`),
-            sql`, `,
-          )})`,
+          sql`SELECT pe.id, COALESCE(pe.display_name,u.name,'Unknown') AS label FROM person pe LEFT JOIN "user" u ON u.id=pe.user_id WHERE pe.id = ANY(${textArray(ids)})`,
         );
         for (const label of labels) {
           const row = grouped.get(label.id);
@@ -96,10 +90,7 @@ const timeLogged: ReportDefinition = {
         }
       } else {
         const labels = await selectRows<{ id: string; label: string }>(
-          sql`SELECT id,name AS label FROM time_activity WHERE id IN (${sql.join(
-            ids.map((id) => sql`${id}`),
-            sql`, `,
-          )})`,
+          sql`SELECT id,name AS label FROM time_activity WHERE id = ANY(${textArray(ids)})`,
         );
         for (const label of labels) {
           const row = grouped.get(label.id);

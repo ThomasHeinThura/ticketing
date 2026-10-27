@@ -107,6 +107,14 @@ export function validateEntraIdToken(
     )
   )
     return { ok: false, reason: "audience_mismatch" };
+  // OIDC Core 3.1.3.7: with several audiences the token must name this client as its
+  // authorized party, and any azp that is present must be this client.
+  const multipleAudiences = Array.isArray(audience) && audience.length > 1;
+  if (
+    (multipleAudiences || claims.azp !== undefined) &&
+    claims.azp !== expectation.clientId
+  )
+    return { ok: false, reason: "audience_mismatch" };
   if (claims.tid !== expectation.tenantId)
     return { ok: false, reason: "tenant_mismatch" };
   if (claims.nonce !== expectation.nonce)

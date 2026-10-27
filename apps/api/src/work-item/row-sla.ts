@@ -17,7 +17,7 @@ import {
   slaGoalTable,
   slaPolicyVersionTable,
 } from "../database/schema";
-import { workspaceFeatureEnabled } from "../feature-flag/enforce";
+import { projectsWithFeatureEnabled } from "../feature-flag/enforce";
 
 /** What a list row's SLA badge needs (`VW-16`, `SLA-18`): one metric, its state and clock. */
 export type WorkItemRowSla = {
@@ -32,6 +32,7 @@ export type WorkItemRowSla = {
 export type WorkItemRowSlaInput = {
   id: string;
   workspaceId: string;
+  projectId: string;
   typeId: string | null;
   priority: string | null;
   slaPolicyVersionId: string | null;
@@ -212,13 +213,14 @@ export async function loadWorkItemRowSla(
 ): Promise<Map<string, WorkItemRowSla>> {
   const candidates = items.filter((item) => item.slaPolicyVersionId);
   if (candidates.length === 0) return new Map();
-  // P4R1-M2: no SLA badge while `feature.sla` is off for the item's workspace.
-  const workspaceIds = [...new Set(candidates.map((item) => item.workspaceId))];
-  const slaOn = new Set<string>();
-  for (const workspaceId of workspaceIds)
-    if (await workspaceFeatureEnabled("feature.sla", workspaceId, executor))
-      slaOn.add(workspaceId);
-  const pinned = candidates.filter((item) => slaOn.has(item.workspaceId));
+  // P4R1-M2 / P4R2-M2: no SLA badge while `feature.sla` is off for the item's project
+  // (project override, workspace override, instance). One read for the whole page.
+  const slaOn = await projectsWithFeatureEnabled(
+    "feature.sla",
+    candidates.map((item) => item.projectId),
+    executor,
+  );
+  const pinned = candidates.filter((item) => slaOn.has(item.projectId));
   if (pinned.length === 0) return new Map();
   const versionIds = [
     ...new Set(pinned.flatMap((item) => item.slaPolicyVersionId ?? [])),

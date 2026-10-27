@@ -1419,6 +1419,17 @@ export async function listVisibleNotificationRows(params: {
  * NO-12/13: a server-filtered inbox page and a reach-scoped unread total. The count deliberately
  * uses the same candidate/native checks as the list but never fetches notification content.
  */
+/**
+ * An extra, caller-specific admission applied to both the page and the unread total, so the
+ * two never disagree (the portal inbox passes the per-workspace `feature.customer_portal`).
+ * Returns the admitted notification ids.
+ */
+export type NotificationInboxAdmission = (
+  rows: ReadonlyArray<{
+    notification: Pick<NotificationRow, "id" | "resourceType" | "resourceId">;
+  }>,
+) => Promise<ReadonlySet<string>>;
+
 export async function listVisibleNotificationInbox(params: {
   userId: string;
   credentialCanReadTask: boolean;
@@ -1426,6 +1437,7 @@ export async function listVisibleNotificationInbox(params: {
   filter: NotificationInboxFilter;
   limit: number;
   cursor?: Cursor;
+  admit?: NotificationInboxAdmission;
 }): Promise<{
   rows: Array<{
     notification: MaterializedNotificationRow;
@@ -1442,6 +1454,7 @@ export async function listVisibleNotificationInbox(params: {
     filter,
     limit,
     cursor: requestedCursor,
+    admit,
   } = params;
   return inboxTransaction(async (tx) => {
     const identity = await resolveInboxIdentity(tx, userId, credential);
@@ -1462,8 +1475,13 @@ export async function listVisibleNotificationInbox(params: {
         "unread",
       );
       const candidates = page.map(({ notification }) => notification);
-      unreadCount += (await readableNativeRows(tx, candidates, identity))
-        .length;
+      const readable = await readableNativeRows(tx, candidates, identity);
+      if (admit) {
+        const admitted = await admit(
+          readable.map((notification) => ({ notification })),
+        );
+        unreadCount += readable.filter((row) => admitted.has(row.id)).length;
+      } else unreadCount += readable.length;
       const last = page.at(-1)?.notification;
       if (!last || page.length < CANDIDATE_PAGE_SIZE) break;
       countCursor = { createdAt: last.createdAt, id: last.id };
@@ -1488,12 +1506,16 @@ export async function listVisibleNotificationInbox(params: {
       );
       const candidates = page.map(({ notification }) => notification);
       const allowed = await readableNativeRows(tx, candidates, identity);
-      const contentRows = await fetchAllowedRows(
+      const fetched = await fetchAllowedRows(
         tx,
         allowed,
         identity,
         credentialCanReadTask,
       );
+      const admitted = admit ? await admit(fetched) : null;
+      const contentRows = admitted
+        ? fetched.filter((item) => admitted.has(item.notification.id))
+        : fetched;
       for (const item of contentRows) {
         if (rows.length === limit) {
           hasMore = true;

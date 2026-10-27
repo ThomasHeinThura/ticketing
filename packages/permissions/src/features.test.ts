@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   FEATURE_FLAG_DEFAULTS,
   FEATURE_FLAGS,
+  INSTANCE_ONLY_FEATURES,
   LOCKED_FEATURE_DEFAULTS,
   resolveFeatureFlag,
 } from "./features";
@@ -79,5 +80,27 @@ describe("feature flag registry", () => {
         project: false,
       }),
     ).toEqual({ enabled: true, source: "default" });
+  });
+
+  it("ignores workspace and project overrides of instance-only flags (P4R2-M2)", () => {
+    expect([...INSTANCE_ONLY_FEATURES].sort()).toEqual([
+      "feature.mcp",
+      "feature.scim",
+    ]);
+    expect(
+      resolveFeatureFlag({
+        feature: "feature.scim",
+        instance: { enabled: true, locked: false },
+        workspace: false,
+        project: false,
+      }),
+    ).toEqual({ enabled: true, source: "instance" });
+    expect(
+      resolveFeatureFlag({
+        feature: "feature.mcp",
+        workspace: true,
+        project: true,
+      }),
+    ).toEqual({ enabled: false, source: "default" });
   });
 });

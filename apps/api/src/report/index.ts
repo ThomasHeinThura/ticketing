@@ -47,6 +47,7 @@ import {
   ExportRuleError,
   type ExportSpec,
   enqueueExport,
+  exportCsvStream,
   exportReachLost,
   getExport,
   listExports,
@@ -54,7 +55,7 @@ import {
   renderExport,
   TooManyExportsError,
 } from "./export.service";
-import { workspaceFeatureEnabled } from "./feature";
+import { reportFeatureScope } from "./feature-scope";
 import {
   actorOf,
   callerCaps,
@@ -646,6 +647,11 @@ async function checkWidgets(
     throw new HTTPException(422, { message: "widgets_overlap" });
 }
 
+/** A fixed report's project filter (exact, never a subtree): rates are resolved at it (P5-R2-03). */
+function specProjectId(spec: ExportSpec): string | undefined {
+  return spec.kind === "report" ? spec.filters?.projectId : undefined;
+}
+
 function exportProblem(error: unknown): never {
   if (error instanceof ExportRuleError) {
     if (error.code === "unknown_report")
@@ -692,7 +698,7 @@ async function runExport(
 ) {
   const now = new Date();
   const identity = await identityOf(c);
-  const caps = await callerCaps(c);
+  const caps = await callerCaps(c, specProjectId(spec));
   let rendered: Awaited<ReturnType<typeof renderExport>>;
   try {
     rendered = await renderExport({
@@ -833,6 +839,9 @@ router
         entry.enabled,
       ]),
     );
+    // `feature.sla` counts as available when any project switches it on (feature-scope.ts).
+    const slaOn =
+      (await reportFeatureScope("feature.sla", workspaceId)) !== "off";
     return c.json(
       {
         data: REPORTS.map((report) => ({
@@ -842,7 +851,9 @@ router
           tier: 1 as const,
           live: report.live === true,
           available: report.feature
-            ? features.get(report.feature) === true
+            ? report.feature === "feature.sla"
+              ? slaOn
+              : features.get(report.feature) === true
             : true,
           options: (report.options ?? []).map((option) => ({
             key: option.key,
@@ -873,7 +884,7 @@ router
         def,
         workspaceId: c.get("workspaceId"),
         identity,
-        caps: await callerCaps(c),
+        caps: await callerCaps(c, filtersOf(query).projectId),
         window,
         filters: filtersOf(query),
         options: queryOptions(query),
@@ -892,13 +903,11 @@ router
     const now = new Date();
     const window = windowOrThrow(query, now);
     const workspaceId = c.get("workspaceId");
-    if (
-      def.feature &&
-      !(await workspaceFeatureEnabled(workspaceId, def.feature))
-    )
+    const featureScope = await reportFeatureScope(def.feature, workspaceId);
+    if (featureScope === "off")
       throw new HTTPException(409, { message: "feature_disabled" });
     const identity = await identityOf(c);
-    const caps = await callerCaps(c);
+    const caps = await callerCaps(c, filtersOf(query).projectId);
     const ctx = buildContext({
       workspaceId,
       identity,
@@ -913,6 +922,7 @@ router
           (entry): entry is [string, string] => typeof entry[1] === "string",
         ),
       ),
+      ...(Array.isArray(featureScope) ? { featureProjects: featureScope } : {}),
     });
     const items = await drill(ctx, query.handle ?? null, query.limit);
     return c.json({ data: items }, 200);
@@ -970,7 +980,7 @@ router
     if (!row) throw new HTTPException(404, { message: "Export not found" });
     if (row.status === "expired")
       throw new HTTPException(410, { message: "expired" });
-    if (row.status !== "ready" || row.content === null)
+    if (row.status !== "ready")
       throw new HTTPException(409, {
         message: row.status === "failed" ? "failed" : "not_ready",
       });
@@ -979,7 +989,10 @@ router
     // The file was rendered under the caps stored on the row (what the requester held at render
     // time). Reach and rate visibility are not re-evaluated against the stored rows, so a caller
     // who has lost a wider right since is refused the file instead (TC-11 for rates).
-    const held = await callerCaps(c);
+    const held = await callerCaps(
+      c,
+      specProjectId(row.spec as unknown as ExportSpec),
+    );
     const rendered = row.caps as { readAll?: boolean; readAnyTime?: boolean };
     if (row.ratesIncluded && !held.showRates)
       throw new HTTPException(403, { message: "rates_revoked" });
@@ -1010,7 +1023,8 @@ router
       }),
     );
     await recordDownload(row.id);
-    return c.body(row.content, 200, {
+    // Streamed chunk by chunk (P5-R2-04): a 500,000-row file is never held whole in memory.
+    return c.body(exportCsvStream(row), 200, {
       "content-type": "text/csv; charset=utf-8",
       "content-disposition": `attachment; filename="${row.filename ?? "report.csv"}"`,
       "cache-control": "no-store",
@@ -1165,7 +1179,7 @@ router
     if (!widget) throw new HTTPException(404, { message: "Widget not found" });
     const now = new Date();
     const filters = widget.filters ?? {};
-    const caps = await callerCaps(c);
+    const caps = await callerCaps(c, cleanFilters(filters).projectId);
     if (widget.reportKey) {
       const def = definitionOf(widget.reportKey);
       const resolved = resolveWindow(widgetWindowInput(filters), now);
@@ -1230,8 +1244,8 @@ router
     const widget = await getWidget(id, wid);
     if (!widget) throw new HTTPException(404, { message: "Widget not found" });
     const now = new Date();
-    const caps = await callerCaps(c);
     const spec = await widgetSpec(c, widget, identity.personId);
+    const caps = await callerCaps(c, specProjectId(spec));
     if (spec.kind === "custom") {
       const items = await drillCustomReport({
         query: spec.query,
@@ -1248,10 +1262,8 @@ router
     const def = definitionOf(spec.key);
     const drill = drillOf(def);
     if (!drill) return c.json({ data: [] }, 200);
-    if (
-      def.feature &&
-      !(await workspaceFeatureEnabled(workspaceId, def.feature))
-    )
+    const featureScope = await reportFeatureScope(def.feature, workspaceId);
+    if (featureScope === "off")
       throw new HTTPException(409, { message: "feature_disabled" });
     const ctx = buildContext({
       workspaceId,
@@ -1267,6 +1279,7 @@ router
           (entry): entry is [string, string] => typeof entry[1] === "string",
         ),
       ),
+      ...(Array.isArray(featureScope) ? { featureProjects: featureScope } : {}),
     });
     return c.json(
       { data: await drill(ctx, query.handle ?? null, query.limit) },

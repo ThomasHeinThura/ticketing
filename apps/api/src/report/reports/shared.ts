@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { type SQL, sql } from "drizzle-orm";
 import { itemFilterSql, num, selectRows, timeFrom, tsn } from "../context";
 import { capFor } from "../export.logic";
 import {
@@ -23,6 +23,15 @@ export const ROW_CAP = 500;
 /** The row cap of a report: `n` on screen, more in a background export (RP-10). */
 export function rowCap(ctx: ReportContext, n: number): number {
   return capFor(ctx.exporting, n);
+}
+
+/**
+ * A list of ids as ONE `text[]` bind parameter, for `col = ANY(${textArray(ids)})`. An `IN (...)`
+ * list binds one parameter per id and fails past 65,535 ids, which a 500,000-row export reaches
+ * (P5-R2-02); an array parameter has no such ceiling.
+ */
+export function textArray(values: readonly string[]): SQL {
+  return sql`${sql.param([...values])}::text[]`;
 }
 
 /** Screen runs fetch one extra row to state truncation; queued exports advance bounded pages. */

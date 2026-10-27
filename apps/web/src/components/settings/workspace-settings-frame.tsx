@@ -30,6 +30,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import SettingsSidebar from "@/components/SettingsSidebar";
+import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { getInitials } from "@/lib/get-initials";
@@ -58,6 +59,10 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
   const canInvite = canInviteUsers();
   const canRates = canManageRates();
   const canWorkflows = canManageWorkflows();
+  // P4R2-M1: SLA policies and service calendars are `feature.sla` settings; off (or still
+  // loading) they are not offered, like every other flagged area.
+  const workspaceFeatures = useWorkspaceFeatures(workspace?.id);
+  const slaOn = workspaceFeatures.isOn("feature.sla");
   // Every entry is shown only to people the server would let into it, using the capability the
   // API of that area enforces: `workspace:manage_roles`, `webhook:manage`, `custom_field:manage`,
   // `sla_policy:manage` (service calendars), `time_entry:manage_rates` (rates), `workflow:manage`
@@ -110,13 +115,13 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       title: t("serviceCalendars:list.title"),
       url: "/agent/settings/calendars",
       icon: CalendarDays,
-      visible: canCalendars,
+      visible: canCalendars && slaOn,
     },
     {
       title: t("slaPolicies:list.title"),
       url: "/agent/settings/sla-policies",
       icon: Timer,
-      visible: canCalendars,
+      visible: canCalendars && slaOn,
     },
     {
       title: t("requestTypes:title"),

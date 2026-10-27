@@ -81,6 +81,16 @@ const workItemColumns = {
 export const COMMENT_SEARCH_MIN_LENGTH = 3;
 
 /**
+ * P1R3-1 (SV-5): how many of the newest reachable work items the comment branch probes one
+ * by one before it falls back to the trigram index. A common term fills the page within the
+ * first few dozen items; a rare term costs this many cheap per-item probes and then a small
+ * index scan.
+ */
+export function commentRecentWindow(limit: number) {
+  return Math.max(500, limit * 25);
+}
+
+/**
  * Work items matching `term`: exact key (or a retired key alias) first, then key prefix,
  * title (exact, prefix, contains) above description. Prefix and contains matching run on the
  * lowercased text so results update as the user types (SV-8).
@@ -115,7 +125,7 @@ export async function searchCanonicalWorkItems(params: {
   // P1R2-8: one- and two-character terms match nearly every comment and cannot use the
   // trigram index, so comment text is searched from the minimum length on.
   const searchComments = term.trim().length >= COMMENT_SEARCH_MIN_LENGTH;
-  /** Keep aligned with the `comment_body_search_idx` expression (0208, schema.ts). */
+  /** Keep aligned with the `comment_body_search_idx` expression (0205, schema.ts). */
   const commentBodyText = sql<string>`coalesce(
     case
       when jsonb_typeof(c.body) = 'string' then c.body #>> '{}'
@@ -187,27 +197,71 @@ export async function searchCanonicalWorkItems(params: {
        ORDER BY score DESC, wi.created_at DESC, wi.id
        LIMIT ${limit}
     ),
-    comment_candidates AS (
-      -- SV-2: live (non-tombstoned) comment text of the same reachable work items. Staff reach
-      -- already includes internal comments (this branch is closed to customer principals).
-      -- P1R2-8: the predicate is the partial trigram index comment_body_search_idx (0208)
-      -- verbatim; the branch only runs for a term of COMMENT_SEARCH_MIN_LENGTH or more
-      -- characters, is limited to the reachable live items in scope, and is bounded.
-      SELECT wi.id, 1 AS score, wi.created_at
+    -- SV-2: live (non-tombstoned) comment text of the same reachable work items. Staff reach
+    -- already includes internal comments (this branch is closed to customer principals). The
+    -- branch only runs for a term of COMMENT_SEARCH_MIN_LENGTH or more characters. Its result
+    -- is the newest N reachable live items with a matching live comment (N = page limit).
+    -- P1R3-1 (SV-5): two exact strategies, chosen by what the first one finds.
+    --   comment_recent walks the newest commentRecentWindow items of the SAME scope in the
+    --   SAME order (created_at DESC, id), probes each item's comments through
+    --   comment_work_item_id_created_at_idx and stops at N hits. When it finds N, no item
+    --   outside the window can rank above them, so they are the exact answer. A common term
+    --   stops after a few dozen items instead of rechecking every matching comment.
+    --   comment_indexed runs only when the window held fewer than N hits. Its predicate is the
+    --   partial trigram index comment_body_search_idx (0205) verbatim, and it is the complete
+    --   answer on its own (the two are never combined).
+    comment_recent AS MATERIALIZED (
+      SELECT recent.id, recent.created_at
+        FROM (
+          SELECT wi.id, wi.created_at
+            FROM work_item AS wi
+            JOIN project AS p ON p.id = wi.project_id
+           WHERE ${scope}
+             AND ${searchComments ? sql`TRUE` : sql`FALSE`}
+           ORDER BY wi.created_at DESC, wi.id
+           LIMIT ${commentRecentWindow(limit)}
+        ) AS recent
+       WHERE (
+         SELECT TRUE
+           FROM comment AS c
+          WHERE c.work_item_id = recent.id
+            AND c.workspace_id = ${params.workspaceId}
+            AND c.deleted_at IS NULL
+            AND c.body IS NOT NULL
+            AND lower(${commentBodyText}) LIKE ${contains}
+          LIMIT 1
+       )
+       ORDER BY recent.created_at DESC, recent.id
+       LIMIT ${limit}
+    ),
+    comment_indexed AS MATERIALIZED (
+      SELECT wi.id, wi.created_at
         FROM work_item AS wi
         JOIN project AS p ON p.id = wi.project_id
        WHERE ${scope}
          AND ${searchComments ? sql`TRUE` : sql`FALSE`}
-         AND wi.id IN (
+         AND (SELECT count(*) FROM comment_recent) < ${limit}
+         -- "IS TRUE" keeps this a hashed subplan: the matching comments are read once through
+         -- the trigram index and each reachable item probes the hash. As a semi-join, the
+         -- planner's small row estimate for a contains pattern chose one primary-key lookup
+         -- per matching comment instead.
+         AND (wi.id IN (
            SELECT c.work_item_id
              FROM comment AS c
             WHERE c.workspace_id = ${params.workspaceId}
               AND c.deleted_at IS NULL
               AND c.body IS NOT NULL
               AND lower(${commentBodyText}) LIKE ${contains}
-         )
+         )) IS TRUE
        ORDER BY wi.created_at DESC, wi.id
        LIMIT ${limit}
+    ),
+    comment_candidates AS (
+      SELECT id, 1 AS score, created_at
+        FROM comment_recent
+       WHERE (SELECT count(*) FROM comment_recent) >= ${limit}
+      UNION ALL
+      SELECT id, 1 AS score, created_at FROM comment_indexed
     ),
     candidate_scores AS (
       SELECT id, max(score) AS relevance_score, max(created_at) AS created_at

@@ -166,6 +166,14 @@ vi.mock("@/fetchers/service-calendar", () => ({
     page: { nextCursor: null },
   })),
 }));
+// P4R2-M1: the SLA areas follow the workspace's resolved `feature.sla`.
+const workspaceFeatureState = vi.hoisted(() => ({ sla: true, loading: false }));
+vi.mock("@/hooks/queries/feature-flag/use-workspace-features", () => ({
+  default: () => ({
+    isOn: (key: string) => key === "feature.sla" && workspaceFeatureState.sla,
+    isLoading: workspaceFeatureState.loading,
+  }),
+}));
 vi.mock("@/hooks/mutations/project/use-update-project", () => ({
   default: () => ({ mutateAsync: mocks.updateProject, isPending: false }),
 }));
@@ -239,6 +247,8 @@ describe("ProjectEngagementSettings", () => {
     mocks.setQueryData.mockReset();
     mocks.refetch.mockReset();
     mocks.toastSuccess.mockReset();
+    workspaceFeatureState.sla = true;
+    workspaceFeatureState.loading = false;
   });
   afterEach(() => cleanup());
 
@@ -509,5 +519,16 @@ describe("ProjectEngagementSettings", () => {
     expect(mocks.updateProject.mock.calls[0]?.[0]).not.toHaveProperty(
       "organisationId",
     );
+  });
+
+  it("does not offer SLA policy or service calendar inheritance while feature.sla is off (P4R2-M1)", () => {
+    workspaceFeatureState.sla = false;
+    render_();
+    expect(
+      screen.queryByLabelText("settings:projectInheritance.serviceCalendar"),
+    ).toBeNull();
+    expect(screen.queryByTestId("project-inheritance-loading")).toBeNull();
+    // The engagement controls themselves stay.
+    expect(kind()).toBeInTheDocument();
   });
 });

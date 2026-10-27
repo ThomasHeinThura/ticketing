@@ -3,7 +3,15 @@ import { num, selectRows, tstz } from "../context";
 import { countValue, ratePercent } from "../logic";
 import { loadFactRows } from "../snapshot.repository";
 import type { ReportDefinition, Row } from "../types";
-import { cell, col, emptyBody, MIN, memoryPage, pageRows } from "./shared";
+import {
+  cell,
+  col,
+  emptyBody,
+  MIN,
+  memoryPage,
+  pageRows,
+  textArray,
+} from "./shared";
 
 /**
  * KB-10: opening an article from the request form is a candidate; abandoning the form afterwards
@@ -31,10 +39,7 @@ const kbDeflection: ReportDefinition = {
     ];
     const articles = ids.length
       ? await selectRows<{ id: string; title: string }>(
-          sql`SELECT id,title FROM kb_article WHERE id IN (${sql.join(
-            ids.map((id) => sql`${id}`),
-            sql`, `,
-          )})`,
+          sql`SELECT id,title FROM kb_article WHERE id = ANY(${textArray(ids)})`,
         )
       : [];
     const titleById = new Map(articles.map((row) => [row.id, row.title]));
@@ -56,7 +61,7 @@ const kbDeflection: ReportDefinition = {
       totals.set(id, row);
     }
     const articleFacts = [...totals.values()];
-    const feedbackIds = articleFacts.map((row) => sql`${row.article_id}`);
+    const feedbackIds = articleFacts.map((row) => row.article_id);
     const feedback = feedbackIds.length
       ? await selectRows<{
           article_id: string;
@@ -64,7 +69,7 @@ const kbDeflection: ReportDefinition = {
           unhelpful: string;
         }>(sql`SELECT article_id,
           count(*) FILTER (WHERE helpful) AS helpful,count(*) FILTER (WHERE NOT helpful) AS unhelpful
-        FROM kb_article_feedback WHERE article_id IN (${sql.join(feedbackIds, sql`, `)}) GROUP BY article_id`)
+        FROM kb_article_feedback WHERE article_id = ANY(${textArray(feedbackIds)}) GROUP BY article_id`)
       : [];
     ctx.snapshots.sources.liveComponents.add("all_time_feedback");
     ctx.snapshots.use.liveParts = true;

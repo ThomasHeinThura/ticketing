@@ -4055,6 +4055,10 @@
 			},
 			"unreadCount_many": "{{count}} unread notifications",
 			"requestReference": "{{term_request_one}} {{ref}}"
+		},
+		"temporarilyUnavailable": {
+			"description": "The customer portal can't be reached right now. Please try again in a moment.",
+			"title": "Customer portal temporarily unavailable"
 		}
 	},
 	"instanceUsers": {
@@ -6666,6 +6670,10 @@
 			"timeline": {
 				"description": "A {{term_project_one}} admin can switch on Gantt in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
 				"title": "Gantt is off for this {{term_project_one}}"
+			},
+			"sla": {
+				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
+				"title": "SLAs are off for this workspace"
 			}
 		},
 		"modules": {

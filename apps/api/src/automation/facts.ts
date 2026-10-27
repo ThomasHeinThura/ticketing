@@ -105,6 +105,7 @@ export async function loadWorkItemsByKey(
     rows.map((row) => ({
       id: row.id,
       workspaceId: row.workspaceId,
+      projectId: row.projectId,
       typeId: row.typeId,
       priority: row.priority,
       slaPolicyVersionId: row.slaPolicyVersionId,

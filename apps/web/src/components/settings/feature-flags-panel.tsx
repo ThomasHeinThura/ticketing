@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { INSTANCE_ONLY_FEATURES } from "@taskdesk/permissions";
 import {
   Alert,
   AlertDescription,
@@ -74,6 +75,15 @@ export function FeatureFlagsPanel({ target }: { target: FeatureLevel }) {
 
   const conflict =
     save.error instanceof FeatureConflictError ? save.error : null;
+  // P4R2-M2: instance-only flags (SCIM, MCP) have no workspace or project level; the API leaves
+  // them out of the lower-level lists and refuses such writes, and the panel never offers them.
+  const rows =
+    target.level === "instance"
+      ? query.data
+      : query.data.filter(
+          (row) =>
+            !(INSTANCE_ONLY_FEATURES as ReadonlySet<string>).has(row.key),
+        );
 
   return (
     <div className="space-y-4">
@@ -106,7 +116,7 @@ export function FeatureFlagsPanel({ target }: { target: FeatureLevel }) {
         </CardHeader>
         <CardContent>
           <ul className="divide-y divide-border">
-            {query.data.map((row) => (
+            {rows.map((row) => (
               <FeatureRowItem
                 key={row.key}
                 row={row}

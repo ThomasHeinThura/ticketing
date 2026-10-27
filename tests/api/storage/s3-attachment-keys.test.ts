@@ -3,9 +3,12 @@
  * server standing in for S3 (the real AWS SDK signs and sends every request).
  *  - one key builder: upload, finalize (copy + delete), download and delete all address the
  *    same prefixed object, and the prefix is applied exactly once;
- *  - the upload credential is bound to the declared size (Content-Length is a signed header);
+ *  - the upload credential is bound to the declared size and content type (Content-Length and
+ *    Content-Type are signed headers; the stand-in verifies presigned SigV4 signatures and
+ *    answers 403 on a mismatch, as S3 does);
  *  - the download response override carries an RFC 5987 `filename*` for a non-Latin name.
  */
+import { createHash, createHmac } from "node:crypto";
 import { createServer, type IncomingMessage } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -24,6 +27,58 @@ type SeenRequest = {
   path: string;
   copySource: string | undefined;
 };
+
+const TEST_SECRET = "local-test-secret";
+
+/** Recomputes a presigned (query-string) SigV4 signature the way S3 does. */
+function presignedSignatureMatches(request: IncomingMessage): boolean {
+  const [rawPath = "/", rawQuery = ""] = (request.url ?? "/").split("?");
+  const pairs = rawQuery
+    .split("&")
+    .filter(Boolean)
+    .map((pair) => {
+      const [name = "", value = ""] = pair.split("=");
+      return [name, value] as const;
+    });
+  const query = new Map(pairs);
+  const signature = query.get("X-Amz-Signature");
+  const credential = decodeURIComponent(query.get("X-Amz-Credential") ?? "");
+  const amzDate = query.get("X-Amz-Date") ?? "";
+  const signedHeaders = decodeURIComponent(
+    query.get("X-Amz-SignedHeaders") ?? "",
+  ).split(";");
+  const [, date = "", region = "", service = ""] = credential.split("/");
+  const canonicalQuery = pairs
+    .filter(([name]) => name !== "X-Amz-Signature")
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([name, value]) => `${name}=${value}`)
+    .join("&");
+  const canonicalHeaders = signedHeaders
+    .map((name) => `${name}:${String(request.headers[name] ?? "").trim()}\n`)
+    .join("");
+  const canonicalRequest = [
+    request.method,
+    rawPath,
+    canonicalQuery,
+    canonicalHeaders,
+    signedHeaders.join(";"),
+    "UNSIGNED-PAYLOAD",
+  ].join("\n");
+  const scope = `${date}/${region}/${service}/aws4_request`;
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    scope,
+    createHash("sha256").update(canonicalRequest).digest("hex"),
+  ].join("\n");
+  let key: Buffer = createHmac("sha256", `AWS4${TEST_SECRET}`)
+    .update(date)
+    .digest();
+  for (const part of [region, service, "aws4_request"])
+    key = createHmac("sha256", key).update(part).digest();
+  const expected = createHmac("sha256", key).update(stringToSign).digest("hex");
+  return signature === expected;
+}
 
 describe("S3 attachment keys and upload bounds", () => {
   const keys = [
@@ -57,6 +112,13 @@ describe("S3 attachment keys and upload bounds", () => {
       record(request);
       request.resume();
       request.on("end", () => {
+        if (
+          (request.url ?? "").includes("X-Amz-Signature=") &&
+          !presignedSignatureMatches(request)
+        ) {
+          response.writeHead(403).end();
+          return;
+        }
         if (request.method === "PUT" && request.headers["x-amz-copy-source"]) {
           response
             .writeHead(200, { "Content-Type": "application/xml" })
@@ -75,7 +137,7 @@ describe("S3 attachment keys and upload bounds", () => {
     process.env.S3_ENDPOINT = `http://127.0.0.1:${port}`;
     process.env.S3_BUCKET = "taskdesk-test";
     process.env.S3_ACCESS_KEY_ID = "local-test-access";
-    process.env.S3_SECRET_ACCESS_KEY = "local-test-secret";
+    process.env.S3_SECRET_ACCESS_KEY = TEST_SECRET;
     process.env.S3_KEY_PREFIX = "tenant-a/";
     process.env.S3_FORCE_PATH_STYLE = "true";
     // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test configures storage for itself.
@@ -138,7 +200,7 @@ describe("S3 attachment keys and upload bounds", () => {
       expect(request.path).not.toContain("tenant-a/tenant-a");
   });
 
-  it("binds the upload credential to the declared size through a signed Content-Length", async () => {
+  it("binds the upload credential to the declared size and type through signed headers", async () => {
     const key = buildAttachmentStorageKey(rawKey);
     const upload = await createAttachmentUploadUrl(
       key,
@@ -150,9 +212,11 @@ describe("S3 attachment keys and upload bounds", () => {
       .get("X-Amz-SignedHeaders")
       ?.split(";");
     expect(signed).toContain("content-length");
+    expect(signed).toContain("content-type");
     expect(
       Object.keys(upload.headers).map((h) => h.toLowerCase()),
     ).not.toContain("content-length");
+    expect(upload.headers).toEqual({ "Content-Type": "application/pdf" });
     expect(
       Number(new URL(upload.uploadUrl).searchParams.get("X-Amz-Expires")),
     ).toBe(getAttachmentUploadTtlSeconds());
@@ -164,6 +228,37 @@ describe("S3 attachment keys and upload bounds", () => {
     await expect(
       createAttachmentUploadUrl(key, "application/pdf", 10),
     ).rejects.toThrow(/declared size/);
+  });
+
+  it("rejects an upload whose Content-Type or size differs from the signed values (P1R3-2)", async () => {
+    const key = buildAttachmentStorageKey(rawKey);
+    const upload = await createAttachmentUploadUrl(
+      key,
+      "application/pdf",
+      1024,
+      12,
+    );
+
+    const otherType = await fetch(upload.uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "text/html" },
+      body: Buffer.alloc(12),
+    });
+    expect(otherType.status).toBe(403);
+
+    const otherSize = await fetch(upload.uploadUrl, {
+      method: "PUT",
+      headers: upload.headers,
+      body: Buffer.alloc(13),
+    });
+    expect(otherSize.status).toBe(403);
+
+    const exact = await fetch(upload.uploadUrl, {
+      method: "PUT",
+      headers: upload.headers,
+      body: Buffer.alloc(12),
+    });
+    expect(exact.status).toBe(200);
   });
 
   it("downloads a non-Latin file name through an RFC 5987 filename* override", async () => {

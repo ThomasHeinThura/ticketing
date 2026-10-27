@@ -1,5 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { NotificationCopyDescriptorV1 } from "@taskdesk/domain";
+import { isImportSourcedEvent } from "../events/import-source";
 import {
   type DbTransaction,
   type DomainEventEnvelope,
@@ -102,6 +103,9 @@ export async function materializeNotificationFanout(
   event: DomainEventEnvelope<Record<string, unknown>>,
   hooks: NotificationFanoutHooks,
 ): Promise<void> {
+  // Imported events are history, not triggers (P6-R2-01): no inbox row, external delivery or
+  // digest membership for any channel. The outbox record itself is kept by the caller.
+  if (isImportSourcedEvent(event)) return;
   const candidates = await hooks.resolveRecipients(tx, event);
   const actorPersonId = event.actor.type === "person" ? event.actor.id : null;
   const distinct = new Map<string, NotificationRecipientCandidate>();

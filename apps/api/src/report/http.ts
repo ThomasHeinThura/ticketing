@@ -7,6 +7,7 @@ import type { ReportActor } from "./audit";
 import { getDashboardScope } from "./dashboard.repository";
 import { getExport } from "./export.service";
 import { REPORTS_FEATURE_KEY, workspaceFeatureEnabled } from "./feature";
+import { projectOverridesAllowRates } from "./rates";
 import type { ReportCaps } from "./run";
 
 export { holds, identityOf };
@@ -43,11 +44,24 @@ export function actorOf(c: Context): ReportActor {
   };
 }
 
-/** What the caller may see in this workspace: all projects, rates, other people's time. */
-export async function callerCaps(c: Context): Promise<ReportCaps> {
+/**
+ * What the caller may see in this workspace: all projects, rates, other people's time. Rates are
+ * resolved at the report's project filter when it has one, and otherwise also need every project
+ * role override in the workspace to keep `time_entry:manage_rates` (P5-R2-03, `rates.ts`).
+ */
+export async function callerCaps(
+  c: Context,
+  projectId?: string,
+): Promise<ReportCaps> {
   const [readAll, showRates, readAnyTime] = await Promise.all([
     holds(c, "report:read_all"),
-    canSeeRates(c),
+    (async () =>
+      (await canSeeRates(c, projectId)) &&
+      (await projectOverridesAllowRates(
+        await identityOf(c),
+        c.get("workspaceId") as string,
+        projectId,
+      )))(),
     holds(c, "time_entry:read_any"),
   ]);
   return { readAll, showRates, readAnyTime };

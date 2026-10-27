@@ -44,6 +44,7 @@ function item(over: Partial<WorkItemRowSlaInput> = {}): WorkItemRowSlaInput {
   return {
     id: "wi-1",
     workspaceId: "ws-1",
+    projectId: "p-1",
     typeId: "type-1",
     priority: "high",
     slaPolicyVersionId: "ver-1",

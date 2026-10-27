@@ -2,10 +2,12 @@ import { upgradeWebSocket } from "@hono/node-server";
 import { HTTPException } from "hono/http-exception";
 import type { WSContext } from "hono/ws";
 import { portalForHost } from "../auth";
+import { customerPortalStateForUser } from "../feature-flag/enforce";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { authenticateApiRequest } from "../utils/authenticate-api-request";
 import { addUserConnection, removeUserConnection } from "../ws";
 import { checkWebSocketOrigin } from "../ws/origin-policy";
+import { portalRealtimeAdmitted } from "./portal-inbox-repository";
 
 const NOTIFICATION_CREATED = JSON.stringify({ type: "NOTIFICATION_CREATED" });
 
@@ -27,14 +29,19 @@ export function portalNotificationSocketPayload(raw: string): string | null {
   }
 }
 
-function customerNotificationSocket(ws: WSContext): WSContext {
+function customerNotificationSocket(ws: WSContext, userId: string): WSContext {
   return new Proxy(ws, {
     get(target, property, receiver) {
       if (property === "send")
         return (data: string | ArrayBuffer | Uint8Array) => {
           if (typeof data !== "string") return;
           const safe = portalNotificationSocketPayload(data);
-          if (safe) target.send(safe);
+          if (!safe) return;
+          // P4R2-M2: an invalidation caused only by a project or workspace with the customer
+          // portal off is not pushed (the inbox would show nothing new anyway).
+          void portalRealtimeAdmitted(userId).then((admitted) => {
+            if (admitted) target.send(safe);
+          });
         };
       const value = Reflect.get(target, property, receiver) as unknown;
       return typeof value === "function" ? value.bind(target) : value;
@@ -70,6 +77,10 @@ async function requireCustomerSocket(c: {
   const identity = await resolveIdentity({ userId, credential: "session" });
   if (identity?.side !== "customer")
     throw new HTTPException(403, { message: "Forbidden" });
+  // P4R2-M2: no realtime channel while the portal is off for the customer's organisation; the
+  // periodic re-check closes an open socket once it is switched off.
+  if ((await customerPortalStateForUser(userId)) !== "on")
+    throw new HTTPException(403, { message: "Forbidden" });
   return userId;
 }
 
@@ -84,7 +95,7 @@ export function createPortalNotificationWebSocket() {
       onOpen(_event, ws) {
         conn = addUserConnection(
           userId,
-          customerNotificationSocket(ws),
+          customerNotificationSocket(ws, userId),
           async () => {
             try {
               await authenticateApiRequest(c);

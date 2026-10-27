@@ -2,7 +2,7 @@ import type { SlaMetric } from "@taskdesk/domain";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import db, { schema } from "../database";
 import { slaPauseTable } from "../database/migration-schema";
-import { workspaceFeatureEnabled } from "../feature-flag/enforce";
+import { projectFeatureEnabled } from "../feature-flag/enforce";
 import { evaluatePinnedWorkItemSla } from "../sla-policy/evaluation";
 
 /**
@@ -41,6 +41,7 @@ export async function loadPortalSla(
   const [item] = await db
     .select({
       workspaceId: schema.workItemTable.workspaceId,
+      projectId: schema.workItemTable.projectId,
       typeId: schema.workItemTable.typeId,
       priority: schema.workItemTable.priority,
       slaStartedAt: schema.workItemTable.slaStartedAt,
@@ -59,8 +60,8 @@ export async function loadPortalSla(
     )
     .limit(1);
   if (!item?.slaPolicyVersionId) return null;
-  // P4R1-M2: the customer sees no SLA while `feature.sla` is off.
-  if (!(await workspaceFeatureEnabled("feature.sla", item.workspaceId)))
+  // P4R1-M2 / P4R2-M2: the customer sees no SLA while `feature.sla` is off for the project.
+  if (!(await projectFeatureEnabled("feature.sla", item.projectId)))
     return null;
   try {
     const pauses = await db

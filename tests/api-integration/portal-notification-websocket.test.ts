@@ -2,8 +2,10 @@ import { randomUUID } from "node:crypto";
 import type { ClientRequest, IncomingMessage } from "node:http";
 import { createRequire } from "node:module";
 import type { AddressInfo } from "node:net";
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { portalAuth } from "../../apps/api/src/auth";
+import db, { schema } from "../../apps/api/src/database";
 import { createApp, createNodeServer } from "../../apps/api/src/index";
 import {
   broadcastNativeWorkItemHint,
@@ -13,7 +15,7 @@ import {
 } from "../../apps/api/src/ws";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { seedIntake } from "./helpers/intake-http";
+import { seedIntake, submitAs } from "./helpers/intake-http";
 
 interface TestSocket {
   once(
@@ -169,6 +171,24 @@ describe("portal notification websocket boundary", () => {
       }),
     ).toBe(401);
 
+    // P4R2-M2: a push is admitted for a recent notification whose project has the customer
+    // portal on (fan-out writes the row before it broadcasts).
+    const ref = await submitAs(seed, seed.customer);
+    const [submission] = await db
+      .select({ id: schema.submissionTable.id })
+      .from(schema.submissionTable)
+      .where(eq(schema.submissionTable.number, Number(ref.slice(4))));
+    await db.insert(schema.notificationTable).values({
+      userId: seed.customer.user.id,
+      personId: seed.customer.person.id,
+      type: "task_comment",
+      kind: "submission.replied",
+      title: "Reply",
+      content: "Reply",
+      resourceType: "submission",
+      resourceId: submission?.id ?? null,
+      isRead: false,
+    });
     mockAuthenticatedSession(seed.customer.user, { portal: "customer" });
     const socket = await openSocket(url, {
       host: portalHost,

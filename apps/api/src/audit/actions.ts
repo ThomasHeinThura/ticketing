@@ -208,6 +208,9 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   // PG-7: restored from the 30 day window / hard-deleted after it (system actor, no body).
   "page.undeleted",
   "page.purged",
+  // attachment-gc (P0R2-02): a detached inline asset collected after its recovery window
+  // (system actor; asset metadata only).
+  "asset.purged",
   // P5 reports (RP-13..RP-15): dashboards and their layouts.
   "dashboard.created",
   "dashboard.updated",

@@ -40,7 +40,12 @@ import {
   enqueueOutboxEvent,
   eventScope,
 } from "../events/outbox";
-import { workspaceFeatureEnabled } from "../feature-flag/enforce";
+import {
+  customerPortalCondition,
+  customerPortalOnFor,
+  customerPortalScope,
+  projectFeatureEnabled,
+} from "../feature-flag/enforce";
 import { logTaskDesk } from "../instance/observability/runtime";
 import { enqueueNotificationEvent } from "../notification/fanout";
 import { resolveSubmissionRepliedRecipients } from "../notification/submission-recipients";
@@ -745,8 +750,12 @@ export async function portalCatalogue(organisationId: string, query = "") {
         }).enabled,
     ),
   );
-  const activeRows = rows.filter((row) =>
-    enabledWorkspaceIds.has(row.workspaceId),
+  // P4R2-M2: request types of a workspace with the customer portal off are not offered.
+  const portalScope = await customerPortalScope();
+  const activeRows = rows.filter(
+    (row) =>
+      enabledWorkspaceIds.has(row.workspaceId) &&
+      customerPortalOnFor(portalScope, row.workspaceId),
   );
   const ordered = activeRows.sort(
     (a, b) =>
@@ -1170,12 +1179,9 @@ async function convertSubmissionInTransaction(
     throw new HTTPException(409, {
       message: "Submission workspace is unavailable",
     });
-  // P4R1-M2: with `feature.sla` off no SLA clock starts on the accepted work item.
-  const policyId = !(await workspaceFeatureEnabled(
-    "feature.sla",
-    workspaceId,
-    tx,
-  ))
+  // P4R1-M2 / P4R2-M2: with `feature.sla` off for the destination project no SLA clock
+  // starts on the accepted work item.
+  const policyId = !(await projectFeatureEnabled("feature.sla", project.id, tx))
     ? null
     : (type.slaPolicyId ??
       requestSlaPolicyId ??
@@ -2356,11 +2362,18 @@ export async function listOwnSubmissions(
       page: { nextCursor: null, hasMore: false },
       meta: { total: 0 },
     };
+  // P4R2-M2: a submission follows its converted work item's project, otherwise its request
+  // type's workspace; rows of a project or workspace with the customer portal off are hidden.
+  const portalOn = await customerPortalCondition(
+    schema.requestTypeTable.workspaceId,
+    sql`(SELECT ${schema.workItemTable.projectId} FROM ${schema.workItemTable} WHERE ${schema.workItemTable.id} = ${schema.submissionTable.workItemId})`,
+  );
   // `created_at` has microseconds; the cursor round-trips through a JS Date (milliseconds).
   const ownCreatedAtMs = sql`date_trunc('milliseconds', ${schema.submissionTable.createdAt})`;
   const conditions = [
     readable,
     inArray(schema.requestTypeTable.workspaceId, enabledWorkspaceIds),
+    portalOn,
     ...(decoded
       ? [
           or(
@@ -2408,6 +2421,7 @@ export async function listOwnSubmissions(
       and(
         readable,
         inArray(schema.requestTypeTable.workspaceId, enabledWorkspaceIds),
+        portalOn,
       ),
     );
   // CP-6: the customer-safe `{state, dueAt}` on each row that has a linked work item, in small

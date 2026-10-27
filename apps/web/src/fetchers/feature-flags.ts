@@ -110,3 +110,16 @@ export async function getWorkspaceResolvedFeatures(workspaceId: string) {
   return ((await response.json()) as { features: ResolvedFeatureValue[] })
     .features;
 }
+
+/** The customer portal for the signed-in customer's organisation (P4R2-M2). */
+export type PortalFeatureState = "on" | "off" | "unavailable";
+
+export async function getPortalFeatureState(): Promise<PortalFeatureState> {
+  const response = await apiFetch(getApiUrl("portal/feature-state"), {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!response.ok)
+    throw new HttpError(response.status, "Portal state request failed");
+  return ((await response.json()) as { state: PortalFeatureState }).state;
+}

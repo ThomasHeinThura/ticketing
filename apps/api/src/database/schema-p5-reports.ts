@@ -250,6 +250,9 @@ export const metricSnapshotDayTable = pgTable(
     // The workspace epoch the day was computed under (metric_snapshot_epoch); a bumped epoch
     // makes the marker untrusted without touching it (0203).
     epoch: bigint("epoch", { mode: "number" }).notNull().default(0),
+    // The day's generation (metric_snapshot_day_gen) read under the exclusive day lock; a fact write
+    // to the closed day bumps it, so the marker is trusted only while it is current (0208).
+    gen: bigint("gen", { mode: "number" }).notNull().default(0),
   },
   (table) => [
     primaryKey({
@@ -280,6 +283,30 @@ export const metricSnapshotEpochTable = pgTable("metric_snapshot_epoch", {
     }),
   epoch: bigint("epoch", { mode: "number" }).notNull().default(0),
 });
+
+/**
+ * P5-R2-05: bumped (UPSERT) by every day-keyed fact write to a closed day, whatever the writer's
+ * isolation level; the snapshot writer only reads it. A missing row reads as generation 0.
+ */
+export const metricSnapshotDayGenTable = pgTable(
+  "metric_snapshot_day_gen",
+  {
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    periodStart: timestamp("period_start", tz).notNull(),
+    gen: bigint("gen", { mode: "number" }).notNull().default(0),
+  },
+  (table) => [
+    primaryKey({
+      name: "metric_snapshot_day_gen_pk",
+      columns: [table.workspaceId, table.periodStart],
+    }),
+  ],
+);
 
 /**
  * RP-10: an export too large to answer inside the request. `spec` is what to run (window, filters,
@@ -318,6 +345,8 @@ export const reportExportTable = pgTable(
     finishedAt: timestamp("finished_at", tz),
     expiresAt: timestamp("expires_at", tz),
     downloadedAt: timestamp("downloaded_at", tz),
+    // Set once, when the "export ready" email is claimed for sending (0208).
+    notifiedAt: timestamp("notified_at", tz),
   },
   (table) => [
     foreignKey({
@@ -356,5 +385,29 @@ export const reportExportTable = pgTable(
       "report_export_report_key",
       sql`(${table.kind} = 'report') = (${table.reportKey} IS NOT NULL)`,
     ),
+  ],
+);
+
+/** P5-R2-04: a queued export's CSV as appended chunks, concatenated in `seq` order on download. */
+export const reportExportChunkTable = pgTable(
+  "report_export_chunk",
+  {
+    exportId: text("export_id").notNull(),
+    seq: integer("seq").notNull(),
+    content: text("content").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "report_export_chunk_pk",
+      columns: [table.exportId, table.seq],
+    }),
+    foreignKey({
+      name: "report_export_chunk_export_id_report_export_id_fk",
+      columns: [table.exportId],
+      foreignColumns: [reportExportTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("cascade"),
+    check("report_export_chunk_seq_nonnegative", sql`${table.seq} >= 0`),
   ],
 );

@@ -12,6 +12,7 @@ import {
   MIN,
   pageLimit,
   pageRows,
+  textArray,
   weekAxis,
   weekKey,
 } from "./shared";
@@ -293,17 +294,11 @@ const breachAnalysis: ReportDefinition = {
     const labels = dimensionIds.length
       ? by === "type"
         ? await selectRows<{ id: string; name: string }>(
-            sql`SELECT id,name FROM work_item_type WHERE id IN (${sql.join(
-              dimensionIds.map((id) => sql`${id}`),
-              sql`, `,
-            )})`,
+            sql`SELECT id,name FROM work_item_type WHERE id = ANY(${textArray(dimensionIds)})`,
           )
         : by === "customer"
           ? await selectRows<{ id: string; name: string }>(
-              sql`SELECT id,name FROM organisation WHERE id IN (${sql.join(
-                dimensionIds.map((id) => sql`${id}`),
-                sql`, `,
-              )})`,
+              sql`SELECT id,name FROM organisation WHERE id = ANY(${textArray(dimensionIds)})`,
             )
           : []
       : [];

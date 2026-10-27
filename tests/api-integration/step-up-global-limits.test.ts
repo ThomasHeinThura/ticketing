@@ -11,7 +11,9 @@ import {
   clearStepUpProofFailures,
   consumeStepUpChallengeBudget,
   recordStepUpProofFailure,
+  reserveStepUpProofAttempt,
   STEP_UP_BUDGET_LIMITS,
+  settleStepUpProofAttempt,
 } from "../../apps/api/src/auth/step-up-limits";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -234,5 +236,129 @@ describe("API integration: step-up global attempt budgets (PA-15)", () => {
         .allowed,
     ).toBe(true);
     await clearStepUpProofFailures({ personId, sessionId });
+  });
+
+  it("P0R2-01: concurrent reservations never take more failed-proof slots than the budget", async () => {
+    const subject = {
+      personId: "p0r2-person",
+      sessionId: "p0r2-session",
+      clientIp: "203.0.113.50",
+    };
+    const limits = STEP_UP_BUDGET_LIMITS.step_up_proof_failure;
+    const reservations = await Promise.all(
+      Array.from({ length: limits.session + 12 }, () =>
+        reserveStepUpProofAttempt(subject),
+      ),
+    );
+    const accepted = reservations.filter((r) => r.allowed);
+    expect(accepted).toHaveLength(limits.session);
+    expect(
+      reservations.filter((r) => !r.allowed).every((r) => r.held.length === 0),
+    ).toBe(true);
+    const counts = (
+      await db
+        .select()
+        .from(schema.requestRateLimitCounterTable)
+        .where(
+          eq(
+            schema.requestRateLimitCounterTable.bucket,
+            "step_up_proof_failure",
+          ),
+        )
+    )
+      .map((r) => r.count)
+      .sort((a, b) => a - b);
+    // Refused attempts gave their person and address slots back; the session row is capped.
+    expect(counts).toEqual([
+      limits.session,
+      limits.session,
+      limits.session + 1,
+    ]);
+    expect((await checkStepUpProofBudget(subject)).allowed).toBe(false);
+  });
+
+  it("P0R2-01: a verified proof clears person and session and refunds its address slot", async () => {
+    const subject = {
+      personId: "p0r2-ok-person",
+      sessionId: "p0r2-ok-session",
+      clientIp: "203.0.113.51",
+    };
+    const failed = await reserveStepUpProofAttempt(subject);
+    await settleStepUpProofAttempt(subject, failed, false);
+    const ok = await reserveStepUpProofAttempt(subject);
+    expect(ok.allowed).toBe(true);
+    await settleStepUpProofAttempt(subject, ok, true);
+    const rows = await db
+      .select()
+      .from(schema.requestRateLimitCounterTable)
+      .where(
+        eq(schema.requestRateLimitCounterTable.bucket, "step_up_proof_failure"),
+      );
+    // Only the address counter survives, holding the one real failure.
+    expect(rows.map((r) => r.count)).toEqual([1]);
+  });
+
+  it("P0R2-01: concurrent wrong proofs on distinct challenges verify at most the budget", async () => {
+    const { personId, sessionId } = await adminSession("p0r2-race-admin");
+    const { app } = createApp();
+    const limit = STEP_UP_BUDGET_LIMITS.step_up_proof_failure.session;
+    // One slot left. A session holds one live challenge per operation, so two different
+    // operations give two simultaneously valid challenges that both pass the early check.
+    for (let i = 0; i < limit - 1; i += 1)
+      await recordStepUpProofFailure({ personId, sessionId, clientIp: null });
+    const [target] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "p0r2-target",
+        name: "target",
+        email: "p0r2-target@example.test",
+      })
+      .returning();
+    const bindings = [
+      { operation: "metrics_token_rotate", version: 1 },
+      { operation: "instance_admin_grant", targetUserId: target?.id ?? "" },
+    ];
+    const proofs: Array<Record<string, unknown>> = [];
+    for (const binding of bindings) {
+      const challenge = await post(app, "/api/me/step-up/challenges", {
+        kind: "operation",
+        ...binding,
+      });
+      expect(challenge.status, await challenge.clone().text()).toBe(200);
+      const { challengeId, nonce } = (await challenge.json()) as {
+        challengeId: string;
+        nonce: string;
+      };
+      proofs.push({
+        kind: "operation",
+        ...binding,
+        challengeId,
+        nonce,
+        method: "password",
+        password: "wrong-password",
+      });
+    }
+    const responses = await Promise.all(
+      proofs.map((body) => post(app, "/api/me/step-up", body)),
+    );
+    const statuses = responses.map((r) => r.status).sort();
+    // Exactly one proof was checked against the credential; the other was refused.
+    expect(statuses).toEqual([403, 429]);
+    const limited = responses.find((r) => r.status === 429);
+    expect(limited?.headers.get("retry-after")).toBeTruthy();
+    expect(await limited?.text()).toBe("step_up_attempt_limit");
+    const counters = await db
+      .select({ count: schema.requestRateLimitCounterTable.count })
+      .from(schema.requestRateLimitCounterTable)
+      .where(
+        eq(schema.requestRateLimitCounterTable.bucket, "step_up_proof_failure"),
+      );
+    // Only the verified failure was counted: the lower counter sits exactly at the limit, and
+    // the session counter is at most capped at limit + 1 (the refusal may come from either the
+    // early check or the reservation, depending on interleaving).
+    const sorted = counters.map((r) => r.count).sort((x, y) => x - y);
+    expect(sorted[0]).toBe(limit);
+    expect(sorted[1]).toBeGreaterThanOrEqual(limit);
+    expect(sorted[1]).toBeLessThanOrEqual(limit + 1);
   });
 });

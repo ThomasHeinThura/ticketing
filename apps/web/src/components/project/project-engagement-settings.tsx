@@ -21,6 +21,7 @@ import {
 import { getServiceCalendars } from "@/fetchers/service-calendar";
 import { getSlaPolicies } from "@/fetchers/sla-policy";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
+import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
@@ -454,11 +455,15 @@ function ProjectInheritanceSettings({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  // P4R2-M1: SLA policy and service calendar are `feature.sla` workspace settings; while the
+  // flag is off for the workspace this section is not offered (the lists would answer 404).
+  const workspaceFeatures = useWorkspaceFeatures(workspaceId);
+  const slaOn = workspaceFeatures.isOn("feature.sla");
   const queryKey = ["projects", projectId, "settings-inheritance"] as const;
   const query = useQuery({
     queryKey,
     queryFn: () => getProjectSettingsInheritance(projectId),
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && slaOn,
   });
   const slaQuery = useQuery({
     queryKey: ["sla-policies", workspaceId, "project-inheritance-options"],
@@ -466,7 +471,7 @@ function ProjectInheritanceSettings({
       (
         await listAllPages((cursor) => getSlaPolicies(workspaceId, cursor))
       ).flatMap((page) => page.data),
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(workspaceId) && slaOn,
   });
   const calendarQuery = useQuery({
     queryKey: ["service-calendars", workspaceId, "project-inheritance-options"],
@@ -474,7 +479,7 @@ function ProjectInheritanceSettings({
       (
         await listAllPages((cursor) => getServiceCalendars(workspaceId, cursor))
       ).flatMap((page) => page.data),
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(workspaceId) && slaOn,
   });
   const [slaChoice, setSlaChoice] = useState(INHERIT);
   const [calendarChoice, setCalendarChoice] = useState(INHERIT);
@@ -520,7 +525,13 @@ function ProjectInheritanceSettings({
     workspaceId,
   ]);
 
-  if (query.isLoading || slaQuery.isLoading || calendarQuery.isLoading) {
+  if (!workspaceFeatures.isLoading && !slaOn) return null;
+  if (
+    workspaceFeatures.isLoading ||
+    query.isLoading ||
+    slaQuery.isLoading ||
+    calendarQuery.isLoading
+  ) {
     return (
       <div
         className="space-y-2"

@@ -394,6 +394,8 @@ export const costEntryTable = pgTable(
     index("cost_entry_person_id_idx").on(table.personId),
     index("cost_entry_cost_type_id_idx").on(table.costTypeId),
     index("cost_entry_workspace_id_date_idx").on(table.workspaceId, table.date),
+    // P5-R2-01: a person's user link invalidates only the days of the entries that user created.
+    index("cost_entry_created_by_idx").on(table.createdBy),
     check(
       "cost_entry_units_range",
       sql`${table.units} > 0 AND ${table.units} <= 1000000`,

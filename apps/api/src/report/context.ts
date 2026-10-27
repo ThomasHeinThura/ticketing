@@ -79,8 +79,14 @@ export function buildContext(input: {
   snapshots?: boolean;
   /** RP-10: a background export, which may return more rows than the screen. */
   exporting?: boolean;
+  /**
+   * The projects where the report's project-level feature resolves on (`feature-scope.ts`):
+   * every query's reach over alias `p` is narrowed to them. Absent, no feature restriction.
+   */
+  featureProjects?: readonly string[];
 }): ReportContext {
   const executor = input.executor ?? currentReportExecutor() ?? db;
+  const reach = reachPredicate(input.identity, input.readAll, executor);
   return {
     workspaceId: input.workspaceId,
     identity: input.identity,
@@ -91,7 +97,9 @@ export function buildContext(input: {
     window: input.window,
     previous: previousWindow(input.window),
     filters: input.filters,
-    reach: reachPredicate(input.identity, input.readAll, executor),
+    reach: input.featureProjects
+      ? sql`(${reach}) AND p.id = ANY(${sql.param([...input.featureProjects])}::text[])`
+      : reach,
     options: input.options ?? {},
     snapshots: {
       enabled: input.snapshots !== false,

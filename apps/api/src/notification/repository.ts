@@ -1,6 +1,6 @@
 import { formatSubmissionReference } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { schema } from "../database";
 import {
   currentProjectReachPredicate,
@@ -750,6 +750,34 @@ export async function findSubmissionNotificationContext(
     .where(eq(schema.submissionTable.number, number))
     .limit(1);
   return row ?? null;
+}
+
+/**
+ * `submission.replied` by the customer goes to "whoever last handled it" (feature-contracts-p4.md
+ * NO-21): the author of the latest triager message on the thread (a clarification or any staff
+ * message), else the triager who claimed it. Since `P2R1-08` keeps the first claim while another
+ * triager clarifies, the claim alone would route the reply to someone who never asked
+ * (`P2R2-02`). Shared by the fan-out resolver and the send-time recipient check.
+ */
+export async function findSubmissionLastHandlerId(
+  tx: DbTransaction,
+  submission: { id: string; claimedBy: string | null },
+): Promise<string | null> {
+  const [latest] = await tx
+    .select({ authorId: schema.submissionMessageTable.authorId })
+    .from(schema.submissionMessageTable)
+    .where(
+      and(
+        eq(schema.submissionMessageTable.submissionId, submission.id),
+        eq(schema.submissionMessageTable.actorType, "triager"),
+      ),
+    )
+    .orderBy(
+      desc(schema.submissionMessageTable.createdAt),
+      desc(schema.submissionMessageTable.id),
+    )
+    .limit(1);
+  return latest?.authorId ?? submission.claimedBy;
 }
 
 /** The submission behind a `submission` notification resource, for send-time resolution. */

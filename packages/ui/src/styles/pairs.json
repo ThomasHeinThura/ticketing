@@ -32261,7 +32261,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/webhooks.tsx::GodModeWebhooksRoute::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx::ProjectWorkItemsRoute::div[0]/div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx::CannedResponsesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -32272,7 +32272,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/work-item-templates.tsx::WorkItemTemplatesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/workflows.tsx::WorkflowDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/workflows.tsx::WorkflowDetailView::section[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -39863,7 +39863,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx"
 			},
@@ -40029,7 +40029,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx"
 			},
@@ -43217,7 +43217,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/webhooks.tsx::GodModeWebhooksRoute::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx::ProjectWorkItemsRoute::div[0]/div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx::CannedResponsesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -43228,7 +43228,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/work-item-templates.tsx::WorkItemTemplatesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/workflows.tsx::WorkflowDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/workflows.tsx::WorkflowDetailView::section[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -50819,7 +50819,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx"
 			},
@@ -50985,7 +50985,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx"
 			},
@@ -58717,7 +58717,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRouteContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -58750,7 +58750,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRouteContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -63267,7 +63267,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRouteContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -63300,7 +63300,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRouteContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -66819,7 +66819,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRouteContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings.tsx:/_layout/_authenticated/agent/settings",
@@ -66870,7 +66870,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRouteContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings.tsx:/_layout/_authenticated/agent/settings",
@@ -71186,7 +71186,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRouteContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings.tsx:/_layout/_authenticated/agent/settings",
@@ -71237,7 +71237,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRouteContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings.tsx:/_layout/_authenticated/agent/settings",
@@ -73965,7 +73965,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRouteContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings.tsx:/_layout/_authenticated/agent/settings",
@@ -73982,7 +73982,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRouteContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings.tsx:/_layout/_authenticated/agent/settings",
@@ -75090,7 +75090,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRouteContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings.tsx:/_layout/_authenticated/agent/settings",
@@ -75107,7 +75107,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRouteContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings.tsx:/_layout/_authenticated/agent/settings",
@@ -96934,7 +96934,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRouteContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -96967,7 +96967,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRouteContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -97647,7 +97647,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRouteContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -97680,7 +97680,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRouteContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",

@@ -9,7 +9,7 @@ import {
   selectRows,
   withReportExecutor,
 } from "./context";
-import { workspaceFeatureEnabled } from "./feature";
+import { reportFeatureScope } from "./feature-scope";
 import type { ReportWindow } from "./logic";
 import { type ReportEnvelope, stripRates } from "./present";
 import { reportByKey } from "./registry";
@@ -100,14 +100,12 @@ async function runReportInContext(
   input: RunReportInput & { executor: Executor },
 ): Promise<ReportEnvelope> {
   const { def } = input;
-  if (
-    def.feature &&
-    !(await workspaceFeatureEnabled(
-      input.workspaceId,
-      def.feature,
-      input.executor,
-    ))
-  )
+  const featureScope = await reportFeatureScope(
+    def.feature,
+    input.workspaceId,
+    input.executor,
+  );
+  if (def.feature && featureScope === "off")
     throw new ReportFeatureDisabledError(def.feature);
   const options = selectOptions(def, input.options ?? {});
   // Rate data is selected only for a caller who may see it: the report is built for that caller.
@@ -125,6 +123,7 @@ async function runReportInContext(
     ...(input.exportPage ? { exportPage: input.exportPage } : {}),
     ...(input.snapshots === false ? { snapshots: false } : {}),
     ...(input.exporting ? { exporting: true } : {}),
+    ...(Array.isArray(featureScope) ? { featureProjects: featureScope } : {}),
   });
   const body = await def.compute(ctx);
   // RP-12: a report with no drill of its own takes the one in `drill-extra.ts` (its rows get a handle).

@@ -39,3 +39,15 @@ export function isCustomerEligibleNotificationEvent(
       eventKind === "work_item.transitioned")
   );
 }
+
+/**
+ * The approval kinds a customer approver is told about: exactly the kinds the portal inbox
+ * shows (`portal-inbox.ts` `customerEventSchema`, AP-21). `approval.decided` and
+ * `approval.expired` are staff-side outcomes (requester and watchers); a customer approver who
+ * also watches the item gets neither an invisible inbox row nor an email for them (`P2R2-04`).
+ */
+export const CUSTOMER_APPROVAL_EVENT_KINDS: ReadonlySet<string> = new Set([
+  "approval.requested",
+  "approval.expiring",
+  "approval.withdrawn",
+]);

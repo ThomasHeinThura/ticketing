@@ -116,5 +116,16 @@ export const featureConflictSchema = z.object({
   version: z.number().int().min(0).optional(),
 });
 
+/** P4R2-M2: a workspace or project write for an instance-only flag (SCIM, MCP). */
+export const featureScopeErrorSchema = z.object({
+  message: z.literal("feature_instance_only"),
+  key: featureKey,
+});
+
+/** `GET /portal/feature-state`: the customer portal for the caller's own organisation. */
+export const portalFeatureStateSchema = z.object({
+  state: z.enum(["on", "off", "unavailable"]),
+});
+
 export type InstanceFeaturesResponse = z.infer<typeof instanceFeaturesSchema>;
 export type LevelFeaturesResponse = z.infer<typeof levelFeaturesSchema>;

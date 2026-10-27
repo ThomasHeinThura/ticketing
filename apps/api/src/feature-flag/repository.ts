@@ -3,6 +3,7 @@ import {
   FEATURE_FLAG_DEFAULTS,
   FEATURE_FLAGS,
   type FeatureFlag,
+  INSTANCE_ONLY_FEATURES,
   LOCKED_FEATURE_DEFAULTS,
   resolveFeatureFlag,
 } from "@taskdesk/permissions";
@@ -12,6 +13,7 @@ import db, { schema } from "../database";
 import type { Transaction } from "../database/executor";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import { invalidateFeatureFlagCache } from "./enforce";
 
 /** `ST-2`: a lower level may not override a locked instance flag. */
 export class FeatureFlagConflictError extends Error {
@@ -22,6 +24,30 @@ export class FeatureFlagConflictError extends Error {
   ) {
     super(code);
   }
+}
+
+/**
+ * P4R2-M2: an instance-only flag (`INSTANCE_ONLY_FEATURES`: SCIM, MCP) has no workspace or
+ * project level; a lower-level write is refused 422 and nothing is stored.
+ */
+export class FeatureFlagScopeError extends Error {
+  readonly code = "feature_instance_only" as const;
+  constructor(readonly key: FeatureFlag) {
+    super("feature_instance_only");
+  }
+}
+
+function assertLowerLevelWritable(changes: LevelChange[]) {
+  for (const change of changes)
+    if (INSTANCE_ONLY_FEATURES.has(change.key))
+      throw new FeatureFlagScopeError(change.key);
+}
+
+/** The flags a workspace or project settings screen may show (no instance-only flags). */
+export function lowerLevelFeatures<T extends { key: FeatureFlag }>(
+  features: T[],
+): T[] {
+  return features.filter((feature) => !INSTANCE_ONLY_FEATURES.has(feature.key));
 }
 
 export type FeatureActor = {
@@ -425,6 +451,7 @@ export async function patchInstanceFeatures(
       });
     }
   });
+  invalidateFeatureFlagCache();
   await auditAfterCommit(audits);
 }
 
@@ -452,6 +479,7 @@ export async function patchWorkspaceFeatures(
   changes: LevelChange[],
   actorInfo: FeatureActor,
 ) {
+  assertLowerLevelWritable(changes);
   const audits: Array<Parameters<typeof appendAuditLog>[1]> = [];
   await db.transaction(async (tx: Transaction) => {
     await tx.execute(FLAG_WRITE_LOCK);
@@ -509,6 +537,7 @@ export async function patchWorkspaceFeatures(
       });
     }
   });
+  invalidateFeatureFlagCache();
   await auditAfterCommit(audits);
 }
 
@@ -518,6 +547,7 @@ export async function patchProjectFeatures(
   changes: LevelChange[],
   actorInfo: FeatureActor,
 ) {
+  assertLowerLevelWritable(changes);
   const audits: Array<Parameters<typeof appendAuditLog>[1]> = [];
   await db.transaction(async (tx: Transaction) => {
     await tx.execute(FLAG_WRITE_LOCK);
@@ -575,5 +605,6 @@ export async function patchProjectFeatures(
       });
     }
   });
+  invalidateFeatureFlagCache();
   await auditAfterCommit(audits);
 }

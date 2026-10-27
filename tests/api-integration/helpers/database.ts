@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { Client } from "pg";
 import db, { getDatabasePool, schema } from "../../../apps/api/src/database";
 import { migrateWithMembershipProvenanceCutover } from "../../../apps/api/src/database/migrate-membership-provenance";
+import { invalidateFeatureFlagCache } from "../../../apps/api/src/feature-flag/enforce";
 import { assertDisposableTestDatabaseUrl } from "./disposable-database";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -225,6 +226,9 @@ export async function resetTestDatabase(options?: {
 
   await ensureTestDatabaseMigrated();
   if (options?.defaultOffFeatures !== false) await enableRuntimeGatedFeatures();
+  // The portal flag lookups are cached in process for a few seconds (P4R2-L1); a reset
+  // database must not answer from the previous test's cache.
+  invalidateFeatureFlagCache();
 }
 
 /**

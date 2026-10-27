@@ -52,4 +52,39 @@ describe("SetupJobProgress", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
+
+  it("never shows a live job as stalled while its lease heartbeat is fresh (P6-R2-02)", () => {
+    const now = Date.now();
+    const old = new Date(now - SETUP_JOB_STALE_MS - 60_000).toISOString();
+    // Slow discovery: no progress for minutes, but the worker still holds and renews the lease.
+    const live = setupJob({
+      updatedAt: old,
+      heartbeatAt: new Date(now - 5_000).toISOString(),
+      pagesRead: 1,
+      recordsProcessed: 0,
+    });
+    expect(setupJobIsStale(live, now)).toBe(false);
+    renderWithQuery(
+      <SetupJobProgress job={live} continuing={false} onContinue={vi.fn()} />,
+    );
+    expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
+
+    // Both stamps old: the worker is gone and the job is stalled.
+    expect(
+      setupJobIsStale(setupJob({ updatedAt: old, heartbeatAt: old }), now),
+    ).toBe(true);
+    // A finished or failed job is never stalled, however old.
+    expect(
+      setupJobIsStale(
+        setupJob({ status: "completed", updatedAt: old, heartbeatAt: old }),
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      setupJobIsStale(
+        setupJob({ status: "failed", updatedAt: old, heartbeatAt: null }),
+        now,
+      ),
+    ).toBe(false);
+  });
 });

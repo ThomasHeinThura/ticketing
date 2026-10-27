@@ -4988,13 +4988,16 @@ export const commentTable = pgTable(
       table.createdAt,
     ),
     index("comment_workspaceId_idx").on(table.workspaceId),
-    // P1R2-8 (0208): trigram index for the work-item search comment branch; the expression
-    // and predicate mirror `commentBodyText` in search/canonical-repository.ts.
+    // P1R2-8 (0205): trigram index for the work-item search comment branch; the expression
+    // and predicate mirror `commentBodyText` in search/canonical-repository.ts. fastupdate is off
+    // (0210) so a bulk comment insert (e.g. an import) cannot leave a pending list that slows
+    // rare-term searches past SV-5 until autovacuum runs.
     index("comment_body_search_idx")
       .using(
         "gin",
         sql`lower(coalesce(case when jsonb_typeof(${table.body}) = 'string' then ${table.body} #>> '{}' else jsonb_path_query_array(${table.body}, 'lax $.**.text')::text end, '')) gin_trgm_ops`,
       )
+      .with({ fastupdate: false })
       .where(sql`${table.deletedAt} IS NULL AND ${table.body} IS NOT NULL`),
     check(
       "comment_visibility_allowed",

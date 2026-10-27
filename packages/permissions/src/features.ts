@@ -57,6 +57,16 @@ export const LOCKED_FEATURE_DEFAULTS: ReadonlySet<FeatureFlag> = new Set([
   "feature.import",
 ]);
 
+/**
+ * Flags that exist only at instance level (features.md): their surface belongs to no workspace
+ * or project (`/scim/v2/*`, MCP-flagged API keys), so a workspace or project override could never
+ * be honoured. Lower-level writes are refused and any stored lower row is ignored.
+ */
+export const INSTANCE_ONLY_FEATURES: ReadonlySet<FeatureFlag> = new Set([
+  "feature.scim",
+  "feature.mcp",
+]);
+
 export function isFeatureFlag(value: string): value is FeatureFlag {
   return (FEATURE_FLAGS as readonly string[]).includes(value);
 }
@@ -75,6 +85,11 @@ export function resolveFeatureFlag(input: {
   }
   if (!input.instance && LOCKED_FEATURE_DEFAULTS.has(input.feature)) {
     return { enabled: FEATURE_FLAG_DEFAULTS[input.feature], source: "default" };
+  }
+  if (INSTANCE_ONLY_FEATURES.has(input.feature)) {
+    return input.instance
+      ? { enabled: input.instance.enabled, source: "instance" }
+      : { enabled: FEATURE_FLAG_DEFAULTS[input.feature], source: "default" };
   }
   if (input.project !== null && input.project !== undefined) {
     return { enabled: input.project, source: "project" };

@@ -2,16 +2,21 @@ import { Alert, AlertDescription, Button, Progress } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import type { ImportSetupJob } from "@/fetchers/god-mode/imports";
 
-/** A running step whose progress has not moved for this long looks abandoned (a restart killed it). */
+/**
+ * A running step looks abandoned (a restart killed its worker) once neither its progress nor its
+ * worker's lease heartbeat has moved for this long. The worker stamps `heartbeatAt` every few
+ * seconds while it holds the lease, even inside one slow source call, so a live job never crosses
+ * this threshold; a killed one does shortly after its lease (60 s) lapses.
+ */
 export const SETUP_JOB_STALE_MS = 90_000;
 
 export function setupJobIsStale(job: ImportSetupJob, now = Date.now()) {
-  const updated = Date.parse(job.updatedAt);
-  return (
-    job.status === "running" &&
-    Number.isFinite(updated) &&
-    now - updated > SETUP_JOB_STALE_MS
-  );
+  if (job.status !== "running") return false;
+  const seen = [job.updatedAt, job.heartbeatAt]
+    .map((value) => (value ? Date.parse(value) : Number.NaN))
+    .filter(Number.isFinite);
+  if (seen.length === 0) return false;
+  return now - Math.max(...seen) > SETUP_JOB_STALE_MS;
 }
 
 /**

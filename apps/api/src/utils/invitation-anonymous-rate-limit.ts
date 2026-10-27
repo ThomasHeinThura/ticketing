@@ -4,6 +4,7 @@ import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { clientIpForContext } from "../api-key/enforce";
 import db, { schema } from "../database";
+import { rateLimitClientAddress } from "../identity/home-realm-rate-limit";
 import { resolveAuthSecret } from "./require-auth-secret";
 
 const BUCKET = "anonymous_invitation" as const;
@@ -20,13 +21,19 @@ export type InvitationAnonymousRateLimitDecision = {
 function digestKey(clientIp: string | null, windowMs: number): string {
   const secret = resolveAuthSecret(process.env.TASKDESK_AUTH_SECRET);
   if (!secret.ok) throw new Error("Anonymous invitation limiter unavailable");
-  return createHmac("sha256", secret.secret)
-    .update(BUCKET)
-    .update("\0")
-    .update(String(windowMs))
-    .update("\0")
-    .update(clientIp ?? "no-trusted-client-ip")
-    .digest("hex");
+  return (
+    createHmac("sha256", secret.secret)
+      .update(BUCKET)
+      .update("\0")
+      .update(String(windowMs))
+      .update("\0")
+      // P3-R2-01: IPv6 clients are keyed on their /64 and IPv4-mapped clients on the embedded
+      // IPv4 address, the same normalisation as the home-realm limiter.
+      .update(
+        clientIp ? rateLimitClientAddress(clientIp) : "no-trusted-client-ip",
+      )
+      .digest("hex")
+  );
 }
 
 function dateValue(value: Date | string | undefined): Date {

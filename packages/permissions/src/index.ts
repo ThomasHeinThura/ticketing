@@ -86,6 +86,7 @@ export {
   FEATURE_FLAG_DEFAULTS,
   FEATURE_FLAGS,
   type FeatureFlag,
+  INSTANCE_ONLY_FEATURES,
   isFeatureFlag,
   LOCKED_FEATURE_DEFAULTS,
   resolveFeatureFlag,

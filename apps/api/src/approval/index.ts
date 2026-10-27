@@ -6,6 +6,10 @@ import {
   type AuditRequestContext,
   auditRequestContext,
 } from "../audit/request-context";
+import {
+  customerPortalOnFor,
+  customerPortalScope,
+} from "../feature-flag/enforce";
 import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import {
   apiRouter,
@@ -678,8 +682,14 @@ function approvalRouter() {
         addressedOnly: true,
         pendingOnly: true,
       });
+      // P4R2-M2: approvals on a project with the customer portal off are not listed.
+      const portalScope = await customerPortalScope();
       const approvals = await formatReachableApprovals(
-        rows.filter((row) => row.kind === "customer"),
+        rows.filter(
+          (row) =>
+            row.kind === "customer" &&
+            customerPortalOnFor(portalScope, row.workspaceId, row.projectId),
+        ),
         identity,
       );
       return c.json({ approvals }, 200);
@@ -692,7 +702,15 @@ function approvalRouter() {
         });
       const id = c.req.valid("param").id;
       const target = await loadApprovalTargetByApprovalId(id, identity);
-      if (!target)
+      // P4R2-M2: an approval on a project with the customer portal off does not exist here.
+      if (
+        !target ||
+        !customerPortalOnFor(
+          await customerPortalScope(),
+          target.workspaceId,
+          target.projectId,
+        )
+      )
         throw new HTTPException(404, { message: "Approval not found" });
       const row = (
         await listApprovalRows(identity, target.workItemId, target.workspaceId)

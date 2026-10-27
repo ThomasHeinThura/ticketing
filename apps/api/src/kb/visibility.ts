@@ -20,6 +20,10 @@ import {
   workspaceFeatureFlagTable,
 } from "../database/schema";
 import { kbArticleTable } from "../database/schema-p5-kb";
+import {
+  customerPortalOnSql,
+  customerPortalScope,
+} from "../feature-flag/enforce";
 
 export const KB_FEATURE = "feature.knowledge_base" as const;
 
@@ -128,6 +132,13 @@ export async function portalKbScope(userId: string) {
     ...fromProjects.map((row) => row.workspaceId),
     ...fromRequestTypes.map((row) => row.workspaceId),
   ]);
+  // `feature.customer_portal` off for the article's workspace or project hides it from the
+  // portal (workspace override, else project override, else instance), like every portal read.
+  const portalOn = customerPortalOnSql(
+    await customerPortalScope(),
+    kbArticleTable.workspaceId,
+    kbArticleTable.projectId,
+  );
   return {
     personId: person.personId,
     organisationId: person.organisationId,
@@ -141,6 +152,7 @@ export async function portalKbScope(userId: string) {
       eq(kbArticleTable.state, "published"),
       eq(kbArticleTable.customerVisible, true),
       isNotNull(kbArticleTable.publishedVersion),
+      portalOn,
       workspaceIds.length > 0
         ? inArray(kbArticleTable.workspaceId, workspaceIds)
         : sql`false`,

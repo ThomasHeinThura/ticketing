@@ -15,7 +15,10 @@ import {
   markOwnReadableNotificationRead,
   markReadableNotificationsRead,
 } from "./inbox.repository";
-import { resolvePortalNotificationTargets } from "./portal-inbox-repository";
+import {
+  admitPortalNotifications,
+  resolvePortalNotificationTargets,
+} from "./portal-inbox-repository";
 
 const customerFilterSchema = z.enum(["all", "unread", "mentions"]);
 const customerEventSchema = z.enum([
@@ -184,6 +187,9 @@ export const portalNotificationRouter = apiRouter()
       filter: query.filter,
       limit: query.limit,
       ...(cursor ? { cursor } : {}),
+      // P4R2-M2: notifications of a project or workspace with the customer portal off are
+      // neither listed nor counted.
+      admit: (rows) => admitPortalNotifications(rows),
     });
     const targets = await resolvePortalNotificationTargets(
       result.rows.map(({ notification }) => ({ notification })),

@@ -60,4 +60,10 @@ export const featureFlagPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  // P4R2-M2: the portal app reads whether the portal is on for the signed-in customer's own
+  // organisation, so it can show its feature-off state right after an in-app sign-in.
+  "GET /api/portal/feature-state": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
 } as const satisfies PolicyMap;

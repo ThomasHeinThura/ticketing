@@ -5,7 +5,7 @@
  * (P5-R1-05) and the workspace-dashboard delete that re-checks the approver's right (P5-R1-09).
  */
 import { and, eq, sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import {
   dashboardTable,
@@ -116,6 +116,14 @@ async function seedArticles(count: number) {
 
 describe("paged exports of reports built in memory (P5-R1-01)", () => {
   const COUNT = 270;
+  // The page size is 5,000 since P5-R2-02; 250-row pages keep these exports multi-page.
+  const limitsBefore = { ...exportLimits };
+  beforeEach(() => {
+    exportLimits.pageSize = 250;
+  });
+  afterEach(() => {
+    Object.assign(exportLimits, limitsBefore);
+  });
 
   const exported = async (path: string, body: Record<string, unknown> = {}) => {
     const queued = await post(w.owner.user, path, { window: "30", ...body });

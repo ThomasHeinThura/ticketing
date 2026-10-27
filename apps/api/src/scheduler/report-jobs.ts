@@ -5,6 +5,10 @@ import {
   expireExports,
   processExport,
 } from "../report/export.service";
+import {
+  exportsAwaitingEmail,
+  notifyExportReady,
+} from "../report/export-notify";
 import { workspaceFeatureEnabled } from "../report/feature";
 import {
   pruneSnapshots,
@@ -90,8 +94,9 @@ export type ReportExportOutcome = {
  * `report-export` (background-jobs.md, 30 minute lease), RP-10: renders queued exports into stored
  * CSV, under the requester's reach and with their rate visibility re-checked, then expires finished
  * ones. It is started right after an export is queued and also polled every minute, so a queued
- * export survives a restart. There is no email step: the requester polls the export and downloads
- * it from an authenticated route.
+ * export survives a restart. When an export is ready its requester is emailed once a link to the
+ * authenticated download route (P5-R2-02, `report/export-notify.ts`); an email still owed (a crash
+ * between render and send, a transport failure) is retried by the next run.
  */
 export async function runReportExport(
   now: Date = new Date(),
@@ -110,6 +115,11 @@ export async function runReportExport(
           const result = await processExport(row);
           outcome.processed += 1;
           if (result === "failed") outcome.failed += 1;
+          else await notifyExportReady(row.id);
+        }
+        for (const id of await exportsAwaitingEmail(EXPORTS_PER_RUN)) {
+          await assertJobExecutionOwned();
+          await notifyExportReady(id);
         }
         await assertJobExecutionOwned();
         await expireExports(now);

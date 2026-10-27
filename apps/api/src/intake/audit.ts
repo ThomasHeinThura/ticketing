@@ -13,7 +13,9 @@ import { ensurePolicyRequestId } from "../permissions/shadow-context";
  * request's `actorIp` (trusted-proxy aware), `userAgent`, `traceId` and `apiKeyId` are read
  * lazily from the HTTP context the middleware stores; work outside a request (the
  * clarification-window job, tests) simply records none of them. Administrators are notified once,
- * after the outermost caller's transaction has committed.
+ * after the outermost caller's transaction has committed, and only when the work that lost the
+ * row actually committed (`P2R2-03`): a request that failed (thrown error or 4xx/5xx response)
+ * rolled its transaction back with the failed savepoint, so nothing is reported for it.
  */
 
 type AuditContextMeta = Pick<
@@ -44,15 +46,22 @@ function metaFromContext(c: Context): AuditContextMeta {
 async function runWithStore<T>(
   store: AuditStore,
   work: () => Promise<T>,
+  committed: (result: T) => boolean = () => true,
 ): Promise<T> {
+  let result: T;
   try {
-    return await storage.run(store, work);
-  } finally {
-    if (store.failed) {
-      store.failed = false;
-      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
-    }
+    result = await storage.run(store, work);
+  } catch (error) {
+    // The work failed, so its transaction (and the lost audit row with it) rolled back.
+    store.failed = false;
+    throw error;
   }
+  if (store.failed && committed(result)) {
+    store.failed = false;
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  }
+  store.failed = false;
+  return result;
 }
 
 /** Stores the request's audit context for every intake route; place it before the routes. */
@@ -62,6 +71,9 @@ export const intakeAuditContext: MiddlewareHandler = async (c, next) => {
     async () => {
       await next();
     },
+    // Hono's compose turns a thrown handler error into `c.error` and an error response, so
+    // `next()` resolves either way: only a successful response committed the mutation.
+    () => !c.error && c.res.status < 400,
   );
 };
 
@@ -71,11 +83,32 @@ export async function withIntakeAudit<T>(work: () => Promise<T>): Promise<T> {
   return runWithStore({ readMeta: () => ({}), failed: false }, work);
 }
 
-/** Appends an audit row in a savepoint with the request metadata; never throws. */
+/**
+ * One unit of work (one transaction) inside a longer intake store, such as one row of the
+ * clarification-window job: if it throws, its transaction rolled back with any failed audit
+ * append, so the failures it recorded are discarded instead of reported (`P2R2-03`).
+ */
+export async function intakeAuditUnit<T>(work: () => Promise<T>): Promise<T> {
+  const store = storage.getStore();
+  const before = store?.failed ?? false;
+  try {
+    return await work();
+  } catch (error) {
+    if (store) store.failed = before;
+    throw error;
+  }
+}
+
+/**
+ * Appends an audit row in a savepoint with the request metadata; never throws. Inside an intake
+ * store the store reports a failure once its work commits. Outside one (the request-type
+ * deletion approval) it returns `true` on a failed append, and the caller must notify
+ * administrators after its own transaction commits (`P2R2-01`).
+ */
 export async function appendIntakeAudit(
   tx: Executor,
   input: AppendAuditLogInput,
-): Promise<void> {
+): Promise<boolean> {
   const store = storage.getStore();
   const meta = store?.readMeta() ?? {};
   const failed = await appendAuditSavepoint(tx, {
@@ -86,5 +119,10 @@ export async function appendIntakeAudit(
     userAgent: input.userAgent ?? meta.userAgent ?? null,
     traceId: input.traceId ?? meta.traceId ?? null,
   });
-  if (failed && store) store.failed = true;
+  if (!failed) return false;
+  if (store) {
+    store.failed = true;
+    return false;
+  }
+  return true;
 }

@@ -215,4 +215,36 @@ describe("FeatureFlagsPanel", () => {
     );
     expect(screen.getByText("loadFailed")).toBeTruthy();
   });
+
+  it("never offers instance-only flags (SCIM, MCP) at workspace or project level, but does at instance level (P4R2-M2)", () => {
+    const lower = (key: FeatureRow["key"]) =>
+      row({
+        key,
+        override: null,
+        inherited: { enabled: false, source: "default" },
+      });
+    mocks.rows = [
+      lower("feature.scim"),
+      lower("feature.mcp"),
+      lower("feature.cycles"),
+    ];
+    render(
+      <FeatureFlagsPanel target={{ level: "workspace", workspaceId: "w1" }} />,
+    );
+    expect(screen.queryByText("flags.feature.scim.name")).toBeNull();
+    expect(screen.queryByText("flags.feature.mcp.name")).toBeNull();
+    expect(screen.getByText("flags.feature.cycles.name")).toBeTruthy();
+    cleanup();
+
+    render(
+      <FeatureFlagsPanel target={{ level: "project", projectId: "p1" }} />,
+    );
+    expect(screen.queryByText("flags.feature.scim.name")).toBeNull();
+    cleanup();
+
+    mocks.rows = [row({ key: "feature.scim" }), row({ key: "feature.mcp" })];
+    render(<FeatureFlagsPanel target={{ level: "instance" }} />);
+    expect(screen.getByText("flags.feature.scim.name")).toBeTruthy();
+    expect(screen.getByText("flags.feature.mcp.name")).toBeTruthy();
+  });
 });

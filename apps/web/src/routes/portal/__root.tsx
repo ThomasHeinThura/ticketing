@@ -4,11 +4,44 @@ import {
   redirect,
   useLocation,
 } from "@tanstack/react-router";
-import { Alert, AlertDescription, AlertTitle, Button } from "@taskdesk/ui";
-import type { ReactNode } from "react";
+import { lazy, Suspense } from "react";
 import PortalLayout from "@/components/portal/portal-layout";
-import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { portalAuthClient } from "@/lib/portal-auth-client";
+
+// Rarely shown, so kept out of the portal's initial bundle (G11 budget).
+const PortalFeatureOff = lazy(() =>
+  import("@/components/portal/portal-feature-off").then((module) => ({
+    default: module.PortalFeatureOff,
+  })),
+);
+
+// The not-found and error frames are rare too; both load on demand.
+const PortalNotFoundState = lazy(() =>
+  import("@/components/portal/portal-root-states").then((module) => ({
+    default: module.PortalNotFound,
+  })),
+);
+const PortalErrorState = lazy(() =>
+  import("@/components/portal/portal-root-states").then((module) => ({
+    default: module.PortalError,
+  })),
+);
+
+function PortalNotFound() {
+  return (
+    <Suspense fallback={null}>
+      <PortalNotFoundState />
+    </Suspense>
+  );
+}
+
+function PortalError({ reset }: { reset: () => void }) {
+  return (
+    <Suspense fallback={null}>
+      <PortalErrorState reset={reset} />
+    </Suspense>
+  );
+}
 
 // The sign-in and accept-invitation pages are their own frame and are reachable without a session
 // (the invitee signs in from the accept page).
@@ -19,7 +52,14 @@ const isSignIn = (pathname: string) =>
 
 function PortalRoot() {
   const location = useLocation();
-  const { portalUserId } = Route.useRouteContext();
+  const { portalUserId, portalState } = Route.useRouteContext();
+  // P3-R2-03: the host marked the portal as switched off (or unreadable) for this visitor.
+  if (portalState)
+    return (
+      <Suspense fallback={null}>
+        <PortalFeatureOff state={portalState} />
+      </Suspense>
+    );
   return isSignIn(location.pathname) ? (
     <Outlet />
   ) : (
@@ -31,6 +71,12 @@ function PortalRoot() {
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
+    // Loaded on demand so the portal's initial bundle stays inside its G11 budget.
+    const { readPortalStateMarker, organisationPortalState } = await import(
+      "@/lib/portal-state"
+    );
+    const portalState = readPortalStateMarker();
+    if (portalState) return { portalState, portalUserId: undefined };
     if (isSignIn(location.pathname)) return;
     const result = await portalAuthClient.getSession();
     if (result.error || !result.data?.session)
@@ -38,42 +84,13 @@ export const Route = createRootRoute({
         to: "/sign-in",
         search: { stage: "email", factor: "totp" },
       });
-    return { portalUserId: result.data.user.id };
+    const userId = result.data.user.id;
+    return {
+      portalUserId: userId,
+      portalState: await organisationPortalState(userId),
+    };
   },
   component: PortalRoot,
   notFoundComponent: PortalNotFound,
   errorComponent: PortalError,
 });
-
-function PortalFrame({ children }: { children: ReactNode }) {
-  return (
-    <main className="flex min-h-svh items-center justify-center bg-background p-6">
-      <div className="w-full max-w-lg">{children}</div>
-    </main>
-  );
-}
-
-function PortalNotFound() {
-  const { t } = usePortalTranslation("portal");
-  return (
-    <PortalFrame>
-      <Alert variant="info">
-        <AlertTitle>{t("notFound.title")}</AlertTitle>
-        <AlertDescription>{t("notFound.description")}</AlertDescription>
-      </Alert>
-    </PortalFrame>
-  );
-}
-
-function PortalError({ reset }: { reset: () => void }) {
-  const { t } = usePortalTranslation("portal");
-  return (
-    <PortalFrame>
-      <Alert variant="error">
-        <AlertTitle>{t("error.title")}</AlertTitle>
-        <AlertDescription>{t("error.description")}</AlertDescription>
-        <Button onClick={reset}>{t("common:actions.tryAgain")}</Button>
-      </Alert>
-    </PortalFrame>
-  );
-}

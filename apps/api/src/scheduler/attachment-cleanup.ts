@@ -1,4 +1,5 @@
 import { and, asc, eq, gt, ne, or, sql } from "drizzle-orm";
+import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import type { Transaction } from "../database/executor";
 import {
@@ -365,6 +366,25 @@ export async function cleanDetachedAsset(id: string): Promise<boolean> {
         return false;
       }
     }
+    // P0R2-02: one `asset.purged` row (system actor) records which asset was collected. It is
+    // written in the same transaction, so a failed storage call rolls the record back too.
+    await appendAuditLog(tx, {
+      actorId: null,
+      actorType: "system",
+      workspaceId: row.workspaceId,
+      projectId: row.projectId,
+      action: "asset.purged",
+      entityType: "asset",
+      entityId: row.id,
+      before: {
+        taskId: row.taskId,
+        filename: row.filename,
+        mimeType: row.mimeType,
+        size: row.size,
+        detachedAt: row.detachedAt?.toISOString() ?? null,
+      },
+      after: null,
+    });
     await deleteStorageObject(row.objectKey);
     await tx.delete(assetTable).where(eq(assetTable.id, row.id));
     return true;

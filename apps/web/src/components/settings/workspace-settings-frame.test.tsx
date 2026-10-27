@@ -30,6 +30,14 @@ vi.mock("react-i18next", () => ({
 vi.mock("@/components/SettingsSidebar", () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+// P4R2-M1: the SLA areas follow the workspace's resolved `feature.sla`.
+const workspaceFeatureState = vi.hoisted(() => ({ sla: true, loading: false }));
+vi.mock("@/hooks/queries/feature-flag/use-workspace-features", () => ({
+  default: () => ({
+    isOn: (key: string) => key === "feature.sla" && workspaceFeatureState.sla,
+    isLoading: workspaceFeatureState.loading,
+  }),
+}));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     workspace: { id: "w1", name: "Acme" },
@@ -47,6 +55,8 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
 
 afterEach(() => {
   cleanup();
+  workspaceFeatureState.sla = true;
+  workspaceFeatureState.loading = false;
   Object.assign(permissions, {
     settings: false,
     calendars: false,
@@ -158,5 +168,23 @@ describe("WorkspaceSettingsFrame", () => {
     expect(hrefsFor()).toContain("/agent/settings/workflows");
     expect(hrefsFor()).not.toContain("/agent/settings/rates");
     expect(hrefsFor()).not.toContain("/agent/settings/time-activities");
+  });
+
+  it("hides Service calendars and SLA policies while feature.sla is off or loading (P4R2-M1)", () => {
+    permissions.settings = true;
+    permissions.calendars = true;
+    workspaceFeatureState.sla = false;
+    render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
+    let hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(hrefs).not.toContain("/agent/settings/sla-policies");
+    expect(hrefs).not.toContain("/agent/settings/calendars");
+    expect(hrefs).toContain("/agent/settings/request-types");
+    cleanup();
+
+    workspaceFeatureState.sla = true;
+    render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
+    hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(hrefs).toContain("/agent/settings/sla-policies");
+    expect(hrefs).toContain("/agent/settings/calendars");
   });
 });

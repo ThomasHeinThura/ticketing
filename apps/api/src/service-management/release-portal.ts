@@ -21,6 +21,12 @@ import {
   serviceTable,
 } from "../database/schema-p5-service";
 import {
+  type CustomerPortalScope,
+  customerPortalOnFor,
+  customerPortalOnSql,
+  customerPortalScope,
+} from "../feature-flag/enforce";
+import {
   apiRouter,
   type BaseVariables,
   createRoute,
@@ -76,9 +82,14 @@ async function resolvePortalReleaseScope(userId: string) {
         isNull(projectTable.archivedAt),
       ),
     );
+  // `feature.customer_portal` off for a workspace hides its releases from the portal.
+  const portal = await customerPortalScope();
   const enabled = await Promise.all(
     reached.map(async ({ workspaceId }) =>
-      (await serviceCatalogueEnabled(workspaceId)) ? workspaceId : null,
+      customerPortalOnFor(portal, workspaceId) &&
+      (await serviceCatalogueEnabled(workspaceId))
+        ? workspaceId
+        : null,
     ),
   );
   return {
@@ -173,7 +184,14 @@ function decodeCursor(
   }
 }
 
-function organisationReach(organisationId: string) {
+/**
+ * A release reaches an organisation through a live project of theirs linked to its service; a
+ * project whose `feature.customer_portal` resolves off (project override first) is no such path.
+ */
+function organisationReach(
+  organisationId: string,
+  portal: CustomerPortalScope | null,
+) {
   return exists(
     db
       .select({ one: sql`1` })
@@ -193,6 +211,11 @@ function organisationReach(organisationId: string) {
           eq(projectTable.organisationId, organisationId),
           isNull(projectTable.deletedAt),
           isNull(projectTable.archivedAt),
+          customerPortalOnSql(
+            portal,
+            projectTable.workspaceId,
+            projectTable.id,
+          ),
         ),
       ),
   );
@@ -245,7 +268,7 @@ export async function listPortalReleases(
       and(
         published,
         inArray(releaseTable.workspaceId, [...scope.workspaceIds]),
-        organisationReach(scope.organisationId),
+        organisationReach(scope.organisationId, await customerPortalScope()),
         cursor
           ? or(
               lt(releaseTable.publishedAt, new Date(cursor.publishedAt)),
@@ -304,7 +327,7 @@ export async function getPortalRelease(
         eq(releaseTable.id, id),
         published,
         inArray(releaseTable.workspaceId, [...scope.workspaceIds]),
-        organisationReach(scope.organisationId),
+        organisationReach(scope.organisationId, await customerPortalScope()),
       ),
     )
     .limit(1);
