@@ -233,14 +233,16 @@ export function htmlToText(html: string): { text: string; lossy: boolean } {
     /<(?:table|img|a\s|ul|ol|li|strong|b>|em|i>|code|pre|h[1-6])/iu.test(html);
   let stripped = html
     .replace(/<(?:br|\/p|\/div|\/li|\/h[1-6]|\/tr)\s*\/?>/giu, "\n")
-    .replace(/<li[^>]*>/giu, "- ");
-  // Strip to a fixed point so no removal can leave a tag behind for a later reader.
+    .replace(/<li[^>]*>/giu, "- ")
+    // Decode before stripping, so an encoded `&lt;script&gt;` cannot decode into a tag afterwards.
+    .replace(/&(#?\w+);/gu, (whole, name: string) => ENTITY[name] ?? whole);
+  // Strip to a fixed point so no removal can leave a tag behind for a later reader; an unclosed
+  // tag at the end is removed too.
   for (let previous = ""; previous !== stripped; ) {
     previous = stripped;
-    stripped = stripped.replace(/<[^>]*>/gu, "");
+    stripped = stripped.replace(/<[^>]*(?:>|$)/gu, "");
   }
   const text = stripped
-    .replace(/&(#?\w+);/gu, (whole, name: string) => ENTITY[name] ?? whole)
     .replace(/[ \t]+\n/gu, "\n")
     .replace(/\n{3,}/gu, "\n\n")
     .trim();

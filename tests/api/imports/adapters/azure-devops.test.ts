@@ -620,8 +620,10 @@ describe("html conversion", () => {
       "<scr<b>ipt>alert(1)</scr</b>ipt>",
       "<<img src=x onerror=alert(1)>>",
       "<p><<b>script>x<</b>/script></p>",
+      "&lt;script&gt;alert(1)&lt;/script&gt;",
+      "text <script",
     ])
-      expect(htmlToText(html).text).not.toMatch(/<[^>]*>/u);
+      expect(htmlToText(html).text).not.toMatch(/<[^>]*(?:>|$)/u);
   });
 });
 
