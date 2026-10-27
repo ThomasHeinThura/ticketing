@@ -134,6 +134,29 @@ describe("WorkItemChangeSection", () => {
     expect(screen.queryByText("change.rollback")).toBeNull();
   });
 
+  it("links the service from a Kaneo picker popover and can clear it", async () => {
+    setup(change({ service: { id: "s1", name: "Payments" } }));
+    const trigger = screen.getByRole("button", { name: "change.service" });
+    expect(trigger).toHaveTextContent("Payments");
+    expect(screen.queryByRole("combobox", { name: "change.service" })).toBe(
+      null,
+    );
+
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("button", { name: "Search" }));
+    await waitFor(() =>
+      expect(mocks.setWorkItemService).toHaveBeenCalledWith("OPS-1", "s2"),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "change.service" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "change.noService" }),
+    );
+    await waitFor(() =>
+      expect(mocks.setWorkItemService).toHaveBeenLastCalledWith("OPS-1", null),
+    );
+  });
+
   it("says how many services and customers the change affects", () => {
     setup(change());
     expect(screen.getByText(/change.impact/u).textContent).toContain(

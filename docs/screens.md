@@ -41,6 +41,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Reports index | `/agent/reports` | route | P5 | 🟡 |
 | Report detail | `/agent/reports/{key}` | route | P5 | 🟡 |
 | Report builder (tier 3) | `/agent/reports/new` | route | P5 | 🟡 |
+| Report export (emailed link) | `/agent/reports/exports/{id}` | route | P5 | 🟡 |
 | Dashboard | `/agent/dashboard` | route | P5 | 🟡 |
 | Dashboard editor | `/agent/dashboard/edit` | route | P5 | 🟡 |
 | Timesheet | `/agent/timesheet` | route | P5 | 🟡 |
@@ -138,7 +139,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Summary | Count |
 | --- | --- |
-| **Total** | **145** (130 routes + 15 overlays, dialogs and sections) |
+| **Total** | **146** (131 routes + 15 overlays, dialogs and sections) |
 
 ## Overlays, dialogs and embedded sections
 

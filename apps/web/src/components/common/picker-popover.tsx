@@ -51,6 +51,7 @@ export function PickerPopover({
   className,
   contentClassName,
   testId,
+  searchable: searchableOverride,
 }: {
   id?: string;
   value: string | undefined;
@@ -62,10 +63,16 @@ export function PickerPopover({
   className?: string;
   contentClassName?: string;
   testId?: string;
+  /**
+   * Overrides the option-count switch to the searchable list, e.g. `false` inside a surface that
+   * already owns a Command search (the relations command dialog).
+   */
+  searchable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
-  const searchable = options.length > PICKER_SEARCH_THRESHOLD;
+  const searchable =
+    searchableOverride ?? options.length > PICKER_SEARCH_THRESHOLD;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>

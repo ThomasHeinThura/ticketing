@@ -3,11 +3,6 @@ import {
   Alert,
   AlertDescription,
   Button,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   ToggleGroup,
   ToggleGroupItem,
 } from "@taskdesk/ui";
@@ -21,6 +16,7 @@ import {
 import CommentEditor, {
   type CommentContentSnapshot,
 } from "@/components/activity/comment-editor";
+import { PickerPopover } from "@/components/common/picker-popover";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { enqueueWorkItemUploads } from "@/fetchers/attachment/work-item-upload-queue";
 import listCannedResponses from "@/fetchers/canned-response/list-canned-responses";
@@ -463,10 +459,17 @@ export default function WorkItemCommentComposer({
               </span>
             )}
             {cannedResponses.data && cannedResponses.data.length > 0 && (
-              <Select
-                value=""
+              <PickerPopover
+                value={undefined}
                 disabled={composerBusy}
-                onValueChange={(id) => {
+                ariaLabel={t("activity:timeline.cannedResponses")}
+                placeholder={t("activity:timeline.insertCannedResponse")}
+                className="h-7 w-auto min-w-0 text-xs"
+                options={cannedResponses.data.map((response) => ({
+                  value: response.id,
+                  label: response.name,
+                }))}
+                onChange={(id) => {
                   if (
                     !id ||
                     snippetInsertPending.current ||
@@ -511,24 +514,7 @@ export default function WorkItemCommentComposer({
                       setInsertingSnippet(false);
                     });
                 }}
-              >
-                <SelectTrigger
-                  size="sm"
-                  aria-label={t("activity:timeline.cannedResponses")}
-                  className="h-7 w-auto min-w-0 text-xs"
-                >
-                  <SelectValue
-                    placeholder={t("activity:timeline.insertCannedResponse")}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {cannedResponses.data.map((response) => (
-                    <SelectItem key={response.id} value={response.id}>
-                      {response.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             )}
           </>
         }

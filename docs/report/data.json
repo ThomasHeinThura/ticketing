@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-27T05:49:47.220162+00:00",
+	"generated": "2026-10-27T08:18:07.941480+00:00",
 	"source": "673 indexed clauses: 661 in P0–P5 and 12 in P6. Requirement bars use per-ID assessments. Scoped test and browser passes do not count as whole-clause acceptance; earlier checkpoints are retained in validation_history.",
 	"phases": [
 		{
@@ -24,7 +24,7 @@
 				"findings": 2,
 				"roundsConsumed": 2,
 				"maxTotalRounds": 3,
-				"note": "Round 2 passed at d3c884c3c: 0 high, 0 medium, 2 low (P0R2-01 step-up failure limit checked before/counted after the attempt; P0R2-02 detached-image cleanup not audited per image). All 10 round-1 findings verified fixed. AI reviewed only: browser recheck of fixed screens pending; not accepted by Thomas. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 2 low); both lows fixed in fba7558f9 (atomic step-up proof budget incl. IPv6 /64, audited inline-asset purge). AI reviewed only: browser recheck pending; not accepted by Thomas. Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
 				"pass": 8,
@@ -163,11 +163,11 @@
 				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "fail",
-				"findings": 2,
-				"roundsConsumed": 3,
+				"verdict": "pass",
+				"findings": 5,
+				"roundsConsumed": 4,
 				"maxTotalRounds": 3,
-				"note": "Round 3 (last allowed) failed at d3c884c3c: 1 medium, 1 low. P1R3-1 medium: comment search misses the SV-5 100 ms budget for common terms (implementer measured p50 ~95 ms, p95 96-147 ms on 10k items / 40k comments, before d3c884c3c; not re-measured). P1R3-2 low: S3 upload link binds size but not content type. All other round-2 findings fixed (P1R2-1..7, -10, -13a); lows P1R2-9, -11, -12, -13b open. Thomas approved 27 Oct: fix P1R3-1 (re-measured on the committed tree) and P1R3-2, then a 4th review. Fix lane running. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 4 (approved extra round) passed at fba7558f9: 0 high, 0 medium, 1 new low (report evidence wording) + 4 known lows. Reviewer reproduced the committed SV-5 bench (p95 8.4-20.3 ms DB path) and matched search results against a reference query. Browser at fba7558f9: list-row state picker saves without opening the detail pane; board column + opens create with the column state; search rows show priority/key/project/status. Open: palette end-to-end SV-5/SV-10 timing still to re-run. Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
 				"pass": 8,
@@ -320,7 +320,7 @@
 				"findings": 6,
 				"roundsConsumed": 2,
 				"maxTotalRounds": 3,
-				"note": "Round 2 passed at d3c884c3c: 0 high, 0 medium, 6 low. All 9 round-1 mediums verified fixed (reviewer reran 4 files, 50/50). Lows queued. AI reviewed only: browser recheck of triage, portal approvals and portal thread pending; not accepted by Thomas. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 6 low); lows fixed in fba7558f9 (audit-failure notices, last-handler reply routing, customer approval email kinds, bulk transition audit context, decision rows). AI reviewed only: browser recheck pending. Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
 				"pass": 8,
@@ -477,7 +477,7 @@
 				"findings": 4,
 				"roundsConsumed": 2,
 				"maxTotalRounds": 3,
-				"note": "Round 2 passed at d3c884c3c: 0 high, 0 medium, 4 low (invitation limiter not /64-keyed for IPv6; stale P3 report rows; portal-disabled page not built from Kaneo/packages/ui; multi-audience ID token without azp check). Round-1 high and mediums verified fixed. Policy-unwrap change judged safe. AI reviewed only: browser recheck incl. portal sign-in pending; Entra validation externally blocked (Thomas). Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 4 low); lows fixed in fba7558f9 (IPv6 /64 invitation limiter, azp check, Kaneo-built portal feature-off page). AI reviewed only: browser recheck incl. portal sign-in pending; Entra externally blocked. Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
 				"pass": 8,
@@ -704,11 +704,11 @@
 				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "fail",
-				"findings": 5,
-				"roundsConsumed": 2,
+				"verdict": "pass",
+				"findings": 2,
+				"roundsConsumed": 3,
 				"maxTotalRounds": 3,
-				"note": "Round 2 failed at d3c884c3c: 0 high, 2 medium, 3 low. M1: SLA settings entries shown with feature.sla off. M2: flag overrides accepted but not enforced (project SLA, per-workspace portal, SCIM). Round-1 H1/M1/M3/L1 fixed. Fix lane running; round 3 is the last. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 3 (last) passed at fba7558f9: 0 high, 0 medium, 2 low (project SLA on inside an SLA-off workspace runs on hidden policies - documented in features.md, needs owner decision row; pre-issued portal attachment links stay valid until expiry). Migration 0209 verified on the real upgraded SIT copy: all four flags on, portal serves sign-in. Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
 				"pass": 8,
@@ -1004,9 +1004,9 @@
 			"review": {
 				"verdict": "fail",
 				"findings": 5,
-				"roundsConsumed": 2,
+				"roundsConsumed": 3,
 				"maxTotalRounds": 3,
-				"note": "Round 2 failed at d3c884c3c: 0 high, 3 medium, 2 low. R2-01 snapshot over-invalidation; R2-05 possible stale snapshot after backdated serializable writes; R2-02 500k-row emailed export contract weakened without owner decision. 9/11 round-1 findings fixed. Fix lane running (restoring the contract behaviour); round 3 is the last. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 3 (last allowed) FAILED at fba7558f9: 0 high, 2 medium, 3 low. P5-R3-01: the export-ready email links straight to the API download route, so a signed-out recipient gets a raw 401. P5-R3-02: the email has no preference link (NO-2) and its opt-out cannot be set. Round-2 R2-01/03/05 fixed; R2-02/04 partial. Thomas approved 27 Oct: fix both and run a 4th review; fix lane running. Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
 				"pass": 8,
@@ -1153,10 +1153,11 @@
 		"Recommended option taken 27 Oct (standing approval): existing installs keep SLA, customer portal, Calendar and Gantt on after feature-flag enforcement (upgrade data migration); fresh installs use features.md defaults.",
 		"Recommended option taken 27 Oct: a request type with any submission cannot be deleted (submissions are tied to its form versions).",
 		"Model substitution 27 Oct: implementers and reviewers run on Claude Opus because Luna/Sol are not available here; Thomas to confirm whether Opus reviews count as phase acceptance.",
-		"Approved 27 Oct (Thomas): P1 gets a 4th review round after fixing P1R3-1 (comment search under the SV-5 budget for common terms, re-measured on the committed tree) and P1R3-2 (S3 upload binds content type)."
+		"Approved 27 Oct (Thomas): P1 gets a 4th review round after fixing P1R3-1 (comment search under the SV-5 budget for common terms, re-measured on the committed tree) and P1R3-2 (S3 upload binds content type).",
+		"Approved 27 Oct (Thomas): P5 gets a 4th review after fixing P5-R3-01 (email link opens an agent page that asks for sign-in, then downloads) and P5-R3-02 (preference link and settable opt-out for export-ready emails)."
 	],
-	"next": "Coordinator: finish P4/P5/P6 fixes and round-3 reviews, fix lows, browser-test all fixed screens and the P6 wizard on the redeployed local SIT, commit and push.",
-	"status": "27 Oct ~13:00: fixes committed and pushed (d3c884c3c). Reviews: P0, P2, P3 passed round 2 (AI reviewed, lows only). P4, P5, P6 failed round 2 (2, 3, 1 mediums) - fix lanes running, round 3 is their last. P1 failed round 3 (last allowed; 1 medium: comment search latency at the SV-5 100 ms budget) - Thomas approved fix + 4th review; fix lane running. Local SIT redeploy of d3c884c3c failed verification and was rolled back (portal closed: migration 0206 was a no-op because 0096 had seeded the flags off); fix migration 0211 written and tested (5/5); SIT stays on the previous build, data verified unchanged. Nothing accepted by Thomas.",
+	"next": "Coordinator: finish select-to-popover conversion and mobile row fix, browser re-check, commit, redeploy; Thomas retests portal sign-in and accepts phases.",
+	"status": "27 Oct ~15:30: fba7558f9 deployed to local SIT (migrations to 0210, flags on, portal sign-in served, counts unchanged). AI review: P0, P1 (round 4), P2, P3, P4, P6 passed; P5 failed its last round (2 medium on the export-ready email); Thomas approved fix + 4th review, fix lane running. Browser checks on SIT passed for list-row pickers, board +, search rows, triage popover, settings and God Mode pages; defects found: mobile list row chips overlap at 375 px, Imports workspace picker is a select with a raw id. A lane is converting all working-screen selects to Kaneo popovers. Nothing accepted by Thomas.",
 	"validation_runs": [
 		{
 			"check": "Deployment",
@@ -1212,7 +1213,7 @@
 		}
 	],
 	"p6_goal": {
-		"status": "Round 2 failed at d3c884c3c: 0 high, 1 medium (imported assignments notify assignees), 1 low (wizard stalled warning). All 16 round-1 findings verified fixed. Fix lane running; round 3 is the last. Wizard not browser-checked yet.",
+		"status": "Round 3 (last) passed at fba7558f9: 0 high, 0 medium, 2 low (an agent creating an item mid-chunk pauses the run as chunk_failed instead of retrying; some transient write errors could be logged as losses). Browser: import wizard source step renders; workspace picker is a Select showing the raw id (being converted). Full wizard run not browser-tested (needs a CSV upload).",
 		"target": "Thomas requested completion on 25 October; target missed. P6 remains gated on P0–P5 exit evidence.",
 		"goals": [
 			"G1 durable staged import framework and provenance",

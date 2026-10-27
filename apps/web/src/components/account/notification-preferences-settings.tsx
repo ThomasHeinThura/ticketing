@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Checkbox,
@@ -21,6 +22,10 @@ import {
 import { CheckCircle, Trash2 } from "lucide-react";
 import React from "react";
 import { useTranslation } from "react-i18next";
+import {
+  getEmailLinkHandoff,
+  saveReportExportEmailPreference,
+} from "@/fetchers/notification-preferences/canonical-mention-preference";
 import {
   useDeleteNotificationWorkspaceRule,
   useUpdateNotificationPreferences,
@@ -469,6 +474,101 @@ function WorkspaceRuleCard({
   );
 }
 
+/**
+ * RP-10 / NO-2 (P5-R3-02): the "export ready" email a requester gets when a queued report export
+ * finishes. Its email links back here with a signed preference handoff, which focuses this block.
+ */
+function ReportExportEmailPreference() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const preferences = useGetNotificationPreferences();
+  const handoff = useQuery({
+    queryKey: ["notification-preferences", "email-link-handoff"],
+    queryFn: getEmailLinkHandoff,
+    retry: false,
+    staleTime: 0,
+  });
+  const stored = preferences.data?.canonicalPreferences?.find(
+    (row) =>
+      row.eventKind === "report.export_ready" &&
+      row.channel === "notify.email" &&
+      row.scope === "global" &&
+      row.scopeId === null,
+  );
+  const [enabled, setEnabled] = React.useState<boolean | null>(null);
+  const [saved, setSaved] = React.useState(false);
+  const current = enabled ?? stored?.enabled ?? true;
+  const target = React.useRef<HTMLDivElement>(null);
+  const linked =
+    handoff.data?.eventKind === "report.export_ready" &&
+    handoff.data.channel === "notify.email" &&
+    handoff.data.scope === "global" &&
+    handoff.data.scopeId === null;
+  React.useEffect(() => {
+    if (linked && stored) {
+      target.current?.focus({ preventScroll: true });
+      target.current?.scrollIntoView?.({ block: "center" });
+    }
+  }, [linked, stored]);
+  const mutation = useMutation({
+    mutationFn: saveReportExportEmailPreference,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["notification-preferences"],
+      });
+      setEnabled(null);
+      setSaved(true);
+    },
+  });
+  if (!stored) return null;
+  return (
+    <div
+      ref={target}
+      tabIndex={-1}
+      className={`flex flex-col gap-5 rounded-md border bg-sidebar p-4${linked ? " ring-2 ring-ring" : ""}`}
+      data-testid="report-export-email-preference"
+    >
+      <div className="flex flex-col gap-1">
+        <h2 className="font-medium">
+          {t("settings:notificationsPage.reportExportTitle")}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {t("settings:notificationsPage.reportExportDescription")}
+        </p>
+      </div>
+      <ChannelToggle
+        checked={current}
+        disabled={mutation.isPending}
+        hint={t("settings:notificationsPage.reportExportHint")}
+        label={t("settings:notificationsPage.reportExportEmail")}
+        onCheckedChange={(checked) => {
+          setEnabled(checked);
+          setSaved(false);
+        }}
+      />
+      {mutation.isError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {t("settings:notificationsPage.reportExportSaveFailed")}
+        </p>
+      ) : null}
+      {saved ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          {t("settings:notificationsPage.reportExportSaved")}
+        </p>
+      ) : null}
+      <div>
+        <Button
+          disabled={mutation.isPending || current === stored.enabled}
+          onClick={() => mutation.mutate({ enabled: current })}
+          type="button"
+        >
+          {t("settings:notificationsPage.reportExportSave")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function NotificationPreferencesSettings() {
   const { t } = useTranslation();
   const { data: preferences, isLoading } = useGetNotificationPreferences();
@@ -722,6 +822,8 @@ export function NotificationPreferencesSettings() {
           </Button>
         </div>
       </div>
+
+      <ReportExportEmailPreference />
 
       <ChannelCard
         actions={

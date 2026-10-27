@@ -214,6 +214,7 @@ function row(): WorkItemDetailRow {
     unavailableFields: [],
     defaultCommentVisibility: "internal",
     customFields: [],
+    importProvenance: [],
   } as WorkItemDetailRow;
 }
 function mount(keyboardAnchor?: HTMLElement) {

@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
@@ -242,8 +243,6 @@ function AddWidgetDialog({
   );
   const [chartType, setChartType] = useState<Draft["chartType"]>("bar");
   const [window, setWindow] = useState("30");
-  const all = [...reports, ...views];
-  const chosen = all.find((option) => option.value === source);
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent closeLabel={t("common:actions.close")}>
@@ -256,26 +255,19 @@ function AddWidgetDialog({
         <div className="space-y-4 px-6">
           <div className="space-y-1">
             <Label htmlFor="widget-source">{t("reports:editor.source")}</Label>
-            <Select
-              value={source}
-              onValueChange={(next) => next && setSource(next)}
-            >
-              <SelectTrigger id="widget-source">
-                <SelectValue>{chosen?.label ?? ""}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {reports.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-                {views.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label} ({t("reports:tiers.chart")})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <PickerPopover
+              id="widget-source"
+              value={source || undefined}
+              className="w-full"
+              options={[
+                ...reports,
+                ...views.map((option) => ({
+                  value: option.value,
+                  label: `${option.label} (${t("reports:tiers.chart")})`,
+                })),
+              ]}
+              onChange={setSource}
+            />
           </div>
           <div className="space-y-1">
             <Label id="widget-chart-label">

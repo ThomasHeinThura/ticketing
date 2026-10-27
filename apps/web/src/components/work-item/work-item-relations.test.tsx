@@ -162,6 +162,31 @@ describe("canonical Kaneo relations section", () => {
       }),
     );
   });
+  it("picks the relation type from a Kaneo popover and keeps it in URL state", async () => {
+    mocks.location.search = {
+      relations: { itemKey: "OPS-1", picker: true, type: "relates" },
+    };
+    mount();
+    const trigger = await screen.findByRole("button", {
+      name: translate("workItems:relations.type"),
+    });
+    expect(trigger).toHaveTextContent(
+      translate("workItems:relations.types.relates"),
+    );
+    fireEvent.click(trigger);
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: translate("workItems:relations.types.blocks"),
+      }),
+    );
+    const next = mocks.navigate.mock.calls.at(-1)?.[0];
+    const params = new URL(next.href, "https://example.test").searchParams;
+    expect(JSON.parse(params.get("relations") ?? "{}")).toMatchObject({
+      itemKey: "OPS-1",
+      picker: true,
+      type: "blocks",
+    });
+  });
   it("does not navigate back to a previous item when an in-flight link completes", async () => {
     mocks.location.search = { relations: { itemKey: "OPS-1", picker: true } };
     let complete: (value: { id: string }) => void = () => {};

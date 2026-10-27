@@ -2271,7 +2271,8 @@
                   "enum": [
                     "work_item.mentioned",
                     "work_item.commented",
-                    "automation.notification_sent"
+                    "automation.notification_sent",
+                    "report.export_ready"
                   ]
                 },
                 "channel": {
@@ -23867,7 +23868,8 @@
                         "enum": [
                           "work_item.mentioned",
                           "work_item.commented",
-                          "automation.notification_sent"
+                          "automation.notification_sent",
+                          "report.export_ready"
                         ]
                       },
                       "channel": {

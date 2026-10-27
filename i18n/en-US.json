@@ -593,7 +593,14 @@
 			"toastPreferencesSaved": "Notification preferences saved",
 			"toastPreferencesSaveFailed": "Failed to save notification preferences",
 			"toastRuleSavedGeneric": "Workspace notification rule saved",
-			"toastRuleRemovedGeneric": "Workspace notification rule removed"
+			"toastRuleRemovedGeneric": "Workspace notification rule removed",
+			"reportExportTitle": "Report exports",
+			"reportExportDescription": "Large report exports are prepared in the background.",
+			"reportExportEmail": "Email me when my export is ready",
+			"reportExportHint": "The email links to the export, which can be downloaded for 24 hours. Email delivery also requires an enabled instance email provider.",
+			"reportExportSave": "Save export preference",
+			"reportExportSaved": "Export preference saved.",
+			"reportExportSaveFailed": "The preference could not be saved. Try again."
 		},
 		"preferencesPage": {
 			"title": "Preferences",
@@ -8336,6 +8343,38 @@
 		"groups": {
 			"noEpic": "No {{term_epic_one}}",
 			"epicUnavailable": "{{term_epic_one}} unavailable"
+		},
+		"exportPage": {
+			"title": "Report export",
+			"subtitle": "A CSV export you requested. Only you can download it.",
+			"retry": "Try again",
+			"openReport": "Open the report",
+			"notFound": {
+				"title": "Export not found",
+				"description": "This export does not exist, belongs to someone else, or the link is out of date."
+			},
+			"forbidden": {
+				"title": "Not available to you",
+				"description": "You do not have permission to export reports."
+			},
+			"disabled": {
+				"title": "Reports are off",
+				"description": "An administrator can turn this feature on in the workspace feature settings."
+			},
+			"download": {
+				"notReady": {
+					"title": "The export is not ready",
+					"description": "It is still being prepared, or it could not be made. Its status above is up to date."
+				},
+				"revoked": {
+					"title": "You can no longer download this export",
+					"description": "Your access changed after it was made. Export the report again."
+				},
+				"failed": {
+					"title": "The download failed",
+					"description": "Try again in a moment."
+				}
+			}
 		}
 	},
 	"godModeDeliveries": {

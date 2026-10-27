@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -36,7 +37,42 @@ const preferences = {
   workspaces: [],
   createdAt: null,
   updatedAt: null,
+  canonicalPreferences: [
+    {
+      eventKind: "report.export_ready",
+      channel: "notify.email",
+      scope: "global",
+      scopeId: null,
+      enabled: true,
+      digest: "off",
+      source: "default",
+    },
+  ],
 };
+
+const canonical = vi.hoisted(() => ({
+  handoff: vi.fn(),
+  saveReportExport: vi.fn(),
+}));
+vi.mock(
+  "@/fetchers/notification-preferences/canonical-mention-preference",
+  () => ({
+    getEmailLinkHandoff: canonical.handoff,
+    saveReportExportEmailPreference: canonical.saveReportExport,
+  }),
+);
+
+function renderSettings() {
+  return render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <NotificationPreferencesSettings />
+    </QueryClientProvider>,
+  );
+}
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -74,10 +110,14 @@ describe("NotificationPreferencesSettings", () => {
   beforeEach(() => {
     updatePreferences.mockReset();
     updatePreferences.mockResolvedValue(undefined);
+    canonical.handoff.mockReset();
+    canonical.handoff.mockResolvedValue(null);
+    canonical.saveReportExport.mockReset();
+    canonical.saveReportExport.mockResolvedValue({});
   });
 
   it("saves event preferences and a configurable reminder lead time", async () => {
-    render(<NotificationPreferencesSettings />);
+    renderSettings();
 
     fireEvent.click(
       screen.getByRole("switch", {
@@ -106,7 +146,7 @@ describe("NotificationPreferencesSettings", () => {
   });
 
   it("blocks saving a cleared reminder lead time", () => {
-    render(<NotificationPreferencesSettings />);
+    renderSettings();
 
     fireEvent.change(
       screen.getByLabelText("settings:notificationsPage.reminderLeadTimeLabel"),
@@ -124,7 +164,7 @@ describe("NotificationPreferencesSettings", () => {
   });
 
   it("saves disabled reminders without validating their retained lead time", async () => {
-    render(<NotificationPreferencesSettings />);
+    renderSettings();
 
     fireEvent.change(
       screen.getByLabelText("settings:notificationsPage.reminderLeadTimeLabel"),
@@ -148,6 +188,47 @@ describe("NotificationPreferencesSettings", () => {
         taskStatusChangeEnabled: true,
         dueDateReminderEnabled: false,
       }),
+    );
+  });
+
+  it("offers the report.export_ready email preference and saves it on its own (P5-R3-02)", async () => {
+    renderSettings();
+    const block = screen.getByTestId("report-export-email-preference");
+    const save = screen.getByRole("button", {
+      name: "settings:notificationsPage.reportExportSave",
+    });
+    // Default on, nothing to save until it changes.
+    expect(save.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "settings:notificationsPage.reportExportEmail",
+      }),
+    );
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(canonical.saveReportExport).toHaveBeenCalledTimes(1),
+    );
+    expect(canonical.saveReportExport.mock.calls[0]?.[0]).toEqual({
+      enabled: false,
+    });
+    expect(updatePreferences).not.toHaveBeenCalled();
+    expect(block).toBeTruthy();
+  });
+
+  it("highlights the export preference when the email's preference link opened the page", async () => {
+    canonical.handoff.mockResolvedValue({
+      eventKind: "report.export_ready",
+      channel: "notify.email",
+      scope: "global",
+      scopeId: null,
+    });
+    renderSettings();
+    await waitFor(() =>
+      expect(
+        screen
+          .getByTestId("report-export-email-preference")
+          .className.includes("ring-2"),
+      ).toBe(true),
     );
   });
 });

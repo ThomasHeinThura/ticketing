@@ -271,6 +271,13 @@ describe("persisted signed preference handoff factories", () => {
           digest: "off",
           source: "default",
         },
+        {
+          ...selector,
+          eventKind: "report.export_ready",
+          enabled: true,
+          digest: "off",
+          source: "default",
+        },
       ],
     });
     const saved = await csrfRequest(
@@ -300,6 +307,13 @@ describe("persisted signed preference handoff factories", () => {
           ...selector,
           eventKind: "automation.notification_sent",
           enabled: false,
+          digest: "off",
+          source: "default",
+        },
+        {
+          ...selector,
+          eventKind: "report.export_ready",
+          enabled: true,
           digest: "off",
           source: "default",
         },
@@ -341,6 +355,13 @@ describe("persisted signed preference handoff factories", () => {
           ...selector,
           eventKind: "automation.notification_sent",
           enabled: false,
+          digest: "off",
+          source: "default",
+        },
+        {
+          ...selector,
+          eventKind: "report.export_ready",
+          enabled: true,
           digest: "off",
           source: "default",
         },

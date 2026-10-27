@@ -495,11 +495,13 @@ Carried from v1's set, which was well chosen, grouped by the question being aske
   period is computed live. The boundary is stated.
 - `RP-10` Every report exports to CSV, respecting filters and the viewer's reach. Exports
   are audited. *Implemented:* a small export is the CSV itself; a large one is queued as a job
-  and, when ready, the requester is emailed once a link to the authenticated route
-  `GET /api/report-exports/{id}/download` (no signed or public URL: the download needs the
-  requester's session or key, with the caps they hold now ANDed with those at request time). The
-  email is on by default and honours a stored `report.export_ready` email preference, which the
-  preferences screen does not offer yet (so the email has no unsubscribe link). The file
+  and, when ready, the requester is emailed once a link to the agent page
+  `/agent/reports/exports/{id}` (signed out, it signs in and returns there), which shows the
+  export's status and offers the authenticated download `GET /api/report-exports/{id}/download`
+  (no signed or public URL: the download needs the requester's session or key, with the caps they
+  hold now ANDed with those at request time). The email follows the `report.export_ready` email
+  preference on the notification settings screen (on by default) and carries the `NO-2` link to
+  that preference. The file
   is written as appended chunks, one per page of 5,000 rows, and streamed back on download. Caps:
   1,000,000 rows, 200 pages and 512 MB; beyond them the export fails with `export_too_large`
   (nothing is emailed). A 500,000-row export is within the caps. Rates follow `TC-11` at project

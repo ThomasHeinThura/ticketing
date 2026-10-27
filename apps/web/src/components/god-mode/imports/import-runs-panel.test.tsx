@@ -137,6 +137,32 @@ describe("ImportRunsPanel", () => {
     expect(onWorkspaceChange).not.toHaveBeenCalled();
   });
 
+  it("picks the workspace from a popover that shows names, not raw ids", async () => {
+    const onWorkspaceChange = vi.fn();
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <ImportRunsPanel
+          workspaceId="workspace-2"
+          onOpenRun={vi.fn()}
+          onWorkspaceChange={onWorkspaceChange}
+        />
+      </QueryClientProvider>,
+    );
+
+    const trigger = await screen.findByRole("button", { name: "workspace" });
+    expect(trigger).toHaveTextContent("Research");
+    expect(trigger).not.toHaveTextContent("workspace-2");
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("button", { name: "Operations" }));
+    expect(onWorkspaceChange).toHaveBeenCalledWith("workspace-1");
+  });
+
   it("replaces an inaccessible URL workspace with the first accessible workspace", async () => {
     const onWorkspaceChange = vi.fn();
     render(

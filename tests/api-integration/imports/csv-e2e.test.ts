@@ -125,7 +125,12 @@ async function confirmMapping(
 async function prepared(app: App, f: F, name?: string) {
   // one logical file: every rerun keeps the same sourceRef, only the connection name differs
   const { source, run, mapping } = await startCsvRun(app, f, { csvText }, name);
-  const confirmed = await confirmMapping(app, f, run.id, mapping);
+  const confirmed = await confirmMapping(
+    app,
+    f,
+    run.id,
+    mapping as Parameters<typeof confirmMapping>[3],
+  );
   expect(confirmed.completeness.complete).toBe(true);
   const dry = await dryRunAndExecuteBody(app, f.key, run.id);
   return { source, run, mapping, dry };

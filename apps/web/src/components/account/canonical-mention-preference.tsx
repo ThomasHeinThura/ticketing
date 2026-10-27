@@ -101,11 +101,15 @@ export function CanonicalMentionPreference() {
             <CardDescription>{t("mention.description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {selector && !supportedHandoff && (
-              <Alert>
-                <AlertDescription>{t("mention.unsupported")}</AlertDescription>
-              </Alert>
-            )}
+            {selector &&
+              !supportedHandoff &&
+              selector.eventKind !== "report.export_ready" && (
+                <Alert>
+                  <AlertDescription>
+                    {t("mention.unsupported")}
+                  </AlertDescription>
+                </Alert>
+              )}
             {handoff.isError && (
               <Alert>
                 <AlertDescription>

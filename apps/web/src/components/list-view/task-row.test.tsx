@@ -119,6 +119,34 @@ describe("TaskRow", () => {
     expect(screen.getByText("kan-7")).toBeVisible();
   });
 
+  it("wraps label/PR chips under a readable title on narrow rows instead of overlapping", () => {
+    const { container } = render(
+      <TaskRow
+        task={{ ...task, dueDate: "2026-10-29T00:00:00.000Z" }}
+        projectSlug="help"
+        taskIsCompleted={false}
+        displayPreferences={{
+          showAssignees: true,
+          showPriority: true,
+          showDueDates: true,
+          showLabels: true,
+          showTaskNumbers: true,
+        }}
+        onOpenTask={vi.fn()}
+        t={mockT}
+      />,
+    );
+    // jsdom has no layout: these assert the responsive classes, not pixels.
+    const main = container.querySelector('[data-task-row-main="true"]');
+    const title = container.querySelector('[data-task-row-title="true"]');
+    const chips = container.querySelector('[data-task-row-chips="true"]');
+    expect(main).toHaveClass("flex-wrap", "min-w-0");
+    expect(title).toHaveClass("min-w-24", "basis-24", "flex-1", "truncate");
+    expect(chips).toHaveClass("flex-wrap", "min-w-0", "max-w-full");
+    expect(chips).toContainElement(screen.getByText("Bug"));
+    expect(screen.getByText("Oct 29")).toBeVisible();
+  });
+
   it("keeps focus, selection, and row opening behavior on the memoized row", async () => {
     const onOpenTask = vi.fn();
     useBulkSelectionStore.setState({

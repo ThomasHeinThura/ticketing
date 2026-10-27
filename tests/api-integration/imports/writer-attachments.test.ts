@@ -452,7 +452,10 @@ describe("import writer: attachments (IM-4, download failure edge case)", () => 
     expect(resumed.written).toBe(1);
     expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
     report = await getReport(app, f, run.id);
-    expect(report.chunks[0]?.pendingAttachments).toBeUndefined();
+    expect(
+      (report.chunks[0] as Record<string, unknown> | undefined)
+        ?.pendingAttachments,
+    ).toBeUndefined();
     expect(report.chunks[0]?.lossCounts).toEqual({
       attachment_download_failed: 1,
     });

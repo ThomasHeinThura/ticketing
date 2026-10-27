@@ -26,6 +26,7 @@ import {
   replaceWorkItemLabels,
 } from "../labels-repository";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
 import { archiveWorkItem } from "./archive-work-item";
 import {
   type AssignWorkItemInput,
@@ -115,159 +116,163 @@ async function updateBulkFields(
     }
   >,
 ): Promise<void> {
-  const { updated, activityRows, realtimeEvent } = await db.transaction(
-    async (tx) => {
-      if (op.operation === "add_label" || op.operation === "remove_label")
-        await lockWorkspaceLabelNames(tx, workspaceId, []);
-      const [locked] = await tx
-        .select()
-        .from(workItemTable)
-        .where(
-          and(
-            eq(workItemTable.key, key),
-            eq(workItemTable.workspaceId, workspaceId),
-            isNull(workItemTable.deletedAt),
-            isNull(workItemTable.archivedAt),
-          ),
-        )
-        .for("update");
-
-      assertWorkItemStillLive(locked);
-      await assertProjectStillLive(tx, locked.projectId);
-
-      let labelChange: { before: string[]; after: string[] } | undefined;
-      if (op.operation === "add_label" || op.operation === "remove_label") {
-        // Validate the explicitly requested catalogue even when removal would be a no-op.
-        const [target] = await tx
-          .select({ id: labelTable.id })
-          .from(labelTable)
+  // P5-R3-05: the snapshot-invalidation triggers (0208) take row locks on each touched past day,
+  // in per-statement order, so two bulk edits touching the same past days can deadlock. The
+  // transaction is re-run from scratch on 40P01; its effects are published only after commit.
+  const { updated, activityRows, realtimeEvent } =
+    await runWithParentWriteDeadlockRetry(() =>
+      db.transaction(async (tx) => {
+        if (op.operation === "add_label" || op.operation === "remove_label")
+          await lockWorkspaceLabelNames(tx, workspaceId, []);
+        const [locked] = await tx
+          .select()
+          .from(workItemTable)
           .where(
             and(
-              eq(labelTable.id, op.labelId),
-              eq(labelTable.workspaceId, workspaceId),
-              isNull(labelTable.taskId),
-              or(
-                isNull(labelTable.projectId),
-                eq(labelTable.projectId, locked.projectId),
-              ),
+              eq(workItemTable.key, key),
+              eq(workItemTable.workspaceId, workspaceId),
+              isNull(workItemTable.deletedAt),
+              isNull(workItemTable.archivedAt),
             ),
           )
-          .for("key share");
-        if (!target)
-          throw new HTTPException(422, { message: "Label unavailable" });
-        const current = await listAssignedLabelIds(tx, locked.id);
-        const next =
-          op.operation === "add_label"
-            ? [...new Set([...current, op.labelId])]
-            : current.filter((id) => id !== op.labelId);
-        if (next.length > 100)
-          throw new HTTPException(422, {
-            message: "A work item may have at most 100 labels",
-          });
-        labelChange = await replaceWorkItemLabels(
-          tx,
-          locked.id,
-          workspaceId,
-          locked.projectId,
-          next,
-        );
-      }
-      const values =
-        op.operation === "set_priority"
-          ? { priority: op.priority }
-          : op.operation === "set_due_date"
-            ? { dueDate: op.dueDate }
-            : {};
-      const [updated] = await tx
-        .update(workItemTable)
-        .set({
-          ...values,
-          version: sql`${workItemTable.version} + 1`,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(workItemTable.id, locked.id),
-            isNull(workItemTable.deletedAt),
-            isNull(workItemTable.archivedAt),
-            projectNotDeletedClause,
-          ),
-        )
-        .returning();
+          .for("update");
 
-      if (!updated) {
-        throw new HTTPException(404, { message: "Work item not found" });
-      }
+        assertWorkItemStillLive(locked);
+        await assertProjectStillLive(tx, locked.projectId);
 
-      const before: Record<string, JsonValue> =
-        op.operation === "set_priority"
-          ? { priority: locked.priority }
-          : op.operation === "set_due_date"
-            ? { dueDate: locked.dueDate?.toISOString() ?? null }
-            : { labelIds: labelChange?.before ?? [] };
-      const after: Record<string, JsonValue> =
-        op.operation === "set_priority"
-          ? { priority: updated.priority }
-          : op.operation === "set_due_date"
-            ? { dueDate: updated.dueDate?.toISOString() ?? null }
-            : { labelIds: labelChange?.after ?? [] };
-      const activityRows = diffWorkItemFieldChanges(before, after, {
-        workspaceId: updated.workspaceId,
-        workItemId: updated.id,
-        actorId,
-        actorType,
-      });
-
-      if (activityRows.length > 0) {
-        await recordWorkItemActivity(tx, activityRows);
-      }
-
-      await appendAuditLog(tx, {
-        actorId,
-        actorType,
-        workspaceId,
-        projectId: updated.projectId,
-        action: "work_item.updated",
-        entityType: "work_item",
-        entityId: updated.id,
-        before,
-        after,
-      });
-
-      const visibleChanges = activityRows
-        .filter(
-          (row) => row.verb === "updated" && typeof row.field === "string",
-        )
-        .map((row) => ({
-          field: row.field,
-          from: row.oldValue,
-          to: row.newValue,
-          visibility: resolveVisibility(row),
-        }));
-      const realtimeEvent =
-        visibleChanges.length > 0
-          ? await recordWorkItemEvent(tx, {
-              kind: "work_item.updated",
-              workItemId: updated.id,
-              key: updated.key,
-              workspaceId: updated.workspaceId,
-              projectId: updated.projectId,
-              actorId,
-              actorType,
-              customerVisible: visibleChanges.some(
-                (change) => change.visibility === "public",
+        let labelChange: { before: string[]; after: string[] } | undefined;
+        if (op.operation === "add_label" || op.operation === "remove_label") {
+          // Validate the explicitly requested catalogue even when removal would be a no-op.
+          const [target] = await tx
+            .select({ id: labelTable.id })
+            .from(labelTable)
+            .where(
+              and(
+                eq(labelTable.id, op.labelId),
+                eq(labelTable.workspaceId, workspaceId),
+                isNull(labelTable.taskId),
+                or(
+                  isNull(labelTable.projectId),
+                  eq(labelTable.projectId, locked.projectId),
+                ),
               ),
-              payload: {
-                key: updated.key,
-                url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
-                changes: visibleChanges,
-              },
-            })
-          : undefined;
+            )
+            .for("key share");
+          if (!target)
+            throw new HTTPException(422, { message: "Label unavailable" });
+          const current = await listAssignedLabelIds(tx, locked.id);
+          const next =
+            op.operation === "add_label"
+              ? [...new Set([...current, op.labelId])]
+              : current.filter((id) => id !== op.labelId);
+          if (next.length > 100)
+            throw new HTTPException(422, {
+              message: "A work item may have at most 100 labels",
+            });
+          labelChange = await replaceWorkItemLabels(
+            tx,
+            locked.id,
+            workspaceId,
+            locked.projectId,
+            next,
+          );
+        }
+        const values =
+          op.operation === "set_priority"
+            ? { priority: op.priority }
+            : op.operation === "set_due_date"
+              ? { dueDate: op.dueDate }
+              : {};
+        const [updated] = await tx
+          .update(workItemTable)
+          .set({
+            ...values,
+            version: sql`${workItemTable.version} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(workItemTable.id, locked.id),
+              isNull(workItemTable.deletedAt),
+              isNull(workItemTable.archivedAt),
+              projectNotDeletedClause,
+            ),
+          )
+          .returning();
 
-      return { updated, activityRows, realtimeEvent };
-    },
-  );
+        if (!updated) {
+          throw new HTTPException(404, { message: "Work item not found" });
+        }
+
+        const before: Record<string, JsonValue> =
+          op.operation === "set_priority"
+            ? { priority: locked.priority }
+            : op.operation === "set_due_date"
+              ? { dueDate: locked.dueDate?.toISOString() ?? null }
+              : { labelIds: labelChange?.before ?? [] };
+        const after: Record<string, JsonValue> =
+          op.operation === "set_priority"
+            ? { priority: updated.priority }
+            : op.operation === "set_due_date"
+              ? { dueDate: updated.dueDate?.toISOString() ?? null }
+              : { labelIds: labelChange?.after ?? [] };
+        const activityRows = diffWorkItemFieldChanges(before, after, {
+          workspaceId: updated.workspaceId,
+          workItemId: updated.id,
+          actorId,
+          actorType,
+        });
+
+        if (activityRows.length > 0) {
+          await recordWorkItemActivity(tx, activityRows);
+        }
+
+        await appendAuditLog(tx, {
+          actorId,
+          actorType,
+          workspaceId,
+          projectId: updated.projectId,
+          action: "work_item.updated",
+          entityType: "work_item",
+          entityId: updated.id,
+          before,
+          after,
+        });
+
+        const visibleChanges = activityRows
+          .filter(
+            (row) => row.verb === "updated" && typeof row.field === "string",
+          )
+          .map((row) => ({
+            field: row.field,
+            from: row.oldValue,
+            to: row.newValue,
+            visibility: resolveVisibility(row),
+          }));
+        const realtimeEvent =
+          visibleChanges.length > 0
+            ? await recordWorkItemEvent(tx, {
+                kind: "work_item.updated",
+                workItemId: updated.id,
+                key: updated.key,
+                workspaceId: updated.workspaceId,
+                projectId: updated.projectId,
+                actorId,
+                actorType,
+                customerVisible: visibleChanges.some(
+                  (change) => change.visibility === "public",
+                ),
+                payload: {
+                  key: updated.key,
+                  url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
+                  changes: visibleChanges,
+                },
+              })
+            : undefined;
+
+        return { updated, activityRows, realtimeEvent };
+      }),
+    );
 
   if (activityRows.length > 0) {
     const changes = activityRows

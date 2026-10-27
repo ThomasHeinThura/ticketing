@@ -345,8 +345,11 @@ export const reportExportTable = pgTable(
     finishedAt: timestamp("finished_at", tz),
     expiresAt: timestamp("expires_at", tz),
     downloadedAt: timestamp("downloaded_at", tz),
-    // Set once, when the "export ready" email is claimed for sending (0208).
+    // Set once the "export ready" email outcome is decided (0208; claimed via notify_claimed_at, 0211).
     notifiedAt: timestamp("notified_at", tz),
+    // Lease for the "export ready" email send (0211, P5-R3-04): a claim older than the lease is
+    // taken over by the next run, so a crash after claiming never loses the email.
+    notifyClaimedAt: timestamp("notify_claimed_at", tz),
   },
   (table) => [
     foreignKey({

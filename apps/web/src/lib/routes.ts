@@ -1824,6 +1824,15 @@ export const routes = {
       return `/agent/reports/${encodeURIComponent(params.key)}${query ? `?${query}` : ""}`;
     },
   },
+  /**
+   * "Report export" (`RP-10`, P5-R3-01): the page the "export ready" email links to. It shows the
+   * queued export's status and offers the authenticated download; signed out, it signs in first.
+   */
+  reportExport: {
+    path: "/agent/reports/exports/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/reports/exports/${encodeURIComponent(params.id)}`,
+  },
   /** "Report builder" (tier 3); `view` opens a saved report. */
   reportBuilder: {
     path: "/agent/reports/new" as const,

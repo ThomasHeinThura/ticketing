@@ -284,11 +284,19 @@ function TaskRow({
         )}
 
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <div className="flex items-center gap-2 justify-between w-full">
+          {/* Narrow rows (375 px phones) wrap the chips under the title instead of letting them
+              paint over the due-date chip and squeeze the title to one letter. */}
+          <div
+            data-task-row-main="true"
+            className="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1"
+          >
             {stateControl ? (
               <InlineControlSlot>{stateControl}</InlineControlSlot>
             ) : null}
-            <span className="min-w-0 flex-1 truncate text-left text-sm text-foreground">
+            <span
+              data-task-row-title="true"
+              className="min-w-24 flex-1 basis-24 truncate text-left text-sm text-foreground"
+            >
               {taskHref ? (
                 <a
                   href={taskHref}
@@ -314,7 +322,10 @@ function TaskRow({
                 task.title
               )}
             </span>
-            <div className="flex items-center gap-1">
+            <div
+              data-task-row-chips="true"
+              className="flex min-w-0 max-w-full flex-wrap items-center gap-1"
+            >
               {showLabels && <TaskLabels labels={task.labels ?? []} />}
               {badges}
 

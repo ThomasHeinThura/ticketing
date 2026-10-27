@@ -14,11 +14,6 @@ import {
   EmptyHeader,
   EmptyTitle,
   Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   Table,
   TableBody,
@@ -29,6 +24,7 @@ import {
 } from "@taskdesk/ui";
 import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import {
   previewRole,
   type RoleHistoryEntry,
@@ -184,27 +180,17 @@ export function RoleComparePanel({
     <div className="space-y-4">
       <div className="max-w-sm space-y-2">
         <Label htmlFor="role-compare-with">{t("roles:compare.with")}</Label>
-        <Select
-          value={otherId ?? null}
-          onValueChange={(value) =>
-            onOtherChange(
-              typeof value === "string" && value ? value : undefined,
-            )
-          }
-        >
-          <SelectTrigger id="role-compare-with">
-            <SelectValue>
-              {other?.name ?? t("roles:compare.choose")}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {others.map((candidate) => (
-              <SelectItem key={candidate.id} value={candidate.id}>
-                {candidate.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <PickerPopover
+          id="role-compare-with"
+          value={otherId}
+          placeholder={t("roles:compare.choose")}
+          className="w-full"
+          options={others.map((candidate) => ({
+            value: candidate.id,
+            label: candidate.name,
+          }))}
+          onChange={(value) => onOtherChange(value || undefined)}
+        />
       </div>
       {!other ? (
         <p className="text-muted-foreground text-sm">

@@ -299,6 +299,32 @@ describe("God Mode Users action context", () => {
     expect(mocks.grantAdmin).not.toHaveBeenCalled();
   });
 
+  it("filters by side and status from Kaneo picker popovers and resets the cursor", async () => {
+    mocks.search = { cursor: "page-2" };
+    render(<Harness />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "instanceUsers:copy.4dc97a606e2f" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "instanceUsers:copy.a4730a22cf49",
+      }),
+    );
+    await waitFor(() => expect(mocks.search.side).toBe("staff"));
+    expect(mocks.search.cursor).toBeUndefined();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "instanceUsers:copy.dd5947e50ac8" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "instanceUsers:copy.c51407d28beb",
+      }),
+    );
+    await waitFor(() => expect(mocks.search.active).toBe("false"));
+    expect(screen.queryByRole("combobox")).toBeNull();
+  });
+
   it("shows the filter and step-up labels, never the raw option values", async () => {
     render(<Harness />);
     const sideTrigger = screen.getByLabelText(

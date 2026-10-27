@@ -5,7 +5,8 @@ export type CanonicalMentionPreference = {
   eventKind:
     | "work_item.mentioned"
     | "work_item.commented"
-    | "automation.notification_sent";
+    | "automation.notification_sent"
+    | "report.export_ready";
   channel: "notify.email";
   scope: "global";
   scopeId: null;
@@ -91,4 +92,12 @@ export function saveTeamNotificationEmailPreference(input: {
   digest: CanonicalMentionPreference["digest"];
 }) {
   return saveCanonicalEmailPreference("automation.notification_sent", input);
+}
+
+/** RP-10 / NO-2 (P5-R3-02): the "export ready" email is sent at once, so it has no digest. */
+export function saveReportExportEmailPreference(input: { enabled: boolean }) {
+  return saveCanonicalEmailPreference("report.export_ready", {
+    enabled: input.enabled,
+    digest: "off",
+  });
 }

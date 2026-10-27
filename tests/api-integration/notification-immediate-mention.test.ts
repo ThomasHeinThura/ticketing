@@ -286,6 +286,16 @@ describe("native persisted comment mention to immediate SMTP delivery", () => {
         digest: "off",
         source: "default",
       },
+
+      {
+        eventKind: "report.export_ready",
+        channel: "notify.email",
+        scope: "global",
+        scopeId: null,
+        enabled: true,
+        digest: "off",
+        source: "default",
+      },
     ]);
     const notificationRows = await db.execute<{ kind: string }>(sql`
       SELECT kind FROM notification

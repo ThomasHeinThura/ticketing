@@ -17,6 +17,7 @@ const PNG = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4, 5, 6, 7, 8,
 ]);
 let root: string;
+// biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
 const originalRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
 
 beforeEach(async () => {
@@ -28,6 +29,7 @@ afterEach(async () => {
   setImportAttachmentDependencies(null);
   await rm(root, { recursive: true, force: true });
   if (originalRoot === undefined)
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
     delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
   else process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
 });
@@ -80,7 +82,7 @@ describe("import writer: imported data reads back through the native APIs", () =
         ],
       }),
     ]);
-    const key = commit.rows[0]?.key as string;
+    const key = (commit.rows[0] as { key?: string } | undefined)?.key as string;
     expect(key).toBeTruthy();
     mockAuthenticatedSession(f.user);
 

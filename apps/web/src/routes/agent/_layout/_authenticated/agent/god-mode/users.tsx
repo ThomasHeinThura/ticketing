@@ -32,6 +32,7 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
 import {
   createUserOperationProof,
@@ -318,73 +319,39 @@ function InstanceUsersPage() {
             navigateSearch({ q: event.target.value, cursor: undefined })
           }
         />
-        <Select
+        <PickerPopover
           value={search.side ?? "all"}
-          onValueChange={(value) =>
+          ariaLabel={t("instanceUsers:copy.4dc97a606e2f")}
+          className="w-44"
+          options={[
+            { value: "all", label: t("instanceUsers:copy.ec137488beec") },
+            { value: "staff", label: t("instanceUsers:copy.a4730a22cf49") },
+            { value: "customer", label: t("instanceUsers:copy.0e85749a6f40") },
+          ]}
+          onChange={(value) =>
             navigateSearch({
               side:
                 value === "staff" || value === "customer" ? value : undefined,
               cursor: undefined,
             })
           }
-        >
-          <SelectTrigger
-            aria-label={t("instanceUsers:copy.4dc97a606e2f")}
-            className="w-44"
-          >
-            <SelectValue>
-              {search.side === "staff"
-                ? t("instanceUsers:copy.a4730a22cf49")
-                : search.side === "customer"
-                  ? t("instanceUsers:copy.0e85749a6f40")
-                  : t("instanceUsers:copy.ec137488beec")}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              {t("instanceUsers:copy.ec137488beec")}
-            </SelectItem>
-            <SelectItem value="staff">
-              {t("instanceUsers:copy.a4730a22cf49")}
-            </SelectItem>
-            <SelectItem value="customer">
-              {t("instanceUsers:copy.0e85749a6f40")}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
+        />
+        <PickerPopover
           value={search.active ?? "all"}
-          onValueChange={(value) =>
+          ariaLabel={t("instanceUsers:copy.dd5947e50ac8")}
+          className="w-44"
+          options={[
+            { value: "all", label: t("instanceUsers:copy.6405179d241b") },
+            { value: "true", label: t("instanceUsers:copy.274e10cde2d6") },
+            { value: "false", label: t("instanceUsers:copy.c51407d28beb") },
+          ]}
+          onChange={(value) =>
             navigateSearch({
               active: value === "true" || value === "false" ? value : undefined,
               cursor: undefined,
             })
           }
-        >
-          <SelectTrigger
-            aria-label={t("instanceUsers:copy.dd5947e50ac8")}
-            className="w-44"
-          >
-            <SelectValue>
-              {search.active === "true"
-                ? t("instanceUsers:copy.274e10cde2d6")
-                : search.active === "false"
-                  ? t("instanceUsers:copy.c51407d28beb")
-                  : t("instanceUsers:copy.6405179d241b")}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              {t("instanceUsers:copy.6405179d241b")}
-            </SelectItem>
-            <SelectItem value="true">
-              {t("instanceUsers:copy.274e10cde2d6")}
-            </SelectItem>
-            <SelectItem value="false">
-              {t("instanceUsers:copy.c51407d28beb")}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        />
         <Input
           aria-label={t("instanceUsers:copy.b745c3cd8743")}
           className="w-full sm:max-w-64"

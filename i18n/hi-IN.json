@@ -593,7 +593,14 @@
 			"toastPreferencesSaved": "सूचना प्राथमिकताएँ सहेजी गईं",
 			"toastPreferencesSaveFailed": "सूचना प्राथमिकताएँ सहेजने में विफल",
 			"toastRuleSavedGeneric": "वर्कस्पेस सूचना नियम सहेजा गया",
-			"toastRuleRemovedGeneric": "वर्कस्पेस सूचना नियम हटाया गया"
+			"toastRuleRemovedGeneric": "वर्कस्पेस सूचना नियम हटाया गया",
+			"reportExportDescription": "Large report exports are prepared in the background.",
+			"reportExportEmail": "Email me when my export is ready",
+			"reportExportHint": "The email links to the export, which can be downloaded for 24 hours. Email delivery also requires an enabled instance email provider.",
+			"reportExportSave": "Save export preference",
+			"reportExportSaved": "Export preference saved.",
+			"reportExportSaveFailed": "The preference could not be saved. Try again.",
+			"reportExportTitle": "Report exports"
 		},
 		"preferencesPage": {
 			"title": "प्राथमिकताएँ",
@@ -8336,6 +8343,38 @@
 		"groups": {
 			"epicUnavailable": "{{term_epic_one}} unavailable",
 			"noEpic": "No {{term_epic_one}}"
+		},
+		"exportPage": {
+			"disabled": {
+				"description": "An administrator can turn this feature on in the workspace feature settings.",
+				"title": "Reports are off"
+			},
+			"download": {
+				"failed": {
+					"description": "Try again in a moment.",
+					"title": "The download failed"
+				},
+				"notReady": {
+					"description": "It is still being prepared, or it could not be made. Its status above is up to date.",
+					"title": "The export is not ready"
+				},
+				"revoked": {
+					"description": "Your access changed after it was made. Export the report again.",
+					"title": "You can no longer download this export"
+				}
+			},
+			"forbidden": {
+				"description": "You do not have permission to export reports.",
+				"title": "Not available to you"
+			},
+			"notFound": {
+				"description": "This export does not exist, belongs to someone else, or the link is out of date.",
+				"title": "Export not found"
+			},
+			"openReport": "Open the report",
+			"retry": "Try again",
+			"subtitle": "A CSV export you requested. Only you can download it.",
+			"title": "Report export"
 		}
 	},
 	"godModeDeliveries": {

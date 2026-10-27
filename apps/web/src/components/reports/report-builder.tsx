@@ -8,11 +8,6 @@ import {
   CardContent,
   Input,
   Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
@@ -20,6 +15,7 @@ import {
 import { ChevronLeft, Download, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { type CustomQueryInput, exportCustomReport } from "@/fetchers/report";
@@ -87,22 +83,16 @@ function Pick({
   options: Array<{ value: string; label: string }>;
   onChange: (value: string) => void;
 }) {
-  const chosen = options.find((option) => option.value === value);
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <Label htmlFor={id}>{label}</Label>
-      <Select value={value} onValueChange={(next) => next && onChange(next)}>
-        <SelectTrigger id={id} className="w-52">
-          <SelectValue>{chosen?.label ?? ""}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <PickerPopover
+        id={id}
+        value={value}
+        options={options}
+        className="w-52"
+        onChange={onChange}
+      />
     </div>
   );
 }

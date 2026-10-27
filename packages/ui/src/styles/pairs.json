@@ -1517,21 +1517,6 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/god-mode/imports/import-runs-panel.tsx:ImportRunsPanel",
-					"jsx:div[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/god-mode/instance-settings-form.tsx:SettingsFields",
 					"jsx:form[0]/Card[0]/CardContent[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -2072,21 +2057,6 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/reports/dashboard-editor.tsx:AddWidgetDialog",
-					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/reports/dashboard-editor.tsx:NewDashboardDialog",
 					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -2117,68 +2087,8 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/reports/report-builder.tsx:Pick",
-					"jsx:div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/saved-view/saved-view-audience-fields.tsx:SavedViewAudienceFields",
 					"jsx:div[0]/Select[0]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
-					"jsx:Card[0]/CardContent[0]/div[0]/Select[0]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
-					"jsx:Card[0]/CardContent[0]/div[0]/Select[1]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
-					"jsx:Card[0]/CardContent[0]/div[0]/Select[1]/SelectPopup[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -2254,21 +2164,6 @@
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"jsx:div[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/service-management/change-section.tsx:ServiceReference",
-					"jsx:div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -2567,21 +2462,6 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/settings/roles/role-insight-panels.tsx:RoleComparePanel",
-					"jsx:div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/settings/roles/role-people-panel.tsx:RolePeoplePanel",
 					"jsx:div[0]/Card[0]/CardContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -2762,21 +2642,6 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/time-tracking/time-shared.tsx:ActivitySelect",
-					"jsx:Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/time-tracking/work-item-costs.tsx:WorkItemCosts",
 					"jsx:section[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -2837,96 +2702,6 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
-					"jsx:div[0]/CommentComposerPresentation[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"jsx:div[0]/Select[0]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"jsx:div[0]/Select[1]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"jsx:fieldset[0]/div[0]/Select[0]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"jsx:fieldset[0]/div[0]/Select[0]/SelectPopup[0]/SelectItem[1]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
-					"jsx:CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandFooter[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/workflow/workflow-add-transition-dialog.tsx:WorkflowAddTransitionDialog",
 					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -2974,96 +2749,6 @@
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/workflow/workflow-add-transition-dialog.tsx:WorkflowAddTransitionDialog",
 					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[3]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[0]/SelectContent[0]/SelectItem[1]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[0]/SelectContent[0]/SelectItem[2]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[1]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[1]/SelectContent[0]/SelectItem[1]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[1]/SelectContent[0]/SelectItem[2]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -4330,21 +4015,6 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/god-mode/imports/import-runs-panel.tsx:ImportRunsPanel",
-					"jsx:div[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/god-mode/instance-settings-form.tsx:SettingsFields",
 					"jsx:form[0]/Card[0]/CardContent[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -4885,21 +4555,6 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/reports/dashboard-editor.tsx:AddWidgetDialog",
-					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/reports/dashboard-editor.tsx:NewDashboardDialog",
 					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -4930,68 +4585,8 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/reports/report-builder.tsx:Pick",
-					"jsx:div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/saved-view/saved-view-audience-fields.tsx:SavedViewAudienceFields",
 					"jsx:div[0]/Select[0]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
-					"jsx:Card[0]/CardContent[0]/div[0]/Select[0]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
-					"jsx:Card[0]/CardContent[0]/div[0]/Select[1]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
-					"jsx:Card[0]/CardContent[0]/div[0]/Select[1]/SelectPopup[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -5067,21 +4662,6 @@
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"jsx:div[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/service-management/change-section.tsx:ServiceReference",
-					"jsx:div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -5380,21 +4960,6 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/settings/roles/role-insight-panels.tsx:RoleComparePanel",
-					"jsx:div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/settings/roles/role-people-panel.tsx:RolePeoplePanel",
 					"jsx:div[0]/Card[0]/CardContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -5575,21 +5140,6 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/time-tracking/time-shared.tsx:ActivitySelect",
-					"jsx:Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/time-tracking/work-item-costs.tsx:WorkItemCosts",
 					"jsx:section[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -5650,96 +5200,6 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
-					"jsx:div[0]/CommentComposerPresentation[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"jsx:div[0]/Select[0]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"jsx:div[0]/Select[1]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"jsx:fieldset[0]/div[0]/Select[0]/SelectPopup[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"jsx:fieldset[0]/div[0]/Select[0]/SelectPopup[0]/SelectItem[1]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
-					"jsx:CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandFooter[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/workflow/workflow-add-transition-dialog.tsx:WorkflowAddTransitionDialog",
 					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -5787,96 +5247,6 @@
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/workflow/workflow-add-transition-dialog.tsx:WorkflowAddTransitionDialog",
 					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[3]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[0]/SelectContent[0]/SelectItem[1]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[0]/SelectContent[0]/SelectItem[2]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[1]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[1]/SelectContent[0]/SelectItem[1]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
-					"jsx:div[0]/section[0]/Select[1]/SelectContent[0]/SelectItem[2]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -14414,6 +13784,7 @@
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[2]/p[0]::text-destructive#0",
+			"apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
@@ -14438,6 +13809,17 @@
 					"jsx:div[0]/div[0]/div[2]/p[0]>bg-sidebar"
 				],
 				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[2]/p[0]::text-destructive#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/notification-preferences-settings.tsx:ReportExportEmailPreference",
+					"jsx:div[0]/p[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
 			},
@@ -14744,6 +14126,7 @@
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[2]/p[0]::text-destructive#0",
+			"apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
@@ -14768,6 +14151,17 @@
 					"jsx:div[0]/div[0]/div[2]/p[0]>bg-sidebar"
 				],
 				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[2]/p[0]::text-destructive#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/notification-preferences-settings.tsx:ReportExportEmailPreference",
+					"jsx:div[0]/p[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
 			},
@@ -19175,17 +18569,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/god-mode/imports/import-runs-panel.tsx:ImportRunsPanel",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/god-mode/instance-settings-form.tsx:SettingsFields",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -19406,17 +18789,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/dashboard-editor.tsx:AddWidgetDialog",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/reports/dashboard-editor.tsx:NewDashboardDialog",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -19428,29 +18800,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/report-builder.tsx:Pick",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/saved-view/saved-view-audience-fields.tsx:SavedViewAudienceFields",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -19484,17 +18834,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/service-management/change-section.tsx:ServiceReference",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -19626,17 +18965,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/settings/roles/role-insight-panels.tsx:RoleComparePanel",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/settings/roles/role-people-panel.tsx:RolePeoplePanel",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -19725,17 +19053,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/time-shared.tsx:ActivitySelect",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/time-tracking/work-item-costs.tsx:WorkItemCosts",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -19769,51 +19086,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/workflow/workflow-add-transition-dialog.tsx:WorkflowAddTransitionDialog",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -21860,17 +21133,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/god-mode/imports/import-runs-panel.tsx:ImportRunsPanel",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/god-mode/instance-settings-form.tsx:SettingsFields",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -22091,17 +21353,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/dashboard-editor.tsx:AddWidgetDialog",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/reports/dashboard-editor.tsx:NewDashboardDialog",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -22113,29 +21364,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/report-builder.tsx:Pick",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/saved-view/saved-view-audience-fields.tsx:SavedViewAudienceFields",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -22169,17 +21398,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/service-management/change-section.tsx:ServiceReference",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -22311,17 +21529,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/settings/roles/role-insight-panels.tsx:RoleComparePanel",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/settings/roles/role-people-panel.tsx:RolePeoplePanel",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -22410,17 +21617,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/time-shared.tsx:ActivitySelect",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/time-tracking/work-item-costs.tsx:WorkItemCosts",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -22454,51 +21650,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/workflow/workflow-add-transition-dialog.tsx:WorkflowAddTransitionDialog",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -32040,6 +31192,8 @@
 			"apps/web/src/components/reports/report-builder.tsx::ReportBuilder::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/Link[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-table.tsx::ReportTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::ReportContextLine::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::ReportVisual::div[0]/p[0]::text-muted-foreground#0",
@@ -35450,6 +34604,34 @@
 				"id": "apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.exports.$id.tsx:/_layout/_authenticated/agent/reports_/exports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/reports/report-export-page.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.exports.$id.tsx:/_layout/_authenticated/agent/reports_/exports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/reports/report-export-page.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -41378,17 +40560,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/god-mode/imports/import-runs-panel.tsx:ImportRunsPanel",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/god-mode/instance-settings-form.tsx:SettingsFields",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -41609,17 +40780,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/dashboard-editor.tsx:AddWidgetDialog",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/reports/dashboard-editor.tsx:NewDashboardDialog",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -41631,29 +40791,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/report-builder.tsx:Pick",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/saved-view/saved-view-audience-fields.tsx:SavedViewAudienceFields",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -41687,17 +40825,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/service-management/change-section.tsx:ServiceReference",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -41829,17 +40956,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/settings/roles/role-insight-panels.tsx:RoleComparePanel",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/settings/roles/role-people-panel.tsx:RolePeoplePanel",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -41928,17 +41044,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/time-shared.tsx:ActivitySelect",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/time-tracking/work-item-costs.tsx:WorkItemCosts",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -41972,51 +41077,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/workflow/workflow-add-transition-dialog.tsx:WorkflowAddTransitionDialog",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -42996,6 +42057,8 @@
 			"apps/web/src/components/reports/report-builder.tsx::ReportBuilder::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/Link[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-table.tsx::ReportTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::ReportContextLine::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::ReportVisual::div[0]/p[0]::text-muted-foreground#0",
@@ -46406,6 +45469,34 @@
 				"id": "apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.exports.$id.tsx:/_layout/_authenticated/agent/reports_/exports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/reports/report-export-page.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.exports.$id.tsx:/_layout/_authenticated/agent/reports_/exports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/reports/report-export-page.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -52411,17 +51502,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/god-mode/imports/import-runs-panel.tsx:ImportRunsPanel",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/god-mode/instance-settings-form.tsx:SettingsFields",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -52642,17 +51722,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/dashboard-editor.tsx:AddWidgetDialog",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/reports/dashboard-editor.tsx:NewDashboardDialog",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -52664,29 +51733,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/report-builder.tsx:Pick",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/saved-view/saved-view-audience-fields.tsx:SavedViewAudienceFields",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -52720,17 +51767,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/service-management/change-section.tsx:ServiceReference",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -52862,17 +51898,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/settings/roles/role-insight-panels.tsx:RoleComparePanel",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/settings/roles/role-people-panel.tsx:RolePeoplePanel",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -52961,17 +51986,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/time-shared.tsx:ActivitySelect",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/time-tracking/work-item-costs.tsx:WorkItemCosts",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -53005,51 +52019,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/workflow/workflow-add-transition-dialog.tsx:WorkflowAddTransitionDialog",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -58442,6 +57412,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/reports/report-export-page.tsx:ExportState",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/reports/report-view.tsx:ReportEmpty",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -62992,6 +61973,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/reports/report-export-page.tsx:ExportState",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/reports/report-view.tsx:ReportEmpty",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -65552,6 +64544,22 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/reports/report-export-page.tsx:ReportExportPage",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.exports.$id.tsx:/_layout/_authenticated/agent/reports_/exports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -69919,6 +68927,22 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/reports/report-export-page.tsx:ReportExportPage",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.exports.$id.tsx:/_layout/_authenticated/agent/reports_/exports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -89823,6 +88847,8 @@
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/ChannelCard[3]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[0]/div[1]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
@@ -89935,6 +88961,17 @@
 				"chain": [
 					"apps/web/src/components/account/notification-preferences-settings.tsx:NotificationPreferencesSettings",
 					"jsx:div[0]/div[0]/div[1]/ChannelToggle[3]"
+				],
+				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/notification-preferences-settings.tsx:ReportExportEmailPreference",
+					"jsx:div[0]/ChannelToggle[0]"
 				],
 				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -90099,6 +89136,28 @@
 					"jsx:div[0]/div[0]/div[2]/p[0]>bg-sidebar"
 				],
 				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/notification-preferences-settings.tsx:ReportExportEmailPreference",
+					"jsx:div[0]/div[0]/p[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/notification-preferences-settings.tsx:ReportExportEmailPreference",
+					"jsx:div[0]/p[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
 			},
@@ -91011,6 +90070,8 @@
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/ChannelCard[3]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[0]/div[1]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
@@ -91123,6 +90184,17 @@
 				"chain": [
 					"apps/web/src/components/account/notification-preferences-settings.tsx:NotificationPreferencesSettings",
 					"jsx:div[0]/div[0]/div[1]/ChannelToggle[3]"
+				],
+				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/notification-preferences-settings.tsx:ReportExportEmailPreference",
+					"jsx:div[0]/ChannelToggle[0]"
 				],
 				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -91287,6 +90359,28 @@
 					"jsx:div[0]/div[0]/div[2]/p[0]>bg-sidebar"
 				],
 				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/notification-preferences-settings.tsx:ReportExportEmailPreference",
+					"jsx:div[0]/div[0]/p[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/notification-preferences-settings.tsx:ReportExportEmailPreference",
+					"jsx:div[0]/p[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
 			},
@@ -96659,6 +95753,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/reports/report-export-page.tsx:ExportState",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/reports/report-view.tsx:ReportEmpty",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -97362,6 +96467,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/reports/report-drill.tsx:DrillItemsDialog",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/reports/report-export-page.tsx:ExportState",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",

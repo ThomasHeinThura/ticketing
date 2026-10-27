@@ -55,6 +55,23 @@ describe("PickerPopover", () => {
     expect(onChange).toHaveBeenCalledWith("v11");
   });
 
+  it("keeps the plain list above 8 options when search is turned off", () => {
+    const onChange = vi.fn();
+    render(
+      <PickerPopover
+        value="v1"
+        options={options(9)}
+        searchable={false}
+        onChange={onChange}
+        ariaLabel="Pick"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Pick" }));
+    expect(screen.queryByRole("combobox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Option 8" }));
+    expect(onChange).toHaveBeenCalledWith("v8");
+  });
+
   it("shows the empty state when nothing matches", async () => {
     render(
       <PickerPopover

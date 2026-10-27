@@ -1,18 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-  Alert,
-  AlertDescription,
-  Button,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@taskdesk/ui";
+import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import { Square } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import {
   stopTimer,
   type TimeActivity,
@@ -69,24 +61,20 @@ export function ActivitySelect({
   disabled?: boolean;
   label?: string;
 }) {
-  const chosen = activities.find((activity) => activity.id === value);
   return (
-    <Select
-      value={value}
+    <PickerPopover
+      id={id}
+      value={value ?? undefined}
       disabled={disabled}
-      onValueChange={(next) => next && onChange(next)}
-    >
-      <SelectTrigger id={id} aria-label={label}>
-        <SelectValue>{chosen?.name ?? label ?? ""}</SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {activities.map((activity) => (
-          <SelectItem key={activity.id} value={activity.id}>
-            {activity.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      ariaLabel={label}
+      placeholder={label ?? ""}
+      className="w-full"
+      options={activities.map((activity) => ({
+        value: activity.id,
+        label: activity.name,
+      }))}
+      onChange={onChange}
+    />
   );
 }
 

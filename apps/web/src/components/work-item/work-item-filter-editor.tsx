@@ -1,17 +1,8 @@
-import {
-  Button,
-  Checkbox,
-  CheckboxGroup,
-  Input,
-  Select,
-  SelectItem,
-  SelectPopup,
-  SelectTrigger,
-  SelectValue,
-} from "@taskdesk/ui";
+import { Button, Checkbox, CheckboxGroup, Input } from "@taskdesk/ui";
 import { Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import { cn } from "@/lib/cn";
 import type { WorkItemFilterMode } from "@/lib/routes";
 import {
@@ -265,58 +256,33 @@ function FilterNodeEditor({
         className="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-[minmax(8rem,1fr)_minmax(9rem,1fr)_minmax(10rem,1.5fr)_auto]"
         data-testid="filter-leaf"
       >
-        <Select
+        <PickerPopover
           value={node.field}
-          // `items` lets the closed trigger show the translated label, not the raw id.
-          items={FILTER_FIELDS.map((candidate) => ({
+          ariaLabel={t("workItems:filter.field")}
+          placeholder={t("workItems:filter.fieldPlaceholder")}
+          className="w-full"
+          options={FILTER_FIELDS.map((candidate) => ({
             value: candidate.id,
             label: t(`workItems:filter.fields.${candidate.labelKey}`),
           }))}
-          onValueChange={(next) =>
-            next && onChange(path, (current) => updateLeafField(current, next))
+          onChange={(next) =>
+            onChange(path, (current) => updateLeafField(current, next))
           }
-        >
-          <SelectTrigger aria-label={t("workItems:filter.field")}>
-            <SelectValue placeholder={t("workItems:filter.fieldPlaceholder")} />
-          </SelectTrigger>
-          <SelectPopup>
-            {FILTER_FIELDS.map((candidate) => (
-              <SelectItem key={candidate.id} value={candidate.id}>
-                {t(`workItems:filter.fields.${candidate.labelKey}`)}
-              </SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
-        <Select
+        />
+        <PickerPopover
           value={node.op}
-          items={field.operators.map((operator) => ({
+          ariaLabel={t("workItems:filter.operatorFor", { field: fieldLabel })}
+          className="w-full"
+          options={field.operators.map((operator) => ({
             value: operator,
             label: operatorKey(operator)
               ? t(`workItems:filter.operators.${operator}`)
               : operator,
           }))}
-          onValueChange={(next) =>
-            next &&
+          onChange={(next) =>
             onChange(path, (current) => updateLeafOperator(current, next))
           }
-        >
-          <SelectTrigger
-            aria-label={t("workItems:filter.operatorFor", {
-              field: fieldLabel,
-            })}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectPopup>
-            {field.operators.map((operator) => (
-              <SelectItem key={operator} value={operator}>
-                {operatorKey(operator)
-                  ? t(`workItems:filter.operators.${operator}`)
-                  : operator}
-              </SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
+        />
         {field.fixedValue ? (
           <Input
             aria-label={t("workItems:filter.valueFor", { field: fieldLabel })}
@@ -346,26 +312,18 @@ function FilterNodeEditor({
             ))}
           </CheckboxGroup>
         ) : field.values && node.op !== "in" ? (
-          <Select
+          <PickerPopover
             value={Array.isArray(node.value) ? node.value[0] : node.value}
-            onValueChange={(next) =>
-              next &&
+            ariaLabel={t("workItems:filter.valueFor", { field: fieldLabel })}
+            className="w-full"
+            options={field.values.map((option) => ({
+              value: option,
+              label: option,
+            }))}
+            onChange={(next) =>
               onChange(path, (current) => updateLeafValue(current, next))
             }
-          >
-            <SelectTrigger
-              aria-label={t("workItems:filter.valueFor", { field: fieldLabel })}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectPopup>
-              {field.values.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectPopup>
-          </Select>
+          />
         ) : (
           <Input
             aria-label={t("workItems:filter.valueFor", { field: fieldLabel })}
@@ -406,33 +364,21 @@ function FilterNodeEditor({
         {t("workItems:filter.match")}
       </legend>
       <div className="flex flex-wrap items-center gap-2">
-        <Select
+        <PickerPopover
           value={node.op}
-          items={[
+          ariaLabel={t("workItems:filter.groupOperator")}
+          className="w-36"
+          options={[
             { value: "and", label: t("workItems:filter.matchAll") },
             { value: "or", label: t("workItems:filter.matchAny") },
           ]}
-          onValueChange={(next) =>
-            next &&
+          onChange={(next) =>
             onChange(path, (current) => ({
               ...current,
               op: next as "and" | "or",
             }))
           }
-        >
-          <SelectTrigger
-            aria-label={t("workItems:filter.groupOperator")}
-            className="w-36"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectPopup>
-            <SelectItem value="and">
-              {t("workItems:filter.matchAll")}
-            </SelectItem>
-            <SelectItem value="or">{t("workItems:filter.matchAny")}</SelectItem>
-          </SelectPopup>
-        </Select>
+        />
         <Button
           type="button"
           size="sm"
@@ -506,7 +452,7 @@ type WorkItemFilterEditorProps = {
   apiError?: string;
   /** Focus the editor's first control on mount. */
   autoFocus?: boolean;
-  /** Escape closes the editor (a disclosure), except inside a select popup. */
+  /** Escape closes the editor (a disclosure), except inside a picker popover. */
   onClose?: () => void;
   onModeChange: (mode: WorkItemFilterMode) => void;
   onApply: (filter: string) => void;
@@ -622,12 +568,12 @@ export default function WorkItemFilterEditor({
       aria-label={t("workItems:filter.formLabel")}
       onSubmit={handleApply}
       onKeyDown={(event) => {
-        // A select popup uses Escape to close itself, and its events bubble through React.
+        // A picker popover uses Escape to close itself, and its events bubble through React.
         if (
           event.key === "Escape" &&
           !event.defaultPrevented &&
           !(event.target as Element).closest(
-            '[role="listbox"], [role="option"], [aria-expanded="true"]',
+            '[data-slot="popover-popup"], [role="listbox"], [role="option"], [aria-expanded="true"]',
           )
         )
           onClose?.();

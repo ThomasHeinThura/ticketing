@@ -117,11 +117,11 @@ describe("work-item filter editor", () => {
     if (!currentNestedGroup)
       throw new Error("Expected the current nested filter group.");
     fireEvent.click(
-      within(currentNestedGroup).getByRole("combobox", {
+      within(currentNestedGroup).getByRole("button", {
         name: "Group operator",
       }),
     );
-    pickOption(await screen.findByRole("option", { name: "any (OR)" }));
+    pickOption(await screen.findByRole("button", { name: "any (OR)" }));
     fireEvent.click(screen.getByRole("button", { name: "Apply filter" }));
 
     const applied = parseWorkItemFilterText(
@@ -154,9 +154,9 @@ describe("work-item filter editor", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("combobox", { name: "Operator for State group" }),
+      screen.getByRole("button", { name: "Operator for State group" }),
     );
-    pickOption(await screen.findByRole("option", { name: "is one of" }));
+    pickOption(await screen.findByRole("button", { name: "is one of" }));
     expect(screen.getByRole("checkbox", { name: "started" })).toBeChecked();
     expect(
       screen.getByRole("checkbox", { name: "completed" }),
@@ -191,7 +191,7 @@ describe("work-item filter editor", () => {
     render(<StatefulEditor filter="lifecycle:deleted" onApply={onApply} />);
 
     expect(
-      await screen.findByRole("combobox", { name: "Value for Lifecycle" }),
+      await screen.findByRole("button", { name: "Value for Lifecycle" }),
     ).toHaveTextContent("deleted");
     fireEvent.click(screen.getByRole("button", { name: "Text" }));
     const textFilter = screen.getByLabelText(
@@ -282,7 +282,7 @@ describe("work-item filter editor", () => {
         onModeChange={vi.fn()}
       />,
     );
-    const fields = await screen.findAllByRole("combobox", {
+    const fields = await screen.findAllByRole("button", {
       name: "Filter field",
     });
     expect(fields.map((field) => field.textContent)).toEqual([
@@ -290,10 +290,10 @@ describe("work-item filter editor", () => {
       "Due date",
     ]);
     expect(
-      screen.getByRole("combobox", { name: "Operator for Priority" }),
+      screen.getByRole("button", { name: "Operator for Priority" }),
     ).toHaveTextContent("at or after / at least");
     expect(
-      screen.getByRole("combobox", { name: "Group operator" }),
+      screen.getByRole("button", { name: "Group operator" }),
     ).toHaveTextContent("all (AND)");
   });
 
@@ -320,7 +320,7 @@ describe("work-item filter editor", () => {
     expect(screen.getByRole("button", { name: "Visual" })).toHaveFocus();
   });
 
-  it("closes on Escape from a field, but not from inside an open selector", async () => {
+  it("closes on Escape from a field, but not from inside an open picker popover", async () => {
     const onClose = vi.fn();
     render(
       <WorkItemFilterEditor
@@ -332,7 +332,7 @@ describe("work-item filter editor", () => {
       />,
     );
     const field = (
-      await screen.findAllByRole("combobox", { name: "Filter field" })
+      await screen.findAllByRole("button", { name: "Filter field" })
     )[0];
     if (!field) throw new Error("expected a field selector");
     fireEvent.click(field);
@@ -343,5 +343,24 @@ describe("work-item filter editor", () => {
       key: "Escape",
     });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not close from Escape inside an open operator picker popover", async () => {
+    const onClose = vi.fn();
+    render(
+      <WorkItemFilterEditor
+        filter="priority:high"
+        mode="visual"
+        onClose={onClose}
+        onApply={vi.fn()}
+        onModeChange={vi.fn()}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Operator for Priority" }),
+    );
+    const option = await screen.findByRole("button", { name: "is one of" });
+    fireEvent.keyDown(option, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

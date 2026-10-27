@@ -1,16 +1,7 @@
-import {
-  Button,
-  Card,
-  CardContent,
-  Input,
-  Select,
-  SelectItem,
-  SelectPopup,
-  SelectTrigger,
-  SelectValue,
-} from "@taskdesk/ui";
+import { Button, Card, CardContent, Input } from "@taskdesk/ui";
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import { SavedViewAudienceFields } from "@/components/saved-view/saved-view-audience-fields";
 import type {
   SavedViewVisibility,
@@ -150,14 +141,14 @@ export function SavedViewEditor({
                   className="flex flex-wrap items-center gap-3"
                   key={sort.field}
                 >
-                  <Select
+                  <PickerPopover
                     value={sort.field}
-                    items={fields.map((field) => ({
+                    ariaLabel={t("sort")}
+                    options={fields.map((field) => ({
                       value: field,
                       label: fieldLabel(field),
                     }))}
-                    onValueChange={(value) => {
-                      if (!value) return;
+                    onChange={(value) => {
                       query.onSortsChange(
                         query.sorts.map((entry, entryIndex) =>
                           entryIndex === index
@@ -169,26 +160,15 @@ export function SavedViewEditor({
                         ),
                       );
                     }}
-                  >
-                    <SelectTrigger aria-label={t("sort")}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectPopup>
-                      {fields.map((field) => (
-                        <SelectItem key={field} value={field}>
-                          {fieldLabel(field)}
-                        </SelectItem>
-                      ))}
-                    </SelectPopup>
-                  </Select>
-                  <Select
+                  />
+                  <PickerPopover
                     value={sort.order}
-                    items={[
+                    ariaLabel={t("directionLabel")}
+                    options={[
                       { value: "asc", label: t("direction.asc") },
                       { value: "desc", label: t("direction.desc") },
                     ]}
-                    onValueChange={(value) => {
-                      if (!value) return;
+                    onChange={(value) => {
                       query.onSortsChange(
                         query.sorts.map((entry, entryIndex) =>
                           entryIndex === index
@@ -200,17 +180,7 @@ export function SavedViewEditor({
                         ),
                       );
                     }}
-                  >
-                    <SelectTrigger aria-label={t("directionLabel")}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectPopup>
-                      <SelectItem value="asc">{t("direction.asc")}</SelectItem>
-                      <SelectItem value="desc">
-                        {t("direction.desc")}
-                      </SelectItem>
-                    </SelectPopup>
-                  </Select>
+                  />
                   {query.sorts.length > 1 ? (
                     <Button
                       variant="ghost"

@@ -52,6 +52,7 @@ export const generatedRouteMetadata = {
     "/agent/projects/$projectKey/work",
     "/agent/reports",
     "/agent/reports/$key",
+    "/agent/reports/exports/$id",
     "/agent/reports/new",
     "/agent/search",
     "/agent/service-management/changes",

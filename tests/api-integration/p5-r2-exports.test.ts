@@ -173,12 +173,12 @@ describe("queued exports are appended in chunks and the requester is emailed onc
     const customers = rows.map((line) => line.split(",")[0]);
     expect(new Set(customers).size).toBe(customers.length);
 
-    // Emailed once, to the requester, with the authenticated route and no token in the link.
+    // Emailed once, to the requester, with the agent export page (P5-R3-01) and no token in the link.
     expect(sent).toHaveLength(1);
     const [mail] = sent;
     expect(mail?.to).toBe(w.owner.user.email);
     const actionUrl = new URL(String(mail?.data.actionUrl));
-    expect(actionUrl.pathname).toBe(`/api/report-exports/${id}/download`);
+    expect(actionUrl.pathname).toBe(`/agent/reports/exports/${id}`);
     expect(actionUrl.search).toBe("");
     expect(actionUrl.hash).toBe("");
     await runReportExport();

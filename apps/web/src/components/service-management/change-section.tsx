@@ -19,6 +19,7 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import {
   CHANGE_RISKS,
   type ChangeRisk,
@@ -78,22 +79,14 @@ function ServiceReference({
     <div className="space-y-2">
       <Label htmlFor="work-item-service">{t("change.service")}</Label>
       {canEdit ? (
-        <Select
-          items={options}
+        <PickerPopover
+          id="work-item-service"
           value={change.service?.id ?? NO_SERVICE}
-          onValueChange={(value) => mutation.mutate(value || null)}
-        >
-          <SelectTrigger id="work-item-service" disabled={mutation.isPending}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          disabled={mutation.isPending}
+          className="w-full"
+          options={options}
+          onChange={(value) => mutation.mutate(value || null)}
+        />
       ) : change.service ? (
         <Link
           className="block text-sm underline-offset-4 hover:underline"

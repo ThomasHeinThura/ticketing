@@ -145,9 +145,7 @@ async function magicLinkSignIn(door: Door, email: string) {
   });
   expect(sent.status, await sent.clone().text()).toBe(200);
   expect(mailState.magicLink).toBeTruthy();
-  const token = new URL(mailState.magicLink as string).searchParams.get(
-    "token",
-  );
+  const token = new URL(String(mailState.magicLink)).searchParams.get("token");
   return app.request(
     `${base(door)}/api/auth/magic-link/verify?token=${encodeURIComponent(token as string)}&callbackURL=/`,
     { headers: doorHeaders(door, ip), redirect: "manual" },

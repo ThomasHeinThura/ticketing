@@ -59,7 +59,7 @@ async function sessionAndToken(app: App, f: F, pendingActionId: string) {
     .select()
     .from(schema.userTable)
     .where(eq(schema.userTable.id, f.user.id));
-  mockAuthenticatedSession({ ...(user as never), role: "admin" });
+  mockAuthenticatedSession({ ...(user as object), role: "admin" } as never);
   const send = (path: string, body: unknown) => {
     const r = withConfiguredAgentAuthority(path, {
       method: "POST",

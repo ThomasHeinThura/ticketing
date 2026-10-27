@@ -111,6 +111,10 @@ export function ImportRunCreateDialog({
           <div className="space-y-2">
             <Label htmlFor="import-run-workspace">{t("workspace")}</Label>
             <Select
+              items={workspaces.map((workspace) => ({
+                value: workspace.id,
+                label: workspace.name,
+              }))}
               value={workspaceId}
               disabled={busy}
               onValueChange={changeWorkspace}
@@ -134,6 +138,10 @@ export function ImportRunCreateDialog({
               <Skeleton className="h-10 w-full" />
             ) : (
               <Select
+                items={(projects.data ?? []).map((project) => ({
+                  value: project.id,
+                  label: project.name,
+                }))}
                 value={projectId}
                 disabled={busy || projects.isError}
                 onValueChange={changeProject}

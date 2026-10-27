@@ -46,6 +46,7 @@ const { mocks, translate } = vi.hoisted(() => ({
         "activity:timeline.send": "Send comment",
         "activity:timeline.sending": "Sending",
         "activity:timeline.visibilityLabel": "Comment visibility",
+        "activity:timeline.cannedResponses": "Canned response",
         "activity:timeline.heading": "Activity & comments",
         "activity:comment.leavePlaceholder": "Leave a comment",
         "activity:timeline.internal": "Internal",
@@ -154,6 +155,12 @@ vi.mock("@taskdesk/ui", async (importOriginal) => {
     TooltipTrigger,
   };
 });
+
+/** Picks the canned response from the composer's Kaneo picker popover. */
+async function pickCanned(trigger: HTMLElement) {
+  fireEvent.click(trigger);
+  fireEvent.click(await screen.findByRole("button", { name: "Canned one" }));
+}
 
 vi.mock("react-i18next", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-i18next")>();
@@ -585,6 +592,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     mocks.cannedResponses = [
       {
         id: "canned-1",
+        name: "Canned one",
         body: cannedDocument,
         visibilityDefault: "internal",
       },
@@ -607,11 +615,8 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     );
 
     const view = renderActivity();
-    fireEvent.change(
-      within(view.container).getByRole("combobox", { name: "Canned response" }),
-      {
-        target: { value: "canned-1" },
-      },
+    await pickCanned(
+      within(view.container).getByRole("button", { name: "Canned response" }),
     );
     await waitFor(() => {
       const saved = JSON.parse(
@@ -641,6 +646,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     mocks.cannedResponses = [
       {
         id: "canned-1",
+        name: "Canned one",
         body: body("Due 2026-10-21"),
         visibilityDefault: "internal",
       },
@@ -648,14 +654,14 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     mocks.fetchCanned.mockResolvedValue([
       {
         id: "canned-1",
+        name: "Canned one",
         body: body("Due 2026-10-25"),
         visibilityDefault: "internal",
       },
     ]);
     const view = renderActivity();
-    fireEvent.change(
-      within(view.container).getByRole("combobox", { name: "Canned response" }),
-      { target: { value: "canned-1" } },
+    await pickCanned(
+      within(view.container).getByRole("button", { name: "Canned response" }),
     );
     await waitFor(() =>
       expect(editable(view.container)?.textContent).toContain("Due 2026-10-25"),
@@ -669,6 +675,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     mocks.cannedResponses = [
       {
         id: "canned-1",
+        name: "Canned one",
         body: { type: "doc", content: [] },
         visibilityDefault: "internal",
       },
@@ -687,10 +694,10 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
         window.localStorage.getItem("taskdesk:comment-draft:user-1:OPS-17"),
       ).toContain("Keep my draft"),
     );
-    const select = within(view.container).getByRole("combobox", {
+    const select = within(view.container).getByRole("button", {
       name: "Canned response",
     });
-    fireEvent.change(select, { target: { value: "canned-1" } });
+    await pickCanned(select);
     await waitFor(() =>
       expect(within(view.container).getByRole("alert")).toBeTruthy(),
     );
@@ -699,6 +706,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     mocks.fetchCanned.mockResolvedValueOnce([
       {
         id: "canned-1",
+        name: "Canned one",
         body: {
           type: "doc",
           content: [
@@ -711,7 +719,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
         visibilityDefault: "internal",
       },
     ]);
-    fireEvent.change(select, { target: { value: "canned-1" } });
+    await pickCanned(select);
     await waitFor(() =>
       expect(editable(view.container)?.textContent).toContain("Current retry"),
     );
@@ -723,6 +731,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     mocks.cannedResponses = [
       {
         id: "canned-1",
+        name: "Canned one",
         body: { type: "doc", content: [] },
         visibilityDefault: "internal",
       },
@@ -746,13 +755,13 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
         window.localStorage.getItem("taskdesk:comment-draft:user-1:OPS-17"),
       ).toContain("Keep pending draft"),
     );
-    const select = within(view.container).getByRole("combobox", {
+    const select = within(view.container).getByRole("button", {
       name: "Canned response",
     });
     const send = within(view.container).getByRole("button", {
       name: "Send comment",
     });
-    fireEvent.change(select, { target: { value: "canned-1" } });
+    await pickCanned(select);
     await waitFor(() => expect(select).toBeDisabled());
     expect(editor).toHaveAttribute("contenteditable", "false");
     expect(send).toBeDisabled();

@@ -11,11 +11,6 @@ import {
   EmptyTitle,
   Frame,
   Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   Table,
   TableBody,
@@ -26,6 +21,7 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import {
   type ImportRun,
   type ImportRunState,
@@ -132,24 +128,20 @@ export function ImportRunsPanel({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-56 space-y-2">
           <Label htmlFor="imports-workspace">{t("workspace")}</Label>
-          <Select
+          <PickerPopover
+            id="imports-workspace"
             value={selectedWorkspaceId}
-            onValueChange={(value) => {
-              if (value && availableWorkspaces.some(({ id }) => id === value))
+            placeholder={t("selectWorkspace")}
+            className="w-full"
+            options={availableWorkspaces.map((workspace) => ({
+              value: workspace.id,
+              label: workspace.name,
+            }))}
+            onChange={(value) => {
+              if (availableWorkspaces.some(({ id }) => id === value))
                 onWorkspaceChange(value);
             }}
-          >
-            <SelectTrigger id="imports-workspace">
-              <SelectValue placeholder={t("selectWorkspace")} />
-            </SelectTrigger>
-            <SelectContent>
-              {availableWorkspaces.map((workspace) => (
-                <SelectItem key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         </div>
         <div className="flex gap-2">
           <Button

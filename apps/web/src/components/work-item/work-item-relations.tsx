@@ -21,16 +21,12 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
 } from "@taskdesk/ui";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/avatar";
+import { PickerPopover } from "@/components/common/picker-popover";
 import RelationsSection from "@/components/task/relations-section";
 import {
   createWorkItemRelation,
@@ -389,29 +385,21 @@ export default function WorkItemRelations({
               )}
             </CommandPanel>
             <CommandFooter>
-              <Select
+              <PickerPopover
                 value={relationType}
-                onValueChange={(type) => {
+                ariaLabel={t("workItems:relations.type")}
+                searchable={false}
+                options={RELATION_PICKER_TYPES.map((type) => ({
+                  value: type,
+                  label: t(`workItems:relations.types.${type}`),
+                }))}
+                onChange={(type) => {
                   if (
-                    type &&
                     RELATION_PICKER_TYPES.includes(type as RelationPickerType)
                   )
                     update({ ...state, type: type as RelationPickerType });
                 }}
-              >
-                <SelectTrigger aria-label={t("workItems:relations.type")}>
-                  <SelectValue>
-                    {t(`workItems:relations.types.${relationType}`)}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {RELATION_PICKER_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {t(`workItems:relations.types.${type}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
               <span className="text-muted-foreground">
                 {t("tasks:relations.selectTask")}
               </span>
