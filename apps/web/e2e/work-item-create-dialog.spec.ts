@@ -44,9 +44,16 @@ test("work-list create dialog shell opens, closes, and reopens independently of 
   const trigger = page.getByTestId("create-work-item-trigger");
   const dialog = page.getByRole("dialog");
   await expect(trigger).toBeVisible();
+  // The list has loaded its 500 rows. The table is virtualized (a bounded window of rows is
+  // mounted, see work-item-list-layout.spec.ts), so read the first row instead of counting.
   await expect(
-    page.locator("[data-testid=work-item-list-populated] tbody tr"),
-  ).toHaveCount(500);
+    page
+      .locator(
+        "[data-testid=work-item-list-populated] tbody tr[data-virtual-row-id]",
+      )
+      .first(),
+  ).toContainText("WLP-1");
+  await expect(page.getByTestId("work-item-list-loading")).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath("work-list-initial.png"),
   });

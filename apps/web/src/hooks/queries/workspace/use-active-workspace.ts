@@ -25,14 +25,15 @@ function useActiveWorkspace() {
     isLoading: isWorkspacesLoading,
     error: workspacesError,
   } = useGetWorkspaces();
-  const { workspaceId } = useParams({
+  // Select the id itself: the router compares selections by identity, so a fresh object here
+  // re-rendered every caller (each list row's permission check) on any navigation, a search
+  // change included (G11 list-to-detail paint).
+  const workspaceId = useParams({
     strict: false,
-    select: (params) => ({
-      workspaceId:
-        "workspaceId" in params && typeof params.workspaceId === "string"
-          ? params.workspaceId
-          : undefined,
-    }),
+    select: (params) =>
+      "workspaceId" in params && typeof params.workspaceId === "string"
+        ? params.workspaceId
+        : undefined,
   });
 
   const activeOrganizationId = getActiveOrganizationId(session);

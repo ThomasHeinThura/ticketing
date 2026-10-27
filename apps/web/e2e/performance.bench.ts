@@ -745,44 +745,57 @@ async function collectG13WindowMeasurement(
  * The 500-row render metric measures the work route's table layout (`?layout=table`), the
  * feature-contracts-p1 "table with 500 rows", not the grouped list's interim fallback table.
  * Approved by Thomas on 27 Oct 2026: only the opened URL and the table's row selector changed.
- * The budget, the paint recorder (the 500th `tbody` row painted in the viewport), sampling,
- * retries and calibration are unchanged.
+ *
+ * Thomas decided on 28 Oct 2026 what is counted: the virtualized table's first painted
+ * viewport with all 500 rows loaded (the table's `aria-rowcount`), recorded by
+ * `installLastItemPaintRecorder`'s list kind. The virtualized table windows its rows and never
+ * mounts 500 `tbody tr`, so nothing here counts them. The budget (< 500 ms), sampling, retries
+ * and calibration are unchanged.
  */
 const WORK_TABLE_PATH = WORK_LIST_PATH.replace("layout=list", "layout=table");
+const WORK_TABLE_SELECTOR =
+  'table[data-testid=work-item-list-populated][data-virtualized-table="true"]';
 
 async function collectListRender(page: Page) {
-  const rowSelector = "table[data-testid=work-item-list-populated] tbody tr";
   await installLastItemPaintRecorder(page, {
     kind: "list",
     expectedCount: 500,
     metric: "listPaint",
   });
   await page.goto(WORK_TABLE_PATH);
-  await expect(page.locator(rowSelector)).toHaveCount(500, {
-    timeout: 30_000,
-  });
+  // Wait on the recorder's mark (polled per animation frame), not on locator assertions: a
+  // retrying assertion over the page's DOM while the table loads competes with the render it
+  // measures. The loaded row count is asserted once the mark is in.
   try {
     await page.waitForFunction(
       () => (window as G11Window).__g11Metrics.listPaint > 0,
       undefined,
-      { timeout: 10_000 },
+      { timeout: 30_000 },
     );
   } catch (error) {
     console.error(
       "G11 list paint recorder diagnostics",
       JSON.stringify(
-        await page.evaluate(() => ({
-          metrics: (window as G11Window).__g11Metrics,
-          recorder: (window as Window & { __g11PaintDebug?: unknown })
-            .__g11PaintDebug,
-          rows: document.querySelectorAll(
-            "[data-testid=work-item-list-populated] tbody tr",
-          ).length,
-        })),
+        await page.evaluate((selector) => {
+          const table = document.querySelector(selector);
+          return {
+            metrics: (window as G11Window).__g11Metrics,
+            recorder: (window as Window & { __g11PaintDebug?: unknown })
+              .__g11PaintDebug,
+            rowCount: table?.getAttribute("aria-rowcount"),
+            mountedRows: table?.querySelectorAll(
+              "tbody tr[data-virtual-row-id]",
+            ).length,
+          };
+        }, WORK_TABLE_SELECTOR),
       ),
     );
     throw error;
   }
+  await expect(page.locator(WORK_TABLE_SELECTOR)).toHaveAttribute(
+    "aria-rowcount",
+    "501",
+  );
   await captureScreen(page, "work-list");
   return page.evaluate(
     () =>

@@ -336,6 +336,9 @@ export default function WorkItemTable<
         data-testid={testId}
         data-virtualized-table="true"
         data-primary-content-ready="true"
+        // Rows are windowed: the row count and each row's position are stated for assistive
+        // technology (and the G11 table metric) instead of being implied by mounted rows.
+        aria-rowcount={rows.length + 1}
         className={className}
         style={{ width: totalTableWidth, minWidth: totalTableWidth }}
         onMouseOver={onMouseOver}
@@ -356,7 +359,7 @@ export default function WorkItemTable<
           {trailingWidth > 0 ? <col style={{ width: trailingWidth }} /> : null}
         </colgroup>
         <TableHeader>
-          <TableRow>
+          <TableRow aria-rowindex={1}>
             {renderLeadingHeader ? (
               <TableHead style={{ width: leadingWidth }}>
                 {renderLeadingHeader()}
@@ -419,6 +422,7 @@ export default function WorkItemTable<
                 ref={(node) => rowVirtualizer.measureElement(node)}
                 data-index={virtualRow.index}
                 data-virtual-row-id={rowId}
+                aria-rowindex={virtualRow.index + 2}
               >
                 {renderLeadingCell ? (
                   <TableCell

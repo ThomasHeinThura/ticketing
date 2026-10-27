@@ -14,6 +14,14 @@ import {
   workItemsListQueryKey,
 } from "./work-items-list-query";
 
+/** The structured-search fetcher, loaded only when a list needs it. */
+async function loadSearchWorkItems() {
+  const { default: searchWorkItems } = await import(
+    "@/fetchers/work-item/search-work-items"
+  );
+  return searchWorkItems;
+}
+
 /** Canonical list and structured search retain independent cursor caches beneath the
  * project invalidation prefix. Previous ordering is a same-project placeholder only;
  * it must never become a writable rank ordering or appear under a different project. */
@@ -99,9 +107,7 @@ function useGetWorkItems({
     queryKey: searchQueryKey,
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
-      const { default: searchWorkItems } = await import(
-        "@/fetchers/work-item/search-work-items"
-      );
+      const searchWorkItems = await loadSearchWorkItems();
       return searchWorkItems({
         workspaceId: workspaceId as string,
         projectSlug: projectSlug as string,

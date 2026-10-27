@@ -73,7 +73,11 @@ describe("account security factor enrollment", () => {
     fixture.enable.mockReset();
     fixture.navigate.mockReset();
     fixture.enable.mockResolvedValue({
-      data: { totpURI: "otpauth://totp/TaskDesk:test", backupCodes: ["one"] },
+      data: {
+        method: "totp",
+        totpURI: "otpauth://totp/TaskDesk:test",
+        backupCodes: ["one"],
+      },
       error: null,
     });
     vi.stubGlobal(

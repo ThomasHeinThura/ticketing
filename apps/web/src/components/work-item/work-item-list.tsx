@@ -72,14 +72,14 @@ import type {
   WorkItemField,
   WorkItemRow,
 } from "@/types/work-item";
+import loadWorkItemTable from "./load-work-item-table";
 import { WorkItemBlockedBadge } from "./work-item-blocked-badge";
 import WorkItemColumnResizeHandle from "./work-item-column-resize-handle";
 import WorkItemListLoading from "./work-item-list-loading";
 
 const SelectionCheckbox = lazy(() => import("./selection-checkbox"));
-const VirtualizedWorkItemTable = lazy(
-  () => import("./work-item-table"),
-) as unknown as typeof import("./work-item-table").default;
+// biome-ignore format: the contrast gate reads the lazy loader binding from a one-line `lazy(loader)`
+const VirtualizedWorkItemTable = lazy(loadWorkItemTable) as unknown as typeof import("./work-item-table").default;
 const WorkItemInlineFields = lazy(() => import("./work-item-inline-fields"));
 
 type WorkItemInlineControls = {

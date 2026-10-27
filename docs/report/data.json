@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-27T17:34:49.893Z",
+	"generated": "2026-10-27T21:29:52.185Z",
 	"source": "673 indexed clauses: 661 in P0–P5 and 12 in P6. P0–P5 bars use the per-ID audits; P6 uses a per-ID test mapping (27 Oct). Scoped test and browser passes do not count as whole-clause browser acceptance.",
 	"phases": [
 		{
@@ -1290,7 +1290,10 @@
 		"Decided 27 Oct (Thomas): the G11 500-row render metric measures the ?layout=table view with 500 rows (feature-contracts-p1 wording), not the interim fallback table; the < 500 ms budget is unchanged.",
 		"Decided 28 Oct (Thomas): after P6, phases end. Plan: (1) finish CI gates incl. G11 deep work, (2) merge PR #891 automatically once all required checks are green, (3) deploy the signed release image to local SIT and Technexus public SIT without a further ask (backup, digest record, rollback ready), (4) align all docs for handover, (5) plan the former P7 as linear fixes/bugs/features, (6) hand over to Codex via AGENTS.md and docs.",
 		"Decided 28 Oct (Thomas): Codex is the coding agent. Terra/Sonnet (middle tier) implements; Sol/Opus (high tier) plans, audits and reviews; a reviewer never reviews its own work. Codex fixes bugs and adjusts implementation and docs on its own judgment, but asks Thomas before new dependencies (except official @tiptap/* extensions for the Pages editor, logged in THIRD-PARTY-NOTICES.md), changing budgets, the security model or contracts, merging to main, Technexus deploys after the handover, or deleting data.",
-		"Decided 28 Oct (Thomas): settings split by scope: account settings under the user icon, project settings in the project ... menu, workspace settings under the workspace menu, God Mode on its own URL with its own sign-in; old links redirect. Pages editor to reach Plane/Notion-level markdown editing."
+		"Decided 28 Oct (Thomas): settings split by scope: account settings under the user icon, project settings in the project ... menu, workspace settings under the workspace menu, God Mode on its own URL with its own sign-in; old links redirect. Pages editor to reach Plane/Notion-level markdown editing.",
+		"Decided 28 Oct (Thomas): after CI on 668dd6878 (LCP 2,895 ms, route 547 ms, board render 697 ms, assign click 223 ms against budgets 2,500/300/500/200), run one more performance round, then bring remaining misses back with numbers; budgets unchanged.",
+		"Decided 28 Oct (Thomas): the 500-row table metric counts the virtualized table's first painted viewport with 500 rows loaded (new recorder); budget < 500 ms unchanged.",
+		"28 Oct security upgrade: better-auth 1.6.26 -> 1.7.10 (critical GHSA: OAuth state usable as a magic link; high: OAuth proxy sign-in as another user; high: device-login approval) and qs 6.16.1. Adapted: pending-action credential invalidation inside better-auth transactions (PA-9), custom OIDC sign-in via signIn.social, TOTP enrollment result shape. Operator action: the agent custom OIDC redirect URI changes from /api/auth/oauth2/callback/custom to /api/auth/callback/custom at the identity provider. Full integration 5,789/5,789 and auth suites pass."
 	],
 	"next": "Fix table row shift, board skeleton shift and the bench socket fixture; deep work-list performance work for LCP; switch the 500-row metric to ?layout=table; regenerate G8 baselines; push and get all required checks green; then ask Thomas to merge.",
 	"status": "27 Oct night: P0–P6 accepted. PR #891 at 7002e59ef: 19 of 24 checks pass (all integration shards, unit, contract, secret scan, gate checkers, a11y). Remaining: G11 performance (LCP 18.2 s vs 2.5 s on CI; deep performance work approved by Thomas), G8 (6 baselines to regenerate), e2e (table row height shift), static (runner shutdown, rerun), CodeQL alerts. P7 deferred; Entra is Thomas's.",

@@ -17,8 +17,15 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import loadWorkItemBoardView, {
+  isWorkItemBoardViewLoaded,
+  preloadWorkItemBoardView,
+} from "@/components/work-item/load-work-item-board-view";
+import { preloadWorkItemList } from "@/components/work-item/load-work-item-list";
 import loadWorkItemSidePane from "@/components/work-item/load-work-item-side-pane";
+import { preloadWorkItemTable } from "@/components/work-item/load-work-item-table";
 import { loadedModuleThenable } from "@/components/work-item/loaded-module-thenable";
+import { useModuleReady } from "@/components/work-item/use-module-ready";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import {
   WorkItemCreateTriggerPlaceholder,
@@ -53,6 +60,12 @@ function loadWorkItemCreateDialogShell() {
   return import(
     "@/components/work-item/work-item-create-dialog-shell-loader"
   ).then(({ loadWorkItemCreateDialogShell: load }) => load());
+}
+
+/** The board's custom-field grouping options, fetched only for the board layout. */
+async function readGroupingFields(workspaceId: string) {
+  const { getCustomFields } = await import("@/fetchers/custom-field");
+  return getCustomFields(workspaceId);
 }
 
 type PendingSidePaneOpen = {
@@ -125,9 +138,7 @@ const WorkItemCreateTrigger = lazy(
 );
 // Board layout, the selection switch and the bulk bar are loaded only when the URL or a
 // capability asks for them, so the default list route's graph carries none of them (G11).
-const WorkItemBoardView = lazy(
-  () => import("@/components/work-item/work-item-board-view"),
-);
+const WorkItemBoardView = lazy(loadWorkItemBoardView);
 const SortControl = lazy(() => import("@/components/common/sort-control"));
 const GroupControl = lazy(() => import("@/components/common/group-control"));
 const BulkAssignToolbar = lazy(
@@ -180,6 +191,14 @@ export const Route = createFileRoute(
     parseWorkItemWorkSearch(normalizeCanonicalWorkItemSelection(raw)),
   beforeLoad: ({ context, params, search, cause }) => {
     preloadWorkItemsPanel();
+    // A table of more than 100 rows renders through the virtualized table; fetched with the
+    // data rather than after it, the table's first viewport paints without its full-table
+    // fallback pass (G11 work-list render).
+    if (search.layout === "table") {
+      preloadWorkItemList();
+      preloadWorkItemTable();
+    }
+    if (search.layout === "board") preloadWorkItemBoardView();
     // The main entry preloads this route on a direct visit, so the list's reads start here,
     // before the screen mounts (G11 work-list LCP). A search change on the mounted screen
     // ("stay") leaves fetching to the hooks.
@@ -233,14 +252,21 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     }
   }, [isFilterOpen]);
   const navigate = Route.useNavigate();
-  const hasOpenedSidePane = useRef(false);
   const routeContentRef = useRef<HTMLDivElement>(null);
   const openerCandidateRef = useRef<HTMLElement | undefined>(undefined);
   const pendingSidePaneOpenRef = useRef<PendingSidePaneOpen | undefined>(
     undefined,
   );
   const readySidePaneKeyRef = useRef<string | undefined>(undefined);
-  if (item) hasOpenedSidePane.current = true;
+  // The side pane stays mounted once opened (its close animation and focus return need it).
+  // A state latch, not a ref written during render: the React Compiler skips a component that
+  // does that, and every render of this route then re-rendered all visible list rows (G11
+  // list-to-detail paint).
+  const [sidePaneOpened, setSidePaneOpened] = useState(Boolean(item));
+  useEffect(() => {
+    if (item) setSidePaneOpened(true);
+  }, [item]);
+  const mountSidePane = sidePaneOpened || Boolean(item);
   const rememberWorkItemOpener = useCallback((target: EventTarget | null) => {
     const opener = getWorkItemOpener(target);
     if (!opener || isWorkItemDragActive(target, opener)) {
@@ -320,10 +346,15 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   }, []);
   useEffect(() => {
     const abort = new AbortController();
-    afterPrimaryContent({ signal: abort.signal }).then(
-      () => void loadWorkItemSidePane().catch(() => undefined),
-      () => undefined,
-    );
+    // Once loaded, the loader returns a bare synchronous thenable (no `catch`).
+    const preloadSidePane = () =>
+      void Promise.resolve(loadWorkItemSidePane()).catch(() => undefined);
+    // Downloaded from the moment the rows are on screen, so a row opened right away does not
+    // wait for the pane's module before anything paints (G11 list-to-detail paint).
+    afterPrimaryContent({
+      signal: abort.signal,
+      onPrimaryContentReady: preloadSidePane,
+    }).then(preloadSidePane, () => undefined);
     return () => abort.abort();
   }, []);
   const focusRestoreGenerationRef = useRef(0);
@@ -361,10 +392,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const project = projects?.find((candidate) => candidate.slug === projectKey);
   const groupingFieldsQuery = useQuery({
     queryKey: ["custom-fields", workspace?.id ?? "", false],
-    queryFn: async () => {
-      const { getCustomFields } = await import("@/fetchers/custom-field");
-      return getCustomFields(workspace?.id ?? "");
-    },
+    queryFn: () => readGroupingFields(workspace?.id ?? ""),
     enabled: layout === "board" && Boolean(workspace?.id),
     staleTime: 30_000,
   });
@@ -488,6 +516,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   );
 
   const isTabularLayout = layout === "list" || layout === "table";
+  // The board mounts with an ordinary update once its module is here, not as a Suspense retry
+  // (see `useModuleReady`).
+  const boardModuleReady = useModuleReady(
+    loadWorkItemBoardView,
+    isWorkItemBoardViewLoaded,
+    layout === "board",
+  );
 
   const {
     data: workItemsResult,
@@ -658,11 +693,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     [navigate, setColumnsPreference],
   );
 
+  const setLayoutPreference = layoutPreference.set;
+  const layoutProjectId = project?.id;
   const handleLayoutChange = useCallback(
     (nextLayout: WorkItemListSearch["layout"]) => {
-      if (project?.id) {
-        writeProjectLayoutPreference(project.id, nextLayout);
-        layoutPreference.set(nextLayout);
+      if (layoutProjectId) {
+        writeProjectLayoutPreference(layoutProjectId, nextLayout);
+        setLayoutPreference(nextLayout);
       }
       navigate({
         search: (prev: WorkItemListSearch) => ({
@@ -672,7 +709,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         replace: true,
       });
     },
-    [navigate, project?.id, layoutPreference.set],
+    [navigate, layoutProjectId, setLayoutPreference],
   );
 
   // `VW-13`: the grouping lives in the URL (`VW-1`) and survives a layout switch; the default
@@ -854,9 +891,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
       clearSelection: clearBulkSelection,
     },
   );
-  const hasEnteredSelectionMode = useRef(false);
+  const [hasEnteredSelectionMode, setHasEnteredSelectionMode] = useState(false);
   const toggleSelectionMode = useCallback(() => {
-    hasEnteredSelectionMode.current = true;
+    setHasEnteredSelectionMode(true);
     setSelectionMode((on) => !on);
     setSelectedKeys([]);
   }, []);
@@ -866,7 +903,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     ? selectedKeys.length > 0
       ? t("workItems:bulk.selected", { count: selectedKeys.length })
       : t("workItems:bulk.modeOn")
-    : hasEnteredSelectionMode.current
+    : hasEnteredSelectionMode
       ? t("workItems:bulk.modeOff")
       : "";
 
@@ -1124,6 +1161,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               onCreateInState={openCreateDialogInState}
             />
           </Suspense>
+        ) : project && !boardModuleReady ? (
+          <WorkItemListLoading />
         ) : project ? (
           <Suspense fallback={<WorkItemListLoading />}>
             <WorkItemBoardView
@@ -1169,7 +1208,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             />
           </Suspense>
         )}
-        {hasOpenedSidePane.current ? (
+        {mountSidePane ? (
           <Suspense fallback={null}>
             <WorkItemSidePane
               itemKey={item}

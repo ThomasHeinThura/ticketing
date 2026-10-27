@@ -43,6 +43,7 @@ import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activitie
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
+import { HttpError } from "@/lib/http-error";
 
 class MockWebSocket {
   static OPEN = 1;
@@ -752,7 +753,9 @@ describe("work-item list realtime composition", () => {
       ),
     );
     expect(queryInterval(client, "project-1")).toBe(false);
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["work-items"] });
+    expect(invalidate).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ["work-items"] }),
+    );
 
     vi.spyOn(Math, "random").mockReturnValue(0);
     act(() => first.close());
@@ -882,6 +885,60 @@ describe("work-item list realtime composition", () => {
     );
     expect(screen.getByTestId("detail-realtime-warning")).toBeInTheDocument();
     expect(detailQueryInterval(client, "W-1")).toBe(30_000);
+  });
+
+  it("keeps a read the server refused with a client error in its error state when the socket opens", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const refused = vi.fn(async () => {
+      throw new HttpError(422, "Filter field unavailable: label");
+    });
+    const unreachable = vi.fn(async () => {
+      throw new HttpError(503, "Service unavailable");
+    });
+    const missing = vi.fn(async () => {
+      throw new HttpError(404, "Not found");
+    });
+    const loaded = vi.fn(async () => ({ version: 1 }));
+    function Reads() {
+      const refusedRead = useQuery({
+        queryKey: ["work-items", "project-1", "search", "label:urgent"],
+        queryFn: refused,
+      });
+      useQuery({
+        queryKey: ["work-items", "project-1", "search", "state:started"],
+        queryFn: unreachable,
+      });
+      useQuery({
+        queryKey: ["work-items", "detail", "WI-404"],
+        queryFn: missing,
+      });
+      useQuery({
+        queryKey: ["work-items", "project-1", "list"],
+        queryFn: loaded,
+      });
+      useNativeWorkItemRealtime(["project:project-1"]);
+      return <output data-testid="refused-state">{refusedRead.status}</output>;
+    }
+    render(<Reads />, { wrapper: wrapperFor(client) });
+    await waitFor(() =>
+      expect(screen.getByTestId("refused-state")).toHaveTextContent("error"),
+    );
+    await waitFor(() => expect(unreachable).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(missing).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(loaded).toHaveBeenCalledTimes(1));
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected the native socket");
+    act(() => socket.open());
+
+    // Server failures, missing or denied reads, and loaded reads are refreshed on connect.
+    await waitFor(() => expect(unreachable).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(missing).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(loaded).toHaveBeenCalledTimes(2));
+    // The refused read is not asked again, so its error state stays on screen.
+    expect(refused).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("refused-state")).toHaveTextContent("error");
   });
 
   it("treats the server's connection-limit close as terminal and does not reconnect", async () => {

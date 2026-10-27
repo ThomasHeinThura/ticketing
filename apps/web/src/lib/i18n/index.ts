@@ -10,6 +10,7 @@ import i18n from "i18next";
 import resourcesToBackend from "i18next-resources-to-backend";
 import { initReactI18next } from "react-i18next";
 import { afterFirstPaint } from "./after-first-paint";
+import slimGroupLoaders from "./group-loaders-slim";
 import {
   WORK_LIST_PATH_PATTERN,
   WORK_ROUTE_I18N_NAMESPACES,
@@ -59,10 +60,13 @@ type NamespaceGroup = "slim" | "rest";
 
 const groupResources = new Map<string, Promise<Record<string, unknown>>>();
 
-// Two separate call sites: the bundler preloads a dynamic import's dependencies per call, and a
-// conditional expression would make the first-paint group also fetch the deferred one's loader.
+// The first-paint group's loader table is part of the entry: fetched as its own chunk it was
+// the last of the work route's preloads, and every translated component waited for it (G11
+// work-list LCP). It is a few hundred bytes of `() => import(...)` per locale (an empty table in
+// the portal build); the locale chunks themselves stay separate. The deferred group's table
+// stays a separate call site, so loading it never makes the first-paint group fetch it.
 function importGroupLoaders(group: NamespaceGroup) {
-  if (group === "slim") return import("./group-loaders-slim");
+  if (group === "slim") return Promise.resolve({ default: slimGroupLoaders });
   return import("./group-loaders-rest");
 }
 

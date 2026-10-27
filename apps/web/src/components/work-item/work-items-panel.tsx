@@ -9,6 +9,13 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import loadWorkItemList, {
+  isWorkItemListLoaded,
+} from "@/components/work-item/load-work-item-list";
+import loadWorkItemTable, {
+  isWorkItemTableLoaded,
+} from "@/components/work-item/load-work-item-table";
+import { useModuleReady } from "@/components/work-item/use-module-ready";
 import WorkItemLightList, {
   canPreviewWorkItemList,
 } from "@/components/work-item/work-item-light-list";
@@ -29,9 +36,12 @@ const WorkItemListRealtime = lazy(
 const WorkItemKaneoList = lazy(
   () => import("@/components/work-item/work-item-kaneo-list"),
 );
-const WorkItemList = lazy(
-  () => import("@/components/work-item/work-item-list"),
-);
+const WorkItemList = lazy(loadWorkItemList);
+
+const loadTableModules = () =>
+  Promise.all([loadWorkItemList(), loadWorkItemTable()]);
+const tableModulesLoaded = () =>
+  isWorkItemListLoaded() && isWorkItemTableLoaded();
 
 type WorkItemsPanelProps = {
   layout?: "list" | "table";
@@ -122,6 +132,17 @@ function WorkItemsPanel({
       sort,
       hasPartialFailure: workItemsResult?.hasPartialFailure,
     });
+  // The table mounts with an ordinary update once its module is here, not as a Suspense retry
+  // (see `useModuleReady`).
+  // The virtualized table is part of that module set: mounted before it, a table of more than
+  // 100 rows renders every row once as its fallback, then swaps (G11 work-list render).
+  // Not while the project is still resolving: the route renders this panel then for every
+  // layout, the board included, which has no use for the table's modules.
+  const tableModuleReady = useModuleReady(
+    loadTableModules,
+    tableModulesLoaded,
+    layout === "table" && (Boolean(project) || !isLoading),
+  );
   const [projectLifecycle, setProjectLifecycle] = useState(() => ({
     projectId: project?.id,
     generation: 0,
@@ -277,12 +298,14 @@ function WorkItemsPanel({
       >
         {layout === "list" ? (
           <WorkItemKaneoList {...listProps} onCreateInState={onCreateInState} />
-        ) : (
+        ) : tableModuleReady ? (
           <WorkItemList
             {...listProps}
             customFieldColumns={workItemsResult?.customFieldColumns}
             customFieldPeople={workItemsResult?.customFieldPeople}
           />
+        ) : (
+          <WorkItemListLoading />
         )}
       </Suspense>
       {project &&

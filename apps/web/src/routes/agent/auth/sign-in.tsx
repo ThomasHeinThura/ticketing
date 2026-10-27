@@ -72,8 +72,8 @@ function SignIn() {
   const handleCustomOAuth = useCallback(async () => {
     setIsCustomOAuthLoading(true);
     try {
-      const result = await authClient.signIn.oauth2({
-        providerId: "custom",
+      const result = await authClient.signIn.social({
+        provider: "custom",
         callbackURL: getCallbackUrl(),
         errorCallbackURL: `${baseUrl}/auth/sign-in`,
       });

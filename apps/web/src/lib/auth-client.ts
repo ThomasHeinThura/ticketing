@@ -3,7 +3,6 @@ import {
   adminClient,
   deviceAuthorizationClient,
   emailOTPClient,
-  genericOAuthClient,
   inferAdditionalFields,
   lastLoginMethodClient,
   magicLinkClient,
@@ -32,7 +31,8 @@ export const authClient = createAuthClient({
     lastLoginMethodClient(),
     magicLinkClient(),
     emailOTPClient(),
-    genericOAuthClient(),
+    // better-auth 1.7 made generic OAuth a first-class social provider and removed
+    // genericOAuthClient(): the "custom" provider signs in via signIn.social({ provider }).
     deviceAuthorizationClient(),
     apiKeyClient(),
     adminClient(),

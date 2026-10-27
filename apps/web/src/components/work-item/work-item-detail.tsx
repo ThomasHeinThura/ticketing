@@ -105,6 +105,10 @@ function WorkItemDetail({
     DEFAULT_PROPERTIES_WIDTH,
   );
   const propertiesPanelRef = useRef<HTMLDivElement>(null);
+  // Whether there is a page header, not the header element itself: a new header element (every
+  // edit re-renders it) does not move the layout container, and re-attaching measured it with a
+  // forced layout before the edit could paint (G11 assign click-to-paint).
+  const hasPageHeader = Boolean(pageHeader);
   // biome-ignore lint/correctness/useExhaustiveDependencies: these values swap the layout container the ref points into, so the observer must re-attach when they change.
   useEffect(() => {
     const panel = propertiesPanelRef.current;
@@ -127,7 +131,7 @@ function WorkItemDetail({
       observer.disconnect();
       window.removeEventListener("resize", updateLayoutWidth);
     };
-  }, [isCompactPage, item?.id, pageHeader, variant]);
+  }, [isCompactPage, item?.id, hasPageHeader, variant]);
   const maxPropertiesWidth = Math.max(
     MIN_PROPERTIES_WIDTH,
     Math.min(

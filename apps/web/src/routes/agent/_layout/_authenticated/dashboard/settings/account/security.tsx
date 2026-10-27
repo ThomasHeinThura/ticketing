@@ -67,7 +67,7 @@ function AccountSecurity() {
         ...(status?.passwordRequiredForEnrollment ? { password } : {}),
         issuer: "TaskDesk",
       });
-      if (result.error || !result.data)
+      if (result.error || !result.data || result.data.method !== "totp")
         throw new Error(t("auth:accountSecurity.enrollmentStartError"));
       setTotpUri(result.data.totpURI);
       setPendingBackupCodes(result.data.backupCodes);

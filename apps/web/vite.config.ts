@@ -19,15 +19,18 @@ function preloadWorkRouteForDirectVisits(): Plugin {
     generateBundle: {
       order: "post",
       handler(_options, bundle) {
+        // Matched by the module it contains: the route component shares its chunk with its
+        // first-paint dependencies (the `work-route` code-splitting group).
         const routeChunk = Object.values(bundle).find(
           (item) =>
             item.type === "chunk" &&
-            item.isDynamicEntry &&
-            item.facadeModuleId
-              ?.replaceAll("\\", "/")
-              .endsWith(
-                "/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component",
-              ) === true,
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith(
+                  "/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component",
+                ),
+            ),
         );
         const html = bundle["index.html"];
         if (!routeChunk || !html || html.type !== "asset")
@@ -232,6 +235,32 @@ function preloadWorkRouteForDirectVisits(): Plugin {
           );
         addChunkAndImports(slimLoaderChunk.fileName);
 
+        // The board layout (`?layout=board`) renders from its own module graph, which `beforeLoad`
+        // otherwise only requests once the entry has run; on a direct board visit start it with
+        // the route's (G11 board render). Only the files the route closure does not already hold.
+        const boardViewChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith("/components/work-item/work-item-board-view.tsx"),
+            ),
+        );
+        if (boardViewChunk?.type !== "chunk")
+          throw new Error(
+            "G11 work-route preload could not resolve the board layout chunk.",
+          );
+        const boardViewFiles = new Set<string>();
+        const addBoardViewChunk = (fileName: string) => {
+          if (files.has(fileName) || boardViewFiles.has(fileName)) return;
+          boardViewFiles.add(fileName);
+          const chunk = bundle[fileName];
+          if (chunk?.type === "chunk")
+            for (const imported of chunk.imports) addBoardViewChunk(imported);
+        };
+        addBoardViewChunk(boardViewChunk.fileName);
+
         const latinFontAsset = Object.values(bundle).find(
           (item) =>
             item.type === "asset" &&
@@ -248,7 +277,7 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve the Geist Latin font asset.",
           );
 
-        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${inlineScriptJson([...files].map((file) => `/${file}`))};const locales=${inlineScriptJson(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink);const fontLink=document.createElement("link");fontLink.rel="preload";fontLink.as="font";fontLink.type="font/woff2";fontLink.href=${inlineScriptJson(`/${latinFontAsset.fileName}`)};fontLink.crossOrigin="anonymous";fontLink.fetchPriority="high";document.head.append(fontLink);for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
+        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${inlineScriptJson([...files].map((file) => `/${file}`))};const locales=${inlineScriptJson(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink);const fontLink=document.createElement("link");fontLink.rel="preload";fontLink.as="font";fontLink.type="font/woff2";fontLink.href=${inlineScriptJson(`/${latinFontAsset.fileName}`)};fontLink.crossOrigin="anonymous";fontLink.fetchPriority="high";document.head.append(fontLink);for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}if(new URLSearchParams(location.search).get("layout")!=="board")return;for(const file of ${inlineScriptJson([...boardViewFiles].map((file) => `/${file}`))}){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
         // The legacy project board is the other measured direct-visit screen (G11 board
         // render). Its route chunk is only requested after the session resolves, so start it
         // and the full locale catalog it renders with alongside the entry instead.
@@ -307,6 +336,38 @@ function preloadWorkRouteForDirectVisits(): Plugin {
       },
     },
   };
+}
+
+const WORK_ROUTE_PAINT_ROOT =
+  /\/(?:routes\/agent\/_layout\/_authenticated\/agent\/projects\/\$projectKey\/work\.tsx\?tsr-split=component|components\/work-item\/work-(?:items-panel|item-light-list)\.tsx)$/u;
+
+/**
+ * Icons and `@taskdesk/ui` components those roots take from a package index. Their importer is
+ * the index, not the root, so they are named here; a module missing from this list only costs
+ * its own small request again.
+ */
+const WORK_ROUTE_PAINT_BARREL_MEMBERS =
+  /\/(?:lucide-react\/dist\/esm\/icons\/(?:archive|calendar|calendar-clock|calendar-x|circle|circle-dashed|circle-dot|funnel|panels-top-left|rows-3|table-2)\.mjs|packages\/ui\/src\/components\/alert\.tsx)$/u;
+
+/**
+ * The `work-route` chunk: modules the work route component, the list panel or its preview
+ * import directly, with their own dependencies (the group's default recursion). The roots keep
+ * their chunks, so the route stays a dynamic entry of its own.
+ */
+function workRoutePaintDependency(
+  moduleId: string,
+  ctx: { getModuleInfo: (id: string) => { importers: string[] } | null },
+) {
+  const id = moduleId.replaceAll("\\", "/");
+  if (WORK_ROUTE_PAINT_ROOT.test(id)) return null;
+  if (WORK_ROUTE_PAINT_BARREL_MEMBERS.test(id)) return "work-route";
+  return ctx
+    .getModuleInfo(moduleId)
+    ?.importers.some((importer) =>
+      WORK_ROUTE_PAINT_ROOT.test(importer.replaceAll("\\", "/")),
+    )
+    ? "work-route"
+    : null;
 }
 
 function portalModuleGraphMetadata(): Plugin {
@@ -561,9 +622,24 @@ export default defineConfig(({ mode }) => {
                             // The work list's panel and the first-viewport preview it paints
                             // from (G11 work-list LCP) are HTML-preloaded on a direct visit;
                             // as a dozen sub-kilobyte chunks they queued behind the entry for
-                            // a round trip each. Fetch that closure as one request instead.
+                            // a round trip each. Fetch the panel and its preview as one request.
+                            // Only these two modules: their shared dependencies (query hooks,
+                            // icons, `@taskdesk/ui`) stay in their own chunks, so the toolbar and
+                            // the create dialog never wait for the list's code.
                             name: "work-items-panel",
-                            test: /\/src\/components\/work-item\/work-items-panel\.tsx$/u,
+                            test: /\/src\/components\/work-item\/work-(?:items-panel|item-light-list)\.tsx$/u,
+                            includeDependenciesRecursively: false,
+                            priority: 1,
+                            maxSize: 1_000_000,
+                          },
+                          {
+                            // The static dependencies of the route's and the panel's first paint:
+                            // icons, query hooks and skeletons that were two dozen sub-kilobyte
+                            // chunks, each queued for a round trip behind the entry on a direct
+                            // visit (G11 work-list LCP). The route component, the panel and its
+                            // preview keep their own chunks, so nothing here is the list's code.
+                            name: workRoutePaintDependency,
+                            debugName: "work-route",
                             priority: 1,
                             maxSize: 1_000_000,
                           },

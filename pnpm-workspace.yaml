@@ -64,7 +64,12 @@ overrides:
   '@hono/node-server': ^2.1.3     # was ^1.19.15. The patched built-in WebSocket helper
                                   # is provided by adapter 2.x; @hono/node-ws is removed
                                   # because its peer range excludes adapter 2.x.
-  better-auth: 1.6.30             # was 1.6.25. DELIBERATELY SUPERSEDED: exact 1.6.25
+  better-auth: 1.7.10             # was 1.6.30 (and 1.6.25 before that). SECURITY PIN:
+                                  # closes the critical OAuth-state-as-magic-link sign-in,
+                                  # GHSA-r4xp-prcw-77qf (oauth-proxy) and GHSA-q84f-53jg-9ppm
+                                  # (device approval), all patched >=1.7.7. 1.7.10 is the
+                                  # newest 1.7.x about two weeks old on 2026-10-28.
+                                  # History of the 1.6.30 entry: exact 1.6.25
                                   # violates @better-auth/api-key@1.6.26's peer ^1.6.26,
                                   # yielding a second better-auth copy and 7 TS errors.
                                   # better-call 1.3.7 below is its partner pin.
@@ -74,7 +79,8 @@ overrides:
   ip-address: ^10.7.4             # patched production advisory floor; MIT, Node >=12
   js-yaml: ^4.3.1                 # was '>=4.2.0 <5' — same major bound, higher floor
   lodash: ^4.18.0                 # was 4.18.0
-  qs: ^6.16.0                     # was '>=6.15.2'
+  qs: 6.16.1                      # was ^6.16.0. SECURITY PIN: qs <=6.16.0 advisory, patched
+                                  # 6.16.1 (exact: 6.16.2 was one day old on 2026-10-28)
   seroval: ^1.6.4                 # was '>=1.5.3'
   valibot: ^1.4.2                 # was '>=1.4.2'
 
@@ -99,7 +105,8 @@ overrides:
                                   # behavior around overrides + auto-installed optional
                                   # peers, not one pnpm documents -- re-verify this after any
                                   # pnpm upgrade rather than trusting it holds.
-  better-call: 1.3.7              # partner pin for better-auth 1.6.30
+  better-call: 1.4.2              # partner pin for better-auth 1.7.10 (was 1.3.7 for 1.6.30)
+  '@better-auth/api-key': 1.7.10  # one copy across apps/api and apps/web; peer ^better-auth
   deepmerge-ts: ^8.0.0
   fast-uri: ^3.1.9                # patched production advisory floor; BSD-3-Clause
   mysql2: ^3.23.1

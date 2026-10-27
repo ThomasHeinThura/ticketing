@@ -1,4 +1,6 @@
-import { createAuthClient } from "better-auth/react";
+// Vanilla client: the portal uses no React session hooks, and the React
+// binding pushed the customer bundle past its G11 budget.
+import { createAuthClient } from "better-auth/client";
 import { getApiUrl } from "../fetchers/get-api-url";
 
 export function getPortalAuthBaseURL() {
