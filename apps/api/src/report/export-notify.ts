@@ -81,7 +81,7 @@ async function markDecided(id: string): Promise<void> {
 }
 
 /**
- * RP-10 (P5-R2-02, P5-R3-01): when a queued export is ready, its requester is emailed once, with
+ * RP-10 (P5-R2-02, P5-R3-01): when a queued export is ready, its requester is emailed (at least once, P5-R4-01: a crash after the send but before marking repeats it), with
  * a link to the agent page `/agent/reports/exports/{id}`. That page goes through the normal
  * sign-in (with a return to itself) and offers the authenticated download, which re-checks the
  * requester's session, capabilities and reach. The email carries no signed or public file URL,

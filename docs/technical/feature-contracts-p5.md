@@ -495,7 +495,7 @@ Carried from v1's set, which was well chosen, grouped by the question being aske
   period is computed live. The boundary is stated.
 - `RP-10` Every report exports to CSV, respecting filters and the viewer's reach. Exports
   are audited. *Implemented:* a small export is the CSV itself; a large one is queued as a job
-  and, when ready, the requester is emailed once a link to the agent page
+  and, when ready, the requester is emailed a link (at least once; a crash between send and marking can repeat it) to the agent page
   `/agent/reports/exports/{id}` (signed out, it signs in and returns there), which shows the
   export's status and offers the authenticated download `GET /api/report-exports/{id}/download`
   (no signed or public URL: the download needs the requester's session or key, with the caps they

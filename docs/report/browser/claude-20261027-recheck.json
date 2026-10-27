@@ -1,0 +1,84 @@
+{
+	"recordedAt": "2026-10-27",
+	"deployment": "https://ticketing.localhost (compose.testing.yml, restored copy database; live database untouched)",
+	"builds": [
+		"fba7558f9 (image source211-fba7558-20261027)",
+		"fb4448db8 (image source212-fb4448d-20261027)"
+	],
+	"signedInAs": "Thomas's admin account session on the copy (signed in earlier by Thomas)",
+	"viewports": ["1280x800 dark", "375x812 mobile"],
+	"checks": [
+		{
+			"id": "P1R2-1",
+			"check": "List row state picker: choose a state, item saves, detail pane does not open",
+			"result": "pass",
+			"evidence": "HELP-14 Backlog->To Do->Backlog, 'Changes saved', URL without ?item"
+		},
+		{
+			"id": "P1R2-2",
+			"check": "Board column '+' opens the Kaneo create dialog with the column state",
+			"result": "pass",
+			"evidence": "To Do column + -> dialog with state To Do; cancelled"
+		},
+		{
+			"id": "P1R2-10",
+			"check": "Search result rows show priority icon, key, project, status",
+			"result": "pass",
+			"evidence": "q=certificate: HELP-1/4/5 with Customer Support Desk and state"
+		},
+		{
+			"id": "triage-popover",
+			"check": "Triage queue control is a library popover, not a select",
+			"result": "pass"
+		},
+		{
+			"id": "P4-flags",
+			"check": "After upgrade migration 0209: SLA, portal, Calendar, Gantt on; portal host serves sign-in; Calendar/Gantt tabs visible",
+			"result": "pass"
+		},
+		{
+			"id": "BD-1",
+			"check": "Mobile 375 px list rows: chips no longer overlap, titles readable",
+			"result": "pass after fix (fb4448db8)",
+			"evidence": "HELP-16/17 labels and due dates wrap under the title"
+		},
+		{
+			"id": "BD-2",
+			"check": "God Mode Imports workspace picker is a popover showing the workspace name",
+			"result": "pass after fix (fb4448db8)"
+		},
+		{
+			"id": "P5-R3-01",
+			"check": "/agent/reports/exports/{id} renders in the Kaneo shell; unknown id shows 'Export not found'",
+			"result": "pass"
+		},
+		{
+			"id": "P5-R3-02",
+			"check": "Notification settings show the 'Report exports' switch with its own save button",
+			"result": "pass"
+		},
+		{
+			"id": "P6-wizard",
+			"check": "Imports page and wizard source step render with library components",
+			"result": "pass (source step only)"
+		},
+		{
+			"id": "portal-sign-in",
+			"check": "Customer portal sign-in on portal.localhost (Thomas signed in) lands on the portal home, no loop",
+			"result": "pass",
+			"evidence": "Home with recent requests SUB-3..7"
+		},
+		{
+			"id": "portal-pages",
+			"check": "Portal My Requests, Approvals, Catalogue, Request SUB-7 thread, Account preferences, Notifications load without alerts or errors",
+			"result": "pass"
+		}
+	],
+	"notYetCovered": [
+		"Full import run in the browser (needs a CSV upload)",
+		"Role matrix as lead/member/viewer",
+		"Every converted picker individually (covered by web tests)",
+		"Light theme"
+	],
+	"phaseAccepted": false
+}

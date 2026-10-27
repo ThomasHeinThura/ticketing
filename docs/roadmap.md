@@ -22,10 +22,10 @@ Current phase exit criteria are the visible-finish column below, full local gate
 
 | Phase | State |
 | --- | --- |
-| P0–P3 | Committed/pushed; historical reviews retained. Fresh full audit, gate and browser sign-off pending; not complete or Thomas-accepted |
-| P4 | Committed/pushed; historical round-5 pass reported. Current capability repair and full browser/gate recheck in progress; fresh independent review pending |
-| P5 | Built/committed/pushed (`95ba4061d`); historical round-8 pass reported but later review artifacts incomplete. Cost drill and gate repairs, full browser testing and fresh independent review pending |
-| P6 | Goals/implementation approved 25 Oct; waits for P0–P5 local exit checks. Plan below; no implementation started |
+| P0–P3 | Committed/pushed (`fb4448db8`). AI review passed 27 Oct (P0 r2, P1 r4, P2 r2, P3 r2); gates and fresh-DB integration pass; browser re-checked on local SIT. Awaiting Thomas acceptance |
+| P4 | Committed/pushed (`fb4448db8`). AI review round 3 passed 27 Oct; flag enforcement and upgrade migration verified on local SIT. Awaiting Thomas acceptance |
+| P5 | Committed/pushed (`fb4448db8`). AI review round 4 (approved extra round) passed 27 Oct; export email page/preference browser-checked. 500k-row export not yet run. Awaiting Thomas acceptance |
+| P6 | Implemented and committed/pushed (`fb4448db8`). AI review round 3 passed 27 Oct; wizard source step browser-checked; full import run in the browser pending. Awaiting Thomas acceptance |
 | P7 | Not started; external readiness evidence tracked separately. P8/P9 proposed |
 
 **Current evidence:** the historical per-ID audits and aggregate report disagreed. [Report data](report/data.json) now reconciles historical rows with the requirement index and marks the fresh review pending; [status](status.md) records current checks. A committed phase or earlier code review is not full feature/browser acceptance.

@@ -1,24 +1,16 @@
-# Current status — 26 October 2026
+# Current status — 27 October 2026
 
-P0–P5 are committed through `aea5d5702` on `feat/batch1-hierarchy-and-parent-editing`, with current audit/fix work uncommitted. **No fresh phase sign-off or Thomas acceptance.** Earlier aggregate counts and completion claims disagreed with item-level evidence. [Report data](report/data.json) now joins the historical audit rows to the requirement index by ID and preserves the previous summaries separately. Every indexed P0–P5 clause now has a current source assessment. Scoped execution evidence and repair reconciliation are recorded separately; final-tree acceptance remains pending.
+P0–P6 are committed and pushed through `fb4448db8` (plus the follow-up status commit) on `feat/batch1-hierarchy-and-parent-editing`. **All seven phases passed AI review; none is Thomas-accepted yet.**
 
 | Work | Current status |
 | --- | --- |
-| Local SIT | One active deployment using only `deploy/compose.testing.yml`; source 196 image at both HTTPS hosts on port 443. Old deployments and native API are down. Five services plus a completed migration job. |
-| Data safety | Restored testing copy: all 172 table counts matched, checked business counts preserved, attachments copied. Protected live database untouched; no account reseeding or volume deletion. |
-| Source196 — deployed | Deletion/expiry/digest 42, project reach 226, permissions 118, UI 33 and approval contract 212 pass; retry safeguards 9/9. Browser deletion 58, layout 20 and smoke 10 pass. 1,777 deployed artifacts verified; migration rehearsal preserved 172 table counts. No phase sign-off. |
-| Move planning | Eight planner tests pass after preserving concrete state IDs, ignoring unused catalogue entries and retaining SLA origins across repeat moves. Executor still unbuilt; Thomas approved finish/pause and explicit destination rebind. |
-| Latest UI repairs | Separate Account/Workspace/Project/God Mode pages and Properties independent scroll/resize are deployed. 39 browser assertions, focused 42-test and 57-test suites pass. One Compose deployment; 1,667 current artifacts verified. |
-| Catalogue follow-up | Calendar/label/SLA journey completes with 100 checks on resume; earlier partial evidence retained. One intermittent session-check error remains under investigation. |
-| Local mail | Fixed local Mailpit mode approved, built and deployed; actual portal/invitation delivery remains unverified. No owner decision currently pending. |
-| Remaining P0–P5 | Project move endpoint/remapping; remaining settings/notification/admin gaps; catalogue, bulk-link and placeholder-claim browser journeys; final integration/scans and independent reviews. |
-| Runtime follow-up | God Mode Health flags one expired invitation-delivery envelope awaiting cleanup. Diagnose cleanup before sign-off. |
-| Security gates | Final shipping image and staged secret scan pending. Current image scan: 0 critical/42 high after removing unused wget (two high findings removed); applicability and independent disposition remain open. Secret scan: 18 classified findings, no confirmed exposed credentials; raw failure and independent disposition remain open. Previous dependency audit was clean; final refresh required. |
-| P6 | Approved goals: resumable imports; CSV/Jira/JSM/ADO/Plane/Planner/Power Apps adapters; Kaneo wizard; reconciliation and cutover/rollback rehearsal. Shared P4 import prerequisite is deployed; broader P6 waits for P0–P5 exits. |
-| Reviews / Git | 0/3 formal reviews per phase. No new commit/push/PR/merge; HEAD `aea5d5702`. Current work is uncommitted, with verified source/runtime/database backups. |
+| AI review (Claude Opus standing in for Sol, model substitution recorded) | P0 round 2 pass; P1 round 4 pass (extra round approved by Thomas); P2 round 2 pass; P3 round 2 pass; P4 round 3 pass; P5 round 4 pass (extra round approved by Thomas); P6 round 3 pass. Only lows remain; review JSONs in the session scratchpad, summarised in the [report](report/report.html). |
+| Local gates at `fb4448db8` | All-package typecheck 0 errors; contrast, tokens, raw-elements (0), i18n, policy, events, inventory, env, OpenAPI (652 ops), bundle budgets (portal 199.3/200 KB), permissions 118, API unit, web unit 3252, MCP 74 pass. Fresh-DB full integration 5789/5789 (one migration-test hook timed out under load and passes alone). |
+| Local SIT | One Compose deployment (`deploy/compose.testing.yml`) runs `fb4448db8` (image `source212-fb4448d-20261027`) on both HTTPS hosts; migrations through 0211; all table counts preserved; Trivy 0 critical / 42 high (none fixable, unchanged); Gitleaks only variable references. Rollback env and dumps kept. Protected live database untouched. |
+| Upgrade path | A first deploy (`d3c884c3c`) was rolled back: migration 0206 left the newly enforced flags off on real installs. Migration 0209 fixes it; verified on the real upgraded copy (SLA, portal, Calendar, Gantt on). |
+| Browser (local SIT) | Pass: list-row pickers, board column +, search rows, mobile 375 px rows, Kaneo popover pickers on working screens, imports picker, report-export page and preference, God Mode pages, customer portal sign-in by Thomas and all portal pages. Evidence: [browser/claude-20261027-recheck.json](report/browser/claude-20261027-recheck.json). |
+| Not yet covered | Full import run in the browser (CSV upload), role matrix as lead/member/viewer, light theme, 500k-row export run, palette end-to-end SV-5/SV-10 timing at 10k items with comments. |
+| Open lows | Recorded per phase in the report; none blocks under the review rule. |
+| Next | Thomas reviews and accepts phases; then PR/CI image and Technexus deploy per the image path; P7 planning. Real Entra validation stays with Thomas. |
 
-Detailed evidence and earlier checkpoints remain in [report](report/report.html), [audit](report/audit/) and [browser evidence](report/browser/).
-
-Fresh independent Sol review follows integrated fixes, local gates and browser evidence. Up to **three new review rounds per phase**; unresolved findings after round three require a report update and Thomas's decision. A passing review permits feature-branch commit/push, PR and merge, then local deployment/testing. It never means Thomas accepted the product.
-
-Real Entra validation is reserved for Thomas; typed-domain routing and local regressions are implemented; detailed failure-audit reconciliation and real-provider validation remain separate. Public Technexus deployment follows successful local SIT. No live-database migration or source-system retirement is authorized by this audit.
+Detailed evidence: [report](report/report.html), [audit](report/audit/), [browser evidence](report/browser/).
