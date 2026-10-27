@@ -8,6 +8,11 @@ import type {
   WorkItemSortDirection,
   WorkItemSortField,
 } from "@/lib/routes";
+import {
+  fetchWorkItemsListPage,
+  usesWorkItemSearch,
+  workItemsListQueryKey,
+} from "./work-items-list-query";
 
 /** Canonical list and structured search retain independent cursor caches beneath the
  * project invalidation prefix. Previous ordering is a same-project placeholder only;
@@ -41,29 +46,11 @@ function useGetWorkItems({
 }) {
   const queryClient = useQueryClient();
   const structuredFilter = filter?.trim() ? filter : undefined;
-  const hasCustomFieldColumns =
-    columns?.some((column) => column.startsWith("cf.")) ?? false;
   const effectiveSorts = sorts?.length ? sorts : [{ field: sort, order: dir }];
-  const requiresStructuredSort = effectiveSorts.some(
-    (entry) => !["key", "title", "priority", "dueDate"].includes(entry.field),
-  );
-  const useSearch = Boolean(
-    structuredFilter ||
-      hasCustomFieldColumns ||
-      requiresStructuredSort ||
-      effectiveSorts.length > 1,
-  );
+  const useSearch = usesWorkItemSearch({ filter, columns, sort, dir, sorts });
   const readEnabled = !!projectId && enabled;
   const refetchInterval = realtimeStatus === "available" ? false : 30_000;
-  const legacyListSort =
-    sort === "key" ||
-    sort === "position" ||
-    sort === "title" ||
-    sort === "priority" ||
-    sort === "dueDate"
-      ? sort
-      : "key";
-  const listQueryKey = ["work-items", projectId, "list", sort, dir] as const;
+  const listQueryKey = workItemsListQueryKey(projectId, sort, dir);
   const searchQueryKey = [
     "work-items",
     projectId,
@@ -78,14 +65,8 @@ function useGetWorkItems({
   const listQuery = useInfiniteQuery({
     queryKey: listQueryKey,
     initialPageParam: undefined as string | undefined,
-    queryFn: async ({ pageParam }) => {
-      const { default: getWorkItems } = await import(
-        "@/fetchers/work-item/get-work-items"
-      );
-      return getWorkItems(projectId as string, legacyListSort, dir, {
-        cursor: pageParam,
-      });
-    },
+    queryFn: ({ pageParam }) =>
+      fetchWorkItemsListPage(projectId as string, sort, dir, pageParam),
     getNextPageParam: (last, _pages, _lastParam, pageParams) =>
       last.hasMore && last.nextCursor && !pageParams.includes(last.nextCursor)
         ? last.nextCursor

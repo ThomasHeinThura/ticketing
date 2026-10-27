@@ -20,7 +20,6 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Skeleton,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
 import {
@@ -57,6 +56,7 @@ import ColumnCountBadge from "./column-count-badge";
 import useWorkItemDragDrop from "./use-work-item-drag-drop";
 import type { VirtualizedSortableItem } from "./virtualization/virtualized-sortable-list";
 import { WorkItemBlockedBadge } from "./work-item-blocked-badge";
+import WorkItemBoardSkeleton from "./work-item-board-skeleton";
 import WorkItemContextMenu from "./work-item-context-menu";
 import { WorkItemSlaBadge } from "./work-item-sla-badge";
 
@@ -211,17 +211,7 @@ export default function WorkItemBoard({
   }
 
   if (isLoading || !states) {
-    return (
-      <div
-        className="flex gap-4 overflow-x-auto p-4"
-        aria-busy="true"
-        data-testid="work-item-board-loading"
-      >
-        {["one", "two", "three", "four"].map((key) => (
-          <Skeleton key={key} className="h-72 min-w-72" />
-        ))}
-      </div>
-    );
+    return <WorkItemBoardSkeleton />;
   }
 
   if (states.length === 0) {

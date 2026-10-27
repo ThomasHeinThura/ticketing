@@ -10,6 +10,7 @@ import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import WorkspaceLayout from "@/components/common/workspace-layout";
 import { ErrorDisplay } from "@/components/errors/error-display";
+import { loadedModuleThenable } from "@/components/work-item/loaded-module-thenable";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
@@ -20,7 +21,18 @@ import { parseAgentHomeSearch } from "@/lib/routes";
 // `/dashboard/*` — docs/02-design/design-principles.md § Integrate, don't add.
 // Project controls are needed only after the project resolves. Keep them out of
 // unrelated agent pages; the inherited frame loads alongside project data.
-const loadProjectLayout = () => import("@/components/common/project-layout");
+type ProjectLayoutModule = typeof import("@/components/common/project-layout");
+let projectLayoutModule: ProjectLayoutModule | undefined;
+// Once the frame is here (it is fetched below on a direct visit), `lazy` reads it in the same
+// render instead of committing the skeleton frame first and revealing the page a Suspense
+// throttle later (G11 work-list LCP).
+const loadProjectLayout = (): Promise<ProjectLayoutModule> =>
+  projectLayoutModule
+    ? loadedModuleThenable(projectLayoutModule)
+    : import("@/components/common/project-layout").then((module) => {
+        projectLayoutModule = module;
+        return module;
+      });
 const ProjectLayout = lazy(loadProjectLayout);
 // UI chunks may download during the session check; data access still waits for it.
 if (
@@ -29,7 +41,7 @@ if (
     window.location.pathname,
   )
 ) {
-  void loadProjectLayout().catch(() => {
+  void Promise.resolve(loadProjectLayout()).catch(() => {
     // Rendering the lazy component surfaces a failed chunk through the route boundary.
   });
 }

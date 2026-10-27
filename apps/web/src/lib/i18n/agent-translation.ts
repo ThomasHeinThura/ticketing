@@ -41,6 +41,43 @@ function getTermVariables(translate: AgentTranslate, count: number) {
   );
 }
 
+/**
+ * The noun variables cost eighteen lookups. Every `t()` call injects them, so a 500-row list
+ * paid them thousands of times per render (G11 list render). They only change with the
+ * language or the loaded resources (a terminology overlay arriving), so each instance keeps
+ * them per language and count until either changes.
+ */
+const termVariableCaches = new WeakMap<
+  I18nInstance,
+  (count: number) => Record<string, string>
+>();
+const TERM_VARIABLE_CACHE_LIMIT = 64;
+
+function cachedTermVariables(instance: I18nInstance, count: number) {
+  let lookup = termVariableCaches.get(instance);
+  if (!lookup) {
+    const translate =
+      originalAgentTranslators.get(instance) ?? instance.t.bind(instance);
+    const cache = new Map<string, Record<string, string>>();
+    const clear = () => cache.clear();
+    instance.on?.("languageChanged", clear);
+    instance.store?.on?.("added", clear);
+    instance.store?.on?.("removed", clear);
+    lookup = (requestedCount) => {
+      const key = `${instance.language}\u0000${requestedCount}`;
+      let variables = cache.get(key);
+      if (!variables) {
+        if (cache.size >= TERM_VARIABLE_CACHE_LIMIT) cache.clear();
+        variables = getTermVariables(translate, requestedCount);
+        cache.set(key, variables);
+      }
+      return variables;
+    };
+    termVariableCaches.set(instance, lookup);
+  }
+  return lookup(count);
+}
+
 /** Inject the closed agent noun set per translation call from the active isolated locale. */
 export function withAgentTerminology<T extends AgentTranslate>(
   translate: T,
@@ -48,9 +85,8 @@ export function withAgentTerminology<T extends AgentTranslate>(
 ): T {
   if (!instance) return translate;
   if (originalAgentTranslators.has(instance)) return translate;
-  const termTranslator = originalAgentTranslators.get(instance) ?? instance.t;
   const termsFor = (options: unknown) =>
-    getTermVariables(termTranslator.bind(instance), getTermCount(options));
+    cachedTermVariables(instance, getTermCount(options));
   const wrapped = ((
     key: string | string[] | TemplateStringsArray,
     options?: unknown,
@@ -85,7 +121,7 @@ export function installAgentTerminology(instance: I18nInstance) {
     const countOptions = typeof options === "string" ? extraOptions : options;
     return rawTranslate(key as string | string[], {
       ...normalizedOptions,
-      ...getTermVariables(rawTranslate, getTermCount(countOptions)),
+      ...cachedTermVariables(instance, getTermCount(countOptions)),
     });
   }) as unknown as typeof instance.t;
   instance.t = wrapped;

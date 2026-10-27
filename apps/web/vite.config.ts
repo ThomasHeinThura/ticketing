@@ -93,6 +93,25 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve the Kaneo project frame.",
           );
         addChunkAndImports(projectLayoutChunk.fileName);
+        // The authenticated shell wraps every agent screen. Its component chunk is otherwise
+        // requested only after the session check resolves, a round trip queued behind the
+        // route's other downloads that held back the work list's first paint (G11 LCP).
+        const authenticatedShellChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith(
+                  "/routes/agent/_layout/_authenticated.tsx?tsr-split=component",
+                ),
+            ),
+        );
+        if (authenticatedShellChunk?.type !== "chunk")
+          throw new Error(
+            "G11 work-route preload could not resolve the authenticated shell chunk.",
+          );
+        addChunkAndImports(authenticatedShellChunk.fileName);
         // The panel supplies the route's first content and heading readiness
         // boundary, but is dynamically imported by beforeLoad only after the
         // route code executes. Fetch its static closure alongside the route so
@@ -535,6 +554,16 @@ export default defineConfig(({ mode }) => {
                             // and execution order while fetching that closure in one group.
                             name: "project-layout",
                             test: /\/src\/components\/common\/project-layout\.tsx$/u,
+                            priority: 1,
+                            maxSize: 1_000_000,
+                          },
+                          {
+                            // The work list's panel and the first-viewport preview it paints
+                            // from (G11 work-list LCP) are HTML-preloaded on a direct visit;
+                            // as a dozen sub-kilobyte chunks they queued behind the entry for
+                            // a round trip each. Fetch that closure as one request instead.
+                            name: "work-items-panel",
+                            test: /\/src\/components\/work-item\/work-items-panel\.tsx$/u,
                             priority: 1,
                             maxSize: 1_000_000,
                           },

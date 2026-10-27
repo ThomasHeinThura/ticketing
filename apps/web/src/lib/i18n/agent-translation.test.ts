@@ -52,6 +52,27 @@ describe("agent terminology translation", () => {
     );
   });
 
+  it("reuses the nouns between calls and refreshes them when a terminology overlay or language lands", async () => {
+    const { t, instance } = await isolatedTranslator();
+    expect(t("agent:navigation.workItems")).toBe("Tickets");
+    instance.addResourceBundle(
+      "en-US",
+      "term",
+      { agent: { work_item_one: "Case", work_item_other: "Cases" } },
+      true,
+      true,
+    );
+    expect(t("agent:navigation.workItems")).toBe("Cases");
+    instance.addResourceBundle("de", "agent", {
+      navigation: { workItems: "{{term_work_item_other}}" },
+    });
+    instance.addResourceBundle("de", "term", {
+      agent: { work_item_one: "Vorgang", work_item_other: "Vorgänge" },
+    });
+    await instance.changeLanguage("de");
+    expect(t("agent:navigation.workItems")).toBe("Vorgänge");
+  });
+
   it("keeps user interpolation literal and prevents callers overriding nouns", async () => {
     const { t } = await isolatedTranslator();
     const ref = '$t(term:agent.work_item, {"count":1})';

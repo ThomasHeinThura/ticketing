@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-27T14:07:51.701Z",
+	"generated": "2026-10-27T17:34:49.893Z",
 	"source": "673 indexed clauses: 661 in P0–P5 and 12 in P6. P0–P5 bars use the per-ID audits; P6 uses a per-ID test mapping (27 Oct). Scoped test and browser passes do not count as whole-clause browser acceptance.",
 	"phases": [
 		{
@@ -1285,10 +1285,15 @@
 		"Approved 27 Oct (Thomas): dismiss the 3 by-design CodeQL alerts (legacy SHA-256 lookup of random API keys, SHA-256 of a step-up operation body, palette recent items) with reasons.",
 		"Approved 27 Oct (Thomas): fix all 18 required CI checks (incl. ~50 new G8 visual baselines) before merging PR #891; no gate exemptions.",
 		"27 Oct (Thomas): P7 deferred; real Entra validation done by Thomas.",
-		"Approved 27 Oct (Thomas): move the five live-SIT e2e specs (mermaid, organisation lifecycle x2, PDF preview, report epic rollup) to apps/web/e2e-sit/ (run locally against SIT); the katex security check gets a mock-backed CI spec."
+		"Approved 27 Oct (Thomas): move the five live-SIT e2e specs (mermaid, organisation lifecycle x2, PDF preview, report epic rollup) to apps/web/e2e-sit/ (run locally against SIT); the katex security check gets a mock-backed CI spec.",
+		"Decided 27 Oct (Thomas): keep the G11 work-list LCP budget (< 2.5 s) and do the deep performance work first (start work-item requests before React boots, light first-paint rows within the bundle headroom).",
+		"Decided 27 Oct (Thomas): the G11 500-row render metric measures the ?layout=table view with 500 rows (feature-contracts-p1 wording), not the interim fallback table; the < 500 ms budget is unchanged.",
+		"Decided 28 Oct (Thomas): after P6, phases end. Plan: (1) finish CI gates incl. G11 deep work, (2) merge PR #891 automatically once all required checks are green, (3) deploy the signed release image to local SIT and Technexus public SIT without a further ask (backup, digest record, rollback ready), (4) align all docs for handover, (5) plan the former P7 as linear fixes/bugs/features, (6) hand over to Codex via AGENTS.md and docs.",
+		"Decided 28 Oct (Thomas): Codex is the coding agent. Terra/Sonnet (middle tier) implements; Sol/Opus (high tier) plans, audits and reviews; a reviewer never reviews its own work. Codex fixes bugs and adjusts implementation and docs on its own judgment, but asks Thomas before new dependencies (except official @tiptap/* extensions for the Pages editor, logged in THIRD-PARTY-NOTICES.md), changing budgets, the security model or contracts, merging to main, Technexus deploys after the handover, or deleting data.",
+		"Decided 28 Oct (Thomas): settings split by scope: account settings under the user icon, project settings in the project ... menu, workspace settings under the workspace menu, God Mode on its own URL with its own sign-in; old links redirect. Pages editor to reach Plane/Notion-level markdown editing."
 	],
-	"next": "Push the CI fixes and get all 18 required checks on PR #891 green; dismiss the last 2 by-design CodeQL alerts; ask Thomas to merge (release builds, scans and signs the image); then present the Technexus deploy plan for Thomas's approval.",
-	"status": "27 Oct: P0–P6 passed AI review and are accepted by Thomas with open lows. P7 deferred by Thomas; real Entra validation is Thomas's. PR #891: 13 checks pass, 12 fail on the last pushed commit; contract, vocabulary, gate checkers, a11y, secret-scan triage and CodeQL fixes are local and not yet pushed; G8 visual baselines, e2e, integration shard, G11 and the katex browser check are being fixed. Merge needs all 18 required checks green.",
+	"next": "Fix table row shift, board skeleton shift and the bench socket fixture; deep work-list performance work for LCP; switch the 500-row metric to ?layout=table; regenerate G8 baselines; push and get all required checks green; then ask Thomas to merge.",
+	"status": "27 Oct night: P0–P6 accepted. PR #891 at 7002e59ef: 19 of 24 checks pass (all integration shards, unit, contract, secret scan, gate checkers, a11y). Remaining: G11 performance (LCP 18.2 s vs 2.5 s on CI; deep performance work approved by Thomas), G8 (6 baselines to regenerate), e2e (table row height shift), static (runner shutdown, rerun), CodeQL alerts. P7 deferred; Entra is Thomas's.",
 	"validation_runs": [
 		{
 			"check": "GitHub issue triage (27 Oct)",

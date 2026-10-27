@@ -2,7 +2,7 @@ import { closestCorners, DndContext, DragOverlay } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { useNavigate } from "@tanstack/react-router";
 import { Alert, AlertDescription, Button } from "@taskdesk/ui";
-import { lazy, Suspense, useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { ListColumnSection } from "@/components/list-view/list-column-section";
@@ -22,16 +22,51 @@ import {
 } from "@/lib/work-item-kaneo-view";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { ProjectWithTasks } from "@/types/project";
+import loadVirtualizedSortableList, {
+  isVirtualizedSortableListLoaded,
+} from "./load-virtualized-sortable-list";
+import loadWorkItemInlineFields, {
+  isWorkItemInlineFieldsLoaded,
+} from "./load-work-item-inline-fields";
 import useWorkItemDragDrop from "./use-work-item-drag-drop";
 import type { VirtualizedSortableItem } from "./virtualization/virtualized-sortable-list";
 import WorkItemContextMenu from "./work-item-context-menu";
+import WorkItemLightList, {
+  canPreviewWorkItemList,
+} from "./work-item-light-list";
 import WorkItemList, { type WorkItemListProps } from "./work-item-list";
 import { WorkItemSlaBadge } from "./work-item-sla-badge";
 
-const VirtualizedSortableList = lazy(
-  () => import("./virtualization/virtualized-sortable-list"),
-) as unknown as typeof import("./virtualization/virtualized-sortable-list").default;
-const WorkItemInlineFields = lazy(() => import("./work-item-inline-fields"));
+// The grouped rows' virtual window and inline controls are fetched with this module, alongside
+// the states query, and the grouped list renders once both are here. Rendered through their
+// Suspense fallbacks instead, the window's mounted every row of a large group (500 on G11) and
+// the controls' remounted each row when they arrived, so a click landing then was lost.
+const loadRowModules = () =>
+  Promise.all([loadVirtualizedSortableList(), loadWorkItemInlineFields()]);
+void loadRowModules().catch(() => undefined);
+const rowModulesLoaded = () =>
+  isVirtualizedSortableListLoaded() && isWorkItemInlineFieldsLoaded();
+
+// biome-ignore format: the contrast gate reads the lazy loader binding from a one-line `lazy(loader)`
+const VirtualizedSortableList = lazy(loadVirtualizedSortableList) as unknown as typeof import("./virtualization/virtualized-sortable-list").default;
+const WorkItemInlineFields = lazy(loadWorkItemInlineFields);
+
+/** True once the row modules are loaded, or their download failed (the lazy path retries). */
+function useRowModulesSettled() {
+  const [settled, setSettled] = useState(rowModulesLoaded);
+  useEffect(() => {
+    if (settled) return;
+    let current = true;
+    loadRowModules().then(
+      () => current && setSettled(true),
+      () => current && setSettled(true),
+    );
+    return () => {
+      current = false;
+    };
+  }, [settled]);
+  return settled;
+}
 
 /** Kaneo presentation over canonical rows; all writes stay with canonical actions. */
 export default function WorkItemKaneoList({
@@ -50,6 +85,7 @@ export default function WorkItemKaneoList({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const rowModulesSettled = useRowModulesSettled();
   const states = useGetProjectStates(projectId);
   const permission = useWorkspacePermission(workspaceId, projectId);
   const drag = useWorkItemDragDrop({
@@ -117,8 +153,32 @@ export default function WorkItemKaneoList({
     props.hasPartialFailure ||
     hasUngroupedRows ||
     states.isError ||
-    states.isLoading
+    states.isLoading ||
+    !rowModulesSettled
   ) {
+    // While only the row modules are still downloading, keep the grouped list's first viewport
+    // (the preview the panel painted) instead of swapping in the full table (G11 work-list LCP).
+    if (
+      !rowModulesSettled &&
+      !props.isError &&
+      !props.isLoading &&
+      !props.isPlaceholderData &&
+      states.data &&
+      props.workItems &&
+      canPreviewWorkItemList({
+        workItems: props.workItems,
+        states: states.data,
+        sort: props.sort,
+        hasPartialFailure: props.hasPartialFailure,
+      })
+    )
+      return (
+        <WorkItemLightList
+          projectId={projectId}
+          workItems={props.workItems}
+          states={states.data}
+        />
+      );
     return <WorkItemList {...props} />;
   }
 

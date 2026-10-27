@@ -97,35 +97,40 @@ export default function WorkItemSidePaneBody({
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <Suspense fallback={<WorkItemDetailLoading />}>
-          {item ? (
-            <SidePaneDetailWithProject
-              item={item}
-              workItemKey={itemKey}
-              activityFilter={activityFilter}
-              onActivityFilterChange={setActivityFilter}
-              isError={isError}
-              onRetry={refetch}
-              onAccessLost={onAccessLost}
-            />
-          ) : !isNotFound && !isError ? (
-            <WorkItemDetailLoading />
-          ) : (
-            <WorkItemDetail
-              variant="pane"
-              item={undefined}
-              workItemKey={itemKey}
-              activityFilter={activityFilter}
-              onActivityFilterChange={setActivityFilter}
-              project={undefined}
-              isLoading={isLoading}
-              isNotFound={isNotFound}
-              isError={isError && !isNotFound}
-              onRetry={refetch}
-              onAccessLost={onAccessLost}
-            />
-          )}
-        </Suspense>
+        {/* The item's own loading state sits outside the boundary: inside it, a boundary that
+            had already shown it kept it mounted (hidden) beside its fallback while the detail
+            code loaded, so the pane carried two loading regions at once. */}
+        {!item && !isNotFound && !isError ? (
+          <WorkItemDetailLoading />
+        ) : (
+          <Suspense fallback={<WorkItemDetailLoading />}>
+            {item ? (
+              <SidePaneDetailWithProject
+                item={item}
+                workItemKey={itemKey}
+                activityFilter={activityFilter}
+                onActivityFilterChange={setActivityFilter}
+                isError={isError}
+                onRetry={refetch}
+                onAccessLost={onAccessLost}
+              />
+            ) : (
+              <WorkItemDetail
+                variant="pane"
+                item={undefined}
+                workItemKey={itemKey}
+                activityFilter={activityFilter}
+                onActivityFilterChange={setActivityFilter}
+                project={undefined}
+                isLoading={isLoading}
+                isNotFound={isNotFound}
+                isError={isError && !isNotFound}
+                onRetry={refetch}
+                onAccessLost={onAccessLost}
+              />
+            )}
+          </Suspense>
+        )}
       </div>
     </div>
   );

@@ -400,12 +400,31 @@ export async function installPerformanceApiFixture(
     assigneeName: legacyTaskAssignee ? SESSION.user.name : null,
   });
 
-  await page.routeWebSocket(/\/api\/ws\/project-g11(?:\?|$)/, (socket) => {
-    socket.onMessage((message) => {
-      if (typeof message === "string" && message.includes('"type":"ping"'))
-        socket.send(JSON.stringify({ type: "pong" }));
-    });
-  });
+  // A healthy realtime server for every socket the agent app opens: the native work-item
+  // socket (`/api/ws`, one `subscribe` per topic), the user socket (`/api/ws/user`) and the
+  // legacy project socket (`/api/ws/:projectId`). Left unrouted, a socket reaches the preview
+  // server, fails, and the page renders its "live updates are unavailable" notice. A spec that
+  // needs a failing socket registers its own handler after this one, which takes precedence.
+  await page.routeWebSocket(
+    /\/api\/ws(?:\/(?:user|project-g11(?:-board)?))?(?:\?|$)/,
+    (socket) => {
+      socket.onMessage((message) => {
+        if (typeof message !== "string") return;
+        let frame: { type?: string; topic?: string };
+        try {
+          frame = JSON.parse(message) as typeof frame;
+        } catch {
+          return;
+        }
+        if (frame.type === "subscribe")
+          socket.send(
+            JSON.stringify({ type: "subscribed", topic: frame.topic }),
+          );
+        if (frame.type === "ping")
+          socket.send(JSON.stringify({ type: "pong" }));
+      });
+    },
+  );
 
   await page.route("**/api/**", async (route) => {
     const request = route.request();

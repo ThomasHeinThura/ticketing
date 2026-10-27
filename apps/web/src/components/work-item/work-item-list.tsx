@@ -1218,6 +1218,10 @@ function WorkItemListPresentation({
             }
             renderTrailingCell={hasDeletedRows ? renderTrailingCell : undefined}
             className="table-fixed bg-background"
+            // Every virtual row is as tall as a row with its inline controls, from its first
+            // frame: rows mount with plain values, the controls (the title's icon button is the
+            // tallest, `size="icon"`) arrive after. `box-content` keeps the density padding.
+            bodyCellClassName="box-content h-9 sm:h-8"
             testId="work-item-list-populated"
             onMouseOver={handleListMouseOver}
             onFocusCapture={handleListFocus}

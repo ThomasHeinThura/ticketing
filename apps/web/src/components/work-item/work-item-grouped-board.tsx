@@ -20,7 +20,6 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Skeleton,
 } from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -44,6 +43,7 @@ import {
 import type { WorkItemRow } from "@/types/work-item";
 import useWorkItemGroupDrag from "./use-work-item-group-drag";
 import { BoardCard } from "./work-item-board";
+import WorkItemBoardSkeleton from "./work-item-board-skeleton";
 import WorkItemContextMenu from "./work-item-context-menu";
 
 const VirtualizedSortableList = lazy(
@@ -228,17 +228,7 @@ export default function WorkItemGroupedBoard({
     (field === "assignee" && peopleQuery.isLoading) ||
     (field === "label" && labelsQuery.isLoading)
   ) {
-    return (
-      <div
-        className="flex gap-4 overflow-x-auto p-4"
-        aria-busy="true"
-        data-testid="work-item-board-loading"
-      >
-        {["one", "two", "three", "four"].map((key) => (
-          <Skeleton key={key} className="h-72 min-w-72" />
-        ))}
-      </div>
-    );
+    return <WorkItemBoardSkeleton />;
   }
 
   if (groups.length === 0) {

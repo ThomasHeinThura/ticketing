@@ -8258,6 +8258,17 @@
 			},
 			{
 				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
@@ -8384,6 +8395,17 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"ListColumnSection->apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -16896,6 +16918,8 @@
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::hover:text-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/p[0]::text-foreground#0",
@@ -17959,6 +17983,66 @@
 				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -19460,6 +19544,8 @@
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::hover:text-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/p[0]::text-foreground#0",
@@ -20523,6 +20609,66 @@
 				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -22430,6 +22576,7 @@
 			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
 			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-actions.tsx::WorkItemActions::div[0]/Button[0]::text-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
@@ -22758,6 +22905,17 @@
 				"id": "apps/web/src/components/work-item/work-item-actions.tsx::WorkItemActions::div[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-actions.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -22871,6 +23029,7 @@
 			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
 			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-actions.tsx::WorkItemActions::div[0]/Button[0]::text-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
@@ -23199,6 +23358,17 @@
 				"id": "apps/web/src/components/work-item/work-item-actions.tsx::WorkItemActions::div[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-actions.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -27018,6 +27188,17 @@
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
 			}
 		]
 	},
@@ -27044,6 +27225,17 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"ListColumnSection->apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
 				"surfaceContext": "caller-chain",
@@ -31370,6 +31562,7 @@
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverTrigger[0]/Button[0]/CalendarClock[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::AssigneeControl::Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::DateControl::Button[0]/span[0]::text-muted-foreground#0",
@@ -38003,6 +38196,36 @@
 				"id": "apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-inline-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -42235,6 +42458,7 @@
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverTrigger[0]/Button[0]/CalendarClock[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::AssigneeControl::Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::DateControl::Button[0]/span[0]::text-muted-foreground#0",
@@ -48868,6 +49092,36 @@
 				"id": "apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-inline-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -53775,6 +54029,10 @@
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverTrigger[0]/Button[0]/CalendarClock[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/workflow/cab-template-panel.tsx::CabTemplatePanel::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/workflow/cab-template-panel.tsx::CabTemplatePanel::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
@@ -56566,6 +56824,50 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/span[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/div[0]>bg-card"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/workflow/cab-template-panel.tsx:CabTemplatePanel",
 					"jsx:Card[0]/CardContent[0]/div[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
@@ -56634,8 +56936,30 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"ListColumnSection->apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
@@ -58276,6 +58600,10 @@
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverTrigger[0]/Button[0]/CalendarClock[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/workflow/cab-template-panel.tsx::CabTemplatePanel::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/workflow/cab-template-panel.tsx::CabTemplatePanel::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
@@ -61067,6 +61395,50 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/span[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/div[0]>bg-card"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/workflow/cab-template-panel.tsx:CabTemplatePanel",
 					"jsx:Card[0]/CardContent[0]/div[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
@@ -61135,8 +61507,30 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"ListColumnSection->apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
@@ -101063,6 +101457,17 @@
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
 			}
 		]
 	},
@@ -101089,6 +101494,17 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"ListColumnSection->apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
 				"surfaceContext": "caller-chain",
@@ -101136,6 +101552,17 @@
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
 			}
 		]
 	},
@@ -101162,6 +101589,17 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"ListColumnSection->apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-light-list.tsx:WorkItemLightList",
+					"jsx:div[0]/div[0]/div[0]/div[0]/LightRow[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
 				"surfaceContext": "caller-chain",

@@ -7,10 +7,28 @@ import {
   within,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type { WorkItemRow } from "@/types/work-item";
+import loadVirtualizedSortableList from "./load-virtualized-sortable-list";
+import loadWorkItemInlineFields from "./load-work-item-inline-fields";
 import WorkItemKaneoList from "./work-item-kaneo-list";
+
+// The grouped list renders once its row code is loaded (the table shows until then).
+beforeAll(async () => {
+  await Promise.all([
+    loadVirtualizedSortableList(),
+    loadWorkItemInlineFields(),
+  ]);
+});
 
 const preference = vi.hoisted(() => ({
   set: vi.fn(),

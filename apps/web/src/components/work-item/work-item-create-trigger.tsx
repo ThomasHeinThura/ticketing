@@ -3,6 +3,7 @@ import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
+import { WorkItemCreateTriggerPlaceholder } from "./work-item-toolbar-placeholders";
 
 export default function WorkItemCreateTrigger({
   workspaceId,
@@ -25,6 +26,9 @@ export default function WorkItemCreateTrigger({
   );
   const canCreate = !isCheckingPermissions && canCreateTasks();
 
+  // While permission loads, hold the action's place (invisible, inert) so the toolbar does not
+  // grow, and possibly wrap onto a second row, under the loaded board or list (G13).
+  if (isCheckingPermissions) return <WorkItemCreateTriggerPlaceholder />;
   if (!canCreate) return null;
 
   return (

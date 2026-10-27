@@ -741,14 +741,23 @@ async function collectG13WindowMeasurement(
   );
 }
 
+/**
+ * The 500-row render metric measures the work route's table layout (`?layout=table`), the
+ * feature-contracts-p1 "table with 500 rows", not the grouped list's interim fallback table.
+ * Approved by Thomas on 27 Oct 2026: only the opened URL and the table's row selector changed.
+ * The budget, the paint recorder (the 500th `tbody` row painted in the viewport), sampling,
+ * retries and calibration are unchanged.
+ */
+const WORK_TABLE_PATH = WORK_LIST_PATH.replace("layout=list", "layout=table");
+
 async function collectListRender(page: Page) {
-  const rowSelector = "[data-testid=work-item-list-populated] tbody tr";
+  const rowSelector = "table[data-testid=work-item-list-populated] tbody tr";
   await installLastItemPaintRecorder(page, {
     kind: "list",
     expectedCount: 500,
     metric: "listPaint",
   });
-  await page.goto(WORK_LIST_PATH);
+  await page.goto(WORK_TABLE_PATH);
   await expect(page.locator(rowSelector)).toHaveCount(500, {
     timeout: 30_000,
   });

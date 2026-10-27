@@ -17,7 +17,13 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import loadWorkItemSidePane from "@/components/work-item/load-work-item-side-pane";
+import { loadedModuleThenable } from "@/components/work-item/loaded-module-thenable";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
+import {
+  WorkItemCreateTriggerPlaceholder,
+  WorkItemSelectionTogglePlaceholder,
+} from "@/components/work-item/work-item-toolbar-placeholders";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
@@ -29,8 +35,10 @@ import {
   parseTableColumns,
   useProjectViewPreference,
 } from "@/hooks/use-project-view-preference";
+import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { normalizeCanonicalWorkItemSelection } from "@/lib/project-layout-navigation";
+import { prefetchWorkListData } from "@/lib/work-list-prefetch";
 
 type CreateDialogShellComponent =
   typeof import("@/components/work-item/work-item-create-dialog-shell")["default"];
@@ -80,21 +88,35 @@ type WorkItemsPanelModule =
   typeof import("@/components/work-item/work-items-panel");
 
 let workItemsPanelModulePromise: Promise<WorkItemsPanelModule> | undefined;
+let workItemsPanelModule: WorkItemsPanelModule | undefined;
 
+/**
+ * The panel is HTML-preloaded on a direct visit and requested by `beforeLoad`, so it is usually
+ * here before the screen renders. Once it is, `lazy` reads it in the same render (see
+ * `loadedModuleThenable`) instead of suspending the route's list area for a pass, which held
+ * the first rows back behind React's Suspense reveal throttle (G11 work-list LCP).
+ */
 function loadWorkItemsPanel(): Promise<WorkItemsPanelModule> {
+  if (workItemsPanelModule) return loadedModuleThenable(workItemsPanelModule);
   if (!workItemsPanelModulePromise) {
     workItemsPanelModulePromise = import(
       "@/components/work-item/work-items-panel"
-    ).catch((error: unknown) => {
-      workItemsPanelModulePromise = undefined;
-      throw error;
-    });
+    ).then(
+      (module) => {
+        workItemsPanelModule = module;
+        return module;
+      },
+      (error: unknown) => {
+        workItemsPanelModulePromise = undefined;
+        throw error;
+      },
+    );
   }
   return workItemsPanelModulePromise;
 }
 
 function preloadWorkItemsPanel() {
-  void loadWorkItemsPanel().catch(() => undefined);
+  if (!workItemsPanelModule) void loadWorkItemsPanel().catch(() => undefined);
 }
 
 const WorkItemsPanel = lazy(loadWorkItemsPanel);
@@ -119,9 +141,8 @@ const WorkItemListControls = lazy(
 const WorkItemSelectionToggle = lazy(
   () => import("@/components/work-item/work-item-selection-toggle"),
 );
-const WorkItemSidePane = lazy(
-  () => import("@/components/work-item/work-item-side-pane"),
-);
+// The side pane (`?item=`) is fetched once the list has rendered (see its loader).
+const WorkItemSidePane = lazy(loadWorkItemSidePane);
 
 import {
   type ProjectViewGroup,
@@ -157,7 +178,18 @@ export const Route = createFileRoute(
 )({
   validateSearch: (raw) =>
     parseWorkItemWorkSearch(normalizeCanonicalWorkItemSelection(raw)),
-  beforeLoad: preloadWorkItemsPanel,
+  beforeLoad: ({ context, params, search, cause }) => {
+    preloadWorkItemsPanel();
+    // The main entry preloads this route on a direct visit, so the list's reads start here,
+    // before the screen mounts (G11 work-list LCP). A search change on the mounted screen
+    // ("stay") leaves fetching to the hooks.
+    if (cause !== "stay")
+      prefetchWorkListData(context.queryClient, {
+        session: context.session,
+        projectKey: params.projectKey,
+        search,
+      });
+  },
   component: WorkItemsRouteComponent,
 });
 
@@ -285,6 +317,14 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     return () => {
       cancelled = true;
     };
+  }, []);
+  useEffect(() => {
+    const abort = new AbortController();
+    afterPrimaryContent({ signal: abort.signal }).then(
+      () => void loadWorkItemSidePane().catch(() => undefined),
+      () => undefined,
+    );
+    return () => abort.abort();
   }, []);
   const focusRestoreGenerationRef = useRef(0);
   const pendingFocusRestoreRef = useRef<
@@ -933,7 +973,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               </div>
               <div className="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 sm:w-auto">
                 {project ? (
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<WorkItemSelectionTogglePlaceholder />}>
                     <WorkItemSelectionToggle
                       workspaceId={project.workspaceId}
                       projectId={project.id}
@@ -942,6 +982,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                       onCapabilityChange={setCanBulkAct}
                     />
                   </Suspense>
+                ) : isWorkspaceLoading || isProjectsLoading ? (
+                  <WorkItemSelectionTogglePlaceholder />
                 ) : null}
                 <fieldset
                   aria-label={t("workItems:list.layoutGroup")}
@@ -968,7 +1010,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                   ))}
                 </fieldset>
                 {project ? (
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<WorkItemCreateTriggerPlaceholder />}>
                     <WorkItemCreateTrigger
                       workspaceId={project.workspaceId}
                       projectId={project.id}
@@ -977,6 +1019,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                       onClick={() => openCreateDialog()}
                     />
                   </Suspense>
+                ) : isWorkspaceLoading || isProjectsLoading ? (
+                  <WorkItemCreateTriggerPlaceholder />
                 ) : null}
               </div>
             </div>

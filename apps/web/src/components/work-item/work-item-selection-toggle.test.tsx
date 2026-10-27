@@ -62,11 +62,17 @@ describe("WorkItemSelectionToggle", () => {
     expect(onCapabilityChange).toHaveBeenLastCalledWith(true);
     expect(perms.scope).toHaveBeenCalledWith("ws", "project");
   });
-  it("renders nothing and reports false while capabilities load", () => {
+  it("holds an inert, hidden placeholder and reports false while capabilities load", () => {
     perms.assign = true;
     perms.checking = true;
-    const { onCapabilityChange } = mount();
+    const { onCapabilityChange, view } = mount();
+    // No usable control, but the switch's footprint stays so the toolbar does not shift (G13).
     expect(screen.queryByRole("button")).toBeNull();
+    const placeholder = view.container.querySelector("button");
+    expect(placeholder).toHaveAttribute("aria-hidden", "true");
+    expect(placeholder).toHaveAttribute("tabindex", "-1");
+    expect(placeholder).toBeDisabled();
+    expect(placeholder).toHaveClass("invisible");
     expect(onCapabilityChange).toHaveBeenLastCalledWith(false);
   });
 

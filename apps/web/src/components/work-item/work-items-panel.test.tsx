@@ -51,6 +51,11 @@ vi.mock("./work-item-kaneo-list", () => ({
   },
 }));
 
+// The panel reads the project states for the grouped list's first-viewport preview.
+vi.mock("@/hooks/queries/project/use-get-project-states", () => ({
+  default: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+
 vi.mock("./work-item-list-realtime", () => ({
   default: ({ projectId }: { projectId: string }) => (
     <div data-testid="work-list-realtime">Realtime {projectId}</div>

@@ -50,6 +50,12 @@ type Props<Row, Column extends string, RowControl = undefined> = {
   renderTrailingHeader?: () => ReactNode;
   renderTrailingCell?: (row: Row) => ReactNode;
   className?: string;
+  /**
+   * Classes for every body cell. A virtual window needs rows that paint at their final height
+   * from the first frame: rows mount before their inline controls arrive, and a row that grows
+   * afterwards changes the window's total size under the reader.
+   */
+  bodyCellClassName?: string;
   testId?: string;
   onMouseOver?: ComponentProps<typeof Table>["onMouseOver"];
   onFocusCapture?: ComponentProps<typeof Table>["onFocusCapture"];
@@ -108,6 +114,7 @@ export default function WorkItemTable<
   renderTrailingHeader,
   renderTrailingCell,
   className,
+  bodyCellClassName,
   testId,
   onMouseOver,
   onFocusCapture,
@@ -157,6 +164,8 @@ export default function WorkItemTable<
       : 0;
 
   const rowEstimate = useRef(42);
+  const rowEstimateMeasured = useRef(false);
+  const rowEstimatePending = useRef(false);
   const recentRowHeights = useRef<number[]>([]);
   const reestimateTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(
@@ -188,6 +197,15 @@ export default function WorkItemTable<
       // so re-estimate from the median of recent measurements once they stop changing, rather
       // than clearing the size cache on every differing row.
       if (height > 0) {
+        // The first measured row sets the estimate before the window first paints (see the
+        // layout effect below), so the table's total size is right from its first frame.
+        if (!rowEstimateMeasured.current) {
+          rowEstimateMeasured.current = true;
+          if (Math.abs(height - rowEstimate.current) > 0.5) {
+            rowEstimate.current = height;
+            rowEstimatePending.current = true;
+          }
+        }
         const recent = recentRowHeights.current;
         recent.push(height);
         if (recent.length > 50) recent.shift();
@@ -224,6 +242,12 @@ export default function WorkItemTable<
     estimateSize: (index) => columnWidths[index] ?? 120,
     overscan: 1,
     rangeExtractor: columnRangeExtractor,
+  });
+  // Re-lay the window on the first measured row height before the browser paints it.
+  useLayoutEffect(() => {
+    if (!rowEstimatePending.current) return;
+    rowEstimatePending.current = false;
+    rowVirtualizer.measure();
   });
   const columnWidthSignature = columnWidths.join(",");
   useLayoutEffect(() => {
@@ -397,7 +421,10 @@ export default function WorkItemTable<
                 data-virtual-row-id={rowId}
               >
                 {renderLeadingCell ? (
-                  <TableCell style={{ width: leadingWidth }}>
+                  <TableCell
+                    className={bodyCellClassName}
+                    style={{ width: leadingWidth }}
+                  >
                     {renderLeadingCell(row)}
                   </TableCell>
                 ) : null}
@@ -415,6 +442,7 @@ export default function WorkItemTable<
                     <TableCell
                       key={column}
                       data-virtual-column-index={virtualColumn.index}
+                      className={bodyCellClassName}
                       style={{ width: columnWidths[virtualColumn.index] }}
                     >
                       {renderCell(row, column, rowControl)}
@@ -429,7 +457,10 @@ export default function WorkItemTable<
                   />
                 ) : null}
                 {renderTrailingCell ? (
-                  <TableCell style={{ width: trailingWidth }}>
+                  <TableCell
+                    className={bodyCellClassName}
+                    style={{ width: trailingWidth }}
+                  >
                     {renderTrailingCell(row)}
                   </TableCell>
                 ) : null}

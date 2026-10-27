@@ -9,8 +9,12 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import WorkItemLightList, {
+  canPreviewWorkItemList,
+} from "@/components/work-item/work-item-light-list";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
+import useGetProjectStates from "@/hooks/queries/project/use-get-project-states";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import type {
   WorkItemSearchColumn,
@@ -103,6 +107,21 @@ function WorkItemsPanel({
 }: WorkItemsPanelProps) {
   const { t } = useTranslation();
   const workItems = workItemsResult?.items;
+  // The grouped list's states, read here too so its first viewport can paint from the
+  // already-fetched rows while the list's own modules load (see `WorkItemLightList`).
+  const states = useGetProjectStates(project?.id, layout === "list");
+  const previewStates = states.data;
+  const showPreview =
+    layout === "list" &&
+    !isLoading &&
+    !isError &&
+    !isPlaceholderData &&
+    canPreviewWorkItemList({
+      workItems,
+      states: previewStates,
+      sort,
+      hasPartialFailure: workItemsResult?.hasPartialFailure,
+    });
   const [projectLifecycle, setProjectLifecycle] = useState(() => ({
     projectId: project?.id,
     generation: 0,
@@ -243,7 +262,19 @@ function WorkItemsPanel({
           </Alert>
         </div>
       ) : null}
-      <Suspense fallback={<WorkItemListLoading />}>
+      <Suspense
+        fallback={
+          showPreview && workItems && previewStates ? (
+            <WorkItemLightList
+              projectId={project?.id}
+              workItems={workItems}
+              states={previewStates}
+            />
+          ) : (
+            <WorkItemListLoading />
+          )
+        }
+      >
         {layout === "list" ? (
           <WorkItemKaneoList {...listProps} onCreateInState={onCreateInState} />
         ) : (

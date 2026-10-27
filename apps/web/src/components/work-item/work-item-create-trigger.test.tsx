@@ -40,6 +40,10 @@ describe("WorkItemCreateTrigger", () => {
       />,
     );
     expect(screen.queryByTestId("create-work-item-trigger")).toBeNull();
+    // Its footprint is held, hidden and inert, so the toolbar does not shift (G13).
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(document.querySelector("button")).toHaveClass("invisible");
+    expect(document.querySelector("button")).toBeDisabled();
 
     mocks.permission = { canCreate: false, checking: false };
     rerender(
@@ -50,6 +54,7 @@ describe("WorkItemCreateTrigger", () => {
       />,
     );
     expect(screen.queryByTestId("create-work-item-trigger")).toBeNull();
+    expect(document.querySelector("button")).toBeNull();
   });
 
   it("preserves the permitted create action", () => {
