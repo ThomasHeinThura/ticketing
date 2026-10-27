@@ -8,7 +8,7 @@
  * that needs an item must fail with a recorded reason and the next rule must still be handled.
  */
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { enqueueAutomationRuns } from "../../apps/api/src/automation/consumer";
 import {
@@ -288,6 +288,50 @@ describe("automation pipeline", () => {
     expect(counted?.lastRunAt).not.toBeNull();
     // Nothing is left to claim, and nothing runs twice.
     expect(await processNextAutomationEvent()).toEqual({ kind: "idle" });
+    const failedEvents = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "automation.run_failed"));
+    expect(
+      failedEvents.some(
+        (event) =>
+          (event.payload as { payload?: { runId?: string } }).payload?.runId ===
+          ran?.id,
+      ),
+    ).toBe(true);
+  });
+
+  it("commits a failed run and its automation.run_failed event together (P0R1-05)", async () => {
+    const w = await world();
+    const rule = await w.rule({ name: "fails atomically" });
+    const { envelope } = await w.emit();
+    await db.transaction((tx) => enqueueAutomationRuns(tx, envelope));
+    await db.execute(sql`
+      CREATE FUNCTION p0_fail_run_event() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.kind = 'automation.run_failed' THEN
+          RAISE EXCEPTION 'simulated failure while recording the event';
+        END IF;
+        RETURN NEW;
+      END $$`);
+    await db.execute(sql`
+      CREATE TRIGGER p0_fail_run_event BEFORE INSERT ON outbox
+      FOR EACH ROW EXECUTE FUNCTION p0_fail_run_event()`);
+    try {
+      await expect(processNextAutomationEvent()).rejects.toThrow();
+    } finally {
+      await db.execute(sql`DROP TRIGGER p0_fail_run_event ON outbox`);
+      await db.execute(sql`DROP FUNCTION p0_fail_run_event()`);
+    }
+    // The run was not left `failed` without its event: it is still running (and is later
+    // abandoned by the stale-run sweep), and no event was written.
+    const [run] = await runs(rule.id);
+    expect(run?.state).toBe("running");
+    const events = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "automation.run_failed"));
+    expect(events).toHaveLength(0);
   });
 
   it("records a rule that does not match without running its actions (AM-1)", async () => {

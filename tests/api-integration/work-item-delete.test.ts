@@ -501,9 +501,12 @@ describe("API integration: work item delete (#23 fourth slice)", () => {
     expect(detail.summary).toEqual({ redacted: true, targetCount: 1 });
     expect(detail.targetIds).toEqual([]);
     expect(JSON.stringify(detail)).not.toContain(f.item.key);
+    // PA-6 step 2: an approver who lost access since requesting gets 404 (indistinguishable
+    // from an unreachable action) and the action is invalidated.
     await expect(approveWorkItemDeletion(f.approval)).rejects.toMatchObject({
-      status: 409,
+      status: 404,
     });
+    expect((await f.action())?.state).toBe("invalidated");
     expect((await f.row())?.deletedAt).toBeNull();
   });
   it("requires a current persisted agent session at approval", async () => {

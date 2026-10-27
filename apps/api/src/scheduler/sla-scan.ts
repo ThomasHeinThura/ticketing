@@ -7,6 +7,7 @@ import {
   workItemSlaCacheTable,
   workItemTable,
 } from "../database/schema";
+import { workspaceFeatureEnabled } from "../feature-flag/enforce";
 import { logTaskDesk } from "../instance/observability/runtime";
 import { evaluateStoredWorkItemSla } from "../sla-policy/evaluation";
 import { assertJobExecutionOwned, withJobLease } from "./leader-lock";
@@ -41,6 +42,11 @@ export async function scanWorkItemSla(itemId: string): Promise<number> {
       .where(eq(projectTable.id, item.projectId))
       .for("share");
     if (!project || project.deletedAt || project.archivedAt) return 0;
+    // P4R1-M2: `feature.sla` off pauses the scanner (no at-risk/breach events); records stay.
+    if (
+      !(await workspaceFeatureEnabled("feature.sla", project.workspaceId, tx))
+    )
+      return 0;
     const clock = await tx.execute<{ now: string }>(
       sql`SELECT clock_timestamp()::text AS now`,
     );

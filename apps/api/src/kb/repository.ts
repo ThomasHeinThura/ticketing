@@ -33,6 +33,7 @@ import {
   kbArticleVersionTable,
   kbCategoryTable,
 } from "../database/schema-p5-kb";
+import { assertRowNotUnderLegalHold } from "../utils/workspace-legal-hold";
 import { kbFullText } from "./full-text";
 import {
   type ArticleAction,
@@ -1210,6 +1211,8 @@ export async function deleteCategoryRow(
   workspaceId: string,
   actor: KbActor,
 ) {
+  // PA-12: a category carries no person data of its own; the organisation of its workspace is held.
+  await assertRowNotUnderLegalHold(tx, { workspaceId });
   const [row] = await tx
     .delete(kbCategoryTable)
     .where(

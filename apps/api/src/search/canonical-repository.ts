@@ -77,6 +77,9 @@ const workItemColumns = {
   createdAt: workItemTable.createdAt,
 };
 
+/** P1R2-8: comment text joins work-item search from this many characters on. */
+export const COMMENT_SEARCH_MIN_LENGTH = 3;
+
 /**
  * Work items matching `term`: exact key (or a retired key alias) first, then key prefix,
  * title (exact, prefix, contains) above description. Prefix and contains matching run on the
@@ -108,6 +111,15 @@ export async function searchCanonicalWorkItems(params: {
     case
       when jsonb_typeof(wi.description) = 'string' then wi.description #>> '{}'
       else jsonb_path_query_array(wi.description, 'lax $.**.text')::text
+    end, '')`;
+  // P1R2-8: one- and two-character terms match nearly every comment and cannot use the
+  // trigram index, so comment text is searched from the minimum length on.
+  const searchComments = term.trim().length >= COMMENT_SEARCH_MIN_LENGTH;
+  /** Keep aligned with the `comment_body_search_idx` expression (0208, schema.ts). */
+  const commentBodyText = sql<string>`coalesce(
+    case
+      when jsonb_typeof(c.body) = 'string' then c.body #>> '{}'
+      else jsonb_path_query_array(c.body, 'lax $.**.text')::text
     end, '')`;
   const scope = sql`
     wi.workspace_id = ${params.workspaceId}
@@ -175,6 +187,28 @@ export async function searchCanonicalWorkItems(params: {
        ORDER BY score DESC, wi.created_at DESC, wi.id
        LIMIT ${limit}
     ),
+    comment_candidates AS (
+      -- SV-2: live (non-tombstoned) comment text of the same reachable work items. Staff reach
+      -- already includes internal comments (this branch is closed to customer principals).
+      -- P1R2-8: the predicate is the partial trigram index comment_body_search_idx (0208)
+      -- verbatim; the branch only runs for a term of COMMENT_SEARCH_MIN_LENGTH or more
+      -- characters, is limited to the reachable live items in scope, and is bounded.
+      SELECT wi.id, 1 AS score, wi.created_at
+        FROM work_item AS wi
+        JOIN project AS p ON p.id = wi.project_id
+       WHERE ${scope}
+         AND ${searchComments ? sql`TRUE` : sql`FALSE`}
+         AND wi.id IN (
+           SELECT c.work_item_id
+             FROM comment AS c
+            WHERE c.workspace_id = ${params.workspaceId}
+              AND c.deleted_at IS NULL
+              AND c.body IS NOT NULL
+              AND lower(${commentBodyText}) LIKE ${contains}
+         )
+       ORDER BY wi.created_at DESC, wi.id
+       LIMIT ${limit}
+    ),
     candidate_scores AS (
       SELECT id, max(score) AS relevance_score, max(created_at) AS created_at
         FROM (
@@ -185,6 +219,8 @@ export async function searchCanonicalWorkItems(params: {
           SELECT id, score, created_at FROM title_candidates
           UNION ALL
           SELECT id, score, created_at FROM description_candidates
+          UNION ALL
+          SELECT id, score, created_at FROM comment_candidates
         ) AS candidates
        GROUP BY id
        ORDER BY relevance_score DESC, created_at DESC, id

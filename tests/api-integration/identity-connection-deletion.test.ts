@@ -11,7 +11,6 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import {
-  approvePendingDeletion,
   ensureAgentSession,
   type PendingDeletionBody,
   stepUpProof,
@@ -398,7 +397,7 @@ describe("identity connection deletion pending action", () => {
         body: JSON.stringify({ typedName: "Identity connection for deletion" }),
       },
     );
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(404); // PA-6 step 2: the approver lost authority
     const [action] = await db
       .select()
       .from(schema.pendingActionTable)

@@ -1,8 +1,8 @@
 /**
- * #580 batch 3: asset clean-up behaviour once its statements live in the storage
- * repository -- an asset is removed only when no description, task comment or activity of
- * the same task still references it, only that task's assets are considered, a failed
- * storage delete keeps its row, and `getTaskAssetKeys` runs on the handle it is given.
+ * #580 batch 3 + P0R1-01: inline-asset reconciliation through the storage repository -- an
+ * asset is only marked detached (never deleted by an edit) when no description, task comment
+ * or activity of the same task still references it, only that task's assets are considered,
+ * a re-reference restores it, and `getTaskAssetKeys` runs on the handle it is given.
  */
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,8 +18,8 @@ vi.mock("../../apps/api/src/storage", async (importOriginal) => ({
 
 import db, { schema } from "../../apps/api/src/database";
 import {
-  deleteOrphanedAssets,
   getTaskAssetKeys,
+  syncInlineAssetReferences,
 } from "../../apps/api/src/storage/cleanup-assets";
 import { lockTaskAndAssertProjectLiveForIdentity } from "../../apps/api/src/task/assert-task-project-live";
 import { resetTestDatabase } from "./helpers/database";
@@ -83,6 +83,18 @@ async function seed() {
 }
 
 const url = (id: string) => `![x](/api/asset/${id})`;
+const detachedIds = async () =>
+  (
+    await db
+      .select({
+        id: schema.assetTable.id,
+        detachedAt: schema.assetTable.detachedAt,
+      })
+      .from(schema.assetTable)
+  )
+    .filter((r) => r.detachedAt !== null)
+    .map((r) => r.id)
+    .sort();
 const remaining = async () =>
   (await db.select({ id: schema.assetTable.id }).from(schema.assetTable))
     .map((r) => r.id)
@@ -96,7 +108,7 @@ async function clean(
 ) {
   await db.transaction(async (tx) => {
     await lockTaskAndAssertProjectLiveForIdentity(tx, taskId, identity);
-    await deleteOrphanedAssets(tx, identity, oldContent, newContent, {
+    await syncInlineAssetReferences(tx, identity, oldContent, newContent, {
       taskId,
     });
   });
@@ -109,7 +121,7 @@ describe("API integration: asset clean-up through the storage repository", () =>
     storage.deleteStorageObject.mockResolvedValue(undefined);
   });
 
-  it("deletes an orphaned asset's object and row, scoped to the task", async () => {
+  it("marks an orphaned asset detached without deleting its object or row, scoped to the task", async () => {
     const { identity, task, asset } = await seed();
     const t1 = await task(1);
     const t2 = await task(2);
@@ -118,13 +130,25 @@ describe("API integration: asset clean-up through the storage repository", () =>
 
     await clean(identity, t1.id, url("orphan1"), "");
 
-    expect(storage.deleteStorageObject).toHaveBeenCalledTimes(1);
-    expect(storage.deleteStorageObject).toHaveBeenCalledWith("key/orphan1");
-    expect(await remaining()).toEqual(["orphan1b"]);
+    expect(storage.deleteStorageObject).not.toHaveBeenCalled();
+    expect(await remaining()).toEqual(["orphan1", "orphan1b"]);
+    expect(await detachedIds()).toEqual(["orphan1"]);
 
     // An id that belongs to another task is never touched through this task's scope.
     await clean(identity, t1.id, url("orphan1b"), "");
-    expect(await remaining()).toEqual(["orphan1b"]);
+    expect(await detachedIds()).toEqual(["orphan1"]);
+  });
+
+  it("restores a detached asset when content references it again", async () => {
+    const { identity, task, asset } = await seed();
+    const t = await task(1);
+    await asset(t.id, "back", "key/back");
+    await clean(identity, t.id, url("back"), "");
+    expect(await detachedIds()).toEqual(["back"]);
+
+    await clean(identity, t.id, "", url("back"));
+    expect(await detachedIds()).toEqual([]);
+    expect(storage.deleteStorageObject).not.toHaveBeenCalled();
   });
 
   it("keeps an asset still referenced by the description, a task comment or an activity of that task", async () => {
@@ -155,9 +179,8 @@ describe("API integration: asset clean-up through the storage repository", () =>
       "",
     );
 
-    expect(await remaining()).toEqual(["inactivity", "incomment", "indesc"]);
-    expect(storage.deleteStorageObject).toHaveBeenCalledTimes(1);
-    expect(storage.deleteStorageObject).toHaveBeenCalledWith("key/free");
+    expect(await detachedIds()).toEqual(["free"]);
+    expect(storage.deleteStorageObject).not.toHaveBeenCalled();
   });
 
   it("ignores references that live in another task", async () => {
@@ -172,23 +195,17 @@ describe("API integration: asset clean-up through the storage repository", () =>
     });
 
     await clean(identity, t1.id, url("mine"), "");
-    expect(await remaining()).toEqual([]);
+    expect(await detachedIds()).toEqual(["mine"]);
   });
 
-  it("keeps the row when the storage delete fails, and does nothing when no id was removed", async () => {
+  it("never calls storage, and does nothing when no id was removed", async () => {
     const { identity, task, asset } = await seed();
     const t = await task(1);
     await asset(t.id, "stuck", "key/stuck");
-    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-    storage.deleteStorageObject.mockRejectedValueOnce(new Error("s3 down"));
 
-    await clean(identity, t.id, url("stuck"), "");
-    expect(await remaining()).toEqual(["stuck"]);
-
-    storage.deleteStorageObject.mockClear();
     await clean(identity, t.id, url("stuck"), url("stuck"));
     expect(storage.deleteStorageObject).not.toHaveBeenCalled();
-    errors.mockRestore();
+    expect(await detachedIds()).toEqual([]);
   });
 
   it("getTaskAssetKeys lists the task's keys and honours a transaction handle", async () => {
@@ -217,7 +234,7 @@ describe("API integration: asset clean-up through the storage repository", () =>
     ).rejects.toBe(rollback);
   });
 
-  it("does not delete an asset or call storage after persisted project reach is revoked", async () => {
+  it("does not detach an asset or call storage after persisted project reach is revoked", async () => {
     const { identity, project, task, asset } = await seed();
     const t = await task(1);
     await asset(t.id, "revoked", "key/revoked");
@@ -231,12 +248,13 @@ describe("API integration: asset clean-up through the storage repository", () =>
         ),
       );
 
-    await deleteOrphanedAssets(db, identity, url("revoked"), "", {
+    await syncInlineAssetReferences(db, identity, url("revoked"), "", {
       taskId: t.id,
     });
 
     expect(storage.deleteStorageObject).not.toHaveBeenCalled();
     expect(await remaining()).toEqual(["revoked"]);
+    expect(await detachedIds()).toEqual([]);
     expect(await getTaskAssetKeys(db, identity, t.id)).toEqual([]);
   });
 });

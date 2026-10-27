@@ -69,6 +69,7 @@ import {
   useWorkItemFeedback,
   WorkItemFeedbackProvider,
 } from "./work-item-feedback";
+import WorkItemImportOrigin from "./work-item-import-origin";
 import WorkItemParentControl from "./work-item-parent-control";
 import {
   useRefreshWorkItem,
@@ -1199,6 +1200,7 @@ function WorkItemPropertiesPanel({
         <Fieldset disabled={readOnly} className="max-w-none gap-0 px-3">
           <WorkItemParentControl {...controlProps} />
         </Fieldset>
+        <WorkItemImportOrigin item={item} />
         {children ? (
           <div className="flex flex-col gap-1 px-3 py-2">{children}</div>
         ) : null}

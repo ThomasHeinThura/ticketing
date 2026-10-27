@@ -22,6 +22,7 @@ import {
   EmptyTitle,
   Skeleton,
 } from "@taskdesk/ui";
+import { Plus } from "lucide-react";
 import {
   type CSSProperties,
   lazy,
@@ -118,8 +119,17 @@ export default function WorkItemBoard({
   wipLimits,
   combinedColumns,
   combinedCapabilities,
+  onCreateInState,
 }: {
   projectId: string;
+  /**
+   * Kaneo's per-column "+" (feature-contracts-p1 views edge cases): opens the create dialog for
+   * this column. Omitted when the caller cannot create, and never offered on a combined board.
+   */
+  onCreateInState?: (
+    state: { id: string; name: string },
+    trigger: HTMLButtonElement,
+  ) => void;
   /** `VW-12`: optional work-in-progress limit per state id. */
   wipLimits?: ReadonlyMap<string, number>;
   /** Template IDs are presentation columns only; items retain their concrete states. */
@@ -306,21 +316,41 @@ export default function WorkItemBoard({
                             state={state.name}
                           />
                         </div>
-                        {canSelect && selectable.length > 0 && (
-                          <Checkbox
-                            aria-label={t("workItems:board.selectColumn", {
-                              state: state.name,
-                            })}
-                            checked={selectable.every((item) =>
-                              selectedKeys.includes(item.key),
-                            )}
-                            onCheckedChange={(checked) => {
-                              for (const item of selectable) {
-                                onSelectionChange(item.key, Boolean(checked));
+                        <div className="flex items-center gap-1">
+                          {canSelect && selectable.length > 0 && (
+                            <Checkbox
+                              aria-label={t("workItems:board.selectColumn", {
+                                state: state.name,
+                              })}
+                              checked={selectable.every((item) =>
+                                selectedKeys.includes(item.key),
+                              )}
+                              onCheckedChange={(checked) => {
+                                for (const item of selectable) {
+                                  onSelectionChange(item.key, Boolean(checked));
+                                }
+                              }}
+                            />
+                          )}
+                          {onCreateInState && !combined ? (
+                            <Button
+                              variant="ghost"
+                              type="button"
+                              onClick={(event) =>
+                                onCreateInState(
+                                  { id: state.id, name: state.name },
+                                  event.currentTarget,
+                                )
                               }
-                            }}
-                          />
-                        )}
+                              className="flex items-center rounded-md px-2 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/50"
+                              title={t("tasks:kanban.addTask")}
+                              aria-label={`${t("tasks:kanban.addTask")}: ${state.name}`}
+                              data-testid="work-item-board-column-create"
+                            >
+                              <Plus className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
                     }
                   >

@@ -353,6 +353,59 @@ describe("plane adapter: reading (cursor pagination, content, losses)", () => {
   });
 });
 
+describe("plane adapter: issues it cannot read are reported, never dropped", () => {
+  /** The recorded replay with the first issue untitled and the second without an id. */
+  function lossy() {
+    const replay = createPlaneReplay();
+    const transport: typeof replay.transport = async (request) => {
+      const response = await replay.transport(request);
+      const url = new URL(request.url);
+      const body = response.json as {
+        results?: Array<Record<string, unknown>>;
+      };
+      if (/\/projects\/[^/]+\/issues\/$/u.test(url.pathname) && body?.results) {
+        return {
+          ...response,
+          json: {
+            ...body,
+            results: body.results.map((issue, index) =>
+              index === 0
+                ? { ...issue, name: "" }
+                : index === 1
+                  ? { ...issue, id: undefined }
+                  : issue,
+            ),
+          },
+        };
+      }
+      return response;
+    };
+    return transport;
+  }
+
+  it("returns missing_title and missing_id records with stable ids and counts them in discovery", async () => {
+    const clean = allIssues().length;
+    const adapter = createPlaneAdapter({ transport: lossy() });
+    const { records } = await readAll(adapter, connection(), 50);
+    const unreadable = records.filter((r) => r.rejectCode);
+    expect(records).toHaveLength(clean);
+    const codes = unreadable.map((r) => r.rejectCode);
+    expect(codes).toContain("missing_title");
+    expect(codes).toContain("missing_id");
+    for (const record of unreadable) expect(record.sourceType).toBe("issue");
+    const again = await readAll(adapter, connection(), 50);
+    expect(again.records.map((r) => r.sourceId)).toEqual(
+      records.map((r) => r.sourceId),
+    );
+    const discovery = await adapter.discover(connection());
+    expect(discovery.totalRecords).toBe(clean);
+    expect(
+      (discovery.unreadable?.missing_title ?? 0) +
+        (discovery.unreadable?.missing_id ?? 0),
+    ).toBe(unreadable.length);
+  });
+});
+
 describe("plane roles and pages", () => {
   it("proposes roles for review only: Guest -> Viewer is never confirmed", () => {
     const proposals = proposePlaneRoles(

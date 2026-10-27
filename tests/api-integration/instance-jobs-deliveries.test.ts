@@ -32,6 +32,7 @@ import { csrfRequest } from "./helpers/csrf";
 import { createCustomerPrincipal } from "./helpers/customer-principal";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
+import { createImpersonatingAdmin } from "./helpers/impersonator";
 
 const apiRequire = createRequire(
   new URL("../../apps/api/package.json", import.meta.url),
@@ -338,7 +339,9 @@ describe("instance Jobs HTTP API", () => {
 
   it("denies an impersonated administrator session", async () => {
     const user = await makeUser("admin");
-    mockAuthenticatedSession(user, { impersonatedBy: `actor-${randomUUID()}` });
+    mockAuthenticatedSession(user, {
+      impersonatedBy: await createImpersonatingAdmin(),
+    });
     const { app } = createApp();
     const response = await app.request("/api/instance/jobs");
     expect(response.status).toBe(403);

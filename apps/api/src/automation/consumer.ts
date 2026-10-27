@@ -10,6 +10,7 @@ import {
   AUTOMATION_MAX_DEPTH,
   guardAutomationTrigger,
 } from "../events/automation-context";
+import { isImportSourcedEvent } from "../events/import-source";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import type {
   ParentEventConsumer,
@@ -147,6 +148,8 @@ export async function enqueueAutomationRuns(
 ): Promise<number> {
   // Configuration corruption must not promote compatibility keys into triggers.
   if (!isAutomationEventTrigger(envelope.kind)) return 0;
+  // Imported history never triggers a rule (automations are recreated, not replayed).
+  if (isImportSourcedEvent(envelope)) return 0;
   const scope = envelope.scope as {
     workspaceId?: string;
     organisationId?: string;

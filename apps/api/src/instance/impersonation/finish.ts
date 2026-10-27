@@ -5,7 +5,11 @@ import db, { schema } from "../../database";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../observability/runtime";
 
-export type ImpersonationEndReason = "exit" | "cap";
+export type ImpersonationEndReason =
+  | "exit"
+  | "cap"
+  | "impersonator_suspended"
+  | "impersonator_ineligible";
 
 type StartedRow = {
   startedAt: string;

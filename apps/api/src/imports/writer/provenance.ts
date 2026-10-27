@@ -2,10 +2,22 @@ import { and, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { schema } from "../../database";
 import type { Transaction } from "../../database/executor";
 import type { ImportRecord } from "../schema";
-import type { ImportWriterContext } from "./types";
+import { type ImportWriterContext, recordLoss } from "./types";
 
 const LINK = schema.importProvenanceTable;
 const RECORD_LINK = schema.importRecordLinkTable;
+
+/**
+ * The provenance namespace (P6-R1-09): workspace, plugin, source reference (`system`), entity type
+ * and external id. The plugin id keeps two plugins that share a source reference apart.
+ */
+const PROVENANCE_KEY = [
+  LINK.workspaceId,
+  LINK.pluginId,
+  LINK.system,
+  LINK.entityType,
+  LINK.externalId,
+];
 
 export type DeferredLinks = {
   /** The item's own source identity, so a deferred loss can be reported against it. */
@@ -47,7 +59,8 @@ function dateOrNull(value: string | undefined) {
  * The work item's provenance row (IM-5): source system, id and URL, plus the SOURCE created,
  * updated and resolved times. The work item's own created/updated/resolved columns are not moved:
  * SLA and metrics read them. The journal row `created` carries the historical time instead.
- * Idempotent: a rerun refreshes the row and clears any stale marker.
+ * Idempotent: a rerun refreshes the row and clears any stale marker. Returns false (and reports
+ * `provenance_duplicate`) when the same source identity is already claimed by another work item.
  */
 export async function upsertWorkItemProvenance(
   ctx: ImportWriterContext,
@@ -56,7 +69,7 @@ export async function upsertWorkItemProvenance(
     record: ImportRecord;
     deferred: DeferredLinks | null;
   },
-) {
+): Promise<boolean> {
   const { record } = input;
   const values = {
     resourceType: "import",
@@ -68,6 +81,7 @@ export async function upsertWorkItemProvenance(
     entityType: "work_item" as const,
     entityId: input.workItemId,
     system: ctx.system,
+    pluginId: ctx.pluginId,
     projectId: ctx.projectId,
     organisationId: ctx.organisationId,
     origin: "imported" as const,
@@ -79,12 +93,14 @@ export async function upsertWorkItemProvenance(
     staleAt: null,
     deferredLinks: input.deferred,
   };
-  await ctx.tx
+  const written = await ctx.tx
     .insert(LINK)
     .values(values)
     .onConflictDoUpdate({
-      target: [LINK.workspaceId, LINK.system, LINK.entityType, LINK.externalId],
+      target: PROVENANCE_KEY,
       targetWhere: sql`${LINK.origin} = 'imported'`,
+      // A row already claimed for a DIFFERENT work item is never taken over (P6-R1-09).
+      setWhere: eq(LINK.workItemId, input.workItemId),
       set: {
         url: values.url,
         title: values.title,
@@ -100,7 +116,18 @@ export async function upsertWorkItemProvenance(
         deferredLinks: values.deferredLinks,
         updatedAt: ctx.now,
       },
+    })
+    .returning({ id: LINK.id });
+  if (!written.length) {
+    recordLoss(ctx, {
+      code: "provenance_duplicate",
+      sourceType: record.sourceType,
+      sourceId: record.sourceId,
+      entity: "work_item",
     });
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -108,6 +135,8 @@ export async function upsertWorkItemProvenance(
  * entity. Returns `claimed: true` for the first time this source entity is seen (the caller then
  * writes it with `entityId`) and `claimed: false` on a rerun, so reruns never duplicate comments or
  * attachments. Run inside the caller's savepoint so a failed entity write rolls the claim back.
+ * `conflict: true` means the source entity is already claimed for a DIFFERENT work item: nothing is
+ * refreshed or written and the caller reports `provenance_duplicate`.
  */
 export async function claimEntityProvenance(
   ctx: ImportWriterContext,
@@ -121,7 +150,7 @@ export async function claimEntityProvenance(
     sourceCreatedAt?: Date | null;
     sourceUpdatedAt?: Date | null;
   },
-): Promise<{ claimed: boolean; entityId: string }> {
+): Promise<{ claimed: boolean; conflict: boolean; entityId: string }> {
   const [row] = await ctx.tx
     .insert(LINK)
     .values({
@@ -134,6 +163,7 @@ export async function claimEntityProvenance(
       entityType: input.entityType,
       entityId: input.entityId,
       system: ctx.system,
+      pluginId: ctx.pluginId,
       projectId: ctx.projectId,
       organisationId: ctx.organisationId,
       origin: "imported",
@@ -143,44 +173,52 @@ export async function claimEntityProvenance(
       lastSeenAt: ctx.now,
     })
     .onConflictDoUpdate({
-      target: [LINK.workspaceId, LINK.system, LINK.entityType, LINK.externalId],
+      target: PROVENANCE_KEY,
       targetWhere: sql`${LINK.origin} = 'imported'`,
+      setWhere: eq(LINK.workItemId, input.workItemId),
       set: { lastSeenAt: ctx.now, staleAt: null, importRunId: ctx.runId },
     })
     .returning({
       entityId: LINK.entityId,
       inserted: sql<boolean>`(xmax = 0)`,
     });
+  if (!row) return { claimed: false, conflict: true, entityId: input.entityId };
   return {
-    claimed: row?.inserted === true,
-    entityId: row?.entityId ?? input.entityId,
+    claimed: row.inserted === true,
+    conflict: false,
+    entityId: row.entityId ?? input.entityId,
   };
 }
 
-/** Whether a sub-entity's provenance row already exists (used before an out-of-transaction download). */
-export async function entityProvenanceExists(
-  tx: Transaction,
+/**
+ * Whether a sub-entity's provenance row already exists, used before an out-of-transaction download.
+ * A row that exists is also MARKED SEEN by this run (import run id, last seen, stale cleared), the
+ * way a comment's claim does, so a rerun that skips the download does not leave the attachment
+ * looking deleted at the source (P6-R1-05). A row absent from the source is never touched, so it
+ * is marked stale by `markMissingImportSourcesStale`.
+ */
+export async function touchEntityProvenance(
+  ctx: ImportWriterContext,
   input: {
-    workspaceId: string;
-    system: string;
     entityType: "comment" | "attachment";
     externalId: string;
   },
 ): Promise<boolean> {
-  const [row] = await tx
-    .select({ id: LINK.id })
-    .from(LINK)
+  const rows = await ctx.tx
+    .update(LINK)
+    .set({ importRunId: ctx.runId, lastSeenAt: ctx.now, staleAt: null })
     .where(
       and(
-        eq(LINK.workspaceId, input.workspaceId),
-        eq(LINK.system, input.system),
+        eq(LINK.workspaceId, ctx.workspaceId),
+        eq(LINK.pluginId, ctx.pluginId),
+        eq(LINK.system, ctx.system),
         eq(LINK.entityType, input.entityType),
         eq(LINK.externalId, input.externalId),
         eq(LINK.origin, "imported"),
       ),
     )
-    .limit(1);
-  return !!row;
+    .returning({ id: LINK.id });
+  return rows.length > 0;
 }
 
 /**
@@ -220,6 +258,7 @@ export async function markMissingImportSourcesStale(
     .where(
       and(
         eq(LINK.workspaceId, input.workspaceId),
+        eq(LINK.pluginId, input.pluginId),
         eq(LINK.system, input.sourceRef),
         eq(LINK.origin, "imported"),
         ne(LINK.importRunId, input.currentRunId),
@@ -269,6 +308,7 @@ export async function touchSeenImportSources(
       .where(
         and(
           eq(LINK.workspaceId, input.workspaceId),
+          eq(LINK.pluginId, input.pluginId),
           eq(LINK.system, input.sourceRef),
           eq(LINK.origin, "imported"),
           sql`(${LINK.externalId} = ${externalId} OR starts_with(${LINK.externalId}, ${`${externalId}#`}))`,

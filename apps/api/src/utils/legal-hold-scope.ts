@@ -13,7 +13,7 @@ import { type SQL, sql } from "drizzle-orm";
  */
 
 /** The `person` rows of the given user ids (`users` is a subquery yielding one column). */
-function peopleOfUsers(users: SQL): SQL {
+export function peopleOfUsers(users: SQL): SQL {
   return sql`SELECT pe."id" FROM "person" pe WHERE pe."user_id" IN (${users})`;
 }
 

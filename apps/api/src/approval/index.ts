@@ -2,6 +2,10 @@ import type { Capability } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { clientIpForContext } from "../api-key/enforce";
+import {
+  type AuditRequestContext,
+  auditRequestContext,
+} from "../audit/request-context";
 import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import {
   apiRouter,
@@ -157,6 +161,7 @@ async function withdrawApprovalForIdentity(input: {
   identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>;
   actorType: "person" | "api_key";
   allowInstanceAdmin: boolean;
+  audit?: AuditRequestContext;
 }) {
   const target = await loadApprovalTargetByApprovalId(
     input.id,
@@ -184,6 +189,7 @@ async function withdrawApprovalForIdentity(input: {
     actorType: input.actorType,
     target,
     isInstanceAdmin: input.allowInstanceAdmin,
+    audit: input.audit,
   });
   const fresh = (
     await listApprovalRows(
@@ -533,6 +539,7 @@ function approvalRouter() {
         kind: body.kind,
         approverId: body.approverId,
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
+        audit: auditRequestContext(c),
       });
       const rows = await listApprovalRows(
         identity,
@@ -612,6 +619,7 @@ function approvalRouter() {
         note: body.note ?? null,
         isCabMember,
         target,
+        audit: auditRequestContext(c),
       });
       const fresh = (
         await listApprovalRows(identity, target.workItemId, target.workspaceId)
@@ -626,6 +634,7 @@ function approvalRouter() {
         identity,
         actorType: actorType(c.get("apiKey")),
         allowInstanceAdmin: false,
+        audit: auditRequestContext(c),
       });
       return c.json(approval, 200);
     })
@@ -646,6 +655,7 @@ function approvalRouter() {
         identity,
         actorType: "person",
         allowInstanceAdmin: true,
+        audit: auditRequestContext(c),
       });
       return c.json(approval, 200);
     })
@@ -706,6 +716,7 @@ function approvalRouter() {
         note: body.note ?? null,
         isCabMember: false,
         target,
+        audit: auditRequestContext(c),
       });
       const fresh = (
         await listApprovalRows(identity, target.workItemId, target.workspaceId)

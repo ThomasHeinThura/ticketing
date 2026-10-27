@@ -28,8 +28,9 @@ type MobileProjectNavProps = {
     | "pages";
   onSelectBoard: () => void;
   onSelectBacklog: () => void;
-  onSelectCalendar: () => void;
-  onSelectGantt: () => void;
+  /** Offered only while `feature.calendar` / `feature.timeline` is on. */
+  onSelectCalendar?: () => void;
+  onSelectGantt?: () => void;
   /** Present only when `feature.cycles` resolves on for the project. */
   onSelectCycles?: () => void;
   /** Present only when `feature.modules` resolves on for the project. */
@@ -105,34 +106,38 @@ export default function MobileProjectNav({
                 <SquareKanban className="size-3.5" />
                 Board
               </Button>
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={onSelectCalendar}
-                className={cn(
-                  "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
-                  activeView === "calendar"
-                    ? "border-border bg-secondary text-foreground"
-                    : "border-transparent text-muted-foreground hover:bg-accent",
-                )}
-              >
-                <CalendarRange className="size-3.5" />
-                {t("navigation:projectViews.calendar")}
-              </Button>
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={onSelectGantt}
-                className={cn(
-                  "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
-                  activeView === "gantt"
-                    ? "border-border bg-secondary text-foreground"
-                    : "border-transparent text-muted-foreground hover:bg-accent",
-                )}
-              >
-                <CalendarDays className="size-3.5" />
-                Gantt
-              </Button>
+              {onSelectCalendar ? (
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={onSelectCalendar}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                    activeView === "calendar"
+                      ? "border-border bg-secondary text-foreground"
+                      : "border-transparent text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  <CalendarRange className="size-3.5" />
+                  {t("navigation:projectViews.calendar")}
+                </Button>
+              ) : null}
+              {onSelectGantt ? (
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={onSelectGantt}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                    activeView === "gantt"
+                      ? "border-border bg-secondary text-foreground"
+                      : "border-transparent text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  <CalendarDays className="size-3.5" />
+                  Gantt
+                </Button>
+              ) : null}
               {onSelectCycles ? (
                 <Button
                   variant="ghost"

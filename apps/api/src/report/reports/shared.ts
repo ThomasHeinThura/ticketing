@@ -32,6 +32,16 @@ export function pageLimit(ctx: ReportContext, screenCap: number) {
   return sql`LIMIT ${limit} OFFSET ${offset}`;
 }
 
+/** The page of an export for a report that built all of its rows in memory (no SQL LIMIT/OFFSET). */
+export function memoryPage<T>(ctx: ReportContext, all: T[]): T[] {
+  return ctx.exportPage
+    ? all.slice(
+        ctx.exportPage.offset,
+        ctx.exportPage.offset + ctx.exportPage.limit,
+      )
+    : all;
+}
+
 export function pageRows<T>(
   ctx: ReportContext,
   fetched: T[],

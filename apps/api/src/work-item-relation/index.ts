@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import {
   apiRouter,
   type BaseVariables,
@@ -232,7 +233,7 @@ const workItemRelation = apiRouter<BaseVariables & { workspaceId: string }>()
       workspaceId,
       actorId: c.get("userId"),
       actorType: apiKey ? "api_key" : "person",
-      actorIp: c.req.header("x-forwarded-for") ?? null,
+      actorIp: clientIpForContext(c),
       userAgent: c.req.header("user-agent") ?? null,
     });
     return c.json(relationDeletionSchema.parse(created), 202);

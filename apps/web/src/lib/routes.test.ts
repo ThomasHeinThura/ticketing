@@ -1031,6 +1031,15 @@ describe("P1 agent core, project overview, and settings routes", () => {
     });
     expect(searchUrl).toBe("/agent/search?q=billing&scope=work-items");
     expect(
+      routes.workspaceSearch.build(
+        { workspaceId: "w 1" },
+        { q: "HELP-24", scope: "projects" },
+      ),
+    ).toBe("/dashboard/workspace/w%201/search?q=HELP-24&scope=projects");
+    expect(routes.workspaceSearch.build({ workspaceId: "w1" })).toBe(
+      "/dashboard/workspace/w1/search",
+    );
+    expect(
       parseAgentGlobalSearch({ q: "billing", scope: "work-items" }),
     ).toEqual({
       q: "billing",

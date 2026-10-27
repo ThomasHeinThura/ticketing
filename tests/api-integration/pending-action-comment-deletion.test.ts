@@ -319,7 +319,7 @@ describe("canonical comment durable deletion", () => {
     expect(JSON.stringify(read)).not.toContain("Exact comment");
     await expect(
       approveCommentDeletion(f.approval(action.pendingActionId)),
-    ).rejects.toMatchObject({ status: 409 });
+    ).rejects.toMatchObject({ status: 404 }); // PA-6 step 2: the approver lost access
     expect((await comment(f.relation.id)).deletedAt).toBeNull();
   });
   it("a revoked original session cannot be replaced by a new approving session", async () => {
@@ -478,7 +478,7 @@ describe("canonical comment durable deletion", () => {
       .where(eq(schema.personTable.id, f.person.id));
     await expect(
       approveCommentDeletion(f.approval(action.pendingActionId)),
-    ).rejects.toMatchObject({ status: 409 });
+    ).rejects.toMatchObject({ status: 404 }); // PA-6 step 2: the approver lost access
     expect((await pending(action.pendingActionId)).invalidationReason).toBe(
       "requester_deactivated",
     );

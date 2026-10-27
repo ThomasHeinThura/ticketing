@@ -249,6 +249,14 @@ function TaskCard({
     e: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
   ) {
     if (!workspaceId && !taskHref) return;
+    // A click React bubbled up from portalled content (a popover or menu opened from the
+    // card) is not a click on the card.
+    if (
+      e.target instanceof Node &&
+      e.currentTarget instanceof Node &&
+      !e.currentTarget.contains(e.target)
+    )
+      return;
 
     if ((e as React.MouseEvent).metaKey || (e as React.KeyboardEvent).ctrlKey) {
       if (selectionEnabled) {

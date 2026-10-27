@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import type { Executor } from "../database/executor";
@@ -9,6 +9,7 @@ import {
   workspaceUserTable,
 } from "../database/schema";
 import { moduleTable } from "../database/schema-p5-agile";
+import { assertRowNotUnderLegalHold } from "../utils/workspace-legal-hold";
 import type { AgileActor } from "./audit";
 import { auditAgile } from "./audit";
 import { VersionConflictError } from "./estimate.repository";
@@ -407,6 +408,14 @@ export async function deleteModuleRow(
   mod: ModuleRow,
   actor: AgileActor,
 ) {
+  // PA-12: an open hold on the lead, the creator or the organisation of the workspace or project
+  // refuses the hard delete.
+  await assertRowNotUnderLegalHold(tx, {
+    workspaceId: mod.workspaceId,
+    projectId: mod.projectId,
+    personIds: sql`SELECT ${mod.leadId}::text`,
+    userIds: sql`SELECT ${mod.createdBy}::text`,
+  });
   await tx
     .update(workItemTable)
     .set({ moduleId: null, updatedAt: new Date() })

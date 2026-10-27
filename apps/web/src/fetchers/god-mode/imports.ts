@@ -241,6 +241,9 @@ export type ImportDiscovery = {
   }[];
   counts: Record<string, number>;
   totalRecords: number;
+  /** Source items that cannot be imported, by fixed code (`unreadable_item`, `missing_title`, ...). */
+  unreadable?: Record<string, number>;
+  at?: string | null;
 };
 
 export type ImportMapping = {
@@ -269,6 +272,26 @@ export type ImportPausedReason =
   | "chunk_failed"
   | "conflict";
 
+export type ImportSetupJobKind = "discover" | "dry_run";
+
+/**
+ * The run's background setup step (source discovery, whole-run dry run). The POST answers 202 and
+ * the step runs on the server; the engine DTO carries its progress until `completed` or `failed`
+ * with a fixed `failure` code.
+ */
+export type ImportSetupJob = {
+  kind: ImportSetupJobKind;
+  status: "running" | "completed" | "failed";
+  startedAt: string;
+  updatedAt: string;
+  pagesRead: number;
+  /** Dry run: records classified so far. Discovery: records read so far. */
+  recordsProcessed: number;
+  /** Records the source holds, once discovery counted them (dry run only; drives a percentage). */
+  totalRecords: number | null;
+  failure: string | null;
+};
+
 export type EngineRun = {
   id: string;
   workspaceId: string;
@@ -283,6 +306,7 @@ export type EngineRun = {
   mappingVersion: number | null;
   stats: Record<string, number>;
   cursor: { exhausted: boolean } | null;
+  job: ImportSetupJob | null;
   dryRun: {
     digest: string;
     mappingVersion: number | null;
@@ -361,6 +385,13 @@ export type ImportDryRunReport = {
   };
   completeness: MappingCompleteness;
   approvalRequired: boolean;
+};
+
+export type SetupStepResult = {
+  /** `accepted`: a new step started. `running`: the same step was already running (no second read). */
+  status: "accepted" | "running";
+  job: ImportSetupJob | null;
+  run: EngineRun;
 };
 
 export type ExecuteInput = {
@@ -471,7 +502,7 @@ export function getEngineImportRun(id: string): Promise<EngineRun> {
 export function discoverImportRun(
   id: string,
   idempotencyKey: string,
-): Promise<ImportMapping> {
+): Promise<SetupStepResult> {
   return write(
     runPath(id, "discover"),
     undefined,
@@ -504,7 +535,7 @@ export function saveImportMapping(
 export function runImportDryRun(
   id: string,
   idempotencyKey: string,
-): Promise<ImportDryRunReport> {
+): Promise<SetupStepResult> {
   return write(
     runPath(id, "dry-run-all"),
     undefined,

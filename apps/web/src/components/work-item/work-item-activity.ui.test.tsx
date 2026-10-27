@@ -1117,6 +1117,63 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     expect(timeline).not.toHaveTextContent("Unknown");
   });
 
+  it("P6-R1-04: marks imported comment and history rows, and only those", () => {
+    const base = {
+      workItemId: "work-item-1",
+      actorId: null,
+      actorType: "system",
+      oldValue: null,
+      newValue: null,
+      payload: null,
+      visibility: "internal",
+      workflowVersionId: null,
+    };
+    mocks.rows = [
+      {
+        ...base,
+        id: "imported-comment",
+        verb: "commented",
+        field: null,
+        kind: "comment",
+        body: "Historic note",
+        activityId: null,
+        editedAt: null,
+        deletedAt: null,
+        deletedBy: null,
+        createdAt: "2021-02-03T04:05:06.000Z",
+        origin: "imported",
+        importedAt: "2026-10-20T10:00:00.000Z",
+      },
+      {
+        ...base,
+        id: "imported-history",
+        verb: "updated",
+        field: "priority",
+        oldValue: "low",
+        newValue: "high",
+        kind: "activity",
+        createdAt: "2021-03-04T05:06:07.000Z",
+        origin: "imported",
+        importedAt: "2026-10-20T10:00:00.000Z",
+      },
+      {
+        ...base,
+        id: "native-history",
+        verb: "updated",
+        field: "priority",
+        oldValue: "high",
+        newValue: "low",
+        kind: "activity",
+        createdAt: "2026-10-21T05:06:07.000Z",
+        origin: null,
+        importedAt: null,
+      },
+    ];
+    renderActivity();
+    expect(screen.getAllByTestId("imported-marker")).toHaveLength(2);
+    expect(screen.getAllByText("activity:timeline.imported")).toHaveLength(2);
+  });
+
   it("retains the legacy tombstone actor and withholds comment history", async () => {
     mocks.rows = [
       {

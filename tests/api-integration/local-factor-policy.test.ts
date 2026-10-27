@@ -32,6 +32,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { createImpersonatingAdmin } from "./helpers/impersonator";
 import {
   createCredentialBoundPendingAction,
   expectCredentialInvalidationPersisted,
@@ -715,7 +716,9 @@ describe("instance local-factor policy API", () => {
     expect(factorPolicy.status).toBe(403);
     expect(patchFactorPolicy.status).toBe(403);
 
-    mockAuthenticatedSession(admin, { impersonatedBy: "acting-admin" });
+    mockAuthenticatedSession(admin, {
+      impersonatedBy: await createImpersonatingAdmin(),
+    });
     const impersonatedSettings = await app.request(
       "/api/instance/observability",
     );

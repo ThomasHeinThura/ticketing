@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import {
   listPortalBacklog,
   rankPortalBacklog,
 } from "../../apps/api/src/intake/portal-backlog";
+import * as realtime from "../../apps/api/src/ws";
 import {
   addCustomer,
   buildTenant,
@@ -156,7 +157,9 @@ function portalRankRequest(
 
 describe("portal organisation backlog", () => {
   beforeEach(async () => resetTestDatabase());
-  afterEach(() => undefined);
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it("lists deduplicated accepted work items by concrete backlog state and hides private/pending rows", async () => {
     const tenant = await buildTenant("portal-backlog-list");
@@ -253,11 +256,22 @@ describe("portal organisation backlog", () => {
       workItemId: neighbor.id,
     });
 
+    const hint = vi
+      .spyOn(realtime, "broadcastNativeWorkItemHint")
+      .mockResolvedValue(undefined);
     const rankResponse = await portalRankRequest(tenant, customer, {
       key: target.key,
       beforeId: neighbor.id,
     });
     expect(rankResponse.status, await rankResponse.clone().text()).toBe(200);
+    // VW-5: staff viewers of the project see the customer re-rank live (never customer-visible).
+    expect(hint).toHaveBeenCalledTimes(1);
+    expect(hint.mock.calls[0]?.[0]).toMatchObject({
+      projectId: tenant.project.id,
+      eventType: "work_item.updated",
+      key: target.key,
+      customerVisible: false,
+    });
     const moved = (await rankResponse.json()) as {
       key: string;
       position: string;

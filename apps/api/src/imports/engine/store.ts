@@ -220,6 +220,37 @@ export async function peopleByEmail(
   return result;
 }
 
+/**
+ * Which of `personIds` are staff people of the workspace's own organisation (a placeholder of that
+ * organisation counts). A person of another organisation, a customer and an unknown id are absent,
+ * so a mapping edit cannot point an import at someone outside the tenant.
+ */
+export async function staffPeopleInWorkspaceOrganisation(
+  tx: Transaction,
+  workspaceId: string,
+  personIds: readonly string[],
+): Promise<Set<string>> {
+  const wanted = [...new Set(personIds)];
+  if (wanted.length === 0) return new Set();
+  const [workspace] = await tx
+    .select({ organisationId: schema.workspaceTable.organisationId })
+    .from(schema.workspaceTable)
+    .where(eq(schema.workspaceTable.id, workspaceId))
+    .limit(1);
+  if (!workspace) return new Set();
+  const rows = await tx
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(
+      and(
+        eq(schema.personTable.organisationId, workspace.organisationId),
+        eq(schema.personTable.side, "staff"),
+        inArray(schema.personTable.id, wanted),
+      ),
+    );
+  return new Set(rows.map((row) => row.id));
+}
+
 export async function typeIdsByKey(tx: Transaction, workspaceId: string) {
   const rows = await tx
     .select({
@@ -248,6 +279,94 @@ export function safeStats(stats: Record<string, number>): SafeCounts {
   return out;
 }
 
+// --- background setup job (discovery, whole-run dry run) ---------------------------------------
+
+export type SetupJobKind = "discover" | "dry_run";
+export type SetupJobStatus = "running" | "completed" | "failed";
+
+/**
+ * Persisted state of the run's background setup step, kept under `engine_discovery.job`. `id` is a
+ * fencing token: every progress write names it, so a superseded or cancelled worker finds nothing to
+ * update and stops. `actor` is the administrator who asked for the step: the job re-checks that
+ * identity's authority before every page, and nothing runs as the system.
+ */
+export type SetupJob = {
+  id: string;
+  kind: SetupJobKind;
+  status: SetupJobStatus;
+  startedAt: string;
+  updatedAt: string;
+  actor: { userId: string; apiKeyId: string | null };
+  /** `import_run.version` the job started against; a different version at the end means it is stale. */
+  runVersion: number;
+  /** Mapping version a dry run computes for (`null` for discovery). */
+  mappingVersion: number | null;
+  pagesRead: number;
+  /** Dry run: records classified so far. Discovery: records the adapter has read so far. */
+  recordsProcessed: number;
+  /** Fixed code (`auth_failed`, `source_error`, `mapping_changed`, ...) when `status` is `failed`. */
+  failure?: string;
+  /** Dry-run accumulators and the cursor of the next page (a `DryRunState`); absent on discovery. */
+  checkpoint?: unknown;
+};
+
+export function readSetupJob(
+  run: Pick<EngineRun, "engineDiscovery">,
+): SetupJob | null {
+  const raw = run.engineDiscovery?.job;
+  if (typeof raw !== "object" || raw === null) return null;
+  const job = raw as Partial<SetupJob>;
+  if (
+    typeof job.id !== "string" ||
+    (job.kind !== "discover" && job.kind !== "dry_run") ||
+    (job.status !== "running" &&
+      job.status !== "completed" &&
+      job.status !== "failed") ||
+    !job.actor
+  )
+    return null;
+  return job as SetupJob;
+}
+
+/** What a client may see of the job: progress and a fixed failure code, never the checkpoint. */
+export function setupJobDto(run: EngineRun) {
+  const job = readSetupJob(run);
+  if (!job) return null;
+  const known = run.engineDiscovery?.totalRecords;
+  return {
+    kind: job.kind,
+    status: job.status,
+    startedAt: job.startedAt,
+    updatedAt: job.updatedAt,
+    pagesRead: job.pagesRead,
+    recordsProcessed: job.recordsProcessed,
+    /** Records the source holds, once discovery has counted them (drives a percentage). */
+    totalRecords:
+      job.kind === "dry_run" && typeof known === "number" ? known : null,
+    failure: job.failure ?? null,
+  };
+}
+
+/** The discovery summary a client sees: no job state, facets as the list the mapping step shows. */
+export function discoveryDto(
+  run: Pick<EngineRun, "engineDiscovery">,
+  entries: readonly MappingEntry[],
+) {
+  const stored = run.engineDiscovery;
+  if (!stored || typeof stored.totalRecords !== "number") return null;
+  return {
+    counts: (stored.counts ?? {}) as Record<string, number>,
+    totalRecords: stored.totalRecords,
+    unreadable: (stored.unreadable ?? {}) as Record<string, number>,
+    at: typeof stored.at === "string" ? stored.at : null,
+    facets: entries.map((entry) => ({
+      domain: entry.domain,
+      value: entry.value,
+      count: entry.affected,
+    })),
+  };
+}
+
 export type EngineRunDto = ReturnType<typeof engineRunDto>;
 
 export function engineRunDto(run: EngineRun, mappingVersion: number | null) {
@@ -270,6 +389,7 @@ export function engineRunDto(run: EngineRun, mappingVersion: number | null) {
     mappingVersion,
     stats: safeStats(run.stats),
     cursor: run.sourceCursor ? { exhausted: run.sourceCursor.exhausted } : null,
+    job: setupJobDto(run),
     dryRun: run.engineDryRunDigest
       ? {
           digest: run.engineDryRunDigest,

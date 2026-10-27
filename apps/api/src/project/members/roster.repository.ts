@@ -1,5 +1,10 @@
 import { createId } from "@paralleldrive/cuid2";
-import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import {
+  BUILT_IN_ROLES,
+  type Capability,
+  expandCapabilities,
+  roleScopeTier,
+} from "@taskdesk/permissions";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { schema } from "../../database";
 import type { Executor } from "../../database/executor";
@@ -350,4 +355,25 @@ export async function listRosterCandidates(
       ),
     )
     .orderBy(asc(personTable.displayName), asc(personTable.id));
+}
+
+/**
+ * The expanded capability closure of a project-scope role row (P4R1-M1). Read from the row, never
+ * from the built-in list, so an edited `project-lead` is compared as it now stands.
+ */
+export async function loadProjectRoleCapabilities(
+  executor: Executor,
+  roleId: string,
+): Promise<Set<Capability>> {
+  const [row] = await executor
+    .select({ capabilities: roleTable.capabilities })
+    .from(roleTable)
+    .where(eq(roleTable.id, roleId))
+    .limit(1);
+  const stored = Array.isArray(row?.capabilities)
+    ? row.capabilities.filter(
+        (entry): entry is string => typeof entry === "string",
+      )
+    : [];
+  return expandCapabilities(stored, { tier: roleScopeTier("project") });
 }

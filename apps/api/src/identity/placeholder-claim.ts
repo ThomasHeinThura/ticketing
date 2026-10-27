@@ -116,13 +116,14 @@ export async function claimVerifiedImportPlaceholder(
   }
   await lockImportPlaceholderClaimEmail(tx, normalizedEmail);
 
-  const candidates = await tx
+  const allCandidates = await tx
     .select({
       personId: CLAIM.personId,
       importRunId: CLAIM.importRunId,
       normalizedEmail: CLAIM.normalizedEmail,
       claimedAt: CLAIM.claimedAt,
       workspaceId: IMPORT_RUN.workspaceId,
+      organisationId: PERSON.organisationId,
     })
     .from(CLAIM)
     .innerJoin(PERSON, eq(PERSON.id, CLAIM.personId))
@@ -130,10 +131,17 @@ export async function claimVerifiedImportPlaceholder(
     .where(eq(CLAIM.normalizedEmail, normalizedEmail))
     .orderBy(asc(CLAIM.personId));
 
-  if (candidates.length === 0) {
+  if (allCandidates.length === 0) {
     await lockVerifiedClaimant(tx, input, normalizedEmail);
     return { kind: "none" };
   }
+  // A contractor imported into several client organisations has one placeholder per organisation
+  // (never one merged identity). Only the placeholder of the organisation the proof is for is a
+  // candidate; another organisation's placeholder is neither claimed nor made ambiguous by it. An
+  // address that has placeholders but none here, or more than one here, is denied as before.
+  const candidates = allCandidates.filter(
+    (row) => row.organisationId === input.organisationId,
+  );
   if (candidates.length !== 1) throw new Error("Placeholder claim denied");
   const candidate = candidates[0];
   if (!candidate) throw new Error("Placeholder claim denied");
@@ -181,7 +189,11 @@ export async function claimVerifiedImportPlaceholder(
     .where(eq(CLAIM.normalizedEmail, normalizedEmail))
     .orderBy(CLAIM.personId)
     .for("update");
-  const [claim] = lockedClaims;
+  const ownPersonIds = new Set(candidates.map((row) => row.personId));
+  const ownClaims = lockedClaims.filter((row) =>
+    ownPersonIds.has(row.personId),
+  );
+  const [claim] = ownClaims;
 
   const [person] = await tx
     .select({
@@ -218,7 +230,7 @@ export async function claimVerifiedImportPlaceholder(
 
   if (
     !claim ||
-    lockedClaims.length !== 1 ||
+    ownClaims.length !== 1 ||
     claim.personId !== candidate.personId ||
     claim.importRunId !== candidate.importRunId ||
     claim.normalizedEmail !== normalizedEmail ||

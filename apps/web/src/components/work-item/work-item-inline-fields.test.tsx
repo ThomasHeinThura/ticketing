@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import type { WorkItemCustomFieldColumn, WorkItemRow } from "@/types/work-item";
+import TaskRow from "../list-view/task-row";
 import WorkItemInlineFields from "./work-item-inline-fields";
 
 const mocks = vi.hoisted(() => ({
@@ -548,5 +549,111 @@ describe("WorkItemInlineFields", () => {
     expect(screen.queryByTestId("work-item-inline-state")).toBeNull();
     expect(screen.queryByTestId("work-item-inline-priority")).toBeNull();
     expect(screen.queryByTestId("work-item-inline-assignee")).toBeNull();
+  });
+
+  it("P1R2-1: choosing a state, priority or assignee in a Kaneo list row never opens the item", async () => {
+    mocks.transitions = [
+      {
+        transitionId: "t-start",
+        toStateTemplateId: "state-doing",
+        toStateName: "Doing",
+        toStateCategory: "started",
+        notePolicy: "none",
+        available: true,
+        blockedBy: [],
+      },
+    ];
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    const row = item();
+    const onOpenTask = vi.fn();
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    client.setQueryData(["work-items", "detail", row.key], row);
+    render(
+      <QueryClientProvider client={client}>
+        <WorkItemInlineFields item={row} disabled={false}>
+          {(controls) => (
+            <TaskRow
+              task={{
+                id: row.id,
+                title: row.title,
+                number: 7,
+                description: null,
+                status: "to-do",
+                priority: row.priority,
+                startDate: null,
+                dueDate: null,
+                position: 1,
+                createdAt: "2026-10-01T00:00:00.000Z",
+                version: row.version,
+                userId: null,
+                assigneeId: null,
+                assigneeName: null,
+                projectId: row.projectId,
+                labels: [],
+                externalLinks: [],
+              }}
+              projectSlug="HELP"
+              taskIsCompleted={false}
+              displayPreferences={{
+                showAssignees: true,
+                showPriority: true,
+                showDueDates: false,
+                showLabels: false,
+                showTaskNumbers: true,
+              }}
+              onOpenTask={onOpenTask}
+              t={((key: string) => key) as never}
+              {...controls}
+            />
+          )}
+        </WorkItemInlineFields>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId("work-item-inline-priority"));
+    const urgent = await screen.findByTestId(
+      "work-item-inline-priority-option-urgent",
+    );
+    fireEvent.pointerDown(urgent);
+    fireEvent.mouseDown(urgent);
+    fireEvent.click(urgent);
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith(
+        expect.objectContaining({ key: "HELP-7", priority: "urgent" }),
+      ),
+    );
+    expect(onOpenTask).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("work-item-inline-state"));
+    fireEvent.click(
+      await screen.findByTestId("work-item-inline-transition-t-start"),
+    );
+    await waitFor(() =>
+      expect(mocks.transition).toHaveBeenCalledWith({
+        key: "HELP-7",
+        toStateTemplateId: "state-doing",
+      }),
+    );
+    expect(onOpenTask).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("work-item-inline-assignee"));
+    fireEvent.click(
+      await screen.findByTestId("work-item-inline-assignee-option-person-2"),
+    );
+    await waitFor(() =>
+      expect(mocks.assign).toHaveBeenCalledWith(
+        expect.objectContaining({ key: "HELP-7", assigneeId: "person-2" }),
+      ),
+    );
+    expect(onOpenTask).not.toHaveBeenCalled();
+
+    // Control: a click on the row itself still opens the item.
+    fireEvent.click(screen.getByText("A work item"));
+    expect(onOpenTask).toHaveBeenCalledExactlyOnceWith(row.id);
   });
 });

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { IMPORT_SOURCE_BODY_LIMIT_BYTES } from "../imports/engine/body-limit";
 
 /**
  * `Idempotency-Key` handling for unsafe requests (api-design.md "Idempotency";
@@ -38,6 +39,64 @@ const SECRET_BEARING_ROUTES: readonly RegExp[] = [
 
 export function isSecretBearingRoute(pathname: string): boolean {
   return SECRET_BEARING_ROUTES.some((pattern) => pattern.test(pathname));
+}
+
+/**
+ * Routes that accept a body larger than the rest of the API, with the most the route itself accepts.
+ * The idempotency middleware hashes the whole body, so it must refuse an oversize one itself: the
+ * route's own `bodyLimit` runs after it and would otherwise only see a body already fully buffered.
+ * A route not listed here keeps the unchanged behaviour (no cap in this layer).
+ */
+const ROUTE_BODY_LIMITS: ReadonlyArray<{
+  method: string;
+  pattern: RegExp;
+  maxBytes: number;
+}> = [
+  {
+    method: "POST",
+    pattern: /^\/api\/import-sources\/?$/,
+    maxBytes: IMPORT_SOURCE_BODY_LIMIT_BYTES,
+  },
+];
+
+export function idempotencyBodyLimit(
+  method: string,
+  pathname: string,
+): number | undefined {
+  const upper = method.toUpperCase();
+  return ROUTE_BODY_LIMITS.find(
+    (entry) => entry.method === upper && entry.pattern.test(pathname),
+  )?.maxBytes;
+}
+
+/**
+ * Reads at most `maxBytes` of the body: an oversize `Content-Length` is refused without reading
+ * anything, and a body with no or a false length is cut off as soon as it passes the cap. Returns
+ * `null` when the cap was exceeded.
+ */
+async function readBodyCapped(
+  request: Request,
+  maxBytes: number,
+): Promise<Uint8Array | null> {
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) return null;
+  const reader = request.clone().body?.getReader();
+  if (!reader) return new Uint8Array();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > maxBytes) {
+      // Not awaited: cancelling one branch of a cloned body settles only once the other branch is
+      // cancelled too, and nothing reads the original until the cap has passed.
+      void reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
 }
 
 export const IDEMPOTENCY_KEY_HEADER = "Idempotency-Key";
@@ -204,7 +263,14 @@ export function idempotencyKeyMiddleware(
     if (!actor) return next();
 
     const url = new URL(c.req.url);
-    const body = new Uint8Array(await c.req.raw.clone().arrayBuffer());
+    const limit = idempotencyBodyLimit(c.req.method, url.pathname);
+    const body =
+      limit === undefined
+        ? new Uint8Array(await c.req.raw.clone().arrayBuffer())
+        : await readBodyCapped(c.req.raw, limit);
+    // Before any reservation: the key stays usable, and nothing past the cap was buffered.
+    if (body === null)
+      return c.json({ message: "Request body too large" }, 413);
     const scope: IdempotencyScope = { ...actor, key };
     const route = `${c.req.method.toUpperCase()} ${c.req.routePath || url.pathname}`;
     const reservation = await options.store.reserve({

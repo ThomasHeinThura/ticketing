@@ -2360,7 +2360,9 @@
 				"created": "Created",
 				"transitioned": "Changed state",
 				"updated": "Updated"
-			}
+			},
+			"imported": "Imported",
+			"importedTitle": "Imported from {{system}} on {{date}}. The time shown is the original time."
 		}
 	},
 	"tasks": {
@@ -2899,7 +2901,11 @@
 			"suggestionBug": "Σφάλμα",
 			"suggestionFeature": "Δυνατότητα",
 			"suggestionInProgress": "Σε εξέλιξη",
-			"suggestionCompleted": "Ολοκληρωμένα"
+			"suggestionCompleted": "Ολοκληρωμένα",
+			"scopeAll": "Everything",
+			"scopeLabel": "Search in",
+			"scopeProjects": "{{term_project_other}}",
+			"scopeWorkItems": "{{term_work_item_other}}"
 		},
 		"create": {
 			"pageTitle": "Δημιουργία χώρου εργασίας",
@@ -3317,7 +3323,8 @@
 			"fieldTemplate": "Template",
 			"templateNone": "No template",
 			"templatePlaceholder": "Template",
-			"typeRequired": "Choose a type to enable Create."
+			"typeRequired": "Choose a type to enable Create.",
+			"notMovedToState": "{{key}} was created in the project's default state. The workflow does not allow moving it to {{state}} yet."
 		},
 		"journey": {
 			"editHeading": "Edit",
@@ -3558,7 +3565,11 @@
 				"rollupBeside": "Σ {{value}} from children",
 				"rollupOnly": "Σ {{value}} from children",
 				"saveFailed": "The change could not be saved."
-			}
+			},
+			"importedFrom": "Imported from {{system}}",
+			"importedFromStale": "Imported from {{system}} (no longer in the source)",
+			"importedOn": "Imported {{date}}",
+			"openSource": "Open the original in {{system}}"
 		},
 		"relations": {
 			"add": "Add relation",
@@ -3840,6 +3851,9 @@
 			"fieldRequired": "This field is required.",
 			"sla": {
 				"label": "Service target"
+			},
+			"systemReasons": {
+				"clarification_window_expired": "No reply was received within {{days}} days of our request for clarification, so this {{term_request_one}} was closed. Contact us if you would like to continue."
 			}
 		},
 		"orientation": {
@@ -3853,7 +3867,8 @@
 			"author": {
 				"team": "Our team",
 				"you": "You",
-				"colleague": "A colleague"
+				"colleague": "A colleague",
+				"system": "Automatic message"
 			},
 			"details": "{{term_request_one}} details",
 			"errors": {
@@ -4019,7 +4034,10 @@
 				"mention": "You were mentioned in your {{term_request_one}}",
 				"transition": "Your {{term_request_one}} was updated",
 				"requestReply": "New reply to your {{term_request_one}}",
-				"requestDeclined": "Your {{term_request_one}} was declined"
+				"requestDeclined": "Your {{term_request_one}} was declined",
+				"approvalExpiring": "An approval waiting for you expires soon",
+				"approvalRequested": "An approval is waiting for your decision",
+				"approvalWithdrawn": "An approval request was withdrawn"
 			},
 			"requestReference": "{{term_request_one}} {{ref}}"
 		}
@@ -4450,7 +4468,35 @@
 		"statusFilter": "Submission status filter",
 		"submissionFallback": "Submission",
 		"submissionRegion": "Submission {{ref}}",
-		"workItemType": "Work item type"
+		"workItemType": "Work item type",
+		"actorTypes": {
+			"customer": "Customer",
+			"system": "System",
+			"triager": "Staff"
+		},
+		"ageSuffix": {
+			"d": "{{value}}d",
+			"h": "{{value}}h",
+			"m": "{{value}}m"
+		},
+		"errors": {
+			"destination_required": "Choose a destination project and confirm the work item type before accepting.",
+			"destination_unavailable": "The destination project does not serve this customer’s organisation or is no longer available.",
+			"form_version_unavailable": "The form version this {{term_submission_one}} was made with is no longer available.",
+			"openWinner": "Open {{key}}",
+			"submission_already_converted": "Another triager already accepted this {{term_submission_one}}.",
+			"submission_changed": "This {{term_submission_one}} changed while you were working. Review it and try again.",
+			"submission_not_open": "This {{term_submission_one}} is no longer open. The queue has been refreshed.",
+			"work_item_type_unavailable": "The chosen work item type is no longer available in this workspace."
+		},
+		"organisation": "Organisation",
+		"reference": "Reference",
+		"requestType": "Request type",
+		"submittedAt": "Submitted",
+		"summary": "Summary",
+		"systemReasons": {
+			"clarification_window_expired": "Closed automatically: no reply within {{days}} days of the clarification request."
+		}
 	},
 	"requestTypes": {
 		"addField": "Add field",
@@ -5601,7 +5647,9 @@
 		"invitationLimits": {
 			"description": "Set invitation expiry and customer creation and resend limits. Anonymous request limits also protect public invitation lookups and signup.",
 			"title": "Invitation limits"
-		}
+		},
+		"localFactorEveryone": "Everyone (staff)",
+		"localFactorStaffOnlyHelp": "The local factor policy applies to staff only. Customers sign in to the portal without a local factor."
 	},
 	"customFields": {
 		"access": {
@@ -6567,6 +6615,14 @@
 			"modules": {
 				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
 				"title": "{{term_module_other}} are off for this {{term_project_one}}"
+			},
+			"calendar": {
+				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
+				"title": "Calendar is off for this {{term_project_one}}"
+			},
+			"timeline": {
+				"description": "A {{term_project_one}} admin can switch on Gantt in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
+				"title": "Gantt is off for this {{term_project_one}}"
 			}
 		},
 		"modules": {
@@ -8853,7 +8909,8 @@
 				"records": "Records: {{count}}",
 				"rerun": "Discover again",
 				"run": "Run discovery",
-				"totalRecords": "Records"
+				"totalRecords": "Records",
+				"unreadableTitle": "Some source items cannot be imported"
 			},
 			"domains": {
 				"custom_field": "Custom field",
@@ -8934,7 +8991,13 @@
 				"startConflict": "The dry run, mapping or approval no longer matches. Run the dry run again.",
 				"startErrorDescription": "Try again.",
 				"startErrorTitle": "Could not start the import",
-				"toReconcile": "Continue to reconcile"
+				"toReconcile": "Continue to reconcile",
+				"recovery": {
+					"dryRun": "Resuming cannot fix this. Return to the dry run: the approval is cleared, records already imported are kept and skipped, and the import is approved and started again.",
+					"takeOver": "Another instance administrator can take the import over. It then continues as you, and both administrators are recorded in the audit history."
+				},
+				"returnToDryRun": "Return to dry run",
+				"takeOver": "Take over and resume"
 			},
 			"fields": {
 				"baseUrl": "Base URL",
@@ -9069,6 +9132,27 @@
 				"label": "Import steps",
 				"mapping": "Map",
 				"reconcile": "Reconcile"
+			},
+			"setupFailures": {
+				"authority_lost": "Stopped because you are no longer an instance administrator.",
+				"mapping_changed": "Stopped because the mapping changed while this step ran. Run it again.",
+				"no_adapter": "No connector is available for this source.",
+				"page_limit": "Stopped because the source has more pages than one import can read.",
+				"project_reach_lost": "Stopped because the target project is no longer reachable.",
+				"run_changed": "Stopped because the import changed while this step ran. Run it again."
+			},
+			"setupJob": {
+				"continue": "Continue",
+				"discover": "Discovery progress",
+				"dry_run": "Dry run progress",
+				"progress": "Records: {{records}} of {{total}} ({{percent}}%). Pages read: {{pages}}.",
+				"progressUnknown": "Pages read: {{pages}}. Records: {{records}}.",
+				"stalled": "This step has not reported progress for a while. Continue it from where it stopped."
+			},
+			"unreadable": {
+				"missing_id": "Items without an id: {{total}}",
+				"missing_title": "Items without a title: {{total}}",
+				"unreadable_item": "Items the source listed but did not return: {{total}}"
 			}
 		}
 	}

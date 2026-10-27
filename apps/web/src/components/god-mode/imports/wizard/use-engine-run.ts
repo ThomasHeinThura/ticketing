@@ -7,9 +7,10 @@ import { wizardKeys } from "./wizard-keys";
 
 export const ENGINE_POLL_MS = 3000;
 
-/** True while something is still moving: a running import, or an approval not yet granted. */
+/** True while something is still moving: a setup step, a running import, or an approval not yet granted. */
 export function engineRunIsLive(run: EngineRun | undefined): boolean {
   if (!run) return false;
+  if (run.job?.status === "running") return true;
   if (run.state === "running" || run.state === "queued") {
     return run.phase === "executing" || run.state === "running";
   }

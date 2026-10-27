@@ -2,12 +2,13 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import type { Executor } from "../database/executor";
 import { deleteStorageObject } from "./index";
 import {
-  deleteAssetsByIds,
   findTaskDescriptionLike,
   listTaskActivityContentsLike,
   listTaskAssetObjectKeys,
   listTaskAssetsByIds,
   listTaskCommentContentsLike,
+  markAssetsDetached,
+  restoreAssetsByIds,
 } from "./repository";
 
 const ASSET_URL_PATTERN = /\/api\/asset\/([a-z0-9]+)/gi;
@@ -83,21 +84,31 @@ async function isAssetReferencedElsewhere(
 }
 
 /**
- * Clean removed inline assets inside the caller's task/project-locked transaction.
- * Every database statement is run by the supplied executor and rechecks current reach;
- * successful object deletion still precedes deletion of its database row.
+ * Reconcile the detached state of inline assets inside the caller's task/project-locked
+ * transaction (P0R1-01). Editing never deletes: an asset no content of the task references any
+ * more is only marked detached, and the `attachment-gc` job removes it after the recovery
+ * window unless a legal hold covers it. An asset the new content references again is restored.
+ * No storage call happens here, so there is nothing to swallow or half-commit.
  */
-export async function deleteOrphanedAssets(
+export async function syncInlineAssetReferences(
   executor: Executor,
   identity: ResolvedIdentity,
   oldContent: string | null | undefined,
   newContent: string | null | undefined,
   scope: AssetCleanupScope,
-): Promise<void> {
+): Promise<{ detached: string[]; restored: string[] }> {
   const oldIds = extractAssetIds(oldContent);
   const newIds = extractAssetIds(newContent);
   const removedIds = [...oldIds].filter((id) => !newIds.has(id));
-  if (removedIds.length === 0) return;
+  const restored = await restoreAssetsByIds(
+    executor,
+    identity,
+    [...newIds],
+    scope.taskId,
+  );
+  if (removedIds.length === 0) {
+    return { detached: [], restored: restored.map((row) => row.id) };
+  }
 
   const assets = await listTaskAssetsByIds(
     executor,
@@ -105,7 +116,7 @@ export async function deleteOrphanedAssets(
     removedIds,
     scope.taskId,
   );
-  const assetsToDelete: typeof assets = [];
+  const toDetach: string[] = [];
   for (const asset of assets) {
     const stillReferenced = await isAssetReferencedElsewhere(
       executor,
@@ -113,20 +124,18 @@ export async function deleteOrphanedAssets(
       asset.id,
       scope.taskId,
     );
-    if (!stillReferenced) assetsToDelete.push(asset);
+    if (!stillReferenced) toDetach.push(asset.id);
   }
-
-  if (assetsToDelete.length === 0) return;
-
-  const deleteResults = await deleteS3Keys(
-    assetsToDelete.map((asset) => asset.objectKey),
+  const detached = await markAssetsDetached(
+    executor,
+    identity,
+    toDetach,
+    scope.taskId,
   );
-  const deletedAssetIds = assetsToDelete
-    .filter((_, index) => deleteResults[index]?.status === "fulfilled")
-    .map((asset) => asset.id);
-  if (deletedAssetIds.length === 0) return;
-
-  await deleteAssetsByIds(executor, identity, deletedAssetIds, scope.taskId);
+  return {
+    detached: detached.map((row) => row.id),
+    restored: restored.map((row) => row.id),
+  };
 }
 
 export async function getTaskAssetKeys(

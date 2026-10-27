@@ -393,7 +393,7 @@ describe("canonical attachment durable deletion", () => {
     expect(JSON.stringify(read)).not.toContain(f.source.key);
     await expect(
       approveAttachmentDeletion(f.approval(action.pendingActionId)),
-    ).rejects.toMatchObject({ status: 409 });
+    ).rejects.toMatchObject({ status: 404 }); // PA-6 step 2: the approver lost access
     expect((await attachment(f.relation.id)).state).toBe("ready");
   });
   it.each(["disabled", "ceiling"])(

@@ -63,6 +63,7 @@ import {
   bulkWorkItemDeletionReadSummary,
   resolveBulkWorkItemDeletionRequestScope,
 } from "./bulk-work-item-deletion-target";
+import { invalidatedApprovalError } from "./click-deletion-executor";
 import {
   COMMENT_DELETION_ROUTE,
   commentDeletionReadSummary,
@@ -1214,7 +1215,12 @@ export async function approveUserDeactivation(input: {
           pendingActionId: row.id,
           traceId: input.traceId,
         });
-        return { row, state: "denied" as const, auditFailures: 0 };
+        return {
+          row,
+          state: "denied" as const,
+          auditFailures: 0,
+          missingProof: !input.stepUpToken,
+        };
       }
       await appendPendingActionStepUpAudit(tx, {
         action: "auth.step_up_consumed",
@@ -1379,11 +1385,17 @@ export async function approveUserDeactivation(input: {
       return { row: executed, state: "executed" as const, auditFailures };
     }),
   );
-  if (result.state === "invalidated") {
-    throw new HTTPException(409, { message: "pending_action_target_changed" });
-  }
+  if (result.state === "invalidated")
+    // Only the approver's own deactivation or demotion records `capability_removed` here.
+    throw invalidatedApprovalError(
+      result.row.invalidationReason === "capability_removed",
+    );
   if (result.state === "denied") {
-    throw new HTTPException(403, { message: "step_up_expired" });
+    // PA-15: no proof supplied is `step_up_required`; expired, consumed, malformed or
+    // mismatched proof is `step_up_expired`.
+    throw new HTTPException(403, {
+      message: result.missingProof ? "step_up_required" : "step_up_expired",
+    });
   }
   if (result.state === "executed") {
     const [targetUserId] = result.row.targetIds;
@@ -1503,6 +1515,10 @@ async function auditViewed(
   actorId: string,
   auditContext: { apiKeyId: string | null; traceId: string },
 ) {
+  // P0R1-10 (PA-11): `viewed` records the dialog or pending-actions page rendering the summary
+  // in a person's session. An API-key read is machine polling, not a render: it writes no
+  // `viewed` row and so never takes the audit-chain lock.
+  if (auditContext.apiKeyId !== null) return;
   try {
     await appendAuditLog(db, {
       actorId,

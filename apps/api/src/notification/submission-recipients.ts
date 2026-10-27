@@ -1,8 +1,11 @@
 import { parseSubmissionReference } from "@taskdesk/domain";
-import { can } from "@taskdesk/permissions";
+import { can, type ResolvedIdentity } from "@taskdesk/permissions";
+import { eq } from "drizzle-orm";
+import { schema } from "../database";
 import type { DbTransaction, DomainEventEnvelope } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import type { NotificationRecipientCandidate } from "./fanout";
+import { configuredMentionChannels } from "./fanout.repository";
 import {
   findNotificationPerson,
   findSubmissionNotificationContext,
@@ -21,9 +24,10 @@ import {
  *
  * The payload carries only the reference (`SUB-n`) and the side, so the row text never copies
  * message content or staff names (`EV-5`). The audience is resolved from the stored
- * submission and the recipient's current identity, never from the event payload alone. Inbox
- * only (`channels: []`): there is no external destination registered for a submission yet, and
- * the read path is the dedicated `submission` branch of `inbox.repository.ts`.
+ * submission and the recipient's current identity, never from the event payload alone. The
+ * inbox read path is the dedicated `submission` branch of `inbox.repository.ts`; the configured
+ * email channel is offered too (`P2R1-05`) and the fan-out applies the recipient's preference,
+ * while the send-time check re-runs `isCurrentSubmissionNotificationRecipient`.
  */
 export async function resolveSubmissionRepliedRecipients(
   tx: DbTransaction,
@@ -102,7 +106,7 @@ export async function resolveSubmissionRepliedRecipients(
             },
           }
         : {}),
-      channels: [],
+      channels: await configuredMentionChannels(tx),
     },
   ];
 }
@@ -157,7 +161,43 @@ async function resolveSubmissionDeclinedRecipients(
         // The authored reason stays a single literal segment. It is never scanned for term tokens.
         body: [{ kind: "text", text: reason.trim().slice(0, 1000) }],
       },
-      channels: [],
+      channels: await configuredMentionChannels(tx),
     },
   ];
+}
+
+/**
+ * Send-time recipient check for a `submission` delivery (`current-eligibility.ts`): the customer
+ * must still be the submission's requester, and a staff recipient the triager who last handled
+ * it while still holding `intake:triage` in its workspace. Fails closed.
+ */
+export async function isCurrentSubmissionNotificationRecipient(
+  tx: DbTransaction,
+  identity: ResolvedIdentity,
+  input: { submissionId: string; workspaceId: string },
+): Promise<boolean> {
+  const [row] = await tx
+    .select({
+      requesterId: schema.submissionTable.requesterId,
+      claimedBy: schema.submissionTable.claimedBy,
+      organisationId: schema.submissionTable.organisationId,
+      workspaceId: schema.requestTypeTable.workspaceId,
+    })
+    .from(schema.submissionTable)
+    .innerJoin(
+      schema.requestTypeTable,
+      eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+    )
+    .where(eq(schema.submissionTable.id, input.submissionId))
+    .limit(1);
+  if (!row || row.workspaceId !== input.workspaceId) return false;
+  if (identity.side === "customer")
+    return identity.personId === row.requesterId;
+  return (
+    identity.side === "staff" &&
+    identity.personId === row.claimedBy &&
+    can(identity, "intake:triage", "workspace", {
+      workspaceId: row.workspaceId,
+    })
+  );
 }

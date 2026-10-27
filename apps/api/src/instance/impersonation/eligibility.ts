@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
+import { isCurrentInstanceAdmin } from "../observability/audit-failure-notifier";
 
 export type ImpersonationRefusal = {
   status: 403 | 404 | 409;
@@ -48,4 +49,35 @@ export async function checkImpersonationTarget(
   if (people.length !== 1 || people[0]?.side !== "staff" || !people[0]?.active)
     return { status: 409, message: "impersonation_target_not_eligible" };
   return null;
+}
+
+/**
+ * P4R1-M3: an impersonation session lives only as long as the administrator running it is still
+ * an instance administrator who is not suspended. Checked on every request of the session and
+ * fail closed: a missing user, an unreadable row or a lapsed role all end the session.
+ */
+export async function impersonatorStillEligible(
+  impersonatorUserId: string,
+): Promise<boolean> {
+  try {
+    // The one definition of "instance administrator" (admin role, one active staff person) ...
+    if (!(await isCurrentInstanceAdmin(impersonatorUserId))) return false;
+    // ... and not suspended (a finite ban that has lapsed no longer counts).
+    const [admin] = await db
+      .select({
+        banned: schema.userTable.banned,
+        banExpires: schema.userTable.banExpires,
+      })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, impersonatorUserId))
+      .limit(1);
+    if (!admin) return false;
+    if (admin.banned !== true) return true;
+    return (
+      admin.banExpires instanceof Date &&
+      admin.banExpires.getTime() <= Date.now()
+    );
+  } catch {
+    return false;
+  }
 }

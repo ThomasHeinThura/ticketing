@@ -14,6 +14,7 @@ import type {
   ConnectFailureReason,
   ConnectResult,
   DiscoveredFacet,
+  DiscoverHooks,
   DiscoveryResult,
   ImportAttachmentAuth,
   ImportSourceAdapter,
@@ -23,7 +24,11 @@ import type {
   SourcePage,
   SourceRecord,
 } from "../../engine/adapter";
-import { registerImportAdapter } from "../../engine/adapter";
+import {
+  isUnreadableRecord,
+  registerImportAdapter,
+  unreadableRecord,
+} from "../../engine/adapter";
 import {
   asArray,
   createGuardedTransport,
@@ -229,6 +234,24 @@ async function loadLookups(
   return { members, states, labels, types, cycleOf, modulesOf };
 }
 
+/**
+ * An issue Plane returned that cannot become a record: no id (a deterministic position id stands in,
+ * so a re-read reports the same one) or no title. Never dropped: it is counted and reported.
+ */
+function planeUnreadable(
+  issue: Record<string, unknown>,
+  projectId: string,
+  startCursor: string,
+  index: number,
+): SourceRecord {
+  const id = str(issue.id);
+  return unreadableRecord({
+    sourceType: "issue",
+    sourceId: id ?? `missing_id:${projectId}:${startCursor || "0"}:${index}`,
+    code: id ? "missing_title" : "missing_id",
+  });
+}
+
 /** Largest per-page value <= 100 that divides the requested page size evenly. */
 function perPageFor(size: number): number {
   if (size <= API_MAX_PER_PAGE) return size;
@@ -294,7 +317,10 @@ export function createPlaneAdapter(
   const transport = options.transport ?? createGuardedTransport();
   const chunkSize = Math.min(options.chunkSize ?? MAX_PAGE, MAX_PAGE);
 
-  async function scan(connection: AdapterConnection): Promise<DiscoveryResult> {
+  async function scan(
+    connection: AdapterConnection,
+    hooks?: DiscoverHooks,
+  ): Promise<DiscoveryResult> {
     const config = parseConfig(connection);
     if (!config) throw new SourceHttpError("config_invalid");
     const client = clientFor(connection, config, transport);
@@ -308,31 +334,45 @@ export function createPlaneAdapter(
       else facets.set(key, { domain, value, count: 1 });
     };
     let total = 0;
+    let pages = 0;
+    const unreadable: Record<string, number> = {};
     for (const project of await listProjects(client, config.project)) {
       const lookups = await loadLookups(client, project, members);
       const issues = await allOf(
         client,
         `/projects/${encodeURIComponent(project.id)}/issues/?order_by=created_at`,
       );
-      for (const issue of issues) {
+      for (const [index, issue] of issues.entries()) {
         if (!isRecord(issue)) continue;
-        const record = toRecord(issue, {
-          slug: config.slug,
-          webUrl: config.webUrl,
-          project,
-          lookups,
-        });
-        if (!record) continue;
+        const record =
+          toRecord(issue, {
+            slug: config.slug,
+            webUrl: config.webUrl,
+            project,
+            lookups,
+          }) ?? planeUnreadable(issue, project.id, "", index);
         total += 1;
         counts[record.sourceType] = (counts[record.sourceType] ?? 0) + 1;
+        if (isUnreadableRecord(record)) {
+          const code = record.rejectCode as string;
+          unreadable[code] = (unreadable[code] ?? 0) + 1;
+          continue;
+        }
         for (const facet of record.facets) add(facet.domain, facet.value);
         if (record.assigneeEmail)
           add("person", record.assigneeEmail.toLowerCase());
         if (record.sourceAuthorEmail)
           add("person", record.sourceAuthorEmail.toLowerCase());
       }
+      pages += 1;
+      await hooks?.onProgress?.({ pages, records: total });
     }
-    return { facets: [...facets.values()], counts, totalRecords: total };
+    return {
+      facets: [...facets.values()],
+      counts,
+      totalRecords: total,
+      ...(Object.keys(unreadable).length ? { unreadable } : {}),
+    };
   }
 
   return {
@@ -444,9 +484,12 @@ export function createPlaneAdapter(
         members ??= await loadMembers(client);
         const lookups = await loadLookups(client, project, members);
         const records: SourceRecord[] = [];
-        for (const issue of issues) {
+        for (const [index, issue] of issues.entries()) {
           const id = str(issue.id);
-          if (!id) continue;
+          if (!id) {
+            records.push(planeUnreadable(issue, project.id, c, index));
+            continue;
+          }
           const issuePath = `${base}/issues/${encodeURIComponent(id)}`;
           const context: PlaneIssueContext = {
             slug: config.slug,
@@ -460,8 +503,10 @@ export function createPlaneAdapter(
               .catch(() => ({})),
             activities: await allOf(client, `${issuePath}/activities/`),
           };
-          const record = toRecord(issue, context);
-          if (record) records.push(record);
+          records.push(
+            toRecord(issue, context) ??
+              planeUnreadable(issue, project.id, c, index),
+          );
         }
         const nextCursor = hasNext
           ? `${p}|${apiCursor}`

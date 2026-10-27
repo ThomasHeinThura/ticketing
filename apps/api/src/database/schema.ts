@@ -1556,6 +1556,8 @@ export const assetTable = pgTable(
       onUpdate: "cascade",
     }),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    /** P0R1-01: set when no content references the asset any more; `attachment-gc` removes it after the recovery window. */
+    detachedAt: timestamp("detached_at", { mode: "date", withTimezone: true }),
   },
   (table) => [
     index("asset_workspaceId_idx").on(table.workspaceId),
@@ -1924,6 +1926,8 @@ export const externalLinkTable = pgTable(
     >(),
     entityId: text("entity_id"),
     system: text("system"),
+    // 0200: the import plugin that wrote the row; part of the provenance namespace with `system`.
+    pluginId: text("plugin_id"),
     projectId: text("project_id"),
     organisationId: text("organisation_id"),
     origin: text("origin").$type<"imported">(),
@@ -1962,8 +1966,18 @@ export const externalLinkTable = pgTable(
     })
       .onDelete("cascade")
       .onUpdate("no action"),
-    uniqueIndex("external_link_imported_source_unique")
-      .on(table.workspaceId, table.system, table.entityType, table.externalId)
+    check(
+      "external_link_imported_plugin_check",
+      sql`${table.origin} IS NULL OR ${table.pluginId} IS NOT NULL`,
+    ),
+    uniqueIndex("external_link_imported_source_plugin_unique")
+      .on(
+        table.workspaceId,
+        table.pluginId,
+        table.system,
+        table.entityType,
+        table.externalId,
+      )
       .where(sql`${table.origin} = 'imported'`),
     index("external_link_work_item_idx")
       .on(table.workItemId)
@@ -4974,6 +4988,14 @@ export const commentTable = pgTable(
       table.createdAt,
     ),
     index("comment_workspaceId_idx").on(table.workspaceId),
+    // P1R2-8 (0208): trigram index for the work-item search comment branch; the expression
+    // and predicate mirror `commentBodyText` in search/canonical-repository.ts.
+    index("comment_body_search_idx")
+      .using(
+        "gin",
+        sql`lower(coalesce(case when jsonb_typeof(${table.body}) = 'string' then ${table.body} #>> '{}' else jsonb_path_query_array(${table.body}, 'lax $.**.text')::text end, '')) gin_trgm_ops`,
+      )
+      .where(sql`${table.deletedAt} IS NULL AND ${table.body} IS NOT NULL`),
     check(
       "comment_visibility_allowed",
       sql.raw("visibility = ANY (ARRAY['public'::text, 'internal'::text])"),
@@ -5694,14 +5716,15 @@ export const submissionMessageTable = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
-    authorId: text("author_id")
-      .notNull()
-      .references(() => personTable.id, {
-        onDelete: "restrict",
-        onUpdate: "cascade",
-      }),
+    // Null only for a `system` message (0207, IQ-15 auto-decline).
+    authorId: text("author_id").references(() => personTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
     actorType: text("actor_type").notNull(),
     body: text("body").notNull(),
+    reasonCode: text("reason_code"),
+    reasonParams: jsonb("reason_params").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -5714,7 +5737,19 @@ export const submissionMessageTable = pgTable(
     ),
     check(
       "submission_message_actor_type_allowed",
-      sql.raw("actor_type = ANY (ARRAY['customer'::text, 'triager'::text])"),
+      sql.raw(
+        "actor_type = ANY (ARRAY['customer'::text, 'triager'::text, 'system'::text])",
+      ),
+    ),
+    check(
+      "submission_message_system_author",
+      sql.raw("(actor_type = 'system') = (author_id IS NULL)"),
+    ),
+    check(
+      "submission_message_reason_code_allowed",
+      sql.raw(
+        "(reason_code IS NULL AND reason_params IS NULL) OR (actor_type = 'system' AND reason_code IN ('clarification_window_expired'))",
+      ),
     ),
   ],
 );
@@ -6283,7 +6318,7 @@ export const stepUpConfirmationTable = pgTable(
     check(
       "step_up_operation_route",
       sql.raw(
-        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text)) OR ((operation_key = 'instance_admin_suspend'::text) AND (route_key = 'POST /api/instance/users/{id}/suspend'::text)) OR ((operation_key = 'impersonation_start'::text) AND (route_key = 'POST /api/instance/users/{id}/impersonate'::text)) OR ((operation_key = 'secrets_rotate'::text) AND (route_key = 'POST /api/instance/plugins/rotate-secrets'::text)) OR ((operation_key = 'organisation_restore'::text) AND (route_key = 'POST /api/instance/organisations/{id}/restore'::text)) OR ((operation_key = 'webhook_create'::text) AND (route_key = 'POST /api/webhooks'::text)) OR ((operation_key = 'webhook_update_url'::text) AND (route_key = 'PATCH /api/webhooks/{id}'::text)) OR ((operation_key = 'webhook_rotate_secret'::text) AND (route_key = 'POST /api/webhooks/{id}/rotate-secret'::text)) OR ((operation_key = 'webhook_rotate_all'::text) AND (route_key = 'POST /api/instance/webhooks/rotate-secrets'::text)) OR ((operation_key = 'workspace_role_create'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/roles'::text)) OR ((operation_key = 'workspace_role_update'::text) AND (route_key = 'PATCH /api/workspace/{workspaceId}/roles/{roleId}'::text)) OR ((operation_key = 'service_key_create'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys'::text)) OR ((operation_key = 'service_key_reattest'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys/{keyId}/re-attest'::text)) OR ((operation_key = 'workspace_ownership_transfer'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/transfer-ownership'::text)) OR ((operation_key = 'change_freeze_override'::text) AND (route_key = 'POST /api/work-items/{key}/change/override-freeze'::text))",
+        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text)) OR ((operation_key = 'instance_admin_suspend'::text) AND (route_key = 'POST /api/instance/users/{id}/suspend'::text)) OR ((operation_key = 'impersonation_start'::text) AND (route_key = 'POST /api/instance/users/{id}/impersonate'::text)) OR ((operation_key = 'secrets_rotate'::text) AND (route_key = 'POST /api/instance/plugins/rotate-secrets'::text)) OR ((operation_key = 'organisation_restore'::text) AND (route_key = 'POST /api/instance/organisations/{id}/restore'::text)) OR ((operation_key = 'webhook_create'::text) AND (route_key = 'POST /api/webhooks'::text)) OR ((operation_key = 'webhook_update_url'::text) AND (route_key = 'PATCH /api/webhooks/{id}'::text)) OR ((operation_key = 'webhook_rotate_secret'::text) AND (route_key = 'POST /api/webhooks/{id}/rotate-secret'::text)) OR ((operation_key = 'webhook_rotate_all'::text) AND (route_key = 'POST /api/instance/webhooks/rotate-secrets'::text)) OR ((operation_key = 'workspace_role_create'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/roles'::text)) OR ((operation_key = 'workspace_role_update'::text) AND (route_key = 'PATCH /api/workspace/{workspaceId}/roles/{roleId}'::text)) OR ((operation_key = 'service_key_create'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys'::text)) OR ((operation_key = 'service_key_reattest'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys/{keyId}/re-attest'::text)) OR ((operation_key = 'workspace_ownership_transfer'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/transfer-ownership'::text)) OR ((operation_key = 'change_freeze_override'::text) AND (route_key = 'POST /api/work-items/{key}/change/override-freeze'::text)) OR ((operation_key = 'audit_export'::text) AND (route_key = 'POST /api/instance/audit/export'::text))",
       ),
     ),
     check(
@@ -6742,6 +6777,14 @@ export const webhookTable = pgTable(
       withTimezone: true,
     }),
     lastError: text("last_error"),
+    /**
+     * P4R1-H1: when the destination (url) or the owner last changed. A delivery created before
+     * this instant was addressed to a different destination or owner, so redelivery refuses it.
+     */
+    destinationChangedAt: timestamp("destination_changed_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     createdBy: text("created_by")
       .notNull()
       .references(() => personTable.id, {
@@ -7145,7 +7188,7 @@ export const requestRateLimitCounterTable = pgTable(
     primaryKey({ columns: [table.bucket, table.keyHash] }),
     check(
       "request_rate_limit_counter_bucket_check",
-      sql`${table.bucket} IN ('anonymous_scim_failure', 'scim_connection', 'anonymous_invitation', 'anonymous_csp_report')`,
+      sql`${table.bucket} IN ('anonymous_scim_failure', 'scim_connection', 'anonymous_invitation', 'anonymous_csp_report', 'step_up_challenge', 'step_up_proof_failure')`,
     ),
     check(
       "request_rate_limit_counter_hash_check",

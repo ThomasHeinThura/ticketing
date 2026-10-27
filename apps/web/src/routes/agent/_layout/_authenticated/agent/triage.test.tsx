@@ -108,7 +108,7 @@ vi.mock("@/hooks/queries/project/use-get-projects", () => ({
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 const REAL_ENGLISH_KEYS =
-  /^(statusFilter|states\..+|attachmentStates\..+|submissionRegion|submissionFallback|loadingDetails|destinationProject|chooseProject|workItemType|chooseWorkItemType|download)$/u;
+  /^(statusFilter|states\..+|attachmentStates\..+|submissionRegion|submissionFallback|loadingDetails|destinationProject|chooseProject|workItemType|chooseWorkItemType|download|ageSuffix\..+|errors\..+|actorTypes\..+|systemReasons\..+|reference|summary|requestType|organisation|submittedAt)$/u;
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (
@@ -565,5 +565,153 @@ describe("intake triage route", () => {
       expect(wrapper.className).toContain("min-w-0");
       expect(wrapper.className).toContain("max-w-full");
     }
+  });
+
+  describe("P2R1 review fixes", () => {
+    function openDetail(ref: string) {
+      mocks.getSubmissions.mockReset().mockResolvedValue({
+        submissions: [],
+        page: { hasMore: false, nextCursor: null },
+      });
+      mocks.search = { state: "new", ref };
+      mocks.getSubmissionAttachments.mockResolvedValue([]);
+      mocks.getDuplicateSuggestions.mockResolvedValue({ suggestions: [] });
+      mocks.acceptSubmission.mockReset();
+    }
+
+    it("P2R1-02: a typed decline reason and an error never follow the user to another submission", async () => {
+      openDetail("SUB-1");
+      mocks.getSubmission.mockReset().mockResolvedValue(detail("new", null));
+      mocks.claimSubmission
+        .mockReset()
+        .mockRejectedValue(new Error("network down"));
+      mocks.declineSubmission.mockReset().mockResolvedValue({});
+      const view = renderTriage();
+      const reason = await screen.findByLabelText("declineReason");
+      fireEvent.change(reason, { target: { value: "Reason for SUB-1" } });
+      fireEvent.change(screen.getByLabelText("clarificationMessage"), {
+        target: { value: "Question for SUB-1" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "claim" }));
+      expect(await screen.findByRole("alert")).toBeVisible();
+
+      mocks.search = { state: "new", ref: "SUB-2" };
+      view.rerender(
+        <QueryClientProvider client={new QueryClient()}>
+          <IntakeRoute />
+        </QueryClientProvider>,
+      );
+      const next = await screen.findByLabelText("declineReason");
+      await waitFor(() => expect(next).toHaveValue(""));
+      expect(screen.getByLabelText("clarificationMessage")).toHaveValue("");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "decline" })).toBeDisabled();
+      fireEvent.change(next, { target: { value: "Reason for SUB-2" } });
+      fireEvent.click(screen.getByRole("button", { name: "decline" }));
+      await waitFor(() =>
+        expect(mocks.declineSubmission).toHaveBeenCalledWith({
+          ref: "SUB-2",
+          reason: "Reason for SUB-2",
+        }),
+      );
+      expect(mocks.declineSubmission).toHaveBeenCalledTimes(1);
+    });
+
+    it("P2R1-02: the reset also applies when the panel stays mounted under one client", async () => {
+      openDetail("SUB-1");
+      mocks.getSubmission.mockReset().mockResolvedValue(detail("new", null));
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const tree = () => (
+        <QueryClientProvider client={queryClient}>
+          <IntakeRoute />
+        </QueryClientProvider>
+      );
+      const view = render(tree());
+      fireEvent.change(await screen.findByLabelText("declineReason"), {
+        target: { value: "Typed on SUB-1" },
+      });
+      mocks.search = { state: "new", ref: "SUB-2" };
+      view.rerender(tree());
+      await waitFor(() =>
+        expect(screen.getByLabelText("declineReason")).toHaveValue(""),
+      );
+    });
+
+    it("P2R1-12: a lost accept race names the error and links the winner's work item, and refreshes", async () => {
+      openDetail("SUB-7");
+      mocks.getSubmission.mockReset().mockResolvedValue(detail("new", null));
+      mocks.acceptSubmission.mockReset().mockRejectedValue(
+        new Error(
+          JSON.stringify({
+            error: "submission_already_converted",
+            message: "Submission is no longer open",
+            workItem: { id: "wi_1", key: "ACME-9" },
+          }),
+        ),
+      );
+      renderTriage();
+      fireEvent.click(await screen.findByRole("button", { name: "accept" }));
+      expect(
+        await screen.findByText(/^Another triager already accepted this/u),
+      ).toBeVisible();
+      fireEvent.click(screen.getByRole("button", { name: "Open ACME-9" }));
+      expect(mocks.navigate).toHaveBeenCalledWith(
+        expect.objectContaining({ params: { key: "ACME-9" } }),
+      );
+      // The 409 invalidated the detail query, so it was fetched again.
+      await waitFor(() =>
+        expect(mocks.getSubmission.mock.calls.length).toBeGreaterThanOrEqual(2),
+      );
+    });
+
+    it("P2R1-12 / P2R1-13: translates a missing destination and other coded refusals", async () => {
+      openDetail("SUB-7");
+      mocks.getSubmission.mockReset().mockResolvedValue({
+        ...detail("new", null),
+        version: { formSchema: { fields: [] } },
+      });
+      renderTriage();
+      fireEvent.click(await screen.findByRole("button", { name: "accept" }));
+      expect(
+        await screen.findByText(
+          "Choose a destination project and confirm the work item type before accepting.",
+        ),
+      ).toBeVisible();
+      expect(mocks.acceptSubmission).not.toHaveBeenCalled();
+    });
+
+    it("P2R1-05 / P2R1-13: shows translated actor types and the coded system message", async () => {
+      openDetail("SUB-7");
+      mocks.getSubmission.mockReset().mockResolvedValue({
+        ...detail("declined", null),
+        messages: [
+          {
+            id: "m1",
+            actorType: "triager",
+            body: "Which version?",
+            createdAt: "2026-10-01T00:00:00Z",
+          },
+          {
+            id: "m2",
+            actorType: "system",
+            body: "English fallback",
+            reasonCode: "clarification_window_expired",
+            reasonParams: { days: 14 },
+            createdAt: "2026-10-15T00:00:00Z",
+          },
+        ],
+      });
+      renderTriage();
+      expect(
+        await screen.findByText(
+          "Closed automatically: no reply within 14 days of the clarification request.",
+        ),
+      ).toBeVisible();
+      expect(screen.getByText(/^Staff/u)).toBeVisible();
+      expect(screen.getByText(/^System/u)).toBeVisible();
+      expect(screen.queryByText("English fallback")).not.toBeInTheDocument();
+    });
   });
 });

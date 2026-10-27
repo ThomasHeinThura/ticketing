@@ -58,6 +58,12 @@ describe("API integration: #281 NUL-byte sweep on raw param/query reads", () => 
   });
 
   it("GET /api/invitation/public/{id}: a NUL byte in the id is a clean 400, not a 500 (this route is public -- no session required)", async () => {
+    // An initialized instance always has its settings row; the anonymous invitation limiter
+    // reads its window from it and fails closed (503) without one.
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", setupCompletedAt: new Date() })
+      .onConflictDoNothing({ target: schema.instanceSettingTable.id });
     const { app } = createApp();
 
     const response = await app.request(

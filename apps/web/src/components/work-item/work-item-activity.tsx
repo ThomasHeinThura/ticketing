@@ -61,6 +61,7 @@ import {
 import WorkItemCommentAttachments from "./work-item-comment-attachments";
 import WorkItemCommentComposer from "./work-item-comment-composer";
 import { WorkItemCommentDelete } from "./work-item-comment-delete";
+import { ImportedMarker } from "./work-item-import-origin";
 
 export type ActivityFilter = "everything" | "comments" | "public";
 function effectiveVisibility(row: WorkItemActivityRow): "public" | "internal" {
@@ -558,6 +559,9 @@ function WorkItemActivity({
                             ? t("activity:timeline.public")
                             : t("activity:timeline.internal")}
                         </span>
+                        {row.origin === "imported" ? (
+                          <ImportedMarker importedAt={row.importedAt} />
+                        ) : null}
                         {row.editedAt && !isDeleted ? (
                           <CommentVersionHistory
                             workItemKey={workItemKey}
@@ -755,6 +759,11 @@ function WorkItemActivity({
                     : activityVerbLabel(row.verb, t)}
                 </span>
               )}
+              {row.origin === "imported" ? (
+                <span className="ml-2 inline-flex align-middle">
+                  <ImportedMarker importedAt={row.importedAt} />
+                </span>
+              ) : null}
               {group.length > 1 ? (
                 <Collapsible className="mt-2">
                   <CollapsibleTrigger

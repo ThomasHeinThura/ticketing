@@ -53,7 +53,11 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { matchesIntakeFilters, splitIntakeFilters } from "@/lib/intake-queue";
+import {
+  matchesIntakeFilters,
+  parseTriageError,
+  splitIntakeFilters,
+} from "@/lib/intake-queue";
 import { submissionAnswerRows } from "@/lib/intake-validation";
 import {
   type IntakeQueueSearch,
@@ -197,10 +201,8 @@ function IntakeRoute() {
       const version = data?.version;
       const project = projectId.trim() || version?.defaultProjectId || "";
       const type = workItemTypeId || version?.workItemTypeId || "";
-      if (!project || !type)
-        throw new Error(
-          "Choose a destination project and confirm the pinned work item type.",
-        );
+      // Shown through `errors.destination_required` (translated), never as raw text.
+      if (!project || !type) throw new Error("destination_required");
       return acceptSubmission({
         ref: ref ?? "",
         projectId: project,
@@ -214,6 +216,11 @@ function IntakeRoute() {
       if (label) setAcceptedItem({ ref: ref ?? "", label });
       await invalidate();
       statusRef.current?.focus();
+    },
+    // `P2R1-12`: a lost race or a changed submission refreshes the queue and the detail, so
+    // the screen shows the submission's current state next to the specific message.
+    onError: async (error) => {
+      if (parseTriageError(error).status === "conflict") await invalidate();
     },
   });
   const download = useMutation({
@@ -245,6 +252,39 @@ function IntakeRoute() {
       markSubmissionDuplicate({ ref: ref ?? "", workItemId }),
     onSuccess: invalidate,
   });
+  // `P2R1-02`: everything typed or reported for one submission belongs to it. Opening another
+  // submission (`?ref=`) clears the drafts, the chosen destination and every action's error.
+  const resetClaim = claim.reset;
+  const resetAccept = accept.reset;
+  const resetDecline = decline.reset;
+  const resetClarify = clarify.reset;
+  const resetDuplicate = duplicate.reset;
+  const resetDownload = download.reset;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the selected reference is the trigger
+  useEffect(() => {
+    setDeclineReason("");
+    setMessage("");
+    setProjectId("");
+    setWorkItemTypeId("");
+    resetClaim();
+    resetAccept();
+    resetDecline();
+    resetClarify();
+    resetDuplicate();
+    resetDownload();
+  }, [
+    ref,
+    resetClaim,
+    resetAccept,
+    resetDecline,
+    resetClarify,
+    resetDuplicate,
+    resetDownload,
+  ]);
+  const actionError = [claim, accept, decline, clarify, duplicate]
+    .map((mutation) => (mutation.isError ? mutation.error : null))
+    .find(Boolean);
+  const triageError = actionError ? parseTriageError(actionError) : null;
   const current = detail.data as unknown as
     | {
         submission?: {
@@ -265,6 +305,8 @@ function IntakeRoute() {
           id: string;
           actorType: string;
           body: string;
+          reasonCode?: string | null;
+          reasonParams?: Record<string, unknown> | null;
           createdAt: string;
         }>;
       }
@@ -377,14 +419,29 @@ function IntakeRoute() {
         {!workspace.data?.id && <p role="status">{t("selectWorkspace")}</p>}
         {(detail.isError ||
           attachments.isError ||
-          claim.isError ||
-          accept.isError ||
-          decline.isError ||
           download.isError ||
-          clarify.isError ||
-          duplicate.isError) && (
+          triageError) && (
           <Alert variant="error" role="alert">
-            <AlertDescription>{t("actionError")}</AlertDescription>
+            <AlertDescription>
+              {triageError?.code
+                ? t(`errors.${triageError.code}`)
+                : t("actionError")}
+            </AlertDescription>
+            {triageError?.workItem ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 font-mono"
+                onClick={() =>
+                  void navigate({
+                    to: routes.workItemDetail.path,
+                    params: { key: triageError.workItem?.key ?? "" },
+                  })
+                }
+              >
+                {t("errors.openWinner", { key: triageError.workItem.key })}
+              </Button>
+            ) : null}
           </Alert>
         )}
         {queuePair && pending ? (
@@ -548,10 +605,19 @@ function IntakeRoute() {
                     {(current.messages ?? []).map((entry) => (
                       <li key={entry.id} className="rounded border p-3">
                         <p className="text-sm">
-                          {entry.actorType} ·{" "}
-                          {new Date(entry.createdAt).toLocaleString()}
+                          {t(`actorTypes.${entry.actorType}`, {
+                            defaultValue: entry.actorType,
+                          })}{" "}
+                          · {new Date(entry.createdAt).toLocaleString()}
                         </p>
-                        <p className="wrap-anywhere">{entry.body}</p>
+                        <p className="wrap-anywhere">
+                          {entry.reasonCode
+                            ? t(`systemReasons.${entry.reasonCode}`, {
+                                ...entry.reasonParams,
+                                defaultValue: entry.body,
+                              })
+                            : entry.body}
+                        </p>
                       </li>
                     ))}
                   </ol>

@@ -25,6 +25,7 @@ import {
   listProjectScopeRoles,
   listRosterCandidates,
   loadProjectNames,
+  loadProjectRoleCapabilities,
   loadRosterRows,
   lockPersonById,
   ROSTER_ROLE_DEFINITIONS,
@@ -41,6 +42,11 @@ export type RosterActor = {
   rank: number;
   actorId: string;
   actorType: "person" | "api_key";
+  /**
+   * The capabilities the actor holds at this project, expanded (P4R1-M1). `null` for an instance
+   * administrator, whose authority is not a capability list and who may grant any project role.
+   */
+  held: ReadonlySet<string> | null;
 };
 
 type Scope = { workspaceId: string; projectId: string };
@@ -158,11 +164,37 @@ async function auditRoster(
   });
 }
 
-function assertCanGrant(actor: RosterActor, role: RosterRoleRef) {
+/**
+ * A roster grant needs more than rank (`RL-3`, `RL-4`): the caller must hold every capability of
+ * the role at this project's scope, so a rank-55 custom role that carries only `manage_members`
+ * cannot mint `project-lead`; and nobody grants or changes their own role on a roster, which is
+ * how a narrowed lead would promote themselves (P4R1-M1). Same subset rule as the workspace
+ * guard (`role-assignment-guard.ts`).
+ */
+async function assertCanGrant(
+  tx: Transaction,
+  actor: RosterActor,
+  role: RosterRoleRef,
+  targetPersonId: string,
+) {
+  if (targetPersonId === actor.personId) {
+    throw new HTTPException(403, {
+      message:
+        "cannot_grant_to_self: you cannot add yourself or change your own role on a project roster",
+    });
+  }
   if (role.roleRank > actor.rank) {
     throw new HTTPException(403, {
       message:
         "role_exceeds_caller_authority: you cannot grant a role above your own rank",
+    });
+  }
+  if (actor.held === null) return;
+  const wanted = await loadProjectRoleCapabilities(tx, role.roleId as string);
+  const missing = [...wanted].filter((name) => !actor.held?.has(name));
+  if (missing.length > 0) {
+    throw new HTTPException(403, {
+      message: `role_exceeds_caller_authority: you cannot grant capabilities you do not hold (${missing.slice(0, 5).join(", ")})`,
     });
   }
 }
@@ -200,7 +232,7 @@ export async function addProjectMember(
     if (!role) {
       throw new HTTPException(422, { message: "project_role_not_found" });
     }
-    assertCanGrant(actor, role);
+    await assertCanGrant(tx, actor, role, person.id);
     if (await findActiveDirectGrant(tx, person.id, scope.projectId)) {
       throw new HTTPException(409, {
         message: "already_member: this person is already on the project roster",
@@ -263,7 +295,7 @@ export async function updateProjectMemberRole(
     if (!role) {
       throw new HTTPException(422, { message: "project_role_not_found" });
     }
-    assertCanGrant(actor, role);
+    await assertCanGrant(tx, actor, role, person.id);
     if (current.source === "direct" && current.roleId === role.roleId) return;
 
     const grant = await findActiveDirectGrant(tx, person.id, scope.projectId);

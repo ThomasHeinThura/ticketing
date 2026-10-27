@@ -47,6 +47,7 @@ import CreateWorkItemCustomFields from "./create-work-item-custom-fields";
 import CreateWorkItemProperties from "./create-work-item-properties";
 import CreateWorkItemStagedAttachments from "./create-work-item-staged-attachments";
 import CreateWorkItemTemplatePicker from "./create-work-item-template-picker";
+import { moveCreatedWorkItemToState } from "./move-created-work-item";
 import { useCreateWorkItemAttachments } from "./use-create-work-item-attachments";
 import {
   type CreateWorkItemLabel,
@@ -71,6 +72,8 @@ export type CreateWorkItemDialogProps = {
   onClose: () => void;
   projectId: string;
   workspaceId: string | undefined;
+  /** Kaneo's per-column "+": the column (project state id) the new item should land in. */
+  initialState?: { id: string; name: string };
 };
 type SubmitError = "forbidden" | "invalid" | "generic";
 
@@ -81,6 +84,7 @@ export default function CreateWorkItemDialogForm({
   onDraftStateChange,
   projectId,
   workspaceId,
+  initialState,
 }: CreateWorkItemDialogProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -276,6 +280,24 @@ export default function CreateWorkItemDialogForm({
           if (lifecycle.isCurrent(intent)) setCreatedKey(confirmedKey);
         } else if (attachments.rows.length) {
           throw new Error("Create result was not confirmed");
+        }
+        if (confirmedKey && initialState) {
+          // The item exists either way; a column it cannot move to is reported, not failed.
+          const moved = await moveCreatedWorkItemToState({
+            key: confirmedKey,
+            currentStateId:
+              result && typeof result.stateId === "string"
+                ? result.stateId
+                : undefined,
+            targetStateId: initialState.id,
+          }).catch(() => "unavailable" as const);
+          if (moved === "unavailable")
+            toast.warning(
+              t("workItems:create.notMovedToState", {
+                key: confirmedKey,
+                state: initialState.name,
+              }),
+            );
         }
         await queryClient.invalidateQueries({
           queryKey: ["work-items", projectId],

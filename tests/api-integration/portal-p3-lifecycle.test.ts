@@ -131,6 +131,9 @@ describe("CP-3 / CP-4 portal message projection", () => {
       "createdAt",
       "id",
       "mine",
+      // `P2R1-05`: null unless the message is the system auto-decline.
+      "reasonCode",
+      "reasonParams",
     ]);
   });
 

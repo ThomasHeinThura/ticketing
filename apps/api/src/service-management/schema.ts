@@ -92,9 +92,10 @@ export const patchChangeBody = z
     rollbackPlan: z.string().trim().max(10_000).nullable().optional(),
     serviceIds: z.array(id).max(50).optional(),
     releaseId: id.nullable().optional(),
-    version: z.number().int().positive().optional(),
+    /** Required (P5-R1-10): the change detail version the edit was made against; a stale one is a 409. */
+    version: z.number().int().positive(),
   })
-  .refine((value) => Object.keys(value).length > 0, {
+  .refine((value) => Object.keys(value).length > 1, {
     message: "Provide at least one field to change",
   });
 

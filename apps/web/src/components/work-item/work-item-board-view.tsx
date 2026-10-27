@@ -52,6 +52,7 @@ export default function WorkItemBoardView({
   onOpenItem,
   scope,
   combined = false,
+  onCreateInState,
 }: {
   project: { id: string; slug?: string };
   /** P5 agile: show only the members of one cycle or module. */
@@ -78,9 +79,15 @@ export default function WorkItemBoardView({
   onSelectionChange: (key: string, checked: boolean) => void;
   onPruneSelection: (present: Set<string>) => void;
   onOpenItem?: (key: string) => void;
+  /** Kaneo's per-column "+": opens the create dialog for one state column. */
+  onCreateInState?: (
+    state: { id: string; name: string },
+    trigger: HTMLButtonElement,
+  ) => void;
 }) {
   const { t } = useTranslation();
   const {
+    canCreateTasks,
     canTransitionTasks,
     canRankTasks,
     canAssignTasks,
@@ -318,6 +325,11 @@ export default function WorkItemBoardView({
           onOpenItem={onOpenItem}
           combinedColumns={combined ? combinedPages?.[0]?.columns : undefined}
           combinedCapabilities={combined ? combinedCapabilities : undefined}
+          onCreateInState={
+            !combined && !isCheckingPermissions && canCreateTasks()
+              ? onCreateInState
+              : undefined
+          }
         />
       )}
       {!isLoading && realtimeProjectId === project.id ? (

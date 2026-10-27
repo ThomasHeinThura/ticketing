@@ -153,7 +153,13 @@ describe("God Mode organisation request catalogue", () => {
     };
     expect(data.data.map((row) => row.id)).toContain(customer.id);
     expect(data.data.map((row) => row.id)).toContain(inactive.id);
-    expect(data.data.map((row) => row.id)).not.toContain(deleted.id);
+    // God Mode lists a soft-deleted customer during its restore window, flagged by
+    // deletedAt, so it can be restored (organisation lifecycle).
+    expect(
+      data.data.find((row) => row.id === deleted.id) as
+        | { deletedAt: string | null }
+        | undefined,
+    ).toMatchObject({ deletedAt: expect.any(String) });
     expect(data.data.map((row) => row.id)).not.toContain(internal.id);
     expect(data.options.map((row) => row.id)).toContain(type.id);
     expect(data.options.map((row) => row.id)).not.toContain(legacyPrivate.id);

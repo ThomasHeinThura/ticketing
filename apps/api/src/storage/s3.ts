@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "dotenv-mono";
+import { buildContentDisposition } from "./content-disposition";
 import { browserStorageOrigins } from "./csp-origins";
 import { StorageProbeCollisionError } from "./probe-error";
 import {
@@ -268,21 +269,42 @@ export async function getPrivateObject(key: string): Promise<AssetObject> {
   };
 }
 
+/** Lifetime of an attachment upload credential (the presigned PUT). */
+export function getAttachmentUploadTtlSeconds(): number {
+  return parsePositiveInt(
+    process.env.S3_PRESIGN_TTL_SECONDS,
+    DEFAULT_PRESIGN_TTL_SECONDS,
+  );
+}
+
+/**
+ * The one place an attachment's S3 object key is built. Every attachment key the application
+ * stores (row `object_key`, GC queue, import writer) is this prefixed key, so upload,
+ * complete (copy), download, size check and delete all address the same object and never apply
+ * the prefix themselves. Probe keys keep their own prefixing (they never touch attachment rows).
+ */
+export function buildAttachmentStorageKey(rawKey: string): string {
+  return applyKeyPrefix(env("S3_KEY_PREFIX"), rawKey);
+}
+
 /**
  * Issue #28 (attachments) -- the S3 equivalent of `filesystem.ts`'s
- * `createAttachmentUploadUrl`: a presigned PUT for a caller-supplied `key` rather than
- * one built from a `TaskImageUploadContext`. `maxBytes` is accepted for signature parity
- * with the filesystem driver's token-bound ceiling, but is NOT enforced by S3 itself on
- * a plain presigned PUT (that would need a presigned POST with a
- * `content-length-range` policy condition, not built here -- flagged in the PR body);
- * the attachment module enforces the ceiling at the application layer instead, both
- * before minting this URL and again on `complete` by checking the object's actual
- * stored size.
+ * `createAttachmentUploadUrl`: a presigned PUT for a caller-supplied (already prefixed, see
+ * `buildAttachmentStorageKey`) `key`.
+ *
+ * AT-2 asks for a size-bounded credential. The Content-Length header is part of the signature
+ * and equals the size the caller declared at presign (itself validated against the configured
+ * maximum), so the credential can only ever write exactly that many bytes to exactly this key;
+ * S3 rejects any other body with a signature error. `complete` still re-reads the stored size
+ * (a stricter bound than the signature alone) and deletes oversize objects. `finalize` copies
+ * to a never-presigned key and removes this one, so a replay of the URL after `complete` can at
+ * most re-create one orphan of the declared size at this pending key.
  */
 export async function createAttachmentUploadUrl(
   key: string,
   contentType: string,
-  _maxBytes: number,
+  maxBytes: number,
+  declaredSize?: number,
 ): Promise<{
   key: string;
   uploadUrl: string;
@@ -290,20 +312,31 @@ export async function createAttachmentUploadUrl(
 }> {
   const config = getStorageConfig();
   const client = getClient(config);
-  const prefixedKey = applyKeyPrefix(config.keyPrefix, key);
+  // Never sign an unbounded credential: the presign routes always declare a positive size
+  // already checked against the configured maximum.
+  if (
+    declaredSize === undefined ||
+    !Number.isInteger(declaredSize) ||
+    declaredSize < 0 ||
+    declaredSize > maxBytes
+  )
+    throw new Error("A size-bound upload credential needs a declared size.");
+  const exactSize = declaredSize;
 
   const command = new PutObjectCommand({
     Bucket: config.bucket,
-    Key: prefixedKey,
+    Key: key,
     ContentType: contentType,
+    ContentLength: exactSize,
   });
 
   const uploadUrl = await getSignedUrl(client, command, {
     expiresIn: config.presignTtlSeconds,
+    signableHeaders: new Set(["content-length"]),
   });
 
   return {
-    key: prefixedKey,
+    key,
     uploadUrl,
     headers: { "Content-Type": contentType },
   };
@@ -323,7 +356,7 @@ export async function createAttachmentDownloadUrl(
   const command = new GetObjectCommand({
     Bucket: config.bucket,
     Key: key,
-    ResponseContentDisposition: `attachment; filename="${filename.replaceAll('"', "")}"`,
+    ResponseContentDisposition: buildContentDisposition(filename, false),
   });
 
   return getSignedUrl(client, command, {
@@ -418,7 +451,7 @@ export async function finalizeAttachmentObject(
   );
 }
 
-/** Server-side put of a complete attachment object (P6 import writer); same key handling as the presigned PUT. */
+/** Server-side put of a complete attachment object (P6 import writer); `key` is a `buildAttachmentStorageKey` key. */
 export async function putAttachmentObject(params: {
   key: string;
   bytes: Uint8Array;
@@ -429,7 +462,7 @@ export async function putAttachmentObject(params: {
   await client.send(
     new PutObjectCommand({
       Bucket: config.bucket,
-      Key: applyKeyPrefix(config.keyPrefix, params.key),
+      Key: params.key,
       Body: Buffer.from(params.bytes),
       ContentLength: params.bytes.byteLength,
       ContentType: params.contentType,

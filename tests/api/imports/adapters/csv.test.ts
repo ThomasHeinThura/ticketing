@@ -82,6 +82,26 @@ describe("csv parser (RFC 4180)", () => {
     expect(CSV_LIMITS.maxBytes).toBe(5 * 1024 * 1024);
   });
 
+  it("enforces the row and column limits while parsing, not after the whole file is read", () => {
+    // 5 MiB of one-character rows is exactly at the byte limit: the row limit must trip.
+    const started = Date.now();
+    const bomb = parseCsv("a\n".repeat(CSV_LIMITS.maxBytes / 2));
+    expect(bomb).toMatchObject({ fatal: "too_many_rows", rows: [] });
+    expect(Date.now() - started).toBeLessThan(2000);
+    // Proof the parse stopped early: a stray quote after the limit is never reached, so the
+    // answer is the row limit and not `unterminated_quote` (which needs the whole file).
+    expect(
+      parseCsv(`a\n${"1\n".repeat(CSV_LIMITS.maxRows + 1)}"open`).fatal,
+    ).toBe("too_many_rows");
+    // A header line of countless cells stops at the column limit, not after building them all.
+    expect(parseCsv(`${",".repeat(CSV_LIMITS.maxBytes - 10)}\n1`).fatal).toBe(
+      "too_many_columns",
+    );
+    // Exactly at the limit is still accepted.
+    expect(parseCsv("a\n1\n2", { maxRows: 2 }).fatal).toBeNull();
+    expect(parseCsv("a,b\n1,2", { maxColumns: 2 }).fatal).toBeNull();
+  });
+
   it("measures the size limit in UTF-8 bytes, not characters", () => {
     // 3 characters but 9 bytes
     expect(parseCsv("a\n日本語", { maxBytes: 8 }).fatal).toBe("file_too_large");

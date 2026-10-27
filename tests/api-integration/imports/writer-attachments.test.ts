@@ -12,6 +12,7 @@ import {
 } from "../../../apps/api/src/imports/service";
 import {
   type ImportAttachmentJob,
+  markMissingImportSourcesStale,
   setImportAttachmentDependencies,
 } from "../../../apps/api/src/imports/writer";
 import { createApp } from "../../../apps/api/src/index";
@@ -31,13 +32,16 @@ const PNG = new Uint8Array([
 const URL_OK = "https://files.source.example.test/a/diagram.png";
 
 let root: string;
+// biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
 const originalRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+// biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
 const originalDriver = process.env.TASKDESK_STORAGE_DRIVER;
 
 beforeEach(async () => {
   await resetTestDatabase();
   root = await mkdtemp(path.join(tmpdir(), "p6b-attachments-"));
   process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = root;
+  // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
   delete process.env.TASKDESK_STORAGE_DRIVER;
 });
 
@@ -45,6 +49,7 @@ afterEach(async () => {
   setImportAttachmentDependencies(null);
   await rm(root, { recursive: true, force: true });
   if (originalRoot === undefined)
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
     delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
   else process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
   if (originalDriver !== undefined)
@@ -297,6 +302,52 @@ describe("import writer: attachments (IM-4, download failure edge case)", () => 
         .from(schema.importProvenanceTable)
         .where(eq(schema.importProvenanceTable.entityType, "attachment")),
     ).toHaveLength(1);
+  });
+
+  it("keeps an attachment fresh on a rerun and marks a removed one stale (P6-R1-05)", async () => {
+    const f = await writerFixture();
+    const { app } = createApp();
+    setImportAttachmentDependencies({
+      download: vi.fn(async () => ({
+        ok: true as const,
+        bytes: PNG,
+        contentType: "image/png",
+      })),
+    });
+    const both = [
+      { sourceId: "keep", url: URL_OK, filename: "keep.png" },
+      { sourceId: "drop", url: URL_OK, filename: "drop.png" },
+    ];
+    const run1 = await createRun(app, f, "att-stale");
+    await commitChunk(app, f, run1.id, "c1", [
+      attachmentRecord(f, "ST-1", both),
+    ]);
+    // The source no longer lists "drop"; "keep" is still there (its download is skipped).
+    const run2 = await createRun(app, f, "att-stale");
+    await commitChunk(app, f, run2.id, "c1", [
+      attachmentRecord(f, "ST-1", [both[0] as (typeof both)[number]]),
+    ]);
+    await db.transaction((tx) =>
+      markMissingImportSourcesStale(tx, {
+        workspaceId: f.workspace.id,
+        pluginId: "import.mcp",
+        sourceRef: "att-stale",
+        currentRunId: run2.id,
+      }),
+    );
+    const rows = await db
+      .select()
+      .from(schema.importProvenanceTable)
+      .where(eq(schema.importProvenanceTable.entityType, "attachment"));
+    const keep = rows.find((row) =>
+      row.externalId.endsWith("#attachment:keep"),
+    );
+    const drop = rows.find((row) =>
+      row.externalId.endsWith("#attachment:drop"),
+    );
+    expect(keep).toMatchObject({ importRunId: run2.id, staleAt: null });
+    expect(drop?.staleAt).not.toBeNull();
+    expect(drop?.importRunId).toBe(run1.id);
   });
 
   it("reports a storage failure and removes the stored object when the row cannot be written", async () => {

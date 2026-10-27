@@ -383,7 +383,7 @@ export function createJiraAdapter(
       }
     },
 
-    async discover(connection): Promise<DiscoveryResult> {
+    async discover(connection, hooks): Promise<DiscoveryResult> {
       const mode = readMode(connection.config);
       if (mode.kind === "export") {
         const parsed = await loadExport(mode);
@@ -408,6 +408,7 @@ export function createJiraAdapter(
           JIRA_CHUNK_SIZE,
         );
         all.push(...page.issues);
+        await hooks?.onProgress?.({ pages: pages + 1, records: all.length });
         cursor = page.next;
         if (cursor === null) return aggregate(all);
       }

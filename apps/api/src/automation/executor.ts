@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import db from "../database";
+import type { Executor } from "../database/executor";
 import {
   automationRunTable,
   automationTable,
@@ -145,8 +146,9 @@ async function loadEnvelope(eventId: string) {
 async function finishRun(
   run: ClaimedRun,
   patch: Partial<typeof automationRunTable.$inferInsert>,
-) {
-  await db
+  executor: Executor = db,
+): Promise<boolean> {
+  const updated = await executor
     .update(automationRunTable)
     .set({ ...patch, leaseExpiresAt: null, finishedAt: new Date() })
     .where(
@@ -154,7 +156,9 @@ async function finishRun(
         eq(automationRunTable.id, run.id),
         eq(automationRunTable.state, "running"),
       ),
-    );
+    )
+    .returning({ id: automationRunTable.id });
+  return updated.length > 0;
 }
 
 const AVAILABLE: ReadonlySet<string> = new Set(BUILTIN_ACTION_TYPES);
@@ -273,31 +277,34 @@ export async function executeRun(run: ClaimedRun): Promise<RunOutcome> {
 
   const failures = results.filter((entry) => !entry.ok);
   await recordRuleOutcome(rule, results);
-  await finishRun(run, {
-    state: failures.length > 0 ? "failed" : "done",
+  const error =
+    failures.length > 0
+      ? failures
+          .map((entry) => `${entry.type}: ${entry.error ?? "failed"}`)
+          .join("; ")
+          .slice(0, 500)
+      : null;
+  const finished = {
+    state: failures.length > 0 ? ("failed" as const) : ("done" as const),
     matched: true,
     results,
-    error:
-      failures.length > 0
-        ? failures
-            .map((entry) => `${entry.type}: ${entry.error ?? "failed"}`)
-            .join("; ")
-            .slice(0, 500)
-        : null,
-  });
+    error,
+  };
   if (failures.length > 0) {
-    await db.transaction((tx) =>
-      emitRunFailed(tx, {
+    // P0R1-05: the failed run state and its `automation.run_failed` event commit together,
+    // so a crash between them can never leave a failed run nobody was told about.
+    await db.transaction(async (tx) => {
+      if (!(await finishRun(run, finished, tx))) return;
+      await emitRunFailed(tx, {
         automationId: rule.id,
         workspaceId: rule.workspaceId,
         projectId: rule.projectId,
         runId: run.id,
-        error: failures
-          .map((entry) => `${entry.type}: ${entry.error ?? "failed"}`)
-          .join("; ")
-          .slice(0, 500),
-      }),
-    );
+        error: error ?? "",
+      });
+    });
+  } else {
+    await finishRun(run, finished);
   }
   return {
     state: failures.length > 0 ? "failed" : "done",

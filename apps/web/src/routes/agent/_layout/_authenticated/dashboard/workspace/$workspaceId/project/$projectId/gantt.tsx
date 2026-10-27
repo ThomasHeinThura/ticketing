@@ -35,6 +35,7 @@ import ScheduleViewState, {
 import GroupControl from "@/components/common/group-control";
 import ProjectLayout from "@/components/common/project-layout";
 import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
+import ProjectViewFeatureGate from "@/components/common/project-view-feature-gate";
 import { CanonicalGanttTaskBar } from "@/components/gantt/canonical-gantt-task-bar";
 import {
   type ArrowPath,
@@ -73,7 +74,7 @@ const SelectionCheckbox = lazy(
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt",
 )({
-  component: RouteComponent,
+  component: GatedRouteComponent,
   validateSearch: parseProjectBoardSearch,
 });
 
@@ -81,6 +82,20 @@ function parseTaskDate(value: string | null) {
   if (!value) return null;
   const parsed = parseISO(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/** P4R1-M2: the view renders only while its feature flag is on for the project. */
+function GatedRouteComponent() {
+  const { projectId, workspaceId } = Route.useParams();
+  return (
+    <ProjectViewFeatureGate
+      projectId={projectId}
+      workspaceId={workspaceId}
+      view="gantt"
+    >
+      <RouteComponent />
+    </ProjectViewFeatureGate>
+  );
 }
 
 function RouteComponent() {

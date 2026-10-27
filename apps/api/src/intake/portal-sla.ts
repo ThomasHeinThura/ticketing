@@ -2,6 +2,7 @@ import type { SlaMetric } from "@taskdesk/domain";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import db, { schema } from "../database";
 import { slaPauseTable } from "../database/migration-schema";
+import { workspaceFeatureEnabled } from "../feature-flag/enforce";
 import { evaluatePinnedWorkItemSla } from "../sla-policy/evaluation";
 
 /**
@@ -58,6 +59,9 @@ export async function loadPortalSla(
     )
     .limit(1);
   if (!item?.slaPolicyVersionId) return null;
+  // P4R1-M2: the customer sees no SLA while `feature.sla` is off.
+  if (!(await workspaceFeatureEnabled("feature.sla", item.workspaceId)))
+    return null;
   try {
     const pauses = await db
       .select({

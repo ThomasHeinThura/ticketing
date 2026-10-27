@@ -29,6 +29,7 @@ import { shortcuts } from "@/constants/shortcuts";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { authClient } from "@/lib/auth-client";
 import {
   pushRecentItem,
   type RecentItem,
@@ -50,6 +51,8 @@ function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const { data: workspace } = useActiveWorkspace();
+  const { data: session } = authClient.useSession();
+  const userId = session?.user?.id;
   const navigate = useNavigate();
 
   const searchTerm = query.trim();
@@ -77,13 +80,16 @@ function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
   }, [open]);
 
   const recentItems = useMemo<RecentItem[]>(
-    () => (open && workspace?.id ? readRecentItems(workspace.id) : []),
-    [open, workspace?.id],
+    () =>
+      open && workspace?.id && userId
+        ? readRecentItems(userId, workspace.id)
+        : [],
+    [open, workspace?.id, userId],
   );
 
   const handleSelect = (entry: PaletteEntry) => {
-    if (workspace?.id) {
-      pushRecentItem(workspace.id, {
+    if (workspace?.id && userId) {
+      pushRecentItem(userId, workspace.id, {
         type: entry.type,
         id: entry.id,
         title: entry.title,

@@ -40,7 +40,13 @@ const eventTranslation: Record<PortalNotificationKind, string> = {
   "work_item.transitioned": "notifications.events.transition",
   "submission.replied": "notifications.events.requestReply",
   "submission.declined": "notifications.events.requestDeclined",
+  "approval.requested": "notifications.events.approvalRequested",
+  "approval.expiring": "notifications.events.approvalExpiring",
+  "approval.withdrawn": "notifications.events.approvalWithdrawn",
 };
+
+const linkClassName =
+  "hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring";
 
 export function PortalNotificationInbox({
   filter: controlledFilter,
@@ -193,18 +199,25 @@ function PortalNotificationCard({
         <CardHeader>
           <div className="min-w-0">
             <CardTitle className="text-base">
-              <Link
-                to="/submissions/$ref"
-                params={{ ref: notification.requestRef }}
-                hash={
-                  notification.commentId
-                    ? `comment-${notification.commentId}`
-                    : undefined
-                }
-                className="hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                {t(eventTranslation[notification.kind])}
-              </Link>
+              {notification.requestRef ? (
+                <Link
+                  to="/submissions/$ref"
+                  params={{ ref: notification.requestRef }}
+                  hash={
+                    notification.commentId
+                      ? `comment-${notification.commentId}`
+                      : undefined
+                  }
+                  className={linkClassName}
+                >
+                  {t(eventTranslation[notification.kind])}
+                </Link>
+              ) : (
+                // AP-21: an approval event opens the Approvals screen (AP-19).
+                <Link to="/approvals" className={linkClassName}>
+                  {t(eventTranslation[notification.kind])}
+                </Link>
+              )}
             </CardTitle>
             <CardDescription>
               {new Date(notification.createdAt).toLocaleString()}
@@ -223,13 +236,15 @@ function PortalNotificationCard({
             </Button>
           </CardAction>
         </CardHeader>
-        <CardPanel>
-          <p className="text-sm text-muted-foreground">
-            {t("notifications.requestReference", {
-              ref: notification.requestRef,
-            })}
-          </p>
-        </CardPanel>
+        {notification.requestRef ? (
+          <CardPanel>
+            <p className="text-sm text-muted-foreground">
+              {t("notifications.requestReference", {
+                ref: notification.requestRef,
+              })}
+            </p>
+          </CardPanel>
+        ) : null}
       </Card>
     </li>
   );

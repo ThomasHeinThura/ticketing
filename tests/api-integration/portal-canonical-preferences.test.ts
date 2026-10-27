@@ -7,6 +7,7 @@ import { createCustomerPrincipal } from "./helpers/customer-principal";
 import { resetTestDatabase } from "./helpers/database";
 
 const portalHost = "portal.localhost:5174";
+const canonicalPath = "/api/portal/notification-preferences/canonical";
 const comment = {
   eventKind: "work_item.commented",
   channel: "notify.email",
@@ -29,7 +30,8 @@ function router(userId: string, portal = "customer") {
     } as unknown as NonNullable<BaseVariables["session"]>);
     await next();
   });
-  return app.route("/", portalCanonicalPreferences);
+  // Production mount: the strict policy registry is keyed by the full route.
+  return app.route(canonicalPath, portalCanonicalPreferences);
 }
 
 describe("portal canonical notification preferences", () => {
@@ -37,7 +39,7 @@ describe("portal canonical notification preferences", () => {
     const customer = await createCustomerPrincipal();
     const other = await createCustomerPrincipal();
     const app = router(customer.user.id);
-    const path = `http://${portalHost}/`;
+    const path = `http://${portalHost}${canonicalPath}`;
     const headers = { host: portalHost };
     const before = await app.request(path, { headers });
     expect(before.status).toBe(200);
@@ -89,7 +91,7 @@ describe("portal canonical notification preferences", () => {
   it("refuses staff sessions and digesting direct mentions", async () => {
     const customer = await createCustomerPrincipal();
     const staffSession = router(customer.user.id, "agent");
-    const path = `http://${portalHost}/`;
+    const path = `http://${portalHost}${canonicalPath}`;
     expect(
       (await staffSession.request(path, { headers: { host: portalHost } }))
         .status,

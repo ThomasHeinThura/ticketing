@@ -79,6 +79,13 @@ export const intakePolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  // `P2R1-18`: a click-level pending action (PA-1), refused while published or used.
+  "DELETE /api/request-types/{id}": {
+    capability: "request_type:manage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
   "GET /api/portal/catalogue": {
     portal: "customer",
     predicate: "own_organisation",

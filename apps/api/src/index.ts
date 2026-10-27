@@ -70,6 +70,7 @@ import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
 import featureFlag from "./feature-flag";
+import { featureEnabledSomewhere } from "./feature-flag/enforce";
 import { accountLinkApi as accountLinkRouter } from "./identity/account-link";
 import identityConnectionAdmin from "./identity/connection-admin";
 import identityConnectionDeletion from "./identity/connection-deletion";
@@ -203,6 +204,7 @@ import {
   getStorageBrowserOrigins,
   getStorageDriver,
 } from "./storage";
+import { buildContentDisposition } from "./storage/content-disposition";
 import {
   readAttachmentDownloadObject,
   StoragePathError,
@@ -354,29 +356,6 @@ const SAFE_INLINE_ASSET_TYPES = new Set([
   "image/png",
   "image/webp",
 ]);
-
-function buildContentDisposition(filename: string, inline: boolean) {
-  const normalized = filename
-    .normalize("NFC")
-    .replace(/[\r\n"]/g, "")
-    .trim();
-  const safeFilename = normalized || "file";
-  const asciiFallback =
-    safeFilename
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[\\/]/g, "-")
-      .replace(/[^\x20-\x7E]+/g, "_")
-      .replace(/\s+/g, " ")
-      .trim() || "file";
-  const encodedFilename = encodeURIComponent(safeFilename).replace(
-    /['()*]/g,
-    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
-
-  const disposition = inline ? "inline" : "attachment";
-  return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encodedFilename}`;
-}
 
 /**
  * Where the built web app can be found, relative to this module's own file
@@ -546,7 +525,9 @@ function isCustomerAuthEndpoint(method: string, path: string): boolean {
     parts[2] === "auth" &&
     parts[3] === "identity" &&
     Boolean(parts[4]) &&
-    (parts[5] === "start" || parts[5] === "callback")
+    // The portal's only SSO entry is the typed-domain home-realm flow; a direct
+    // connection start is agent-host only. The provider's redirect back stays admitted.
+    parts[5] === "callback"
   );
 }
 
@@ -812,6 +793,22 @@ function registerStaticServing(
   app.use("*", serveStaticOrSpaShell);
 }
 
+function portalDisabledResponse(path: string): Response {
+  const headers = {
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+  };
+  if (isApiRequestPath(path))
+    return Response.json({ message: "Not found" }, { status: 404, headers });
+  return new Response(
+    '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Customer portal unavailable</title></head><body><h1>Customer portal unavailable</h1><p>The customer portal is not enabled for this instance.</p></body></html>',
+    {
+      status: 404,
+      headers: { ...headers, "content-type": "text/html; charset=utf-8" },
+    },
+  );
+}
+
 export function createApp(
   options: {
     staticRoot?: string;
@@ -958,6 +955,10 @@ export function createApp(
     )
       return denyByHost(c);
     if (selected === "portal") {
+      // `feature.customer_portal` off: the portal router answers 404 and the portal host serves a
+      // disabled notice (features.md). A flag cannot unbind a hostname, so the host stays up.
+      if (!(await featureEnabledSomewhere("feature.customer_portal")))
+        return portalDisabledResponse(c.req.path);
       const portalAllowed =
         (c.req.method === "POST" && c.req.path === "/api/public/csp-report") ||
         (c.req.method === "GET" && c.req.path === "/api/public/terminology") ||
@@ -1334,18 +1335,29 @@ export function createApp(
       const { key, expires, token, filename } = c.req.valid("query");
 
       try {
+        // RFC 5987 `filename*` keeps non-Latin names (Myanmar script, CJK) out of the
+        // ByteString-only header value. The header is built before the file is opened, and
+        // the body is cancelled if the response still cannot be built, so a failure never
+        // leaks a read stream's file handle.
+        const contentDisposition = buildContentDisposition(filename, false);
         const object = await readAttachmentDownloadObject({
           key,
           expires,
           token,
         });
-        return new Response(object.body as BodyInit, {
-          headers: {
-            "Cache-Control": "private, max-age=0, no-store",
-            "Content-Type": object.contentType || "application/octet-stream",
-            "Content-Disposition": `attachment; filename="${filename.replaceAll('"', "")}"`,
-          },
-        });
+        const body = object.body as ReadableStream<Uint8Array> | null;
+        try {
+          return new Response(body, {
+            headers: {
+              "Cache-Control": "private, max-age=0, no-store",
+              "Content-Type": object.contentType || "application/octet-stream",
+              "Content-Disposition": contentDisposition,
+            },
+          });
+        } catch (responseError) {
+          await body?.cancel().catch(() => {});
+          throw responseError;
+        }
       } catch (error) {
         if (!(error instanceof StoragePathError)) {
           logHttpRequestFailure();

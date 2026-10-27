@@ -473,7 +473,7 @@ describe("GET /api/me/pending-actions", () => {
     ]);
   });
 
-  it("attributes API-key list and detail reads to the current key and request trace", async () => {
+  it("API-key list and detail polls write no viewed audit (P0R1-10)", async () => {
     const { user, workspace } = await createWorkspaceMember();
     await ensurePersonFor(user.id, workspace.organisationId);
     const pending = await createPendingAction(user.id, {
@@ -495,14 +495,6 @@ describe("GET /api/me/pending-actions", () => {
         })
         .returning({ id: schema.apikeyTable.id }),
       "API key",
-    );
-    const person = requireRow(
-      await db
-        .select({ id: schema.personTable.id })
-        .from(schema.personTable)
-        .where(eq(schema.personTable.userId, user.id))
-        .limit(1),
-      "viewing person",
     );
     const { app } = createApp();
 
@@ -534,34 +526,15 @@ describe("GET /api/me/pending-actions", () => {
     expect(detailJson).not.toContain("traceId");
 
     const viewed = await db
-      .select({
-        actorId: schema.auditLogTable.actorId,
-        actorType: schema.auditLogTable.actorType,
-        apiKeyId: schema.auditLogTable.apiKeyId,
-        traceId: schema.auditLogTable.traceId,
-      })
+      .select({ id: schema.auditLogTable.id })
       .from(schema.auditLogTable)
       .where(
         and(
           eq(schema.auditLogTable.action, "pending_action.viewed"),
           eq(schema.auditLogTable.entityId, pending.id),
         ),
-      )
-      .orderBy(schema.auditLogTable.traceId);
-    expect(viewed).toEqual([
-      {
-        actorId: person.id,
-        actorType: "api_key",
-        apiKeyId: key.id,
-        traceId: "api-key-pending-action-detail",
-      },
-      {
-        actorId: person.id,
-        actorType: "api_key",
-        apiKeyId: key.id,
-        traceId: "api-key-pending-action-list",
-      },
-    ]);
+      );
+    expect(viewed).toEqual([]);
   });
 
   it("rejects list and detail reads after a valid API-key owner's identity is revoked", async () => {

@@ -5,7 +5,10 @@ import {
   openHomeRealmContinuation,
   sealHomeRealmContinuation,
 } from "../../../apps/api/src/identity/home-realm-continuation";
-import { consumeHomeRealmRateLimit } from "../../../apps/api/src/identity/home-realm-rate-limit";
+import {
+  consumeHomeRealmRateLimit,
+  rateLimitClientAddress,
+} from "../../../apps/api/src/identity/home-realm-rate-limit";
 
 const key = "a".repeat(64);
 let previousKey: string | undefined;
@@ -147,5 +150,40 @@ describe("home-realm anonymous rate limit", () => {
         distributedConfigured: () => false,
       }),
     ).toBe(false);
+  });
+
+  it("keys an IPv6 client on its /64 so rotating inside the prefix shares one bucket (P3-R1-09)", async () => {
+    const prefix = randomUUID()
+      .slice(0, 4)
+      .replace(/[^0-9a-f]/g, "a");
+    const config = async () => ({ windowMs: 60_000, max: 1 });
+    const make = (address: string) => ({
+      readConfig: config,
+      clientIp: () => address,
+      distributedConfigured: () => false,
+      now: () => 1_800_000_000_000,
+    });
+    expect(await hitLimit(make(`2001:db8:${prefix}:1::1`))).toBe(true);
+    // Same /64, different interface identifier and spelling: same bucket.
+    expect(
+      await hitLimit(make(`2001:db8:${prefix}:1:abcd:ef01:2345:6789`)),
+    ).toBe(false);
+    expect(await hitLimit(make(`2001:0db8:${prefix}:0001:0:0:0:ffff`))).toBe(
+      false,
+    );
+    // A different /64 is a different client.
+    expect(await hitLimit(make(`2001:db8:${prefix}:2::1`))).toBe(true);
+    // IPv4 is unchanged.
+    expect(rateLimitClientAddress("203.0.113.9")).toBe("203.0.113.9");
+    expect(rateLimitClientAddress("2001:db8:1:2:3:4:5:6")).toBe(
+      "2001:db8:1:2::/64",
+    );
+    expect(rateLimitClientAddress("::1")).toBe("0:0:0:0::/64");
+    // IPv4-mapped clients keep their own IPv4 bucket in both spellings.
+    expect(rateLimitClientAddress("::ffff:203.0.113.9")).toBe("203.0.113.9");
+    expect(rateLimitClientAddress("::ffff:cb00:7109")).toBe("203.0.113.9");
+    expect(rateLimitClientAddress("::ffff:198.51.100.7")).not.toBe(
+      rateLimitClientAddress("::ffff:203.0.113.9"),
+    );
   });
 });

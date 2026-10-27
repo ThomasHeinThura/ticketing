@@ -135,6 +135,19 @@ vi.mock("@/store/user-preferences", () => ({
   ) => selector({ weekStartsOn: 0 }),
 }));
 
+const viewFeature = vi.hoisted(() => ({
+  enabled: true as boolean | undefined,
+}));
+// Locale files are regenerated from i18n/en-US.json by the coordinator; the state itself is
+// covered by FeatureOff's own keys.
+vi.mock("@/components/agile/feature-off", () => ({
+  FeatureOff: ({ feature }: { feature: string }) => (
+    <div data-testid={`feature-off-${feature}`} />
+  ),
+}));
+vi.mock("@/hooks/queries/feature-flag/use-project-pages-feature", () => ({
+  useProjectFeatureState: () => viewFeature.enabled,
+}));
 vi.mock("@/components/common/project-layout", () => ({
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
@@ -254,6 +267,18 @@ function syncRouteSearchFromUrl() {
   };
   for (const listener of routeState.listeners) listener();
 }
+
+describe("timeline feature flag (P4R1-M2)", () => {
+  it("shows the feature-off state instead of the view while the flag is off", () => {
+    viewFeature.enabled = false;
+    try {
+      render(<GanttRoute />);
+      expect(screen.getByTestId("feature-off-timeline")).toBeInTheDocument();
+    } finally {
+      viewFeature.enabled = true;
+    }
+  });
+});
 
 describe("Gantt jump-to-today", () => {
   it("centers a new project after a search stops hiding its timeline", () => {

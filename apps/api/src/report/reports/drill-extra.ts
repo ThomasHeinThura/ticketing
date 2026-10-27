@@ -204,37 +204,46 @@ const timeLogged: ExtraDrill = {
 
 const costToDeliver: ExtraDrill = {
   handleOf: (row) => text(row._drill) ?? slugOf(row.project),
+  // A caller who may not see rates sees no currency either (it names the rate card in use).
   items: async (ctx, handle, limit) => {
-    const budgetId = handle?.startsWith("budget:")
-      ? handle.slice("budget:".length)
-      : null;
-    if (budgetId !== null) {
-      if (!ctx.showRates || budgetId.length === 0) return [];
-      const [budget] = await selectRows<{
-        id: string;
-        project_id: string;
-        currency: string;
-        period_start: string;
-        period_end: string;
-      }>(sql`SELECT b.id, b.project_id, b.currency, b.period_start, b.period_end
+    const items = await costToDeliverItems(ctx, handle, limit);
+    return ctx.showRates
+      ? items
+      : items.map(({ currency: _currency, ...rest }) => rest);
+  },
+};
+
+const costToDeliverItems: ExtraDrill["items"] = async (ctx, handle, limit) => {
+  const budgetId = handle?.startsWith("budget:")
+    ? handle.slice("budget:".length)
+    : null;
+  if (budgetId !== null) {
+    if (!ctx.showRates || budgetId.length === 0) return [];
+    const [budget] = await selectRows<{
+      id: string;
+      project_id: string;
+      currency: string;
+      period_start: string;
+      period_end: string;
+    }>(sql`SELECT b.id, b.project_id, b.currency, b.period_start, b.period_end
         FROM budget b JOIN project p ON p.id = b.project_id
         WHERE b.id = ${budgetId} AND b.workspace_id = ${ctx.workspaceId}
           AND p.deleted_at IS NULL AND ${ctx.reach} AND ${projectOrgFilters(ctx)}
           AND b.period_start <= ${dayOf(new Date(ctx.window.to.getTime() - 1))}::date
           AND b.period_end >= ${dayOf(ctx.window.from)}::date`);
-      if (!budget) return [];
+    if (!budget) return [];
 
-      const [timeRows, costRows] = await Promise.all([
-        selectRows<{
-          id: string;
-          date: string;
-          person: string | null;
-          project_key: string | null;
-          work_item_key: string | null;
-          title: string | null;
-          minutes: string;
-          currency: string;
-        }>(sql`SELECT te.id, te.date::text AS date, ${PERSON} AS person,
+    const [timeRows, costRows] = await Promise.all([
+      selectRows<{
+        id: string;
+        date: string;
+        person: string | null;
+        project_key: string | null;
+        work_item_key: string | null;
+        title: string | null;
+        minutes: string;
+        currency: string;
+      }>(sql`SELECT te.id, te.date::text AS date, ${PERSON} AS person,
             p.slug AS project_key, w.key AS work_item_key,
             COALESCE(NULLIF(btrim(te.description), ''), w.title) AS title,
             te.minutes, te.currency
@@ -243,15 +252,15 @@ const costToDeliver: ExtraDrill = {
           AND te.rate_minor IS NOT NULL
           AND te.date >= ${budget.period_start}::date AND te.date <= ${budget.period_end}::date
           ORDER BY te.date DESC, te.created_at DESC LIMIT ${limit}`),
-        selectRows<{
-          id: string;
-          date: string;
-          person: string | null;
-          project_key: string | null;
-          work_item_key: string | null;
-          title: string;
-          currency: string;
-        }>(sql`SELECT ce.id, ce.date::text AS date, ${PERSON} AS person,
+      selectRows<{
+        id: string;
+        date: string;
+        person: string | null;
+        project_key: string | null;
+        work_item_key: string | null;
+        title: string;
+        currency: string;
+      }>(sql`SELECT ce.id, ce.date::text AS date, ${PERSON} AS person,
             p.slug AS project_key, w.key AS work_item_key,
             ct.name || CASE WHEN NULLIF(btrim(ce.note), '') IS NULL THEN '' ELSE ' — ' || btrim(ce.note) END AS title,
             ce.currency
@@ -268,56 +277,9 @@ const costToDeliver: ExtraDrill = {
             AND ${ctx.readAnyTime ? sql`true` : sql`ce.person_id = ${ctx.identity.personId}`}
             AND ${costEntryFilters(ctx)}
           ORDER BY ce.date DESC, ce.created_at DESC LIMIT ${limit}`),
-      ]);
-      const timeItems: DrillItem[] = timeRows.map((row) => ({
-        kind: "time_entry",
-        key: row.id,
-        title: row.title ?? "",
-        projectKey: row.project_key,
-        state: null,
-        priority: null,
-        date: row.date,
-        person: row.person,
-        hours: minutesToHours(num(row.minutes)),
-        workItemKey: row.work_item_key,
-        currency: row.currency,
-      }));
-      const costs: DrillItem[] = costRows.map((row) => ({
-        kind: "cost_entry",
-        key: row.id,
-        title: row.title,
-        projectKey: row.project_key,
-        state: null,
-        priority: null,
-        date: row.date,
-        person: row.person,
-        workItemKey: row.work_item_key,
-        currency: row.currency,
-      }));
-      return [...timeItems, ...costs]
-        .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
-        .slice(0, limit);
-    }
-
-    const timeRows = await selectRows<{
-      id: string;
-      date: string;
-      person: string | null;
-      project_key: string | null;
-      work_item_key: string | null;
-      title: string | null;
-      minutes: string;
-      currency: string | null;
-    }>(sql`SELECT te.id, te.date::text AS date, ${PERSON} AS person,
-        p.slug AS project_key, w.key AS work_item_key,
-        COALESCE(NULLIF(btrim(te.description), ''), w.title) AS title,
-        te.minutes, te.currency
-      ${timeFrom(ctx)}
-      AND ${timeDates(ctx)}
-      AND ${handle === null ? sql`true` : sql`p.slug = ${handle}`}
-      ORDER BY te.date DESC, te.created_at DESC LIMIT ${limit}`);
-    return timeRows.map((row) => ({
-      kind: "time_entry" as const,
+    ]);
+    const timeItems: DrillItem[] = timeRows.map((row) => ({
+      kind: "time_entry",
       key: row.id,
       title: row.title ?? "",
       projectKey: row.project_key,
@@ -329,7 +291,53 @@ const costToDeliver: ExtraDrill = {
       workItemKey: row.work_item_key,
       currency: row.currency,
     }));
-  },
+    const costs: DrillItem[] = costRows.map((row) => ({
+      kind: "cost_entry",
+      key: row.id,
+      title: row.title,
+      projectKey: row.project_key,
+      state: null,
+      priority: null,
+      date: row.date,
+      person: row.person,
+      workItemKey: row.work_item_key,
+      currency: row.currency,
+    }));
+    return [...timeItems, ...costs]
+      .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
+      .slice(0, limit);
+  }
+
+  const timeRows = await selectRows<{
+    id: string;
+    date: string;
+    person: string | null;
+    project_key: string | null;
+    work_item_key: string | null;
+    title: string | null;
+    minutes: string;
+    currency: string | null;
+  }>(sql`SELECT te.id, te.date::text AS date, ${PERSON} AS person,
+        p.slug AS project_key, w.key AS work_item_key,
+        COALESCE(NULLIF(btrim(te.description), ''), w.title) AS title,
+        te.minutes, te.currency
+      ${timeFrom(ctx)}
+      AND ${timeDates(ctx)}
+      AND ${handle === null ? sql`true` : sql`p.slug = ${handle}`}
+      ORDER BY te.date DESC, te.created_at DESC LIMIT ${limit}`);
+  return timeRows.map((row) => ({
+    kind: "time_entry" as const,
+    key: row.id,
+    title: row.title ?? "",
+    projectKey: row.project_key,
+    state: null,
+    priority: null,
+    date: row.date,
+    person: row.person,
+    hours: minutesToHours(num(row.minutes)),
+    workItemKey: row.work_item_key,
+    currency: row.currency,
+  }));
 };
 
 const portfolioHealth: ExtraDrill = {

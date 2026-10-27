@@ -8,12 +8,20 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../apps/api/src/index";
 import {
   createAttachmentDownloadUrl,
   createAttachmentUploadUrl,
 } from "../../apps/api/src/storage/filesystem";
+
+// Unit tests run without a database; the portal host is on unless a flag row turns it off.
+vi.mock("../../apps/api/src/feature-flag/enforce", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../../apps/api/src/feature-flag/enforce")
+  >()),
+  featureEnabledSomewhere: async () => true,
+}));
 
 const PORTAL = "http://portal.localhost:5174";
 const PORTAL_HOST = "portal.localhost:5174";
@@ -29,12 +37,14 @@ describe("portal host admits only portal-submission attachment storage URLs (CP-
   let previousRoot: string | undefined;
 
   beforeAll(() => {
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test points storage at its own temporary root.
     previousRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
     root = mkdtempSync(join(tmpdir(), "taskdesk-portal-storage-"));
     process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = root;
   });
   afterAll(() => {
     if (previousRoot === undefined)
+      // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test points storage at its own temporary root.
       delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
     else process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = previousRoot;
     rmSync(root, { recursive: true, force: true });
@@ -258,6 +268,7 @@ describe("portal host admits only portal-submission attachment storage URLs (CP-
     // A host-run API without TASKDESK_STORAGE_FILESYSTEM_ROOT falls back to the Docker
     // path /app/data/attachments; the missing root surfaces as the generic 400 the real
     // browser run saw. The e2e fixture must therefore always provide a writable root.
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test points storage at its own temporary root.
     const configured = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
     process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = join(root, "does-not-exist");
     try {

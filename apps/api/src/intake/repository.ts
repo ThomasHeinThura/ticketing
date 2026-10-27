@@ -30,7 +30,6 @@ import {
   sql,
 } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
 import {
   currentProjectReachPredicate,
@@ -41,6 +40,7 @@ import {
   enqueueOutboxEvent,
   eventScope,
 } from "../events/outbox";
+import { workspaceFeatureEnabled } from "../feature-flag/enforce";
 import { logTaskDesk } from "../instance/observability/runtime";
 import { enqueueNotificationEvent } from "../notification/fanout";
 import { resolveSubmissionRepliedRecipients } from "../notification/submission-recipients";
@@ -61,6 +61,7 @@ import {
   recordReopenRequested,
   requestCustomerReopen,
 } from "../workflow/customer-reopen";
+import { appendIntakeAudit } from "./audit";
 import {
   applyAcceptedCustomFields,
   customFieldKeyOf,
@@ -69,6 +70,7 @@ import {
   refusedCustomFieldMappings,
 } from "./custom-field-mapping";
 import { suggestDuplicatesForQueueRows } from "./duplicate-suggestions";
+import { intakeError } from "./errors";
 import {
   lockRequestTypeGroupOrder,
   orderPortalCatalogueGroups,
@@ -236,7 +238,7 @@ export async function createRequestType(
         message: "Could not create request type",
       });
     await synchronizeRequestTypeGroupOrder(tx, input.workspaceId);
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId: input.workspaceId,
@@ -315,7 +317,7 @@ export async function updateRequestType(
         message: "Request type changed; reload before saving",
       });
     await synchronizeRequestTypeGroupOrder(tx, current.workspaceId);
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId: row.workspaceId,
@@ -551,7 +553,7 @@ export async function publishRequestType(id: string, actorId: string) {
       throw new HTTPException(409, {
         message: "Request type changed while publishing",
       });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId: type.workspaceId,
@@ -618,7 +620,7 @@ export async function setRequestTypePublished(
       .returning();
     if (!row)
       throw new HTTPException(404, { message: "Request type not found" });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId: row.workspaceId,
@@ -936,7 +938,7 @@ export async function createSubmission(input: {
       personId: identity.personId,
       addedBy: identity.personId,
     });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId: identity.personId,
       actorType: "person",
       workspaceId: selected.workspaceId,
@@ -1039,10 +1041,11 @@ async function convertSubmissionInTransaction(
         )[0]?.displayName ?? actor.name)
       : actor.name;
   if (!projectId)
-    throw new HTTPException(422, {
-      message:
-        "A destination project must be selected before accepting this submission",
-    });
+    throw intakeError(
+      422,
+      "destination_required",
+      "A destination project must be selected before accepting this submission",
+    );
   const [lockedWorkspace] = await tx
     .select({ id: schema.workspaceTable.id })
     .from(schema.workspaceTable)
@@ -1072,9 +1075,11 @@ async function convertSubmissionInTransaction(
     project.organisationId !== submission.organisationId ||
     !(await canReachProject(project))
   )
-    throw new HTTPException(422, {
-      message: "Destination project is unavailable for this organisation",
-    });
+    throw intakeError(
+      422,
+      "destination_unavailable",
+      "Destination project is unavailable for this organisation",
+    );
   const [version] = await tx
     .select()
     .from(schema.requestTypeVersionTable)
@@ -1083,9 +1088,11 @@ async function convertSubmissionInTransaction(
     )
     .limit(1);
   if (!version)
-    throw new HTTPException(409, {
-      message: "Submitted form version is unavailable",
-    });
+    throw intakeError(
+      409,
+      "form_version_unavailable",
+      "Submitted form version is unavailable",
+    );
   // IQ-7 treats the snapshotted project and type as prefilled suggestions. The form
   // mapping/version remains pinned; the triager's chosen target type must be live in
   // this workspace, and the chosen project must be live and belong to the requester org.
@@ -1100,9 +1107,11 @@ async function convertSubmissionInTransaction(
     )
     .limit(1);
   if (!type)
-    throw new HTTPException(422, {
-      message: "The submitted work-item type is unavailable",
-    });
+    throw intakeError(
+      422,
+      "work_item_type_unavailable",
+      "The submitted work-item type is unavailable",
+    );
   const [state] = await tx
     .select()
     .from(schema.stateTable)
@@ -1161,14 +1170,20 @@ async function convertSubmissionInTransaction(
     throw new HTTPException(409, {
       message: "Submission workspace is unavailable",
     });
-  const policyId =
-    type.slaPolicyId ??
-    requestSlaPolicyId ??
-    resolveProjectSlaPolicyId({
-      mode: project.slaPolicyMode as "inherit" | "override",
-      overrideId: project.slaPolicyId,
-      workspaceDefaultId: workspace.slaPolicyId,
-    });
+  // P4R1-M2: with `feature.sla` off no SLA clock starts on the accepted work item.
+  const policyId = !(await workspaceFeatureEnabled(
+    "feature.sla",
+    workspaceId,
+    tx,
+  ))
+    ? null
+    : (type.slaPolicyId ??
+      requestSlaPolicyId ??
+      resolveProjectSlaPolicyId({
+        mode: project.slaPolicyMode as "inherit" | "override",
+        overrideId: project.slaPolicyId,
+        workspaceDefaultId: workspace.slaPolicyId,
+      }));
   if (
     policyId &&
     !(await findWorkspaceOwnedSlaPolicyQuery(tx, policyId, workspaceId))[0]
@@ -1343,11 +1358,13 @@ async function convertSubmissionInTransaction(
     )
     .returning();
   if (!accepted)
-    throw new HTTPException(409, {
-      message: "Submission changed before it could be accepted",
-    });
+    throw intakeError(
+      409,
+      "submission_changed",
+      "Submission changed before it could be accepted",
+    );
   await beforeAcceptedAudit();
-  await appendAuditLog(tx, {
+  await appendIntakeAudit(tx, {
     actorId,
     actorType: actor.type,
     workspaceId,
@@ -1417,6 +1434,26 @@ export async function acceptSubmission(
       ref,
       workspaceId,
       actorId,
+      // `P2R1-12`: the loser of an accept race is shown the work item the first triager made,
+      // when the destination is within the loser's reach.
+      async (inner, converted) => {
+        if (!converted.workItemId) return null;
+        const [found] = await inner
+          .select({
+            id: schema.workItemTable.id,
+            key: schema.workItemTable.key,
+            project: schema.projectTable,
+          })
+          .from(schema.workItemTable)
+          .innerJoin(
+            schema.projectTable,
+            eq(schema.projectTable.id, schema.workItemTable.projectId),
+          )
+          .where(eq(schema.workItemTable.id, converted.workItemId))
+          .limit(1);
+        if (!found || !(await canReachProject(found.project))) return null;
+        return { id: found.id, key: found.key };
+      },
     );
     const [snapshot] = await tx
       .select()
@@ -1426,9 +1463,11 @@ export async function acceptSubmission(
       )
       .limit(1);
     if (!snapshot)
-      throw new HTTPException(409, {
-        message: "Submitted form version is unavailable",
-      });
+      throw intakeError(
+        409,
+        "form_version_unavailable",
+        "Submitted form version is unavailable",
+      );
     const item = await convertSubmissionInTransaction(
       tx,
       submission,
@@ -1480,7 +1519,11 @@ export async function markSubmissionDuplicate(
       .limit(1);
     if (!row) throw new HTTPException(404, { message: "Submission not found" });
     if (row.submission.state !== "new" && row.submission.state !== "clarifying")
-      throw new HTTPException(409, { message: "Submission is no longer open" });
+      throw intakeError(
+        409,
+        "submission_not_open",
+        "Submission is no longer open",
+      );
     const [target] = await tx
       .select({ item: schema.workItemTable, project: schema.projectTable })
       .from(schema.workItemTable)
@@ -1494,6 +1537,8 @@ export async function markSubmissionDuplicate(
           eq(schema.workItemTable.workspaceId, workspaceId),
           isNull(schema.workItemTable.deletedAt),
           isNull(schema.workItemTable.archivedAt),
+          // A merge target in a deleted project is gone for every other reader (`P2R1-P1`).
+          isNull(schema.projectTable.deletedAt),
         ),
       )
       .limit(1);
@@ -1523,10 +1568,12 @@ export async function markSubmissionDuplicate(
       )
       .returning();
     if (!updated)
-      throw new HTTPException(409, {
-        message: "Submission changed before it could be linked",
-      });
-    await appendAuditLog(tx, {
+      throw intakeError(
+        409,
+        "submission_changed",
+        "Submission changed before it could be linked",
+      );
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId,
@@ -1790,6 +1837,8 @@ export async function findSubmission(
         authorId: comment.authorId ?? "",
         actorType: comment.actorType,
         body: extractDocumentText(comment.body),
+        reasonCode: null,
+        reasonParams: null,
         createdAt: comment.createdAt.toISOString(),
       }));
     messages = [...messages, ...transferred].sort((left, right) =>
@@ -1813,17 +1862,23 @@ type PortalSubmissionSource = Omit<
  * viewer's own. Nothing else about the author (id, role, assignment) is exposed.
  */
 export type PortalMessageAuthor = {
-  actorType: "customer" | "triager";
+  actorType: "customer" | "triager" | "system";
   authorName: string | null;
   mine: boolean;
 };
 
 export async function portalMessageAuthors(
-  messages: ReadonlyArray<{ authorId: string; actorType: string }>,
+  messages: ReadonlyArray<{ authorId: string | null; actorType: string }>,
   viewerPersonId: string,
-): Promise<(authorId: string, actorType: string) => PortalMessageAuthor> {
+): Promise<
+  (authorId: string | null, actorType: string) => PortalMessageAuthor
+> {
   const ids = [
-    ...new Set(messages.map((message) => message.authorId).filter(Boolean)),
+    ...new Set(
+      messages.flatMap((message) =>
+        message.authorId ? [message.authorId] : [],
+      ),
+    ),
   ];
   const people = ids.length
     ? await db
@@ -1837,6 +1892,9 @@ export async function portalMessageAuthors(
     : [];
   const byId = new Map(people.map((person) => [person.id, person]));
   return (authorId, actorType) => {
+    // `P2R1-05`: a system message (the IQ-15 auto-decline) has no author to name.
+    if (actorType === "system" || authorId === null)
+      return { actorType: "system", authorName: null, mine: false };
     const person = byId.get(authorId);
     // A stored `triager` message or a comment by a non-customer person is staff; an author that
     // cannot be resolved falls back to the stored actor type, and anything but `customer` is staff.
@@ -2036,6 +2094,8 @@ export async function findPortalSubmission(
       id: message.id,
       ...authorOf(message.authorId, message.actorType),
       body: message.body,
+      reasonCode: message.reasonCode ?? null,
+      reasonParams: message.reasonParams ?? null,
       createdAt: message.createdAt,
     })),
   };
@@ -2063,7 +2123,12 @@ export async function findSubmissionSatisfaction(workItemId: string | null) {
     : null;
 }
 
-function extractDocumentText(value: unknown): string {
+/**
+ * Plain text of a stored rich-text body for the portal projection. A legacy plain-string body
+ * (older transition notes and comments) is returned as it is; a document is flattened.
+ */
+export function extractDocumentText(value: unknown): string {
+  if (typeof value === "string") return value;
   if (!value || typeof value !== "object") return "";
   const node = value as { text?: unknown; content?: unknown[] };
   if (typeof node.text === "string") return node.text;
@@ -2474,6 +2539,10 @@ async function claimSubmissionInTransaction(
   ref: string,
   workspaceId: string,
   actorId: string,
+  resolveWinner?: (
+    tx: DbTransaction,
+    submission: typeof schema.submissionTable.$inferSelect,
+  ) => Promise<{ id: string; key: string } | null>,
 ) {
   const [row] = await tx
     .select({
@@ -2494,13 +2563,27 @@ async function claimSubmissionInTransaction(
     .for("update", { of: schema.submissionTable })
     .limit(1);
   if (!row) throw new HTTPException(404, { message: "Submission not found" });
-  if (row.submission.state !== "new" && row.submission.state !== "clarifying")
-    throw new HTTPException(409, { message: "Submission is no longer open" });
-  if (row.submission.claimedBy && row.submission.claimedBy !== actorId)
-    throw new HTTPException(409, {
-      message: "Submission is claimed by another triager",
-    });
-  if (row.submission.claimedBy === actorId && row.submission.claimedAt)
+  if (row.submission.state !== "new" && row.submission.state !== "clarifying") {
+    const winner =
+      row.submission.state === "accepted" && resolveWinner
+        ? await resolveWinner(tx, row.submission)
+        : null;
+    if (winner)
+      throw intakeError(
+        409,
+        "submission_already_converted",
+        "Submission is no longer open",
+        { workItem: winner },
+      );
+    throw intakeError(
+      409,
+      "submission_not_open",
+      "Submission is no longer open",
+    );
+  }
+  // `IQ-16a`: the claim is the customer's withdrawal lock, not an assignment. Any triager on the
+  // triage team may act on a claimed submission, so a claim by someone else is kept as it is.
+  if (row.submission.claimedBy && row.submission.claimedAt)
     return { submission: row.submission, appendAudit: async () => {} };
   const [updated] = await tx
     .update(schema.submissionTable)
@@ -2517,13 +2600,15 @@ async function claimSubmissionInTransaction(
     )
     .returning();
   if (!updated)
-    throw new HTTPException(409, {
-      message: "Submission changed; reload before acting",
-    });
+    throw intakeError(
+      409,
+      "submission_changed",
+      "Submission changed; reload before acting",
+    );
   return {
     submission: updated,
     appendAudit: async () => {
-      await appendAuditLog(tx, {
+      await appendIntakeAudit(tx, {
         actorId,
         actorType: "person",
         workspaceId,
@@ -2684,7 +2769,7 @@ async function postSubmissionMessageInTransaction(
           visibility: "public",
         },
       });
-      await appendAuditLog(tx, {
+      await appendIntakeAudit(tx, {
         actorId: input.actorId,
         actorType: "person",
         workspaceId: row.workspaceId,
@@ -2799,7 +2884,7 @@ async function postSubmissionMessageInTransaction(
       throw new HTTPException(409, {
         message: "Submission changed; reload before replying",
       });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId: input.actorId,
       actorType: "person",
       workspaceId: row.workspaceId,
@@ -2903,7 +2988,7 @@ export async function withdrawSubmission(ref: string, requesterId: string) {
       throw new HTTPException(409, {
         message: "Submission changed; reload before withdrawing",
       });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId: requesterId,
       actorType: "person",
       workspaceId: row.workspaceId,
@@ -2981,7 +3066,11 @@ export async function declineSubmission(
       )
       .returning();
     if (!updated)
-      throw new HTTPException(409, { message: "Submission is no longer open" });
+      throw intakeError(
+        409,
+        "submission_not_open",
+        "Submission is no longer open",
+      );
     const [message] = await tx
       .insert(schema.submissionMessageTable)
       .values({
@@ -2996,7 +3085,7 @@ export async function declineSubmission(
       throw new HTTPException(500, {
         message: "Could not record decline reason",
       });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId,

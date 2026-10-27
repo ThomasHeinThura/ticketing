@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@taskdesk/ui";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   type DryRunCounts,
@@ -31,6 +32,7 @@ import {
   runImportDryRun,
 } from "@/fetchers/god-mode/imports";
 import { HttpError } from "@/lib/http-error";
+import { SetupJobProgress } from "./setup-job-progress";
 import { useIdempotencyKey } from "./use-idempotency-key";
 import { wizardKeys } from "./wizard-keys";
 
@@ -292,13 +294,25 @@ export function DryRunStep({
         run.id,
         key.keyFor(`dry-run:${run.version}:${run.mappingVersion}`),
       ),
-    onSuccess: (result) => {
+    onSuccess: () => {
       key.reset();
-      client.setQueryData(wizardKeys.dryRun(run.id), result);
+      // The dry run reads the source on the server; the engine query (polled while it runs) shows
+      // its progress, and the report is read again once it completes.
       void client.invalidateQueries({ queryKey: wizardKeys.engine(run.id) });
     },
   });
-  const locked = run.phase === "executing" || run.phase === "completed";
+  const job = run.job?.kind === "dry_run" ? run.job : null;
+  const running = job?.status === "running";
+  const doneAt = job?.status === "completed" ? job.updatedAt : null;
+  useEffect(() => {
+    if (!doneAt) return;
+    void client.invalidateQueries({ queryKey: wizardKeys.dryRun(run.id) });
+  }, [client, doneAt, run.id]);
+  // A run paused mid-execution may come back here to recover (a fresh dry run and approval); a
+  // running or completed one may not.
+  const locked =
+    (run.phase === "executing" && run.state !== "paused") ||
+    run.phase === "completed";
   const current = report.data ?? null;
   const blockers = dryRunBlockers(current, run);
 
@@ -309,23 +323,38 @@ export function DryRunStep({
           {t("wizard.dryRun.description")}
         </p>
         <Button
-          disabled={dryRun.isPending || locked || run.phase === "created"}
+          disabled={
+            dryRun.isPending || running || locked || run.phase === "created"
+          }
           onClick={() => dryRun.mutate()}
         >
           {current ? t("wizard.dryRun.rerun") : t("wizard.dryRun.run")}
         </Button>
       </div>
-      {dryRun.isError ? (
+      {running && job ? (
+        <SetupJobProgress
+          job={job}
+          continuing={dryRun.isPending}
+          onContinue={() => dryRun.mutate()}
+        />
+      ) : null}
+      {dryRun.isError || (job?.status === "failed" && job.failure !== null) ? (
         <Alert variant="error">
           <AlertTitle>{t("wizard.dryRun.errorTitle")}</AlertTitle>
           <AlertDescription>
-            {dryRun.error instanceof HttpError && dryRun.error.status === 409
-              ? t("wizard.dryRun.conflictDescription")
-              : t("wizard.dryRun.errorDescription")}
+            {job?.status === "failed" && job.failure !== null
+              ? t(`wizard.setupFailures.${job.failure}`, {
+                  defaultValue: t(`wizard.connect.reasons.${job.failure}`, {
+                    defaultValue: t("wizard.dryRun.errorDescription"),
+                  }),
+                })
+              : dryRun.error instanceof HttpError && dryRun.error.status === 409
+                ? t("wizard.dryRun.conflictDescription")
+                : t("wizard.dryRun.errorDescription")}
           </AlertDescription>
         </Alert>
       ) : null}
-      {report.isPending ? (
+      {running ? null : report.isPending ? (
         <Skeleton className="h-48 w-full" />
       ) : report.isError ? (
         <Alert variant="error">

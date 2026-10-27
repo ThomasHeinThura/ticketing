@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isIPv6 } from "node:net";
 import { eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { clientIpForContext } from "../api-key/enforce";
@@ -28,9 +29,54 @@ function validConfig(value: AnonymousRateLimitConfig): boolean {
   );
 }
 
+/**
+ * An IPv6 client owns a whole /64, so one host rotating inside it must not mint a fresh bucket
+ * per address. Returns the canonical /64 prefix for IPv6 and the address unchanged otherwise.
+ */
+export function rateLimitClientAddress(ip: string): string {
+  const bare = ip.split("%", 1)[0] ?? ip;
+  if (!isIPv6(bare)) return ip;
+  const halves = bare.split("::");
+  const expand = (part: string | undefined): string[] => {
+    const groups = part ? part.split(":") : [];
+    const last = groups[groups.length - 1];
+    if (last?.includes(".")) {
+      const octets = last.split(".").map(Number);
+      groups.splice(
+        -1,
+        1,
+        (((octets[0] ?? 0) << 8) | (octets[1] ?? 0)).toString(16),
+        (((octets[2] ?? 0) << 8) | (octets[3] ?? 0)).toString(16),
+      );
+    }
+    return groups;
+  };
+  const head = expand(halves[0]);
+  const tail = halves.length > 1 ? expand(halves[1]) : [];
+  const groups =
+    halves.length > 1
+      ? [...head, ...Array(8 - head.length - tail.length).fill("0"), ...tail]
+      : head;
+  const numeric = groups.map((group) => Number.parseInt(group || "0", 16));
+  if (
+    numeric.slice(0, 5).every((value) => value === 0) &&
+    numeric[5] === 0xffff
+  ) {
+    // IPv4-mapped (`::ffff:a.b.c.d` or its hex spelling): key on the IPv4 client itself, so
+    // all mapped clients never collapse into one shared `::/64` bucket.
+    const high = numeric[6] ?? 0;
+    const low = numeric[7] ?? 0;
+    return [high >> 8, high & 0xff, low >> 8, low & 0xff].join(".");
+  }
+  const prefix = groups
+    .slice(0, 4)
+    .map((group) => Number.parseInt(group || "0", 16).toString(16));
+  return `${prefix.join(":")}::/64`;
+}
+
 function hashedClientKey(ip: string | null): string {
   return createHash("sha256")
-    .update(ip ?? "no-trusted-client-ip", "utf8")
+    .update(ip ? rateLimitClientAddress(ip) : "no-trusted-client-ip", "utf8")
     .digest("hex");
 }
 

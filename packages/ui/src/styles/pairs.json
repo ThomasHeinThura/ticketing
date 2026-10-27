@@ -7585,8 +7585,8 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
@@ -7653,8 +7653,8 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
@@ -7976,6 +7976,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
 				],
@@ -8005,30 +8016,6 @@
 					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -8358,6 +8345,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
 				],
@@ -8387,30 +8385,6 @@
 					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -11858,6 +11832,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/webhook/webhook-editor.tsx:StatusCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/organisations/index.tsx:DeletedOrganisationCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
@@ -12460,6 +12445,17 @@
 				"id": "apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/god-mode/notification-provider-editor.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/webhook/webhook-editor.tsx:StatusCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -16667,37 +16663,6 @@
 		"bg": "--color-accent",
 		"category": "body",
 		"minRatio": 4.5,
-		"themes": ["dark"],
-		"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx",
-		"backdrop": "--color-background",
-		"foregroundClass": "text-foreground",
-		"backgroundClass": {
-			"dark": "hover:bg-accent/60"
-		},
-		"surfaceContext": "nearest-opaque-ancestor",
-		"occurrenceIds": [
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]::text-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]>hover:bg-accent/60"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			}
-		],
-		"backdropLayers": ["bg-background"]
-	},
-	{
-		"fg": "--color-foreground",
-		"bg": "--color-accent",
-		"category": "body",
-		"minRatio": 4.5,
 		"themes": ["light"],
 		"usage": "packages/ui/src/components/fieldset.tsx",
 		"backdrop": "--color-card",
@@ -16727,37 +16692,6 @@
 			}
 		],
 		"backdropLayers": ["bg-accent/60", "bg-card"]
-	},
-	{
-		"fg": "--color-foreground",
-		"bg": "--color-accent",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["light"],
-		"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx",
-		"backdrop": "--color-background",
-		"foregroundClass": "text-foreground",
-		"backgroundClass": {
-			"light": "hover:bg-accent/60"
-		},
-		"surfaceContext": "nearest-opaque-ancestor",
-		"occurrenceIds": [
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]::text-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]>hover:bg-accent/60"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			}
-		],
-		"backdropLayers": ["bg-background"]
 	},
 	{
 		"fg": "--color-foreground",
@@ -17535,6 +17469,8 @@
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#1",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[3]::text-foreground#0",
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]::text-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]/span[0]::text-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/div[1]/span[0]::text-foreground#0",
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[0]/AlertDescription[0]::text-foreground#0",
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[0]/AlertDescription[0]::text-foreground#1",
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[0]/AlertDescription[0]::text-foreground#2",
@@ -17565,6 +17501,7 @@
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::hover:text-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/p[0]::text-foreground#0",
@@ -17590,7 +17527,6 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/h2[0]::text-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
@@ -18094,6 +18030,28 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[1]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/div[1]/span[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars/$id.tsx:/_layout/_authenticated/agent/settings/calendars/$id",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings.tsx:/_layout/_authenticated/agent/settings",
@@ -18585,6 +18543,33 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-properties.tsx:WorkItemPropertiesPanel",
 					"jsx:div[0]/TaskPropertiesPresentation[0]/div[0]/Button[0]",
 					"TaskPropertiesPresentation->apps/web/src/components/task/task-detail-presentation.tsx:TaskPropertiesPresentation>bg-background"
@@ -18906,17 +18891,6 @@
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/h2[0]::text-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -20180,6 +20154,8 @@
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#1",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[3]::text-foreground#0",
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]::text-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]/span[0]::text-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/div[1]/span[0]::text-foreground#0",
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[0]/AlertDescription[0]::text-foreground#0",
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[0]/AlertDescription[0]::text-foreground#1",
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[0]/AlertDescription[0]::text-foreground#2",
@@ -20210,6 +20186,7 @@
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::hover:text-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::WorkItemPropertiesPanel::div[0]/TaskPropertiesPresentation[0]/div[0]/p[0]::text-foreground#0",
@@ -20235,7 +20212,6 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/h2[0]::text-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
@@ -20739,6 +20715,28 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[1]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/div[1]/span[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars/$id.tsx:/_layout/_authenticated/agent/settings/calendars/$id",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings.tsx:/_layout/_authenticated/agent/settings",
@@ -21230,6 +21228,33 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-properties.tsx:WorkItemPropertiesPanel",
 					"jsx:div[0]/TaskPropertiesPresentation[0]/div[0]/Button[0]",
 					"TaskPropertiesPresentation->apps/web/src/components/task/task-detail-presentation.tsx:TaskPropertiesPresentation>bg-background"
@@ -21551,17 +21576,6 @@
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/h2[0]::text-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[1]/span[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -25170,6 +25184,7 @@
 			"apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::dl[0]/dd[0]/Link[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::dl[0]/dd[1]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::TaskDetailContentPresentation[0]/p[0]::text-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-parent-control.tsx::WorkItemParentControl::Popover[0]/PopoverContent[0]/form[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::DateControl::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/Button[0]/span[0]::text-foreground#0",
@@ -25608,6 +25623,19 @@
 				"id": "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::TaskDetailContentPresentation[0]/p[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -25790,6 +25818,7 @@
 			"apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::dl[0]/dd[0]/Link[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::dl[0]/dd[1]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::TaskDetailContentPresentation[0]/p[0]::text-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-parent-control.tsx::WorkItemParentControl::Popover[0]/PopoverContent[0]/form[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::DateControl::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/Button[0]/span[0]::text-foreground#0",
@@ -26228,6 +26257,19 @@
 				"id": "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::TaskDetailContentPresentation[0]/p[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -26441,9 +26483,9 @@
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#1",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#2",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#3",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-foreground#0",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]::text-foreground#0",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]::text-foreground#0"
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#4",
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#5",
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -26511,6 +26553,36 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-secondary",
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#4",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-secondary",
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#5",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]>bg-secondary",
 					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]",
@@ -26518,36 +26590,6 @@
 					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]>bg-secondary",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]>bg-secondary",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
 			}
@@ -26572,9 +26614,9 @@
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#1",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#2",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#3",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-foreground#0",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]::text-foreground#0",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]::text-foreground#0"
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#4",
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#5",
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -26642,6 +26684,36 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-secondary",
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#4",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-secondary",
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#5",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]>bg-secondary",
 					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]",
@@ -26649,36 +26721,6 @@
 					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]>bg-secondary",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]>bg-secondary",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
 			}
@@ -27581,8 +27623,8 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
@@ -27649,8 +27691,8 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
@@ -27682,6 +27724,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
 				],
@@ -27711,30 +27764,6 @@
 					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
 				"surfaceContext": "caller-chain",
@@ -27763,6 +27792,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
 				],
@@ -27792,30 +27832,6 @@
 					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
 				"surfaceContext": "caller-chain",
@@ -31329,8 +31345,8 @@
 	{
 		"fg": "--color-muted-foreground",
 		"bg": "--color-accent",
-		"category": "body",
-		"minRatio": 4.5,
+		"category": "non-text",
+		"minRatio": 3,
 		"themes": ["dark"],
 		"usage": "apps/web/src/lib/priority.tsx",
 		"backdrop": "--color-background",
@@ -31341,17 +31357,15 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#1"
+			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
@@ -31363,36 +31377,14 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]>hover:bg-accent/60"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]>hover:bg-accent/60"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#1",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
 			}
 		],
 		"backdropLayers": ["bg-background"]
@@ -31451,8 +31443,8 @@
 	{
 		"fg": "--color-muted-foreground",
 		"bg": "--color-accent",
-		"category": "body",
-		"minRatio": 4.5,
+		"category": "non-text",
+		"minRatio": 3,
 		"themes": ["light"],
 		"usage": "apps/web/src/lib/priority.tsx",
 		"backdrop": "--color-background",
@@ -31463,17 +31455,15 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#1"
+			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
@@ -31485,36 +31475,14 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]>hover:bg-accent/60"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]>hover:bg-accent/60"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#1",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
 			}
 		],
 		"backdropLayers": ["bg-background"]
@@ -31539,9 +31507,9 @@
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#2",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#3",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-muted-foreground#0",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]::text-muted-foreground#0",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]::text-muted-foreground#0"
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#4",
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#5",
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -31631,6 +31599,36 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#4",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#5",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]>hover:bg-accent",
 					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]",
@@ -31638,36 +31636,6 @@
 					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]>hover:bg-accent",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]>hover:bg-accent",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
 			}
@@ -31694,9 +31662,9 @@
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#2",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#3",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-muted-foreground#0",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]::text-muted-foreground#0",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]::text-muted-foreground#0"
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#4",
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#5",
+			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -31786,6 +31754,36 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#4",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#5",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]>hover:bg-accent",
 					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]",
@@ -31793,36 +31791,6 @@
 					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]>hover:bg-accent",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[2]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]>hover:bg-accent",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[3]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
 			}
@@ -31937,9 +31905,9 @@
 			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#2",
 			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#3",
+			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#4",
+			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#5",
 			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[1]::text-muted-foreground#0",
-			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[2]::text-muted-foreground#0",
-			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[3]::text-muted-foreground#0",
 			"apps/web/src/components/common/project-task-search-input.tsx::ProjectTaskSearchInput::div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/gantt/gantt-dependency-arrows.tsx::GanttDependencyArrows::svg[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/identity-connection-editor.tsx::Field::div[0]/p[0]::text-muted-foreground#0",
@@ -31958,6 +31926,7 @@
 			"apps/web/src/components/god-mode/imports/wizard/discover-step.tsx::DiscoverStep::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/imports/wizard/dry-run-report.tsx::DryRunStep::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/imports/wizard/import-wizard.tsx::ImportWizard::div[0]/Tabs[0]/TabsList[0]/TabsTab[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/imports/wizard/setup-job-progress.tsx::SetupJobProgress::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/instance-api-keys-panel.tsx::InstanceApiKeysPanel::div[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/instance-api-keys-panel.tsx::InstanceApiKeysPanel::div[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/instance-api-keys-panel.tsx::InstanceApiKeysPanel::div[0]/p[0]::text-muted-foreground#0",
@@ -32081,6 +32050,21 @@
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]/kbd[0]::text-muted-foreground#0",
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]/span[0]/SearchIcon[0]::text-muted-foreground#0",
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]/span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#1",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#1",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#2",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/h2[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-calendar.tsx::CalendarTab::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-calendar.tsx::CalendarTab::div[0]/ul[0]::text-muted-foreground#0",
@@ -32198,6 +32182,7 @@
 			"apps/web/src/components/work-item/work-item-audit-history.tsx::WorkItemAuditHistory::Collapsible[0]/CollapsibleContent[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::BoardCard::li[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/SortableContext[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/CommentComposerPresentation[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/CommentComposerPresentation[0]/span[0]::text-muted-foreground#0",
@@ -32225,6 +32210,8 @@
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/CollapsibleContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/span[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]/FileInput[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverTrigger[0]/Button[0]/CalendarClock[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]::text-muted-foreground#0",
@@ -32329,22 +32316,10 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[2]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/invitations.tsx::InvitationsPage::div[0]/div[0]/div[0]/div[1]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/invitations.tsx::InvitationsPage::div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
@@ -32927,31 +32902,31 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/header/project-layout-controls.tsx:ProjectLayoutControls",
+					"jsx:div[0]/ScrollArea[0]/div[0]/Button[0]>bg-background"
+				],
+				"id": "apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#4",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/common/header/project-layout-controls.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/project-layout-controls.tsx:ProjectLayoutControls",
+					"jsx:div[0]/ScrollArea[0]/div[0]/Button[0]>bg-background"
+				],
+				"id": "apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#5",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/common/header/project-layout-controls.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/project-layout-controls.tsx:ProjectLayoutControls",
 					"jsx:div[0]/ScrollArea[0]/div[0]/Button[1]>bg-background"
 				],
 				"id": "apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[1]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/common/header/project-layout-controls.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/project-layout-controls.tsx:ProjectLayoutControls",
-					"jsx:div[0]/ScrollArea[0]/div[0]/Button[2]>bg-background"
-				],
-				"id": "apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[2]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/common/header/project-layout-controls.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/project-layout-controls.tsx:ProjectLayoutControls",
-					"jsx:div[0]/ScrollArea[0]/div[0]/Button[3]>bg-background"
-				],
-				"id": "apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[3]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/common/header/project-layout-controls.tsx"
 			},
@@ -33395,6 +33370,22 @@
 				"id": "apps/web/src/components/god-mode/imports/wizard/import-wizard.tsx::ImportWizard::div[0]/Tabs[0]/TabsList[0]/TabsTab[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/god-mode/imports/wizard/import-wizard.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/imports/$id.tsx:/_layout/_authenticated/agent/god-mode/imports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/imports.tsx:/_layout/_authenticated/agent/god-mode/imports",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode.tsx:/_layout/_authenticated/agent/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/god-mode/imports/wizard/setup-job-progress.tsx::SetupJobProgress::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/imports/wizard/setup-job-progress.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -35630,6 +35621,195 @@
 				"id": "apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]/span[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#1",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#2",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/h2[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/Search[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -37943,6 +38123,51 @@
 			},
 			{
 				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
+			},
+			{
+				"backdropLayers": [],
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
@@ -38498,6 +38723,60 @@
 				"id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/span[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]/FileInput[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]/FileInput[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -39171,6 +39450,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
 				],
@@ -39209,23 +39499,10 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
 				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/lib/priority.tsx"
 			},
@@ -39262,30 +39539,6 @@
 					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
@@ -40425,160 +40678,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#1",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/Loader2[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/p[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Loader2[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[1]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#1",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/p[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/p[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/Search[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
 					"jsx:div[0]/div[0]/Card[0]/CardContent[0]/div[0]/p[0]>bg-background"
 				],
@@ -40605,6 +40704,17 @@
 					"jsx:main[0]/section[0]/p[0]>bg-background"
 				],
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
+					"jsx:main[0]/section[0]/p[1]>bg-background"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx"
 			},
@@ -42751,9 +42861,9 @@
 			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#2",
 			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#3",
+			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#4",
+			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#5",
 			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[1]::text-muted-foreground#0",
-			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[2]::text-muted-foreground#0",
-			"apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[3]::text-muted-foreground#0",
 			"apps/web/src/components/common/project-task-search-input.tsx::ProjectTaskSearchInput::div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/gantt/gantt-dependency-arrows.tsx::GanttDependencyArrows::svg[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/identity-connection-editor.tsx::Field::div[0]/p[0]::text-muted-foreground#0",
@@ -42772,6 +42882,7 @@
 			"apps/web/src/components/god-mode/imports/wizard/discover-step.tsx::DiscoverStep::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/imports/wizard/dry-run-report.tsx::DryRunStep::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/imports/wizard/import-wizard.tsx::ImportWizard::div[0]/Tabs[0]/TabsList[0]/TabsTab[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/imports/wizard/setup-job-progress.tsx::SetupJobProgress::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/instance-api-keys-panel.tsx::InstanceApiKeysPanel::div[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/instance-api-keys-panel.tsx::InstanceApiKeysPanel::div[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/instance-api-keys-panel.tsx::InstanceApiKeysPanel::div[0]/p[0]::text-muted-foreground#0",
@@ -42895,6 +43006,21 @@
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]/kbd[0]::text-muted-foreground#0",
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]/span[0]/SearchIcon[0]::text-muted-foreground#0",
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]/span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#1",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#1",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#2",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/h2[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-calendar.tsx::CalendarTab::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-calendar.tsx::CalendarTab::div[0]/ul[0]::text-muted-foreground#0",
@@ -43012,6 +43138,7 @@
 			"apps/web/src/components/work-item/work-item-audit-history.tsx::WorkItemAuditHistory::Collapsible[0]/CollapsibleContent[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::BoardCard::li[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/SortableContext[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/CommentComposerPresentation[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/CommentComposerPresentation[0]/span[0]::text-muted-foreground#0",
@@ -43039,6 +43166,8 @@
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/CollapsibleContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/span[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]/FileInput[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverTrigger[0]/Button[0]/CalendarClock[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]::text-muted-foreground#0",
@@ -43143,22 +43272,10 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[2]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/invitations.tsx::InvitationsPage::div[0]/div[0]/div[0]/div[1]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/invitations.tsx::InvitationsPage::div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
@@ -43741,31 +43858,31 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/header/project-layout-controls.tsx:ProjectLayoutControls",
+					"jsx:div[0]/ScrollArea[0]/div[0]/Button[0]>bg-background"
+				],
+				"id": "apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#4",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/common/header/project-layout-controls.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/project-layout-controls.tsx:ProjectLayoutControls",
+					"jsx:div[0]/ScrollArea[0]/div[0]/Button[0]>bg-background"
+				],
+				"id": "apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[0]::text-muted-foreground#5",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/common/header/project-layout-controls.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/header/project-layout-controls.tsx:ProjectLayoutControls",
 					"jsx:div[0]/ScrollArea[0]/div[0]/Button[1]>bg-background"
 				],
 				"id": "apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[1]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/common/header/project-layout-controls.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/project-layout-controls.tsx:ProjectLayoutControls",
-					"jsx:div[0]/ScrollArea[0]/div[0]/Button[2]>bg-background"
-				],
-				"id": "apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[2]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/common/header/project-layout-controls.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/project-layout-controls.tsx:ProjectLayoutControls",
-					"jsx:div[0]/ScrollArea[0]/div[0]/Button[3]>bg-background"
-				],
-				"id": "apps/web/src/components/common/header/project-layout-controls.tsx::ProjectLayoutControls::div[0]/ScrollArea[0]/div[0]/Button[3]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/common/header/project-layout-controls.tsx"
 			},
@@ -44209,6 +44326,22 @@
 				"id": "apps/web/src/components/god-mode/imports/wizard/import-wizard.tsx::ImportWizard::div[0]/Tabs[0]/TabsList[0]/TabsTab[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/god-mode/imports/wizard/import-wizard.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/imports/$id.tsx:/_layout/_authenticated/agent/god-mode/imports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/imports.tsx:/_layout/_authenticated/agent/god-mode/imports",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode.tsx:/_layout/_authenticated/agent/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/god-mode/imports/wizard/setup-job-progress.tsx::SetupJobProgress::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/imports/wizard/setup-job-progress.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -46444,6 +46577,195 @@
 				"id": "apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]/span[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#1",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/Button[0]/span[0]::text-muted-foreground#2",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[0]/section[0]/h2[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/search/workspace-search.tsx::WorkspaceSearch::div[0]/div[0]/Search[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/search/workspace-search.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -48757,6 +49079,51 @@
 			},
 			{
 				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
+			},
+			{
+				"backdropLayers": [],
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
@@ -49312,6 +49679,60 @@
 				"id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/span[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]/FileInput[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]/FileInput[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -49985,6 +50406,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
 				],
@@ -50023,23 +50455,10 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
 				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/lib/priority.tsx"
 			},
@@ -50076,30 +50495,6 @@
 					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
@@ -51239,160 +51634,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#1",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/Loader2[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/p[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Loader2[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[1]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/div[0]/Search[0]::text-muted-foreground#1",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/p[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/p[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/Search[0]",
-					"WorkspaceLayout->apps/web/src/components/common/workspace-layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx::SearchComponent::WorkspaceLayout[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
 					"jsx:div[0]/div[0]/Card[0]/CardContent[0]/div[0]/p[0]>bg-background"
 				],
@@ -51419,6 +51660,17 @@
 					"jsx:main[0]/section[0]/p[0]>bg-background"
 				],
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
+					"jsx:main[0]/section[0]/p[1]>bg-background"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx"
 			},
@@ -55618,10 +55870,32 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/webhook/webhook-editor.tsx:StatusCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/organisations/index.tsx:DeletedOrganisationCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/webhook/webhook-editor.tsx:StatusCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
@@ -60086,10 +60360,32 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/webhook/webhook-editor.tsx:StatusCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/organisations/index.tsx:DeletedOrganisationCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/webhook/webhook-editor.tsx:StatusCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
@@ -66959,6 +67255,19 @@
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/webhook/webhook-editor.tsx:StatusCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -71313,6 +71622,19 @@
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/webhook/webhook-editor.tsx:StatusCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -79608,6 +79930,8 @@
 			"apps/web/src/components/work-item/work-item-description.tsx::WorkItemDescription::TaskDescriptionPresentation[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::dl[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetailSections::div[0]/Collapsible[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]/FileInput[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
@@ -82452,6 +82776,32 @@
 				"id": "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetailSections::div[0]/Collapsible[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]/FileInput[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -84465,6 +84815,8 @@
 			"apps/web/src/components/work-item/work-item-description.tsx::WorkItemDescription::TaskDescriptionPresentation[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::dl[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetailSections::div[0]/Collapsible[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]/FileInput[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
@@ -87309,6 +87661,32 @@
 				"id": "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetailSections::div[0]/Collapsible[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[0]/FileInput[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-import-origin.tsx::ProvenanceLine::div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-import-origin.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -92485,6 +92863,24 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/imports/wizard/setup-job-progress.tsx:SetupJobProgress",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/imports/$id.tsx:/_layout/_authenticated/agent/god-mode/imports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/imports.tsx:/_layout/_authenticated/agent/god-mode/imports",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode.tsx:/_layout/_authenticated/agent/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/instance-settings-form.tsx:SettingsFields",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/general.tsx:/_layout/_authenticated/agent/god-mode/general",
@@ -93192,6 +93588,19 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/imports/wizard/discover-step.tsx:DiscoverStep",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/imports/wizard/discover-step.tsx:DiscoverStep",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/imports/wizard/execute-progress.tsx:ExecuteStep",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/imports/wizard/execute-progress.tsx:ExecuteStep",
@@ -93806,6 +94215,24 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/god-mode/imports/wizard/mapping-table.tsx:MappingStep",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/imports/$id.tsx:/_layout/_authenticated/agent/god-mode/imports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/imports.tsx:/_layout/_authenticated/agent/god-mode/imports",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode.tsx:/_layout/_authenticated/agent/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/imports/wizard/setup-job-progress.tsx:SetupJobProgress",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/imports/$id.tsx:/_layout/_authenticated/agent/god-mode/imports/$id",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/imports.tsx:/_layout/_authenticated/agent/god-mode/imports",
@@ -94526,6 +94953,19 @@
 			"packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/imports/wizard/discover-step.tsx:DiscoverStep",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/imports/wizard/discover-step.tsx:DiscoverStep",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
 			{
 				"backdropLayers": ["bg-card"],
 				"category": "body",
@@ -100790,8 +101230,8 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
@@ -100823,8 +101263,8 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
@@ -100926,8 +101366,8 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
@@ -100959,8 +101399,8 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]",
 					"state-backdrop:hover:bg-accent/60",
 					"opaque-backdrop:bg-background"
 				],
@@ -101104,6 +101544,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
 				],
@@ -101133,30 +101584,6 @@
 					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -101185,6 +101612,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
 				],
@@ -101214,30 +101652,6 @@
 					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
 				"surfaceContext": "caller-chain",
@@ -101378,6 +101792,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
 				],
@@ -101407,30 +101832,6 @@
 					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -101459,6 +101860,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/search/workspace-search.tsx:WorkspaceSearch",
+					"jsx:div[0]/div[0]/div[0]/section[0]/Button[0]/div[0]"
+				],
+				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/priority.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
 				],
@@ -101488,30 +101900,6 @@
 					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]",
-					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
-					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
-					"jsx:WorkspaceLayout[0]/div[0]/div[0]/div[0]/Button[0]/div[0]"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
 				"surfaceContext": "caller-chain",

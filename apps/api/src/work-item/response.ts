@@ -3,6 +3,26 @@ import { workItemCustomFieldSchema } from "../custom-field/response";
 import { optionSchema } from "../custom-field/schema";
 import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
 
+/** One import provenance link of a work item (P6, IM-5): where it came from and when. */
+export const workItemImportProvenanceSchema = z.object({
+  system: z.string().openapi({
+    description: "The source reference the import ran against.",
+  }),
+  pluginId: z.string().nullable(),
+  sourceUrl: z.string().nullable().openapi({
+    description: "The original record's http(s) URL, when the source gave one.",
+  }),
+  importedAt: responseTimestamp,
+  lastSeenAt: nullableResponseTimestamp,
+  stale: z.boolean().openapi({
+    description:
+      "true when a later complete import no longer found the record in the source.",
+  }),
+  sourceCreatedAt: nullableResponseTimestamp,
+  sourceUpdatedAt: nullableResponseTimestamp,
+  sourceResolvedAt: nullableResponseTimestamp,
+});
+
 // Plain (unregistered) shape shared by `workItemSchema` and `workItemDetailSchema`, so the
 // detail schema extends this shape rather than the already-`.openapi()`-registered
 // `workItemSchema`. Extending a registered schema makes zod-to-openapi emit an `allOf`
@@ -116,6 +136,10 @@ export const workItemDetailSchema = workItemShape
     assigneeName: z.string().nullable(),
     ...assigneeFactsShape,
     customFields: z.array(workItemCustomFieldSchema),
+    importProvenance: z.array(workItemImportProvenanceSchema).openapi({
+      description:
+        "Where an imported item came from (empty for a native item). Staff detail only; never part of a customer view.",
+    }),
   })
   .openapi("WorkItemDetail");
 
@@ -441,6 +465,13 @@ export const workItemActivityRowSchema = z
     visibility: z.string(),
     workflowVersionId: z.string().nullable(),
     createdAt: responseTimestamp,
+    origin: z.string().nullable().optional().openapi({
+      description:
+        "`imported` for a row an import wrote: createdAt is then the source time and importedAt the real write time; null for a native row.",
+    }),
+    importedAt: nullableResponseTimestamp.optional().openapi({
+      description: "When an imported row was written; null for a native row.",
+    }),
     kind: z
       .enum(["activity", "comment"])
       .optional()

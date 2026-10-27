@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   pause: vi.fn(),
   resume: vi.fn(),
   engine: vi.fn(),
+  dryRun: vi.fn(),
   openPending: vi.fn(),
 }));
 
@@ -26,12 +27,17 @@ vi.mock("@/fetchers/god-mode/imports", async (original) => ({
   pauseImportRun: (...args: unknown[]) => mocks.pause(...args),
   resumeImportRun: (...args: unknown[]) => mocks.resume(...args),
   getEngineImportRun: (...args: unknown[]) => mocks.engine(...args),
+  runImportDryRun: (...args: unknown[]) => mocks.dryRun(...args),
 }));
 vi.mock("@/hooks/use-open-pending-action", () => ({
   useOpenPendingAction: () => mocks.openPending,
 }));
 
-import { ExecuteStep, executeBlockers } from "./execute-progress";
+import {
+  ExecuteStep,
+  executeBlockers,
+  pauseRecovery,
+} from "./execute-progress";
 import { ENGINE_POLL_MS, useEngineRun } from "./use-engine-run";
 
 beforeEach(() => {
@@ -40,6 +46,7 @@ beforeEach(() => {
   mocks.pause.mockReset();
   mocks.resume.mockReset();
   mocks.engine.mockReset();
+  mocks.dryRun.mockReset();
   mocks.openPending.mockReset();
 });
 afterEach(cleanup);
@@ -177,21 +184,91 @@ describe("ExecuteStep", () => {
     );
   });
 
-  it("sends the user back to the dry run when resume needs a new approval", async () => {
+  it("offers the recovery that fits each pause reason", () => {
+    expect(pauseRecovery("approved_count_exceeded")).toBe("dryRun");
+    expect(pauseRecovery("approval_invalid")).toBe("dryRun");
+    expect(pauseRecovery("mapping_changed")).toBe("dryRun");
+    expect(pauseRecovery("authority_lost")).toBe("takeOver");
+    for (const reason of [
+      "operator",
+      "project_reach_lost",
+      "source_error",
+      "chunk_failed",
+      "conflict",
+    ] as const)
+      expect(pauseRecovery(reason)).toBe("resume");
+  });
+
+  it.each(["approved_count_exceeded", "approval_invalid"] as const)(
+    "returns a run paused for %s to the dry run instead of resuming",
+    async (pausedReason) => {
+      mocks.dryRun.mockResolvedValue({
+        status: "accepted",
+        job: null,
+        run: engineRun({ phase: "discovered" }),
+      });
+      const onNeedDryRun = vi.fn();
+      renderStep(
+        engineRun({ state: "paused", phase: "executing", pausedReason }),
+        { onNeedDryRun },
+      );
+      expect(
+        await screen.findByText(
+          /Resuming cannot fix this\. Return to the dry run/,
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+      fireEvent.click(
+        screen.getByRole("button", { name: "Return to dry run" }),
+      );
+      await waitFor(() =>
+        expect(mocks.dryRun).toHaveBeenCalledWith("run-1", expect.any(String)),
+      );
+      await waitFor(() => expect(onNeedDryRun).toHaveBeenCalled());
+      expect(mocks.resume).not.toHaveBeenCalled();
+    },
+  );
+
+  it("lets another administrator take over a run whose executor lost authority", async () => {
+    mocks.resume.mockResolvedValue(engineRun({ state: "running" }));
+    renderStep(
+      engineRun({
+        state: "paused",
+        phase: "executing",
+        pausedReason: "authority_lost",
+      }),
+    );
+    expect(await screen.findByText(/It then continues as you/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Take over and resume" }),
+    );
+    await waitFor(() =>
+      expect(mocks.resume).toHaveBeenCalledWith("run-1", expect.any(String)),
+    );
+  });
+
+  it("sends the user back to the dry run when a resume is refused", async () => {
     mocks.resume.mockRejectedValue(new HttpError(409, "needs dry run"));
+    mocks.dryRun.mockResolvedValue({
+      status: "accepted",
+      job: null,
+      run: engineRun({ phase: "discovered" }),
+    });
     const onNeedDryRun = vi.fn();
     renderStep(
       engineRun({
         state: "paused",
         phase: "executing",
-        pausedReason: "mapping_changed",
+        pausedReason: "operator",
       }),
       { onNeedDryRun },
     );
     fireEvent.click(await screen.findByRole("button", { name: "Resume" }));
     expect(await screen.findByText("Cannot resume yet")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Go to dry run" }));
-    expect(onNeedDryRun).toHaveBeenCalled();
+    await waitFor(() => expect(onNeedDryRun).toHaveBeenCalled());
+    expect(mocks.dryRun).toHaveBeenCalledTimes(1);
   });
 });
 

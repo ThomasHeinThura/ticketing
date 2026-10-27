@@ -49,11 +49,15 @@ export async function findStaffPersonByEmail(
 
 /**
  * Resolve an imported author to a person: an existing staff member by email, else an existing
- * unclaimed placeholder for that address in this organisation, else a NEW placeholder
- * (`is_placeholder`, no login, no membership, so never assignable) plus its claim row. The claim
- * ledger holds one row per address: a second placeholder for the same address would make it
- * unclaimable forever, so an existing row is always reused or, if it belongs to another
- * organisation, the author is reported unresolved rather than duplicated.
+ * unclaimed placeholder for that address IN THIS ORGANISATION, else a NEW placeholder
+ * (`is_placeholder`, no login, no membership, so never assignable) plus its claim row.
+ *
+ * Placeholders are per organisation: a contractor imported into two client organisations gets one
+ * placeholder in each (authorship is preserved in both, identities are never merged, and each claim
+ * is for the organisation its proof names). Within one organisation the claim ledger keeps one row per
+ * address, so a second placeholder for the same address there would make it unclaimable: an existing
+ * row of this organisation is always reused or, if it is not an unclaimed placeholder, the author is
+ * reported unresolved rather than duplicated. Another organisation's rows are never read as ours.
  *
  * The placeholder is `active` because the claim proof (`claimVerifiedImportPlaceholder`) denies an
  * inactive person; it cannot sign in (no user), hold a membership or be picked as an assignee.
@@ -104,13 +108,17 @@ async function resolveUncached(
     })
     .from(CLAIM)
     .innerJoin(PERSON, eq(PERSON.id, CLAIM.personId))
-    .where(eq(CLAIM.normalizedEmail, email))
+    .where(
+      and(
+        eq(CLAIM.normalizedEmail, email),
+        eq(PERSON.organisationId, ctx.organisationId),
+      ),
+    )
     .limit(2);
   if (claims.length > 1) return null;
   const [claim] = claims;
   if (claim) {
     if (
-      claim.organisationId === ctx.organisationId &&
       claim.claimedAt === null &&
       claim.isPlaceholder &&
       claim.userId === null

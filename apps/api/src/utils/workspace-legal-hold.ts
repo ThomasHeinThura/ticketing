@@ -1,6 +1,11 @@
-import { sql } from "drizzle-orm";
+import { type SQL, sql } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 import type { Executor } from "../database/executor";
-import { workspaceUnderOpenHold } from "./legal-hold-scope";
+import {
+  openHoldOver,
+  peopleOfUsers,
+  workspaceUnderOpenHold,
+} from "./legal-hold-scope";
 
 /**
  * Legal-hold fence for a hard delete of a whole workspace (PA-12; data-model.md: an open hold
@@ -46,4 +51,41 @@ export async function assertWorkspaceNotUnderLegalHold(
   await lockLegalHolds(executor);
   if (await isWorkspaceUnderOpenLegalHold(executor, workspaceId))
     throw new WorkspaceUnderLegalHoldError();
+}
+
+/**
+ * Legal-hold fence for the hard delete of one workspace-scoped row (module, service, KB category,
+ * dashboard): an open hold on a person named by the row (`personIds`, or `userIds` resolved to
+ * their person), or on the organisation of its workspace / project, refuses with 409
+ * `legal_hold`. Takes the `legal_hold` SHARE lock first, so a hold placed concurrently either
+ * sees the row or is seen here. Both subqueries yield one column.
+ */
+export async function assertRowNotUnderLegalHold(
+  executor: Executor,
+  row: {
+    workspaceId: string;
+    projectId?: string | null;
+    personIds?: SQL;
+    userIds?: SQL;
+  },
+): Promise<void> {
+  await lockLegalHolds(executor);
+  const people = sql`
+    SELECT NULL::text WHERE false
+    ${row.personIds ? sql`UNION ALL ${row.personIds}` : sql``}
+    ${row.userIds ? sql`UNION ALL ${peopleOfUsers(row.userIds)}` : sql``}
+  `;
+  const organisations = sql`
+    SELECT w."organisation_id" FROM "workspace" w WHERE w."id" = ${row.workspaceId}
+    ${
+      row.projectId
+        ? sql`UNION ALL SELECT p."organisation_id" FROM "project" p WHERE p."id" = ${row.projectId}`
+        : sql``
+    }
+  `;
+  const result = await executor.execute<{ held: boolean }>(
+    sql`SELECT ${openHoldOver(people, organisations)} AS held`,
+  );
+  if (result.rows[0]?.held === true)
+    throw new HTTPException(409, { message: "legal_hold" });
 }

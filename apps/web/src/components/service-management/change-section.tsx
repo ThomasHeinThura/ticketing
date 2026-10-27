@@ -146,7 +146,7 @@ function ChangeForm({
         windowEnd: endIso,
         rollbackPlan: rollback.trim() || null,
         serviceIds: [...serviceIds],
-        ...(detail ? { version: detail.version } : {}),
+        version: detail?.version ?? 1,
       }),
     onSuccess: () => invalidate(),
   });

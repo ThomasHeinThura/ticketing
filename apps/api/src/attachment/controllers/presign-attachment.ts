@@ -1,7 +1,10 @@
 import { createId } from "@paralleldrive/cuid2";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { createAttachmentUploadUrl } from "../../storage";
+import {
+  buildAttachmentStorageKey,
+  createAttachmentUploadUrl,
+} from "../../storage";
 import { getFileExtension, sanitizePathSegment } from "../../storage/shared";
 import {
   assertProjectStillLive,
@@ -18,6 +21,7 @@ import {
   lockAttachmentWorkItem,
   lockCommentForAttachment,
 } from "../repository";
+import { assertOrganisationStorageQuota } from "../storage-quota";
 
 export type PresignAttachmentInput = {
   workItemId: string;
@@ -162,15 +166,17 @@ export async function presignAttachment(input: PresignAttachmentInput) {
   // Pre-generated so the object key (which embeds it, for a stable, collision-free
   // path) and the inserted row can be written in one statement.
   const attachmentId = createId();
-  const objectKey = [
-    "workspace",
-    sanitizePathSegment(workspaceId),
-    "work-item",
-    sanitizePathSegment(workItemId),
-    "attachment",
-    attachmentId,
-    sanitizedFilename,
-  ].join("/");
+  const objectKey = buildAttachmentStorageKey(
+    [
+      "workspace",
+      sanitizePathSegment(workspaceId),
+      "work-item",
+      sanitizePathSegment(workItemId),
+      "attachment",
+      attachmentId,
+      sanitizedFilename,
+    ].join("/"),
+  );
 
   // Issue #493: this route had NO in-transaction liveness re-check at all --
   // `requireWorkItemReach()` checks `deletedAt`/`archivedAt` before this request reaches
@@ -183,6 +189,11 @@ export async function presignAttachment(input: PresignAttachmentInput) {
     const [locked] = await lockAttachmentWorkItem(tx, { workItemId });
     assertWorkItemStillLive(locked);
     await assertProjectStillLive(tx, locked.projectId);
+
+    await assertOrganisationStorageQuota(tx, {
+      workspaceId,
+      additionalBytes: size,
+    });
 
     let customerVisible = requestedVisibility ?? false;
     if (commentId) {
@@ -237,6 +248,7 @@ export async function presignAttachment(input: PresignAttachmentInput) {
     contentType,
     maxBytes,
     apiBaseUrl,
+    size,
   );
 
   return {

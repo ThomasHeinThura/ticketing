@@ -12,6 +12,7 @@ import {
 import db, { schema } from "../../database";
 import type { Transaction } from "../../database/executor";
 import {
+  buildAttachmentStorageKey,
   deleteStorageObject,
   getFileExtension,
   putAttachmentObject,
@@ -22,7 +23,7 @@ import type { ImportAttachment, ImportRecord } from "../schema";
 import {
   attachmentExternalId,
   claimEntityProvenance,
-  entityProvenanceExists,
+  touchEntityProvenance,
 } from "./provenance";
 import {
   type ImportAttachmentAuth,
@@ -155,9 +156,7 @@ export async function planImportAttachments(
         sourceUrl: attachment.url,
       });
     if (
-      await entityProvenanceExists(ctx.tx, {
-        workspaceId: ctx.workspaceId,
-        system: ctx.system,
+      await touchEntityProvenance(ctx, {
         entityType: "attachment",
         externalId: attachmentExternalId(
           record.sourceType,
@@ -236,6 +235,15 @@ export async function processImportAttachmentJobs(
     const result = await processOne(job, maxBytes, options.auth ?? null);
     if (result === "written") outcome.written += 1;
     else if (result === "duplicate") outcome.skipped += 1;
+    else if (result === "conflict")
+      outcome.losses.push({
+        code: "provenance_duplicate",
+        sourceType: job.sourceType,
+        sourceId: job.sourceId,
+        entity: "attachment",
+        entitySourceId: job.attachment.sourceId,
+        sourceUrl: job.attachment.url,
+      });
     else outcome.losses.push(result);
   }
   return outcome;
@@ -245,7 +253,7 @@ async function processOne(
   job: ImportAttachmentJob,
   maxBytes: number,
   auth: ImportAttachmentAuth | null,
-): Promise<"written" | "duplicate" | ImportLoss> {
+): Promise<"written" | "duplicate" | "conflict" | ImportLoss> {
   const { attachment } = job;
   const loss = (code: ImportLoss["code"]): ImportLoss => ({
     code,
@@ -295,7 +303,9 @@ async function processOne(
     attachmentId,
     `${baseName}.${extension}`,
   ].join("/");
-  const objectKey = toFinalAttachmentObjectKey(pendingKey);
+  const objectKey = toFinalAttachmentObjectKey(
+    buildAttachmentStorageKey(pendingKey),
+  );
   try {
     await dependencies.put(objectKey, bytes, mime, maxBytes);
   } catch {
@@ -310,9 +320,9 @@ async function processOne(
         size: bytes.byteLength,
       }),
     );
-    if (result === "duplicate") {
+    if (result === "duplicate" || result === "conflict") {
       await dependencies.remove(objectKey).catch(() => {});
-      return "duplicate";
+      return result;
     }
     return "written";
   } catch {
@@ -330,7 +340,7 @@ async function insertAttachment(
     mime: string;
     size: number;
   },
-): Promise<"written" | "duplicate"> {
+): Promise<"written" | "duplicate" | "conflict"> {
   const { attachment } = job;
   const [item] = await tx
     .select({ id: schema.workItemTable.id })
@@ -374,6 +384,7 @@ async function insertAttachment(
     title: attachment.filename,
     sourceCreatedAt: created.valid ? created.at : null,
   });
+  if (claim.conflict) return "conflict";
   if (!claim.claimed) return "duplicate";
   await tx.insert(schema.attachmentTable).values({
     id: stored.attachmentId,

@@ -134,10 +134,13 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
   beforeEach(async () => resetTestDatabase());
 
   it("streams authorized portal/staff PDFs and hides duplicate, foreign, and deleted attachments", async () => {
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
     const originalRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
     const originalDriver = process.env.TASKDESK_STORAGE_DRIVER;
     const root = await mkdtemp(path.join(tmpdir(), "taskdesk-submission-pdf-"));
     process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = root;
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
     delete process.env.TASKDESK_STORAGE_DRIVER;
     try {
       const s = await seed();
@@ -189,9 +192,11 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
       expect(deleted.status).toBe(404);
     } finally {
       if (originalRoot === undefined)
+        // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
         delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
       else process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
       if (originalDriver === undefined)
+        // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
         delete process.env.TASKDESK_STORAGE_DRIVER;
       else process.env.TASKDESK_STORAGE_DRIVER = originalDriver;
       await rm(root, { recursive: true, force: true });
@@ -720,5 +725,139 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
       expect(row, action).toBeDefined();
       expect(row?.actorId, action).toBe(staff.id);
     }
+  });
+
+  it("P1R2-4: portal list, download and preview stop once staff delete the converted work item or its project", async () => {
+    const s = await seed();
+    t = s.t;
+    const base = `/api/portal/submissions/SUB-${s.accepted.number}/attachments`;
+    const ownerIdentity = await resolveIdentity({
+      userId: s.owner.user.id,
+      credential: "session",
+    });
+    const contentInput = {
+      id: s.privateAttachment.id,
+      workspaceId: s.t.workspaceId,
+      submissionId: s.accepted.id,
+      linkedWorkItemId: s.t.workItem.id,
+      portal: true,
+    };
+
+    const listed = await portalRequest(t, s.owner, base);
+    expect(await names(listed)).toEqual(["owner-private.pdf"]);
+    const download = await portalRequest(
+      t,
+      s.owner,
+      `${base}/${s.privateAttachment.id}`,
+    );
+    expect(download.status).toBe(302);
+
+    for (const [label, apply, undo] of [
+      [
+        "work item soft-deleted",
+        () =>
+          db
+            .update(schema.workItemTable)
+            .set({ deletedAt: new Date() })
+            .where(eq(schema.workItemTable.id, s.t.workItem.id)),
+        () =>
+          db
+            .update(schema.workItemTable)
+            .set({ deletedAt: null })
+            .where(eq(schema.workItemTable.id, s.t.workItem.id)),
+      ],
+      [
+        "project deleted",
+        () =>
+          db
+            .update(schema.projectTable)
+            .set({ deletedAt: new Date() })
+            .where(eq(schema.projectTable.id, s.t.project.id)),
+        () =>
+          db
+            .update(schema.projectTable)
+            .set({ deletedAt: null })
+            .where(eq(schema.projectTable.id, s.t.project.id)),
+      ],
+    ] as const) {
+      await apply();
+      const list = await portalRequest(t, s.owner, base);
+      expect(list.status, label).toBe(200);
+      expect(await names(list), label).toEqual([]);
+      for (const suffix of ["", "/preview"]) {
+        const read = await portalRequest(
+          t,
+          s.owner,
+          `${base}/${s.privateAttachment.id}${suffix}`,
+        );
+        expect(read.status, `${label} ${suffix || "download"}`).toBe(404);
+      }
+      // Defence in depth: the repository reads refuse it even with a stale link id.
+      expect(
+        await listPortalSubmissionAttachments(db, ownerIdentity, {
+          submissionId: s.accepted.id,
+          workItemId: s.t.workItem.id,
+        }),
+        label,
+      ).toEqual([]);
+      expect(
+        await findSubmissionAttachmentContent(db, ownerIdentity, contentInput),
+        label,
+      ).toEqual([]);
+      await undo();
+    }
+
+    const restored = await portalRequest(t, s.owner, base);
+    expect(await names(restored)).toEqual(["owner-private.pdf"]);
+  });
+
+  it("P1R2-5: a portal presign beyond the organisation storage limit is refused with 429", async () => {
+    const s = await seed();
+    t = s.t;
+    const open = requireRow(
+      await db
+        .insert(schema.submissionTable)
+        .values({
+          organisationId: s.owner.orgId,
+          requesterId: s.owner.person.id,
+          requestTypeId: s.requestType.id,
+          requestTypeVersionId: s.version.id,
+          formData: {},
+          state: "new",
+          submittedAt: new Date(),
+        })
+        .returning(),
+      "open submission",
+    );
+    const [workspace] = await db
+      .select({ organisationId: schema.workspaceTable.organisationId })
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, s.t.workspaceId));
+    // The seeded 10-byte ready file already counts toward the limit.
+    await db
+      .insert(schema.organisationQuotaTable)
+      .values({
+        organisationId: workspace?.organisationId as string,
+        maxStorageBytes: 15,
+      })
+      .onConflictDoUpdate({
+        target: schema.organisationQuotaTable.organisationId,
+        set: { maxStorageBytes: 15 },
+      });
+    const presign = (size: number) =>
+      portalRequest(
+        t,
+        s.owner,
+        `/api/portal/submissions/SUB-${open.number}/attachments/presign`,
+        {
+          method: "POST",
+          body: { filename: "log.txt", contentType: "text/plain", size },
+        },
+      );
+    const refused = await presign(10);
+    expect(refused.status, await refused.clone().text()).toBe(429);
+    expect(await refused.text()).toContain("storage limit");
+    const fits = await presign(5);
+    expect(fits.status, await fits.clone().text()).toBe(200);
   });
 });

@@ -90,6 +90,7 @@ vi.mock("@/hooks/queries/project/use-get-project-states", () => ({
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
+    canCreateTasks: () => false,
     canTransitionTasks: () => state.perms.transition,
     canRankTasks: () => state.perms.rank,
     canUpdateTasks: () => state.perms.update,

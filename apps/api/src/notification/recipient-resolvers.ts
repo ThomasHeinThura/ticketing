@@ -168,13 +168,43 @@ export async function resolveApprovalEventRecipients(
     visibleToPersonIds,
   };
   const candidates: NotificationRecipientCandidate[] = [];
+  const channels = await configuredMentionChannels(tx);
   for (const personId of new Set(personIds)) {
     const person = await findNotificationPerson(tx, personId);
     if (!person?.active || !person.userId) continue;
-    // Only staff are written an inbox row: the approval inbox read predicate admits staff
-    // recipients only, so a customer's row could never be read. A customer approver is
-    // served by the portal approvals list instead.
-    if (person.side !== "staff") continue;
+    // AP-21 / AP-13 (`P2R1-04`): a customer is notified only as the addressed approver of a
+    // customer approval. Their reach is the approval's own customer rule (the portal Approvals
+    // list's check), and their inbox row is read through the portal inbox.
+    if (person.side !== "staff") {
+      if (
+        person.side !== "customer" ||
+        personId !== row.approverId ||
+        row.kind !== "customer" ||
+        !(await isApprovalApproverStillValid(tx, row))
+      )
+        continue;
+      const customer = await resolveIdentity(
+        { userId: person.userId, credential: "session" },
+        tx,
+      );
+      if (customer?.side !== "customer" || customer.personId !== personId)
+        continue;
+      // Loaded lazily: the approval repository builds table aliases at import time, and this
+      // resolver module is imported by notification code that runs without the full schema.
+      const { loadApprovalTargetByApprovalId } = await import(
+        "../approval/repository"
+      );
+      if (
+        !(await loadApprovalTargetByApprovalId(row.id, customer, {
+          executor: tx,
+        }))
+      )
+        continue;
+      candidates.push(
+        approvalCandidate(event.kind, personId, row.id, channels, true),
+      );
+      continue;
+    }
     // A named approver must still be valid for this workspace (0120 check 4).
     if (
       personId === row.approverId &&
@@ -200,35 +230,49 @@ export async function resolveApprovalEventRecipients(
     );
     if (!reaches(identity, { ...reachFacts, ancestorProjectIds, ownerTeamId }))
       continue;
-    candidates.push({
-      personId,
-      resourceType: "approval",
-      resourceId: row.id,
-      title:
-        event.kind === "approval.requested"
-          ? "Approval requested"
-          : event.kind === "approval.expiring"
-            ? "Approval expiring soon"
-            : event.kind === "approval.expired"
-              ? "Approval expired"
-              : event.kind === "approval.withdrawn"
-                ? "Approval withdrawn"
-                : "Approval decision recorded",
-      body:
-        event.kind === "approval.requested"
-          ? "A work item needs your approval."
-          : event.kind === "approval.expiring"
-            ? "An approval request is nearing its expiry."
-            : event.kind === "approval.expired"
-              ? "An approval request has expired."
-              : event.kind === "approval.withdrawn"
-                ? "An approval request was withdrawn."
-                : "An approval request was decided.",
-      // External channel adapters and their registry stay with the notification worker slice.
-      channels: [],
-    });
+    candidates.push(approvalCandidate(event.kind, personId, row.id, channels));
   }
   return candidates;
+}
+
+/** The approval inbox row; the configured email channel follows the recipient's preference. */
+function approvalCandidate(
+  kind: string,
+  personId: string,
+  approvalId: string,
+  channels: readonly string[],
+  customer = false,
+): NotificationRecipientCandidate {
+  const event = { kind };
+  // A customer's copy never uses the internal "work item" term (EV-5).
+  const subject = customer ? "A request" : "A work item";
+  return {
+    personId,
+    resourceType: "approval",
+    resourceId: approvalId,
+    title:
+      event.kind === "approval.requested"
+        ? "Approval requested"
+        : event.kind === "approval.expiring"
+          ? "Approval expiring soon"
+          : event.kind === "approval.expired"
+            ? "Approval expired"
+            : event.kind === "approval.withdrawn"
+              ? "Approval withdrawn"
+              : "Approval decision recorded",
+    body:
+      event.kind === "approval.requested"
+        ? `${subject} needs your approval.`
+        : event.kind === "approval.expiring"
+          ? "An approval request is nearing its expiry."
+          : event.kind === "approval.expired"
+            ? "An approval request has expired."
+            : event.kind === "approval.withdrawn"
+              ? "An approval request was withdrawn."
+              : "An approval request was decided.",
+    // AP-21: pending approvals reach the inbox and, per preference, email.
+    channels,
+  };
 }
 
 /**

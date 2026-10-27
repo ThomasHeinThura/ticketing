@@ -1,3 +1,4 @@
+import { formatSubmissionReference } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { schema } from "../database";
@@ -392,8 +393,33 @@ export async function findCurrentNotificationResource(
         participantRows.map(({ personId }) => personId),
       ),
       customerVisible: true,
-      staffUrl: null,
-      portalUrl: null,
+      // AP-21 (`P2R1-04`): an approval email links to the work item for staff and to the
+      // portal Approvals screen for a customer approver; never a staff key on the portal.
+      staffUrl: `/agent/work-items/${encodeURIComponent(context.workItemKey)}`,
+      portalUrl: "/approvals",
+    };
+  }
+
+  // IQ-12 / IQ-15 (`P2R1-05`): a submission reply or decline links to the submission itself.
+  // Recipient eligibility is re-checked by `isCurrentSubmissionNotificationRecipient`.
+  if (
+    input.resourceType === "submission" &&
+    isSupportedNotificationResourceEvent(input.resourceType, input.eventKind)
+  ) {
+    const submission = await findSubmissionNotificationResource(
+      tx,
+      input.resourceId,
+    );
+    if (!submission) return null;
+    const ref = formatSubmissionReference(submission.number);
+    return {
+      workspaceId: submission.workspaceId,
+      projectId: null,
+      organisationId: submission.organisationId,
+      visibleToPersonIds: [submission.requesterId],
+      customerVisible: true,
+      staffUrl: `/agent/triage?ref=${encodeURIComponent(ref)}`,
+      portalUrl: `/submissions/${encodeURIComponent(ref)}`,
     };
   }
 
@@ -632,6 +658,7 @@ export async function findApprovalNotificationContext(
       requestedBy: schema.approvalTable.requestedBy,
       approverId: schema.approvalTable.approverId,
       workItemId: schema.workItemTable.id,
+      workItemKey: schema.workItemTable.key,
       workspaceId: schema.approvalTable.workspaceId,
       projectId: schema.workItemTable.projectId,
       organisationId: schema.workspaceTable.organisationId,
@@ -721,6 +748,28 @@ export async function findSubmissionNotificationContext(
       eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
     )
     .where(eq(schema.submissionTable.number, number))
+    .limit(1);
+  return row ?? null;
+}
+
+/** The submission behind a `submission` notification resource, for send-time resolution. */
+export async function findSubmissionNotificationResource(
+  tx: DbTransaction,
+  submissionId: string,
+) {
+  const [row] = await tx
+    .select({
+      number: schema.submissionTable.number,
+      organisationId: schema.submissionTable.organisationId,
+      requesterId: schema.submissionTable.requesterId,
+      workspaceId: schema.requestTypeTable.workspaceId,
+    })
+    .from(schema.submissionTable)
+    .innerJoin(
+      schema.requestTypeTable,
+      eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+    )
+    .where(eq(schema.submissionTable.id, submissionId))
     .limit(1);
   return row ?? null;
 }

@@ -63,6 +63,11 @@ type WorkItemsPanelProps = {
   onSelectionChange?: (key: string, checked: boolean) => void;
   onSelectAll?: (checked: boolean) => void;
   onOpenItem?: (key: string) => void;
+  /** Kaneo's per-column "+" in the list layout. */
+  onCreateInState?: (
+    state: { id: string; name: string },
+    trigger: HTMLButtonElement,
+  ) => void;
 };
 
 function WorkItemsPanel({
@@ -94,6 +99,7 @@ function WorkItemsPanel({
   onSelectionChange,
   onSelectAll,
   onOpenItem,
+  onCreateInState,
 }: WorkItemsPanelProps) {
   const { t } = useTranslation();
   const workItems = workItemsResult?.items;
@@ -239,7 +245,7 @@ function WorkItemsPanel({
       ) : null}
       <Suspense fallback={<WorkItemListLoading />}>
         {layout === "list" ? (
-          <WorkItemKaneoList {...listProps} />
+          <WorkItemKaneoList {...listProps} onCreateInState={onCreateInState} />
         ) : (
           <WorkItemList
             {...listProps}

@@ -15,6 +15,7 @@ import {
   EmptyTitle,
   Skeleton,
 } from "@taskdesk/ui";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   discoverImportRun,
@@ -24,6 +25,7 @@ import {
   ImportReasonError,
   MAPPING_DOMAINS,
 } from "@/fetchers/god-mode/imports";
+import { SetupJobProgress } from "./setup-job-progress";
 import { useIdempotencyKey } from "./use-idempotency-key";
 import { wizardKeys } from "./wizard-keys";
 
@@ -58,14 +60,26 @@ export function DiscoverStep({
   const discover = useMutation({
     mutationFn: () =>
       discoverImportRun(run.id, key.keyFor(`discover:${run.version}`)),
-    onSuccess: (result) => {
+    onSuccess: () => {
       key.reset();
-      client.setQueryData(wizardKeys.mapping(run.id), result);
+      // Discovery runs on the server: the engine query (polled while the step runs) shows its
+      // progress, and the mapping is read again once it completes.
       void client.invalidateQueries({ queryKey: wizardKeys.engine(run.id) });
-      void client.invalidateQueries({ queryKey: wizardKeys.dryRun(run.id) });
     },
   });
-  const locked = run.phase === "executing" || run.phase === "completed";
+  const job = run.job?.kind === "discover" ? run.job : null;
+  const running = job?.status === "running";
+  const doneAt = job?.status === "completed" ? job.updatedAt : null;
+  useEffect(() => {
+    if (!doneAt) return;
+    void client.invalidateQueries({ queryKey: wizardKeys.mapping(run.id) });
+    void client.invalidateQueries({ queryKey: wizardKeys.dryRun(run.id) });
+  }, [client, doneAt, run.id]);
+  // A run paused mid-execution may come back here to recover (a fresh dry run and approval); a
+  // running or completed one may not.
+  const locked =
+    (run.phase === "executing" && run.state !== "paused") ||
+    run.phase === "completed";
   const discovery = mapping.data?.discovery ?? null;
 
   return (
@@ -75,27 +89,42 @@ export function DiscoverStep({
           {t("wizard.discover.description")}
         </p>
         <Button
-          disabled={discover.isPending || locked}
+          disabled={discover.isPending || running || locked}
           onClick={() => discover.mutate()}
         >
           {discovery ? t("wizard.discover.rerun") : t("wizard.discover.run")}
         </Button>
       </div>
 
-      {discover.isError ? (
+      {running && job ? (
+        <SetupJobProgress
+          job={job}
+          continuing={discover.isPending}
+          onContinue={() => discover.mutate()}
+        />
+      ) : null}
+
+      {discover.isError ||
+      (job?.status === "failed" && job.failure !== null) ? (
         <Alert variant="error">
           <AlertTitle>{t("wizard.discover.errorTitle")}</AlertTitle>
           <AlertDescription>
-            {discover.error instanceof ImportReasonError
-              ? t(`wizard.connect.reasons.${discover.error.reason}`, {
-                  defaultValue: t("wizard.discover.errorDescription"),
+            {job?.status === "failed" && job.failure !== null
+              ? t(`wizard.setupFailures.${job.failure}`, {
+                  defaultValue: t(`wizard.connect.reasons.${job.failure}`, {
+                    defaultValue: t("wizard.discover.errorDescription"),
+                  }),
                 })
-              : t("wizard.discover.errorDescription")}
+              : discover.error instanceof ImportReasonError
+                ? t(`wizard.connect.reasons.${discover.error.reason}`, {
+                    defaultValue: t("wizard.discover.errorDescription"),
+                  })
+                : t("wizard.discover.errorDescription")}
           </AlertDescription>
         </Alert>
       ) : null}
 
-      {mapping.isPending && run.phase !== "created" ? (
+      {running ? null : mapping.isPending && run.phase !== "created" ? (
         <Skeleton className="h-40 w-full" />
       ) : discovery ? (
         <>
@@ -126,6 +155,27 @@ export function DiscoverStep({
                   </div>
                 ))}
               </dl>
+              {Object.entries(discovery.unreadable ?? {}).length > 0 ? (
+                <Alert variant="warning">
+                  <AlertTitle>
+                    {t("wizard.discover.unreadableTitle")}
+                  </AlertTitle>
+                  <AlertDescription>
+                    <ul className="list-disc space-y-1 pl-5">
+                      {Object.entries(discovery.unreadable ?? {}).map(
+                        ([code, count]) => (
+                          <li key={code}>
+                            {t(`wizard.unreadable.${code}`, {
+                              defaultValue: code,
+                              total: count,
+                            })}
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
               <ul className="flex flex-wrap gap-2">
                 {domainSummary(discovery).map((row) => (
                   <li key={row.domain}>

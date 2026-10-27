@@ -8,10 +8,12 @@ import {
   rebalancePositionPartition,
 } from "../../scheduler/position-rebalance";
 import { assertProjectStillLive } from "../assert-work-item-live";
+import { publishRankHint } from "../native-event";
 
 // Fractional rank is last-write-wins (WI-7/11); every persisted position change bumps
 // version. Dense partitions trigger the five-minute leased on-demand repair (WI-12).
-// No rank activity/event is invented. Reach/capability remain enforced by the route.
+// No rank activity/event is invented; a key-only `work_item.updated` live hint is published
+// after commit so other viewers refetch the order (VW-5). Reach/capability remain enforced by the route.
 
 export type RankWorkItemInput = {
   beforeId?: string | null;
@@ -186,6 +188,7 @@ export async function rankWorkItem(
       key: workItemTable.key,
       position: workItemTable.position,
       version: workItemTable.version,
+      projectId: workItemTable.projectId,
     })
     .from(workItemTable)
     .where(
@@ -198,7 +201,12 @@ export async function rankWorkItem(
     );
   if (!current)
     throw new HTTPException(404, { message: "Work item not found" });
-  return current;
+  await publishRankHint({ projectId: current.projectId, key: current.key });
+  return {
+    key: current.key,
+    position: current.position,
+    version: current.version,
+  };
 }
 
 export default rankWorkItem;

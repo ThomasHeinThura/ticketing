@@ -194,6 +194,8 @@ function PortalSubmissionContent() {
           authorName?: string | null;
           mine?: boolean;
           body: string;
+          reasonCode?: string | null;
+          reasonParams?: Record<string, unknown> | null;
           createdAt: string;
         }>;
       }
@@ -473,7 +475,17 @@ function PortalSubmissionContent() {
                       </CardDescription>
                     </CardHeader>
                     <CardPanel>
-                      <p className="whitespace-pre-wrap">{message.body}</p>
+                      <p className="whitespace-pre-wrap">
+                        {message.reasonCode
+                          ? t(
+                              `portal:intake.systemReasons.${message.reasonCode}`,
+                              {
+                                ...message.reasonParams,
+                                defaultValue: message.body,
+                              },
+                            )
+                          : message.body}
+                      </p>
                     </CardPanel>
                   </Card>
                 </li>

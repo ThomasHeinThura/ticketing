@@ -1556,7 +1556,10 @@ no account.
   each `required_*` mode requires a verified enrolled TOTP or valid backup code before an
   authenticated session may be used. An unenrolled required user receives only the
   enrollment/challenge surface, not a usable API session. Customer-portal authentication
-  remains disabled by the P0 CP-19 boundary. Unsupported upstream SSO MFA cannot satisfy a
+  is enabled by P3; customers are exempt from the local-factor policy (every mode, including
+  `required_everyone`, applies to staff only, and a customer SSO sign-in never reaches the
+  agent-only `/auth/two-factor` challenge; a factor a customer enrolled voluntarily is still
+  honoured on local sign-in). Unsupported upstream SSO MFA cannot satisfy a
   required local-factor policy; it fails closed. Sign-in email OTP, remembered-device state,
   and client assertions are never second-factor proof.
 - **Enrollment and recovery:** enrollment starts from a real session, returns the setup
@@ -2473,7 +2476,10 @@ thing that is hashed or executed.
   (adding a route there is a contract change recorded here). The categories are:
   (1) **unlinks** that remove only a relationship and never the linked records or history
   (label detach from a task, assignee clear, own watch, parent clear, **workspace membership
-  removal** under its owner/last-owner guards, **team membership removal**); (2) **a person's own settings and inbox**
+  removal** under its owner/last-owner guards, **team membership removal**, **direct project
+  roster removal** (PR-4; inherited or identity-provider-managed rows are refused 409), and
+  **removing a work item from a cycle or module** (CY-4, MO-2; both records survive, audited));
+  (2) **a person's own settings and inbox**
   (own avatar, own notification clear-all and per-workspace overrides); (3) **configuration
   rows with no history** managed by a session-only administrator in the Kaneo editor
   (workflow-rule deletion, `sessionOnly`, never reachable with an API/MCP key; deleting an **empty** custom-field section, refused while any field still belongs to it); (4)
@@ -2481,8 +2487,12 @@ thing that is hashed or executed.
   API key through better-auth (`/api/auth/*`; killing your own credential is the safe
   direction and is not a data deletion) and **SCIM deprovision/group removal under the
   per-connection SCIM bearer token** (identity-connection guards apply; the directory
-  deactivates an identity, the person's work survives). Creating or rotating API keys stays
-  elevated (PA-5). Everything else that deletes business data follows PA-1…PA-4.
+  deactivates an identity, the person's work survives); (5) **ending one's own impersonation
+  session** (`DELETE /api/instance/impersonate`, GM-11: removes only that session row, audited
+  as `impersonation.ended`). Creating or rotating API keys stays elevated (PA-5). Everything
+  else that deletes business data follows PA-1…PA-4; every registered deletion target's real
+  `DELETE` handler is proven at runtime to answer 202 and record a `pending` action
+  (`tests/api-integration/delete-routes-runtime-pending.test.ts`).
 - `PA-2` If the caller may request it, the server creates a `pending_action` in state
   `pending`, writes `pending_action.requested` to the audit log, and responds **`202
   Accepted`** with `{ pendingActionId, action, summary, confirmation, expiresAt,
@@ -3004,8 +3014,10 @@ requesting person's API key when the credential is an API key and that key still
 it is otherwise null. Reads never return the stored payload, payload hash, route key,
 credential id, step-up token id, trace id, or internal error.
 
-Rendering a list row or detail summary is a `pending_action.viewed` audit action (PA-11).
-The read fails if the audit write fails; it must not return an unaudited summary.
+Rendering a list row or detail summary in a person's session (the approval dialog or the
+pending-actions page) is a `pending_action.viewed` audit action (PA-11). The read fails if the
+audit write fails; it must not return an unaudited summary. An API-key read of the list or a
+detail is polling, not a render: it writes no `viewed` row and takes no audit-chain lock.
 
 The first line covers ordinary records. A `DELETE` on an **elevated** target (workspace,
 organisation, project, API key, webhook, identity connection, `auth.*` plugin) carries

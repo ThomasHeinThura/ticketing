@@ -370,7 +370,7 @@ const router = apiRouter<Vars>()
     const query = c.req.valid("query");
     const workspaceId = c.get("workspaceId");
     await projectOrThrow(identity, workspaceId, projectId);
-    const showAmounts = await canSeeRates(c);
+    const showAmounts = await canSeeRates(c, projectId);
     // Writes are decided at the project (a project role may override the workspace role there).
     const canWrite =
       showAmounts &&
@@ -445,7 +445,7 @@ const router = apiRouter<Vars>()
     });
     const row = await getCostEntry(identity, id);
     if (!row) throw new HTTPException(404, { message: "Cost entry not found" });
-    return c.json(costEntryDto(row, await canSeeRates(c)), 201);
+    return c.json(costEntryDto(row, await canSeeRates(c, projectId)), 201);
   })
   .openapi(updateCostEntryRoute, async (c) => {
     const identity = await identityOf(c);
@@ -462,7 +462,7 @@ const router = apiRouter<Vars>()
       throw new HTTPException(404, { message: "Cost entry not found" });
     const row = await getCostEntry(identity, updated);
     if (!row) throw new HTTPException(404, { message: "Cost entry not found" });
-    return c.json(costEntryDto(row, await canSeeRates(c)), 200);
+    return c.json(costEntryDto(row, await canSeeRates(c, row.projectId)), 200);
   })
   .openapi(deleteCostEntryRoute, async (c) => {
     const id = c.req.valid("param").id;

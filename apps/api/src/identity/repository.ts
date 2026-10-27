@@ -3577,10 +3577,23 @@ type GroupWrite = {
   displayName: string;
   active: boolean;
   memberIds: readonly string[];
+  /**
+   * Recomputes displayName, active and members from the group state read after the row lock,
+   * so a read-modify-write PATCH cannot overwrite a concurrent one (IP-22).
+   */
+  patch?: (current: {
+    displayName: string;
+    active: boolean;
+    memberIds: string[];
+  }) => {
+    displayName: string;
+    active: boolean;
+    memberIds: string[];
+  } | null;
 };
 
 /** Store directory state and apply only currently valid mapped-role grants. */
-export async function writeScimGroup(input: GroupWrite) {
+export async function writeScimGroup(request: GroupWrite) {
   let pendingActionAuditFailures = 0;
   const result = await retryIdentityGrantClosure(async () =>
     db.transaction(async (tx) => {
@@ -3604,7 +3617,7 @@ export async function writeScimGroup(input: GroupWrite) {
             schema.identityConnectionTable.id,
           ),
         )
-        .where(eq(schema.identityConnectionTable.id, input.connectionId))
+        .where(eq(schema.identityConnectionTable.id, request.connectionId))
         .limit(1);
       if (
         !connection?.connectionEnabled ||
@@ -3623,18 +3636,20 @@ export async function writeScimGroup(input: GroupWrite) {
         .from(schema.scimGroupTable)
         .where(
           and(
-            eq(schema.scimGroupTable.scimConnectionId, input.connectionId),
-            input.groupId
-              ? eq(schema.scimGroupTable.id, input.groupId)
-              : eq(schema.scimGroupTable.externalId, input.externalId),
+            eq(schema.scimGroupTable.scimConnectionId, request.connectionId),
+            request.groupId
+              ? eq(schema.scimGroupTable.id, request.groupId)
+              : eq(schema.scimGroupTable.externalId, request.externalId),
           ),
         )
-        .limit(1);
-      if (input.groupId && !group)
+        .limit(1)
+        // Serialises concurrent writers of one group: everything below reads fresh state.
+        .for("update");
+      if (request.groupId && !group)
         throw new ScimGroupWriteError(404, "notFound");
-      if (input.createOnly && group)
+      if (request.createOnly && group)
         throw new ScimGroupWriteError(409, "uniqueness");
-      if (group && group.externalId !== input.externalId)
+      if (group && group.externalId !== request.externalId)
         throw new ScimGroupWriteError(400, "invalidValue");
       const initiallyActiveMembers = group
         ? await tx
@@ -3647,13 +3662,26 @@ export async function writeScimGroup(input: GroupWrite) {
               and(
                 eq(
                   schema.scimGroupDirectoryMemberTable.scimConnectionId,
-                  input.connectionId,
+                  request.connectionId,
                 ),
                 eq(schema.scimGroupDirectoryMemberTable.scimGroupId, group.id),
                 eq(schema.scimGroupDirectoryMemberTable.active, true),
               ),
             )
         : [];
+
+      const patched =
+        group && request.patch
+          ? request.patch({
+              displayName: group.displayName,
+              active: group.active,
+              memberIds: initiallyActiveMembers.map(
+                (member) => member.externalIdentityId,
+              ),
+            })
+          : undefined;
+      if (patched === null) throw new ScimGroupWriteError(400, "invalidValue");
+      const input: GroupWrite = patched ? { ...request, ...patched } : request;
 
       const [mapping] = await tx
         .select({

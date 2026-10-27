@@ -30,6 +30,7 @@ import { createApp } from "../../../apps/api/src/index";
 import { resetTestDatabase } from "../helpers/database";
 import {
   call,
+  discoverAndWait,
   dryRunAndExecuteBody,
   engineFixture,
   makeRecords,
@@ -45,6 +46,7 @@ const PNG = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4, 5, 6, 7, 8,
 ]);
 let root: string;
+// biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
 const originalRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
 
 beforeEach(async () => {
@@ -66,6 +68,7 @@ afterEach(async () => {
   unregisterImportAdapter(PLUGIN);
   await rm(root, { recursive: true, force: true });
   if (originalRoot === undefined)
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
     delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
   else process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
 });
@@ -219,13 +222,7 @@ async function start(
     post({ projectId: f.project.id, sourceRef: id }),
     200,
   );
-  const mapping = await call(
-    app,
-    f.key,
-    `/api/imports/${run.id}/discover`,
-    post(),
-    200,
-  );
+  const mapping = await discoverAndWait(app, f.key, run.id);
   return { run, mapping };
 }
 

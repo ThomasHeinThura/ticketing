@@ -18,6 +18,7 @@ import {
   cycleDeletionTarget,
   moduleDeletionTarget,
 } from "../agile/deletion-target";
+import { clientIpForContext } from "../api-key/enforce";
 import { personalKeyDeletionTarget } from "../api-key/personal-key-deletion-target";
 import { serviceKeyDeletionTarget } from "../api-key/service-key-deletion-target";
 import { appendAuditLog } from "../audit/audit-writer";
@@ -48,6 +49,7 @@ import {
 } from "../imports/pending-action-contract";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import { requestTypeDeletionTarget } from "../intake/deletion-target";
 import { invitationDeletionTarget } from "../invitation/invitation-deletion-target";
 import { kbCategoryDeletionTarget } from "../kb/deletion-target";
 import {
@@ -87,6 +89,7 @@ import {
 import {
   approveClickDeletion,
   type ClickDeletionApprovalInput,
+  invalidatedApprovalError,
   type RegisteredDeletionEffect,
   type RegisteredDeletionLoaded,
   type RegisteredDeletionReadScope,
@@ -223,7 +226,11 @@ export async function approveServiceCalendarDeletion(input: {
         now,
       });
       auditFailure ||= invalidated.auditFailure;
-      return { row: invalidated.row, state: "invalidated" as const };
+      return {
+        row: invalidated.row,
+        state: "invalidated" as const,
+        lostAccess: true,
+      };
     }
     if (row.expiresAt <= now) {
       const [expired] = await tx
@@ -352,7 +359,11 @@ export async function approveServiceCalendarDeletion(input: {
         now,
       });
       auditFailure ||= invalidated.auditFailure;
-      return { row: invalidated.row, state: "invalidated" as const };
+      return {
+        row: invalidated.row,
+        state: "invalidated" as const,
+        lostAccess: false,
+      };
     }
     const targetVersions = row.targetVersions as Record<string, unknown> | null;
     if (!targetVersions || targetVersions[targetId] !== calendar.version) {
@@ -368,6 +379,7 @@ export async function approveServiceCalendarDeletion(input: {
       return {
         row: invalidated.row,
         state: "invalidated" as const,
+        lostAccess: false,
         auditFailure: invalidated.auditFailure,
       };
     }
@@ -415,7 +427,12 @@ export async function approveServiceCalendarDeletion(input: {
         now,
       });
       auditFailure ||= invalidated.auditFailure;
-      return { row: invalidated.row, state: "invalidated" as const };
+      return {
+        row: invalidated.row,
+        state: "invalidated" as const,
+        lostAccess:
+          row.credentialType === "session" && reason !== "credential_revoked",
+      };
     }
     await assertCalendarUnused(tx, calendar.workspaceId, calendar.id);
     const [deleted] = await tx
@@ -544,9 +561,8 @@ export async function approveServiceCalendarDeletion(input: {
     recordAuditWriteFailure("pending_action_decision");
     await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_decision");
   }
-  if (result.state === "invalidated") {
-    throw new HTTPException(409, { message: "pending_action_target_changed" });
-  }
+  if (result.state === "invalidated")
+    throw invalidatedApprovalError(result.lostAccess);
   return toPublicPendingAction(result.row);
 }
 
@@ -626,7 +642,11 @@ export async function approveSavedViewDeletion(input: {
         now,
       });
       auditFailure ||= invalidated.auditFailure;
-      return { row: invalidated.row, state: "invalidated" as const };
+      return {
+        row: invalidated.row,
+        state: "invalidated" as const,
+        lostAccess: true,
+      };
     }
     if (actor.side !== "staff" || actor.banned) {
       const invalidated = await invalidateSavedViewDeletion(tx, {
@@ -639,7 +659,11 @@ export async function approveSavedViewDeletion(input: {
         now,
       });
       auditFailure ||= invalidated.auditFailure;
-      return { row: invalidated.row, state: "invalidated" as const };
+      return {
+        row: invalidated.row,
+        state: "invalidated" as const,
+        lostAccess: true,
+      };
     }
     if (row.expiresAt <= now) {
       const [expired] = await tx
@@ -766,7 +790,11 @@ export async function approveSavedViewDeletion(input: {
         now,
       });
       auditFailure ||= invalidated.auditFailure;
-      return { row: invalidated.row, state: "invalidated" as const };
+      return {
+        row: invalidated.row,
+        state: "invalidated" as const,
+        lostAccess: false,
+      };
     }
     const targetVersions = row.targetVersions as Record<string, unknown> | null;
     if (
@@ -783,7 +811,11 @@ export async function approveSavedViewDeletion(input: {
         now,
       });
       auditFailure ||= invalidated.auditFailure;
-      return { row: invalidated.row, state: "invalidated" as const };
+      return {
+        row: invalidated.row,
+        state: "invalidated" as const,
+        lostAccess: false,
+      };
     }
     const access = await evaluateActionRequiredAccess(
       tx,
@@ -829,7 +861,12 @@ export async function approveSavedViewDeletion(input: {
         now,
       });
       auditFailure ||= invalidated.auditFailure;
-      return { row: invalidated.row, state: "invalidated" as const };
+      return {
+        row: invalidated.row,
+        state: "invalidated" as const,
+        lostAccess:
+          row.credentialType === "session" && reason !== "credential_revoked",
+      };
     }
 
     const preferences = await tx
@@ -987,9 +1024,8 @@ export async function approveSavedViewDeletion(input: {
     recordAuditWriteFailure("pending_action_decision");
     await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_decision");
   }
-  if (result.state === "invalidated") {
-    throw new HTTPException(409, { message: "pending_action_target_changed" });
-  }
+  if (result.state === "invalidated")
+    throw invalidatedApprovalError(result.lostAccess);
   return toPublicPendingAction(result.row);
 }
 
@@ -1179,6 +1215,7 @@ export function registeredDeletionTargets(): readonly RuntimeRegisteredDeletionT
       teamDeletionTarget,
       serviceDeletionTarget,
       kbCategoryDeletionTarget,
+      requestTypeDeletionTarget,
       timeEntryDeletionTarget,
       costEntryDeletionTarget,
       webhookDeletionTarget,
@@ -1814,7 +1851,7 @@ export async function requestRegisteredDeletion(
       ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
       actorId: userId,
       actorType: apiKey ? "api_key" : "person",
-      actorIp: c.req.header("x-forwarded-for") ?? null,
+      actorIp: clientIpForContext(c),
       userAgent: c.req.header("user-agent") ?? null,
     });
   const created = await create();

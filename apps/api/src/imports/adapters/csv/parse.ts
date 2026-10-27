@@ -127,6 +127,12 @@ export function parseCsv(
   let fieldStarted = false;
   let line = 1;
   let recordLine = 1;
+  /**
+   * Set the moment a limit is crossed, so a hostile file stops here instead of after millions of
+   * records (or one header line of millions of cells) have been built. The header is the first
+   * non-blank record, so `records.length === 0` while the header's cells are still being read.
+   */
+  let limit: CsvFatalCode | null = null;
 
   const endField = () => {
     if (field.length > maxField) {
@@ -137,11 +143,18 @@ export function parseCsv(
     field = "";
     fieldStarted = false;
     afterQuote = false;
+    if (records.length === 0 && cells.length > maxColumns)
+      limit = "too_many_columns";
   };
   const endRecord = () => {
     endField();
     const blank = cells.length === 1 && cells[0]?.trim() === "";
-    if (!blank) records.push({ line: recordLine, cells, flags });
+    if (!blank) {
+      records.push({ line: recordLine, cells, flags });
+      // `records` still holds the header, so more than maxRows + 1 means too many data rows.
+      if (records.length > maxRows + 1 && limit === null)
+        limit = "too_many_rows";
+    }
     cells = [];
     flags = new Set();
   };
@@ -176,11 +189,13 @@ export function parseCsv(
     }
     if (ch === delimiter) {
       endField();
+      if (limit) return EMPTY(limit, delimiter);
       continue;
     }
     if (ch === "\r" || ch === "\n") {
       if (ch === "\r" && text[i + 1] === "\n") i += 1;
       endRecord();
+      if (limit) return EMPTY(limit, delimiter);
       line += 1;
       recordLine = line;
       continue;
@@ -191,6 +206,7 @@ export function parseCsv(
   }
   if (inQuotes) return EMPTY("unterminated_quote", delimiter);
   if (field !== "" || cells.length > 0 || fieldStarted) endRecord();
+  if (limit) return EMPTY(limit, delimiter);
 
   const headerRecord = records.shift();
   if (!headerRecord) return EMPTY("no_header", delimiter);

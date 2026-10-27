@@ -11,6 +11,7 @@ import {
   createWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
+import { createImpersonatingAdmin } from "./helpers/impersonator";
 import { ensureCreationWorkflow } from "./helpers/workflow";
 
 async function seedSearchWorld() {
@@ -187,7 +188,9 @@ describe("global search request-local identity reuse", () => {
   it("retains impersonation identity semantics and leaves structured search on fresh resolution", async () => {
     const { member, app, item } = await seedSearchWorld();
 
-    mockAuthenticatedSession(member.user, { impersonatedBy: "acting-admin" });
+    mockAuthenticatedSession(member.user, {
+      impersonatedBy: await createImpersonatingAdmin(),
+    });
     const globalRequest = await countIdentityLoaderReads(() =>
       searchWorkItems(app, member.workspace.id),
     );

@@ -516,6 +516,14 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
     const workspaceId = await createWorkspace(app, owner.cookie, "Ceiling25");
     // The ceiling counts custom roles only: the six built-ins do not use it up.
     for (let i = 0; i < 25; i++) {
+      // Each create spends a fresh step-up proof; 25 of them in one session would exceed the
+      // global challenge budget (PA-15, 15 per session per window), which is not what this test
+      // exercises, so the budget window is cleared between creates.
+      await db
+        .delete(schema.requestRateLimitCounterTable)
+        .where(
+          eq(schema.requestRateLimitCounterTable.bucket, "step_up_challenge"),
+        );
       const created = await createWorkspaceRoleNative(
         app,
         owner.cookie,

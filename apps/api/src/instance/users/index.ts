@@ -1,6 +1,7 @@
 import { and, eq, ilike, lt, or, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../../api-key/enforce";
 import { appendAuditLog } from "../../audit/audit-writer";
 import { loadLocalFactorState } from "../../auth/local-factor-service";
 import { appendStepUpAudit } from "../../auth/step-up-audit";
@@ -24,6 +25,7 @@ import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { normaliseTraceId } from "../../permissions/shadow-middleware";
 import { requireSessionOnly } from "../../utils/require-session-only";
 import { invalidateNativeAuthorization } from "../../ws";
+import { finishImpersonation } from "../impersonation/finish";
 import { isCurrentInstanceAdmin } from "../observability/audit-failure-notifier";
 import {
   decodeUserDirectoryCursor,
@@ -464,6 +466,7 @@ const routes = apiRouter()
               personId: factor.personId,
             },
             pendingActionAuditFailures: 0,
+            revokedImpersonations: [],
           };
         }
         if (!proofMethodAcceptable(proof.authMethod, factor)) {
@@ -498,6 +501,15 @@ const routes = apiRouter()
         .delete(schema.sessionTable)
         .where(eq(schema.sessionTable.userId, id))
         .returning({ id: schema.sessionTable.id });
+      // P4R1-M3: an administrator's suspension also ends every impersonation session they are
+      // running as someone else; those sessions belong to the target user, not to `id`.
+      const revokedImpersonations = await tx
+        .delete(schema.sessionTable)
+        .where(eq(schema.sessionTable.impersonatedBy, id))
+        .returning({
+          id: schema.sessionTable.id,
+          userId: schema.sessionTable.userId,
+        });
       await tx
         .delete(schema.apikeyTable)
         .where(eq(schema.apikeyTable.referenceId, id));
@@ -514,11 +526,13 @@ const routes = apiRouter()
           outcome: "suspended",
           finiteExpiry: expiresAt !== null,
           revokedSessions: revokedSessions.length,
+          revokedImpersonations: revokedImpersonations.length,
         },
       });
       return {
         stepUpFailure: null,
         pendingActionAuditFailures: invalidation.auditFailures,
+        revokedImpersonations,
       };
     });
     if (suspensionResult.stepUpFailure) {
@@ -536,6 +550,16 @@ const routes = apiRouter()
     await reportPendingActionAuditFailures(
       suspensionResult.pendingActionAuditFailures,
     );
+    // Each ended impersonation is recorded and the impersonated person told (GM-9, GM-11).
+    for (const ended of suspensionResult.revokedImpersonations) {
+      await finishImpersonation({
+        sessionId: ended.id,
+        targetUserId: ended.userId,
+        impersonatorUserId: id,
+        endReason: "impersonator_suspended",
+        traceId: normaliseTraceId(c.req.header("x-request-id")),
+      }).catch(() => undefined);
+    }
     await invalidateNativeAuthorization({ userId: id });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
@@ -639,7 +663,7 @@ const routes = apiRouter()
       organisationId: null,
       actorId: c.get("userId"),
       actorType: "person",
-      actorIp: c.req.header("x-forwarded-for") ?? null,
+      actorIp: clientIpForContext(c),
       userAgent: c.req.header("user-agent") ?? null,
     });
     setShadowLegacyAuthorization(c, "allowed");

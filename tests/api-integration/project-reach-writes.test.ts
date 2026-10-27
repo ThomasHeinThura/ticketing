@@ -452,10 +452,21 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
     it("API key: the same decision for a key's owner", async () => {
       const a = await arrange();
       mockAnonymousSession();
-      const scope = { intake: ["triage"], workspace: ["read"] };
+      // Suggestions disclose work item keys and titles, so a key also needs work_item:read.
+      const scope = {
+        intake: ["triage"],
+        workspace: ["read"],
+        work_item: ["read"],
+      };
       const outsiderKey = await makeApiKey(a.s.t.requester.user.id, scope);
       const memberKey = await makeApiKey(a.secondStaff.user.id, scope);
+      const triageOnlyKey = await makeApiKey(a.s.t.requester.user.id, {
+        intake: ["triage"],
+        workspace: ["read"],
+      });
       const path = `/api/submissions/${a.ref}/duplicates`;
+      setAmbientHeaders({ "x-api-key": triageOnlyKey });
+      expect(await keysOf(await json(a.s.t.app, "GET", path))).toEqual([]);
       setAmbientHeaders({ "x-api-key": outsiderKey });
       expect(await keysOf(await json(a.s.t.app, "GET", path))).toEqual([
         a.own.key,

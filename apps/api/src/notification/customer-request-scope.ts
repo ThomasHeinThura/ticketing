@@ -153,6 +153,10 @@ export function customerOwnedRequestNotificationPredicate(
   if (identity.side !== "customer") return undefined;
   const comment = alias(commentTable, "notification_owned_request_comment");
   return or(
+    // AP-21 (`P2R1-04`): a customer approver's approval row; its own read predicate
+    // (`approvalNotificationReadable`) admits only the addressed approver of a reachable
+    // customer approval.
+    eq(resourceType, "approval"),
     and(
       eq(resourceType, "submission"),
       ownedSubmissionExists(identity, resourceId, executor),

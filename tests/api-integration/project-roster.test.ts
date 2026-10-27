@@ -7,6 +7,7 @@
  * The write path reuses the direct `membership_grant` model of the project-creator lead and
  * `projectMembershipKeys`; inherited rows are computed at read time and never written.
  */
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -39,10 +40,13 @@ type RosterEntry = {
  * above the caller's own rank, and `project-member` is rank 40.
  */
 async function makeLead(userId: string, projectId: string) {
-  const role = await grantProjectRole(userId, projectId, [
-    "project:read",
-    "project:manage_members",
-  ]);
+  // P4R1-M1: a grant needs every capability of the role being given, so the acting lead holds
+  // the full built-in lead set (what `project-lead` carries).
+  const role = await grantProjectRole(
+    userId,
+    projectId,
+    BUILT_IN_ROLES.lead.capabilities,
+  );
   await db
     .update(schema.roleTable)
     .set({ rank: 50 })
@@ -336,3 +340,119 @@ describe("API integration: project roster (PR-2..PR-4)", () => {
     expect(still?.parentId).toBe(w.parent.id);
   });
 });
+
+describe("API integration: roster grants need the capabilities too (P4R1-M1)", () => {
+  beforeEach(async () => resetTestDatabase());
+
+  /** A project manager who may manage members but holds only `narrow` capabilities. */
+  async function narrowCaller(
+    w: Awaited<ReturnType<typeof world>>,
+    projectId: string,
+    rank: number,
+    capabilities: readonly string[],
+  ) {
+    const caller = await addMember(w.workspaceId, "member");
+    const role = await grantProjectRole(caller.user.id, projectId, [
+      "project:read",
+      "project:manage_members",
+      ...capabilities,
+    ]);
+    await db
+      .update(schema.roleTable)
+      .set({ rank })
+      .where(eq(schema.roleTable.id, role.id));
+    return caller;
+  }
+
+  it("refuses a narrowed lead adding themselves or promoting themselves to project-lead", async () => {
+    const w = await world();
+    const caller = await narrowCaller(w, w.parent.id, 50, []);
+    mockAuthenticatedSession(caller.user);
+
+    const selfAdd = await json(
+      w.app,
+      "POST",
+      `/api/projects/${w.parent.id}/members`,
+      { personId: caller.personId, roleKey: "project-lead" },
+    );
+    expect(selfAdd.status).toBe(403);
+    expect(await selfAdd.text()).toMatch(/cannot_grant_to_self/u);
+
+    const selfPromote = await json(
+      w.app,
+      "PATCH",
+      `/api/projects/${w.parent.id}/members/${caller.personId}`,
+      { roleKey: "project-lead" },
+    );
+    expect(selfPromote.status).toBe(403);
+
+    // Rank alone is not authority: they cannot mint project-lead for someone else either.
+    const other = await addMember(w.workspaceId, "member");
+    const mint = await json(
+      w.app,
+      "POST",
+      `/api/projects/${w.parent.id}/members`,
+      { personId: other.personId, roleKey: "project-lead" },
+    );
+    expect(mint.status).toBe(403);
+    expect(await mint.text()).toMatch(/role_exceeds_caller_authority/u);
+    const grants = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(schema.membershipGrantTable.personId, other.personId),
+          eq(schema.membershipGrantTable.scopeId, w.parent.id),
+        ),
+      );
+    expect(grants).toHaveLength(0);
+  });
+
+  it("refuses a rank-55 custom role holding only manage_members granting project-lead, but a full lead may", async () => {
+    const w = await world();
+    const caller = await narrowCaller(w, w.other.id, 55, []);
+    const target = await addMember(w.workspaceId, "member");
+
+    mockAuthenticatedSession(caller.user);
+    const refused = await json(
+      w.app,
+      "POST",
+      `/api/projects/${w.other.id}/members`,
+      { personId: target.personId, roleKey: "project-lead" },
+    );
+    expect(refused.status, await refused.clone().text()).toBe(403);
+    expect(await refused.text()).toMatch(/role_exceeds_caller_authority/u);
+
+    // The same grant from a caller that holds every lead capability still works.
+    mockAuthenticatedSession(w.admin.user);
+    const allowed = await json(
+      w.app,
+      "POST",
+      `/api/projects/${w.other.id}/members`,
+      { personId: target.personId, roleKey: "project-lead" },
+    );
+    expect(allowed.status, await allowed.clone().text()).toBe(200);
+  });
+
+  it("refuses a full lead changing their own role", async () => {
+    const w = await world();
+    const response = await json(
+      w.app,
+      "PATCH",
+      `/api/projects/${w.parent.id}/members/${await personIdOf(w.admin.user.id)}`,
+      { roleKey: "project-member" },
+    );
+    expect(response.status, await response.clone().text()).toBe(403);
+    expect(await response.text()).toMatch(/cannot_grant_to_self/u);
+  });
+});
+
+async function personIdOf(userId: string) {
+  const [person] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (!person) throw new Error("person missing");
+  return person.id;
+}

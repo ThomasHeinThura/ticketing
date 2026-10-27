@@ -1717,6 +1717,23 @@ export const routes = {
       return suffix ? `/agent/search?${suffix}` : "/agent/search";
     },
   },
+  // The page behind /agent/search: Kaneo's workspace search screen, now over canonical work
+  // items. `q` and `scope` round-trip through the redirect and the page's own URL state.
+  workspaceSearch: {
+    path: "/dashboard/workspace/$workspaceId/search" as const,
+    build: (
+      params: { workspaceId: string },
+      search: AgentGlobalSearch = {},
+    ) => {
+      const resolved = parseAgentGlobalSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.q) query.set("q", resolved.q);
+      if (resolved.scope) query.set("scope", resolved.scope);
+      const suffix = query.toString();
+      const base = `/dashboard/workspace/${encodeURIComponent(params.workspaceId)}/search`;
+      return suffix ? `${base}?${suffix}` : base;
+    },
+  },
   projectOverview: {
     path: "/agent/projects/$projectKey" as const,
     build: (params: { projectKey: string }) =>

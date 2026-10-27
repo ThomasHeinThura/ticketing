@@ -166,6 +166,8 @@ export async function updateImportedWorkItemInTransaction(
           key: updated.key,
           url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
           changes,
+          // History, not a trigger: automation and webhook consumers skip import events.
+          source: "import",
         },
       })
     : undefined;

@@ -28,15 +28,31 @@ async function emailDestination(tx: DbTransaction, personId: string) {
     | undefined;
   return row && z.email().safeParse(row.email).success ? row : null;
 }
+/**
+ * Resource/event pairs this runtime emails immediately. Comments and mentions; the IQ-12/IQ-15
+ * submission reply and decline (`P2R1-05`); the AP-21/AP-13 approval lifecycle (`P2R1-04`).
+ * Every pair is re-checked by `evaluateCurrentNotificationReachAndPreference`.
+ */
+const IMMEDIATE_EMAIL_EVENTS: Record<string, readonly string[] | undefined> = {
+  comment: ["work_item.mentioned", "work_item.commented"],
+  submission: ["submission.replied", "submission.declined"],
+  approval: [
+    "approval.requested",
+    "approval.expiring",
+    "approval.withdrawn",
+    "approval.expired",
+    "approval.decided",
+  ],
+};
 async function current(
   tx: DbTransaction,
   delivery: ClaimedNotificationDelivery,
 ): Promise<NotificationEligibility> {
   if (
     delivery.channel !== "notify.email" ||
-    (delivery.eventKind !== "work_item.mentioned" &&
-      delivery.eventKind !== "work_item.commented") ||
-    delivery.resourceType !== "comment"
+    !IMMEDIATE_EMAIL_EVENTS[delivery.resourceType ?? ""]?.includes(
+      delivery.eventKind,
+    )
   )
     return { kind: "unresolved", reason: "destination_unresolved" };
   if (!(await configuredMentionChannels(tx)).includes("notify.email"))

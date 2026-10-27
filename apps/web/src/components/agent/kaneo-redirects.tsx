@@ -1,7 +1,7 @@
 import { Navigate } from "@tanstack/react-router";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import type { LabelCatalogueSearch } from "@/lib/routes";
+import type { AgentGlobalSearch, LabelCatalogueSearch } from "@/lib/routes";
 
 /**
  * `/agent/*` URLs whose screen already exists in kaneo send the user to that kaneo page
@@ -21,7 +21,11 @@ export function WorkspaceMembersRedirect() {
   );
 }
 
-export function WorkspaceSearchRedirect() {
+export function WorkspaceSearchRedirect({
+  search,
+}: {
+  search?: AgentGlobalSearch;
+}) {
   const { data: workspace, isLoading } = useActiveWorkspace();
   if (!workspace)
     return isLoading ? null : <Navigate to="/dashboard" replace />;
@@ -29,6 +33,7 @@ export function WorkspaceSearchRedirect() {
     <Navigate
       to="/dashboard/workspace/$workspaceId/search"
       params={{ workspaceId: workspace.id }}
+      search={search ?? {}}
       replace
     />
   );

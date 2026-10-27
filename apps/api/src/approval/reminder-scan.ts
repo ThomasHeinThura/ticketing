@@ -1,7 +1,8 @@
 import { createId } from "@paralleldrive/cuid2";
 import { dueReminder, isApprovalOverdue } from "@taskdesk/domain";
-import { appendAuditLog } from "../audit/audit-writer";
+import { appendAuditSavepoint } from "../events/audit-savepoint";
 import { eventScope } from "../events/outbox";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { enqueueNotificationEvent } from "../notification/fanout";
 import { resolveApprovalEventRecipients } from "../notification/recipient-resolvers";
 import { withJobLease } from "../scheduler/leader-lock";
@@ -37,6 +38,7 @@ export async function scanApprovalRemindersUnleased(): Promise<ApprovalReminderO
     let scanned = 0;
     let expired = 0;
     let reminded = 0;
+    let auditFailures = 0;
     while (scanned < MAX_ROWS_PER_RUN) {
       const batch = await withDueApprovalRows(
         Math.min(BATCH_SIZE, MAX_ROWS_PER_RUN - scanned),
@@ -90,18 +92,22 @@ export async function scanApprovalRemindersUnleased(): Promise<ApprovalReminderO
               },
               { resolveRecipients: resolveApprovalEventRecipients },
             );
-            await appendAuditLog(tx, {
-              actorId: null,
-              actorType: "system",
-              workspaceId: row.workspaceId,
-              projectId: row.projectId,
-              organisationId: row.organisationId,
-              action: "approval.expired",
-              entityType: "approval",
-              entityId: row.id,
-              before: { state: "pending" },
-              after: { state: "expired", expiredAt: occurredAt },
-            });
+            // AU-14: the expiry commits even when its audit append fails (never silent).
+            if (
+              await appendAuditSavepoint(tx, {
+                actorId: null,
+                actorType: "system",
+                workspaceId: row.workspaceId,
+                projectId: row.projectId,
+                organisationId: row.organisationId,
+                action: "approval.expired",
+                entityType: "approval",
+                entityId: row.id,
+                before: { state: "pending" },
+                after: { state: "expired", expiredAt: occurredAt },
+              })
+            )
+              auditFailures += 1;
             return "expired" as const;
           }
 
@@ -146,6 +152,9 @@ export async function scanApprovalRemindersUnleased(): Promise<ApprovalReminderO
       reminded += batch.filter((result) => result === "reminded").length;
       if (batch.length === 0) break;
     }
+    // One administrator notification per scan, however many rows failed their audit append.
+    if (auditFailures > 0)
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
     return { scanned, expired, reminded };
   }
 }

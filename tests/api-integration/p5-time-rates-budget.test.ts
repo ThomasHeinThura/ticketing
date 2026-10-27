@@ -893,6 +893,65 @@ describe("project budgets (TC-15..TC-19)", () => {
     expect(hidden.data[0]).not.toHaveProperty("committedUnknown");
   });
 
+  it("gives a scalar committed total only when every in-period task is valued in the budget currency (TC-17)", async () => {
+    const dueSoon = isoDaysAgo(-10);
+    const [estimate] = await db
+      .insert(estimateTable)
+      .values({
+        workspaceId: w.workspaceId,
+        projectId: w.projectA.id,
+        system: "time",
+        active: true,
+      })
+      .returning();
+    if (!estimate) throw new Error("estimate missing");
+    const [two, one] = await db
+      .insert(estimatePointTable)
+      .values([
+        { estimateId: estimate.id, key: "two", value: "2h", weight: "120" },
+        { estimateId: estimate.id, key: "one", value: "1h", weight: "60" },
+      ])
+      .returning();
+    if (!two || !one) throw new Error("estimate points missing");
+    // Item A has an open child, so it is not a leaf: a second leaf is added beside the child.
+    const [leaf] = await db
+      .insert(schema.workItemTable)
+      .values({
+        workspaceId: w.workspaceId,
+        projectId: w.projectA.id,
+        typeId: w.childItem.typeId,
+        stateId: w.childItem.stateId,
+        title: "Second leaf",
+        number: 91_000,
+        key: `TC17-${randomUUID()}`,
+      })
+      .returning();
+    if (!leaf) throw new Error("leaf missing");
+    for (const [itemId, pointId] of [
+      [leaf.id, two.id],
+      [w.childItem.id, one.id],
+    ] as const)
+      await db
+        .update(schema.workItemTable)
+        .set({
+          dueDate: new Date(`${dueSoon}T00:00:00.000Z`),
+          assigneeId: w.member.personId,
+          estimatePointId: pointId,
+        })
+        .where(eq(schema.workItemTable.id, itemId));
+    await w.addRate(w.member.personId, isoDaysAgo(20), 6000, "EUR");
+    await create(w.owner.user);
+    const budget = (await (await get(w.owner.user)).json()) as Budget;
+    // (120 + 60) minutes at 60.00 per hour, in the budget's own currency.
+    expect(budget.data[0]).toMatchObject({
+      committedMinor: 18_000,
+      committedByCurrency: [
+        { currency: "EUR", amountMinor: 18_000, taskCount: 2 },
+      ],
+      committedUnknown: { taskCount: 0 },
+    });
+  });
+
   it("does not let a lead without manage_rates infer a colleague's rate by polling the budget (P5-R3-02)", async () => {
     await w.addRate(w.other.personId, isoDaysAgo(20), 9000, "EUR");
     await create(w.owner.user);

@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { getApiUrl } from "@/fetchers/get-api-url";
 
@@ -50,6 +51,7 @@ type FactorPolicy = {
 };
 
 function ObservabilitySettings() {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [factorPolicy, setFactorPolicy] = useState<FactorPolicy | null>(null);
   const [requiredRoleIdInput, setRequiredRoleIdInput] = useState("");
@@ -251,6 +253,9 @@ function ObservabilitySettings() {
                 Require verified TOTP or one-use backup codes for the selected
                 audience. Unsupported upstream MFA is not accepted as proof.
               </p>
+              <p className="text-sm text-muted-foreground">
+                {t("godModeSettings.localFactorStaffOnlyHelp")}
+              </p>
               <div className="flex items-center justify-between gap-4">
                 <span>Required audience</span>
                 <Select
@@ -284,7 +289,10 @@ function ObservabilitySettings() {
                         ["optional", "Optional"],
                         ["required_staff", "All staff"],
                         ["required_role", "Selected role"],
-                        ["required_everyone", "Everyone"],
+                        [
+                          "required_everyone",
+                          t("godModeSettings.localFactorEveryone"),
+                        ],
                       ] as const
                     ).map(([value, label]) => (
                       <SelectItem value={value} key={value}>

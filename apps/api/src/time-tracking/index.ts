@@ -32,6 +32,7 @@ import {
   entryReach,
   holds,
   identityOf,
+  rateVisibility,
   requireCostTracking,
   requireEntryCapability,
   requireTimeTracking,
@@ -563,7 +564,7 @@ async function oneEntry(
 ) {
   const row = await getEntry(identity, id);
   if (!row) throw new HTTPException(404, { message: "Time entry not found" });
-  return entryDto(row, await canSeeRates(c));
+  return entryDto(row, await canSeeRates(c, row.projectId));
 }
 
 const router = apiRouter<Vars>()
@@ -584,11 +585,11 @@ const router = apiRouter<Vars>()
       projectId: query.projectId,
       needsReview: query.needsReview,
     });
-    const showRates = await canSeeRates(c);
+    const showRates = await rateVisibility(c, rows);
     const clock = await callerClock(db, identity.personId);
     return c.json(
       {
-        data: rows.map((row) => entryDto(row, showRates)),
+        data: rows.map((row) => entryDto(row, showRates(row))),
         totalMinutes: rows.reduce((sum, row) => sum + row.minutes, 0),
         callerPersonId: identity.personId,
         canReadAny,
@@ -692,10 +693,10 @@ const router = apiRouter<Vars>()
     });
     if (!stopped) throw new HTTPException(404, { message: "No running timer" });
     const rows = await getEntriesByIds(identity, stopped.entryIds);
-    const showRates = await canSeeRates(c);
+    const showRates = await rateVisibility(c, rows);
     return c.json(
       {
-        entries: rows.map((row) => entryDto(row, showRates)),
+        entries: rows.map((row) => entryDto(row, showRates(row))),
         capped: stopped.capped,
       },
       200,
@@ -711,7 +712,7 @@ const router = apiRouter<Vars>()
       ...query,
       ...(canReadAny ? {} : { personId: identity.personId }),
     });
-    const showRates = await canSeeRates(c);
+    const showRates = await canSeeRates(c, query.projectId);
     return c.json(
       {
         scope: query.workItemId
@@ -850,7 +851,7 @@ const router = apiRouter<Vars>()
         identity,
         workspaceId,
         projectId,
-        await canSeeRates(c),
+        await canSeeRates(c, projectId),
         await holds(c, "budget:manage"),
       ),
       200,
@@ -881,7 +882,7 @@ const router = apiRouter<Vars>()
         identity,
         workspaceId,
         projectId,
-        await canSeeRates(c),
+        await canSeeRates(c, projectId),
         await holds(c, "budget:manage"),
       ),
       201,

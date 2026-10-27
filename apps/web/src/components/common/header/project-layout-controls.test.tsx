@@ -12,6 +12,8 @@ const featureState = vi.hoisted(() => ({
   cycles: false,
   modules: false,
   pages: false,
+  calendar: true,
+  timeline: true,
 }));
 const routerState = vi.hoisted(() => ({
   pathname: "/agent/projects/ENG/work",
@@ -65,6 +67,12 @@ vi.mock("@/hooks/queries/agile/use-agile-features", () => ({
 
 vi.mock("@/hooks/queries/feature-flag/use-project-pages-feature", () => ({
   default: () => featureState.pages,
+  useProjectFeature: (_projectId: string, feature: string) =>
+    feature === "feature.calendar"
+      ? featureState.calendar
+      : feature === "feature.timeline"
+        ? featureState.timeline
+        : false,
 }));
 
 vi.mock("@/hooks/queries/project/use-get-projects", () => ({
@@ -112,6 +120,8 @@ beforeEach(() => {
   routerState.pathname = "/agent/projects/ENG/work";
   routerState.searchStr = "?q=urgent";
   routerState.navigate.mockReset();
+  featureState.calendar = true;
+  featureState.timeline = true;
 });
 
 describe("ProjectLayoutControls permissions", () => {
@@ -223,6 +233,30 @@ describe("ProjectLayoutControls permissions", () => {
     expect(screen.getByRole("button", { name: "Cycles" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Modules" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pages" })).toBeInTheDocument();
+  });
+
+  it("hides Calendar and Gantt while feature.calendar / feature.timeline are off (P4R1-M2)", () => {
+    featureState.calendar = false;
+    featureState.timeline = false;
+    const { rerender } = render(
+      <ProjectLayoutControls {...props} showViewSwitcher />,
+    );
+    expect(
+      screen.queryByRole("button", {
+        name: translate("navigation:projectViews.calendar"),
+      }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Gantt" })).toBeNull();
+
+    featureState.calendar = true;
+    featureState.timeline = true;
+    rerender(<ProjectLayoutControls {...props} showViewSwitcher />);
+    expect(
+      screen.getByRole("button", {
+        name: translate("navigation:projectViews.calendar"),
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gantt" })).toBeInTheDocument();
   });
 
   it("preserves work-view navigation state and routes project switches by the active view", () => {

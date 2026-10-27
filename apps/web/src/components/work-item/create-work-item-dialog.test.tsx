@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   refetchTypes: vi.fn(),
   lastCreateInput: undefined as unknown,
   editorDocument: undefined as unknown,
+  moveCreated: vi.fn(),
+  toastWarning: vi.fn(),
   isPending: false,
   canCreate: true,
   canUpdate: true,
@@ -169,7 +171,14 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@/lib/toast", () => ({
-  toast: { success: mocks.toastSuccess, error: vi.fn() },
+  toast: {
+    success: mocks.toastSuccess,
+    error: vi.fn(),
+    warning: mocks.toastWarning,
+  },
+}));
+vi.mock("./move-created-work-item", () => ({
+  moveCreatedWorkItemToState: mocks.moveCreated,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -195,7 +204,10 @@ function pickOption(option: HTMLElement) {
   fireEvent.click(option);
 }
 
-function renderDialog(onClose = vi.fn()) {
+function renderDialog(
+  onClose = vi.fn(),
+  initialState?: { id: string; name: string },
+) {
   render(
     <Dialog open>
       <DialogContent
@@ -206,6 +218,7 @@ function renderDialog(onClose = vi.fn()) {
           onClose={onClose}
           projectId="proj-1"
           workspaceId="ws-1"
+          initialState={initialState}
         />
       </DialogContent>
     </Dialog>,
@@ -455,6 +468,63 @@ describe("CreateWorkItemDialog", () => {
     });
     expect(mocks.toastSuccess).toHaveBeenCalledWith("workItems:create.success");
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("P1R2-2: a column '+' create moves the new item to that column, and reports a column the workflow cannot reach", async () => {
+    mocks.mutateAsync.mockResolvedValue({ key: "WLP-9", stateId: "s-1" });
+    mocks.moveCreated.mockResolvedValue("moved");
+    const onClose = renderDialog(vi.fn(), { id: "s-2", name: "Doing" });
+    fireEvent.change(screen.getByTestId("create-work-item-title"), {
+      target: { value: "From the Doing column" },
+    });
+    fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
+    pickOption(await screen.findByRole("button", { name: "Task" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:create.submit" }),
+    );
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(mocks.moveCreated).toHaveBeenCalledWith({
+      key: "WLP-9",
+      currentStateId: "s-1",
+      targetStateId: "s-2",
+    });
+    expect(mocks.toastWarning).not.toHaveBeenCalled();
+    // The list refresh runs after the move, so the new card appears in its column.
+    expect(mocks.moveCreated.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.invalidateQueries.mock.invocationCallOrder[0] ?? 0,
+    );
+
+    cleanup();
+    mocks.moveCreated.mockResolvedValue("unavailable");
+    const closeAgain = renderDialog(vi.fn(), { id: "s-3", name: "Done" });
+    fireEvent.change(screen.getByTestId("create-work-item-title"), {
+      target: { value: "From the Done column" },
+    });
+    fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
+    pickOption(await screen.findByRole("button", { name: "Task" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:create.submit" }),
+    );
+    await waitFor(() => expect(closeAgain).toHaveBeenCalledTimes(1));
+    expect(mocks.toastWarning).toHaveBeenCalledWith(
+      "workItems:create.notMovedToState",
+    );
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("workItems:create.success");
+  });
+
+  it("P1R2-2: the header create never moves the new item", async () => {
+    mocks.mutateAsync.mockResolvedValue({ key: "WLP-9", stateId: "s-1" });
+    const onClose = renderDialog();
+    fireEvent.change(screen.getByTestId("create-work-item-title"), {
+      target: { value: "Header create" },
+    });
+    fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
+    pickOption(await screen.findByRole("button", { name: "Task" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:create.submit" }),
+    );
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(mocks.moveCreated).not.toHaveBeenCalled();
   });
 
   it("omits the description entirely when left empty", async () => {

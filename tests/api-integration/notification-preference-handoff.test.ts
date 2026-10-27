@@ -43,6 +43,17 @@ async function personFixture() {
   );
   return { ...f, person };
 }
+// Mount each factory at its production path: the strict policy registry is keyed by the full route.
+function publicHandoffPath(audience: "agent" | "customer") {
+  return audience === "agent"
+    ? "/api/public/agent/notification-preference-handoffs"
+    : "/api/public/portal/notification-preference-handoffs";
+}
+function authenticatedHandoffPath(audience: "agent" | "customer") {
+  return audience === "agent"
+    ? "/api/notification-preferences"
+    : "/api/portal/notification-preferences";
+}
 function publicRouter(audience: "agent" | "customer") {
   const app = apiRouter<BaseVariables & { appOrigin: SelectedOrigin }>();
   const origins = parseConfiguredOrigins(
@@ -53,7 +64,10 @@ function publicRouter(audience: "agent" | "customer") {
     c.set("appOrigin", selectOriginFromContext(c, origins));
     await next();
   });
-  return app.route("/", publicPreferenceHandoff(audience));
+  return app.route(
+    publicHandoffPath(audience),
+    publicPreferenceHandoff(audience),
+  );
 }
 function requestExchange(
   router: ReturnType<typeof publicRouter>,
@@ -65,7 +79,7 @@ function requestExchange(
     audience === "agent"
       ? getConfiguredAgentOrigin()
       : getConfiguredCustomerOrigin();
-  return router.request(`${target}/`, {
+  return router.request(`${target}${publicHandoffPath(audience)}`, {
     method: "POST",
     headers: {
       host: new URL(target).host,
@@ -96,16 +110,22 @@ function authenticated(
     c.set("session", session);
     await next();
   });
-  return app.route("/", authenticatedPreferenceHandoff(audience));
+  return app.route(
+    authenticatedHandoffPath(audience),
+    authenticatedPreferenceHandoff(audience),
+  );
 }
 async function readHandoff(
   f: Awaited<ReturnType<typeof personFixture>>,
   cookie: string,
 ) {
   const target = getConfiguredAgentOrigin();
-  return authenticated(f).request(`${target}/email-link-handoff`, {
-    headers: { host: new URL(target).host, cookie },
-  });
+  return authenticated(f).request(
+    `${target}${authenticatedHandoffPath("agent")}/email-link-handoff`,
+    {
+      headers: { host: new URL(target).host, cookie },
+    },
+  );
 }
 
 describe("persisted signed preference handoff factories", () => {
@@ -244,6 +264,13 @@ describe("persisted signed preference handoff factories", () => {
           digest: "off",
           source: "default",
         },
+        {
+          ...selector,
+          eventKind: "automation.notification_sent",
+          enabled: false,
+          digest: "off",
+          source: "default",
+        },
       ],
     });
     const saved = await csrfRequest(
@@ -265,6 +292,13 @@ describe("persisted signed preference handoff factories", () => {
         {
           ...selector,
           eventKind: "work_item.commented",
+          enabled: false,
+          digest: "off",
+          source: "default",
+        },
+        {
+          ...selector,
+          eventKind: "automation.notification_sent",
           enabled: false,
           digest: "off",
           source: "default",
@@ -302,6 +336,13 @@ describe("persisted signed preference handoff factories", () => {
           enabled: true,
           digest: "daily",
           source: "global",
+        },
+        {
+          ...selector,
+          eventKind: "automation.notification_sent",
+          enabled: false,
+          digest: "off",
+          source: "default",
         },
       ],
     });
@@ -350,16 +391,19 @@ describe("persisted signed preference handoff factories", () => {
     const router = publicRouter("agent");
     const origin = getConfiguredAgentOrigin();
     for (let n = 0; n < 21; n++) {
-      const response = await router.request(`${origin}/`, {
-        method: "POST",
-        headers: {
-          host: new URL(origin).host,
-          origin,
-          "content-type": "application/json",
-          "x-forwarded-for": `198.51.100.${n}`,
+      const response = await router.request(
+        `${origin}${publicHandoffPath("agent")}`,
+        {
+          method: "POST",
+          headers: {
+            host: new URL(origin).host,
+            origin,
+            "content-type": "application/json",
+            "x-forwarded-for": `198.51.100.${n}`,
+          },
+          body: JSON.stringify({ token: "invalid" }),
         },
-        body: JSON.stringify({ token: "invalid" }),
-      });
+      );
       expect(response.status).toBe(n < 20 ? 202 : 429);
     }
   });

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
+import { IMPORT_SOURCE_BODY_LIMIT_BYTES } from "../../../apps/api/src/imports/engine/body-limit";
 import {
   createMemoryIdempotencyStore,
   IDEMPOTENCY_RESPONSE_TTL_MS,
@@ -254,5 +255,121 @@ describe("Idempotency-Key stores every 2xx except secret-bearing routes", () => 
     expect(await second.json()).toEqual({ value: "v-2" });
     expect(second.headers.get("idempotent-replayed")).toBeNull();
     expect(t.runs()).toBe(2);
+  });
+});
+
+describe("Idempotency-Key body cap on routes that take a large body", () => {
+  const LIMIT = IMPORT_SOURCE_BODY_LIMIT_BYTES;
+
+  function bodyApp() {
+    const router = new Hono<{ Variables: Vars }>();
+    router.use("*", async (c, next) => {
+      c.set("userId", "user-1");
+      await next();
+    });
+    let runs = 0;
+    const idempotency = idempotencyKeyMiddleware({ store });
+    const handler = async (c: import("hono").Context) => {
+      runs += 1;
+      return c.json({ bytes: (await c.req.arrayBuffer()).byteLength }, 200);
+    };
+    router.post("/api/import-sources", idempotency, handler);
+    router.post("/api/work-items/bulk", idempotency, handler);
+    return { router, runs: () => runs };
+  }
+
+  /** A body of `total` bytes that records how much of it was actually pulled. */
+  function stream(total: number) {
+    const chunk = new Uint8Array(1024 * 1024);
+    let sent = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= total) return controller.close();
+        const size = Math.min(chunk.length, total - sent);
+        sent += size;
+        controller.enqueue(chunk.subarray(0, size));
+      },
+    });
+    return { body, pulled: () => sent };
+  }
+
+  it("refuses an oversize Content-Length with 413 before reading anything or taking the key", async () => {
+    const t = bodyApp();
+    const { body, pulled } = stream(LIMIT + 1);
+    const response = await t.router.request(
+      new Request("http://localhost/api/import-sources", {
+        method: "POST",
+        headers: {
+          "idempotency-key": "k-big",
+          "content-length": String(LIMIT + 1),
+        },
+        body,
+        duplex: "half",
+      } as RequestInit),
+    );
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({
+      message: "Request body too large",
+    });
+    expect(t.runs()).toBe(0);
+    // Only the stream's own eager first chunk: nothing was read on behalf of the middleware.
+    expect(pulled()).toBeLessThanOrEqual(2 * 1024 * 1024);
+    // The key was never reserved: the same key works for a legitimate body.
+    const retry = await t.router.request(
+      "http://localhost/api/import-sources",
+      {
+        method: "POST",
+        headers: { "idempotency-key": "k-big" },
+        body: "{}",
+      },
+    );
+    expect(retry.status).toBe(200);
+  });
+
+  it("cuts off a body with no declared length as soon as it passes the cap", async () => {
+    const t = bodyApp();
+    const total = LIMIT * 4;
+    const { body, pulled } = stream(total);
+    const response = await t.router.request(
+      new Request("http://localhost/api/import-sources", {
+        method: "POST",
+        headers: { "idempotency-key": "k-chunked" },
+        body,
+        duplex: "half",
+      } as RequestInit),
+    );
+    expect(response.status).toBe(413);
+    expect(t.runs()).toBe(0);
+    // Read to just past the cap, never the whole 80 MiB.
+    expect(pulled()).toBeLessThan(LIMIT + 4 * 1024 * 1024);
+  });
+
+  it("keeps full idempotency semantics for an in-limit body on the capped route", async () => {
+    const t = bodyApp();
+    const send = () =>
+      t.router.request("http://localhost/api/import-sources", {
+        method: "POST",
+        headers: { "idempotency-key": "k-ok" },
+        body: "x".repeat(1024),
+      });
+    const first = await send();
+    const second = await send();
+    expect(await first.json()).toEqual({ bytes: 1024 });
+    expect(second.headers.get("idempotent-replayed")).toBe("true");
+    expect(t.runs()).toBe(1);
+  });
+
+  it("does not cap any other route (unchanged behaviour)", async () => {
+    const t = bodyApp();
+    const response = await t.router.request(
+      "http://localhost/api/work-items/bulk",
+      {
+        method: "POST",
+        headers: { "idempotency-key": "k-other" },
+        body: "x".repeat(LIMIT + 1024),
+      },
+    );
+    expect(response.status).toBe(200);
+    expect(t.runs()).toBe(1);
   });
 });

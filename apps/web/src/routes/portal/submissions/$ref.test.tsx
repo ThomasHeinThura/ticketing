@@ -141,6 +141,31 @@ describe("portal submission route", () => {
     expect(screen.getByRole("button", { name: "Send reply" })).toBeDisabled();
   });
 
+  it("P2R1-05: shows the auto-decline as a system message, never as staff or a colleague", async () => {
+    mocks.getSubmission.mockReset().mockResolvedValue({
+      ...submission,
+      messages: [
+        {
+          id: "system-1",
+          actorType: "system",
+          authorName: null,
+          mine: false,
+          body: "No reply was received within 14 days.",
+          reasonCode: "clarification_window_expired",
+          reasonParams: { days: 14 },
+          createdAt: "2026-10-26T10:00:00.000Z",
+        },
+      ],
+    });
+    renderSubmission();
+    const body = await screen.findByText(
+      "No reply was received within 14 days.",
+    );
+    const item = body.closest("li");
+    expect(item?.textContent).toContain("portal:request.author.system");
+    expect(item?.textContent).not.toContain("request.author.team");
+  });
+
   it("scrolls to and focuses the exact public comment from a notification link", async () => {
     window.history.replaceState(
       {},

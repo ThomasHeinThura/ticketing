@@ -2,6 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import {
   asStateTemplateId,
   type BlockReason,
+  type Effect,
   filterOfferableForType,
   isChangeApprovalEdge,
   isGateSatisfied,
@@ -19,7 +20,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { lockApprovalsForWorkItemTransition } from "../../approval/repository";
 import { closePendingApprovalsOnTransition } from "../../approval/service";
-import { appendAuditLog } from "../../audit/audit-writer";
+import type { AuditRequestContext } from "../../audit/request-context";
 import { transitionRequiresFields } from "../../custom-field/logic";
 import {
   guardFieldValues,
@@ -37,8 +38,11 @@ import {
   workspaceTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
 import { enqueueOutboxEvent } from "../../events/outbox";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { resolveWorkItemEventRecipients } from "../../notification/work-item-recipients";
+import type { ApiKey } from "../../openapi";
 import { resolveProjectDefaultAssignee } from "../../project/default-assignee";
 import {
   type ChangeGateBlock,
@@ -47,8 +51,12 @@ import {
 } from "../../service-management/change-repository";
 import { serviceCatalogueEnabled } from "../../service-management/common";
 import { evaluateStoredWorkItemSla } from "../../sla-policy/evaluation";
-import { dbClockUtc } from "../../utils/db-time";
+import { dbClockUtc, dbNowUtc } from "../../utils/db-time";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import {
+  assertCallerHasCapability,
+  capabilityCredential,
+} from "../../utils/require-workspace-capability";
 import {
   emitUnblockedAfterClosing,
   hasOpenBlockers,
@@ -69,6 +77,7 @@ import { requireCommentPerson } from "../comment-access";
 import { ensureImplicitAssigneeWatcher } from "../implicit-watcher";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import { cancelPendingScheduledTransitions } from "../scheduled-transition-cancel";
+import { plainTextNoteDocument } from "../transition-note-document";
 import {
   loadWorkflowTransitionContext,
   resolveActorRoleIds,
@@ -79,6 +88,14 @@ export type TransitionWorkItemInput = {
   note?: string;
   /** Trusted route metadata derived from the authenticated API-key kind. */
   auditOrigin?: "mcp";
+  /**
+   * The authenticated API key (route-supplied, never from the body). A supplied note is a comment
+   * (`WF-12`), so the key's frozen capability subset must hold `comment:create` /
+   * `comment:create_internal` exactly as `create-comment.ts` requires.
+   */
+  apiKey?: ApiKey;
+  /** Trusted-proxy client address, user agent and request id recorded on this route's audit rows. */
+  audit?: Partial<AuditRequestContext>;
 };
 
 export type TransitionedWorkItem = {
@@ -109,7 +126,10 @@ export type TransitionBlockReason =
   | {
       kind: "assignee";
       reasonCode: `assignee.${"not_on_roster" | "not_active"}`;
-    };
+    }
+  // WF-22: a stored effect whose kind is outside `WF-19`'s available vocabulary (or the held
+  // `set_field`) is refused at run time, never silently skipped.
+  | { kind: "effect"; reasonCode: "effect.unsupported_kind" };
 
 /** Thrown for `WF-4`'s "not from here" 409: no transition matches
  * `(current template, target template, one of the actor's roles)`, the target is
@@ -142,6 +162,19 @@ export class TransitionConflictError extends Error {
   constructor(public readonly currentStateId: string) {
     super("The work item's state changed while this request was in flight");
     this.name = "TransitionConflictError";
+  }
+}
+
+/**
+ * A genuine Postgres `40P01` during the transition's transaction. It is a lost race like any other
+ * (409 for a person) so it extends {@link TransitionConflictError}, but it is distinct: a scheduled
+ * hop must stay `pending` and retry (`background-jobs.md` scheduled-transition), never be cancelled
+ * as if the item had left `from_state_id`.
+ */
+export class TransitionDeadlockError extends TransitionConflictError {
+  constructor(currentStateId: string) {
+    super(currentStateId);
+    this.name = "TransitionDeadlockError";
   }
 }
 
@@ -206,7 +239,7 @@ async function runTransactionCatchingDeadlock<T>(
     return await run();
   } catch (error) {
     if (isPostgresDeadlockError(error)) {
-      throw new TransitionConflictError(currentStateId);
+      throw new TransitionDeadlockError(currentStateId);
     }
     throw error;
   }
@@ -239,6 +272,67 @@ function resolveSetAssigneePersonId(
   personId: string | "default",
 ): string | undefined {
   return personId === "default" ? undefined : personId;
+}
+
+const SUPPORTED_EFFECT_KINDS: ReadonlySet<string> = new Set([
+  "set_assignee",
+  "clear_assignee",
+  "pause_sla",
+  "resume_sla",
+  "schedule_transition",
+]);
+
+/** What one candidate edge's stored effects ask for, resolved before any lock is taken. */
+type PreparedEdge = {
+  edge: WorkflowTransition;
+  /** The first stored effect kind outside `WF-19`'s vocabulary (incl. the held `set_field`). */
+  unsupportedEffect: string | null;
+  assigneeUsesProjectDefault: boolean;
+  assigneeIdPatch: string | null | undefined;
+  waitingCustomerEffects: ("pause" | "resume")[];
+  scheduleEffects: { afterMinutes: number; toStateTemplateId: string }[];
+  changeGatesApply: boolean;
+};
+
+function prepareEdge(
+  edge: WorkflowTransition,
+  changeGatesApply: boolean,
+): PreparedEdge {
+  const prepared: PreparedEdge = {
+    edge,
+    unsupportedEffect: null,
+    assigneeUsesProjectDefault: false,
+    assigneeIdPatch: undefined,
+    waitingCustomerEffects: [],
+    scheduleEffects: [],
+    changeGatesApply,
+  };
+  // Read the stored array itself: `resolveEffects` is typed to the closed union, but the column
+  // is jsonb and may hold anything (WF-22). An unknown kind is refused, never ignored.
+  for (const effect of resolveEffects(edge) as { kind: string }[]) {
+    if (!SUPPORTED_EFFECT_KINDS.has(effect.kind)) {
+      prepared.unsupportedEffect ??= effect.kind;
+      continue;
+    }
+    const typed = effect as Effect;
+    if (typed.kind === "set_assignee") {
+      prepared.assigneeUsesProjectDefault = typed.personId === "default";
+      prepared.assigneeIdPatch = resolveSetAssigneePersonId(typed.personId);
+    } else if (typed.kind === "clear_assignee") {
+      prepared.assigneeUsesProjectDefault = false;
+      prepared.assigneeIdPatch = null;
+    } else if (typed.kind === "schedule_transition") {
+      prepared.scheduleEffects.push({
+        afterMinutes: typed.afterMinutes,
+        toStateTemplateId: typed.toStateTemplateId,
+      });
+    } else if (typed.kind === "pause_sla") {
+      prepared.waitingCustomerEffects.push("pause");
+    } else if (typed.kind === "resume_sla") {
+      prepared.waitingCustomerEffects.push("resume");
+    }
+  }
+  return prepared;
 }
 
 /**
@@ -409,9 +503,14 @@ export async function transitionWorkItem(
     targetTemplateId = reopen.toStateTemplateId;
   }
   // `WF-19`: a version may hold several edges for one template pair (different roles, or a
-  // null-from "any" edge beside a specific one). A scheduled hop is taken by a system actor
-  // for whom every role is acceptable, so ALL of them match; the most restrictive wins and
-  // every matching edge's guards must hold, independent of array order.
+  // null-from "any" edge beside a specific one).
+  //  * A scheduled (system) hop or an automation acts under one role-set for whom every matching
+  //    edge applies: the most restrictive wins and every matching edge's guards must hold,
+  //    independent of array order (`feature-contracts-p2.md` WF-19).
+  //  * A person holds the UNION of their roles' edges (`WF-3`/`WF-4`, edge-cases table): an
+  //    ungated edge the person holds must be usable beside a gated one. The usable edge is chosen
+  //    inside the transaction, from the locked facts, least restrictive first.
+  const unionOfRoles = !system && !automationActor;
   const matchingEdges = offerable
     .filter(
       (t) =>
@@ -428,7 +527,7 @@ export async function transitionWorkItem(
   // A scheduled hop with no edge in the current version is still executed (WF-19): it is the
   // stored concrete transition. The inert edge below carries no guards, gates or authored
   // effects; only the automatic WF-17/WF-18 effects of the state groups apply.
-  const match: WorkflowTransition = foundEdge ?? {
+  const inertEdge: WorkflowTransition = {
     id: "",
     fromStateTemplateId: ctx.currentStateTemplateId,
     toStateTemplateId: targetTemplateId,
@@ -442,18 +541,17 @@ export async function transitionWorkItem(
     guards: [],
     effects: [],
   };
-  if (match.effects.some((effect) => effect.kind === "set_field")) {
-    throw new TransitionBlockedError(
-      [],
-      "This stored transition contains the unavailable set_field effect",
-    );
-  }
+  const candidateEdges: WorkflowTransition[] = unionOfRoles
+    ? [...matchingEdges].sort((a, b) => compareEdgeRestrictiveness(b, a))
+    : [foundEdge ?? inertEdge];
+  // Every candidate shares the requested target template, hence the same concrete state/group.
+  const primaryEdge = candidateEdges[0] ?? inertEdge;
 
   const resolution =
     system?.kind === "scheduled"
       ? ({ ok: true, stateId: system.toStateId } as const)
       : resolveStateTemplateForProject(
-          match.toStateTemplateId,
+          primaryEdge.toStateTemplateId,
           ctx.adoptedStates,
         );
   if (!resolution.ok) {
@@ -466,7 +564,7 @@ export async function transitionWorkItem(
 
   if (
     (system || automationActor) &&
-    (match.requiresApproval || match.requiresCab)
+    (primaryEdge.requiresApproval || primaryEdge.requiresCab)
   ) {
     // A system actor or an automation cannot satisfy an approval or CAB gate: fail closed.
     throw new TransitionBlockedError(
@@ -481,34 +579,34 @@ export async function transitionWorkItem(
   const toStateId = resolution.stateId;
   const toGroup =
     scheduledTargetGroup ??
-    ctx.templateGroups.get(match.toStateTemplateId) ??
+    ctx.templateGroups.get(primaryEdge.toStateTemplateId) ??
     ctx.currentGroup;
 
-  const authoredEffects = resolveEffects(match);
   const automaticEffects = resolveAutomaticEffects(ctx.currentGroup, toGroup);
-
-  let assigneeIdPatch: string | null | undefined;
-  let assigneeUsesProjectDefault = false;
-  const waitingCustomerEffects: ("pause" | "resume")[] = [];
-  const scheduleEffects: { afterMinutes: number; toStateTemplateId: string }[] =
-    [];
-  for (const effect of authoredEffects) {
-    if (effect.kind === "set_assignee") {
-      assigneeUsesProjectDefault = effect.personId === "default";
-      assigneeIdPatch = resolveSetAssigneePersonId(effect.personId);
-    } else if (effect.kind === "clear_assignee") {
-      assigneeUsesProjectDefault = false;
-      assigneeIdPatch = null;
-    } else if (effect.kind === "schedule_transition") {
-      scheduleEffects.push({
-        afterMinutes: effect.afterMinutes,
-        toStateTemplateId: effect.toStateTemplateId,
-      });
-    } else if (effect.kind === "pause_sla") {
-      waitingCustomerEffects.push("pause");
-    } else if (effect.kind === "resume_sla") {
-      waitingCustomerEffects.push("resume");
-    }
+  // CH-4 / CH-6 apply to an approving edge of a change (CAB, or a risk-guarded pre-approval)
+  // while the service catalogue is on. The flag is read here, before the row locks are taken.
+  const catalogueOn =
+    ctx.isChangeType &&
+    candidateEdges.some(isChangeApprovalEdge) &&
+    (await serviceCatalogueEnabled(ctx.workItem.workspaceId));
+  const prepared = candidateEdges.map((edge) =>
+    prepareEdge(edge, catalogueOn && isChangeApprovalEdge(edge)),
+  );
+  const usable = prepared.filter(
+    (candidate) => candidate.unsupportedEffect === null,
+  );
+  if (usable.length === 0) {
+    // WF-22: a stored effect outside WF-19's vocabulary (or the held `set_field`) refuses the
+    // selected transition individually; it is never silently dropped.
+    const kind = prepared[0]?.unsupportedEffect;
+    throw new TransitionBlockedError(
+      kind === "set_field"
+        ? []
+        : [{ kind: "effect", reasonCode: "effect.unsupported_kind" }],
+      kind === "set_field"
+        ? "This stored transition contains the unavailable set_field effect"
+        : "This stored transition contains an unrecognised effect kind",
+    );
   }
 
   let resolvedAtPatch: Date | null | undefined;
@@ -527,12 +625,13 @@ export async function transitionWorkItem(
     event: Awaited<ReturnType<typeof recordWorkItemEvent>>;
     customerVisible: boolean;
   }[] = [];
-  // CH-4 / CH-6 apply to an approving edge of a change (CAB, or a risk-guarded pre-approval)
-  // while the service catalogue is on. The flag is read here, before the row locks are taken.
-  const changeGatesApply =
-    ctx.isChangeType &&
-    isChangeApprovalEdge(match) &&
-    (await serviceCatalogueEnabled(ctx.workItem.workspaceId));
+  const auditContext = {
+    actorIp: input.audit?.actorIp ?? null,
+    userAgent: input.audit?.userAgent ?? null,
+    traceId: input.audit?.traceId ?? null,
+    apiKeyId: input.apiKey?.id ?? input.audit?.apiKeyId ?? null,
+  };
+  let auditFailed = false;
   const result = await runTransactionCatchingSlaPauseConflict(fromStateId, () =>
     db.transaction(async (tx) => {
       // Workspace state-template writers take this workspace row FOR UPDATE before
@@ -554,6 +653,8 @@ export async function transitionWorkItem(
           stateId: workItemTable.stateId,
           assigneeId: workItemTable.assigneeId,
           projectId: workItemTable.projectId,
+          requesterId: workItemTable.requesterId,
+          firstResponseAt: workItemTable.firstResponseAt,
           deletedAt: workItemTable.deletedAt,
           archivedAt: workItemTable.archivedAt,
         })
@@ -582,15 +683,6 @@ export async function transitionWorkItem(
       // `from_state_id` re-check; losing the claim means another replica already fired it.
       if (system?.kind === "scheduled" && !(await system.claim(tx))) {
         throw new TransitionConflictError(locked.stateId);
-      }
-
-      // AS-11 / WF-19: `set_assignee: "default"` resolves against the project's default
-      // assignee inside this transaction; none or ineligible leaves the assignee untouched.
-      if (assigneeUsesProjectDefault) {
-        assigneeIdPatch =
-          (await resolveProjectDefaultAssignee(tx, {
-            projectId: locked.projectId,
-          })) ?? undefined;
       }
 
       // `children_closed` (Opus security review of PR #457, D1 -- the remaining half of
@@ -671,7 +763,12 @@ export async function transitionWorkItem(
       let approvalRows: Awaited<
         ReturnType<typeof lockApprovalsForWorkItemTransition>
       > = [];
-      if (match.requiresApproval || match.requiresCab) {
+      if (
+        usable.some(
+          (candidate) =>
+            candidate.edge.requiresApproval || candidate.edge.requiresCab,
+        )
+      ) {
         // The work-item row is already locked FOR UPDATE. Approval mutations take the
         // same parent-first lock, so a concurrent decision/withdrawal cannot change the
         // gate between this read and the transition write.
@@ -681,43 +778,76 @@ export async function transitionWorkItem(
           ctx.workItem.id,
           ctx.workItem.workspaceId,
         );
-        const approvals = approvalRows.map((row) => ({
-          ...row,
-          kind: row.kind as "customer" | "cab",
-          state: row.state as
-            | "pending"
-            | "approved"
-            | "rejected"
-            | "expired"
-            | "withdrawn",
-        }));
-        const approvalPolicy = match.approvalPolicy ?? "any";
-        offerContext.approvalSatisfied = match.requiresApproval
-          ? isGateSatisfied(approvals, {
-              transitionId: match.id,
-              policy: approvalPolicy,
-            })
-          : true;
-        offerContext.cabSatisfied = match.requiresCab
-          ? isGateSatisfied(approvals, {
-              transitionId: match.id,
-              kind: "cab",
-              policy: approvalPolicy,
-            })
-          : true;
       }
-      const offer =
-        system?.kind === "scheduled" && matchingEdges.length > 1
-          ? (matchingEdges
-              .map((edge) => offerTransition(edge, offerContext))
-              .find((candidate) => !candidate.available) ??
-            offerTransition(match, offerContext))
-          : offerTransition(match, offerContext);
+      const approvals = approvalRows.map((row) => ({
+        ...row,
+        kind: row.kind as "customer" | "cab",
+        state: row.state as
+          | "pending"
+          | "approved"
+          | "rejected"
+          | "expired"
+          | "withdrawn",
+      }));
+      const offerFor = (edge: WorkflowTransition) => {
+        const approvalPolicy = edge.approvalPolicy ?? "any";
+        return offerTransition(edge, {
+          ...offerContext,
+          approvalSatisfied: edge.requiresApproval
+            ? isGateSatisfied(approvals, {
+                transitionId: edge.id,
+                policy: approvalPolicy,
+              })
+            : true,
+          cabSatisfied: edge.requiresCab
+            ? isGateSatisfied(approvals, {
+                transitionId: edge.id,
+                kind: "cab",
+                policy: approvalPolicy,
+              })
+            : true,
+        });
+      };
       // CH-4 / CH-6 hold on the CAB-gated approval of a change even when the workflow carries no
       // matching guard. Off unless the service catalogue is enabled for the workspace.
-      const changeBlocks: ChangeGateBlock[] = changeGatesApply
+      const allChangeBlocks: ChangeGateBlock[] = usable.some(
+        (candidate) => candidate.changeGatesApply,
+      )
         ? await changeGateBlocks(tx, ctx.workItem.workspaceId, changeFacts)
         : [];
+      let chosen: PreparedEdge;
+      let offer: ReturnType<typeof offerTransition>;
+      if (unionOfRoles) {
+        // A person holds the union of their roles' edges: the first one that is available now
+        // (least restrictive first) runs; when none is, the least restrictive one's blockers are
+        // reported (the closest to being satisfiable).
+        const evaluated = usable.map((candidate) => ({
+          candidate,
+          offer: offerFor(candidate.edge),
+        }));
+        const picked =
+          evaluated.find(
+            (entry) =>
+              entry.offer.available &&
+              !(entry.candidate.changeGatesApply && allChangeBlocks.length > 0),
+          ) ?? evaluated[0];
+        if (!picked) throw new TransitionBlockedError([]);
+        chosen = picked.candidate;
+        offer = picked.offer;
+      } else {
+        const only = usable[0];
+        if (!only) throw new TransitionBlockedError([]);
+        chosen = only;
+        offer =
+          system?.kind === "scheduled" && matchingEdges.length > 1
+            ? (matchingEdges
+                .map((edge) => offerFor(edge))
+                .find((candidate) => !candidate.available) ??
+              offerFor(chosen.edge))
+            : offerFor(chosen.edge);
+      }
+      const match = chosen.edge;
+      const changeBlocks = chosen.changeGatesApply ? allChangeBlocks : [];
       if (!offer.available || changeBlocks.length > 0) {
         const blockedBy: TransitionBlockReason[] = offer.blockedBy.map(
           (reason) => {
@@ -741,6 +871,49 @@ export async function transitionWorkItem(
           },
         );
         throw new TransitionBlockedError([...blockedBy, ...changeBlocks]);
+      }
+
+      const { waitingCustomerEffects, scheduleEffects } = chosen;
+      let assigneeIdPatch = chosen.assigneeIdPatch;
+      // AS-11 / WF-19: `set_assignee: "default"` resolves against the project's default
+      // assignee inside this transaction; none or ineligible leaves the assignee untouched.
+      if (chosen.assigneeUsesProjectDefault) {
+        assigneeIdPatch =
+          (await resolveProjectDefaultAssignee(tx, {
+            projectId: locked.projectId,
+          })) ?? undefined;
+      }
+
+      // `WF-12` / `CA-1`: a supplied note is a comment, so the actor (and an API key's frozen
+      // subset) must hold the comment capability for the note's visibility, exactly as
+      // `create-comment.ts` requires. A note that cannot be written refuses the whole transition
+      // (edge cases table); nothing is applied.
+      const noteVisibility = match.noteVisibility;
+      let noteAuthorPersonId: string | null = null;
+      if (hasNote) {
+        noteAuthorPersonId = requireCommentPerson(
+          identity?.personId ? { personId: identity.personId } : null,
+        );
+        if (!actorId)
+          throw new HTTPException(403, { message: "Insufficient permissions" });
+        try {
+          await assertCallerHasCapability(
+            ctx.workItem.workspaceId,
+            actorId,
+            noteVisibility === "public"
+              ? "comment:create"
+              : "comment:create_internal",
+            capabilityCredential(input.apiKey),
+            tx,
+          );
+        } catch (error) {
+          if (error instanceof HTTPException && error.status === 403) {
+            throw new HTTPException(403, {
+              message: `The transition note was refused: ${error.message}`,
+            });
+          }
+          throw error;
+        }
       }
 
       // CF-4: a required custom field blocks entry to a started/completed state group;
@@ -834,6 +1007,27 @@ export async function transitionWorkItem(
           .where(eq(workItemTable.id, ctx.workItem.id))
           .limit(1);
         throw new TransitionConflictError(current?.stateId ?? fromStateId);
+      }
+
+      // SLA-7: a public note by a staff-side person other than the requester is a first response,
+      // exactly like a public comment (`create-comment.ts`). It is stamped before the completed-
+      // group settlement below so a resolving public note counts. Internal notes never stop it.
+      if (
+        hasNote &&
+        noteVisibility === "public" &&
+        locked.firstResponseAt === null &&
+        identity?.side === "staff" &&
+        identity.personId !== locked.requesterId
+      ) {
+        await tx
+          .update(workItemTable)
+          .set({ firstResponseAt: dbNowUtc() })
+          .where(
+            and(
+              eq(workItemTable.id, ctx.workItem.id),
+              isNull(workItemTable.firstResponseAt),
+            ),
+          );
       }
 
       for (const effect of waitingCustomerEffects) {
@@ -1012,6 +1206,10 @@ export async function transitionWorkItem(
           transitionId: match.id,
           actorId,
           actorType,
+          audit: auditContext,
+          onAuditFailure: () => {
+            auditFailed = true;
+          },
         });
       }
 
@@ -1036,83 +1234,81 @@ export async function transitionWorkItem(
             newValue: assigneeIdPatch,
           },
         ]);
-        await appendAuditLog(tx, {
-          actorId,
-          actorType,
-          workspaceId: ctx.workItem.workspaceId,
-          projectId: ctx.workItem.projectId,
-          action:
-            assigneeIdPatch === null
-              ? "work_item.unassigned"
-              : "work_item.assigned",
-          entityType: "work_item",
-          entityId: ctx.workItem.id,
-          before: { assigneeId: previousAssigneeId },
-          after: {
-            assigneeId: assigneeIdPatch,
-            ...(input.auditOrigin ? { origin: input.auditOrigin } : {}),
-          },
-        });
+        if (
+          await appendAuditSavepoint(tx, {
+            ...auditContext,
+            actorId,
+            actorType,
+            workspaceId: ctx.workItem.workspaceId,
+            projectId: ctx.workItem.projectId,
+            action:
+              assigneeIdPatch === null
+                ? "work_item.unassigned"
+                : "work_item.assigned",
+            entityType: "work_item",
+            entityId: ctx.workItem.id,
+            before: { assigneeId: previousAssigneeId },
+            after: {
+              assigneeId: assigneeIdPatch,
+              ...(input.auditOrigin ? { origin: input.auditOrigin } : {}),
+            },
+          })
+        )
+          auditFailed = true;
         assigneeEventKind =
           assigneeIdPatch === null ? "unassigned" : "assigned";
       }
 
-      // `WF-10`/`WF-11`/`WF-12`: a supplied note is stored as a comment, visibility from
-      // the transition's own `note_visibility`, linked to the `transitioned` activity row
-      // so the activity stream renders both as one entry.
-      //
-      // KNOWN, DISCLOSED AMBIGUITY (ordinary review of PR #457, F2): `commentTable.body`
-      // is a `jsonb` column that every OTHER writer (`create-comment.ts`) fills with
-      // whatever Tiptap-document-shaped object the browser editor composed; this writes a
-      // bare JS string instead. `apps/web` has no live renderer for THIS table's
-      // `body` at all yet (its comment UI still reads the legacy, unrelated
-      // `task_comment` table -- confirmed by reading `apps/web/src/components/activity/
-      // comment-card.tsx`, which takes a plain `content: string` prop from that older
-      // system), so nothing breaks today. But `create-comment.ts` itself never validates
-      // or normalises `body`'s shape either, so a bare string here is consistent with what
-      // this table already tolerates from any other caller, not a new class of gap this
-      // route introduces. Deliberately NOT wrapped in a hand-rolled Tiptap doc structure
-      // that could not be verified against `apps/web`'s actual editor schema -- guessing
-      // at that shape risked being wrong in a way a real reviewer with e2e access to the
-      // web app could catch and this session could not. Flagged in the PR body as a real,
-      // open, disclosed risk rather than a "fix" this session could not actually verify.
-      if (hasNote && input.note !== undefined && transitionActivity) {
+      // `WF-10`/`WF-11`/`WF-12`: a supplied note is stored as a comment (same Tiptap document
+      // shape as every other comment writer, so the portal and agent timelines render it),
+      // visibility from the chosen transition's `note_visibility`, linked to the `transitioned`
+      // activity row so the activity stream renders both as one entry. The capability for that
+      // visibility was checked above; a note that cannot be written refuses the whole transition.
+      if (hasNote && input.note !== undefined) {
+        if (!transitionActivity || !noteAuthorPersonId)
+          throw new Error("The transition note could not be written");
         await tx.insert(commentTable).values({
           workspaceId: ctx.workItem.workspaceId,
           workItemId: ctx.workItem.id,
-          authorId: requireCommentPerson(
-            identity?.personId ? { personId: identity.personId } : null,
-          ),
+          authorId: noteAuthorPersonId,
           actorType,
-          body: input.note,
-          visibility: match.noteVisibility,
+          body: plainTextNoteDocument(input.note),
+          visibility: noteVisibility,
           activityId: transitionActivity.id,
+          // `comment.created_at` is a UTC wall clock (#631): the same stamp a comment gets.
+          createdAt: dbNowUtc(),
+          updatedAt: dbNowUtc(),
         });
       }
 
       // N4 (ordinary/Opus non-blocking): the audit row now carries every field this
       // transaction can change, not `stateId` alone -- an assignee or `resolved_at` change
       // made by an effect is otherwise invisible to an audit read of this one row.
-      await appendAuditLog(tx, {
-        actorId,
-        actorType,
-        workspaceId: ctx.workItem.workspaceId,
-        projectId: ctx.workItem.projectId,
-        action: "work_item.transitioned",
-        entityType: "work_item",
-        entityId: ctx.workItem.id,
-        before: {
-          stateId: fromStateId,
-          assigneeId: previousAssigneeId,
-          resolvedAt: ctx.workItem.resolvedAt?.toISOString() ?? null,
-        },
-        after: {
-          stateId: toStateId,
-          assigneeId: updated.assigneeId,
-          resolvedAt: updated.resolvedAt?.toISOString() ?? null,
-          ...(input.auditOrigin ? { origin: input.auditOrigin } : {}),
-        },
-      });
+      // AU-14: the append runs in a savepoint; a failed append never fails the transition.
+      if (
+        await appendAuditSavepoint(tx, {
+          ...auditContext,
+          actorId,
+          actorType,
+          workspaceId: ctx.workItem.workspaceId,
+          projectId: ctx.workItem.projectId,
+          action: "work_item.transitioned",
+          entityType: "work_item",
+          entityId: ctx.workItem.id,
+          before: {
+            stateId: fromStateId,
+            assigneeId: previousAssigneeId,
+            resolvedAt: ctx.workItem.resolvedAt?.toISOString() ?? null,
+          },
+          after: {
+            stateId: toStateId,
+            assigneeId: updated.assigneeId,
+            resolvedAt: updated.resolvedAt?.toISOString() ?? null,
+            ...(input.auditOrigin ? { origin: input.auditOrigin } : {}),
+          },
+        })
+      )
+        auditFailed = true;
 
       const transitionRealtimeEvent = await recordWorkItemEvent(tx, {
         kind: "work_item.transitioned",
@@ -1132,7 +1328,14 @@ export async function transitionWorkItem(
           fromStateId,
           toStateId,
           workflowVersion: workflowVersionNumber,
-          ...(input.note !== undefined ? { note: input.note } : {}),
+          // NO-19: an internal note never leaves the staff side. Only a public note's text rides
+          // the event; `noteVisibility` always names which kind it was.
+          ...(hasNote
+            ? {
+                noteVisibility,
+                ...(noteVisibility === "public" ? { note: input.note } : {}),
+              }
+            : {}),
         },
       });
       realtimeEvents.push({
@@ -1196,9 +1399,13 @@ export async function transitionWorkItem(
         version: updated.version,
         previousAssigneeId,
         assigneeEventKind,
+        noteVisibility: hasNote ? noteVisibility : null,
       };
     }),
   );
+
+  // AU-14: the transition committed; an audit append that failed in its savepoint is reported now.
+  if (auditFailed) await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
 
   await publishEvent("work_item.transitioned", {
     workItemId: ctx.workItem.id,
@@ -1208,7 +1415,9 @@ export async function transitionWorkItem(
     fromStateId,
     toStateId,
     workflowVersion: workflowVersionNumber,
-    note: input.note,
+    // NO-19: an internal note never rides an event that can reach a webhook.
+    note: result.noteVisibility === "public" ? input.note : undefined,
+    noteVisibility: result.noteVisibility ?? undefined,
     actorId,
     actorType,
   });
@@ -1282,6 +1491,12 @@ export async function executeSystemTransition(
     );
     return { kind: "applied" };
   } catch (error) {
+    if (error instanceof TransitionDeadlockError) {
+      // A deadlock is transient: the scheduled hop stays `pending` (its claim rolled back with
+      // the transaction) and is retried, never cancelled as if the item had left `from_state_id`.
+      if (request.kind === "scheduled") throw error;
+      return { kind: "left_state" };
+    }
     if (error instanceof TransitionConflictError) return { kind: "left_state" };
     if (error instanceof NoMatchingTransitionError)
       return request.kind === "reopen"

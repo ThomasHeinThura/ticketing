@@ -11,15 +11,83 @@ const AGE_THRESHOLD_MS: Record<IntakeAgeFilter, number> = {
   "30d": 30 * DAY,
 };
 
-/** `IQ-5`: a submission's age as the shortest unit: `12m`, `5h`, `3d`. */
+/** `IQ-5`: a submission's age in its shortest unit; the screen translates the unit suffix. */
+export function submissionAge(
+  createdAt: string | number | Date,
+  now: number = Date.now(),
+): { unit: "m" | "h" | "d"; count: number } {
+  const elapsed = Math.max(0, now - new Date(createdAt).getTime());
+  if (elapsed < HOUR) return { unit: "m", count: Math.floor(elapsed / MINUTE) };
+  if (elapsed < DAY) return { unit: "h", count: Math.floor(elapsed / HOUR) };
+  return { unit: "d", count: Math.floor(elapsed / DAY) };
+}
+
+/** `IQ-5`: a submission's age as the shortest unit: `12m`, `5h`, `3d` (untranslated form). */
 export function formatSubmissionAge(
   createdAt: string | number | Date,
   now: number = Date.now(),
 ): string {
-  const elapsed = Math.max(0, now - new Date(createdAt).getTime());
-  if (elapsed < HOUR) return `${Math.floor(elapsed / MINUTE)}m`;
-  if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)}h`;
-  return `${Math.floor(elapsed / DAY)}d`;
+  const age = submissionAge(createdAt, now);
+  return `${age.count}${age.unit}`;
+}
+
+/** The machine codes the triage API returns on a refused action (`P2R1-12`). */
+export const TRIAGE_ERROR_CODES = [
+  "submission_not_open",
+  "submission_already_converted",
+  "submission_changed",
+  "destination_required",
+  "destination_unavailable",
+  "work_item_type_unavailable",
+  "form_version_unavailable",
+] as const;
+export type TriageErrorCode = (typeof TRIAGE_ERROR_CODES)[number];
+
+export type TriageError = {
+  code: TriageErrorCode | null;
+  status: "conflict" | "other";
+  /** The work item the first triager created, when an accept lost the race. */
+  workItem: { id: string; key: string } | null;
+};
+
+/**
+ * Reads a refused triage action. The intake fetchers throw the response body as the message,
+ * so a coded body `{ error, message, workItem? }` is recovered here; anything else is a
+ * generic failure.
+ */
+export function parseTriageError(error: unknown): TriageError {
+  const fallback: TriageError = { code: null, status: "other", workItem: null };
+  if (!(error instanceof Error)) return fallback;
+  if (error.message === "destination_required")
+    return { ...fallback, code: "destination_required" };
+  let body: unknown;
+  try {
+    body = JSON.parse(error.message);
+  } catch {
+    return fallback;
+  }
+  if (!body || typeof body !== "object") return fallback;
+  const record = body as {
+    error?: unknown;
+    workItem?: { id?: unknown; key?: unknown } | null;
+  };
+  const code = TRIAGE_ERROR_CODES.find((known) => known === record.error);
+  if (!code) return fallback;
+  const item = record.workItem;
+  return {
+    code,
+    status:
+      code === "submission_not_open" ||
+      code === "submission_already_converted" ||
+      code === "submission_changed" ||
+      code === "form_version_unavailable"
+        ? "conflict"
+        : "other",
+    workItem:
+      item && typeof item.id === "string" && typeof item.key === "string"
+        ? { id: item.id, key: item.key }
+        : null,
+  };
 }
 
 export type IntakeQueueRowFacts = {

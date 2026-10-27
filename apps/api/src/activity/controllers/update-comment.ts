@@ -4,7 +4,7 @@ import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { publishEvent } from "../../events";
 import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
-import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
+import { syncInlineAssetReferences } from "../../storage/cleanup-assets";
 import {
   findOwnComment,
   findProjectWorkspaceId,
@@ -44,6 +44,10 @@ async function updateComment(
       });
 
     if (!project) throw new HTTPException(404, { message: "Task not found" });
+    // P0R1-01: detach (never delete) removed inline images in this transaction.
+    await syncInlineAssetReferences(tx, identity, existing.content, content, {
+      taskId: existing.taskId,
+    });
     await recordLegacyTaskCompatibilityEvent(tx, {
       kind: "comment.updated",
       taskId: task.id,
@@ -73,12 +77,6 @@ async function updateComment(
     projectId: result.projectId,
     userId,
   });
-  db.transaction(async (tx) => {
-    await lockTaskAndAssertProjectLive(tx, identity, existing.taskId);
-    await deleteOrphanedAssets(tx, identity, existing.content, content, {
-      taskId: existing.taskId,
-    });
-  }).catch(() => {});
   return result.updated;
 }
 

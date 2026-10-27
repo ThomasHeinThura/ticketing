@@ -445,13 +445,41 @@ function StatusCard({
   onChanged: () => Promise<void>;
 }) {
   const { t } = useTranslation("webhooks");
+  const stepUp = useStepUpAction();
   const update = useMutation({
-    mutationFn: (input: { active?: boolean; reown?: true }) =>
-      updateWebhook(webhook.id, { ...input, version: webhook.version }),
+    mutationFn: async (input: { active?: boolean; reown?: true }) => {
+      if (!input.reown)
+        return updateWebhook(webhook.id, {
+          ...input,
+          version: webhook.version,
+        });
+      // P4R1-L1: taking over a webhook is elevated, like changing its destination; the proof
+      // binds the unchanged destination.
+      const outcome = await stepUp.run(
+        {
+          operation: "webhook_update_url",
+          workspaceId: webhook.workspaceId,
+          webhookId: webhook.id,
+          url: webhook.url,
+        },
+        (token) =>
+          updateWebhook(
+            webhook.id,
+            { ...input, version: webhook.version },
+            token,
+          ),
+      );
+      if (!outcome.ok)
+        throw new Error(t("stepUp.failedTitle"), { cause: "step_up" });
+      return outcome.value;
+    },
     onSuccess: async () => {
       await onChanged();
     },
-    onError: (error) => toast.error(errorText(error, t("editor.saveFailed"))),
+    onError: (error) =>
+      error.cause === "step_up"
+        ? undefined
+        : toast.error(errorText(error, t("editor.saveFailed"))),
   });
   const reown = needsReown(webhook);
   return (
@@ -504,9 +532,14 @@ function StatusCard({
             <p className="text-sm text-muted-foreground">
               {t("status.reownHelp")}
             </p>
+            <StepUpFields action={stepUp} idPrefix="webhook-reown" />
+            <FailureAlert
+              failure={stepUp.failure}
+              title={t("stepUp.failedTitle")}
+            />
             <Button
               variant="outline"
-              disabled={update.isPending}
+              disabled={update.isPending || !stepUp.canRun}
               onClick={() => update.mutate({ reown: true, active: true })}
             >
               {t("status.reown")}

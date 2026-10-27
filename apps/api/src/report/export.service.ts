@@ -68,6 +68,7 @@ export class ExportRuleError extends Error {
       | "unsupported_aggregate"
       | "feature_disabled"
       | "forbidden"
+      | "export_too_large"
       | "bad_spec",
   ) {
     super(code);
@@ -180,6 +181,12 @@ export type ExportRow = typeof reportExportTable.$inferSelect;
 
 /** Maximum report rows held in the worker before they are appended to stored CSV. */
 export const EXPORT_CSV_PAGE_SIZE = 250;
+
+/** Hard ceilings of one paged export: a report that never ends its pages fails instead of looping. */
+export const exportLimits = {
+  maxPages: 400,
+  maxBytes: 50 * 1024 * 1024,
+};
 
 /**
  * Queues an export. The per-person limit is checked and the row inserted under one advisory lock,
@@ -413,7 +420,9 @@ export async function processExport(
         if (spec.kind === "custom" || def?.pagedExport) {
           let offset = 0;
           let first = true;
-          for (;;) {
+          for (let page = 0; ; page += 1) {
+            if (page >= exportLimits.maxPages)
+              throw new ExportRuleError("export_too_large");
             const rendered = await renderExport({
               spec,
               workspaceId: row.workspaceId,
@@ -436,6 +445,8 @@ export async function processExport(
             rowCount += rendered.envelope.rows.length;
             byteSize += Buffer.byteLength(chunk);
             first = false;
+            if (byteSize > exportLimits.maxBytes)
+              throw new ExportRuleError("export_too_large");
             if (rendered.envelope.rows.length < EXPORT_CSV_PAGE_SIZE) break;
             offset += EXPORT_CSV_PAGE_SIZE;
           }

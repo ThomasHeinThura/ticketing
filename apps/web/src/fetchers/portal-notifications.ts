@@ -8,14 +8,18 @@ export type PortalNotificationKind =
   | "work_item.mentioned"
   | "work_item.transitioned"
   | "submission.replied"
-  | "submission.declined";
+  | "submission.declined"
+  | "approval.requested"
+  | "approval.expiring"
+  | "approval.withdrawn";
 
 export type PortalNotification = {
   id: string;
   kind: PortalNotificationKind;
   isRead: boolean;
   createdAt: string;
-  requestRef: string;
+  /** Null for an approval event, which opens the Approvals screen. */
+  requestRef: string | null;
   commentId: string | null;
 };
 

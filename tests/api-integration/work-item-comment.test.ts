@@ -315,6 +315,66 @@ async function plantNativeNotification(input: {
   return row;
 }
 
+/**
+ * NO-18: a customer is notified only about their own request, i.e. a work item that carries
+ * the accepted submission the customer raised (`customerOwnedRequestNotificationPredicate`).
+ * Makes `requesterId` the requester of the item and of a linked accepted submission.
+ */
+async function linkCustomerRequestSubmission(input: {
+  workItemId: string;
+  requesterId: string;
+  organisationId: string;
+}) {
+  const [item] = await db
+    .select({
+      workspaceId: schema.workItemTable.workspaceId,
+      typeId: schema.workItemTable.typeId,
+    })
+    .from(schema.workItemTable)
+    .where(eq(schema.workItemTable.id, input.workItemId));
+  if (!item) throw new Error("linkCustomerRequestSubmission: item missing");
+  await db
+    .update(schema.workItemTable)
+    .set({ requesterId: input.requesterId })
+    .where(eq(schema.workItemTable.id, input.workItemId));
+  const [requestType] = await db
+    .insert(schema.requestTypeTable)
+    .values({
+      workspaceId: item.workspaceId,
+      key: `customer-request-${randomUUID()}`,
+      name: "Customer request",
+      group: "General",
+      workItemTypeId: item.typeId,
+      formSchema: { fields: [] },
+      published: true,
+      customerVisible: true,
+    })
+    .returning();
+  if (!requestType) throw new Error("linkCustomerRequestSubmission: type");
+  const [version] = await db
+    .insert(schema.requestTypeVersionTable)
+    .values({
+      workspaceId: item.workspaceId,
+      requestTypeId: requestType.id,
+      number: 1,
+      formSchema: { fields: [] },
+      workItemTypeId: item.typeId,
+    })
+    .returning();
+  if (!version) throw new Error("linkCustomerRequestSubmission: version");
+  await db.insert(schema.submissionTable).values({
+    organisationId: input.organisationId,
+    requesterId: input.requesterId,
+    requestTypeId: requestType.id,
+    requestTypeVersionId: version.id,
+    formData: {},
+    state: "accepted",
+    submittedAt: new Date(),
+    customerVisibility: "organisation",
+    workItemId: input.workItemId,
+  });
+}
+
 function postComment(
   app: ReturnType<typeof createApp>["app"],
   key: string,
@@ -740,6 +800,11 @@ describe("API integration: work-item comments (#27)", () => {
       addedBy: author.id,
       createdAt: new Date(),
     });
+    await linkCustomerRequestSubmission({
+      workItemId: workItem.id,
+      requesterId: requester.person.id,
+      organisationId: organisation.id,
+    });
     const publicResponse = await postComment(app, workItem.key, {
       body: { type: "doc", content: [] },
       visibility: "public",
@@ -797,17 +862,20 @@ describe("API integration: work-item comments (#27)", () => {
         internalRow.id,
       ]);
     }
-    for (const person of [requester, participant]) {
+    {
       const rows = await listVisibleNotificationRows({
-        userId: person.user.id,
+        userId: requester.user.id,
         credentialCanReadTask: false,
       });
       const ids = rows.map(({ notification }) => notification.id);
-      expect(ids).not.toContain(notifications.get(person.user.id)?.[0]);
-      expect(ids).toContain(notifications.get(person.user.id)?.[1]);
-      expect(ids).not.toContain(notifications.get(person.user.id)?.[2]);
+      expect(ids).not.toContain(notifications.get(requester.user.id)?.[0]);
+      expect(ids).toContain(notifications.get(requester.user.id)?.[1]);
+      expect(ids).not.toContain(notifications.get(requester.user.id)?.[2]);
     }
-    for (const person of [nonparticipant, foreign]) {
+    // NO-18: customers are notified about their own requests only. A participant can read the
+    // private request in the portal (CP-16) but it is not their own request, so their inbox
+    // keeps none of its rows, the public comment included.
+    for (const person of [participant, nonparticipant, foreign]) {
       const rows = await listVisibleNotificationRows({
         userId: person.user.id,
         credentialCanReadTask: false,
@@ -911,6 +979,13 @@ describe("API integration: work-item comments (#27)", () => {
       .update(schema.workItemTable)
       .set({ customerVisibility: "organisation" })
       .where(eq(schema.workItemTable.id, workItem.id));
+    // NO-18: the customer's inbox keeps only their own request's rows, so the customer is the
+    // requester of this item through a submission in the serving project's organisation.
+    await linkCustomerRequestSubmission({
+      workItemId: workItem.id,
+      requesterId: customer.person.id,
+      organisationId: customerOrganisation.id,
+    });
 
     const publicResponse = await postComment(app, workItem.key, {
       body: { type: "doc", content: [] },

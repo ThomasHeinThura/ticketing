@@ -1,6 +1,9 @@
+import { validateReparent } from "@taskdesk/domain";
 import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { schema } from "../../database";
 import type { Transaction } from "../../database/executor";
+import { ancestorChain, descendantDepth } from "../../work-item/hierarchy";
+import { WORK_ITEM_HIERARCHY_LOCK_NAMESPACE } from "../../work-item/hierarchy-lock";
 import type { ImportRecord, ImportRelation } from "../schema";
 import type { DeferredLinks } from "./provenance";
 import { type ImportWriterContext, recordLoss } from "./types";
@@ -61,13 +64,32 @@ export async function parentWouldCycle(
   return current !== null; // an unbounded chain is treated as a cycle
 }
 
-type ParentOutcome = "set" | "kept" | "pending" | "cycle" | "unavailable";
+type ParentOutcome =
+  | "set"
+  | "kept"
+  | "pending"
+  | "cycle"
+  | "unavailable"
+  | "depth"
+  | "not_allowed";
+
+const PARENT_LOSS_CODE = {
+  cycle: "parent_cycle_broken",
+  unavailable: "parent_unavailable",
+  depth: "parent_depth_exceeded",
+  not_allowed: "parent_not_allowed",
+} as const;
 
 /**
  * Set the imported parent. A circular source hierarchy is detected in application code BEFORE the
  * write, the offending link is not created and is reported (`parent_cycle_broken`); the database
  * trigger is only the backstop. An existing parent is never replaced: an import fills a gap, it does
  * not undo what a person did after the first import.
+ *
+ * The same rules as the native set-parent route apply (RH-6 same project, RH-7 depth cap via
+ * `validateReparent`, RH-13 an epic is a root), under the same per-project advisory lock, so an
+ * import can neither exceed the depth cap nor race a concurrent reparent. A parent that breaks a rule
+ * is not set and is reported (`parent_depth_exceeded`, `parent_not_allowed`).
  */
 export async function applyImportedParent(
   ctx: ImportWriterContext,
@@ -86,15 +108,35 @@ export async function applyImportedParent(
   if (!target) return "pending";
   if (target.projectId !== ctx.projectId) return "unavailable";
   if (target.id === input.workItemId) return "cycle";
+  await ctx.tx.execute(
+    sql`SELECT pg_advisory_xact_lock(${WORK_ITEM_HIERARCHY_LOCK_NAMESPACE}, hashtext(${ctx.projectId}))`,
+  );
   const [current] = await ctx.tx
-    .select({ parentId: WORK_ITEM.parentId, version: WORK_ITEM.version })
+    .select({
+      parentId: WORK_ITEM.parentId,
+      version: WORK_ITEM.version,
+      isEpic: schema.workItemTypeTable.isEpic,
+    })
     .from(WORK_ITEM)
+    .innerJoin(
+      schema.workItemTypeTable,
+      eq(schema.workItemTypeTable.id, WORK_ITEM.typeId),
+    )
     .where(eq(WORK_ITEM.id, input.workItemId))
     .limit(1);
   if (!current) return "unavailable";
   if (current.parentId !== null) return "kept";
+  if (current.isEpic) return "not_allowed";
   if (await parentWouldCycle(ctx.tx, input.workItemId, target.id))
     return "cycle";
+  const validation = validateReparent(
+    input.workItemId,
+    target.id,
+    await ancestorChain(ctx.tx, target.id),
+    await descendantDepth(ctx.tx, input.workItemId),
+  );
+  if (!validation.ok)
+    return validation.reason === "max_depth" ? "depth" : "cycle";
   try {
     await ctx.tx.transaction(async (savepoint) => {
       await savepoint
@@ -177,17 +219,9 @@ export async function writeImportedLinks(
     });
     if (outcome === "set") counts.parentsSet += 1;
     else if (outcome === "pending") deferred.parent = record.parent;
-    else if (outcome === "cycle")
+    else if (outcome !== "kept")
       recordLoss(ctx, {
-        code: "parent_cycle_broken",
-        sourceType: record.sourceType,
-        sourceId: record.sourceId,
-        entity: "parent",
-        entitySourceId: `${record.parent.sourceType}:${record.parent.sourceId}`,
-      });
-    else if (outcome === "unavailable")
-      recordLoss(ctx, {
-        code: "parent_unavailable",
+        code: PARENT_LOSS_CODE[outcome],
         sourceType: record.sourceType,
         sourceId: record.sourceId,
         entity: "parent",
@@ -241,6 +275,7 @@ export async function resolveDeferredImportLinks(
     .where(
       and(
         eq(PROVENANCE.workspaceId, ctx.workspaceId),
+        eq(PROVENANCE.pluginId, ctx.pluginId),
         eq(PROVENANCE.system, ctx.system),
         eq(PROVENANCE.entityType, "work_item"),
         isNotNull(PROVENANCE.deferredLinks),
@@ -271,17 +306,10 @@ export async function resolveDeferredImportLinks(
             entitySourceId: label,
           });
         else next.parent = deferred.parent;
-      } else if (outcome === "cycle")
+      } else if (outcome === "set") resolved += 1;
+      else if (outcome !== "kept")
         recordLoss(ctx, {
-          code: "parent_cycle_broken",
-          sourceType,
-          sourceId,
-          entity: "parent",
-          entitySourceId: label,
-        });
-      else if (outcome === "unavailable")
-        recordLoss(ctx, {
-          code: "parent_unavailable",
+          code: PARENT_LOSS_CODE[outcome],
           sourceType,
           sourceId,
           entity: "parent",

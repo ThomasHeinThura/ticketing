@@ -13,6 +13,7 @@ import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { createCustomerPrincipal } from "./helpers/customer-principal";
 import { resetTestDatabase } from "./helpers/database";
+import { createImpersonatingAdmin } from "./helpers/impersonator";
 
 const apiRequire = createRequire(
   new URL("../../apps/api/package.json", import.meta.url),
@@ -257,7 +258,9 @@ describe("instance MCP usage HTTP API", () => {
 
   it("denies an impersonated administrator", async () => {
     const { user } = await makeUser("admin");
-    mockAuthenticatedSession(user, { impersonatedBy: `actor-${randomUUID()}` });
+    mockAuthenticatedSession(user, {
+      impersonatedBy: await createImpersonatingAdmin(),
+    });
     const { app } = createApp();
     const response = await app.request("/api/instance/mcp/usage");
     expect(response.status).toBe(403);

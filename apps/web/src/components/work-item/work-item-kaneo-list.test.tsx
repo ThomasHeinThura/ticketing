@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   permission: vi.fn(),
   canRank: false,
   canTransition: false,
+  canCreate: false,
   checking: false,
   drag: undefined as Record<string, unknown> | undefined,
   states: {
@@ -80,6 +81,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
       isCheckingPermissions: mocks.checking,
       canRankTasks: () => mocks.canRank,
       canTransitionTasks: () => mocks.canTransition,
+      canCreateTasks: () => mocks.canCreate,
     };
   },
 }));
@@ -182,6 +184,7 @@ beforeEach(() => {
   preference.initial = undefined;
   mocks.canRank = false;
   mocks.canTransition = false;
+  mocks.canCreate = false;
   mocks.checking = false;
   useBulkSelectionStore.setState({
     selectedTaskIds: new Set(),
@@ -207,6 +210,28 @@ describe("canonical Kaneo grouped list", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Open\s*1$/ }));
     expect(
       screen.queryByRole("link", { name: "WLP-1 Title WLP-1" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("P1R2-2: restores Kaneo's '+' on every state section, including an empty one, for a creator", () => {
+    const onCreateInState = vi.fn();
+    mocks.canCreate = true;
+    render(
+      <WorkItemKaneoList {...baseProps()} onCreateInState={onCreateInState} />,
+    );
+    const buttons = screen.getAllByTitle("tasks:listView.addTask");
+    expect(buttons).toHaveLength(3);
+    fireEvent.click(buttons[2] as HTMLElement);
+    expect(onCreateInState).toHaveBeenCalledExactlyOnceWith(
+      { id: "empty", name: "Waiting" },
+      buttons[2],
+    );
+  });
+
+  it("P1R2-2: hides the section '+' without create permission", () => {
+    render(<WorkItemKaneoList {...baseProps()} onCreateInState={vi.fn()} />);
+    expect(
+      screen.queryByTitle("tasks:listView.addTask"),
     ).not.toBeInTheDocument();
   });
 

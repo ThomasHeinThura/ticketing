@@ -147,6 +147,10 @@ function cookieFrom(response: Response, name: string) {
     ?.split(";", 1)[0];
 }
 
+function app_request(app: App, cookie: string) {
+  return app.request("/api/instance/impersonate", { headers: { cookie } });
+}
+
 const REASON = "Customer reported a missing board column, reproducing it.";
 
 async function auditRows(action: string) {
@@ -174,6 +178,75 @@ describe("impersonation (GM-7..GM-11)", () => {
       cookie,
     };
   }
+
+  /** Starts an impersonation as `world().admin` and returns the cookie jar a browser would hold. */
+  async function startImpersonation(w: Awaited<ReturnType<typeof world>>) {
+    const token = await stepUp(w.app, w.cookie, "impersonation_start", {
+      targetUserId: w.target.id,
+      reason: REASON,
+    });
+    const started = await post(
+      w.app,
+      w.cookie,
+      `/api/instance/users/${w.target.id}/impersonate`,
+      { reason: REASON },
+      { "x-taskdesk-step-up-token": token },
+    );
+    expect(started.status, await started.clone().text()).toBe(200);
+    const jar = new Map<string, string>();
+    for (const value of started.headers.getSetCookie()) {
+      const [pair = ""] = value.split(";", 1);
+      const name = pair.split("=", 1)[0] ?? "";
+      if (/;\s*max-age=0/iu.test(value) || /=;/u.test(`${pair};`))
+        jar.delete(name);
+      else jar.set(name, pair);
+    }
+    return [...jar.values()].join("; ");
+  }
+
+  async function impersonationSessions(adminId: string) {
+    return db
+      .select()
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.impersonatedBy, adminId));
+  }
+
+  it("ends the session on the next request once the impersonating administrator is suspended, demoted or deactivated (P4R1-M3)", async () => {
+    for (const change of ["suspended", "demoted", "deactivated"] as const) {
+      await resetTestDatabase();
+      await db
+        .insert(schema.instanceSettingTable)
+        .values({ id: "singleton", setupCompletedAt: new Date() });
+      const w = await world();
+      const impersonationCookie = await startImpersonation(w);
+      const before = await app_request(w.app, impersonationCookie);
+      expect(before.status, change).toBe(200);
+
+      if (change === "suspended")
+        await db
+          .update(schema.userTable)
+          .set({ banned: true })
+          .where(eq(schema.userTable.id, w.admin.id));
+      if (change === "demoted")
+        await db
+          .update(schema.userTable)
+          .set({ role: null })
+          .where(eq(schema.userTable.id, w.admin.id));
+      if (change === "deactivated")
+        await db
+          .update(schema.personTable)
+          .set({ active: false })
+          .where(eq(schema.personTable.userId, w.admin.id));
+
+      const after = await app_request(w.app, impersonationCookie);
+      expect(after.status, change).toBe(401);
+      expect(await impersonationSessions(w.admin.id), change).toHaveLength(0);
+      const [ended] = await auditRows("impersonation.ended");
+      expect(ended?.after, change).toMatchObject({
+        reason: "impersonator_ineligible",
+      });
+    }
+  });
 
   it("refuses an administrator target and the actor itself at challenge time (GM-10)", async () => {
     const { otherAdmin, admin, app, cookie } = await world();
@@ -602,13 +675,22 @@ describe("secrets re-encryption trigger (GM-13)", () => {
         complete: boolean;
         total: Record<string, number>;
         pending: Record<string, number>;
+        expiredInvitationDeliveryEnvelopes: number;
       };
     };
     expect(body.status).toBe("accepted");
     // Webhook signing secrets and notification tokens are counted too (not stripped by the schema).
     expect(typeof body.progress.total.textSecrets).toBe("number");
     expect(typeof body.progress.pending.textSecrets).toBe("number");
-    expect(JSON.stringify(body)).not.toMatch(/envelope|secret_value/iu);
+    // The one declared envelope field is a non-negative count (rotate-secrets schema), never
+    // an envelope; everything else must carry no envelope or secret material.
+    const { expiredInvitationDeliveryEnvelopes, ...otherProgress } =
+      body.progress;
+    expect(Number.isInteger(expiredInvitationDeliveryEnvelopes)).toBe(true);
+    expect(expiredInvitationDeliveryEnvelopes).toBeGreaterThanOrEqual(0);
+    expect(JSON.stringify({ ...body, progress: otherProgress })).not.toMatch(
+      /envelope|secret_value/iu,
+    );
 
     // A spent proof is not reusable.
     const replay = await post(

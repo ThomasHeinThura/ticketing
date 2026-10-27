@@ -170,7 +170,7 @@ function TaskRow({
   const handleClick = (e: React.MouseEvent) => {
     if (!task) return;
     if (e.defaultPrevented) return;
-    if (isInlineControlTarget(e.target)) return;
+    if (isOutsideRowControlTarget(e)) return;
 
     if (e.metaKey || e.ctrlKey) {
       e.preventDefault();
@@ -240,15 +240,15 @@ function TaskRow({
         {...rowAttributes}
         {...sortableListeners}
         onMouseDown={(event) => {
-          if (!isInlineControlTarget(event.target))
+          if (!isOutsideRowControlTarget(event))
             sortableListeners.onMouseDown?.(event);
         }}
         onTouchStart={(event) => {
-          if (!isInlineControlTarget(event.target))
+          if (!isOutsideRowControlTarget(event))
             sortableListeners.onTouchStart?.(event);
         }}
         onPointerDown={(event) => {
-          if (!isInlineControlTarget(event.target))
+          if (!isOutsideRowControlTarget(event))
             sortableListeners.onPointerDown?.(event);
         }}
         tabIndex={0}
@@ -489,6 +489,25 @@ function isInlineControlTarget(target: EventTarget | null) {
   return (
     target instanceof Element &&
     Boolean(target.closest("[data-task-row-inline-control]"))
+  );
+}
+
+/**
+ * True for an event the row must ignore: one from an inline control slot, or one React bubbled
+ * up from portalled content (an inline picker's popover options live outside the row's DOM but
+ * still bubble through the React tree), so choosing an option never opens the item or starts a
+ * drag.
+ */
+function isOutsideRowControlTarget(event: {
+  target: EventTarget | null;
+  currentTarget: EventTarget | null;
+}) {
+  if (isInlineControlTarget(event.target)) return true;
+  const { target, currentTarget } = event;
+  return (
+    target instanceof Node &&
+    currentTarget instanceof Node &&
+    !currentTarget.contains(target)
   );
 }
 

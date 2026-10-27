@@ -32,6 +32,7 @@ import {
   listApprovalWatcherPersonIds,
 } from "./repository";
 import { isSupportedNotificationResourceEvent } from "./resource-contract";
+import { isCurrentSubmissionNotificationRecipient } from "./submission-recipients";
 
 export type CurrentNotificationEligibility =
   | { kind: "suppress"; reason: string }
@@ -165,6 +166,14 @@ function canonicalBinding(
     payload.webhookId === delivery.resourceId
   )
     return { payload, projectId };
+  // `P2R1-05`: submission events carry only the `SUB-n` reference; the stored submission is
+  // resolved by the delivery's resource id and re-checked below.
+  if (
+    delivery.resourceType === "submission" &&
+    isSupportedNotificationResourceEvent("submission", delivery.eventKind) &&
+    typeof payload.ref === "string"
+  )
+    return { payload, projectId };
   return null;
 }
 
@@ -213,7 +222,8 @@ export async function evaluateCurrentNotificationReachAndPreference(
   if (
     resource.projectId === null &&
     delivery.resourceType !== "workspace" &&
-    delivery.resourceType !== "webhook"
+    delivery.resourceType !== "webhook" &&
+    delivery.resourceType !== "submission"
   )
     return { kind: "suppress", reason: "resource_unavailable" };
   if (
@@ -272,6 +282,14 @@ export async function evaluateCurrentNotificationReachAndPreference(
       !can(identity, "webhook:manage", "workspace", {
         workspaceId: resource.workspaceId,
       })
+    )
+      return { kind: "suppress", reason: "reach_lost" };
+  } else if (delivery.resourceType === "submission") {
+    if (
+      !(await isCurrentSubmissionNotificationRecipient(tx, identity, {
+        submissionId: delivery.resourceId,
+        workspaceId: delivery.workspaceId,
+      }))
     )
       return { kind: "suppress", reason: "reach_lost" };
   } else {

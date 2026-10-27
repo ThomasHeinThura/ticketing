@@ -281,6 +281,41 @@ describe("WorkItemBoard layout (VW-8)", () => {
     ).toBeInTheDocument();
   });
 
+  it("P1R2-2: offers Kaneo's '+' create button in every column header, including an empty column", () => {
+    const onCreateInState = vi.fn();
+    board({ onCreateInState });
+    for (const name of ["Open", "Done", "Parked"]) {
+      const button = within(column(name)).getByTestId(
+        "work-item-board-column-create",
+      );
+      expect(button).toHaveAttribute(
+        "title",
+        translate("tasks:kanban.addTask"),
+      );
+    }
+    fireEvent.click(
+      within(column("Parked")).getByTestId("work-item-board-column-create"),
+    );
+    expect(onCreateInState).toHaveBeenCalledExactlyOnceWith(
+      { id: stateId("Parked"), name: "Parked" },
+      expect.any(HTMLButtonElement),
+    );
+  });
+
+  it("P1R2-2: offers no column create button without the create handler or on a combined board", () => {
+    board();
+    expect(screen.queryByTestId("work-item-board-column-create")).toBeNull();
+    cleanup();
+    board({
+      onCreateInState: vi.fn(),
+      combinedColumns: states.map((state) => ({
+        id: state.id,
+        name: state.name,
+      })) as never,
+    });
+    expect(screen.queryByTestId("work-item-board-column-create")).toBeNull();
+  });
+
   it("shows the compact SLA badge on a card that has an SLA, and none on one without (SLA-18)", () => {
     board({
       workItems: [

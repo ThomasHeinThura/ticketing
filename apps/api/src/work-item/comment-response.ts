@@ -28,5 +28,10 @@ export const commentSchema = z
     deletedBy: z.string().nullable(),
     createdAt: responseTimestamp,
     updatedAt: responseTimestamp,
+    origin: z.string().nullable().optional().openapi({
+      description:
+        "`imported` for a comment an import wrote (createdAt is then the source time); null for a native comment.",
+    }),
+    importedAt: nullableResponseTimestamp.optional(),
   })
   .openapi("Comment");

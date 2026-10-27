@@ -1,6 +1,6 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createAzureDevOpsAdapter } from "../../../../apps/api/src/imports/adapters/azure-devops";
 import {
   csvRecords,
@@ -27,6 +27,7 @@ import {
 } from "../../../../apps/api/src/imports/engine/mapping";
 import {
   ADO_FIXTURE_PAT,
+  type AdoFixtureItem,
   adoCsvText,
   adoItems,
   createAdoReplay,
@@ -450,6 +451,82 @@ describe("azure devops adapter: reading (keyset cursor, content, losses)", () =>
   });
 });
 
+describe("azure devops adapter: items it cannot read are reported, never dropped", () => {
+  const web = () => adoItems("contoso-web");
+
+  /** The recorded replay, with the batch endpoint omitting one item and blanking another's title. */
+  function lossy(omitId: number, blankTitleId: number) {
+    const replay = createAdoReplay();
+    const transport: typeof replay.transport = async (request) => {
+      const response = await replay.transport(request);
+      if (
+        request.method === "POST" &&
+        request.url.includes("/_apis/wit/workitemsbatch")
+      ) {
+        const json = response.json as { value: AdoFixtureItem[] };
+        return {
+          ...response,
+          json: {
+            ...json,
+            value: json.value
+              .filter((item) => item.id !== omitId)
+              .map((item) =>
+                item.id === blankTitleId
+                  ? { ...item, fields: { ...item.fields, "System.Title": "" } }
+                  : item,
+              ),
+          },
+        };
+      }
+      return response;
+    };
+    return transport;
+  }
+  const project = { organization: "contoso", project: "Contoso Web" };
+
+  it("returns an unreadable_item record for an id the batch left out and missing_title for an untitled item", async () => {
+    const ids = web().map((item) => item.id);
+    const omitId = ids[1] as number;
+    const blankId = ids[2] as number;
+    const adapter = createAzureDevOpsAdapter({
+      transport: lossy(omitId, blankId),
+    });
+    const { records } = await readAll(adapter, connection(project), 5);
+    expect(records.map((r) => r.sourceId)).toEqual(ids.map(String));
+    const byId = new Map(records.map((r) => [r.sourceId, r]));
+    expect(byId.get(String(omitId))).toMatchObject({
+      sourceType: "work_item",
+      rejectCode: "unreadable_item",
+    });
+    expect(byId.get(String(blankId))).toMatchObject({
+      rejectCode: "missing_title",
+    });
+    expect(records.filter((r) => r.rejectCode)).toHaveLength(2);
+  });
+
+  it("counts them in discovery with their codes, without inventing facets", async () => {
+    const ids = web().map((item) => item.id);
+    const clean = await createAzureDevOpsAdapter({
+      transport: createAdoReplay().transport,
+    }).discover(connection(project));
+    const adapter = createAzureDevOpsAdapter({
+      transport: lossy(ids[1] as number, ids[2] as number),
+    });
+    const discovery = await adapter.discover(connection(project));
+    expect(discovery.totalRecords).toBe(ids.length);
+    expect(discovery.unreadable).toEqual({
+      unreadable_item: 1,
+      missing_title: 1,
+    });
+    expect(clean.unreadable).toBeUndefined();
+    const people = (d: typeof discovery) =>
+      d.facets.filter((f) => f.domain === "type");
+    expect(people(discovery).reduce((sum, f) => sum + f.count, 0)).toBe(
+      ids.length - 2,
+    );
+  });
+});
+
 describe("azure devops adapter: CSV export mode", () => {
   const csvConnection = (csvText: string) =>
     connection({ mode: "csv", organization: "contoso", csvText }, null);
@@ -592,6 +669,20 @@ describe("guarded transport (SSRF guard, no redirects, JSON only)", () => {
         headers: {},
       }),
     ).rejects.toMatchObject({ code: "destination_not_allowed" });
+  });
+
+  it("stays strict by default even when the process runs with NODE_ENV=development", async () => {
+    const previous = process.env.NODE_ENV;
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      const transport = createGuardedTransport();
+      await expect(
+        transport({ method: "GET", url: `${base}/ok`, headers: {} }),
+      ).rejects.toMatchObject({ code: "destination_not_allowed" });
+    } finally {
+      vi.unstubAllEnvs();
+      expect(process.env.NODE_ENV).toBe(previous);
+    }
   });
 
   it("sends headers and JSON, parses JSON, refuses redirects and oversized bodies", async () => {

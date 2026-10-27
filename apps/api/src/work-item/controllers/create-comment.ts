@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { JsonValue } from "@taskdesk/domain";
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { appendAuditLog } from "../../audit/audit-writer";
+import type { AuditRequestContext } from "../../audit/request-context";
 import db from "../../database";
 import {
   commentTable,
@@ -11,6 +11,8 @@ import {
   workItemTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { enqueueNotificationEvent } from "../../notification/fanout";
 import { resolveMentionEventRecipient } from "../../notification/recipient-resolvers";
 import { resolveCommentEventRecipients } from "../../notification/work-item-recipients";
@@ -59,7 +61,9 @@ export async function createComment(
   actorType: ActivityActorType,
   input: CreateCommentInput,
   apiKey?: ApiKey,
+  audit?: Partial<AuditRequestContext>,
 ) {
+  let auditFailed = false;
   const requiredCapability =
     input.visibility === "public"
       ? "comment:create"
@@ -164,10 +168,14 @@ export async function createComment(
       const reachableMentionedPeople = mentionCandidates.filter(
         (candidate) => candidate.reachable && candidate.userId !== actorId,
       );
-      await appendAuditLog(tx, {
+      // AU-14: a failed audit append never fails the comment, and is never silent.
+      auditFailed = await appendAuditSavepoint(tx, {
+        actorIp: audit?.actorIp ?? null,
+        userAgent: audit?.userAgent ?? null,
+        traceId: audit?.traceId ?? null,
         actorId,
         actorType,
-        apiKeyId: apiKey?.id ?? null,
+        apiKeyId: apiKey?.id ?? audit?.apiKeyId ?? null,
         workspaceId,
         projectId: locked.projectId,
         action: "work_item.commented",
@@ -256,6 +264,8 @@ export async function createComment(
       };
     },
   );
+
+  if (auditFailed) await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
 
   if (!created) {
     throw new HTTPException(500, { message: "Failed to create comment" });

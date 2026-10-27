@@ -13,7 +13,9 @@ import { lazy, Suspense, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import ProjectCrumbSelect from "@/components/common/header/project-crumb-select";
 import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
-import useProjectPagesFeature from "@/hooks/queries/feature-flag/use-project-pages-feature";
+import useProjectPagesFeature, {
+  useProjectFeature,
+} from "@/hooks/queries/feature-flag/use-project-pages-feature";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
@@ -63,6 +65,9 @@ export default function ProjectLayoutControls({
   const addProject = canCreateProject ? onAddProject : undefined;
   const { features: agileFeatures } = useAgileFeatures(projectId);
   const pagesOn = useProjectPagesFeature(projectId);
+  // P4R1-M2: Calendar and Gantt are offered only while their flags are on (features.md).
+  const calendarOn = useProjectFeature(projectId, "feature.calendar");
+  const ganttOn = useProjectFeature(projectId, "feature.timeline");
   const tabsRef = useRef<HTMLDivElement>(null);
   const resolvedView =
     activeView ??
@@ -84,7 +89,9 @@ export default function ProjectLayoutControls({
       !showViewSwitcher ||
       (resolvedView === "cycles" && !agileFeatures.cycles) ||
       (resolvedView === "modules" && !agileFeatures.modules) ||
-      (resolvedView === "pages" && !pagesOn)
+      (resolvedView === "pages" && !pagesOn) ||
+      (resolvedView === "calendar" && !calendarOn) ||
+      (resolvedView === "gantt" && !ganttOn)
     )
       return;
     const tabs = tabsRef.current;
@@ -110,6 +117,8 @@ export default function ProjectLayoutControls({
     agileFeatures.cycles,
     agileFeatures.modules,
     pagesOn,
+    calendarOn,
+    ganttOn,
   ]);
   const handleNavigateToBacklog = () => {
     if (projectSlug)
@@ -228,8 +237,10 @@ export default function ProjectLayoutControls({
               activeView={resolvedView}
               onSelectBacklog={handleNavigateToBacklog}
               onSelectBoard={handleNavigateToBoard}
-              onSelectCalendar={handleNavigateToCalendar}
-              onSelectGantt={handleNavigateToGantt}
+              onSelectCalendar={
+                calendarOn ? handleNavigateToCalendar : undefined
+              }
+              onSelectGantt={ganttOn ? handleNavigateToGantt : undefined}
               onSelectCycles={
                 agileFeatures.cycles ? handleNavigateToCycles : undefined
               }
@@ -287,32 +298,36 @@ export default function ProjectLayoutControls({
               <SquareKanban className="size-3.5" />
               {t("navigation:projectViews.workItems")}
             </Button>
-            <Button
-              variant={resolvedView === "calendar" ? "secondary" : "ghost"}
-              size="xs"
-              onClick={handleNavigateToCalendar}
-              aria-current={resolvedView === "calendar" ? "page" : undefined}
-              className={cn(
-                "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
-                resolvedView !== "calendar" && "text-muted-foreground",
-              )}
-            >
-              <CalendarRange className="size-3.5" />
-              {t("navigation:projectViews.calendar")}
-            </Button>
-            <Button
-              variant={resolvedView === "gantt" ? "secondary" : "ghost"}
-              size="xs"
-              onClick={handleNavigateToGantt}
-              aria-current={resolvedView === "gantt" ? "page" : undefined}
-              className={cn(
-                "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
-                resolvedView !== "gantt" && "text-muted-foreground",
-              )}
-            >
-              <CalendarDays className="size-3.5" />
-              Gantt
-            </Button>
+            {calendarOn ? (
+              <Button
+                variant={resolvedView === "calendar" ? "secondary" : "ghost"}
+                size="xs"
+                onClick={handleNavigateToCalendar}
+                aria-current={resolvedView === "calendar" ? "page" : undefined}
+                className={cn(
+                  "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
+                  resolvedView !== "calendar" && "text-muted-foreground",
+                )}
+              >
+                <CalendarRange className="size-3.5" />
+                {t("navigation:projectViews.calendar")}
+              </Button>
+            ) : null}
+            {ganttOn ? (
+              <Button
+                variant={resolvedView === "gantt" ? "secondary" : "ghost"}
+                size="xs"
+                onClick={handleNavigateToGantt}
+                aria-current={resolvedView === "gantt" ? "page" : undefined}
+                className={cn(
+                  "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
+                  resolvedView !== "gantt" && "text-muted-foreground",
+                )}
+              >
+                <CalendarDays className="size-3.5" />
+                Gantt
+              </Button>
+            ) : null}
             {agileFeatures.cycles ? (
               <Button
                 variant={resolvedView === "cycles" ? "secondary" : "ghost"}

@@ -19,6 +19,7 @@ import {
   applyKeyPrefix,
   buildObjectKey,
   buildObjectKeyPrefix,
+  DEFAULT_UPLOAD_URL_TTL_SECONDS,
   getFileExtension,
   isImageContentType,
   parseBoolean,
@@ -206,13 +207,19 @@ export async function createAttachmentUploadUrl(
   contentType: string,
   maxBytes: number,
   apiBaseUrl?: string,
+  declaredSize?: number,
 ): Promise<{
   key: string;
   uploadUrl: string;
   headers: Record<string, string>;
 }> {
   if (getStorageDriver() === "s3") {
-    return s3Driver.createAttachmentUploadUrl(key, contentType, maxBytes);
+    return s3Driver.createAttachmentUploadUrl(
+      key,
+      contentType,
+      maxBytes,
+      declaredSize,
+    );
   }
   return filesystemDriver.createAttachmentUploadUrl(
     key,
@@ -220,6 +227,27 @@ export async function createAttachmentUploadUrl(
     maxBytes,
     apiBaseUrl,
   );
+}
+
+/**
+ * How long an attachment upload credential stays writable, per driver. `complete` defers the
+ * removal of the vacated pending key until after this, so a replay of the credential after
+ * `complete` cannot leave an orphan object behind (P1R2-6).
+ */
+export function attachmentUploadUrlTtlSeconds(): number {
+  return getStorageDriver() === "s3"
+    ? s3Driver.getAttachmentUploadTtlSeconds()
+    : DEFAULT_UPLOAD_URL_TTL_SECONDS;
+}
+
+/**
+ * The single attachment object-key builder: the driver's key prefix (S3 only) is applied once,
+ * here, and the result is what rows, the GC queue and every later operation store and use.
+ */
+export function buildAttachmentStorageKey(rawKey: string): string {
+  return getStorageDriver() === "s3"
+    ? s3Driver.buildAttachmentStorageKey(rawKey)
+    : rawKey;
 }
 
 /**

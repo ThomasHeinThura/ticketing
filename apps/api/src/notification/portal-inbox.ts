@@ -24,6 +24,10 @@ const customerEventSchema = z.enum([
   "work_item.transitioned",
   "submission.replied",
   "submission.declined",
+  // AP-21 / AP-13 (`P2R1-04`): a customer approver's approval events.
+  "approval.requested",
+  "approval.expiring",
+  "approval.withdrawn",
 ]);
 type CustomerEventKind = z.infer<typeof customerEventSchema>;
 
@@ -33,7 +37,10 @@ function isCustomerEventKind(kind: string | null): kind is CustomerEventKind {
     kind === "work_item.mentioned" ||
     kind === "work_item.transitioned" ||
     kind === "submission.replied" ||
-    kind === "submission.declined"
+    kind === "submission.declined" ||
+    kind === "approval.requested" ||
+    kind === "approval.expiring" ||
+    kind === "approval.withdrawn"
   );
 }
 
@@ -42,7 +49,8 @@ const portalNotificationSchema = z.object({
   kind: customerEventSchema,
   isRead: z.boolean(),
   createdAt: z.string().datetime(),
-  requestRef: z.string(),
+  /** Null for an approval event, which opens the portal Approvals screen. */
+  requestRef: z.string().nullable(),
   commentId: z.string().nullable(),
 });
 

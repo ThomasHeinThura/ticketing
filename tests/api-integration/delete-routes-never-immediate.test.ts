@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { registeredDeletionTargets } from "../../apps/api/src/pending-action/deletion-targets";
 import { loadRouterRoutes } from "../permissions/api-app";
 
 /**
@@ -161,8 +162,8 @@ const AUTH_DESTRUCTIVE_ROUTES: {
   {
     path: "/two-factor/disable",
     reason:
-      "own second factor; requires the password and is step-up gated elsewhere; no business data",
-    coveredBy: "pending-action-credential-revocation.test.ts",
+      "refused 403 for every caller by the auth before-hook (a factor-bound confirmation is required); a factor is only removed by the step-up-gated administrator MFA reset; no business data",
+    coveredBy: "delete-routes-never-immediate.test.ts",
   },
 ];
 
@@ -325,6 +326,19 @@ describe("API integration: no DELETE route deletes immediately", () => {
     }
   });
 
+  it("every registered deletion target is a live DELETE route that is not allow-listed (runtime proof: delete-routes-runtime-pending.test.ts)", () => {
+    const live = new Set(routerDeletes.map(normalise));
+    const problems: string[] = [];
+    for (const target of registeredDeletionTargets()) {
+      if (!target.routeKey.startsWith("DELETE ")) continue;
+      if (!live.has(normalise(target.routeKey)))
+        problems.push(`${target.routeKey}: not a live DELETE route`);
+      if (allowed(target.routeKey))
+        problems.push(`${target.routeKey}: allow-listed as immediate`);
+    }
+    expect(problems).toEqual([]);
+  });
+
   it("the allow-list has no stale entries (each names a live DELETE route)", () => {
     const live = new Set(routerDeletes.map(normalise));
     const stale = Object.keys(ALLOWED_IMMEDIATE).filter(
@@ -412,6 +426,9 @@ describe("API integration: non-OpenAPI better-auth deletion routes are inventori
       // proof is the unchanged row counts below; admin endpoints must be refused outright.
       if (route.path.startsWith("/admin/"))
         expect(response.status, route.path).toBe(404);
+      // The better-auth factor removal is refused outright for every caller (auth.ts before-hook).
+      if (route.path === "/two-factor/disable")
+        expect(response.status, route.path).toBe(403);
     }
     expect(await counts()).toEqual(before);
   });

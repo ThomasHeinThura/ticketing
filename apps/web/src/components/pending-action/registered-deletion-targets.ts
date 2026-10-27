@@ -26,6 +26,7 @@ export const REGISTERED_DELETION_TARGETS = [
   "dashboard",
   "project_page",
   "identity_connection",
+  "request_type",
 ] as const;
 
 export function registeredDeletionTarget(targetType: string) {

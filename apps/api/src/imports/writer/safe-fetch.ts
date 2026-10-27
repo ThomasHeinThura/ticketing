@@ -84,7 +84,8 @@ async function downloadOnce(
   options: SafeDownloadOptions,
   followRedirect: boolean,
 ): Promise<SafeDownloadResult | { redirect: string }> {
-  const env = options.env ?? { NODE_ENV: process.env.NODE_ENV };
+  // Strict whatever NODE_ENV says: `env` exists only so a unit test can reach a loopback server.
+  const env = options.env ?? { NODE_ENV: "production" };
   const relaxed = developmentRelaxationActive(env);
   const resolver = options.resolver ?? systemResolver;
   let parsed: ReturnType<typeof parseWebhookUrl>;

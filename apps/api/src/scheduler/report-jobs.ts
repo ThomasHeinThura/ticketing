@@ -32,8 +32,10 @@ export type MetricsSnapshotOutcome = {
  * DAY grain for every workspace with `feature.reports` on. Each run recomputes the last three
  * closed days (a late SLA flip or a deletion reaches the stored day) and fills missing days up to the
  * retention horizon, newest first, so a first run never holds the lease for long. The rows are
- * aggregates (counts per project, day, priority and type): no person, rate or cost data, so legal
- * holds do not apply to them. The current day is never stored.
+ * aggregates per project, day and dimension, but they carry opaque person ids and, for logged time
+ * and cost entries, cost measures (stripped for readers without time_entry:manage_rates), so legal
+ * holds DO apply: pruning keeps a held day and erasing a person deletes the facts naming them.
+ * The current day is never stored.
  */
 export async function runMetricsSnapshot(
   now: Date = new Date(),

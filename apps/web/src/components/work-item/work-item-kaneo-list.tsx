@@ -37,8 +37,17 @@ const WorkItemInlineFields = lazy(() => import("./work-item-inline-fields"));
 export default function WorkItemKaneoList({
   projectId,
   workspaceId,
+  onCreateInState,
   ...props
-}: WorkItemListProps & { projectId?: string; workspaceId?: string }) {
+}: WorkItemListProps & {
+  projectId?: string;
+  workspaceId?: string;
+  /** Kaneo's per-column "+": opens the create dialog for one state section. */
+  onCreateInState?: (
+    state: { id: string; name: string },
+    trigger: HTMLButtonElement,
+  ) => void;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const states = useGetProjectStates(projectId);
@@ -232,6 +241,17 @@ export default function WorkItemKaneoList({
                 expanded={!collapsedIds?.includes(column.id)}
                 showDropIndicator={drag.overStateId === column.id}
                 onToggle={() => toggleGroup(column.id)}
+                onAddTask={
+                  onCreateInState &&
+                  !permission.isCheckingPermissions &&
+                  permission.canCreateTasks()
+                    ? (trigger) =>
+                        onCreateInState(
+                          { id: column.id, name: column.name },
+                          trigger,
+                        )
+                    : undefined
+                }
                 t={t}
               >
                 {workItems.length > 100 && column.tasks.length > 0 ? (

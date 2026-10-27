@@ -14,6 +14,7 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { clientIpForContext } from "../api-key/enforce";
 import db from "../database";
+import { requireWorkspaceFeature } from "../feature-flag/enforce";
 import {
   apiRouter,
   type BaseVariables,
@@ -115,6 +116,7 @@ const listRoute = createRoute({
     workspaceAccess.fromQuery(),
     requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { query: workspaceIdQuery },
   responses: {
@@ -133,6 +135,7 @@ const createRouteDef = createRoute({
     workspaceAccess.fromBody(),
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: {
     body: {
@@ -158,6 +161,7 @@ const detailRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: calendarIdParam },
   responses: {
@@ -178,6 +182,7 @@ const updateRouteDef = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: {
     params: calendarIdParam,
@@ -208,6 +213,7 @@ const previewRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: calendarIdParam, query: previewQuery },
   responses: {
@@ -229,6 +235,7 @@ const importHolidaysRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: {
     params: calendarIdParam,
@@ -265,6 +272,7 @@ const listPresetsRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: calendarIdParam },
   responses: {
@@ -286,6 +294,7 @@ const presetRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: {
     params: calendarIdParam,
@@ -330,6 +339,7 @@ const usageRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: calendarIdParam },
   responses: {
@@ -354,6 +364,7 @@ const deleteCalendarRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: calendarIdParam },
   responses: {

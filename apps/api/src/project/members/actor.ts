@@ -1,3 +1,9 @@
+import {
+  authorityFor,
+  can,
+  expandCapabilities,
+  isKeyCredential,
+} from "@taskdesk/permissions";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
@@ -21,6 +27,33 @@ export async function resolveRosterActor(
   const userId = c.get("userId") as string;
   const identity = await resolveCallerIdentity(c, userId);
   if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+  const project = await findLiveProject(db, scope.workspaceId, scope.projectId);
+  if (!project) throw new HTTPException(404, { message: "Project not found" });
+  const isInstanceAdmin = can(identity, "instance:admin", "instance", {
+    instance: true,
+  });
+  // P4R1-M1: what the caller holds at this project, the same selection the evaluator makes,
+  // clamped to the frozen subset of the API key when the request carries one (`can()` does the
+  // same; a key credential without a subset holds nothing).
+  const keyed = isKeyCredential(identity.credential);
+  const resolved =
+    isInstanceAdmin && !keyed
+      ? null
+      : authorityFor(identity, "project", {
+          projectId: scope.projectId,
+          workspaceId: scope.workspaceId,
+          organisationId: project.organisationId ?? undefined,
+          ancestorProjectIds: await loadProjectAncestorIds(
+            db,
+            scope.workspaceId,
+            scope.projectId,
+          ),
+        });
+  let held: ReadonlySet<string> | null = resolved;
+  if (resolved !== null && (keyed || identity.keyCapabilities !== undefined)) {
+    const keyHeld = expandCapabilities(identity.keyCapabilities ?? []);
+    held = new Set([...resolved].filter((name) => keyHeld.has(name)));
+  }
   return {
     personId: identity.personId,
     rank: callerRankInProject(
@@ -30,6 +63,7 @@ export async function resolveRosterActor(
     ),
     actorId: userId,
     actorType: c.get("apiKey") ? "api_key" : "person",
+    held,
   };
 }
 

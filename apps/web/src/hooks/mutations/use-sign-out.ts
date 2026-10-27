@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { clearRecentItems } from "@/components/search-command-menu/recent-items";
 import { getIdToken } from "@/fetchers/oauth/get-id-token";
 import { authClient } from "@/lib/auth-client";
 
@@ -22,6 +23,7 @@ function useSignOut(idpLogoutUrl?: string | null) {
       const result = await authClient.signOut({
         fetchOptions: {
           onSuccess: () => {
+            clearRecentItems();
             if (idpLogoutUrl) {
               const redirectUri = `${window.location.origin}/auth/sign-in`;
               const url = new URL(idpLogoutUrl);

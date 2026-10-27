@@ -40,13 +40,31 @@ import {
 import { mintStepUpToken, STEP_UP_TOKEN_HEADER } from "./helpers/step-up";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
+/** The version of the change detail now stored (1 while the change has none yet). */
+async function changeVersion(
+  call: (
+    path: string,
+    init?: { method?: string },
+  ) => Promise<Response> | Response,
+  path: string,
+): Promise<number> {
+  const body = (await (await call(path, { method: "GET" })).json()) as {
+    detail: { version: number } | null;
+  };
+  return body.detail?.version ?? 1;
+}
+
 const iso = (offsetDays: number, hour = 0) =>
   new Date(Date.UTC(2031, 0, 10 + offsetDays, hour)).toISOString();
 
 const json = { "content-type": "application/json" };
 
 type ChangeBody = {
-  detail: { risk: string | null; rollbackPlan: string | null } | null;
+  detail: {
+    risk: string | null;
+    rollbackPlan: string | null;
+    version: number;
+  } | null;
   cabRequired: boolean;
   rollbackPlanPresent: boolean;
   retrospective: boolean;
@@ -78,10 +96,15 @@ async function tenantWithCatalogue() {
       ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
     });
   };
-  const patch = async (body: unknown) => {
+  const patch = async (body: Record<string, unknown>) => {
+    // The edit names the detail version it was made against (P5-R1-10): a change with no detail
+    // row yet starts at 1.
+    const current = (await (
+      await call(`/api/work-items/${t.key}/change`)
+    ).json()) as ChangeBody;
     const response = await call(`/api/work-items/${t.key}/change`, {
       method: "PATCH",
-      body,
+      body: { version: current.detail?.version ?? 1, ...body },
     });
     expect(response.status, await response.clone().text()).toBe(200);
     return (await response.json()) as ChangeBody;
@@ -121,7 +144,7 @@ describe("change detail and workflow guards", () => {
     const task = await world.makeItem("A plain task");
     const response = await w.ownerCall(`/api/work-items/${task.key}/change`, {
       method: "PATCH",
-      body: { risk: "low" },
+      body: { risk: "low", version: 1 },
     });
     expect(response.status).toBe(422);
     const read = await w.ownerCall(`/api/work-items/${task.key}/change`);
@@ -165,6 +188,21 @@ describe("change detail and workflow guards", () => {
     expect(high?.blockedBy.map((b) => b.reasonCode)).toContain(
       "guard.change_risk_at_most",
     );
+  });
+
+  it("refuses a change-detail edit without the version, and a stale one is a 409 (P5-R1-10)", async () => {
+    const { t, call, patch } = await tenantWithCatalogue();
+    const missing = await call(`/api/work-items/${t.key}/change`, {
+      method: "PATCH",
+      body: { risk: "low" },
+    });
+    expect([400, 422]).toContain(missing.status);
+    await patch({ risk: "low" });
+    const stale = await call(`/api/work-items/${t.key}/change`, {
+      method: "PATCH",
+      body: { risk: "high", version: 1 },
+    });
+    expect(stale.status).toBe(409);
   });
 
   it("derives whether CAB is required from risk (CH-3) and reports it", async () => {
@@ -357,12 +395,12 @@ describe("change detail and workflow guards", () => {
     const { t, call, patch } = await tenantWithCatalogue();
     const inverted = await call(`/api/work-items/${t.key}/change`, {
       method: "PATCH",
-      body: { windowStart: iso(3), windowEnd: iso(2) },
+      body: { windowStart: iso(3), windowEnd: iso(2), version: 1 },
     });
     expect(inverted.status).toBe(422);
     const half = await call(`/api/work-items/${t.key}/change`, {
       method: "PATCH",
-      body: { windowStart: iso(3) },
+      body: { windowStart: iso(3), version: 1 },
     });
     expect(half.status).toBe(422);
     await patch({ risk: "low" });
@@ -552,7 +590,12 @@ describe("change calendar", () => {
       .where(eq(schema.workItemTable.id, item.id));
     const response = await w.ownerCall(`/api/work-items/${item.key}/change`, {
       method: "PATCH",
-      body: { serviceIds: [serviceId], windowStart: start, windowEnd: end },
+      body: {
+        serviceIds: [serviceId],
+        windowStart: start,
+        windowEnd: end,
+        version: 1,
+      },
     });
     expect(response.status, await response.clone().text()).toBe(200);
     return item;
@@ -829,7 +872,7 @@ describe("freeze override (CH-4)", () => {
     };
     const set = await cookieCall(`/api/work-items/${item.key}/change`, {
       method: "PATCH",
-      body: { windowStart: iso(2, 1), windowEnd: iso(2, 5) },
+      body: { windowStart: iso(2, 1), windowEnd: iso(2, 5), version: 1 },
     });
     expect(set.status, await set.clone().text()).toBe(200);
     return { app, owner, workspaceId, item, cookieCall };
@@ -842,9 +885,14 @@ describe("freeze override (CH-4)", () => {
       new Date(Date.now() - 86_400_000),
       new Date(Date.now() + 86_400_000),
     );
-    const clear = await w.cookieCall(`/api/work-items/${w.item.key}/change`, {
+    const changeUrl = `/api/work-items/${w.item.key}/change`;
+    const clear = await w.cookieCall(changeUrl, {
       method: "PATCH",
-      body: { windowStart: null, windowEnd: null },
+      body: {
+        windowStart: null,
+        windowEnd: null,
+        version: await changeVersion(w.cookieCall, changeUrl),
+      },
     });
     expect(clear.status, await clear.clone().text()).toBe(200);
     expect(((await clear.json()) as ChangeBody).freeze.blocked).toBe(true);
@@ -960,7 +1008,14 @@ describe("freeze override (CH-4)", () => {
     // keeps it, moving it into a freeze it never named does not.
     const moved = await w.cookieCall(`/api/work-items/${w.item.key}/change`, {
       method: "PATCH",
-      body: { windowStart: iso(3, 1), windowEnd: iso(3, 5) },
+      body: {
+        windowStart: iso(3, 1),
+        windowEnd: iso(3, 5),
+        version: await changeVersion(
+          w.cookieCall,
+          `/api/work-items/${w.item.key}/change`,
+        ),
+      },
     });
     expect(moved.status).toBe(200);
     const movedBody = (await moved.json()) as ChangeBody;
@@ -976,7 +1031,14 @@ describe("freeze override (CH-4)", () => {
       `/api/work-items/${w.item.key}/change`,
       {
         method: "PATCH",
-        body: { windowStart: iso(25, 1), windowEnd: iso(25, 5) },
+        body: {
+          windowStart: iso(25, 1),
+          windowEnd: iso(25, 5),
+          version: await changeVersion(
+            w.cookieCall,
+            `/api/work-items/${w.item.key}/change`,
+          ),
+        },
       },
     );
     expect(elsewhere.status).toBe(200);
@@ -1086,8 +1148,11 @@ describe("the freeze override is freeze-scoped (CH-4, P5-R5-02, R5-04, R5-10)", 
         : csrfRequest(t.app, path, requestInit, user.cookie));
     };
     const changePath = `/api/work-items/${t.key}/change`;
-    const patch = (body: unknown) =>
-      call(changePath, { method: "PATCH", body });
+    const patch = async (body: Record<string, unknown>) =>
+      call(changePath, {
+        method: "PATCH",
+        body: { version: await changeVersion(call, changePath), ...body },
+      });
     const transition = (toStateTemplateId: string) =>
       call(`/api/work-items/${t.key}/transition`, {
         method: "POST",
@@ -1328,7 +1393,13 @@ describe("the freeze override is freeze-scoped (CH-4, P5-R5-02, R5-04, R5-10)", 
     const newKey = ((await moved.json()) as { item: { key: string } }).item.key;
     const refused = await w.call(`/api/work-items/${newKey}/change`, {
       method: "PATCH",
-      body: window25,
+      body: {
+        ...window25,
+        version: await changeVersion(
+          w.call,
+          `/api/work-items/${newKey}/change`,
+        ),
+      },
     });
     expect(refused.status, await refused.clone().text()).toBe(409);
     expect(await refused.text()).toContain("change.frozen");

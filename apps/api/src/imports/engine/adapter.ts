@@ -119,6 +119,43 @@ export type SourceRecord = {
 
 export type SourcePage = { records: SourceRecord[]; nextCursor: string | null };
 
+/** Fixed codes an adapter uses for a source item it could not turn into a record. */
+export const UNREADABLE_RECORD_CODES = [
+  "unreadable_item",
+  "missing_title",
+  "missing_id",
+] as const;
+export type UnreadableRecordCode = (typeof UNREADABLE_RECORD_CODES)[number];
+
+export function isUnreadableRecord(record: SourceRecord): boolean {
+  return (UNREADABLE_RECORD_CODES as readonly string[]).includes(
+    record.rejectCode ?? "",
+  );
+}
+
+/**
+ * A record that exists in the source but cannot be imported (the source omitted it from a batch, or
+ * it has no title). It is returned instead of being skipped, so it is counted, rejected with exactly
+ * `code` and reported as a `record_rejected` loss in discovery, the dry run and the run (IM-4:
+ * nothing is dropped silently). `sourceId` is the source's own id, or a deterministic position id
+ * when the item has none.
+ */
+export function unreadableRecord(input: {
+  sourceType: string;
+  sourceId: string;
+  code: UnreadableRecordCode;
+  sourceUrl?: string | undefined;
+}): SourceRecord {
+  return {
+    sourceType: input.sourceType,
+    sourceId: input.sourceId,
+    ...(input.sourceUrl ? { sourceUrl: input.sourceUrl } : {}),
+    title: input.code,
+    facets: [],
+    rejectCode: input.code,
+  };
+}
+
 /** Facts an adapter resolves from a stored connection. `credential` is plaintext, in memory only. */
 export type AdapterConnection = {
   pluginId: ImportPluginId;
@@ -161,7 +198,10 @@ export type DiscoveryResult = {
   facets: DiscoveredFacet[];
   /** Records per source type. */
   counts: Record<string, number>;
+  /** Includes the records in `unreadable`: the dry run counts them too. */
   totalRecords: number;
+  /** Source items that cannot be imported, by fixed code (see `unreadableRecord`). */
+  unreadable?: Record<string, number>;
 };
 
 /** Targets a proposal or an operator may choose (see mapping.ts for per-domain validity). */
@@ -188,12 +228,28 @@ export type ProposalContext = {
   typeIdsByKey: ReadonlyMap<string, string>;
 };
 
+/**
+ * Progress an adapter reports while it scans the source for discovery. The engine persists it for the
+ * wizard. `onProgress` may reject to stop the scan (the job was cancelled or superseded): an adapter
+ * lets that rejection propagate. It is optional on both sides: an adapter that reads a file in one
+ * step never calls it.
+ */
+export type DiscoverHooks = {
+  onProgress?: (progress: {
+    pages: number;
+    records: number;
+  }) => void | Promise<void>;
+};
+
 export interface ImportSourceAdapter {
   readonly pluginId: ImportPluginId;
   /** Source-specific page size (ADO 200, others 500). Capped at 500 by the engine. */
   readonly chunkSize: number;
   connect(connection: AdapterConnection): Promise<ConnectResult>;
-  discover(connection: AdapterConnection): Promise<DiscoveryResult>;
+  discover(
+    connection: AdapterConnection,
+    hooks?: DiscoverHooks,
+  ): Promise<DiscoveryResult>;
   proposeMapping(
     discovery: DiscoveryResult,
     context: ProposalContext,

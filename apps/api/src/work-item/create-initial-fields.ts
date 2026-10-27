@@ -21,7 +21,10 @@ export async function recordInitialWorkItemFields(
   fields: InitialWorkItemFields,
   actorId: string | null,
   actorType: ActivityActorType,
+  /** `import`: the events are history, not triggers (automation and webhook consumers skip them). */
+  eventSource?: "import",
 ) {
+  const sourcePayload = eventSource ? { source: eventSource } : {};
   const common = {
     workItemId: item.id,
     key: item.key,
@@ -77,7 +80,7 @@ export async function recordInitialWorkItemFields(
         ...common,
         kind: "work_item.updated",
         customerVisible,
-        payload: { key: item.key, url, changes },
+        payload: { key: item.key, url, changes, ...sourcePayload },
       }),
     });
   }
@@ -120,7 +123,13 @@ export async function recordInitialWorkItemFields(
         kind: "work_item.assigned",
         customerVisible: true,
         notify: { resolveRecipients: resolveWorkItemEventRecipients },
-        payload: { workItemId: item.id, key: item.key, url, ...assignment },
+        payload: {
+          workItemId: item.id,
+          key: item.key,
+          url,
+          ...assignment,
+          ...sourcePayload,
+        },
       }),
     });
   }

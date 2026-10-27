@@ -7,6 +7,7 @@ import { importRunTable } from "../../../apps/api/src/database/schema-imports";
 import type { SourceRecord } from "../../../apps/api/src/imports/engine/adapter";
 import { registerImportAdapter } from "../../../apps/api/src/imports/engine/adapter";
 import { grantRunApproval } from "../../../apps/api/src/imports/engine/service";
+import { runSetupJob } from "../../../apps/api/src/imports/engine/setup-job";
 import {
   createFakeAdapter,
   setFakeFixture,
@@ -153,6 +154,64 @@ export function registerFake(chunkSize: number) {
 
 export { setFakeFixture };
 
+/**
+ * A setup step (discovery, whole-run dry run) is a background job: the POST answers 202 and the work
+ * happens in the worker. Tests run with the post-request kick off, so this drives the worker the way
+ * the kick would, then reads the job's final state from the engine DTO.
+ */
+export async function runSetupStep(
+  app: App,
+  key: string,
+  runId: string,
+  step: "discover" | "dry-run-all",
+  options: { expectFailure?: string } = {},
+) {
+  const accepted = await call(
+    app,
+    key,
+    `/api/imports/${runId}/${step}`,
+    post(),
+    202,
+  );
+  expect(["accepted", "running"]).toContain(accepted.status);
+  await runSetupJob(runId);
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const engine = await call(
+      app,
+      key,
+      `/api/imports/${runId}/engine`,
+      undefined,
+      200,
+    );
+    if (engine.job && engine.job.status !== "running") {
+      if (options.expectFailure === undefined)
+        expect(engine.job, JSON.stringify(engine.job)).toMatchObject({
+          status: "completed",
+        });
+      else
+        expect(engine.job).toMatchObject({
+          status: "failed",
+          failure: options.expectFailure,
+        });
+      return engine;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error("setup job did not finish");
+}
+
+/** Discovery, then the saved mapping (what the synchronous discover used to return). */
+export async function discoverAndWait(app: App, key: string, runId: string) {
+  await runSetupStep(app, key, runId, "discover");
+  return call(app, key, `/api/imports/${runId}/mapping`, undefined, 200);
+}
+
+/** Whole-run dry run, then its report. */
+export async function dryRunAndWait(app: App, key: string, runId: string) {
+  await runSetupStep(app, key, runId, "dry-run-all");
+  return call(app, key, `/api/imports/${runId}/dry-run-all`, undefined, 200);
+}
+
 /** Source + run + discover for a fixture id. Returns ids and the discovered mapping. */
 export async function startRun(
   app: App,
@@ -180,13 +239,7 @@ export async function startRun(
     post({ projectId: f.project.id, sourceRef }),
     200,
   );
-  const mapping = await call(
-    app,
-    f.key,
-    `/api/imports/${run.id}/discover`,
-    post(),
-    200,
-  );
+  const mapping = await discoverAndWait(app, f.key, run.id);
   return { source, run, mapping };
 }
 
@@ -214,13 +267,7 @@ export async function dryRunAndExecuteBody(
   key: string,
   runId: string,
 ) {
-  const report = await call(
-    app,
-    key,
-    `/api/imports/${runId}/dry-run-all`,
-    post(),
-    200,
-  );
+  const report = await dryRunAndWait(app, key, runId);
   return {
     report,
     body: {

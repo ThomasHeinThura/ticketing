@@ -222,8 +222,11 @@ export function CommandPalette({
   );
 
   const recentItems = useMemo<RecentItem[]>(
-    () => (open && workspace?.id ? readRecentItems(workspace.id) : []),
-    [open, workspace?.id],
+    () =>
+      open && workspace?.id && session?.user?.id
+        ? readRecentItems(session.user.id, workspace.id)
+        : [],
+    [open, workspace?.id, session?.user?.id],
   );
 
   const searchGroups = useMemo(
@@ -239,8 +242,8 @@ export function CommandPalette({
 
   const handleSearchResult = useCallback(
     (entry: PaletteEntry) => {
-      if (workspace?.id) {
-        pushRecentItem(workspace.id, {
+      if (workspace?.id && session?.user?.id) {
+        pushRecentItem(session.user.id, workspace.id, {
           type: entry.type,
           id: entry.id,
           title: entry.title,
@@ -252,7 +255,7 @@ export function CommandPalette({
       onOpenChange(false);
       navigate({ to: entry.href as never });
     },
-    [navigate, onOpenChange, workspace?.id],
+    [navigate, onOpenChange, workspace?.id, session?.user?.id],
   );
 
   const getResultIcon = (type: PaletteEntry["type"]) => {

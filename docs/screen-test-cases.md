@@ -58,7 +58,7 @@ Current scoped execution: [browser evidence](report/browser/) records real UI mu
 | Request types | `/agent/settings/request-types?requestTypeId={id}` | Edit form fields, intake window | Portal form reflects change | |
 | SLA policies and editor | `/agent/settings/sla-policies/{id}` | Create policy, attach calendar, breach item | Clock, pause and breach shown; escalation notifies recipients | |
 | Service calendars | `/agent/settings/calendars/{id}` | Edit hours and holidays | SLA due date respects calendar | |
-| Workflows | `/agent/settings/workflows/{id}` | Add guarded edge; scheduled transition | Most restrictive matching edge wins; transition fires on time | |
+| Workflows | `/agent/settings/workflows/{id}` | Add guarded edge; scheduled transition | A person may use any matching edge their roles hold (an ungated edge beside a gated one stays usable); a scheduled/system hop applies the most restrictive matching edge; transition fires on time | |
 | Audit log | `/agent/god-mode/audit` | Filter by action, entity, date | Rows match actions; read is itself audited | |
 
 ## P3 — Customer portal and identity

@@ -21,6 +21,7 @@ import {
   commentTable,
   instanceFeatureFlagTable,
   instanceSettingTable,
+  organisationQuotaTable,
   organisationTable,
   personTable,
   projectTable,
@@ -363,6 +364,12 @@ export async function findSubmissionAttachmentContent(
         identity.side === "customer"
           ? eq(submissionTable.requesterId, identity.personId)
           : undefined,
+        identity.side === "customer"
+          ? inArray(
+              attachmentTable.workItemId,
+              liveWorkItemIds(executor, input.linkedWorkItemId),
+            )
+          : undefined,
         identity.side === "staff"
           ? inArray(
               attachmentTable.workItemId,
@@ -672,6 +679,104 @@ export async function lockSubmissionForCompletion(
     .limit(1);
 }
 
+/**
+ * P1 attachment limits (`feature-contracts-p1.md` "Total per organisation"): the organisation
+ * that owns `workspaceId`, its `organisation_quota.max_storage_bytes` (20 GiB when no row
+ * exists) and the bytes currently held by its live (`pending` + `ready`) attachments, across
+ * every workspace of that organisation. `excludeAttachmentId` removes the row being completed so
+ * its own reserved bytes are not counted twice. Takes a transaction-scoped advisory lock keyed
+ * on the organisation first, so concurrent presigns serialise their quota check.
+ */
+export const DEFAULT_MAX_STORAGE_BYTES = 21_474_836_480;
+
+export async function readOrganisationStorageUsage(
+  executor: Executor,
+  input: { workspaceId: string; excludeAttachmentId?: string; lock?: boolean },
+) {
+  const [workspace] = await executor
+    .select({ organisationId: workspaceTable.organisationId })
+    .from(workspaceTable)
+    .where(eq(workspaceTable.id, input.workspaceId))
+    .limit(1);
+  if (!workspace) return null;
+  if (input.lock) {
+    await executor.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${`attachment-storage-quota:${workspace.organisationId}`}, 0))`,
+    );
+  }
+  const [quota] = await executor
+    .select({ maxStorageBytes: organisationQuotaTable.maxStorageBytes })
+    .from(organisationQuotaTable)
+    .where(eq(organisationQuotaTable.organisationId, workspace.organisationId))
+    .limit(1);
+  const [usage] = await executor
+    .select({
+      used: sql<string>`coalesce(sum(${attachmentTable.size}), 0)`,
+    })
+    .from(attachmentTable)
+    .innerJoin(
+      workspaceTable,
+      eq(workspaceTable.id, attachmentTable.workspaceId),
+    )
+    .where(
+      and(
+        eq(workspaceTable.organisationId, workspace.organisationId),
+        inArray(attachmentTable.state, ["pending", "ready"]),
+        isNull(attachmentTable.deletedAt),
+        input.excludeAttachmentId
+          ? ne(attachmentTable.id, input.excludeAttachmentId)
+          : undefined,
+      ),
+    );
+  return {
+    organisationId: workspace.organisationId,
+    maxStorageBytes: quota?.maxStorageBytes ?? DEFAULT_MAX_STORAGE_BYTES,
+    usedBytes: Number(usage?.used ?? 0),
+  };
+}
+
+/** The work item `workItemId` while it, and its project, are live (not deleted or archived). */
+function liveWorkItemIds(executor: Executor, workItemId: string) {
+  return executor
+    .select({ id: workItemTable.id })
+    .from(workItemTable)
+    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+    .where(
+      and(
+        eq(workItemTable.id, workItemId),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+      ),
+    );
+}
+
+/**
+ * AT-5/AT-7: the portal requester keeps access to a converted work item's customer-visible
+ * files only while that item and its project are live. A soft-deleted or archived item (or a
+ * deleted project) behaves as if the submission carried no link.
+ */
+export async function findLiveLinkedWorkItemId(
+  executor: Executor,
+  workItemId: string | null,
+): Promise<string | null> {
+  if (!workItemId) return null;
+  const [row] = await executor
+    .select({ id: workItemTable.id })
+    .from(workItemTable)
+    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+    .where(
+      and(
+        eq(workItemTable.id, workItemId),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+      ),
+    )
+    .limit(1);
+  return row?.id ?? null;
+}
+
 export async function listPortalSubmissionAttachments(
   executor: Executor,
   identity: ResolvedIdentity | null,
@@ -714,6 +819,14 @@ export async function listPortalSubmissionAttachments(
                   and(
                     eq(submissionTable.state, "accepted"),
                     eq(attachmentTable.workItemId, submissionTable.workItemId),
+                    // P1R2-4: a converted item that staff deleted or archived (or whose
+                    // project was deleted) no longer shares its files with the portal.
+                    input.workItemId
+                      ? inArray(
+                          attachmentTable.workItemId,
+                          liveWorkItemIds(executor, input.workItemId),
+                        )
+                      : sql`false`,
                   ),
                 ),
               ),

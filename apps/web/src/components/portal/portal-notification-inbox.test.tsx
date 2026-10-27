@@ -94,6 +94,29 @@ describe("portal notification inbox", () => {
 
   afterEach(() => cleanup());
 
+  it("P2R1-04: links a customer approver's approval event to the Approvals screen", async () => {
+    mocks.get.mockReset().mockResolvedValue({
+      ...page,
+      data: [
+        {
+          id: "notification-2",
+          kind: "approval.requested",
+          isRead: false,
+          createdAt: "2026-10-26T11:00:00.000Z",
+          requestRef: null,
+          commentId: null,
+        },
+      ],
+    });
+    renderInbox();
+    expect(
+      await screen.findByRole("link", {
+        name: "notifications.events.approvalRequested",
+      }),
+    ).toHaveAttribute("href", "/approvals");
+    expect(screen.queryByText("notifications.requestReference")).toBeNull();
+  });
+
   it("shows only customer filters and links to the exact public comment", async () => {
     renderInbox();
 

@@ -106,12 +106,15 @@ export async function timeWorld() {
   const childItem = child[0];
   if (!childItem) throw new Error("child missing");
   // Project reach and the project role's capabilities are decided per project (`budget:*` is
-  // evaluated against the caller's project role, like every project-scoped route).
+  // evaluated against the caller's project role, like every project-scoped route). Rate
+  // visibility is resolved at the project too (P5-R1-06), so the owner's project role keeps
+  // `time_entry:manage_rates`, as the workspace owner role holds it.
   for (const project of [projectA, projectB]) {
     await grantWorkItemProjectAccess(owner.user.id, project.id);
     await grantProjectRole(owner.user.id, project.id, [
       "budget:read",
       "budget:manage",
+      "time_entry:manage_rates",
     ]);
   }
   const people: Record<string, Awaited<ReturnType<typeof addMember>>> = {};

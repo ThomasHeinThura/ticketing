@@ -12,6 +12,10 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
 import {
   listReachOf,
@@ -24,6 +28,12 @@ import {
 } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { intakeAuditContext } from "./audit";
+import {
+  REQUEST_TYPE_DELETION_ROUTE,
+  requestTypeDeletionBlockers,
+  requestTypeDeletionRefusal,
+} from "./deletion-target";
 import { suggestDuplicatesForQueueRows } from "./duplicate-suggestions";
 import { parseSubmissionListFilters } from "./list-filters";
 import {
@@ -221,13 +231,16 @@ const portalSubmissionResponseSchema = z.object({
   messages: z.array(
     z.object({
       id: z.string(),
-      /** `customer` or `triager` (staff); never a person id. */
-      actorType: z.enum(["customer", "triager"]),
+      /** `customer`, `triager` (staff) or `system` (IQ-15 auto-decline); never a person id. */
+      actorType: z.enum(["customer", "triager", "system"]),
       /** CP-4: only staff who act publicly are named; always null for a customer. */
       authorName: z.string().nullable(),
       /** True for the viewer's own message. */
       mine: z.boolean(),
       body: z.string(),
+      /** A system message's stable reason (`P2R1-05`), rendered in the customer's locale. */
+      reasonCode: z.string().nullable(),
+      reasonParams: z.record(z.string(), z.unknown()).nullable(),
       createdAt: z.string().datetime(),
     }),
   ),
@@ -479,6 +492,8 @@ const createRouteDef = createRoute({
   tags: ["Request types"],
   summary: "Create a request type",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     requestTypeCollectionScope,
     requireApiKeyPermissionScope({ request_type: ["manage"] }),
     requireWorkspaceCapability("request_type:manage"),
@@ -525,6 +540,8 @@ const patchRoute = createRoute({
   tags: ["Request types"],
   summary: "Update a request type draft",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     requestTypeReach,
     requireApiKeyPermissionScope({ request_type: ["manage"] }),
     requireWorkspaceCapability("request_type:manage"),
@@ -549,6 +566,8 @@ const publishRoute = createRoute({
   tags: ["Request types"],
   summary: "Publish an immutable form version",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     requestTypeReach,
     requireApiKeyPermissionScope({ request_type: ["manage"] }),
     requireWorkspaceCapability("request_type:manage"),
@@ -573,6 +592,8 @@ const unpublishRoute = createRoute({
   tags: ["Request types"],
   summary: "Unpublish a request type",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     requestTypeReach,
     requireApiKeyPermissionScope({ request_type: ["manage"] }),
     requireWorkspaceCapability("request_type:manage"),
@@ -581,6 +602,29 @@ const unpublishRoute = createRoute({
   responses: {
     200: jsonResponse("Unpublished request type", savedRequestTypeSchema),
     404: errorResponse("Request type not found"),
+  },
+});
+const deleteRequestTypeRoute = createRoute({
+  method: "delete",
+  operationId: "deleteRequestType",
+  path: "/request-types/{id}",
+  tags: ["Request types"],
+  summary: "Delete an unpublished, unused request type",
+  description:
+    "Request deletion (202 pending action, click approval). Refused while the request type is published or has any submission.",
+  middleware: [
+    requestTypeReach,
+    requireApiKeyPermissionScope({ request_type: ["manage"] }),
+    requireWorkspaceCapability("request_type:manage"),
+  ] as const,
+  request: { params: requestTypeIdParam },
+  responses: {
+    202: jsonResponse(
+      "Deletion awaiting approval",
+      registeredDeletionRequestSchema,
+    ),
+    404: errorResponse("Request type not found"),
+    409: errorResponse("Request type is published or has submissions"),
   },
 });
 const portalCatalogueResponseSchema = z.object({
@@ -641,7 +685,7 @@ const createSubmissionRoute = createRoute({
   path: "/portal/submissions",
   tags: ["Portal submissions"],
   summary: "Submit a request",
-  middleware: [portalOrganisation] as const,
+  middleware: [intakeAuditContext, portalOrganisation] as const,
   request: {
     body: {
       required: true,
@@ -734,6 +778,8 @@ const claimRoute = createRoute({
   tags: ["Intake"],
   summary: "Claim a submission for triage",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
@@ -760,6 +806,8 @@ const acceptRoute = createRoute({
   tags: ["Intake"],
   summary: "Convert a submission into a work item",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
@@ -792,6 +840,8 @@ const duplicateRoute = createRoute({
   tags: ["Intake"],
   summary: "Link a submission to an existing work item",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
@@ -854,6 +904,8 @@ const declineRoute = createRoute({
   tags: ["Intake"],
   summary: "Decline with a customer-visible reason",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
@@ -885,6 +937,8 @@ const staffMessageRoute = createRoute({
   tags: ["Intake"],
   summary: "Ask for clarification",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
@@ -975,7 +1029,7 @@ const portalMessageRoute = createRoute({
   path: "/portal/submissions/{ref}/messages",
   tags: ["Portal submissions"],
   summary: "Reply to a clarification",
-  middleware: [portalOwnSubmission] as const,
+  middleware: [intakeAuditContext, portalOwnSubmission] as const,
   request: {
     params: submissionRefParam,
     body: {
@@ -1002,7 +1056,7 @@ const withdrawRoute = createRoute({
   path: "/portal/submissions/{ref}/withdraw",
   tags: ["Portal submissions"],
   summary: "Withdraw an unclaimed submission",
-  middleware: [portalOwnSubmission] as const,
+  middleware: [intakeAuditContext, portalOwnSubmission] as const,
   request: { params: submissionRefParam },
   responses: {
     200: jsonResponse(
@@ -1019,7 +1073,7 @@ const portalEscalateRoute = createRoute({
   path: "/portal/submissions/{ref}/escalate-priority",
   tags: ["Portal submissions"],
   summary: "Raise the priority of the caller's request (never lower it)",
-  middleware: [portalOwnSubmission] as const,
+  middleware: [intakeAuditContext, portalOwnSubmission] as const,
   request: {
     params: submissionRefParam,
     body: {
@@ -1045,7 +1099,7 @@ const portalReopenRoute = createRoute({
   path: "/portal/submissions/{ref}/reopen",
   tags: ["Portal submissions"],
   summary: "Reopen the caller's resolved or auto-declined request",
-  middleware: [portalOwnSubmission] as const,
+  middleware: [intakeAuditContext, portalOwnSubmission] as const,
   request: { params: submissionRefParam },
   responses: {
     200: jsonResponse(
@@ -1064,7 +1118,7 @@ const portalSatisfactionRoute = createRoute({
   path: "/portal/submissions/{ref}/satisfaction",
   tags: ["Portal submissions"],
   summary: "Rate (or change the rating of) a resolved request",
-  middleware: [portalOwnSubmission] as const,
+  middleware: [intakeAuditContext, portalOwnSubmission] as const,
   request: {
     params: submissionRefParam,
     body: {
@@ -1158,6 +1212,18 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
       200,
     ),
   )
+  .openapi(deleteRequestTypeRoute, async (c) => {
+    const id = c.req.valid("param").id;
+    const blockers = await requestTypeDeletionBlockers(db, id);
+    if (blockers.length > 0) throw requestTypeDeletionRefusal(blockers);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: REQUEST_TYPE_DELETION_ROUTE,
+      targetType: "request_type",
+      id,
+      workspaceId: c.get("workspaceId"),
+    });
+    return c.json(pending, 202);
+  })
   .openapi(catalogueRoute, async (c) => {
     const identity = await portalIdentity(c.get("userId"));
     const rows = await portalCatalogue(

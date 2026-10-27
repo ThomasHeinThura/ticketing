@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import type { WorkItemSlaMetric } from "@/fetchers/work-item/get-work-item-sla";
 import useGetWorkItemSla from "@/hooks/queries/work-item/use-get-work-item-sla";
 import { formatDate } from "@/lib/format";
+import { HttpError } from "@/lib/http-error";
 
 const STATE_VARIANT: Record<
   WorkItemSlaMetric["state"],
@@ -84,6 +85,9 @@ export default function WorkItemSla({
   const calendarName = query.data?.calendarName ?? null;
   const atRiskThresholdPct = query.data?.atRiskThresholdPct ?? null;
   const pauses: SlaPauseRow[] | undefined = query.data?.pauses;
+  // `feature.sla` off: the route answers 404 and the panel is not shown at all (P4R1-M2).
+  if (query.error instanceof HttpError && query.error.status === 404)
+    return null;
   return (
     <section
       className="flex flex-col gap-2"

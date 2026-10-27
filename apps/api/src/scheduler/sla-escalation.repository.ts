@@ -1,4 +1,4 @@
-import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, notInArray, sql } from "drizzle-orm";
 import type { Executor } from "../database/executor";
 import {
   commentTable,
@@ -54,6 +54,36 @@ export async function insertEscalationWalk(
         slaEscalationTable.triggerEventId,
       ],
     });
+}
+
+/**
+ * A metric that flaps breached -> at_risk -> breached emits a second `sla.breached` (a new
+ * trigger event id) while the first walk is still active. Only one walk per (item, metric) may be
+ * active, so the older one is stopped as `superseded` before the new breach starts its own.
+ */
+export async function supersedeActiveEscalationWalks(
+  executor: Executor,
+  workItemId: string,
+  metric: string,
+  /** The new breach's event id: a redelivery of the SAME event never stops its own walk. */
+  triggerEventId: string,
+): Promise<void> {
+  await executor
+    .update(slaEscalationTable)
+    .set({
+      state: "stopped",
+      stopReason: "superseded",
+      nextDueAt: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(slaEscalationTable.workItemId, workItemId),
+        eq(slaEscalationTable.metric, metric),
+        eq(slaEscalationTable.state, "active"),
+        ne(slaEscalationTable.triggerEventId, triggerEventId),
+      ),
+    );
 }
 
 /**

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
 import WorkItemSla, { formatSlaInstant } from "./work-item-sla";
 
 const mocks = vi.hoisted(() => ({ query: {} as Record<string, unknown> }));
@@ -185,6 +186,17 @@ describe("WorkItemSla", () => {
     expect(screen.queryByTestId("work-item-sla-threshold-marker")).toBeNull();
     expect(screen.queryByTestId("work-item-sla-paused")).toBeNull();
     expect(screen.getByTestId("work-item-sla-at-risk")).toBeTruthy();
+  });
+
+  it("is not shown at all when the route answers 404 (feature.sla off, P4R1-M2)", () => {
+    mocks.query = {
+      isLoading: false,
+      isError: true,
+      error: new HttpError(404, "Failed to load the work item SLA"),
+      data: undefined,
+    };
+    const { container } = render(<WorkItemSla workItemKey="HELP-7" />);
+    expect(container.querySelector("[data-testid='work-item-sla']")).toBeNull();
   });
 
   it("says when no SLA data is available", () => {

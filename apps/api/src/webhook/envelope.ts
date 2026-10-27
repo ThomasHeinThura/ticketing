@@ -83,6 +83,11 @@ export function projectWebhookEnvelope(
     if (changes.length === 0) return { kind: "nothing_visible" };
     payload.changes = changes;
   }
+  if (envelope.kind === "work_item.transitioned") {
+    // NO-19 (P2R1-17): a transition note leaves the instance only when it is public. A payload
+    // that names no visibility (an older outbox row) fails closed: the note is dropped.
+    if (payload.noteVisibility !== "public") delete payload.note;
+  }
 
   const data: Record<string, unknown> = {};
   const workItemFamily = family === "work_item" || family === "sla";

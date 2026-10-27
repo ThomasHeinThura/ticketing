@@ -3,6 +3,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   check,
   foreignKey,
@@ -246,6 +247,9 @@ export const metricSnapshotDayTable = pgTable(
     // Legacy writers certify only their original three metrics. New readers must
     // require the version written after every supported fact family is complete.
     snapshotVersion: integer("snapshot_version").notNull().default(1),
+    // The workspace epoch the day was computed under (metric_snapshot_epoch); a bumped epoch
+    // makes the marker untrusted without touching it (0203).
+    epoch: bigint("epoch", { mode: "number" }).notNull().default(0),
   },
   (table) => [
     primaryKey({
@@ -265,6 +269,17 @@ export const metricSnapshotDayTable = pgTable(
     ),
   ],
 );
+
+/** Bumped by sources that can change facts of any day; a day marker is trusted only at its epoch. */
+export const metricSnapshotEpochTable = pgTable("metric_snapshot_epoch", {
+  workspaceId: text("workspace_id")
+    .primaryKey()
+    .references(() => workspaceTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+  epoch: bigint("epoch", { mode: "number" }).notNull().default(0),
+});
 
 /**
  * RP-10: an export too large to answer inside the request. `spec` is what to run (window, filters,

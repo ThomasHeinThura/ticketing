@@ -8,6 +8,7 @@ import {
   workspaceTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { workspaceFeatureEnabled } from "../../feature-flag/enforce";
 import { resolveProjectDefaultAssignee } from "../../project/default-assignee";
 import { resolveProjectSlaPolicyId } from "../../project/effective-settings";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
@@ -63,6 +64,11 @@ export type CreateWorkItemInput = InitialWorkItemFields & {
   actorType: ActivityActorType;
   /** Import event provenance; the actor remains the real authenticated caller. */
   eventSource?: "import";
+  /**
+   * `none`: attach no SLA policy version. Used by imports: a historical item must not start a
+   * live clock that breaches and escalates the moment it lands (see imports/writer/fields.ts).
+   */
+  sla?: "none";
   /** Runs inside the create transaction right after the row and its initial fields (`WI-5` templates). */
   afterInsert?: (
     tx: Parameters<Parameters<typeof withCreationTransaction>[0]>[0],
@@ -125,13 +131,21 @@ export async function createWorkItemInTransaction(
   if (!workspace) {
     throw new Error("Work item's workspace disappeared during creation");
   }
+  // P4R1-M2: with `feature.sla` off no SLA clock starts; items created then stay unpinned.
+  const slaOn = await workspaceFeatureEnabled(
+    "feature.sla",
+    project.workspaceId,
+    tx,
+  );
   const policyId =
-    type.slaPolicyId ??
-    resolveProjectSlaPolicyId({
-      mode: project.slaPolicyMode as "inherit" | "override",
-      overrideId: project.slaPolicyId,
-      workspaceDefaultId: workspace.slaPolicyId,
-    });
+    input.sla === "none" || !slaOn
+      ? null
+      : (type.slaPolicyId ??
+        resolveProjectSlaPolicyId({
+          mode: project.slaPolicyMode as "inherit" | "override",
+          overrideId: project.slaPolicyId,
+          workspaceDefaultId: workspace.slaPolicyId,
+        }));
   if (policyId) {
     const [ownedPolicy] = await tx
       .select({ id: slaPolicyTable.id })
@@ -230,6 +244,7 @@ export async function createWorkItemInTransaction(
     effectiveFields,
     actorId,
     actorType,
+    source === "import" ? "import" : undefined,
   );
   await input.afterInsert?.(tx, inserted);
   return {

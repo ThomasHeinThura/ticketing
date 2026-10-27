@@ -79,7 +79,12 @@ async function seedAtRiskBulk(count: number) {
 
 async function settle(user: User, id: string): Promise<ExportDto> {
   await runReportExport();
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  // Queuing kicks the job in the background, which then holds the job lease, so the calls
+  // here can return at once while that run works. A large export under a loaded full
+  // suite can take well over 5 s; give up only near the test timeout, because a test that
+  // gives up early leaves the background run holding table locks over the next test's reset.
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
     const response = await w.get(user, `/api/report-exports/${id}`);
     expect(response.status).toBe(200);
     const { data } = (await response.json()) as { data: ExportDto };

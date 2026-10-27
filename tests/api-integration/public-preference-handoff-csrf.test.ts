@@ -13,6 +13,7 @@ import { createApp } from "../../apps/api/src/index";
 import { signNotificationPreferenceLink } from "../../apps/api/src/notification/preference-link";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import { createImpersonatingAdmin } from "./helpers/impersonator";
 
 const bcrypt = createRequire(
   new URL("../../apps/api/package.json", import.meta.url),
@@ -376,7 +377,7 @@ describe.each(["agent", "customer"] as const)(
       const proof = await f.proof();
       await db
         .update(schema.sessionTable)
-        .set({ impersonatedBy: f.user.id })
+        .set({ impersonatedBy: await createImpersonatingAdmin() })
         .where(eq(schema.sessionTable.id, f.session.id));
       // GM-9/GM-11: only the agent issuer serves an impersonation session (its ordinary
       // writes and exit control need a token); the portal issuer never does. The handoff

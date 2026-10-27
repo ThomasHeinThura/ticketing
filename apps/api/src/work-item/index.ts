@@ -4,6 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import { clientIpForContext } from "../api-key/enforce";
 import { appendAuditLog } from "../audit/audit-writer";
 import { auditOriginForApiKey } from "../audit/mcp-origin";
+import { auditRequestContext } from "../audit/request-context";
 import { applyWorkItemFieldValues } from "../custom-field/repository";
 import db from "../database";
 import {
@@ -11,6 +12,7 @@ import {
   personTable,
   workItemTable,
 } from "../database/schema";
+import { requireWorkspaceFeature } from "../feature-flag/enforce";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import {
@@ -570,6 +572,8 @@ const getWorkItemSlaRoute = createRoute({
   middleware: [
     requireWorkItemReach("key", { allowArchivedForRead: true }),
     requireWorkspaceCapability("work_item:read"),
+    // The SLA panel is hidden while `feature.sla` is off (ST-11: no persisted record is deleted).
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: workItemKeyParam },
   responses: {
@@ -2782,6 +2786,8 @@ const workItem = apiRouter<
           toStateTemplateId,
           note,
           auditOrigin: auditOriginForApiKey(c.get("apiKey")),
+          apiKey: c.get("apiKey"),
+          audit: auditRequestContext(c),
         },
       );
       return c.json(transitioned, 200);
@@ -2839,6 +2845,7 @@ const workItem = apiRouter<
       actorType,
       { body, visibility },
       c.get("apiKey"),
+      auditRequestContext(c),
     );
     return c.json(created, 200);
   })

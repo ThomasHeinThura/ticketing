@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import type { Transaction } from "../database/executor";
 import { webhookDeliveryTable, webhookTable } from "../database/schema";
+import { isImportSourcedEvent } from "../events/import-source";
 import type {
   ParentEventConsumer,
   ParentEventEnvelope,
@@ -27,6 +28,8 @@ export async function enqueueWebhookDeliveries(
   // Keep this consumer native-only even if a corrupt stored subscription contains a
   // published legacy compatibility string.
   if (!isWebhookEventKey(envelope.kind)) return 0;
+  // Imported history is never delivered to outbound webhooks.
+  if (isImportSourcedEvent(envelope)) return 0;
   const scope = envelope.scope as { workspaceId?: string; projectId?: string };
   if (!scope.workspaceId) return 0;
   const hooks = await tx

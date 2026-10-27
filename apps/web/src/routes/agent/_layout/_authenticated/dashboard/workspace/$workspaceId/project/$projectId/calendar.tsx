@@ -21,6 +21,7 @@ import ScheduleViewState, {
 } from "@/components/calendar/schedule-view-state";
 import ProjectLayout from "@/components/common/project-layout";
 import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
+import ProjectViewFeatureGate from "@/components/common/project-view-feature-gate";
 import PageTitle from "@/components/page-title";
 import { useRescheduleWorkItem } from "@/components/work-item/work-item-calendar-reschedule";
 import {
@@ -64,7 +65,7 @@ import { useUserPreferencesStore } from "@/store/user-preferences";
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar",
 )({
-  component: RouteComponent,
+  component: GatedRouteComponent,
   validateSearch: parseProjectCalendarSearch,
 });
 
@@ -74,6 +75,20 @@ export const Route = createFileRoute(
 const MAX_LANES_DESKTOP = 3;
 const MAX_LANES_MOBILE = 2;
 const MAX_LANES_RANGE = 12;
+
+/** P4R1-M2: the view renders only while its feature flag is on for the project. */
+function GatedRouteComponent() {
+  const { projectId, workspaceId } = Route.useParams();
+  return (
+    <ProjectViewFeatureGate
+      projectId={projectId}
+      workspaceId={workspaceId}
+      view="calendar"
+    >
+      <RouteComponent />
+    </ProjectViewFeatureGate>
+  );
+}
 
 function RouteComponent() {
   const { t } = useTranslation();

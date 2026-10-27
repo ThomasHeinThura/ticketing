@@ -82,3 +82,24 @@ export async function publishWorkItemHint(
     customerVisible: input.customerVisible,
   });
 }
+
+/**
+ * Live "order changed" hint for a re-rank (VW-5). No audit/outbox event is invented for a
+ * rank: this only publishes the existing key-only `work_item.updated` hint, the way relation
+ * changes do, to staff project/work-item topics (never customer-visible). Delivery is
+ * best-effort and re-authorised per subscriber by the realtime adapter.
+ */
+export async function publishRankHint(input: {
+  projectId: string;
+  key: string;
+}) {
+  await publishWorkItemHint(
+    { id: `hint_${randomUUID()}`, occurredAt: new Date() },
+    {
+      kind: "work_item.updated",
+      key: input.key,
+      projectId: input.projectId,
+      customerVisible: false,
+    },
+  );
+}

@@ -14,6 +14,9 @@ export type WorkItemActivityRow = {
   visibility: string;
   workflowVersionId: string | null;
   createdAt: string;
+  /** `imported`: written by an import; `createdAt` is then the source time. */
+  origin?: string | null;
+  importedAt?: string | null;
   kind?: "activity" | "comment";
   body?: unknown;
   activityId?: string | null;

@@ -4,6 +4,7 @@
  * re-checks live project reach (cross-workspace access is a 404). The retained chunk API in
  * `imports/service.ts` is untouched; this file only calls it through the runner.
  */
+import { randomUUID } from "node:crypto";
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -19,44 +20,47 @@ import { encryptSecret } from "../../notification-preferences/secrets";
 import { lockPendingActionLifecycle } from "../../pending-action/lifecycle-invalidation";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import {
-  type ImportActor,
   importActor,
   importOrigin,
   requireImportInstanceAdmin,
   requireImportProjectCapability,
   requireImportWorkspaceRead,
 } from "../access";
-import { appendImportAudit, reportImportAuditWriteFailure } from "../service";
-import {
-  type ConnectFailureReason,
-  getImportAdapter,
-  type MappingDomain,
-} from "./adapter";
-import { computeWholeRunDryRun } from "./dry-run";
+import { reportImportAuditWriteFailure } from "../service";
+import { type ConnectFailureReason, getImportAdapter } from "./adapter";
+import type { DryRunReport } from "./dry-run";
 import {
   applyMappingEdits,
   completeness,
   type MappingEdit,
   type MappingEntry,
-  mappingDigest,
-  mergeDiscovery,
-  WRITER_V2_CAPABILITIES,
 } from "./mapping";
+import {
+  audit,
+  authorizedRun,
+  conflict,
+  INVALIDATE,
+  invalidateOutstandingApproval,
+} from "./run-ops";
 import { kickImportRun } from "./runner";
+import { cancelledJob, kickImportSetupJob, withJob } from "./setup-job";
 import {
   activeStaffPerson,
   CONNECTION,
+  discoveryDto,
   type EngineRun,
   engineRunDto,
   loadConnection,
   loadEngineRun,
   loadMapping,
-  peopleByEmail,
   RUN,
   RUN_APPROVAL_THRESHOLD,
+  readSetupJob,
+  type SetupJob,
+  type SetupJobKind,
   saveMapping,
-  toAdapterConnection,
-  typeIdsByKey,
+  setupJobDto,
+  staffPeopleInWorkspaceOrganisation,
 } from "./store";
 
 export type ImportRunApprovalRequest = (
@@ -78,95 +82,6 @@ export type ImportRunApprovalRequest = (
     userAgent: string | null;
   },
 ) => Promise<{ pendingActionId: string; auditFailure?: boolean }>;
-
-type RouteKey = `${"GET" | "POST"} /api/${string}`;
-const conflict = (message: string) => new HTTPException(409, { message });
-
-async function authorizedRun(
-  tx: Transaction,
-  actor: ImportActor,
-  runId: string,
-  routeKey: RouteKey,
-  capability: "work_item:read" | "work_item:create",
-  lock: "share" | "update",
-) {
-  await requireImportInstanceAdmin(tx, actor, routeKey);
-  const run = await loadEngineRun(tx, runId, lock);
-  await requireImportProjectCapability(
-    tx,
-    actor,
-    run.workspaceId,
-    run.projectId,
-    capability,
-  );
-  return run;
-}
-
-async function audit(
-  tx: Transaction,
-  actor: ImportActor,
-  run: Pick<EngineRun, "id" | "workspaceId" | "projectId">,
-  operation: string,
-  extra: Record<string, unknown> = {},
-) {
-  const origin = await importOrigin(tx, actor);
-  return appendImportAudit(tx, {
-    actorId: actor.userId,
-    actorType: actor.actorType,
-    apiKeyId: actor.apiKeyId,
-    workspaceId: run.workspaceId,
-    projectId: run.projectId,
-    action: "import.run",
-    entityType: "import_run",
-    entityId: run.id,
-    before: null,
-    after: {
-      operation,
-      runId: run.id,
-      ...extra,
-      ...(origin ? { origin } : {}),
-    },
-  });
-}
-
-/** Mapping change or a fresh dry run invalidates the dry run, the approval and any pending request. */
-const INVALIDATE = {
-  engineDryRunDigest: null,
-  engineDryRunMappingVersion: null,
-  engineDryRunReport: null,
-  engineDryRunAt: null,
-  approvedDigest: null,
-  approvedCount: null,
-  approvedMappingVersion: null,
-  approvalPendingActionId: null,
-} as const;
-
-/**
- * Whoever applies `INVALIDATE` also makes the run's outstanding approval request terminal. Clearing
- * only the run's pointer would leave the `pending_action` row pending, and the unique
- * pending-target index would then refuse the next request for the same run.
- */
-async function invalidateOutstandingApproval(
-  tx: Transaction,
-  run: Pick<EngineRun, "approvalPendingActionId">,
-) {
-  if (!run.approvalPendingActionId) return;
-  await tx
-    .update(schema.pendingActionTable)
-    .set({
-      state: "invalidated",
-      invalidationReason: "version_changed",
-      decidedByPersonId: null,
-      decisionSessionId: null,
-      decidedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(schema.pendingActionTable.id, run.approvalPendingActionId),
-        eq(schema.pendingActionTable.state, "pending"),
-      ),
-    );
-}
 
 // --- source connections -----------------------------------------------------------------------
 
@@ -387,62 +302,34 @@ function mappingDto(
     mappingVersion: mapping.version,
     entries: mapping.entries,
     completeness: completeness(mapping.entries),
-    discovery: run.engineDiscovery,
+    discovery: discoveryDto(run, mapping.entries),
   };
 }
 
+/**
+ * A run may be (re)discovered or dry-run while it is being set up. A run PAUSED mid-execution may
+ * return to this stage too: whatever stopped it (a stale approval, the approved count, lost authority)
+ * is resolved by a fresh dry run and approval, and the records already committed stay committed and
+ * are skipped by the new one. A running or completed run may not.
+ */
 function requireSetupState(run: EngineRun) {
   if (run.state !== "queued" && run.state !== "paused")
     throw conflict("Import run is not in a setup state");
-  if (run.enginePhase === "executing" || run.enginePhase === "completed")
+  if (run.enginePhase === "completed")
     throw conflict("Import run is not in a setup state");
 }
 
-export async function discoverRun(c: Context, runId: string) {
+/**
+ * Starts (or reports) the run's background setup step. The request only records the job under the
+ * run row lock and kicks it; the source is read by `setup-job.ts`. Single flight: a request that
+ * finds the same step already running returns its state and never starts a second read.
+ */
+async function startSetupJob(c: Context, runId: string, kind: SetupJobKind) {
   const actor = importActor(c);
-  const snapshot = await db.transaction(async (tx) => {
-    const run = await authorizedRun(
-      tx,
-      actor,
-      runId,
-      "POST /api/imports/{id}/discover",
-      "work_item:create",
-      "share",
-    );
-    requireSetupState(run);
-    const connection = await loadConnection(
-      tx,
-      run.workspaceId,
-      run.sourceConnectionId,
-    );
-    return { run, connection };
-  });
-  const adapter = getImportAdapter(snapshot.run.pluginId);
-  if (!adapter)
-    throw new HTTPException(409, {
-      message: "No adapter is registered for this source",
-    });
-  const adapterConnection = toAdapterConnection(snapshot.connection);
-  const connected = await adapter.connect(adapterConnection).catch(() => ({
-    ok: false as const,
-    reason: undefined,
-  }));
-  if (!connected.ok) throw connectFailure(connected.reason);
-  const discovery = await adapter.discover(adapterConnection).catch(() => {
-    throw new HTTPException(502, { message: "Source discovery failed" });
-  });
-  const proposals = await db.transaction(async (tx) => {
-    const emails = discovery.facets
-      .filter((f) => f.domain === ("person" satisfies MappingDomain))
-      .map((f) => f.value);
-    return adapter.proposeMapping(discovery, {
-      workspaceId: snapshot.run.workspaceId,
-      projectId: snapshot.run.projectId,
-      peopleByEmail: await peopleByEmail(tx, snapshot.run.workspaceId, emails),
-      typeIdsByKey: await typeIdsByKey(tx, snapshot.run.workspaceId),
-    });
-  });
-
+  const routeKey =
+    kind === "discover"
+      ? "POST /api/imports/{id}/discover"
+      : "POST /api/imports/{id}/dry-run-all";
   const outcome = await db.transaction(async (tx) => {
     await lockInstanceAdminSerialization(tx);
     await lockPendingActionLifecycle(tx);
@@ -450,52 +337,90 @@ export async function discoverRun(c: Context, runId: string) {
       tx,
       actor,
       runId,
-      "POST /api/imports/{id}/discover",
+      routeKey,
       "work_item:create",
       "update",
     );
-    if (run.version !== snapshot.run.version)
-      throw conflict("Import run changed during discovery");
+    const existing = readSetupJob(run);
+    if (existing?.status === "running") {
+      if (existing.kind !== kind)
+        throw conflict("Another setup step is already running");
+      return {
+        run,
+        started: false,
+        auditFailure: false,
+        mappingVersion: null as number | null,
+      };
+    }
     requireSetupState(run);
-    const existing = await loadMapping(tx, run, "update");
-    const entries = mergeDiscovery(
-      existing.entries,
-      discovery.facets,
-      proposals,
-    );
-    const changed = mappingDigest(entries) !== mappingDigest(existing.entries);
-    const person = await activeStaffPerson(tx, actor.userId);
-    const saved = await saveMapping(tx, run, entries, {
-      bump: changed && existing.profileId !== null,
-      createdBy: person.id,
-    });
-    if (changed) await invalidateOutstandingApproval(tx, run);
+    if (
+      kind === "dry_run" &&
+      (!run.enginePhase || run.enginePhase === "created")
+    )
+      throw conflict("Discover the source before a dry run");
+    const mapping = await loadMapping(tx, run);
+    const leavingExecution = run.enginePhase === "executing";
+    if (leavingExecution && run.state !== "paused")
+      throw conflict("Import run is not in a setup state");
+    const normalise = leavingExecution || run.state === "paused";
+    const version = run.version + (normalise ? 1 : 0);
+    const now = new Date().toISOString();
+    const job: SetupJob = {
+      id: randomUUID(),
+      kind,
+      status: "running",
+      startedAt: now,
+      updatedAt: now,
+      actor: { userId: actor.userId, apiKeyId: actor.apiKeyId },
+      runVersion: version,
+      mappingVersion: kind === "dry_run" ? mapping.version : null,
+      pagesRead: 0,
+      recordsProcessed: 0,
+    };
+    if (leavingExecution) await invalidateOutstandingApproval(tx, run);
     await tx
       .update(RUN)
       .set({
-        engineDiscovery: {
-          counts: discovery.counts,
-          totalRecords: discovery.totalRecords,
-          facets: discovery.facets.length,
-          at: new Date().toISOString(),
-        },
-        enginePhase:
-          changed || run.enginePhase === "created"
-            ? "discovered"
-            : run.enginePhase,
-        ...(changed ? INVALIDATE : {}),
-        version: run.version + 1,
+        engineDiscovery: withJob(run, job),
+        ...(leavingExecution
+          ? { ...INVALIDATE, enginePhase: "discovered" as const }
+          : {}),
+        ...(normalise
+          ? { state: "queued" as const, pausedReason: null, version }
+          : {}),
         updatedAt: new Date(),
       })
       .where(eq(RUN.id, run.id));
-    const auditFailure = await audit(tx, actor, run, "discovered", {
-      facets: discovery.facets.length,
-    });
-    const after = await loadEngineRun(tx, run.id, "share");
-    return { after, saved, auditFailure };
+    const auditFailure = await audit(
+      tx,
+      actor,
+      run,
+      kind === "discover" ? "discovery_started" : "dry_run_started",
+      leavingExecution
+        ? { returnedToSetup: true, pausedReason: run.pausedReason }
+        : {},
+    );
+    return {
+      run: await loadEngineRun(tx, run.id, "share"),
+      started: true,
+      auditFailure,
+      mappingVersion: mapping.version || null,
+    };
   });
   await reportImportAuditWriteFailure(outcome.auditFailure);
-  return mappingDto(outcome.after, outcome.saved);
+  // Also for a job already running: the worker holds a per-run lease, so this is a no-op unless the
+  // previous worker died (a restart), in which case the job resumes from its checkpoint.
+  kickImportSetupJob(outcome.run.id);
+  const run = outcome.run;
+  return {
+    status: outcome.started ? ("accepted" as const) : ("running" as const),
+    job: setupJobDto(run),
+    run: engineRunDto(run, outcome.mappingVersion),
+  };
+}
+
+export function discoverRun(c: Context, runId: string) {
+  return startSetupJob(c, runId, "discover");
 }
 
 export async function getMapping(c: Context, runId: string) {
@@ -547,6 +472,24 @@ export async function saveMappingEdits(
       input.confirmProposals === true,
     );
     if (!edited.ok) throw new HTTPException(400, { message: edited.code });
+    // A person target must be someone of the run's own organisation: an id copied from another
+    // tenant is refused here, never stored (and never resolved to an email at execution time).
+    const personIds = input.entries.flatMap((edit) =>
+      edit.domain === "person" && edit.target?.kind === "target"
+        ? [edit.target.id]
+        : [],
+    );
+    if (personIds.length) {
+      const valid = await staffPeopleInWorkspaceOrganisation(
+        tx,
+        run.workspaceId,
+        personIds,
+      );
+      if (personIds.some((id) => !valid.has(id)))
+        throw new HTTPException(422, {
+          message: "mapping_person_not_in_organisation",
+        });
+    }
     if (!edited.changed) return { run, saved: current, auditFailure: false };
     const person = await activeStaffPerson(tx, actor.userId);
     const saved = await saveMapping(tx, run, edited.entries, {
@@ -554,11 +497,22 @@ export async function saveMappingEdits(
       createdBy: person.id,
     });
     await invalidateOutstandingApproval(tx, run);
+    // A mapping change makes a running setup step's result meaningless: cancel it, so its worker
+    // stops (its next progress write finds the job gone) rather than finishing against a stale mapping.
+    const running = readSetupJob(run);
     // A mapping change makes the dry run and any approval stale, and stops an executing run.
     await tx
       .update(RUN)
       .set({
         ...INVALIDATE,
+        ...(running?.status === "running"
+          ? {
+              engineDiscovery: withJob(
+                run,
+                cancelledJob(running, "mapping_changed"),
+              ),
+            }
+          : {}),
         enginePhase: "discovered",
         ...(run.state === "running"
           ? {
@@ -585,94 +539,11 @@ export async function saveMappingEdits(
 
 // --- whole-run dry run -------------------------------------------------------------------------
 
-export async function dryRunWholeRun(c: Context, runId: string) {
-  const actor = importActor(c);
-  const snapshot = await db.transaction(async (tx) => {
-    const run = await authorizedRun(
-      tx,
-      actor,
-      runId,
-      "POST /api/imports/{id}/dry-run-all",
-      "work_item:create",
-      "share",
-    );
-    requireSetupState(run);
-    if (!run.enginePhase || run.enginePhase === "created")
-      throw conflict("Discover the source before a dry run");
-    const mapping = await loadMapping(tx, run);
-    const connection = await loadConnection(
-      tx,
-      run.workspaceId,
-      run.sourceConnectionId,
-    );
-    return { run, mapping, connection };
-  });
-  const adapter = getImportAdapter(snapshot.run.pluginId);
-  if (!adapter)
-    throw new HTTPException(409, {
-      message: "No adapter is registered for this source",
-    });
-  let report: Awaited<ReturnType<typeof computeWholeRunDryRun>>;
-  try {
-    report = await computeWholeRunDryRun({
-      actor,
-      run: snapshot.run,
-      entries: snapshot.mapping.entries,
-      mappingVersion: snapshot.mapping.version,
-      adapter,
-      connection: toAdapterConnection(snapshot.connection),
-      capabilities: WRITER_V2_CAPABILITIES,
-    });
-  } catch (error) {
-    if (error instanceof HTTPException) throw error;
-    throw new HTTPException(502, { message: "Source could not be read" });
-  }
-  const outcome = await db.transaction(async (tx) => {
-    await lockInstanceAdminSerialization(tx);
-    await lockPendingActionLifecycle(tx);
-    const run = await authorizedRun(
-      tx,
-      actor,
-      runId,
-      "POST /api/imports/{id}/dry-run-all",
-      "work_item:create",
-      "update",
-    );
-    if (run.version !== snapshot.run.version)
-      throw conflict("Import run changed during the dry run");
-    const mapping = await loadMapping(tx, run);
-    if (mapping.version !== report.mappingVersion)
-      throw conflict("Mapping changed during the dry run");
-    // A new dry run replaces the one any outstanding approval was requested for.
-    await invalidateOutstandingApproval(tx, run);
-    await tx
-      .update(RUN)
-      .set({
-        ...INVALIDATE,
-        engineDryRunDigest: report.digest,
-        engineDryRunMappingVersion: report.mappingVersion,
-        engineDryRunReport: report as unknown as Record<string, unknown>,
-        engineDryRunAt: new Date(),
-        enginePhase: "dry_run_ready",
-        version: run.version + 1,
-        updatedAt: new Date(),
-      })
-      .where(eq(RUN.id, run.id));
-    const auditFailure = await audit(tx, actor, run, "dry_run", {
-      counts: report.counts,
-    });
-    return { auditFailure };
-  });
-  await reportImportAuditWriteFailure(outcome.auditFailure);
-  return {
-    ...publicReport(report),
-    approvalRequired: report.writes > RUN_APPROVAL_THRESHOLD,
-  };
+export function dryRunWholeRun(c: Context, runId: string) {
+  return startSetupJob(c, runId, "dry_run");
 }
 
-function publicReport(
-  report: Awaited<ReturnType<typeof computeWholeRunDryRun>>,
-) {
+function publicReport(report: DryRunReport) {
   const { cycleBreaks, ...rest } = report;
   return { ...rest, cycleBreaks: cycleBreaks.length };
 }
@@ -692,9 +563,7 @@ export async function getWholeRunDryRun(c: Context, runId: string) {
       throw new HTTPException(404, {
         message: "No dry run for this import run",
       });
-    const report = run.engineDryRunReport as unknown as Awaited<
-      ReturnType<typeof computeWholeRunDryRun>
-    >;
+    const report = run.engineDryRunReport as unknown as DryRunReport;
     return {
       ...publicReport(report),
       approvalRequired: report.writes > RUN_APPROVAL_THRESHOLD,
@@ -765,6 +634,8 @@ export async function executeRun(
     );
     if (run.state !== "queued" && run.state !== "paused")
       throw conflict("Import run cannot be executed in its current state");
+    if (readSetupJob(run)?.status === "running")
+      throw conflict("A setup step is still running");
     if (run.enginePhase !== "dry_run_ready" || !run.engineDryRunDigest)
       throw conflict("A current dry run is required before execution");
     const mapping = await loadMapping(tx, run, "share");
@@ -858,6 +729,9 @@ export async function executeRun(
         auditFailure: auditFailure || request.auditFailure === true,
       };
     }
+    // The run executes AS the administrator who executes it (not whoever created it): `started_by`
+    // is bound here, and both identities are audited. The approval binding is unchanged.
+    const executor = await activeStaffPerson(tx, actor.userId);
     // Start (or restart) from the beginning of the source: committed records classify as skip.
     await tx
       .update(RUN)
@@ -868,12 +742,22 @@ export async function executeRun(
         stats: {},
         sourceCursor: { cursor: null, exhausted: false },
         nextCursor: null,
+        startedBy: executor.id,
+        startedByApiKeyId: actor.apiKeyId,
         version: run.version + 1,
         updatedAt: new Date(),
       })
       .where(eq(RUN.id, run.id));
+    // Until the first execute `started_by` still names the creator; afterwards it names whoever
+    // executed (or resumed) last, so a re-execute after a return to the dry run records that
+    // person as the previous executor, never as the creator (the `created` row keeps the creator).
+    const firstExecution = run.sourceCursor === null;
     const auditFailure = await audit(tx, actor, run, "executing", {
       totalCount: report.counts.processed,
+      ...(firstExecution
+        ? { createdByPersonId: run.startedBy }
+        : { previousExecutorPersonId: run.startedBy }),
+      executedByPersonId: executor.id,
     });
     return {
       kind: "started" as const,
@@ -948,7 +832,15 @@ export async function resumeRun(c: Context, runId: string) {
         started: run.enginePhase === "executing",
       };
     if (run.state !== "paused") throw conflict("Import run is not paused");
-    if (run.enginePhase !== "executing" || !run.sourceCursor)
+    // These pauses are not cured by resuming (the runner would pause again at the next chunk): the
+    // recovery is a fresh dry run (`POST /dry-run-all` returns the run to setup) and approval.
+    if (
+      run.enginePhase !== "executing" ||
+      !run.sourceCursor ||
+      run.pausedReason === "approved_count_exceeded" ||
+      run.pausedReason === "approval_invalid" ||
+      run.pausedReason === "mapping_changed"
+    )
       throw conflict(
         "Run needs a new dry run and approval before it can resume",
       );
@@ -959,16 +851,26 @@ export async function resumeRun(c: Context, runId: string) {
       run.approvedMappingVersion !== mapping.version
     )
       throw conflict("Approval no longer matches the mapping");
+    // Whoever resumes takes the run over: it continues AS this administrator. That is how another
+    // instance administrator recovers a run whose starter lost authority (`authority_lost`); the
+    // approval binding is untouched, and the previous and new executor are both audited.
+    const resumer = await activeStaffPerson(tx, actor.userId);
     await tx
       .update(RUN)
       .set({
         state: "running",
         pausedReason: null,
+        startedBy: resumer.id,
+        startedByApiKeyId: actor.apiKeyId,
         version: run.version + 1,
         updatedAt: new Date(),
       })
       .where(eq(RUN.id, run.id));
-    const auditFailure = await audit(tx, actor, run, "resumed");
+    const auditFailure = await audit(tx, actor, run, "resumed", {
+      pausedReason: run.pausedReason,
+      previousExecutorPersonId: run.startedBy,
+      executedByPersonId: resumer.id,
+    });
     return {
       run: await loadEngineRun(tx, run.id, "share"),
       auditFailure,

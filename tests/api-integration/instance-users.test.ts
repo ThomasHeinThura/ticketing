@@ -992,6 +992,7 @@ describe("God Mode Users API", () => {
       outcome: "suspended",
       finiteExpiry: false,
       revokedSessions: 1,
+      revokedImpersonations: 0,
     });
   });
 

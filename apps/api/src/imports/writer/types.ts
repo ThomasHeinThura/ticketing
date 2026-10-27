@@ -13,6 +13,8 @@ export const IMPORT_LOSS_CODES = [
   "timestamp_invalid",
   "parent_cycle_broken",
   "parent_unavailable",
+  "parent_depth_exceeded",
+  "parent_not_allowed",
   "relation_target_unavailable",
   "relation_invalid",
   "comment_invalid",
@@ -25,6 +27,7 @@ export const IMPORT_LOSS_CODES = [
   "attachment_content_mismatch",
   "attachment_limit_reached",
   "attachment_storage_unavailable",
+  "provenance_duplicate",
 ] as const;
 export type ImportLossCode = (typeof IMPORT_LOSS_CODES)[number];
 

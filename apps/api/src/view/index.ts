@@ -1,4 +1,5 @@
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import { staffQueueRowSchema } from "../intake/response";
 import {
   type ApiKey,
@@ -449,7 +450,7 @@ const view = apiRouter()
       organisationId: null,
       actorId: userId,
       actorType: apiKey ? "api_key" : "person",
-      actorIp: c.req.header("x-forwarded-for") ?? null,
+      actorIp: clientIpForContext(c),
       userAgent: c.req.header("user-agent") ?? null,
     });
     return c.json(

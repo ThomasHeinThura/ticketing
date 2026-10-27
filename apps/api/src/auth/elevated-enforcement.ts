@@ -106,7 +106,7 @@ export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
     operation: "webhook_update_url",
     handler: "webhook/index.ts",
     consumer: "runWithStepUp",
-    when: "the body changes url",
+    when: "the body changes url or re-owns the webhook",
   },
   "POST /api/instance/webhooks/rotate-secrets": {
     kind: "operation",
@@ -130,6 +130,13 @@ export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
     kind: "operation",
     operation: "change_freeze_override",
     handler: "service-management/index.ts",
+    consumer: "runWithStepUp",
+  },
+  // Audit
+  "POST /api/instance/audit/export": {
+    kind: "operation",
+    operation: "audit_export",
+    handler: "audit/controllers/export-instance-audit.ts",
     consumer: "runWithStepUp",
   },
   // Pending actions

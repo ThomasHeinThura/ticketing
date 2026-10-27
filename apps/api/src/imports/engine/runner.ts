@@ -4,11 +4,16 @@
  * a pause therefore always resumes from the last committed chunk, and a rerun of a committed
  * region is classified `skip` (IM-1).
  *
- * Actor rule: the runner executes AS the run's starter (`started_by`, and `started_by_api_key_id`
- * when present). Per chunk it re-checks live instance-admin authority, the key's enabled state and
- * capabilities, and project reach (all inside `requireImportInstanceAdmin` /
- * `requireImportProjectCapability`). Any loss pauses the run (fail closed). The runner never falls
- * back to a system actor.
+ * Actor rule: the runner executes AS the administrator who executed the run (`started_by`, and
+ * `started_by_api_key_id` when present), bound at `/execute` and rebound by whoever `/resume`s it; the
+ * creator is only in the audit trail. Per chunk it re-checks live instance-admin authority, the key's
+ * enabled state and capabilities, and project reach (all inside `requireImportInstanceAdmin` /
+ * `requireImportProjectCapability`): first in a short transaction that holds the instance-admin lock
+ * SHARED, then again at the start of the (serializable) chunk transaction, which holds no lock.
+ * Holding the lock exclusively for a whole chunk would block every administrator change for the
+ * chunk's duration. A change that commits while a chunk is writing takes effect at the next chunk,
+ * exactly as it did when it had to wait for the chunk's lock. Any loss pauses the run (fail closed).
+ * The runner never falls back to a system actor.
  */
 import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
@@ -18,7 +23,7 @@ import {
   type ImportPausedReason,
   importLossTable,
 } from "../../database/schema-imports";
-import { lockInstanceAdminSerialization } from "../../instance/users/repository";
+import { lockInstanceAdminSerializationShared } from "../../instance/users/repository";
 import {
   assertJobExecutionOwned,
   withJobLease,
@@ -81,11 +86,19 @@ let autoStart = true;
 export function setImportEngineAutoStart(enabled: boolean) {
   autoStart = enabled;
 }
+export function importEngineAutoStart() {
+  return autoStart;
+}
 
 export type RunnerOptions = {
   /** Simulates an interruption: return (leaving the run `running`) after this many chunks. */
   stopAfterChunks?: number;
   capabilities?: WriterCapabilities;
+  /**
+   * Test seam: awaited inside the chunk transaction after its writes, before it commits, so a test
+   * can change an administrator while a chunk is genuinely in flight (and prove it is not blocked).
+   */
+  duringChunk?: () => Promise<void>;
 };
 
 export type RunnerOutcome = {
@@ -202,6 +215,57 @@ function writesFor(run: EngineRun) {
   return (counts?.created ?? 0) + (counts?.updated ?? 0);
 }
 
+/**
+ * Live authority of the run's executor: still an active staff person, an instance administrator (key
+ * enabled and capable when the run executes under a key) with reach into the project. Any loss is a
+ * fail-closed stop with its own reason. Takes no lock: callers that need a consistent read of an
+ * administrator change in flight wrap it in `recheckAuthorityUnderSharedLock`.
+ */
+async function assertAuthority(tx: Transaction, run: EngineRun) {
+  const actor = await loadRunActor(tx, run);
+  if (!actor) throw new EngineStop("authority_lost");
+  try {
+    await requireImportInstanceAdmin(tx, actor, EXECUTE_ROUTE_KEY);
+  } catch (error) {
+    if (error instanceof HTTPException) throw new EngineStop("authority_lost");
+    throw error;
+  }
+  try {
+    await requireImportProjectCapability(
+      tx,
+      actor,
+      run.workspaceId,
+      run.projectId,
+      "work_item:create",
+    );
+  } catch (error) {
+    if (error instanceof HTTPException)
+      throw new EngineStop("project_reach_lost");
+    throw error;
+  }
+  return actor;
+}
+
+/**
+ * The per-chunk authority gate, taken BEFORE the chunk transaction. The instance-admin lock is held
+ * in SHARED mode for this short transaction only: it observes a role change in flight (those hold the
+ * lock exclusively) without keeping one waiting while the chunk writes. The chunk itself then runs
+ * lock-free; its own authority check at the start reads the snapshot it writes under. A revocation
+ * that commits while the chunk writes is seen by the next chunk's gate, so the run stops there.
+ */
+async function recheckAuthorityUnderSharedLock(runId: string) {
+  await db.transaction(async (tx) => {
+    await lockInstanceAdminSerializationShared(tx);
+    const [row] = await tx
+      .select()
+      .from(RUN)
+      .where(eq(RUN.id, runId))
+      .for("share")
+      .limit(1);
+    await assertAuthority(tx, asEngineRun(row));
+  });
+}
+
 type ChunkOutcome =
   | { kind: "stopped" }
   | {
@@ -218,9 +282,9 @@ async function chunkTransaction(
     page: SourcePage;
     resolved: ResolvedRecord[];
     needsApproval: boolean;
+    duringChunk?: (() => Promise<void>) | undefined;
   },
 ): Promise<ChunkOutcome> {
-  await lockInstanceAdminSerialization(tx);
   const [locked] = await tx
     .select()
     .from(RUN)
@@ -255,27 +319,7 @@ async function chunkTransaction(
   )
     throw new EngineStop("approved_count_exceeded");
 
-  const actor = await loadRunActor(tx, run);
-  if (!actor) throw new EngineStop("authority_lost");
-  try {
-    await requireImportInstanceAdmin(tx, actor, EXECUTE_ROUTE_KEY);
-  } catch (error) {
-    if (error instanceof HTTPException) throw new EngineStop("authority_lost");
-    throw error;
-  }
-  try {
-    await requireImportProjectCapability(
-      tx,
-      actor,
-      run.workspaceId,
-      run.projectId,
-      "work_item:create",
-    );
-  } catch (error) {
-    if (error instanceof HTTPException)
-      throw new EngineStop("project_reach_lost");
-    throw error;
-  }
+  const actor = await assertAuthority(tx, run);
 
   const decisions = await decidePage(tx, run, actor, input.resolved);
   // The approval covers the writes the approved dry run saw. A self-approved run (<= 50 writes)
@@ -322,6 +366,7 @@ async function chunkTransaction(
       previewDigest: staged.digest,
       records,
       ...(records.length > 50 ? { approvedLarge: true } : {}),
+      skipAdminSerialization: true,
     });
     if (commit.kind !== "committed")
       throw new HTTPException(409, { message: "Import chunk not committed" });
@@ -376,6 +421,8 @@ async function chunkTransaction(
       .values(lossRows.slice(offset, offset + 500))
       .onConflictDoNothing();
 
+  await input.duringChunk?.();
+
   // Advance the cursor and engine-level rejects in the same transaction as the commit. The run stays
   // `running` when the source is exhausted: `finalizeRun` closes it (attachments, deferred links,
   // stale marking, completion), so a crash between the last chunk and completion resumes there.
@@ -421,8 +468,8 @@ async function finalizeRun(runId: string): Promise<RunnerOutcome | "done"> {
   let paused: ImportPausedReason | null = null;
   let outcome: FinalizeOutcome | null = null;
   try {
+    await recheckAuthorityUnderSharedLock(runId);
     outcome = await withCreationTransaction(async (tx) => {
-      await lockInstanceAdminSerialization(tx);
       const [locked] = await tx
         .select()
         .from(RUN)
@@ -439,28 +486,7 @@ async function finalizeRun(runId: string): Promise<RunnerOutcome | "done"> {
       const mapping = await loadMapping(tx, run, "share");
       const bound = bindingFailure(run, mapping.version);
       if (bound) throw new EngineStop(bound);
-      const actor = await loadRunActor(tx, run);
-      if (!actor) throw new EngineStop("authority_lost");
-      try {
-        await requireImportInstanceAdmin(tx, actor, EXECUTE_ROUTE_KEY);
-      } catch (error) {
-        if (error instanceof HTTPException)
-          throw new EngineStop("authority_lost");
-        throw error;
-      }
-      try {
-        await requireImportProjectCapability(
-          tx,
-          actor,
-          run.workspaceId,
-          run.projectId,
-          "work_item:create",
-        );
-      } catch (error) {
-        if (error instanceof HTTPException)
-          throw new EngineStop("project_reach_lost");
-        throw error;
-      }
+      const actor = await assertAuthority(tx, run);
       const writer = await createImportWriterContext(tx, run);
       for (let pass = 0; pass < 500; pass += 1) {
         const step = await resolveDeferredImportLinks(writer, {
@@ -633,6 +659,7 @@ export async function runImportRun(
     });
     let outcome: ChunkOutcome;
     try {
+      await recheckAuthorityUnderSharedLock(run.id);
       outcome = await withCreationTransaction((tx) =>
         chunkTransaction(tx, {
           runId: run.id,
@@ -640,6 +667,7 @@ export async function runImportRun(
           page,
           resolved,
           needsApproval,
+          duringChunk: options.duringChunk,
         }),
       );
     } catch (error) {

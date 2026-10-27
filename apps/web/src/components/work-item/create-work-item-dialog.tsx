@@ -13,6 +13,7 @@ export function CreateWorkItemDialogContent({
   onDraftStateChange,
   projectId,
   workspaceId,
+  initialState,
 }: CreateWorkItemDialogProps) {
   return (
     <Suspense
@@ -35,6 +36,7 @@ export function CreateWorkItemDialogContent({
         onDraftStateChange={onDraftStateChange}
         projectId={projectId}
         workspaceId={workspaceId}
+        initialState={initialState}
       />
     </Suspense>
   );

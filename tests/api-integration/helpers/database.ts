@@ -2,7 +2,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
 import { Client } from "pg";
-import db, { getDatabasePool } from "../../../apps/api/src/database";
+import db, { getDatabasePool, schema } from "../../../apps/api/src/database";
 import { migrateWithMembershipProvenanceCutover } from "../../../apps/api/src/database/migrate-membership-provenance";
 import { assertDisposableTestDatabaseUrl } from "./disposable-database";
 
@@ -145,6 +145,8 @@ function hasPostgresSqlState(error: unknown, expectedState: string) {
 }
 
 export async function resetTestDatabase(options?: {
+  /** Skip enabling the runtime-gated default-off features (see `enableRuntimeGatedFeatures`). */
+  defaultOffFeatures?: false;
   onLockUnavailable?: (details: {
     attempt: number;
     error: unknown;
@@ -222,6 +224,32 @@ export async function resetTestDatabase(options?: {
   }
 
   await ensureTestDatabaseMigrated();
+  if (options?.defaultOffFeatures !== false) await enableRuntimeGatedFeatures();
+}
+
+/**
+ * P4R1-M2: these flags default to off and are now enforced at runtime (`feature.sla`, the portal
+ * router, the Timeline and Calendar views), so every fixture database starts with them enabled
+ * at the instance, the way a deployed instance that uses them does. A test of the disabled
+ * behaviour passes `{ defaultOffFeatures: false }` or turns the flag off itself.
+ */
+export const RUNTIME_GATED_FEATURES = [
+  "feature.customer_portal",
+  "feature.sla",
+  "feature.timeline",
+  "feature.calendar",
+] as const;
+
+export async function enableRuntimeGatedFeatures() {
+  await db
+    .insert(schema.instanceFeatureFlagTable)
+    .values(
+      RUNTIME_GATED_FEATURES.map((featureKey) => ({
+        featureKey,
+        enabled: true,
+      })),
+    )
+    .onConflictDoNothing();
 }
 
 class ResetLockUnavailableError extends Error {

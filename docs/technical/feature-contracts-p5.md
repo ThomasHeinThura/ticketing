@@ -232,11 +232,24 @@ system that models time as money cannot express unbilled effort.
 
 - `TC-15` A budget belongs to a project, with a planned amount, a currency and a period.
 - `TC-16` Actuals are computed from time entries valued at their effective rates, plus cost
-  entries. *Current state: partial.* Actuals are time entries valued at the rate captured on
-  the entry; there are no cost entries yet, so nothing is added beyond logged time.
+  entries. *Implemented.* Actual = time entries valued at the rate captured on each entry plus
+  the cost entries (units x the rate captured on the row) dated in the budget period, in the
+  budget's currency. Time and cost entries in another currency are reported separately in
+  `otherCurrencies` and never converted (`TC-19`). Entries without a rate are counted in
+  `unpricedMinutes`.
 - `TC-17` A project shows planned versus actual versus committed, where committed includes
-  estimated remaining work valued at current rates. *Current state: partial.* Planned and
-  actual are shown; `committedMinor` is `null` until remaining-work estimates exist.
+  estimated remaining work valued at current rates. *Implemented (25 Oct decision).* Committed
+  covers the project's open leaf work items (backlog, unstarted or started; not deleted or
+  archived; no open child) whose stored due date falls in the budget's period. Remaining minutes
+  = time-system estimate minus time already logged on the item (never below 0), valued at the
+  assignee's effective rate today (the person-and-project rate effective on the assignee's
+  current date, else the person's default). `committedByCurrency` totals each rate currency
+  separately; `committedMinor` is a scalar only when every in-period task was valued and all are
+  in the budget's currency (an empty forecast is 0), otherwise `null`. Items that cannot be
+  valued are explicit unknowns in `committedUnknown`, never silently zero: `unscheduled` (no due
+  date), `nonTime` (no time estimate), `unassigned` (no assignee), `unrated` (no current rate),
+  with the remaining minutes that are known. Committed and the unknown totals are omitted from a
+  caller without `time_entry:manage_rates`.
 - `TC-18` Thresholds — 75% and 90% — raise notifications to the project manager.
 - `TC-19` Multi-currency is supported by storing the currency per row. Cross-currency
   aggregation requires an exchange rate table, which is **out of scope for v2**; reports
@@ -481,7 +494,11 @@ Carried from v1's set, which was well chosen, grouped by the question being aske
 - `RP-9` Closed periods read from `metric_snapshot`, computed hourly. The current partial
   period is computed live. The boundary is stated.
 - `RP-10` Every report exports to CSV, respecting filters and the viewer's reach. Exports
-  are audited.
+  are audited. *Implemented:* a small
+  export is the CSV itself; a large one is queued and the requester downloads it from the
+  authenticated route `GET /api/report-exports/{id}/download` (the requester's session or key, the
+  caps they hold now ANDed with those at request time). Nothing is emailed. A paged export stops
+  at a hard ceiling of pages and bytes and then fails with `export_too_large`.
 - `RP-11` Every chart has an accessible table equivalent, reachable by keyboard, because a
   chart alone is not readable by a screen reader.
 - `RP-12` Drill-down from any number to the underlying list, filtered identically.
@@ -555,7 +572,7 @@ different `layout` and query shape.
 | Fewer than the minimum sample | `null`, rendered as "not enough data (n of m)" |
 | Project archived mid-window | Included, marked archived |
 | SLA policy changed mid-window | Each item evaluated against the policy version effective at its creation. The report notes that a change occurred |
-| Export of 500,000 rows | Queued as a job; a download link is emailed when ready |
+| Export of 500,000 rows | Queued as a job; the requester downloads it from the authenticated export route when ready (no emailed link); beyond the page and byte ceiling it fails with `export_too_large` |
 | Viewer loses reach mid-session | Numbers change on refresh. The scope line explains |
 | Two currencies | Grouped, never summed |
 | Tier 3 report grouped by a custom field later deleted | Report retained; the group renders "(deleted field)" rather than failing |

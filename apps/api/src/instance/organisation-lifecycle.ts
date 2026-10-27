@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import { appendAuditLog } from "../audit/audit-writer";
 import type { StepUpExecutor } from "../auth/repository";
 import { isCurrentInstanceAdminForStepUp } from "../auth/repository";
@@ -1669,7 +1670,7 @@ const routes = apiRouter()
       organisationId: id,
       actorId: actorUserId,
       actorType: "person",
-      actorIp: c.req.header("x-forwarded-for") ?? null,
+      actorIp: clientIpForContext(c),
       userAgent: c.req.header("user-agent") ?? null,
     });
     setShadowLegacyAuthorization(c, "allowed");

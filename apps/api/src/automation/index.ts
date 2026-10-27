@@ -1,6 +1,7 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import {
   apiRouter,
   type BaseVariables,
@@ -97,7 +98,7 @@ async function actorFor(
     personId: identity.personId,
     actorType: apiKey ? "api_key" : "person",
     apiKeyId: apiKey?.id ?? null,
-    actorIp: c.req.header("x-forwarded-for") ?? null,
+    actorIp: clientIpForContext(c),
     userAgent: c.req.header("user-agent") ?? null,
   };
 }

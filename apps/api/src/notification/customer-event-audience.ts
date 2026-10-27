@@ -24,6 +24,12 @@ export function isCustomerEligibleNotificationEvent(
       "approval.withdrawn",
     ].includes(eventKind);
   }
+  // IQ-12 / IQ-16 / IQ-15: a staff message or a decline on the customer's own submission
+  // (`P2R1-05`); the send-time check confirms the customer is still its requester.
+  if (resourceType === "submission")
+    return (
+      eventKind === "submission.replied" || eventKind === "submission.declined"
+    );
   // A direct description mention has no comment resource. A state transition is public
   // activity under CA-7 and is a default requester notification under notifications.md.
   // Assignment and other internal/staff activity remain excluded by NO-19.

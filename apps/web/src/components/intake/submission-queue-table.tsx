@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
-import { formatSubmissionAge } from "@/lib/intake-queue";
+import { submissionAge } from "@/lib/intake-queue";
 import { routes } from "@/lib/routes";
 
 export type StaffSubmissionQueueRow = {
@@ -42,21 +42,13 @@ export function SubmissionQueueTable({
     <Table aria-label={t("title")}>
       <TableHeader>
         <TableRow>
-          <TableHead>{t("reference", { defaultValue: "Reference" })}</TableHead>
-          <TableHead className="min-w-64">
-            {t("summary", { defaultValue: "Summary" })}
-          </TableHead>
-          <TableHead>
-            {t("requestType", { defaultValue: "Request type" })}
-          </TableHead>
+          <TableHead>{t("reference")}</TableHead>
+          <TableHead className="min-w-64">{t("summary")}</TableHead>
+          <TableHead>{t("requestType")}</TableHead>
           <TableHead>{t("customer")}</TableHead>
-          <TableHead>
-            {t("organisation", { defaultValue: "Organisation" })}
-          </TableHead>
-          <TableHead>
-            {t("submittedAt", { defaultValue: "Submitted" })}
-          </TableHead>
-          <TableHead>{t("age", { defaultValue: "Age" })}</TableHead>
+          <TableHead>{t("organisation")}</TableHead>
+          <TableHead>{t("submittedAt")}</TableHead>
+          <TableHead>{t("age")}</TableHead>
           <TableHead>{t("queueSuggestedDuplicates")}</TableHead>
         </TableRow>
       </TableHeader>
@@ -87,7 +79,10 @@ export function SubmissionQueueTable({
               {new Date(row.submission.createdAt).toLocaleString()}
             </TableCell>
             <TableCell data-testid="triage-row-age">
-              {formatSubmissionAge(row.submission.createdAt)}
+              {(() => {
+                const age = submissionAge(row.submission.createdAt);
+                return t(`ageSuffix.${age.unit}`, { value: age.count });
+              })()}
             </TableCell>
             <TableCell className="whitespace-normal">
               <div className="flex flex-wrap gap-2">

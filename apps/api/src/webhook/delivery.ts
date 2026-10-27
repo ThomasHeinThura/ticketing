@@ -382,6 +382,17 @@ export async function processNextWebhookDelivery(
     await finishWithoutSend(delivery, "cancelled", "webhook_inactive");
     return { kind: "cancelled", deliveryId: delivery.id };
   }
+  // P4R1-H1: a stored body was addressed to the destination and owner it was created for. When
+  // either has since changed, it is never replayed to the new one.
+  if (
+    delivery.source !== "test" &&
+    delivery.requestBody != null &&
+    webhook.destinationChangedAt &&
+    delivery.createdAt < webhook.destinationChangedAt
+  ) {
+    await finishWithoutSend(delivery, "cancelled", "destination_changed");
+    return { kind: "cancelled", deliveryId: delivery.id };
+  }
 
   let requestBody: unknown = delivery.requestBody;
   if (delivery.source !== "test") {
@@ -407,6 +418,7 @@ export async function processNextWebhookDelivery(
     const decision = await decideOwnerReach(db, webhook.createdBy, {
       workspaceId: webhook.workspaceId,
       projectId,
+      eventKind: delivery.eventKind,
       workItemEvent:
         delivery.eventKind.startsWith("work_item.") ||
         delivery.eventKind.startsWith("sla."),

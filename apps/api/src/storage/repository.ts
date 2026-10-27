@@ -4,6 +4,8 @@ import {
   eq,
   exists,
   inArray,
+  isNotNull,
+  isNull,
   like,
   type SQLWrapper,
   sql,
@@ -152,8 +154,11 @@ export async function listTaskAssetsByIds(
     );
 }
 
-/** Delete only returned asset ids that still belong to this reachable task. */
-export async function deleteAssetsByIds(
+/**
+ * P0R1-01: mark assets of this reachable task as detached. Nothing is deleted here; the
+ * `attachment-gc` job removes a detached asset after the recovery window.
+ */
+export async function markAssetsDetached(
   executor: Executor,
   identity: ResolvedIdentity,
   assetIds: readonly string[],
@@ -161,11 +166,35 @@ export async function deleteAssetsByIds(
 ) {
   if (assetIds.length === 0) return [];
   return executor
-    .delete(assetTable)
+    .update(assetTable)
+    .set({ detachedAt: sql`now()` })
     .where(
       and(
         inArray(assetTable.id, [...assetIds]),
         eq(assetTable.taskId, taskId),
+        isNull(assetTable.detachedAt),
+        taskReach(identity, assetTable.taskId, executor),
+      ),
+    )
+    .returning({ id: assetTable.id });
+}
+
+/** Clears the detached marker of assets that content references again. */
+export async function restoreAssetsByIds(
+  executor: Executor,
+  identity: ResolvedIdentity,
+  assetIds: readonly string[],
+  taskId: string,
+) {
+  if (assetIds.length === 0) return [];
+  return executor
+    .update(assetTable)
+    .set({ detachedAt: null })
+    .where(
+      and(
+        inArray(assetTable.id, [...assetIds]),
+        eq(assetTable.taskId, taskId),
+        isNotNull(assetTable.detachedAt),
         taskReach(identity, assetTable.taskId, executor),
       ),
     )

@@ -50,6 +50,8 @@ export function messageAuthor(message: {
   mine?: boolean;
 }): { key: string } | { name: string } {
   if (message.mine) return { key: "request.author.you" };
+  // `P2R1-05`: the IQ-15 auto-decline is written by the system, not a person.
+  if (message.actorType === "system") return { key: "request.author.system" };
   if (message.actorType === "customer")
     return { key: "request.author.colleague" };
   return message.authorName

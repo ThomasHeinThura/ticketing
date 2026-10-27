@@ -20,6 +20,14 @@ import {
   PORTAL_CLIENT_ROUTE_PATTERNS,
 } from "../../apps/api/src/portal-client-routes";
 
+// Unit tests run without a database; the portal host is on unless a flag row turns it off.
+vi.mock("../../apps/api/src/feature-flag/enforce", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../../apps/api/src/feature-flag/enforce")
+  >()),
+  featureEnabledSomewhere: async () => true,
+}));
+
 const requireFromApi = createRequire(
   fileURLToPath(new URL("../../apps/api/package.json", import.meta.url)),
 );
@@ -366,6 +374,7 @@ describe("P0 host and static isolation", () => {
   });
 
   it("rejects shared cookie domains at application startup", () => {
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
     const original = process.env.COOKIE_DOMAIN;
     process.env.COOKIE_DOMAIN = ".example.test";
     try {
@@ -373,6 +382,7 @@ describe("P0 host and static isolation", () => {
         createApp({ staticRoot: agentRoot, portalStaticRoot: portalRoot }),
       ).toThrow(/COOKIE_DOMAIN is incompatible/u);
     } finally {
+      // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
       if (original === undefined) delete process.env.COOKIE_DOMAIN;
       else process.env.COOKIE_DOMAIN = original;
     }

@@ -2337,6 +2337,8 @@
 			"sending": "Sending…",
 			"mutationFailed": "The action failed. Your permissions or the {{term_work_item_one}} may have changed; retry or reload.",
 			"groupedChanges": "{{count}} changes",
+			"imported": "Imported",
+			"importedTitle": "Imported from {{system}} on {{date}}. The time shown is the original time.",
 			"deleted": "Comment deleted by {{actor}} on {{date}}",
 			"mentionWarning": "{{people}} cannot access this {{term_work_item_one}} and will not be notified.",
 			"mentionUnavailable": "A selected person",
@@ -2885,21 +2887,25 @@
 		"search": {
 			"pageTitle": "Search",
 			"backToDashboard": "Back to Dashboard",
-			"placeholder": "Search {{term_work_item_other}} by title or short ID (e.g. DEP-23)...",
-			"hint": "Search across all {{term_project_other}} in this workspace. Use short IDs like DEP-23 to find specific {{term_work_item_other}}.",
+			"placeholder": "Search {{term_work_item_other}} by key, title, description or comment text...",
+			"hint": "Search across all {{term_project_other}} you can reach. Use keys like DEP-23 to find a specific {{term_work_item_other}}, or text from a description or comment.",
 			"searching": "Searching...",
 			"resultsFound_one": "{{count}} result found",
 			"resultsFound_other": "{{count}} results found",
 			"noResultsTitle": "No results found",
 			"noResultsDescription": "Try adjusting your search terms or search for something else",
 			"startTitle": "Start Searching",
-			"startDescription": "Enter a search term to find {{term_work_item_other}} across all {{term_project_other}}",
+			"startDescription": "Enter a search term to find {{term_work_item_other}}, {{term_project_other}} and pages you can reach",
 			"quickSearchesLabel": "Quick searches:",
 			"suggestionHighPriority": "High priority",
 			"suggestionBug": "Bug",
 			"suggestionFeature": "Feature",
 			"suggestionInProgress": "In progress",
-			"suggestionCompleted": "Completed"
+			"suggestionCompleted": "Completed",
+			"scopeLabel": "Search in",
+			"scopeAll": "Everything",
+			"scopeWorkItems": "{{term_work_item_other}}",
+			"scopeProjects": "{{term_project_other}}"
 		},
 		"create": {
 			"pageTitle": "Create Workspace",
@@ -3148,6 +3154,7 @@
 			"cancel": "Cancel",
 			"close": "Close",
 			"success": "{{term_work_item_one}} created",
+			"notMovedToState": "{{key}} was created in the project's default state. The workflow does not allow moving it to {{state}} yet.",
 			"errorTitle": "Couldn't create the {{term_work_item_one}}",
 			"errorForbidden": "You don't have permission to create {{term_work_item_other}} in this {{term_project_one}}.",
 			"errorInvalid": "Check the fields and try again.",
@@ -3574,6 +3581,10 @@
 			"noStartDate": "No start date",
 			"clearDate": "Clear date",
 			"reloadLatest": "Reload latest",
+			"importedFrom": "Imported from {{system}}",
+			"importedFromStale": "Imported from {{system}} (no longer in the source)",
+			"importedOn": "Imported {{date}}",
+			"openSource": "Open the original in {{system}}",
 			"unsaved": "Not saved yet. It will be tried again when you leave the field.",
 			"agile": {
 				"noEstimate": "No estimate",
@@ -3840,6 +3851,9 @@
 			"downloadError": "The file could not be downloaded. Try again.",
 			"sla": {
 				"label": "Service target"
+			},
+			"systemReasons": {
+				"clarification_window_expired": "No reply was received within {{days}} days of our request for clarification, so this {{term_request_one}} was closed. Contact us if you would like to continue."
 			}
 		},
 		"orientation": {
@@ -3862,7 +3876,8 @@
 			"author": {
 				"you": "You",
 				"team": "Our team",
-				"colleague": "A colleague"
+				"colleague": "A colleague",
+				"system": "Automatic message"
 			},
 			"priority": {
 				"label": "Priority",
@@ -4019,7 +4034,10 @@
 				"mention": "You were mentioned in your {{term_request_one}}",
 				"transition": "Your {{term_request_one}} was updated",
 				"requestReply": "New reply to your {{term_request_one}}",
-				"requestDeclined": "Your {{term_request_one}} was declined"
+				"requestDeclined": "Your {{term_request_one}} was declined",
+				"approvalRequested": "An approval is waiting for your decision",
+				"approvalExpiring": "An approval waiting for you expires soon",
+				"approvalWithdrawn": "An approval request was withdrawn"
 			},
 			"requestReference": "{{term_request_one}} {{ref}}"
 		}
@@ -4450,6 +4468,34 @@
 			"update": "Save changes",
 			"conflict": "This queue changed. Reload it before saving.",
 			"savedState": "Queue state: {{state}}"
+		},
+		"reference": "Reference",
+		"summary": "Summary",
+		"requestType": "Request type",
+		"organisation": "Organisation",
+		"submittedAt": "Submitted",
+		"ageSuffix": {
+			"m": "{{value}}m",
+			"h": "{{value}}h",
+			"d": "{{value}}d"
+		},
+		"actorTypes": {
+			"customer": "Customer",
+			"triager": "Staff",
+			"system": "System"
+		},
+		"systemReasons": {
+			"clarification_window_expired": "Closed automatically: no reply within {{days}} days of the clarification request."
+		},
+		"errors": {
+			"submission_not_open": "This {{term_submission_one}} is no longer open. The queue has been refreshed.",
+			"submission_already_converted": "Another triager already accepted this {{term_submission_one}}.",
+			"submission_changed": "This {{term_submission_one}} changed while you were working. Review it and try again.",
+			"destination_required": "Choose a destination project and confirm the work item type before accepting.",
+			"destination_unavailable": "The destination project does not serve this customer’s organisation or is no longer available.",
+			"work_item_type_unavailable": "The chosen work item type is no longer available in this workspace.",
+			"form_version_unavailable": "The form version this {{term_submission_one}} was made with is no longer available.",
+			"openWinner": "Open {{key}}"
 		}
 	},
 	"requestTypes": {
@@ -6039,6 +6085,8 @@
 	},
 	"godModeSettings": {
 		"title": "General",
+		"localFactorEveryone": "Everyone (staff)",
+		"localFactorStaffOnlyHelp": "The local factor policy applies to staff only. Customers sign in to the portal without a local factor.",
 		"unavailable": "Settings are unavailable",
 		"loadFailed": "The instance settings could not be loaded.",
 		"retry": "Retry",
@@ -6421,6 +6469,14 @@
 			"estimates": {
 				"title": "Estimates are off for this {{term_project_one}}",
 				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on."
+			},
+			"calendar": {
+				"title": "Calendar is off for this {{term_project_one}}",
+				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
+			},
+			"timeline": {
+				"title": "Gantt is off for this {{term_project_one}}",
+				"description": "A {{term_project_one}} admin can switch on Gantt in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			}
 		},
 		"cycles": {
@@ -8934,7 +8990,29 @@
 				"emptyTitle": "Nothing discovered yet",
 				"emptyDescription": "Run discovery to see the size of the job before mapping it.",
 				"errorTitle": "Discovery failed",
-				"errorDescription": "The source could not be reached or read. Check the connection and try again."
+				"errorDescription": "The source could not be reached or read. Check the connection and try again.",
+				"unreadableTitle": "Some source items cannot be imported"
+			},
+			"setupJob": {
+				"discover": "Discovery progress",
+				"dry_run": "Dry run progress",
+				"progressUnknown": "Pages read: {{pages}}. Records: {{records}}.",
+				"progress": "Records: {{records}} of {{total}} ({{percent}}%). Pages read: {{pages}}.",
+				"stalled": "This step has not reported progress for a while. Continue it from where it stopped.",
+				"continue": "Continue"
+			},
+			"setupFailures": {
+				"authority_lost": "Stopped because you are no longer an instance administrator.",
+				"project_reach_lost": "Stopped because the target project is no longer reachable.",
+				"run_changed": "Stopped because the import changed while this step ran. Run it again.",
+				"mapping_changed": "Stopped because the mapping changed while this step ran. Run it again.",
+				"page_limit": "Stopped because the source has more pages than one import can read.",
+				"no_adapter": "No connector is available for this source."
+			},
+			"unreadable": {
+				"unreadable_item": "Items the source listed but did not return: {{total}}",
+				"missing_title": "Items without a title: {{total}}",
+				"missing_id": "Items without an id: {{total}}"
 			},
 			"mapping": {
 				"domain": "Type",
@@ -9040,6 +9118,12 @@
 				"resumeBlockedTitle": "Cannot resume yet",
 				"resumeBlocked": "The run needs a new dry run and approval before it can resume.",
 				"backToDryRun": "Go to dry run",
+				"returnToDryRun": "Return to dry run",
+				"takeOver": "Take over and resume",
+				"recovery": {
+					"dryRun": "Resuming cannot fix this. Return to the dry run: the approval is cleared, records already imported are kept and skipped, and the import is approved and started again.",
+					"takeOver": "Another instance administrator can take the import over. It then continues as you, and both administrators are recorded in the audit history."
+				},
 				"controlError": "The request could not be completed. Try again.",
 				"failed": "The import failed. Review the run history for the cause.",
 				"toReconcile": "Continue to reconcile"

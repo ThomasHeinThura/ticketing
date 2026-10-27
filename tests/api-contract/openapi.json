@@ -5337,6 +5337,79 @@
                 "visibilityCondition"
               ]
             }
+          },
+          "importProvenance": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "system": {
+                  "type": "string",
+                  "description": "The source reference the import ran against."
+                },
+                "pluginId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sourceUrl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The original record's http(s) URL, when the source gave one."
+                },
+                "importedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "lastSeenAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "stale": {
+                  "type": "boolean",
+                  "description": "true when a later complete import no longer found the record in the source."
+                },
+                "sourceCreatedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "sourceUpdatedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "sourceResolvedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "system",
+                "pluginId",
+                "sourceUrl",
+                "importedAt",
+                "lastSeenAt",
+                "stale",
+                "sourceCreatedAt",
+                "sourceUpdatedAt",
+                "sourceResolvedAt"
+              ]
+            },
+            "description": "Where an imported item came from (empty for a native item). Staff detail only; never part of a customer view."
           }
         },
         "required": [
@@ -5365,7 +5438,8 @@
           "stateCategory",
           "defaultCommentVisibility",
           "assigneeName",
-          "customFields"
+          "customFields",
+          "importProvenance"
         ]
       },
       "WorkItemType": {
@@ -6124,6 +6198,21 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "origin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`imported` for a row an import wrote: createdAt is then the source time and importedAt the real write time; null for a native row."
+          },
+          "importedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When an imported row was written; null for a native row."
           },
           "kind": {
             "type": "string",
@@ -22700,6 +22789,148 @@
           },
           "403": {
             "description": "Caller is not an instance administrator",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/audit/export": {
+      "post": {
+        "operationId": "exportInstanceAudit",
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Export the instance-wide audit log",
+        "description": "Instance administrators only, elevated and session-only (PA-15 operation `audit_export`, bound to the exact format, filters and row cap). Returns at most the capped number of rows as CSV or JSON; `truncated` says more rows matched. The export writes one `audit.exported` row with the format, filters and row count, never the rows (AU-13).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 43,
+              "maxLength": 43
+            },
+            "required": false,
+            "name": "x-taskdesk-step-up-token",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "format": {
+                    "type": "string",
+                    "enum": [
+                      "csv",
+                      "json"
+                    ],
+                    "default": "csv"
+                  },
+                  "action": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "since": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "until": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "entityType": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "entityId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5000,
+                    "default": 5000
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The export",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "format": {
+                      "type": "string",
+                      "enum": [
+                        "csv",
+                        "json"
+                      ]
+                    },
+                    "filename": {
+                      "type": "string"
+                    },
+                    "rowCount": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "truncated": {
+                      "type": "boolean"
+                    },
+                    "content": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "format",
+                    "filename",
+                    "rowCount",
+                    "truncated",
+                    "content"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body (format, filters or limit)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an instance administrator, not a browser session, or step-up required/unavailable",
             "content": {
               "text/plain": {
                 "schema": {
@@ -41022,7 +41253,10 @@
                     "type": "integer",
                     "exclusiveMinimum": 0
                   }
-                }
+                },
+                "required": [
+                  "version"
+                ]
               }
             }
           }
@@ -49950,7 +50184,10 @@
                               "work_item.mentioned",
                               "work_item.transitioned",
                               "submission.replied",
-                              "submission.declined"
+                              "submission.declined",
+                              "approval.requested",
+                              "approval.expiring",
+                              "approval.withdrawn"
                             ]
                           },
                           "isRead": {
@@ -49961,7 +50198,10 @@
                             "format": "date-time"
                           },
                           "requestRef": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "commentId": {
                             "type": [
@@ -51230,6 +51470,98 @@
             }
           }
         }
+      },
+      "delete": {
+        "operationId": "deleteRequestType",
+        "tags": [
+          "Request types"
+        ],
+        "summary": "Delete an unpublished, unused request type",
+        "description": "Request deletion (202 pending action, click approval). Refused while the request type is published or has any submission.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Deletion awaiting approval",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click",
+                        "typed_name_step_up"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request type not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request type is published or has submissions",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/request-types/{id}/publish": {
@@ -52475,13 +52807,29 @@
                             "type": "string"
                           },
                           "authorId": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "actorType": {
                             "type": "string"
                           },
                           "body": {
                             "type": "string"
+                          },
+                          "reasonCode": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reasonParams": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "additionalProperties": {}
                           },
                           "createdAt": {
                             "type": "string",
@@ -52493,6 +52841,8 @@
                           "authorId",
                           "actorType",
                           "body",
+                          "reasonCode",
+                          "reasonParams",
                           "createdAt"
                         ]
                       }
@@ -53033,13 +53383,29 @@
                           "type": "string"
                         },
                         "authorId": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "actorType": {
                           "type": "string"
                         },
                         "body": {
                           "type": "string"
+                        },
+                        "reasonCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reasonParams": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "additionalProperties": {}
                         },
                         "createdAt": {
                           "type": "string",
@@ -53051,6 +53417,8 @@
                         "authorId",
                         "actorType",
                         "body",
+                        "reasonCode",
+                        "reasonParams",
                         "createdAt"
                       ]
                     }
@@ -53144,13 +53512,29 @@
                           "type": "string"
                         },
                         "authorId": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "actorType": {
                           "type": "string"
                         },
                         "body": {
                           "type": "string"
+                        },
+                        "reasonCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reasonParams": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "additionalProperties": {}
                         },
                         "createdAt": {
                           "type": "string",
@@ -53162,6 +53546,8 @@
                         "authorId",
                         "actorType",
                         "body",
+                        "reasonCode",
+                        "reasonParams",
                         "createdAt"
                       ]
                     }
@@ -53738,7 +54124,8 @@
                             "type": "string",
                             "enum": [
                               "customer",
-                              "triager"
+                              "triager",
+                              "system"
                             ]
                           },
                           "authorName": {
@@ -53753,6 +54140,19 @@
                           "body": {
                             "type": "string"
                           },
+                          "reasonCode": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reasonParams": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "additionalProperties": {}
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
@@ -53764,6 +54164,8 @@
                           "authorName",
                           "mine",
                           "body",
+                          "reasonCode",
+                          "reasonParams",
                           "createdAt"
                         ]
                       }
@@ -53870,13 +54272,29 @@
                           "type": "string"
                         },
                         "authorId": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "actorType": {
                           "type": "string"
                         },
                         "body": {
                           "type": "string"
+                        },
+                        "reasonCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reasonParams": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "additionalProperties": {}
                         },
                         "createdAt": {
                           "type": "string",
@@ -53888,6 +54306,8 @@
                         "authorId",
                         "actorType",
                         "body",
+                        "reasonCode",
+                        "reasonParams",
                         "createdAt"
                       ]
                     }
@@ -54302,7 +54722,8 @@
                             "type": "string",
                             "enum": [
                               "customer",
-                              "triager"
+                              "triager",
+                              "system"
                             ]
                           },
                           "authorName": {
@@ -54317,6 +54738,19 @@
                           "body": {
                             "type": "string"
                           },
+                          "reasonCode": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reasonParams": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "additionalProperties": {}
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
@@ -54328,6 +54762,8 @@
                           "authorName",
                           "mine",
                           "body",
+                          "reasonCode",
+                          "reasonParams",
                           "createdAt"
                         ]
                       }
@@ -54689,7 +55125,8 @@
                             "type": "string",
                             "enum": [
                               "customer",
-                              "triager"
+                              "triager",
+                              "system"
                             ]
                           },
                           "authorName": {
@@ -54704,6 +55141,19 @@
                           "body": {
                             "type": "string"
                           },
+                          "reasonCode": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reasonParams": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "additionalProperties": {}
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
@@ -54715,6 +55165,8 @@
                           "authorName",
                           "mine",
                           "body",
+                          "reasonCode",
+                          "reasonParams",
                           "createdAt"
                         ]
                       }
@@ -55092,7 +55544,8 @@
                             "type": "string",
                             "enum": [
                               "customer",
-                              "triager"
+                              "triager",
+                              "system"
                             ]
                           },
                           "authorName": {
@@ -55107,6 +55560,19 @@
                           "body": {
                             "type": "string"
                           },
+                          "reasonCode": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reasonParams": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "additionalProperties": {}
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
@@ -55118,6 +55584,8 @@
                           "authorName",
                           "mine",
                           "body",
+                          "reasonCode",
+                          "reasonParams",
                           "createdAt"
                         ]
                       }
@@ -60960,6 +61428,64 @@
                       "workspaceId",
                       "workItemKey",
                       "reason"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "audit_export"
+                        ]
+                      },
+                      "format": {
+                        "type": "string",
+                        "enum": [
+                          "csv",
+                          "json"
+                        ],
+                        "default": "csv"
+                      },
+                      "action": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "since": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "until": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "entityType": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "entityId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5000,
+                        "default": 5000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation"
                     ],
                     "additionalProperties": false
                   }
@@ -66863,6 +67389,248 @@
                       "operation": {
                         "type": "string",
                         "enum": [
+                          "audit_export"
+                        ]
+                      },
+                      "format": {
+                        "type": "string",
+                        "enum": [
+                          "csv",
+                          "json"
+                        ],
+                        "default": "csv"
+                      },
+                      "action": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "since": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "until": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "entityType": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "entityId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5000,
+                        "default": 5000
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "password"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "audit_export"
+                        ]
+                      },
+                      "format": {
+                        "type": "string",
+                        "enum": [
+                          "csv",
+                          "json"
+                        ],
+                        "default": "csv"
+                      },
+                      "action": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "since": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "until": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "entityType": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "entityId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5000,
+                        "default": 5000
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "totp"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$/u"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "audit_export"
+                        ]
+                      },
+                      "format": {
+                        "type": "string",
+                        "enum": [
+                          "csv",
+                          "json"
+                        ],
+                        "default": "csv"
+                      },
+                      "action": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "since": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "until": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "entityType": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "entityId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5000,
+                        "default": 5000
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "backup_code"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
                           "impersonation_start"
                         ]
                       },
@@ -67665,6 +68433,81 @@
                       "workspaceId",
                       "workItemKey",
                       "reason",
+                      "challengeId",
+                      "nonce",
+                      "method"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "audit_export"
+                        ]
+                      },
+                      "format": {
+                        "type": "string",
+                        "enum": [
+                          "csv",
+                          "json"
+                        ],
+                        "default": "csv"
+                      },
+                      "action": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "since": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "until": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "entityType": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "entityId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5000,
+                        "default": 5000
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "sso_prompt_login"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
                       "challengeId",
                       "nonce",
                       "method"
@@ -79714,7 +80557,8 @@
         "tags": [
           "Imports"
         ],
-        "summary": "Discover the source and propose a mapping",
+        "summary": "Start discovering the source and proposing a mapping",
+        "description": "Returns 202 at once. Discovery runs in the background: poll GET /imports/{id}/engine for its `job` (progress, then `completed` or a fixed `failure` code) and read the result from GET /imports/{id}/mapping. A request while discovery is running returns its state and never starts a second read.",
         "parameters": [
           {
             "schema": {
@@ -79728,8 +80572,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Mapping",
+          "202": {
+            "description": "Discovery accepted or already running",
             "content": {
               "application/json": {
                 "schema": {
@@ -79786,27 +80630,6 @@
                   "type": "object",
                   "properties": {
                     "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Source unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    },
-                    "reason": {
                       "type": "string"
                     }
                   },
@@ -80168,6 +80991,24 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Person target outside the run's organisation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -80178,7 +81019,8 @@
         "tags": [
           "Imports"
         ],
-        "summary": "Whole-run dry run",
+        "summary": "Start the whole-run dry run",
+        "description": "Returns 202 at once. The dry run reads the source in the background and resumes from a checkpoint after a restart: poll GET /imports/{id}/engine for its `job`, then read the report from GET /imports/{id}/dry-run-all. A run paused mid-execution returns to the dry-run stage through this call (its approval is cleared; committed records are kept and skipped). A request while a dry run is running returns its state and never starts a second read.",
         "parameters": [
           {
             "schema": {
@@ -80192,8 +81034,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Dry-run report",
+          "202": {
+            "description": "Dry run accepted or already running",
             "content": {
               "application/json": {
                 "schema": {
@@ -80243,25 +81085,7 @@
             }
           },
           "409": {
-            "description": "Run changed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Source unavailable",
+            "description": "Run changed or not in a setup state",
             "content": {
               "application/json": {
                 "schema": {
@@ -97026,7 +97850,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing permission, or session required",
+            "description": "Missing permission, session required, a destination change by someone other than the owner, or a re-own of an active webhook by a non-administrator",
             "content": {
               "text/plain": {
                 "schema": {
@@ -97046,7 +97870,7 @@
             }
           },
           "409": {
-            "description": "Version conflict",
+            "description": "Version conflict, or the owner changed concurrently",
             "content": {
               "application/json": {
                 "schema": {
@@ -97911,7 +98735,7 @@
             }
           },
           "409": {
-            "description": "Delivery has no recorded payload, or webhook is paused",
+            "description": "Delivery has no recorded payload, webhook is paused, or the destination or owner changed after the delivery was created",
             "content": {
               "text/plain": {
                 "schema": {
@@ -112576,6 +113400,17 @@
           },
           "404": {
             "description": "SCIM user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity conflict",
             "content": {
               "application/json": {
                 "schema": {

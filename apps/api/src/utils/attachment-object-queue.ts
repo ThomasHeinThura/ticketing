@@ -37,3 +37,28 @@ export async function queueAttachmentObjectsForWorkspaces(
   `);
   return result.rowCount ?? 0;
 }
+
+/**
+ * P1R2-6: after `complete` moved an upload to its never-presigned final key, the vacated pending
+ * key stays writable through its upload credential until that credential expires. The key is
+ * queued for `attachment-gc` with `queued_at` pushed past the credential's lifetime (plus a
+ * margin), so a replayed upload after `complete` (bounded by the signed Content-Length) is
+ * removed too. The collector skips rows whose `queued_at` is still in the future, and removes
+ * the object only while no attachment row names the key.
+ */
+export async function queueVacatedUploadKey(
+  executor: Executor,
+  input: { objectKey: string; workspaceId: string; ttlSeconds: number },
+): Promise<void> {
+  const delaySeconds = Math.max(0, Math.ceil(input.ttlSeconds)) + 60;
+  await executor.execute(sql`
+    INSERT INTO "attachment_object_gc" ("object_key", "source_workspace_id", "queued_at")
+    VALUES (
+      ${input.objectKey},
+      ${input.workspaceId},
+      now() + make_interval(secs => ${delaySeconds})
+    )
+    ON CONFLICT ("object_key") DO UPDATE
+      SET "queued_at" = GREATEST("attachment_object_gc"."queued_at", EXCLUDED."queued_at")
+  `);
+}

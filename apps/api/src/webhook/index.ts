@@ -4,6 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import { clientIpForContext } from "../api-key/enforce";
 import type { ExtInput } from "../auth/step-up-ext";
 import { runWithStepUp } from "../auth/step-up-spend";
+import db from "../database";
 import {
   apiRouter,
   type BaseVariables,
@@ -25,7 +26,7 @@ import { requireWorkspaceCapability } from "../utils/require-workspace-capabilit
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { WEBHOOK_DELETION_ROUTE } from "./deletion-target";
 import { deliverWebhookNow } from "./delivery";
-import { receivesEverything } from "./reach";
+import { ownerReceivesEverything, receivesEverything } from "./reach";
 import {
   createWebhook,
   enqueueRedelivery,
@@ -277,9 +278,14 @@ const updateRouteDef = createRoute({
   responses: {
     200: jsonResponse("Updated webhook", webhookSchema),
     400: errorResponse("Invalid webhook or destination"),
-    403: errorResponse("Missing permission, or session required"),
+    403: errorResponse(
+      "Missing permission, session required, a destination change by someone other than the owner, or a re-own of an active webhook by a non-administrator",
+    ),
     404: errorResponse("Webhook not found"),
-    409: jsonResponse("Version conflict", webhookVersionConflictSchema),
+    409: jsonResponse(
+      "Version conflict, or the owner changed concurrently",
+      webhookVersionConflictSchema,
+    ),
   },
 });
 
@@ -383,7 +389,7 @@ const redeliverRoute = createRoute({
     403: errorResponse("Missing webhook:manage permission"),
     404: errorResponse("Delivery not found"),
     409: errorResponse(
-      "Delivery has no recorded payload, or webhook is paused",
+      "Delivery has no recorded payload, webhook is paused, or the destination or owner changed after the delivery was created",
     ),
   },
 });
@@ -495,17 +501,42 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
     const existing = await getWebhook(id, workspaceId);
     if (!existing)
       throw new HTTPException(404, { message: "Webhook not found" });
-    if (body.url !== undefined && body.url !== existing.url)
-      await assertDestination(body.url);
+    const urlChanging = body.url !== undefined && body.url !== existing.url;
+    if (urlChanging) await assertDestination(body.url as string);
     const actor = await callerActor(c);
+    const identity = await callerIdentity(c);
+    const isAdmin = can(identity, "instance:admin", "instance", {
+      instance: true,
+    });
+    const isOwner = identity.personId === existing.createdBy;
     if (body.reown) {
-      const identity = await callerIdentity(c);
-      if (
-        receivesEverything(identity, workspaceId) &&
-        !can(identity, "instance:admin", "instance", { instance: true })
-      ) {
+      // WH-14: a re-own is for a webhook paused because its owner left. Taking over an active
+      // webhook someone else owns is an instance-admin action.
+      if (existing.disabledReason !== "owner_left" && !isAdmin) {
+        throw new HTTPException(403, {
+          message: "webhook_reown_requires_owner_left",
+        });
+      }
+      if (receivesEverything(identity, workspaceId) && !isAdmin) {
         throw new HTTPException(403, {
           message: "webhook_owner_requires_instance_admin",
+        });
+      }
+    } else if (urlChanging) {
+      // P4R1-H1: the destination of a webhook is the owner's to change (delivery is reach-checked
+      // against the owner). Anyone else must re-own first (step-up, reach rules). The one
+      // exception is an instance admin for a webhook whose owner receives everything, where the
+      // reach is the same either way. An owner who receives everything needs instance:admin too
+      // (WH-15).
+      const allowed = isOwner
+        ? !receivesEverything(identity, workspaceId) || isAdmin
+        : isAdmin &&
+          (await ownerReceivesEverything(db, existing.createdBy, workspaceId));
+      if (!allowed) {
+        throw new HTTPException(403, {
+          message: isOwner
+            ? "webhook_owner_requires_instance_admin"
+            : "webhook_url_requires_owner",
         });
       }
     }
@@ -515,19 +546,22 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
       events: body.events,
       active: body.active,
       reown: body.reown,
+      expectedOwner: existing.createdBy,
       expectedVersion: body.version,
     };
     let row: WebhookRow | undefined;
     try {
+      // A re-own is elevated like a destination change (P4R1-L1): the proof binds the resulting
+      // destination, so a re-own that keeps the url binds the current one.
       row =
-        body.url !== undefined && body.url !== existing.url
+        urlChanging || body.reown
           ? await runWithStepUp(
               c,
               {
                 operation: "webhook_update_url",
                 workspaceId,
                 webhookId: id,
-                url: body.url,
+                url: body.url ?? existing.url,
               } satisfies WebhookStepUp,
               (spend) => updateWebhook(id, workspaceId, patch, actor, spend),
             )
@@ -631,6 +665,13 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
       throw new HTTPException(404, { message: "Delivery not found" });
     if (!webhook.active)
       throw new HTTPException(409, { message: "webhook_paused" });
+    // P4R1-H1: a delivery created before the destination or owner changed was addressed to the
+    // previous one; it is never replayed to the new destination.
+    if (
+      webhook.destinationChangedAt &&
+      original.createdAt < webhook.destinationChangedAt
+    )
+      throw new HTTPException(409, { message: "webhook_destination_changed" });
     const queued = await enqueueRedelivery(original);
     await deliverWebhookNow(queued.id);
     const finished = await getDelivery(queued.id);

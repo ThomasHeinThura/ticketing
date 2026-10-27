@@ -575,16 +575,23 @@ describe("closed periods read from snapshots (RP-9)", () => {
     );
 
     if (!rating) throw new Error("rating fixture missing");
+    const coveredBeforeRating = (
+      await db
+        .select()
+        .from(metricSnapshotDayTable)
+        .where(eq(metricSnapshotDayTable.workspaceId, w.workspaceId))
+    ).length;
     await db
       .update(schema.satisfactionRatingTable)
       .set({ score: 1 })
       .where(eq(schema.satisfactionRatingTable.id, rating.id));
-    // The update invalidates all day coverage before the report falls back to live source facts.
+    // The update invalidates only the rating's own day before the report falls back to live
+    // source facts for it (P5-R1-03: no workspace-wide invalidation).
     const invalidated = await db
       .select()
       .from(metricSnapshotDayTable)
       .where(eq(metricSnapshotDayTable.workspaceId, w.workspaceId));
-    expect(invalidated).toHaveLength(0);
+    expect(invalidated).toHaveLength(coveredBeforeRating - 1);
     const afterUpdate = await run(w.owner.user, "satisfaction", {
       window: "30",
       snapshots: true,
@@ -710,7 +717,7 @@ describe("closed periods read from snapshots (RP-9)", () => {
     expect(numbers(refreshed)).toEqual(numbers(await read(false)));
   });
 
-  it("invalidates workspace coverage on a source change and the next run catches up both older source days", async () => {
+  it("invalidates only the changed item's days on a source change and the next run catches up both older source days", async () => {
     const now = new Date();
     const older = await w.addItem({
       createdDaysAgo: 21,
@@ -737,7 +744,9 @@ describe("closed periods read from snapshots (RP-9)", () => {
       .select()
       .from(metricSnapshotDayTable)
       .where(eq(metricSnapshotDayTable.workspaceId, w.workspaceId));
-    expect(afterMutation).toHaveLength(0);
+    // Only the days the older item feeds (created and resolved) lose their marker; the newer
+    // item's days and every other closed day stay covered.
+    expect(afterMutation).toHaveLength(before.length - 2);
 
     await runMetricsSnapshot(now);
     const rebuilt = await db.execute<{ day: string }>(sql`
@@ -1013,10 +1022,14 @@ describe("closed periods read from snapshots (RP-9)", () => {
     await seed();
     const now = new Date();
     await runMetricsSnapshot(now);
+    // A project change can reach any day, so it bumps the workspace epoch: a marker counts as
+    // coverage only while it carries the current epoch.
     const countMarkers = async () =>
       (
         await db.execute<{ n: number }>(sql`SELECT count(*)::int AS n
-        FROM metric_snapshot_day WHERE workspace_id = ${w.workspaceId}`)
+        FROM metric_snapshot_day d WHERE d.workspace_id = ${w.workspaceId}
+          AND d.epoch = COALESCE((SELECT e.epoch FROM metric_snapshot_epoch e
+            WHERE e.workspace_id = d.workspace_id), 0)`)
       ).rows[0]?.n ?? 0;
     const before = await countMarkers();
     expect(before).toBeGreaterThan(0);
@@ -1049,7 +1062,7 @@ describe("closed periods read from snapshots (RP-9)", () => {
     expect(numbers(snapshotRead)).toEqual(numbers(liveRead));
   });
 
-  it("serializes a late source mutation with an in-flight day writer", async () => {
+  it("serializes a late source mutation with an in-flight day writer (per-day lock)", async () => {
     await seed();
     const now = new Date();
     await runMetricsSnapshot(now);
@@ -1077,19 +1090,27 @@ describe("closed periods read from snapshots (RP-9)", () => {
     expect(day).toBeTruthy();
     const changedPriority = target?.priority === "urgent" ? "low" : "urgent";
 
+    // A writer holds the exclusive lock of that one day (as `writeWorkspaceDays` does while it
+    // computes it). A source write for the day waits for it; the writer itself never waits.
     let releaseFence!: () => void;
     let fenceAcquired!: () => void;
     const acquired = new Promise<void>((resolve) => (fenceAcquired = resolve));
     const held = new Promise<void>((resolve) => (releaseFence = resolve));
     const holder = db.transaction(async (tx) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(
-        hashtext(${`metric_snapshot_workspace:${w.workspaceId}`}))`);
+        hashtext(${`metric_snapshot_day:${w.workspaceId}:${day}`}))`);
       fenceAcquired();
       await held;
     });
     await acquired;
 
-    const writer = writeWorkspaceDays(w.workspaceId, [day as string], now);
+    // A second writer for the held day skips it at once instead of queueing.
+    const contending = await writeWorkspaceDays(
+      w.workspaceId,
+      [day as string],
+      now,
+    );
+    expect(contending.days).toBe(0);
     const mutation = (async () => {
       await db
         .update(schema.workItemTable)
@@ -1097,9 +1118,7 @@ describe("closed periods read from snapshots (RP-9)", () => {
         .where(eq(schema.workItemTable.id, target?.id ?? ""));
     })();
 
-    // Both operations are queued behind the held fence. Regardless of which waiter receives it
-    // first, the writer sees the committed mutation or the mutation invalidates its marker.
-    const waitsForFence = async () => {
+    const waitsForDayLock = async () => {
       for (let attempt = 0; attempt < 100; attempt += 1) {
         const row = (
           await db.execute<{
@@ -1107,24 +1126,24 @@ describe("closed periods read from snapshots (RP-9)", () => {
           }>(sql`SELECT count(*)::int AS n FROM pg_locks
             WHERE locktype = 'advisory' AND granted = false`)
         ).rows[0];
-        if ((row?.n ?? 0) >= 2) return;
+        if ((row?.n ?? 0) >= 1) return;
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
-      throw new Error(
-        "snapshot writer and source mutation did not wait on the workspace fence",
-      );
+      throw new Error("the source mutation did not wait on the day lock");
     };
     let waitError: Error | null = null;
     try {
-      await waitsForFence();
+      await waitsForDayLock();
     } catch (error) {
       waitError =
-        error instanceof Error ? error : new Error("fence wait failed");
+        error instanceof Error ? error : new Error("day lock wait failed");
     } finally {
       releaseFence();
     }
-    await Promise.all([holder, writer, mutation]);
+    await Promise.all([holder, mutation]);
     if (waitError) throw waitError;
+    // The writer then recomputes the day under the committed mutation.
+    await writeWorkspaceDays(w.workspaceId, [day as string], now);
 
     const after = await run(w.owner.user, "throughput", {
       window: "30",

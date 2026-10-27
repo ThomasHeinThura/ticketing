@@ -17,7 +17,8 @@ type ListColumnSectionProps = {
   expanded: boolean;
   showDropIndicator: boolean;
   onToggle: () => void;
-  onAddTask?: () => void;
+  /** Receives the "+" button, so a dialog it opens can return focus to it. */
+  onAddTask?: (trigger: HTMLButtonElement) => void;
   onArchive?: () => void;
   t: TFunction;
   children: ReactNode;
@@ -75,7 +76,7 @@ export function ListColumnSection({
             <Button
               variant="ghost"
               type="button"
-              onClick={onAddTask}
+              onClick={(event) => onAddTask(event.currentTarget)}
               className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
               title={t("tasks:listView.addTask")}
             >

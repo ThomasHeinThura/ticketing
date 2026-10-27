@@ -13,9 +13,8 @@ import {
 /**
  * Publishes `number` for `workflowId`: stamps `published_at`/`published_by` on that
  * version and sets `workflow.active_version_id` to it (`WF-7`). Immutable once
- * published (`WF-6`) -- this route does not enforce that beyond writing
- * `published_at` once; nothing in this PR's scope offers an "edit a published
- * version" route to enforce it against.
+ * published (`WF-6`): the stamp is written once, and re-publishing a published version is a
+ * no-op that returns it unchanged (no stamp overwrite, no silent re-activation).
  */
 async function publishWorkflowVersion(
   identityInput: ResolveIdentityInput,
@@ -55,7 +54,12 @@ async function publishWorkflowVersion(
             throw new HTTPException(404, {
               message: "Workflow version not found",
             });
-          await setActiveWorkflowVersion(tx, workflowId, version.id);
+          // WF-6/WF-7: only a first publication activates. Re-publishing an already published
+          // version changes nothing (no stamp overwrite, no silent re-activation): the contract
+          // defines no rollback, so a different active version is never displaced by it.
+          if (version.publishedAt === null) {
+            await setActiveWorkflowVersion(tx, workflowId, version.id);
+          }
           const transitions = await listVersionTransitions(
             identity,
             version.id,

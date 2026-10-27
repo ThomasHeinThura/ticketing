@@ -3,6 +3,11 @@ import { itemFilterSql, num, selectRows, timeFilterSql } from "./context";
 import type { SnapshotMetric } from "./snapshot.logic";
 import type { ReportContext } from "./types";
 
+/** UTC day of the last instant inside the exclusive end `to`: a window ending now includes today. */
+function lastDay(to: Date): string {
+  return new Date(to.getTime() - 1).toISOString().slice(0, 10);
+}
+
 /** Aggregated, privacy-minimal fact row stored in metric_snapshot's JSON dimensions/measures. */
 export type SnapshotFact = {
   day: string;
@@ -137,7 +142,7 @@ export async function liveFactRows(
         LEFT JOIN work_item w ON w.id = te.work_item_id
         WHERE te.workspace_id = ${workspaceId} AND p.deleted_at IS NULL
           AND ${timeScope}
-          AND te.date >= ${from.toISOString().slice(0, 10)}::date AND te.date < ${to.toISOString().slice(0, 10)}::date
+          AND te.date >= ${from.toISOString().slice(0, 10)}::date AND te.date <= ${lastDay(to)}::date
         GROUP BY 1,2,3,4`);
       break;
     case "cost_entry":
@@ -151,7 +156,7 @@ export async function liveFactRows(
         LEFT JOIN person ce_creator ON ce_creator.user_id=ce.created_by
         WHERE ce.workspace_id=${workspaceId} AND p.deleted_at IS NULL
           AND (${ctx ? sql`(${ctx.reach}) AND (${ctx.filters.projectId ? sql`p.id=${ctx.filters.projectId}` : sql`true`}) AND (${ctx.filters.organisationId ? sql`p.organisation_id=${ctx.filters.organisationId}` : sql`true`}) AND (${ctx.filters.typeId ? sql`w.type_id=${ctx.filters.typeId}` : sql`true`}) AND (${ctx.filters.priority ? sql`w.priority=${ctx.filters.priority}` : sql`true`}) AND (${ctx.filters.teamId ? sql`EXISTS (SELECT 1 FROM team_member tm JOIN person pe ON pe.user_id=tm.user_id JOIN team t ON t.id=tm.team_id AND t.workspace_id=${ctx.workspaceId} WHERE tm.team_id=${ctx.filters.teamId} AND pe.id=ce.person_id)` : sql`true`}) AND (${ctx.readAnyTime ? sql`true` : sql`ce.person_id=${ctx.identity.personId}`})` : sql`true`})
-          AND ce.date >= ${from.toISOString().slice(0, 10)}::date AND ce.date < ${to.toISOString().slice(0, 10)}::date
+          AND ce.date >= ${from.toISOString().slice(0, 10)}::date AND ce.date <= ${lastDay(to)}::date
         GROUP BY 1,2,3,4`);
       break;
     case "escalation_started":

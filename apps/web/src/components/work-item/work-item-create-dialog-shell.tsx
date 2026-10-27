@@ -19,11 +19,14 @@ export default function WorkItemCreateDialogShell({
   workspaceId,
   onClose,
   finalFocus,
+  initialState,
 }: {
   projectId: string;
   workspaceId: string | undefined;
   onClose: () => void;
   finalFocus: () => HTMLElement | false;
+  /** Kaneo's per-column "+": the column the new item should land in. */
+  initialState?: { id: string; name: string };
 }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<CreateWorkItemDraftState>({
@@ -73,6 +76,7 @@ export default function WorkItemCreateDialogShell({
             onDraftStateChange={setDraft}
             projectId={projectId}
             workspaceId={workspaceId}
+            initialState={initialState}
           />
         </ErrorBoundary>
       </DialogContent>

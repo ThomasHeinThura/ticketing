@@ -4,7 +4,7 @@ import {
   type ResolvedIdentity,
   reaches,
 } from "@taskdesk/permissions";
-import { eq, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
@@ -61,11 +61,18 @@ export async function projectFacts(
     .select({
       workspaceId: projectTable.workspaceId,
       organisationId: projectTable.organisationId,
+      deletedAt: projectTable.deletedAt,
     })
     .from(projectTable)
     .where(eq(projectTable.id, scope.projectId))
     .limit(1);
-  if (!project || project.workspaceId !== scope.workspaceId) return null;
+  // A soft-deleted project is not found (the repo convention: require-active-project.ts).
+  if (
+    !project ||
+    project.deletedAt !== null ||
+    project.workspaceId !== scope.workspaceId
+  )
+    return null;
   return {
     projectId: scope.projectId,
     workspaceId: scope.workspaceId,
@@ -182,7 +189,12 @@ async function resolveProjectFromKeyParam(c: Context, next: Next) {
       workspaceId: projectTable.workspaceId,
     })
     .from(projectTable)
-    .where(or(eq(projectTable.slug, raw), eq(projectTable.id, raw)))
+    .where(
+      and(
+        or(eq(projectTable.slug, raw), eq(projectTable.id, raw)),
+        isNull(projectTable.deletedAt),
+      ),
+    )
     .limit(1);
   if (!project) throw new HTTPException(404, { message: "Project not found" });
   try {

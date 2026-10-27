@@ -59,6 +59,7 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "request_type.group_order_updated",
   "request_type.published",
   "request_type.unpublished",
+  "request_type.deleted",
   "submission.claimed",
   "submission.duplicate",
   "submission.reopened",

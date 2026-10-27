@@ -26,9 +26,35 @@ export function renderWithQuery(ui: ReactElement) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
+  const result = render(
     <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
   );
+  return {
+    ...result,
+    client,
+    /** Re-renders with the same query client (a step receiving a newer polled run). */
+    rerender: (next: ReactElement) =>
+      result.rerender(
+        <QueryClientProvider client={client}>{next}</QueryClientProvider>,
+      ),
+  };
+}
+
+/** A background setup step as the engine DTO reports it. */
+export function setupJob(
+  overrides: Partial<NonNullable<EngineRun["job"]>> = {},
+): NonNullable<EngineRun["job"]> {
+  return {
+    kind: "discover",
+    status: "running",
+    startedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    pagesRead: 0,
+    recordsProcessed: 0,
+    totalRecords: null,
+    failure: null,
+    ...overrides,
+  };
 }
 
 export function engineRun(overrides: Partial<EngineRun> = {}): EngineRun {
@@ -46,6 +72,7 @@ export function engineRun(overrides: Partial<EngineRun> = {}): EngineRun {
     mappingVersion: 3,
     stats: {},
     cursor: null,
+    job: null,
     dryRun: {
       digest: "a".repeat(64),
       mappingVersion: 3,

@@ -1,3 +1,4 @@
+import { can } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { dashboardTable } from "../database/schema-p5-reports";
@@ -62,6 +63,15 @@ export const dashboardDeletionTarget: RegisteredDeletionTarget = {
       throw new HTTPException(409, {
         message: "pending_action_target_changed",
       });
+    // The approval may happen later than the request: a workspace dashboard is deleted only by
+    // someone who holds workspace:manage_settings NOW (RP-14), not by whoever had it when asking.
+    if (
+      row.scope === "workspace" &&
+      !can(identity, "workspace:manage_settings", "workspace", {
+        workspaceId: row.workspaceId,
+      })
+    )
+      throw new HTTPException(403, { message: "Insufficient permissions" });
     const deleted = await deleteDashboardRow(tx, row, {
       userId: identity.userId,
       actorType: "person",

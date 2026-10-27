@@ -1,5 +1,7 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { runWithStepUp } from "../../auth/step-up-spend";
+import db from "../../database";
 import { resolveRequestIdentity } from "../../permissions/resolve-request-identity";
 import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { isInstanceAdmin } from "../../utils/is-instance-admin";
@@ -15,13 +17,9 @@ type ExportBody = ReturnType<typeof auditExportBody.parse>;
  * `POST /api/instance/audit/export` (AU-13): the same instance-administrator gate as the
  * list, a hard row cap, and one `audit.exported` row that records the format, filters and
  * row count, never the rows. The export itself writes no `audit.read` row: exporting is its
- * own audited action. Step-up re-authentication (contract: elevated) is NOT consumed here;
- * see the route policy for the open gap.
- *
- * NOT MOUNTED: the permission gate (`elevated-actions.test.ts`) requires
- * `POST /api/instance/audit/export` to be `elevated: true`, which needs an `audit_export`
- * step-up operation in `auth/` (not editable from this lane). Mount this controller in
- * `audit/index.ts` and add the policy entry once that operation exists.
+ * own audited action. Elevated (P2R1-11): after the administrator check, a one-use PA-15
+ * `audit_export` proof bound to the exact format, filters and row cap is spent before any row
+ * is read, so a proof for a narrow export cannot be spent on a wider one.
  */
 export async function exportInstanceAudit(
   c: Context,
@@ -46,6 +44,19 @@ export async function exportInstanceAudit(
   if (!identity) {
     setShadowLegacyAuthorization(c, "denied");
     throw new HTTPException(403, { message: "Forbidden" });
+  }
+
+  // The read joins no write, so the proof is spent in a transaction of its own; a refusal
+  // (missing, spent or wrongly bound proof) rolls the consumption back (`runWithStepUp`).
+  try {
+    await runWithStepUp(c, { operation: "audit_export", ...body }, (spend) =>
+      db.transaction(async (tx) => {
+        await spend(tx);
+      }),
+    );
+  } catch (error) {
+    setShadowLegacyAuthorization(c, "denied");
+    throw error;
   }
 
   const fetched = await listInstanceAuditRows(identity, {

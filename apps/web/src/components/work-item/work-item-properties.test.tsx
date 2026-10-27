@@ -1018,3 +1018,67 @@ it("maps assignment nine to the eighth actual scoped candidate", async () => {
     }),
   );
 });
+
+it("P6-R1-04: shows where an imported item came from with a link to the original, and nothing for a native item", () => {
+  const view = renderProps(
+    <WorkItemProperties
+      item={item({
+        importProvenance: [
+          {
+            system: "jira-prod",
+            pluginId: "import.jira",
+            sourceUrl: "https://jira.example.test/browse/HELP-7",
+            importedAt: "2026-10-20T10:00:00.000Z",
+            lastSeenAt: "2026-10-20T10:00:00.000Z",
+            stale: false,
+            sourceCreatedAt: null,
+            sourceUpdatedAt: null,
+            sourceResolvedAt: null,
+          },
+        ],
+      })}
+      onAccessLost={vi.fn()}
+    />,
+  );
+  const origin = screen.getByTestId("work-item-imported-from");
+  expect(origin).toHaveTextContent("workItems:properties.importedFrom");
+  const link = screen.getByRole("link", {
+    name: "workItems:properties.openSource",
+  });
+  expect(link).toHaveAttribute(
+    "href",
+    "https://jira.example.test/browse/HELP-7",
+  );
+  expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+  view.unmount();
+
+  renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+  expect(screen.queryByTestId("work-item-import-origin")).toBeNull();
+});
+
+it("P6-R1-04: flags a stale source link and never links a non-http(s) URL", () => {
+  renderProps(
+    <WorkItemProperties
+      item={item({
+        importProvenance: [
+          {
+            system: "csv-export",
+            pluginId: "import.csv",
+            sourceUrl: "javascript:alert(1)",
+            importedAt: "2026-10-20T10:00:00.000Z",
+            lastSeenAt: null,
+            stale: true,
+            sourceCreatedAt: null,
+            sourceUpdatedAt: null,
+            sourceResolvedAt: null,
+          },
+        ],
+      })}
+      onAccessLost={vi.fn()}
+    />,
+  );
+  const origin = screen.getByTestId("work-item-imported-from");
+  expect(origin).toHaveAttribute("data-stale", "true");
+  expect(origin).toHaveTextContent("workItems:properties.importedFromStale");
+  expect(screen.queryByRole("link", { name: /openSource/ })).toBeNull();
+});

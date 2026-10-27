@@ -21,6 +21,7 @@ import {
   loadEscalationItemFacts,
   loadTriggerEnvelope,
   stopEscalationWalk,
+  supersedeActiveEscalationWalks,
 } from "./sla-escalation.repository";
 
 /**
@@ -66,6 +67,12 @@ export async function enqueueSlaEvent(
     }),
   });
   if (!step) return;
+  await supersedeActiveEscalationWalks(
+    tx,
+    context.workItem.id,
+    context.metric,
+    event.id,
+  );
   await insertEscalationWalk(tx, {
     workspaceId: context.workspaceId,
     projectId: context.projectId,

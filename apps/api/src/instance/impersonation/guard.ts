@@ -4,6 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import { IMPERSONATION_SESSION_SECONDS } from "../../auth/impersonation-context";
 import { attributedRoutesToClassify } from "../../permissions/shadow-middleware";
 import { policyRegistry } from "../../policy-registry";
+import { impersonatorStillEligible } from "./eligibility";
 import { finishImpersonation } from "./finish";
 
 /** The one route an impersonation session may always call (`GM-11`). */
@@ -118,6 +119,21 @@ export async function enforceImpersonationRestrictions(
       entry?.policy?.elevated === true,
     );
     if (refusal) refuse(refusal);
+  }
+
+  // P4R1-M3: the session is only as good as the administrator behind it. Re-checked on every
+  // request the GM-9 rules above would serve, fail closed; a suspended or demoted
+  // administrator's session ends here. A route GM-9 refuses is refused (403) either way.
+  if (!(await impersonatorStillEligible(session.impersonatedBy))) {
+    if (session.id && session.userId) {
+      await finishImpersonation({
+        sessionId: session.id,
+        targetUserId: session.userId,
+        impersonatorUserId: session.impersonatedBy,
+        endReason: "impersonator_ineligible",
+      }).catch(() => undefined);
+    }
+    throw new HTTPException(401, { message: "Unauthorized" });
   }
 }
 

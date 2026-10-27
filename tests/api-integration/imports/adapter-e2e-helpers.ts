@@ -3,7 +3,13 @@ import { and, eq, inArray } from "drizzle-orm";
 import db, { schema } from "../../../apps/api/src/database";
 import type { StateGroup } from "../../../apps/api/src/imports/engine/adapter";
 import { ensureCreationWorkflow } from "../helpers/workflow";
-import { type App, call, type engineFixture, post } from "./engine-helpers";
+import {
+  type App,
+  call,
+  discoverAndWait,
+  type engineFixture,
+  post,
+} from "./engine-helpers";
 
 export type Fixture = Awaited<ReturnType<typeof engineFixture>>;
 
@@ -61,13 +67,7 @@ export async function startSourceRun(
     post({ projectId: f.project.id, sourceRef: input.sourceRef }),
     200,
   );
-  const mapping = await call(
-    app,
-    f.key,
-    `/api/imports/${run.id}/discover`,
-    post(),
-    200,
-  );
+  const mapping = await discoverAndWait(app, f.key, run.id);
   return { source, run, mapping };
 }
 

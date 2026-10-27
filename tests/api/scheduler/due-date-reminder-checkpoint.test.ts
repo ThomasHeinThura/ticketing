@@ -18,6 +18,12 @@ vi.mock(
     default: (...args: unknown[]) => mocks.createNotification(...args),
   }),
 );
+vi.mock("../../../apps/api/src/database", () => ({
+  default: { transaction: (fn: (tx: unknown) => unknown) => fn({}) },
+}));
+vi.mock("../../../apps/api/src/events", () => ({
+  publishEvent: vi.fn(async () => {}),
+}));
 vi.mock("../../../apps/api/src/scheduler/repository", () => ({
   insertReminderSent: (...args: unknown[]) => mocks.insertSent(...args),
   listTasksNeedingReminder: (...args: unknown[]) => mocks.listTasks(...args),

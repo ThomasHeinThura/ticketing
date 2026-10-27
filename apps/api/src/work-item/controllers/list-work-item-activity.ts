@@ -198,6 +198,9 @@ type ActivityStreamRow = {
   visibility: string;
   workflowVersionId: string | null;
   createdAt: Date;
+  /** `imported`: a historical row written by an import (`createdAt` is the source time). */
+  origin: string | null;
+  importedAt: Date | null;
   body: unknown;
   activityId: string | null;
   editedAt: Date | null;
@@ -375,6 +378,8 @@ export async function listWorkItemActivity(
             visibility: activityTable.visibility,
             workflowVersionId: activityTable.workflowVersionId,
             createdAt: activityTable.createdAt,
+            origin: activityTable.origin,
+            importedAt: activityTable.importedAt,
           })
           .from(activityTable)
           .where(and(...activityConditions))
@@ -394,6 +399,8 @@ export async function listWorkItemActivity(
             deletedBy: commentTable.deletedBy,
             createdAt: commentTable.createdAt,
             updatedAt: commentTable.updatedAt,
+            origin: commentTable.origin,
+            importedAt: commentTable.importedAt,
           })
           .from(commentTable)
           .where(and(...commentConditions))
@@ -463,6 +470,8 @@ export async function listWorkItemActivity(
           visibility: row.visibility,
           workflowVersionId: null,
           createdAt: row.createdAt,
+          origin: row.origin,
+          importedAt: row.importedAt,
           body: row.deletedAt ? null : row.body,
           activityId: row.activityId,
           editedAt: row.editedAt,

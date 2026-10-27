@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 export function FeatureOff({
   feature,
 }: {
-  feature: "cycles" | "modules" | "estimates";
+  feature: "cycles" | "modules" | "estimates" | "calendar" | "timeline";
 }) {
   const { t } = useTranslation("agile");
   return (

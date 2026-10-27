@@ -479,6 +479,42 @@ describe("a project role override applies to every cost write alike", () => {
   });
 });
 
+describe("rate visibility is resolved at the project (P5-R1-06)", () => {
+  it("shows no amount in a project whose role drops time_entry:manage_rates, while another project still shows it", async () => {
+    const type = await makeType();
+    await logCost(type.id);
+    await logCost(type.id, {}, w.projectB.id);
+    const visible = await listCosts(w.owner.user);
+    expect(visible.body.data[0]?.amountMinor).toBeDefined();
+
+    const [membership] = await db
+      .select({ roleId: schema.membershipTable.roleId })
+      .from(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, w.ownerPersonId),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, w.projectA.id),
+        ),
+      );
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: ["budget:read", "budget:manage"] })
+      .where(eq(schema.roleTable.id, membership?.roleId ?? ""));
+    // timeWorld gives A and B separate roles: only A's override is removed.
+    const hidden = await listCosts(w.owner.user);
+    expect(hidden.response.status).toBe(200);
+    expect(hidden.body.data.length).toBeGreaterThan(0);
+    for (const row of hidden.body.data) {
+      expect(row.amountMinor).toBeUndefined();
+      expect(row.rateMinor).toBeUndefined();
+    }
+    expect(hidden.body.totals).toBeUndefined();
+    const other = await listCosts(w.owner.user, "", w.projectB.id);
+    expect(other.body.data[0]?.amountMinor).toBeDefined();
+  });
+});
+
 describe("reach and tenant isolation", () => {
   it("answers 404 for a project the caller cannot reach and never leaks a foreign entry", async () => {
     const type = await makeType();

@@ -17,6 +17,7 @@ import type {
   ConnectFailureReason,
   ConnectResult,
   DiscoveredFacet,
+  DiscoverHooks,
   DiscoveryResult,
   ImportAttachmentAuth,
   ImportSourceAdapter,
@@ -26,7 +27,11 @@ import type {
   SourcePage,
   SourceRecord,
 } from "../../engine/adapter";
-import { registerImportAdapter } from "../../engine/adapter";
+import {
+  isUnreadableRecord,
+  registerImportAdapter,
+  unreadableRecord,
+} from "../../engine/adapter";
 import { csvRecords } from "./csv";
 import {
   asArray,
@@ -182,11 +187,16 @@ async function wiqlIds(
   return ids.slice(0, top);
 }
 
+/**
+ * The requested ids in order, each with the item the batch returned for it or `null` when the batch
+ * left it out (`errorPolicy: Omit` drops an item the caller cannot read instead of failing). The
+ * caller turns every `null` into an explicit `unreadable_item` record: nothing disappears silently.
+ */
 async function batchItems(
   client: AdoClient,
   project: string,
   ids: number[],
-): Promise<Array<Record<string, unknown>>> {
+): Promise<Array<{ id: number; item: Record<string, unknown> | null }>> {
   if (ids.length === 0) return [];
   const body = await client.query(
     `/${enc(project)}/_apis/wit/workitemsbatch?${API}`,
@@ -197,10 +207,22 @@ async function batchItems(
     if (isRecord(entry) && num(entry.id) !== undefined)
       byId.set(num(entry.id) as number, entry);
   }
-  return ids.flatMap((id) => {
-    const item = byId.get(id);
-    return item ? [item] : [];
-  });
+  return ids.map((id) => ({ id, item: byId.get(id) ?? null }));
+}
+
+/** The record for one batch entry, or the explicit reason it cannot be one. */
+async function adoRecord(
+  entry: { id: number; item: Record<string, unknown> | null },
+  context: () => Promise<Parameters<typeof toRecord>[1]>,
+): Promise<SourceRecord> {
+  const unreadable = (code: "unreadable_item" | "missing_title") =>
+    unreadableRecord({
+      sourceType: "work_item",
+      sourceId: String(entry.id),
+      code,
+    });
+  if (!entry.item) return unreadable("unreadable_item");
+  return toRecord(entry.item, await context()) ?? unreadable("missing_title");
 }
 
 async function itemComments(
@@ -296,7 +318,10 @@ export function createAzureDevOpsAdapter(
   const transport = options.transport ?? createGuardedTransport();
   const chunkSize = Math.min(options.chunkSize ?? MAX_PAGE, MAX_PAGE);
 
-  async function scan(connection: AdapterConnection): Promise<DiscoveryResult> {
+  async function scan(
+    connection: AdapterConnection,
+    hooks?: DiscoverHooks,
+  ): Promise<DiscoveryResult> {
     const config = parseConfig(connection);
     if (!config) throw new SourceHttpError("config_invalid");
     const counts: Record<string, number> = {};
@@ -308,9 +333,16 @@ export function createAzureDevOpsAdapter(
       else facets.set(key, { domain, value, count: 1 });
     };
     let total = 0;
+    let pages = 0;
+    const unreadable: Record<string, number> = {};
     const take = (record: SourceRecord) => {
       total += 1;
       counts[record.sourceType] = (counts[record.sourceType] ?? 0) + 1;
+      if (isUnreadableRecord(record)) {
+        const code = record.rejectCode as string;
+        unreadable[code] = (unreadable[code] ?? 0) + 1;
+        return;
+      }
       for (const facet of record.facets) add(facet.domain, facet.value);
       if (record.assigneeEmail)
         add("person", record.assigneeEmail.toLowerCase());
@@ -328,19 +360,26 @@ export function createAzureDevOpsAdapter(
         for (;;) {
           const ids = await wiqlIds(client, project, last, SCAN_PAGE);
           if (ids.length === 0) break;
-          for (const item of await batchItems(client, project, ids)) {
-            const record = toRecord(item, {
-              baseUrl: config.baseUrl,
-              process: processTemplate,
-            });
-            if (record) take(record);
-          }
+          for (const entry of await batchItems(client, project, ids))
+            take(
+              await adoRecord(entry, async () => ({
+                baseUrl: config.baseUrl,
+                process: processTemplate,
+              })),
+            );
+          pages += 1;
+          await hooks?.onProgress?.({ pages, records: total });
           last = ids[ids.length - 1] as number;
           if (ids.length < SCAN_PAGE) break;
         }
       }
     }
-    return { facets: [...facets.values()], counts, totalRecords: total };
+    return {
+      facets: [...facets.values()],
+      counts,
+      totalRecords: total,
+      ...(Object.keys(unreadable).length ? { unreadable } : {}),
+    };
   }
 
   return {
@@ -457,17 +496,15 @@ export function createAzureDevOpsAdapter(
         }
         const processTemplate = await projectProcess(client, project);
         const records: SourceRecord[] = [];
-        for (const item of await batchItems(client, project, ids)) {
-          const id = num(item.id);
-          if (id === undefined) continue;
-          const record = toRecord(item, {
-            baseUrl: config.baseUrl,
-            process: processTemplate,
-            comments: await itemComments(client, project, id),
-            updates: await itemUpdates(client, project, id),
-          });
-          if (record) records.push(record);
-        }
+        for (const entry of await batchItems(client, project, ids))
+          records.push(
+            await adoRecord(entry, async () => ({
+              baseUrl: config.baseUrl,
+              process: processTemplate,
+              comments: await itemComments(client, project, entry.id),
+              updates: await itemUpdates(client, project, entry.id),
+            })),
+          );
         const lastId = ids[ids.length - 1] as number;
         const nextCursor =
           fetched.length > size

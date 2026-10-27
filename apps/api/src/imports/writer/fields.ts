@@ -15,6 +15,18 @@ const STATE = schema.stateTable;
  * undoes progress made in TaskDesk). The state must belong to the target project and be live; an
  * unknown or archived one is reported (`state_unmapped`) and the item keeps its default state.
  * No workflow transition runs: an import places history, it does not replay a workflow.
+ *
+ * SLA design (import-and-cutover.md "Timestamps preserved", feature-contracts-p2 SLA-8/WF-17):
+ * an imported item never carries a live SLA clock. `createWorkItemInTransaction` is called with
+ * `sla: "none"`, so no policy version is pinned and the SLA scan never evaluates, breaches or
+ * escalates a historical item, open or closed. What is still recorded, so every reader sees the
+ * item as the source had it, is the lifecycle the workflow would have written: entering the
+ * `completed` group sets `resolved_at` (WF-17; the source resolved time, else the source
+ * updated/created time, never later than the import) and `first_response_at` (no later than
+ * `resolved_at`). `cancelled` is not resolved (WF-17: a cancelled item was never resolved), so
+ * it keeps `resolved_at` NULL exactly like a native cancel; the state group alone closes it.
+ * Agile progress and portal status read the state group and `resolved_at`; reopen reads
+ * `resolved_at`.
  */
 export async function applyImportedState(
   ctx: ImportWriterContext,
@@ -23,8 +35,12 @@ export async function applyImportedState(
   const stateId = input.record.stateId;
   if (!stateId) return;
   const [state] = await ctx.tx
-    .select({ id: STATE.id })
+    .select({ id: STATE.id, group: schema.stateTemplateTable.group })
     .from(STATE)
+    .innerJoin(
+      schema.stateTemplateTable,
+      eq(schema.stateTemplateTable.id, STATE.stateTemplateId),
+    )
     .where(
       and(
         eq(STATE.id, stateId),
@@ -42,15 +58,36 @@ export async function applyImportedState(
     });
     return;
   }
+  const resolvedAt =
+    state.group === "completed" ? importedResolvedAt(ctx, input.record) : null;
   await ctx.tx
     .update(WORK_ITEM)
-    .set({ stateId: state.id, version: sql`${WORK_ITEM.version} + 1` })
+    .set({
+      stateId: state.id,
+      version: sql`${WORK_ITEM.version} + 1`,
+      ...(resolvedAt ? { resolvedAt, firstResponseAt: resolvedAt } : {}),
+    })
     .where(
       and(
         eq(WORK_ITEM.id, input.workItemId),
         eq(WORK_ITEM.workspaceId, ctx.workspaceId),
       ),
     );
+}
+
+/** Source resolved time, else source updated, else source created, else now; never in the future. */
+function importedResolvedAt(ctx: ImportWriterContext, record: ImportRecord) {
+  for (const value of [
+    record.sourceResolvedAt,
+    record.sourceUpdatedAt,
+    record.sourceCreatedAt,
+  ]) {
+    if (!value) continue;
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime()))
+      return parsed.getTime() > ctx.now.getTime() ? ctx.now : parsed;
+  }
+  return ctx.now;
 }
 
 /**

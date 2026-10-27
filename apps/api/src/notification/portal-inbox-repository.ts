@@ -12,7 +12,8 @@ type InboxRow = {
 };
 
 export type PortalNotificationTarget = {
-  requestRef: string;
+  /** Null for an approval row, which links to the portal Approvals screen (AP-19/AP-21). */
+  requestRef: string | null;
   commentId: string | null;
 };
 
@@ -133,6 +134,12 @@ export async function resolvePortalNotificationTargets(
   for (const { notification } of rows) {
     const resourceId = notification.resourceId;
     if (!resourceId) continue;
+    // `P2R1-04`: the inbox read predicate already admits only the addressed customer approver
+    // of a reachable customer approval; the row carries no request reference or internal id.
+    if (notification.resourceType === "approval") {
+      result.set(notification.id, { requestRef: null, commentId: null });
+      continue;
+    }
     const ref =
       notification.resourceType === "submission"
         ? targetBySubmissionId.get(resourceId)

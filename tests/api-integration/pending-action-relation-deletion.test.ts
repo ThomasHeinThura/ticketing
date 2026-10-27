@@ -257,7 +257,7 @@ describe("canonical relation deletion pending-action execution", () => {
       .where(eq(schema.roleTable.id, membership.roleId));
     await expect(
       approveRelationDeletion(f.approval(created.pendingActionId)),
-    ).rejects.toMatchObject({ status: 409 });
+    ).rejects.toMatchObject({ status: 404 }); // PA-6 step 2: the approver lost access
     expect(await pending(created.pendingActionId)).toMatchObject({
       state: "invalidated",
       invalidationReason: "capability_removed",

@@ -572,8 +572,9 @@ export function identityOidcPlugin(
     },
     async (ctx: GenericEndpointContext) => {
       const connectionId = ctx.params?.connectionId;
-      if (!connectionId)
+      if (!connectionId || portal === "customer")
         return safeFailure(ctx, portal, {
+          ...(connectionId ? { connectionId } : {}),
           kind: "request.denied",
           reason: "connection_unavailable",
         });
@@ -587,9 +588,6 @@ export function identityOidcPlugin(
       const start = await createOidcAuthorizationStart({
         connection,
         portal,
-        ...(portal === "customer" && ctx.query.invitationId
-          ? { invitationId: ctx.query.invitationId }
-          : {}),
       });
       if (!start) return safeFailure(ctx, portal);
       ctx.setCookie(
@@ -1784,7 +1782,9 @@ async function signInAdmittedIdentity(input: {
   if (!user)
     throw new APIError("UNAUTHORIZED", { message: "Identity sign-in failed" });
   const [factorState] = await getOidcUserFactorState(user.id);
-  if (factorState?.enabled) {
+  // The agent-only /auth/two-factor challenge never applies to a customer portal session
+  // (customers are exempt from the local-factor policy, P3-R1-04).
+  if (portal === "agent" && factorState?.enabled) {
     const maxAge = 600;
     const cookie = ctx.context.createAuthCookie("two_factor", { maxAge });
     const identifier = `2fa-${randomBytes(20).toString("base64url")}`;

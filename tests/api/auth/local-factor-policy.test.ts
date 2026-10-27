@@ -64,4 +64,32 @@ describe("local factor policy", () => {
       }),
     ).toBe(false);
   });
+
+  it("never requires a local factor of a customer in any mode (P3-R1-04)", () => {
+    for (const policy of [
+      { mode: "off", requiredRoleId: null },
+      { mode: "optional", requiredRoleId: null },
+      { mode: "required_staff", requiredRoleId: null },
+      { mode: "required_role", requiredRoleId: "role_target" },
+      { mode: "required_everyone", requiredRoleId: null },
+    ]) {
+      expect(
+        isLocalFactorRequired({
+          policy: parseLocalFactorPolicy(policy),
+          personSide: "customer",
+          activeRoleIds: ["role_target"],
+        }),
+      ).toBe(false);
+    }
+    expect(
+      isLocalFactorRequired({
+        policy: parseLocalFactorPolicy({
+          mode: "required_everyone",
+          requiredRoleId: null,
+        }),
+        personSide: "staff",
+        activeRoleIds: [],
+      }),
+    ).toBe(true);
+  });
 });

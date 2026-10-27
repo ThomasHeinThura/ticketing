@@ -4,7 +4,10 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
-import { identityAccountId } from "../../../apps/api/src/identity/oidc-login";
+import {
+  createOidcAuthorizationStart,
+  identityAccountId,
+} from "../../../apps/api/src/identity/oidc-login";
 import { validateEntraIdToken } from "../../../apps/api/src/identity/oidc-token";
 import { createApp } from "../../../apps/api/src/index";
 import { ensureInternalOrganisation } from "../../../apps/api/src/utils/seed-internal-organisation";
@@ -94,6 +97,13 @@ beforeEach(async () => {
   resetEntraTokenValidatorMock();
   await resetTestDatabase();
   await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db
+    .insert(schema.instanceFeatureFlagTable)
+    .values({ featureKey: "feature.customer_portal", enabled: true })
+    .onConflictDoUpdate({
+      target: schema.instanceFeatureFlagTable.featureKey,
+      set: { enabled: true },
+    });
   process.env.TASKDESK_ENCRYPTION_KEY = ENCRYPTION_KEY;
   delete process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS;
 });
@@ -267,17 +277,33 @@ async function beginSignIn(connectionId: string, portal: "agent" | "customer") {
   const base = portal === "agent" ? "" : `http://${PORTAL_HOST}`;
   const headers: Record<string, string> =
     portal === "agent" ? {} : { host: PORTAL_HOST };
-  const start = await app.request(
-    `${base}/api/auth/identity/${connectionId}/start`,
-    { method: "GET", headers, redirect: "manual" },
-  );
-  expect(start.status).toBe(302);
-  const state = new URL(start.headers.get("location") ?? "").searchParams.get(
-    "state",
-  );
-  const stateCookie = start.headers
-    .get("set-cookie")
-    ?.match(/(?:^|;\s*)tdk_oidc_state=([^;]+)/u)?.[1];
+  let location: string | null;
+  let stateCookie: string | undefined;
+  if (portal === "agent") {
+    const start = await app.request(
+      `${base}/api/auth/identity/${connectionId}/start`,
+      { method: "GET", headers, redirect: "manual" },
+    );
+    expect(start.status).toBe(302);
+    location = start.headers.get("location");
+    stateCookie = start.headers
+      .get("set-cookie")
+      ?.match(/(?:^|;\s*)tdk_oidc_state=([^;]+)/u)?.[1];
+  } else {
+    // The portal has no direct connection start (P3-R1-02): the typed-domain home-realm flow
+    // begins authorisation server-side through the shared initiator, which this reproduces.
+    const [connection] = await db
+      .select()
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, connectionId));
+    const start = connection
+      ? await createOidcAuthorizationStart({ connection, portal })
+      : null;
+    expect(start).not.toBeNull();
+    location = start?.authorizationUrl ?? null;
+    stateCookie = start?.state;
+  }
+  const state = new URL(location ?? "").searchParams.get("state");
   expect(state).toBeTruthy();
   expect(stateCookie).toBeTruthy();
   return {
@@ -425,6 +451,75 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
     ).toBe(true);
   });
 
+  it("refuses the by-id start on the portal host while the callback stays admitted (P3-R1-02)", async () => {
+    await seedCustomer("jit-customer-no-start-connection");
+    const app = createApp().app;
+    const start = await app.request(
+      "/api/auth/identity/jit-customer-no-start-connection/start",
+      { method: "GET", headers: { host: PORTAL_HOST }, redirect: "manual" },
+    );
+    expect([403, 404]).toContain(start.status);
+    expect(start.headers.get("location")).toBeNull();
+    expect(start.headers.get("set-cookie") ?? "").not.toContain(
+      "tdk_oidc_state",
+    );
+    const states = await db
+      .select({ id: schema.verificationTable.id })
+      .from(schema.verificationTable);
+    expect(states).toHaveLength(0);
+
+    // The provider's redirect back is still admitted: a stateless callback fails safely.
+    const callback = await app.request(
+      "/api/auth/identity/jit-customer-no-start-connection/callback?code=x&state=y",
+      { method: "GET", headers: { host: PORTAL_HOST }, redirect: "manual" },
+    );
+    expect(callback.status).toBe(302);
+    expect(callback.headers.get("location")).toBe(
+      "/sign-in?identity_error=sign_in_failed",
+    );
+  });
+
+  it("never routes a customer SSO sign-in to the agent-only two-factor challenge (P3-R1-04)", async () => {
+    const target = await seedCustomer("jit-customer-no-factor-connection");
+    const first = await signIn("jit-customer-no-factor-connection", "customer");
+    expect(first.status).toBe(302);
+    await expectJitIdentity(
+      "jit-customer-no-factor-connection",
+      "customer",
+      target,
+    );
+    const [identity] = await db
+      .select({ personId: schema.externalIdentityTable.personId })
+      .from(schema.externalIdentityTable)
+      .where(
+        eq(
+          schema.externalIdentityTable.identityConnectionId,
+          "jit-customer-no-factor-connection",
+        ),
+      );
+    const [person] = await db
+      .select({ userId: schema.personTable.userId })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.id, identity?.personId ?? ""));
+    expect(person?.userId).toBeTruthy();
+    await db
+      .update(schema.userTable)
+      .set({ twoFactorEnabled: true })
+      .where(eq(schema.userTable.id, person?.userId ?? ""));
+
+    const second = await signIn(
+      "jit-customer-no-factor-connection",
+      "customer",
+    );
+    expect(second.status).toBe(302);
+    expect(second.headers.get("location")).toBe("/");
+    expect(
+      second.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("__Host-tdk_portal_session=")),
+    ).toBe(true);
+  });
+
   it("binds the customer organisation snapshot to single-use state and denies a changed connection scope", async () => {
     const connectionId = "jit-customer-scope-snapshot-connection";
     const target = await seedCustomer(connectionId);
@@ -436,23 +531,10 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
       isInternal: false,
       portalAccess: true,
     });
-    const app = createApp().app;
-    const start = await app.request(
-      `/api/auth/identity/${connectionId}/start`,
-      {
-        method: "GET",
-        headers: { host: PORTAL_HOST },
-        redirect: "manual",
-      },
+    const { app, state, stateCookie } = await beginSignIn(
+      connectionId,
+      "customer",
     );
-    const state = new URL(start.headers.get("location") ?? "").searchParams.get(
-      "state",
-    );
-    const stateCookie = start.headers
-      .get("set-cookie")
-      ?.match(/(?:^|;\s*)tdk_oidc_state=([^;]+)/u)?.[1];
-    expect(state).toBeTruthy();
-    expect(stateCookie).toBeTruthy();
     const [flow] = await db
       .select()
       .from(schema.verificationTable)

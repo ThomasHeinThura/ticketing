@@ -1,6 +1,6 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { safeDownload } from "../../../apps/api/src/imports/writer/safe-fetch";
 
 let server: http.Server;
@@ -121,6 +121,18 @@ describe("safeDownload (guarded egress for import attachments)", () => {
         env: dev,
       }),
     ).toEqual({ ok: false, code: "failed" });
+  });
+
+  it("stays strict by default even when the process runs with NODE_ENV=development", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      expect(await safeDownload(`${base}/ok`, { maxBytes: 100 })).toEqual({
+        ok: false,
+        code: "failed",
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("refuses non-https, credentialed and non-routable destinations outside development", async () => {

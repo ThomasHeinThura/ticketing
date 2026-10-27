@@ -24,6 +24,7 @@ const LEGACY_NOTIFIABLE_EVENT_KINDS = new Set([
   "comment.created",
   "task.assignee_changed",
   "task.created",
+  "task.description_changed",
   "task.status_changed",
   "task.updated",
   "time-entry.created",

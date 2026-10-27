@@ -32,7 +32,9 @@ import { createWorkspaceMember } from "../helpers/fixtures";
 import {
   type App,
   call,
+  discoverAndWait,
   dryRunAndExecuteBody,
+  dryRunAndWait,
   engineFixture,
   post,
   req,
@@ -105,13 +107,7 @@ async function startRun(
     post({ projectId: f.project.id, sourceRef }),
     200,
   );
-  const mapping = await call(
-    app,
-    f.key,
-    `/api/imports/${run.id}/discover`,
-    post(),
-    200,
-  );
+  const mapping = await discoverAndWait(app, f.key, run.id);
   return { source, run, mapping };
 }
 
@@ -207,16 +203,8 @@ describe("jira export end to end", () => {
     });
     // Labels, sprints and custom fields are left for the operator: execution is blocked until mapped.
     expect(mapping.completeness.complete).toBe(false);
-    const blocked = await req(
-      app,
-      f.key,
-      `/api/imports/${run.id}/dry-run-all`,
-      post(),
-    );
-    const blockedBody = (await blocked.json()) as Json;
-    expect(
-      blocked.status === 200 ? blockedBody.counts.rejected : 1,
-    ).toBeGreaterThan(0);
+    const blockedBody = (await dryRunAndWait(app, f.key, run.id)) as Json;
+    expect(blockedBody.counts.rejected).toBeGreaterThan(0);
 
     const confirmed = await confirmAndMapRest(app, f, run.id, mapping);
     expect(confirmed.completeness.complete).toBe(true);

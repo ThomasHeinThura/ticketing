@@ -65,6 +65,8 @@ export type EventReachSubject = {
   projectId: string | null;
   /** True when the event is about a work item (read authority is `work_item:read`). */
   workItemEvent: boolean;
+  /** The event kind: `budget.threshold_reached` also needs the owner's `budget:read` and `time_entry:manage_rates` (P5-R1-07). */
+  eventKind?: string;
 };
 
 export async function decideOwnerReach(
@@ -169,5 +171,48 @@ export async function decideOwnerReach(
         projectId: subject.projectId,
         ancestorProjectIds,
       });
-  return readable ? { kind: "in_reach" } : { kind: "out_of_reach" };
+  if (!readable) return { kind: "out_of_reach" };
+  // A budget figure moves with priced time: only an owner who may see it at this project is sent it.
+  if (subject.eventKind === "budget.threshold_reached") {
+    const scope = {
+      workspaceId: subject.workspaceId,
+      organisationId: project.organisationId ?? undefined,
+      projectId: subject.projectId,
+      ancestorProjectIds,
+    };
+    if (
+      !can(identity, "budget:read", "project", scope) ||
+      !can(identity, "time_entry:manage_rates", "project", scope)
+    )
+      return { kind: "out_of_reach" };
+  }
+  return { kind: "in_reach" };
+}
+
+/**
+ * P4R1-H1: whether the webhook's current owner receives everything (`sees_all` or
+ * `instance:admin`). An owner who cannot be resolved as active staff is not such an owner.
+ */
+export async function ownerReceivesEverything(
+  executor: Executor,
+  ownerPersonId: string,
+  workspaceId: string,
+): Promise<boolean> {
+  const [person] = await executor
+    .select({
+      active: personTable.active,
+      userId: personTable.userId,
+      side: personTable.side,
+    })
+    .from(personTable)
+    .where(eq(personTable.id, ownerPersonId))
+    .limit(1);
+  if (!person?.active || !person.userId || person.side !== "staff")
+    return false;
+  const identity = await resolveIdentity(
+    { userId: person.userId, credential: "session" },
+    executor,
+  );
+  if (!identity || identity.personId !== ownerPersonId) return false;
+  return receivesEverything(identity, workspaceId);
 }

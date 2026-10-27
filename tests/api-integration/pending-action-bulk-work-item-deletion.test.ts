@@ -500,7 +500,7 @@ describe("durable canonical bulk work-item deletion", () => {
     expect(detail.targetIds).toEqual([]);
     await expect(
       approveBulkWorkItemDeletion(f.approval(created.pendingActionId)),
-    ).rejects.toMatchObject({ status: 409 });
+    ).rejects.toMatchObject({ status: 404 }); // PA-6 step 2: the approver lost access
     expect((await f.rows()).every((r) => r.deletedAt === null)).toBe(true);
   });
   it("does not substitute a moved target even when the new project is readable and deletable", async () => {

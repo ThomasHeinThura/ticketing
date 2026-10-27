@@ -118,6 +118,14 @@ async function writeOne(
     sourceCreatedAt: created.valid ? created.at : null,
     sourceUpdatedAt: updated.valid ? updated.at : null,
   });
+  if (claim.conflict)
+    recordLoss(ctx, {
+      code: "provenance_duplicate",
+      sourceType: record.sourceType,
+      sourceId: record.sourceId,
+      entity: "comment",
+      entitySourceId: comment.sourceId,
+    });
   if (!claim.claimed) return "duplicate";
 
   await ctx.tx.insert(COMMENT).values({

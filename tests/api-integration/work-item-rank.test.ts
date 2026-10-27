@@ -7,13 +7,14 @@
 import { randomUUID } from "node:crypto";
 import { asc, eq, sql } from "drizzle-orm";
 import { Client } from "pg";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import {
   rebalancePositionPartition,
   recoverDensePositionPartitions,
 } from "../../apps/api/src/scheduler/position-rebalance";
+import * as realtime from "../../apps/api/src/ws";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -161,6 +162,10 @@ describe("API integration: work item rank (#23 fourth slice)", () => {
     await resetTestDatabase();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("WI-11: ranking between two neighbours lands strictly in between and bumps version", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
@@ -252,6 +257,43 @@ describe("API integration: work item rank (#23 fourth slice)", () => {
       .where(eq(schema.workItemTable.projectId, project.id));
     const byKey = new Map(rows.map((r) => [r.key, Number(r.position)]));
     expect(byKey.get(b.key)).toBeGreaterThan(byKey.get(a.key) ?? Number.NaN);
+  });
+
+  it("VW-5: a successful rank publishes the staff-only work_item.updated hint; a refused rank publishes none", async () => {
+    const hint = vi
+      .spyOn(realtime, "broadcastNativeWorkItemHint")
+      .mockResolvedValue(undefined);
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const a = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "A",
+      })
+    ).json()) as { id: string; key: string };
+    const b = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "B",
+      })
+    ).json()) as { key: string };
+    hint.mockClear();
+
+    expect((await rankWorkItemRequest(app, b.key, {})).status).toBe(400);
+    expect(hint).not.toHaveBeenCalled();
+
+    expect(
+      (await rankWorkItemRequest(app, b.key, { beforeId: a.id })).status,
+    ).toBe(200);
+    expect(hint).toHaveBeenCalledTimes(1);
+    expect(hint.mock.calls[0]?.[0]).toMatchObject({
+      projectId: project.id,
+      topics: [`project:${project.id}`, `work_item:${b.key}`],
+      eventType: "work_item.updated",
+      key: b.key,
+      customerVisible: false,
+    });
   });
 
   it("an empty body (neither beforeId nor afterId) is a 400", async () => {

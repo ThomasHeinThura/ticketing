@@ -231,6 +231,8 @@ export type WebhookPatch = {
   active?: boolean;
   /** Re-own the webhook to the caller (`WH-14`: a paused webhook must be re-owned). */
   reown?: boolean;
+  /** The owner the route authorised the change against; a concurrent re-own answers 409. */
+  expectedOwner?: string;
   expectedVersion?: number;
 };
 
@@ -266,13 +268,23 @@ export async function updateWebhook(
     };
     if (patch.name !== undefined) next.name = patch.name;
     if (patch.events !== undefined) next.events = patch.events;
+    if (
+      patch.expectedOwner !== undefined &&
+      patch.expectedOwner !== current.createdBy
+    )
+      throw new HTTPException(409, { message: "webhook_owner_changed" });
     if (patch.url !== undefined && patch.url !== current.url) {
       next.url = patch.url;
+      next.destinationChangedAt = new Date();
       // A new destination starts a fresh failure window.
       next.failingSince = null;
       next.lastError = null;
     }
-    if (patch.reown) next.createdBy = actor.personId;
+    if (patch.reown) {
+      next.createdBy = actor.personId;
+      if (actor.personId !== current.createdBy)
+        next.destinationChangedAt = new Date();
+    }
     // Re-enabling clears the pause; the owner is the caller if the webhook was re-owned.
     if (patch.active === true) {
       next.active = true;

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   formatSubmissionAge,
   matchesIntakeFilters,
+  parseTriageError,
   splitIntakeFilters,
+  submissionAge,
 } from "./intake-queue";
 
 const NOW = Date.parse("2026-10-23T12:00:00.000Z");
@@ -73,5 +75,49 @@ describe("splitIntakeFilters (IQ-21)", () => {
       true,
     );
     expect(splitIntakeFilters({}, undefined).pending).toBe(false);
+  });
+});
+
+describe("P2R1-12 / P2R1-13 triage helpers", () => {
+  it("returns the age unit for translation", () => {
+    const now = Date.parse("2026-10-23T12:00:00.000Z");
+    expect(submissionAge("2026-10-23T11:48:00.000Z", now)).toEqual({
+      unit: "m",
+      count: 12,
+    });
+    expect(submissionAge("2026-10-20T11:00:00.000Z", now)).toEqual({
+      unit: "d",
+      count: 3,
+    });
+  });
+
+  it("reads a coded refusal and the winner of an accept race", () => {
+    expect(
+      parseTriageError(
+        new Error(
+          JSON.stringify({
+            error: "submission_already_converted",
+            message: "Submission is no longer open",
+            workItem: { id: "wi_1", key: "ACME-9" },
+          }),
+        ),
+      ),
+    ).toEqual({
+      code: "submission_already_converted",
+      status: "conflict",
+      workItem: { id: "wi_1", key: "ACME-9" },
+    });
+    expect(parseTriageError(new Error("destination_required"))).toMatchObject({
+      code: "destination_required",
+      status: "other",
+    });
+    expect(parseTriageError(new Error("plain failure"))).toEqual({
+      code: null,
+      status: "other",
+      workItem: null,
+    });
+    expect(
+      parseTriageError(new Error(JSON.stringify({ error: "unknown" }))).code,
+    ).toBeNull();
   });
 });

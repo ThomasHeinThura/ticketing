@@ -10,6 +10,7 @@ import {
   emptyBody,
   itemsOf,
   MIN,
+  memoryPage,
   pageRows,
   weekAxis,
   weekKey,
@@ -122,15 +123,25 @@ const customerPerformance: ReportDefinition = {
         } as Row,
       };
     });
-    // Screen ordering stays unchanged; paged exports order in SQL before LIMIT/OFFSET.
-    if (!ctx.exportPage)
-      ranked.sort((a, b) => {
-        if (a.sort === null && b.sort === null) return b.volumeN - a.volumeN;
-        if (a.sort === null) return 1;
-        if (b.sort === null) return -1;
-        return a.sort - b.sort;
-      });
-    const page = pageRows(ctx, ranked, 200);
+    // The rows are built in memory, so every page of a paged export must see the same total order:
+    // the screen ordering plus a stable tie-break on the customer.
+    ranked.sort((a, b) => {
+      if (a.sort === null && b.sort === null)
+        return (
+          b.volumeN - a.volumeN ||
+          String(a.row.customer).localeCompare(String(b.row.customer)) ||
+          String(a.row._drill).localeCompare(String(b.row._drill))
+        );
+      if (a.sort === null) return 1;
+      if (b.sort === null) return -1;
+      return (
+        a.sort - b.sort ||
+        b.volumeN - a.volumeN ||
+        String(a.row.customer).localeCompare(String(b.row.customer)) ||
+        String(a.row._drill).localeCompare(String(b.row._drill))
+      );
+    });
+    const page = pageRows(ctx, memoryPage(ctx, ranked), 200);
     const table = page.rows.map((entry) => entry.row);
     const volume = table.reduce((sum, row) => sum + Number(row.volume), 0);
     return emptyBody({
@@ -257,7 +268,7 @@ const customerVolumeTrend: ReportDefinition = {
           String(a.org_id ?? "").localeCompare(String(b.org_id ?? "")) ||
           a.org.localeCompare(b.org),
       );
-    const page = pageRows(ctx, rows, 200);
+    const page = pageRows(ctx, memoryPage(ctx, rows), 200);
     const currentTotal = rows.reduce((sum, row) => sum + num(row.current), 0);
     const previousTotal = rows.reduce((sum, row) => sum + num(row.previous), 0);
     const top = page.rows.filter((row) => num(row.current) > 0).slice(0, 5);
@@ -419,7 +430,7 @@ const satisfaction: ReportDefinition = {
     const rows = [...grouped.values()].sort(
       (a, b) => b.ratings - a.ratings || a.label.localeCompare(b.label),
     );
-    const page = pageRows(ctx, rows, 200);
+    const page = pageRows(ctx, memoryPage(ctx, rows), 200);
     const scoreKeys = ["s1", "s2", "s3", "s4", "s5"] as const;
     const total = page.rows.reduce((sum, row) => sum + num(row.ratings), 0);
     const satisfied = page.rows.reduce(

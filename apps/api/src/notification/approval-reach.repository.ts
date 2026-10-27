@@ -10,8 +10,10 @@ import { projectReachPredicate } from "./task-reach.repository";
  * row is readable only while the approval still exists inside its workspace (0120 anchor,
  * joined on `(workspace_id, work_item_id)`), its work item and project are live, the row's
  * recipient is the approval's requester or approver (or a watcher of the work item), a
- * private item is visible to that person, and the user still has staff project reach.
- * Anything else, including a customer recipient, is not readable: it fails closed.
+ * private item is visible to that person, and the user still has staff project reach. A
+ * customer row (AP-21, `P2R1-04`) is readable only by the active customer who is the addressed
+ * approver of a `customer` approval on a project serving their own organisation. Anything else
+ * fails closed.
  */
 function reachableApprovalNotificationPredicate(
   userId: string,
@@ -81,20 +83,42 @@ function reachableApprovalNotificationPredicate(
                 ),
             ),
           ),
-          exists(
-            executor
-              .select({ id: person.id })
-              .from(person)
-              .where(
-                and(
-                  eq(person.id, notificationTable.personId),
-                  eq(person.userId, userId),
-                  eq(person.active, true),
-                  eq(person.side, "staff"),
-                ),
+          or(
+            and(
+              exists(
+                executor
+                  .select({ id: person.id })
+                  .from(person)
+                  .where(
+                    and(
+                      eq(person.id, notificationTable.personId),
+                      eq(person.userId, userId),
+                      eq(person.active, true),
+                      eq(person.side, "staff"),
+                    ),
+                  ),
               ),
+              projectReachPredicate(userId, executor),
+            ),
+            and(
+              eq(schema.approvalTable.kind, "customer"),
+              eq(schema.approvalTable.approverId, notificationTable.personId),
+              exists(
+                executor
+                  .select({ id: person.id })
+                  .from(person)
+                  .where(
+                    and(
+                      eq(person.id, notificationTable.personId),
+                      eq(person.userId, userId),
+                      eq(person.active, true),
+                      eq(person.side, "customer"),
+                      eq(person.organisationId, projectTable.organisationId),
+                    ),
+                  ),
+              ),
+            ),
           ),
-          projectReachPredicate(userId, executor),
         ),
       ),
   );

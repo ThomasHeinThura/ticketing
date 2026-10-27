@@ -6,10 +6,10 @@
  *   GET  /api/import-sources?workspaceId=        list connections (credentials never returned)
  *   POST /api/import-sources/{id}/runs           create an engine run bound to a project
  *   GET  /api/imports/{id}/engine                run status (phase, pause reason, approval binding)
- *   POST /api/imports/{id}/discover              connect, discover, propose + persist the mapping
+ *   POST /api/imports/{id}/discover              202; background: connect, discover, propose + persist the mapping
  *   GET  /api/imports/{id}/mapping               mapping entries + completeness + five state groups
  *   POST /api/imports/{id}/mapping               edit entries (version checked); invalidates dry run
- *   POST /api/imports/{id}/dry-run-all           whole-run dry run (NOTE: `/dry-run` is the retained
+ *   POST /api/imports/{id}/dry-run-all           202; background whole-run dry run (NOTE: `/dry-run` is the retained
  *                                                chunk preview of the MCP bulk path, so the run-level
  *                                                dry run lives beside it, not on top of it)
  *   GET  /api/imports/{id}/dry-run-all           last whole-run dry-run report
@@ -26,6 +26,7 @@ import { apiRouter, createRoute, jsonResponse, z } from "../../openapi";
 import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { importRunIdParams } from "../schema";
 import { MAPPING_DOMAINS, STATE_GROUPS } from "./adapter";
+import { IMPORT_SOURCE_BODY_LIMIT_BYTES } from "./body-limit";
 import {
   createEngineRun,
   createSourceConnection,
@@ -50,13 +51,8 @@ const sourceError = z.object({
   reason: z.string().optional(),
 });
 
-/**
- * Largest `POST /import-sources` body. A source carries its file inline (`config.csvText`, up to
- * 5 MiB; `config.exportText`, up to 8 MB), and JSON escaping of quotes and newlines can double a
- * file, so this leaves headroom while still bounding what one request can make the server buffer.
- * It applies to this one route only, never globally.
- */
-export const IMPORT_SOURCE_BODY_LIMIT_BYTES = 20 * 1024 * 1024;
+export { IMPORT_SOURCE_BODY_LIMIT_BYTES };
+
 const loose = z.record(z.string(), z.unknown());
 const opaque = (max: number) => z.string().min(1).max(max);
 const sha256 = z.string().regex(/^[a-f0-9]{64}$/u);
@@ -225,12 +221,13 @@ const discoverRoute = createRoute({
   path: "/imports/{id}/discover",
   operationId: "discoverImportSource",
   tags: ["Imports"],
-  summary: "Discover the source and propose a mapping",
+  summary: "Start discovering the source and proposing a mapping",
+  description:
+    "Returns 202 at once. Discovery runs in the background: poll GET /imports/{id}/engine for its `job` (progress, then `completed` or a fixed `failure` code) and read the result from GET /imports/{id}/mapping. A request while discovery is running returns its state and never starts a second read.",
   request: { params: importRunIdParams },
   responses: {
-    200: jsonResponse("Mapping", loose),
+    202: jsonResponse("Discovery accepted or already running", loose),
     409: jsonResponse("Run not in a setup state", error),
-    502: jsonResponse("Source unavailable", sourceError),
     ...common,
     ...notFound,
   },
@@ -261,6 +258,7 @@ const postMappingRoute = createRoute({
     200: jsonResponse("Mapping", loose),
     400: jsonResponse("Invalid mapping edit", error),
     409: jsonResponse("Mapping version conflict", error),
+    422: jsonResponse("Person target outside the run's organisation", error),
     ...common,
     ...notFound,
   },
@@ -270,12 +268,13 @@ const dryRunAllRoute = createRoute({
   path: "/imports/{id}/dry-run-all",
   operationId: "dryRunImportRun",
   tags: ["Imports"],
-  summary: "Whole-run dry run",
+  summary: "Start the whole-run dry run",
+  description:
+    "Returns 202 at once. The dry run reads the source in the background and resumes from a checkpoint after a restart: poll GET /imports/{id}/engine for its `job`, then read the report from GET /imports/{id}/dry-run-all. A run paused mid-execution returns to the dry-run stage through this call (its approval is cleared; committed records are kept and skipped). A request while a dry run is running returns its state and never starts a second read.",
   request: { params: importRunIdParams },
   responses: {
-    200: jsonResponse("Dry-run report", loose),
-    409: jsonResponse("Run changed", error),
-    502: jsonResponse("Source unavailable", error),
+    202: jsonResponse("Dry run accepted or already running", loose),
+    409: jsonResponse("Run changed or not in a setup state", error),
     ...common,
     ...notFound,
   },
@@ -390,7 +389,7 @@ export function createImportEngineRouter(options: {
     })
     .openapi(discoverRoute, async (c) => {
       await guard(c, "POST", "/api/imports/{id}/discover", true);
-      return c.json(await discoverRun(c, c.req.valid("param").id), 200);
+      return c.json(await discoverRun(c, c.req.valid("param").id), 202);
     })
     .openapi(getMappingRoute, async (c) => {
       await guard(c, "GET", "/api/imports/{id}/mapping", false);
@@ -405,7 +404,7 @@ export function createImportEngineRouter(options: {
     })
     .openapi(dryRunAllRoute, async (c) => {
       await guard(c, "POST", "/api/imports/{id}/dry-run-all", true);
-      return c.json(await dryRunWholeRun(c, c.req.valid("param").id), 200);
+      return c.json(await dryRunWholeRun(c, c.req.valid("param").id), 202);
     })
     .openapi(getDryRunAllRoute, async (c) => {
       await guard(c, "GET", "/api/imports/{id}/dry-run-all", false);

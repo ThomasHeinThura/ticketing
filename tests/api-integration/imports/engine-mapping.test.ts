@@ -10,6 +10,7 @@ import {
   call,
   confirmAll,
   dryRunAndExecuteBody,
+  dryRunAndWait,
   engineFixture,
   makeRecords,
   post,
@@ -240,20 +241,8 @@ describe("import engine mapping gate", () => {
     setFakeFixture("report", { records });
     const { run, mapping } = await startRun(app, f, "report");
     await confirmAll(app, f.key, run.id, mapping.mappingVersion);
-    const first = await call(
-      app,
-      f.key,
-      `/api/imports/${run.id}/dry-run-all`,
-      post(),
-      200,
-    );
-    const second = await call(
-      app,
-      f.key,
-      `/api/imports/${run.id}/dry-run-all`,
-      post(),
-      200,
-    );
+    const first = await dryRunAndWait(app, f.key, run.id);
+    const second = await dryRunAndWait(app, f.key, run.id);
     expect(second.digest).toBe(first.digest);
     expect(first.byType.issue).toMatchObject({ created: 4, processed: 4 });
     expect(first.cycleBreaks).toBe(1);

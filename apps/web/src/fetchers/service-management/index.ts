@@ -144,7 +144,8 @@ export type ChangePatch = {
   rollbackPlan?: string | null;
   serviceIds?: string[];
   releaseId?: string | null;
-  version?: number;
+  /** The change detail version being edited (1 when the change has no detail yet). */
+  version: number;
 };
 
 export type Freeze = {

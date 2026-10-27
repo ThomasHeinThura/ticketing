@@ -89,15 +89,34 @@ export async function requireCostTracking(c: Context, next: Next) {
   await next();
 }
 
-/** Rates and costs are shown only to `time_entry:manage_rates` holders, and only with cost tracking on (TC-11). */
-export async function canSeeRates(c: Context) {
-  return (
-    (await holds(c, "time_entry:manage_rates")) &&
-    (await trackingFeatureEnabled(
-      COST_TRACKING_FEATURE_KEY,
-      c.get("workspaceId") as string,
-    ))
+/**
+ * Rates and costs are shown only to `time_entry:manage_rates` holders, and only with cost tracking
+ * on (TC-11). With a project in context the capability is resolved AT the project, so a project
+ * role override that removes (or grants) it counts exactly as it does for writing.
+ */
+export async function canSeeRates(c: Context, projectId?: string) {
+  const workspaceId = c.get("workspaceId") as string;
+  if (!(await trackingFeatureEnabled(COST_TRACKING_FEATURE_KEY, workspaceId)))
+    return false;
+  if (projectId === undefined) return holds(c, "time_entry:manage_rates");
+  return holdsAtProject(
+    await identityOf(c),
+    "time_entry:manage_rates",
+    workspaceId,
+    projectId,
   );
+}
+
+/** Per-project rate visibility for a result that spans several projects (evaluated once each). */
+export async function rateVisibility(
+  c: Context,
+  rows: ReadonlyArray<{ projectId: string }>,
+): Promise<(row: { projectId: string }) => boolean> {
+  const seen = new Map<string, boolean>();
+  for (const { projectId } of rows)
+    if (!seen.has(projectId))
+      seen.set(projectId, await canSeeRates(c, projectId));
+  return (row) => seen.get(row.projectId) ?? false;
 }
 
 /**

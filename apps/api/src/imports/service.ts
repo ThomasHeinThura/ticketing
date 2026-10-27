@@ -988,13 +988,21 @@ export async function commitImportChunk(
     records: ImportRecord[];
     /** Internal-only bypass used after the requester has approved a staged >50 chunk. */
     approvedLarge?: boolean;
+    /**
+     * Internal-only, for the import runner: the caller re-checked instance-admin authority under the
+     * serialization lock in a short transaction of its own and re-checks it again just before
+     * committing, so this chunk does not hold the exclusive lock for its whole write (which would
+     * block every administrator change for the length of the chunk).
+     */
+    skipAdminSerialization?: boolean;
     requestApproval?: ImportApprovalRequest;
     ip?: string | null;
     userAgent?: string | null;
   },
 ) {
   const { actor } = input;
-  if (!input.approvedLarge) await lockInstanceAdminSerialization(tx);
+  if (!input.approvedLarge && !input.skipAdminSerialization)
+    await lockInstanceAdminSerialization(tx);
   await requireImportInstanceAdmin(tx, actor, "POST /api/imports/{id}/records");
   if (input.records.length > 50 && !input.approvedLarge)
     await lockPendingActionLifecycle(tx);
@@ -1392,6 +1400,7 @@ export async function commitImportChunk(
       actorId: actor.userId,
       actorType: actor.actorType,
       eventSource: "import",
+      sla: "none",
       authorization: {
         userId: actor.userId,
         ...(actor.apiKey ? { apiKey: actor.apiKey } : {}),

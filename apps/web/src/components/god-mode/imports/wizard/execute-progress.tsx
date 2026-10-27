@@ -17,8 +17,10 @@ import {
   type EngineRun,
   executeImportRun,
   getImportMapping,
+  type ImportPausedReason,
   pauseImportRun,
   resumeImportRun,
+  runImportDryRun,
 } from "@/fetchers/god-mode/imports";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { HttpError } from "@/lib/http-error";
@@ -38,6 +40,26 @@ export function executeBlockers(
   if (run.dryRun && run.dryRun.mappingVersion !== run.mappingVersion)
     reasons.push("stale");
   return reasons;
+}
+
+/**
+ * What recovers a paused run, by pause reason. Resuming cannot cure a stale approval or a source
+ * that outgrew the approved count (the run would pause again), so those return to the dry run:
+ * the server clears the approval, keeps the committed records (they classify as skipped) and the
+ * run is approved and started again. A run whose executor lost authority is taken over by the
+ * administrator who resumes it. Everything else resumes where it stopped.
+ */
+export function pauseRecovery(
+  reason: ImportPausedReason | null,
+): "dryRun" | "takeOver" | "resume" {
+  if (
+    reason === "approved_count_exceeded" ||
+    reason === "approval_invalid" ||
+    reason === "mapping_changed"
+  )
+    return "dryRun";
+  if (reason === "authority_lost") return "takeOver";
+  return "resume";
 }
 
 /**
@@ -61,6 +83,7 @@ export function ExecuteStep({
   const startKey = useIdempotencyKey();
   const pauseKey = useIdempotencyKey();
   const resumeKey = useIdempotencyKey();
+  const dryRunKey = useIdempotencyKey();
   const [needsDryRun, setNeedsDryRun] = useState(false);
   const mapping = useQuery({
     queryKey: wizardKeys.mapping(run.id),
@@ -114,6 +137,18 @@ export function ExecuteStep({
     },
   });
 
+  const backToDryRun = useMutation({
+    mutationFn: () =>
+      runImportDryRun(run.id, dryRunKey.keyFor(`return:${run.version}`)),
+    onSuccess: () => {
+      dryRunKey.reset();
+      setNeedsDryRun(false);
+      void refresh();
+      void client.invalidateQueries({ queryKey: wizardKeys.dryRun(run.id) });
+      onNeedDryRun();
+    },
+  });
+
   const done = COUNTERS.reduce((sum, key) => sum + (run.stats[key] ?? 0), 0);
   const total = run.dryRun?.total ?? done;
   const percent =
@@ -126,6 +161,8 @@ export function ExecuteStep({
         ? start.data.pendingActionId
         : null));
   const executing = run.phase === "executing";
+  const recovery =
+    run.state === "paused" ? pauseRecovery(run.pausedReason) : null;
   const finished = run.phase === "completed" || run.state === "completed";
 
   return (
@@ -248,8 +285,22 @@ export function ExecuteStep({
             {run.state === "paused" && run.pausedReason ? (
               <Alert variant="warning">
                 <AlertTitle>{t("wizard.execute.pausedTitle")}</AlertTitle>
+                <AlertDescription className="space-y-1">
+                  <span className="block">
+                    {t(`wizard.pausedReasons.${run.pausedReason}`)}
+                  </span>
+                  {recovery === "dryRun" || recovery === "takeOver" ? (
+                    <span className="block">
+                      {t(`wizard.execute.recovery.${recovery}`)}
+                    </span>
+                  ) : null}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {backToDryRun.isError ? (
+              <Alert variant="error">
                 <AlertDescription>
-                  {t(`wizard.pausedReasons.${run.pausedReason}`)}
+                  {t("wizard.execute.controlError")}
                 </AlertDescription>
               </Alert>
             ) : null}
@@ -260,7 +311,12 @@ export function ExecuteStep({
                 </AlertTitle>
                 <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
                   <span>{t("wizard.execute.resumeBlocked")}</span>
-                  <Button size="sm" variant="outline" onClick={onNeedDryRun}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={backToDryRun.isPending}
+                    onClick={() => backToDryRun.mutate()}
+                  >
                     {t("wizard.execute.backToDryRun")}
                   </Button>
                 </AlertDescription>
@@ -289,12 +345,22 @@ export function ExecuteStep({
                   {t("wizard.execute.pause")}
                 </Button>
               ) : null}
-              {run.state === "paused" ? (
+              {recovery === "dryRun" && !needsDryRun ? (
+                <Button
+                  disabled={backToDryRun.isPending}
+                  onClick={() => backToDryRun.mutate()}
+                >
+                  {t("wizard.execute.returnToDryRun")}
+                </Button>
+              ) : null}
+              {recovery === "takeOver" || recovery === "resume" ? (
                 <Button
                   disabled={resume.isPending}
                   onClick={() => resume.mutate()}
                 >
-                  {t("wizard.execute.resume")}
+                  {recovery === "takeOver"
+                    ? t("wizard.execute.takeOver")
+                    : t("wizard.execute.resume")}
                 </Button>
               ) : null}
               {finished ? (

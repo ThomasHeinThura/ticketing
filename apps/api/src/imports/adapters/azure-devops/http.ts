@@ -55,7 +55,9 @@ export function createGuardedTransport(
   } = {},
 ): SourceTransport {
   return async (input) => {
-    const env = options.env ?? { NODE_ENV: process.env.NODE_ENV };
+    // Strict whatever NODE_ENV says (like Jira's client): `env` exists only so a unit test can reach
+    // a loopback server. A development process never relaxes import egress.
+    const env = options.env ?? { NODE_ENV: "production" };
     const relaxed = developmentRelaxationActive(env);
     const resolver = options.resolver ?? systemResolver;
     let parsed: ReturnType<typeof parseWebhookUrl>;

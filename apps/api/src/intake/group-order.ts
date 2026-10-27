@@ -2,7 +2,6 @@ import { resolveFeatureFlag } from "@taskdesk/permissions";
 import { and, asc, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
 import type { Executor } from "../database/executor";
 import type { DbTransaction } from "../events/outbox";
@@ -18,6 +17,7 @@ import {
 import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { appendIntakeAudit, intakeAuditContext } from "./audit";
 import { workspaceQuery } from "./schema";
 
 type GroupOrderVariables = BaseVariables & {
@@ -291,6 +291,11 @@ const putGroupOrderRoute = createRoute({
   tags: ["Request types"],
   summary: "Replace request type catalogue group order",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action. Resolved at
+    // request time: `./audit` -> api-key/enforce -> ... -> intake/deletion-target imports
+    // this module back, so a direct reference is in its TDZ when `./audit` loads first
+    // (e.g. the seed script entry).
+    (c: Context, next: Next) => intakeAuditContext(c, next),
     groupOrderScope,
     requireApiKeyPermissionScope({ request_type: ["manage"] }),
     requireWorkspaceCapability("request_type:manage"),
@@ -388,7 +393,7 @@ export const requestTypeGroupOrderRouter = apiRouter<GroupOrderVariables>()
         throw new HTTPException(409, {
           message: "Request type group order changed; reload before saving",
         });
-      await appendAuditLog(tx, {
+      await appendIntakeAudit(tx, {
         actorId: actor.id,
         actorType: apiKey ? "api_key" : "person",
         apiKeyId: apiKey?.id ?? null,

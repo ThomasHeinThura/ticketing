@@ -42,6 +42,7 @@ import {
   assertCallerHasCapability,
   type CapabilityCredential,
 } from "../utils/require-workspace-capability";
+import { assertRowNotUnderLegalHold } from "../utils/workspace-legal-hold";
 import { isUniqueViolation, VersionConflictError } from "./common";
 import type { ServiceLinkInput } from "./schema";
 
@@ -936,6 +937,12 @@ export async function deleteServiceRow(
     .for("update")
     .limit(1);
   if (!row) return false;
+  // PA-12: an open hold on the creator, the status changer or the organisation of the workspace
+  // refuses the hard delete.
+  await assertRowNotUnderLegalHold(tx, {
+    workspaceId,
+    userIds: sql`SELECT ${row.createdBy}::text UNION ALL SELECT ${row.statusChangedBy}::text`,
+  });
   // Clear the plain reference on work items first: the constraint is NO ACTION.
   // The unlink spans the whole workspace (including projects the approver cannot reach and held
   // items), so the audit row records how many items were unlinked and in which projects (ids only,

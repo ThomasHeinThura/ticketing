@@ -1,3 +1,5 @@
+import db from "../database";
+import { publishEvent } from "../events";
 import createNotification from "../notification/controllers/create-notification";
 import {
   assertJobExecutionOwned,
@@ -52,33 +54,34 @@ async function processReminder(
   notificationType: "due_date_reminder" | "task_overdue",
 ) {
   if (!task.userId) return;
+  const userId = task.userId;
 
-  // Insert sent record first; if it already exists, skip notification
-  try {
-    const inserted = await insertReminderSent(task.id, reminderType);
-
-    if (!inserted) return;
-  } catch (error) {
-    console.error("Failed to record due date reminder", {
-      taskId: task.id,
-      reminderType,
-      error,
+  // P0R1-04: the sent marker and the notification row commit together. A failure after the
+  // marker rolls both back, so the next run retries; a committed marker always has its
+  // notification (or a deliberate preference/reach skip). The realtime publish follows commit.
+  const notification = await db.transaction(async (tx) => {
+    const inserted = await insertReminderSent(task.id, reminderType, tx);
+    if (!inserted) return null;
+    return createNotification({
+      userId,
+      type: notificationType,
+      eventData: {
+        taskTitle: task.title,
+        reminderType,
+        leadTimeMinutes: task.leadTimeMinutes ?? 1440,
+        dueDate: task.dueDate?.toISOString() ?? null,
+      },
+      resourceId: task.id,
+      resourceType: "task",
+      executor: tx,
     });
-    return;
-  }
-
-  await createNotification({
-    userId: task.userId,
-    type: notificationType,
-    eventData: {
-      taskTitle: task.title,
-      reminderType,
-      leadTimeMinutes: task.leadTimeMinutes ?? 1440,
-      dueDate: task.dueDate?.toISOString() ?? null,
-    },
-    resourceId: task.id,
-    resourceType: "task",
   });
+  if (notification) {
+    await publishEvent("notification.created", {
+      notificationId: notification.id,
+      userId,
+    }).catch(() => {});
+  }
 }
 
 export async function checkDueDateReminders(): Promise<{ degraded: boolean }> {

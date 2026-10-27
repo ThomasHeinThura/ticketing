@@ -124,7 +124,8 @@ const approvePendingActionRoute = createRoute({
   request: {
     params: pendingActionParamSchema,
     // A missing or malformed token is not a validation error: it is an unavailable PA-15
-    // proof (403 step_up_expired), audited like any other denied consumption.
+    // proof (403 step_up_required when absent, 403 step_up_expired otherwise), audited like
+    // any other denied consumption.
     headers: z.object({
       "x-taskdesk-step-up-token": z.string().max(256).optional(),
     }),

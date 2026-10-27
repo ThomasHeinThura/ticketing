@@ -303,6 +303,99 @@ describe("API integration: canonical global search", () => {
     expect(project.id).toBeTruthy();
   });
 
+  it("SV-2: finds a work item by live comment text, never by a deleted comment or a hidden project's comment", async () => {
+    const { member, type, template, app, create, search } = await seedWorld();
+    const item = await create("Plain title");
+    const comment = (text: string, workItemId: string, workspaceId: string) =>
+      db.insert(schema.commentTable).values({
+        workspaceId,
+        workItemId,
+        authorId: member.user.id,
+        actorType: "person",
+        visibility: "internal",
+        body: {
+          type: "doc",
+          content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+        },
+      });
+    await comment(
+      "the pangolin escalation notes",
+      item.id,
+      member.workspace.id,
+    );
+    const hits = (await search("pangolin")).filter(
+      (r) => r.type === "work_item",
+    );
+    expect(hits.map((r) => r.id)).toEqual([item.id]);
+
+    await db
+      .update(schema.commentTable)
+      .set({ deletedAt: new Date(), body: null })
+      .where(eq(schema.commentTable.workItemId, item.id));
+    expect((await search("pangolin")).map((r) => r.id)).not.toContain(item.id);
+
+    const hidden = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    await provisionProject(
+      member.workspace.id,
+      hidden.project.id,
+      type.id,
+      template.id,
+    );
+    const insider = await addMember(member.workspace.id, "member");
+    await grantProjectRole(insider.user.id, hidden.project.id, [
+      "work_item:read",
+      "work_item:create",
+      "project:read",
+    ]);
+    const hiddenItem = await createItemAs(
+      app,
+      insider.user,
+      hidden.project.id,
+      type.id,
+      "Hidden title",
+    );
+    await comment(
+      "pangolin in a hidden project",
+      hiddenItem.id,
+      member.workspace.id,
+    );
+    mockAuthenticatedSession(member.user);
+    expect((await search("pangolin")).map((r) => r.id)).not.toContain(
+      hiddenItem.id,
+    );
+  });
+
+  it("P1R2-8: comment text is searched only from three characters on, and the comment branch is bounded", async () => {
+    const { member, create, search } = await seedWorld();
+    const items = [];
+    for (let index = 0; index < 4; index++)
+      items.push(await create(`Untitled ${index}`));
+    for (const item of items)
+      await db.insert(schema.commentTable).values({
+        workspaceId: member.workspace.id,
+        workItemId: item.id,
+        authorId: member.user.id,
+        actorType: "person",
+        visibility: "internal",
+        body: {
+          type: "doc",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: "zqx" }] },
+          ],
+        },
+      });
+    const twoChars = (await search("zq")).filter((r) => r.type === "work_item");
+    expect(twoChars).toEqual([]);
+    const threeChars = (await search("zqx")).filter(
+      (r) => r.type === "work_item",
+    );
+    expect(threeChars.map((r) => r.id).sort()).toEqual(
+      items.map((item) => item.id).sort(),
+    );
+  });
+
   it("falls back to trigram similarity for a typo", async () => {
     const { create, search } = await seedWorld();
     const item = await create("Quarterly planning review");

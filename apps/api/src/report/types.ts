@@ -167,7 +167,7 @@ export type ReportDefinition = {
   category: ReportCategory;
   title: string;
   /** Needs a workspace feature on top of `feature.reports`. */
-  feature?: "feature.time_tracking" | "feature.knowledge_base";
+  feature?: "feature.time_tracking" | "feature.knowledge_base" | "feature.sla";
   /** The report carries rate or cost data and is shaped by `showRates`. */
   rated?: boolean;
   /** Does not depend on the window (live, at-risk, now). */

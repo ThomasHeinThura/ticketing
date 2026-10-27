@@ -310,7 +310,7 @@ describe("service catalogue", () => {
       .where(eq(schema.workItemTable.id, item.id));
     const patch = await w.ownerCall(`/api/work-items/${item.key}/change`, {
       method: "PATCH",
-      body: { serviceIds: [svc.id] },
+      body: { serviceIds: [svc.id], version: 1 },
     });
     expect(patch.status, await patch.clone().text()).toBe(200);
     const refused = await w.ownerCall(`/api/services/${svc.id}`, {

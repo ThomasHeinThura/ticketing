@@ -359,6 +359,57 @@ describe("work-item list realtime composition", () => {
     },
   );
 
+  it("VW-5: a rank hint (key-only work_item.updated on the project topic) refetches the active board order", async () => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, refetchOnWindowFocus: false },
+      },
+    });
+    const boardFetch = vi.fn(
+      async () => `order-${boardFetch.mock.calls.length}`,
+    );
+    function Board() {
+      const query = useQuery({
+        queryKey: ["work-items", "project-rank", "board"],
+        queryFn: boardFetch,
+      });
+      useNativeWorkItemRealtime(["project:project-rank"]);
+      return (
+        <output data-testid="board-order">{query.data ?? "loading"}</output>
+      );
+    }
+    render(<Board />, { wrapper: wrapperFor(client) });
+    await waitFor(() =>
+      expect(screen.getByTestId("board-order")).toHaveTextContent("order-1"),
+    );
+    const socket = MockWebSocket.instances.at(-1);
+    if (!socket) throw new Error("Expected the project socket");
+    act(() => {
+      socket.open();
+      socket.frame({ type: "subscribed", topic: "project:project-rank" });
+    });
+    await waitFor(() =>
+      expect(
+        client
+          .getQueryCache()
+          .getAll()
+          .every((query) => query.state.fetchStatus === "idle"),
+      ).toBe(true),
+    );
+    boardFetch.mockClear();
+    act(() => {
+      socket.frame({
+        type: "work_item.updated",
+        topic: "project:project-rank",
+        eventId: "hint_rank_1",
+        payload: { key: "WI-RANK" },
+      });
+    });
+    await waitFor(() => expect(boardFetch).toHaveBeenCalledTimes(1), {
+      timeout: 1_000,
+    });
+  });
+
   it("refreshes active list, detail, and activity queries once per socket event burst", async () => {
     const client = new QueryClient({
       defaultOptions: {

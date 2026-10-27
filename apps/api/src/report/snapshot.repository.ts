@@ -265,6 +265,7 @@ export async function loadFactRows(
       ) f ON true
       WHERE d.workspace_id=${ctx.workspaceId}
         AND d.snapshot_version=${SNAPSHOT_FAMILY_VERSION}
+        AND ${markerCurrent("d")}
         AND d.period_start >= ${split.closed.from.toISOString()}::timestamptz
         AND d.period_start < ${split.closed.to.toISOString()}::timestamptz
       GROUP BY d.period_start,d.computed_at`);
@@ -381,6 +382,7 @@ async function storedRowsAndCoverage(
     ) stored ON true
     WHERE d.workspace_id = ${ctx.workspaceId}
       AND d.snapshot_version = ${SNAPSHOT_FAMILY_VERSION}
+      AND ${markerCurrent("d")}
       AND d.period_start >= ${from.toISOString()}::timestamptz
       AND d.period_start < ${to.toISOString()}::timestamptz`);
   return {
@@ -475,6 +477,15 @@ export async function loadDaily(
 // Write path: the `metrics-snapshot` job
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * A marker is trusted only while the workspace epoch it was computed under is current: sources that
+ * can change facts of any day (project, state, KB article, person link) bump the epoch (0203).
+ */
+function markerCurrent(alias: string): SQL {
+  const a = sql.raw(alias);
+  return sql`${a}.epoch = COALESCE((SELECT e.epoch FROM metric_snapshot_epoch e WHERE e.workspace_id = ${a}.workspace_id), 0)`;
+}
+
 export type SnapshotRunStats = { days: number; rows: number };
 
 /**
@@ -492,11 +503,24 @@ export async function writeWorkspaceDays(
   // Today (and anything later) is never stored: only a finished UTC day is a closed period.
   const today = utcDayStart(now);
   const closed = keys.filter((key) => dayFromKey(key) < today);
-  for (const range of runsOf(closed)) {
+  // One transaction per day: the exclusive day lock is held only while that one day is computed,
+  // never across a whole backfill, and a day a source write currently holds is left to the next run.
+  for (const dayKeyValue of closed) {
+    const dayStart = dayFromKey(dayKeyValue);
+    const range = { from: dayStart, to: addDays(dayStart, 1) };
     await db.transaction(async (tx) => {
-      await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtext(${`metric_snapshot_workspace:${workspaceId}`}))`,
+      const locked = await tx.execute<{ ok: boolean }>(
+        sql`SELECT pg_try_advisory_xact_lock(hashtext(${`metric_snapshot_day:${workspaceId}:${dayKeyValue}`})) AS ok`,
       );
+      if (!locked.rows[0]?.ok) return;
+      // The writer's own fact DML must not invalidate the day it is about to certify.
+      await tx.execute(
+        sql`SELECT set_config('taskdesk.snapshot_writer', 'on', true)`,
+      );
+      const epochRows = await tx.execute<{ epoch: string }>(
+        sql`SELECT COALESCE((SELECT epoch FROM metric_snapshot_epoch WHERE workspace_id = ${workspaceId}), 0) AS epoch`,
+      );
+      const epoch = String(epochRows.rows[0]?.epoch ?? "0");
       await withReportExecutor(tx, async () => {
         const perMetric = new Map<
           SnapshotMetric,
@@ -570,10 +594,10 @@ export async function writeWorkspaceDays(
             await tx.execute(sql`INSERT INTO metric_snapshot
             (id, workspace_id, period_start, period_end, grain, metric_key, project_id, organisation_id, dimensions, measures, computed_at)
             VALUES ${sql.join(values.slice(i, i + 500), sql`, `)}`);
-          await tx.execute(sql`INSERT INTO metric_snapshot_day (workspace_id, period_start, computed_at, snapshot_version)
-          VALUES (${workspaceId}, ${start.toISOString()}::timestamptz, now(), ${SNAPSHOT_FAMILY_VERSION})
+          await tx.execute(sql`INSERT INTO metric_snapshot_day (workspace_id, period_start, computed_at, snapshot_version, epoch)
+          VALUES (${workspaceId}, ${start.toISOString()}::timestamptz, now(), ${SNAPSHOT_FAMILY_VERSION}, ${epoch}::bigint)
           ON CONFLICT (workspace_id, period_start) DO UPDATE
-          SET computed_at = now(), snapshot_version = EXCLUDED.snapshot_version`);
+          SET computed_at = now(), snapshot_version = EXCLUDED.snapshot_version, epoch = EXCLUDED.epoch`);
           stats.days += 1;
           stats.rows += values.length;
         }
@@ -592,8 +616,9 @@ export async function workspaceDaysToWrite(
   if (!earliest) return [];
   const covered = await selectRows<{ day: string }>(
     sql`SELECT to_char(period_start AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day
-      FROM metric_snapshot_day WHERE workspace_id = ${workspaceId}
-        AND snapshot_version = ${SNAPSHOT_FAMILY_VERSION}`,
+      FROM metric_snapshot_day d WHERE d.workspace_id = ${workspaceId}
+        AND d.snapshot_version = ${SNAPSHOT_FAMILY_VERSION}
+        AND ${markerCurrent("d")}`,
   );
   return daysToCompute({
     now,

@@ -8,7 +8,7 @@ import {
   insertLegacyTaskActivity,
   insertLegacyTaskNotification,
 } from "../../events/legacy-task-effects";
-import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
+import { syncInlineAssetReferences } from "../../storage/cleanup-assets";
 import {
   assertAssignableUserAndLockMembership,
   getProjectWorkspaceId,
@@ -184,6 +184,16 @@ async function updateTask(
         });
       }
     }
+    if (updatedTask && (lockedTask.description ?? "") !== description) {
+      // P0R1-01: detach (never delete) removed inline images in the same transaction.
+      await syncInlineAssetReferences(
+        tx,
+        identity,
+        lockedTask.description,
+        description,
+        { taskId: id },
+      );
+    }
     return { existingTask: lockedTask, updatedTask, notification, changes };
   });
 
@@ -194,7 +204,6 @@ async function updateTask(
   }
 
   const previousStatus = lockedTask.status;
-  const previousDescription = lockedTask.description;
 
   if (changes.length === 0) return updatedTask;
 
@@ -224,21 +233,6 @@ async function updateTask(
     status: updatedTask.status,
     userId: currentUserId,
   });
-
-  if (previousDescription !== description) {
-    db.transaction(async (tx) => {
-      await lockTaskAndAssertProjectLiveForIdentity(tx, id, identity);
-      await deleteOrphanedAssets(
-        tx,
-        identity,
-        previousDescription,
-        description,
-        {
-          taskId: id,
-        },
-      );
-    }).catch(() => {});
-  }
 
   return updatedTask;
 }

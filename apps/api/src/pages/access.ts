@@ -3,7 +3,7 @@ import {
   type ResolvedIdentity,
   reaches,
 } from "@taskdesk/permissions";
-import { eq, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { projectFacts } from "../automation/access";
@@ -48,7 +48,12 @@ async function resolvePagesProject(c: Context, next: Next) {
   const [project] = await db
     .select({ id: projectTable.id, workspaceId: projectTable.workspaceId })
     .from(projectTable)
-    .where(or(eq(projectTable.id, raw), eq(projectTable.slug, raw)))
+    .where(
+      and(
+        or(eq(projectTable.id, raw), eq(projectTable.slug, raw)),
+        isNull(projectTable.deletedAt),
+      ),
+    )
     .limit(1);
   if (!project) throw notFound();
   try {

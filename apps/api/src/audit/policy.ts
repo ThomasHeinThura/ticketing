@@ -46,6 +46,20 @@ export const auditPolicies = {
     elevationExemptionReason:
       "read-only listing; it grants nothing, mints no authority, and changes no state (AU-13's own-audit write is a side effect of reading, not an authority)",
   },
+  // AU-13 / P2R1-11: exporting is elevated (permissions.md "Exporting instance data") and
+  // spends a one-use `audit_export` proof bound to the export request.
+  "POST /api/instance/audit/export": {
+    capability: "instance:read_audit",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "an instance-wide audit export addresses no single row; the capability and step-up gate it",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
   "GET /api/workspaces/{workspaceId}/audit": {
     capability: "workspace:manage_settings",
     scope: "workspace",

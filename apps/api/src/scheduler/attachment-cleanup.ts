@@ -2,6 +2,7 @@ import { and, asc, eq, gt, ne, or, sql } from "drizzle-orm";
 import db from "../database";
 import type { Transaction } from "../database/executor";
 import {
+  assetTable,
   attachmentTable,
   commentTable,
   legalHoldTable,
@@ -10,9 +11,12 @@ import {
 } from "../database/schema";
 import { logTaskDesk } from "../instance/observability/runtime";
 import { deleteStorageObject } from "../storage";
+import { contentReferencesAsset } from "../storage/cleanup-assets";
 import { dbClockUtc } from "../utils/db-time";
 import {
+  openHoldOver,
   PROJECT_UNDER_OPEN_HOLD,
+  projectOwnPeople,
   WORK_ITEM_UNDER_OPEN_HOLD,
 } from "../utils/legal-hold-scope";
 import { assertJobExecutionOwned, withJobLease } from "./leader-lock";
@@ -246,6 +250,7 @@ export async function collectQueuedAttachmentObjects(
   try {
     queued = await db.execute<{ object_key: string }>(sql`
       SELECT "object_key" FROM "attachment_object_gc"
+      WHERE "queued_at" <= now()
       ORDER BY "attempts" ASC, "queued_at" ASC, "object_key" ASC
       LIMIT ${limit}
     `);
@@ -291,6 +296,108 @@ export async function collectQueuedAttachmentObjects(
           sql`UPDATE "attachment_object_gc" SET "attempts" = "attempts" + 1 WHERE "object_key" = ${objectKey}`,
         )
         .catch(() => undefined);
+      logTaskDesk({
+        module: "jobs",
+        message: "jobs.failure",
+        level: "error",
+        result: "degraded",
+      });
+    }
+  }
+  return outcome;
+}
+
+/** Recovery window for an inline image that no content references any more (P0R1-01). */
+const DETACHED_ASSET_RECOVERY_WINDOW = "24 hours";
+
+/** The creator, the project's people and the workspace/project organisations of an asset (`a` alias). */
+const ASSET_UNDER_OPEN_HOLD = openHoldOver(
+  sql`SELECT pe."id" FROM "person" pe WHERE pe."user_id" = a."created_by"
+      UNION ALL ${projectOwnPeople(sql`SELECT a."project_id"`)}`,
+  sql`SELECT w."organisation_id" FROM "workspace" w WHERE w."id" = a."workspace_id"
+      UNION ALL SELECT p."organisation_id" FROM "project" p WHERE p."id" = a."project_id"`,
+);
+
+/**
+ * Removes one detached inline asset once its recovery window passed. It re-checks, under the
+ * asset row lock and the legal-hold table lock, that the asset is still detached, that no
+ * description, comment or activity of its task references it again (a reference that was added
+ * by any path restores it instead of deleting it), and that no open hold covers it. The object
+ * is deleted before the row, so a failed storage call keeps the row for the next run.
+ */
+export async function cleanDetachedAsset(id: string): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(assetTable)
+      .where(
+        and(
+          eq(assetTable.id, id),
+          sql`${assetTable.detachedAt} <= ${dbClockUtc()} - interval '${sql.raw(DETACHED_ASSET_RECOVERY_WINDOW)}'`,
+        ),
+      )
+      .for("update");
+    if (!row) return false;
+    await tx.execute(sql`LOCK TABLE legal_hold IN SHARE MODE`);
+    const held = await tx.execute<{ held: boolean }>(sql`
+      SELECT ${ASSET_UNDER_OPEN_HOLD} AS held FROM "asset" a WHERE a."id" = ${row.id}
+    `);
+    if (held.rows[0]?.held === true) return false;
+    if (row.taskId) {
+      const pattern = `%/api/asset/${row.id}%`;
+      const refs = await tx.execute<{ content: string | null }>(sql`
+        SELECT t."description" AS content FROM "task" t
+          WHERE t."id" = ${row.taskId} AND t."description" LIKE ${pattern}
+        UNION ALL
+        SELECT c."content" FROM "task_comment" c
+          WHERE c."task_id" = ${row.taskId} AND c."content" LIKE ${pattern}
+        UNION ALL
+        SELECT ta."content" FROM "task_activity" ta
+          WHERE ta."task_id" = ${row.taskId} AND ta."content" LIKE ${pattern}
+      `);
+      if (
+        refs.rows.some((ref) => contentReferencesAsset(ref.content, row.id))
+      ) {
+        await tx
+          .update(assetTable)
+          .set({ detachedAt: null })
+          .where(eq(assetTable.id, row.id));
+        return false;
+      }
+    }
+    await deleteStorageObject(row.objectKey);
+    await tx.delete(assetTable).where(eq(assetTable.id, row.id));
+    return true;
+  });
+}
+
+/** Drains detached inline assets past the recovery window (`attachment-gc`). */
+export async function collectDetachedAssets(
+  limit = MAX_ROWS_PER_RUN,
+): Promise<AttachmentCleanupOutcome> {
+  const outcome: AttachmentCleanupOutcome = {
+    scanned: 0,
+    deleted: 0,
+    retained: 0,
+    degraded: false,
+  };
+  const candidates = await db
+    .select({ id: assetTable.id })
+    .from(assetTable)
+    .where(
+      sql`${assetTable.detachedAt} <= ${dbClockUtc()} - interval '${sql.raw(DETACHED_ASSET_RECOVERY_WINDOW)}'`,
+    )
+    .orderBy(asc(assetTable.detachedAt), asc(assetTable.id))
+    .limit(Math.max(0, limit));
+  for (const candidate of candidates) {
+    await assertJobExecutionOwned();
+    outcome.scanned++;
+    try {
+      if (await cleanDetachedAsset(candidate.id)) outcome.deleted++;
+      else outcome.retained++;
+    } catch {
+      outcome.retained++;
+      outcome.degraded = true;
       logTaskDesk({
         module: "jobs",
         message: "jobs.failure",
@@ -372,6 +479,11 @@ async function runCleanup(
         outcome.deleted += queue.deleted;
         outcome.retained += queue.retained;
         outcome.degraded ||= queue.degraded;
+        const assets = await collectDetachedAssets(MAX_ROWS_PER_RUN);
+        outcome.scanned += assets.scanned;
+        outcome.deleted += assets.deleted;
+        outcome.retained += assets.retained;
+        outcome.degraded ||= assets.degraded;
       }
       console.log(
         JSON.stringify({ job, durationMs: Date.now() - startedAt, ...outcome }),

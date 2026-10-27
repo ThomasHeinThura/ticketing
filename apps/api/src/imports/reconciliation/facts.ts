@@ -192,7 +192,8 @@ async function staleFacts(tx: Transaction, run: EngineRun) {
   const [provenance] = await rowsOf<{ n: string }>(
     tx,
     sql`SELECT count(*) AS n FROM external_link
-      WHERE workspace_id = ${s.workspaceId} AND system = ${s.sourceRef}
+      WHERE workspace_id = ${s.workspaceId} AND plugin_id = ${s.pluginId}
+        AND system = ${s.sourceRef}
         AND origin = 'imported' AND stale_at IS NOT NULL`,
   );
   const sample = await rowsOf<{
@@ -318,7 +319,8 @@ async function danglingFacts(tx: Transaction, run: EngineRun) {
       WHERE ${linkScope} AND l.target_type = 'relation'
         AND NOT EXISTS (SELECT 1 FROM work_item_relation r WHERE r.id = l.target_id)`,
   );
-  const unresolvedScope = sql`e.workspace_id = ${s.workspaceId} AND e.system = ${s.sourceRef}
+  const unresolvedScope = sql`e.workspace_id = ${s.workspaceId} AND e.plugin_id = ${s.pluginId}
+    AND e.system = ${s.sourceRef}
     AND e.origin = 'imported' AND e.entity_type = 'work_item'
     AND e.deferred_links IS NOT NULL`;
   const [unresolvedCount] = await rowsOf<{ n: string }>(

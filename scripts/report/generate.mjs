@@ -83,6 +83,7 @@ ${bar(p)}
 <p class="meta">${summary} of ${p.total}</p>
 ${p.browser ? `<p class="meta">Full browser verification: ${esc(p.browser.verified)} / ${esc(p.total)} requirements.</p>` : ""}
 <p class="meta">${gates} Review: ${esc(p.review.roundsConsumed ?? 0)}/${esc(p.review.maxTotalRounds ?? 3)} rounds used · ${esc(p.review.findings ?? 0)} recorded findings.</p>
+${p.review.note ? `<p class="meta">${esc(p.review.note)}</p>` : ""}
 ${p.remaining_summary?.length ? `<h3>Still to finish</h3><ul>${p.remaining_summary.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
 ${gateDetails}
 ${carry}

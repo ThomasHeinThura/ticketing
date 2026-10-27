@@ -357,6 +357,8 @@ describe("API integration: SLA policy authoring contract", () => {
     );
     expect(createdAudit?.after).toEqual({
       policyId: created.id,
+      // Stable catalogue key (0193), derived from the policy name.
+      key: "response-policy",
       versionId: expect.any(String),
     });
     expect(updatedAudit?.after).toMatchObject({
@@ -476,7 +478,8 @@ describe("API integration: SLA policy authoring contract", () => {
       .where(eq(schema.workItemTypeTable.id, type.id));
     await db
       .update(schema.projectTable)
-      .set({ slaPolicyId: otherPolicy.id })
+      // A project's own policy applies only in override mode; inherit uses the workspace default.
+      .set({ slaPolicyMode: "override", slaPolicyId: otherPolicy.id })
       .where(eq(schema.projectTable.id, project.id));
     const createItem = await csrfRequest(
       app,
@@ -567,7 +570,7 @@ describe("API integration: SLA policy authoring contract", () => {
     expect(projectFallback.versionId).toBe(otherPublished.activeVersion.id);
     await db
       .update(schema.projectTable)
-      .set({ slaPolicyId: null })
+      .set({ slaPolicyMode: "inherit", slaPolicyId: null })
       .where(eq(schema.projectTable.id, project.id));
     await db
       .update(schema.workspaceTable)

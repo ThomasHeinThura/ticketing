@@ -12,7 +12,6 @@ import {
 } from "@taskdesk/domain";
 import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
 import { publishEvent } from "../events";
 import { resolveWorkItemEventRecipients } from "../notification/work-item-recipients";
@@ -34,6 +33,7 @@ import {
   isWithinReopenWindow,
   requestCustomerReopen,
 } from "../workflow/customer-reopen";
+import { appendIntakeAudit } from "./audit";
 import { judgeEscalation, type PortalPriority } from "./portal-priority";
 
 function code(name: string, message: string): never {
@@ -138,7 +138,7 @@ export async function escalatePortalPriority(input: {
       },
     ).map((activity) => ({ ...activity, payload: { source: "portal" } }));
     await recordWorkItemActivity(tx, rows);
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId: input.personId,
       actorType: "person",
       workspaceId: item.workspaceId,
@@ -277,7 +277,7 @@ export async function reopenPortalSubmission(input: {
         .returning({ id: schema.submissionTable.id });
       if (!updated)
         code("conflict", "the request changed; reload and try again");
-      await appendAuditLog(tx, {
+      await appendIntakeAudit(tx, {
         actorId: input.personId,
         actorType: "person",
         workspaceId: row.workspaceId,
@@ -318,7 +318,7 @@ export async function reopenPortalSubmission(input: {
   // The audit row names the customer who asked, whether the reopen ran or was flagged. A
   // repeat press on an already-flagged refusal adds no second audit row or staff flag.
   if (outcome.kind === "reopened" || !outcome.duplicate)
-    await appendAuditLog(db, {
+    await appendIntakeAudit(db, {
       actorId: input.personId,
       actorType: "person",
       workspaceId: plan.workspaceId,
@@ -399,7 +399,7 @@ export async function ratePortalSubmission(input: {
           updatedAt: now,
         },
       });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId: input.personId,
       actorType: "person",
       workspaceId: item.workspaceId,

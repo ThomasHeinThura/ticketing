@@ -281,6 +281,36 @@ export async function getUserId(userId: string) {
     .limit(1);
 }
 
+/** True when a person link or an API key still references the user row. */
+export async function userHasLinkedData(userId: string): Promise<boolean> {
+  const [person] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (person) return true;
+  const [key] = await db
+    .select({ id: schema.apikeyTable.id })
+    .from(schema.apikeyTable)
+    .where(eq(schema.apikeyTable.userId, userId))
+    .limit(1);
+  return Boolean(key);
+}
+
+export async function hasCustomerSidePerson(userId: string): Promise<boolean> {
+  const [person] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(
+      and(
+        eq(schema.personTable.userId, userId),
+        eq(schema.personTable.side, "customer"),
+      ),
+    )
+    .limit(1);
+  return Boolean(person);
+}
+
 export async function getScimConnectionDetails(connectionId: string) {
   return await db
     .select({

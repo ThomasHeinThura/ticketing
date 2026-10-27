@@ -87,6 +87,7 @@ const slaAttainment: ReportDefinition = {
   key: "sla_attainment",
   category: "promises",
   title: "SLA attainment",
+  feature: "feature.sla",
   async compute(ctx) {
     const now = await outcomeRows(ctx, ctx.window.from, ctx.window.to);
     const before = await outcomeRows(ctx, ctx.previous.from, ctx.previous.to);
@@ -186,6 +187,7 @@ const slaTrend: ReportDefinition = {
   key: "sla_trend",
   category: "promises",
   title: "SLA trend",
+  feature: "feature.sla",
   async compute(ctx) {
     const now = await outcomeRows(ctx, ctx.window.from, ctx.window.to);
     const before = await outcomeRows(ctx, ctx.previous.from, ctx.previous.to);
@@ -261,6 +263,7 @@ const breachAnalysis: ReportDefinition = {
   key: "breach_analysis",
   category: "promises",
   title: "Breach analysis",
+  feature: "feature.sla",
   pagedExport: true,
   async compute(ctx) {
     const by =
@@ -411,6 +414,7 @@ const atRiskNow: ReportDefinition = {
   key: "at_risk_now",
   category: "promises",
   title: "At-risk now",
+  feature: "feature.sla",
   live: true,
   pagedExport: true,
   async compute(ctx) {

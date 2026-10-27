@@ -268,6 +268,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const [createIntentProjectContext, setCreateIntentProjectContext] =
     useState<string>();
   const createTriggerRef = useRef<HTMLButtonElement>(null);
+  // Kaneo's per-column "+" (P1R2-2): the column the dialog creates into, and its button for
+  // focus return. Both are cleared by the header trigger.
+  const columnCreateTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [createInitialState, setCreateInitialState] = useState<{
+    id: string;
+    name: string;
+  }>();
   // Not needed to paint (G11), but create intent should open the dialog without a network wait,
   // so fetch it as soon as the route has painted.
   useEffect(() => {
@@ -393,7 +400,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   }, []);
   const getCreateDialogFinalFocus = useCallback(() => {
     const pending = pendingFocusRestoreRef.current;
-    const trigger = createTriggerRef.current;
+    const trigger = columnCreateTriggerRef.current?.isConnected
+      ? columnCreateTriggerRef.current
+      : createTriggerRef.current;
     if (
       !pending ||
       pending.generation !== focusRestoreGenerationRef.current ||
@@ -405,25 +414,38 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     pendingFocusRestoreRef.current = undefined;
     return trigger;
   }, []);
-  const openCreateDialog = useCallback(() => {
-    if (!project?.id || !projectContext) return;
-    focusRestoreGenerationRef.current += 1;
-    pendingFocusRestoreRef.current = undefined;
-    setIsCreateOpen(true);
-    setCreateIntentProjectContext(projectContext);
-    setCreateDialogLoad("loading");
-    loadWorkItemCreateDialogShell().then(
-      (module) => {
-        setCreateDialogShell(() => module.default);
-        setCreateDialogLoad("idle");
-      },
-      () => {
-        setCreateDialogLoad("failed");
-        setIsCreateOpen(false);
-        setCreateIntentProjectContext(undefined);
-      },
-    );
-  }, [project?.id, projectContext]);
+  const openCreateDialog = useCallback(
+    (
+      initialState?: { id: string; name: string },
+      trigger?: HTMLButtonElement,
+    ) => {
+      if (!project?.id || !projectContext) return;
+      columnCreateTriggerRef.current = trigger ?? null;
+      setCreateInitialState(initialState);
+      focusRestoreGenerationRef.current += 1;
+      pendingFocusRestoreRef.current = undefined;
+      setIsCreateOpen(true);
+      setCreateIntentProjectContext(projectContext);
+      setCreateDialogLoad("loading");
+      loadWorkItemCreateDialogShell().then(
+        (module) => {
+          setCreateDialogShell(() => module.default);
+          setCreateDialogLoad("idle");
+        },
+        () => {
+          setCreateDialogLoad("failed");
+          setIsCreateOpen(false);
+          setCreateIntentProjectContext(undefined);
+        },
+      );
+    },
+    [project?.id, projectContext],
+  );
+  const openCreateDialogInState = useCallback(
+    (state: { id: string; name: string }, trigger: HTMLButtonElement) =>
+      openCreateDialog(state, trigger),
+    [openCreateDialog],
+  );
 
   const isTabularLayout = layout === "list" || layout === "table";
 
@@ -952,7 +974,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                       projectId={project.id}
                       buttonRef={createTriggerRef}
                       pending={createDialogLoad === "loading"}
-                      onClick={openCreateDialog}
+                      onClick={() => openCreateDialog()}
                     />
                   </Suspense>
                 ) : null}
@@ -1055,6 +1077,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               onSelectionChange={handleSelectionChange}
               onSelectAll={handleSelectAll}
               onOpenItem={openSidePane}
+              onCreateInState={openCreateDialogInState}
             />
           </Suspense>
         ) : project ? (
@@ -1077,6 +1100,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               onPruneSelection={pruneSelection}
               onOpenItem={openSidePane}
               onErrorChange={setBoardFilterError}
+              onCreateInState={
+                boardGroup === "state" ? openCreateDialogInState : undefined
+              }
             />
           </Suspense>
         ) : (
@@ -1114,6 +1140,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             workspaceId={project.workspaceId}
             onClose={closeCreateDialog}
             finalFocus={getCreateDialogFinalFocus}
+            initialState={createInitialState}
           />
         ) : null}
       </div>

@@ -6,6 +6,7 @@ import {
   engineRun,
   i18nMock,
   renderWithQuery,
+  setupJob,
 } from "./test-support";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), run: vi.fn() }));
@@ -77,21 +78,72 @@ describe("DryRunReportView", () => {
 });
 
 describe("DryRunStep", () => {
-  it("shows an empty state, runs the dry run once with an idempotency key and then allows continuing", async () => {
+  it("shows an empty state, starts the dry run once, shows its progress and then allows continuing", async () => {
     const onContinue = vi.fn();
-    mocks.run.mockResolvedValue(dryRunReport());
-    renderWithQuery(
+    mocks.run.mockResolvedValue({
+      status: "accepted",
+      job: setupJob({ kind: "dry_run" }),
+      run: engineRun({ phase: "discovered" }),
+    });
+    const view = renderWithQuery(
       <DryRunStep
-        run={engineRun({ phase: "discovered" })}
+        run={engineRun({ phase: "discovered", dryRun: null })}
         onContinue={onContinue}
       />,
     );
     expect(await screen.findByText("No dry run yet")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Run dry run" }));
+    await waitFor(() =>
+      expect(mocks.run).toHaveBeenCalledWith("run-1", expect.any(String)),
+    );
+    view.rerender(
+      <DryRunStep
+        run={engineRun({
+          phase: "discovered",
+          dryRun: null,
+          job: setupJob({
+            kind: "dry_run",
+            pagesRead: 4,
+            recordsProcessed: 2000,
+            totalRecords: 8000,
+          }),
+        })}
+        onContinue={onContinue}
+      />,
+    );
+    expect(
+      await screen.findByText("Records: 2000 of 8000 (25%). Pages read: 4."),
+    ).toBeTruthy();
+    expect(screen.getByRole("progressbar")).toBeTruthy();
+    mocks.get.mockResolvedValue(dryRunReport());
+    view.rerender(
+      <DryRunStep
+        run={engineRun({
+          phase: "dry_run_ready",
+          job: setupJob({ kind: "dry_run", status: "completed" }),
+        })}
+        onContinue={onContinue}
+      />,
+    );
     expect(await screen.findByText("Ready to import")).toBeTruthy();
-    expect(mocks.run).toHaveBeenCalledWith("run-1", expect.any(String));
+    expect(mocks.run).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Continue to import" }));
     expect(onContinue).toHaveBeenCalled();
+  });
+
+  it("lets a run paused mid-execution return here to recover", async () => {
+    renderWithQuery(
+      <DryRunStep
+        run={engineRun({
+          phase: "executing",
+          state: "paused",
+          pausedReason: "approved_count_exceeded",
+        })}
+        onContinue={vi.fn()}
+      />,
+    );
+    const button = await screen.findByRole("button", { name: "Run dry run" });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("does not let a stale report continue", async () => {

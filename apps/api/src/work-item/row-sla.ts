@@ -17,6 +17,7 @@ import {
   slaGoalTable,
   slaPolicyVersionTable,
 } from "../database/schema";
+import { workspaceFeatureEnabled } from "../feature-flag/enforce";
 
 /** What a list row's SLA badge needs (`VW-16`, `SLA-18`): one metric, its state and clock. */
 export type WorkItemRowSla = {
@@ -209,7 +210,15 @@ export async function loadWorkItemRowSla(
   items: readonly WorkItemRowSlaInput[],
   now: Date = new Date(),
 ): Promise<Map<string, WorkItemRowSla>> {
-  const pinned = items.filter((item) => item.slaPolicyVersionId);
+  const candidates = items.filter((item) => item.slaPolicyVersionId);
+  if (candidates.length === 0) return new Map();
+  // P4R1-M2: no SLA badge while `feature.sla` is off for the item's workspace.
+  const workspaceIds = [...new Set(candidates.map((item) => item.workspaceId))];
+  const slaOn = new Set<string>();
+  for (const workspaceId of workspaceIds)
+    if (await workspaceFeatureEnabled("feature.sla", workspaceId, executor))
+      slaOn.add(workspaceId);
+  const pinned = candidates.filter((item) => slaOn.has(item.workspaceId));
   if (pinned.length === 0) return new Map();
   const versionIds = [
     ...new Set(pinned.flatMap((item) => item.slaPolicyVersionId ?? [])),

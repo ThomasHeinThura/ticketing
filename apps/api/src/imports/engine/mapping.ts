@@ -472,12 +472,14 @@ export function resolveRecord(
 
   const typeFacets = source.facets.filter((f) => f.domain === "type");
   const stateFacets = source.facets.filter((f) => f.domain === "state");
-  if (typeFacets.length === 0) rejects.push("missing_type");
-  if (stateFacets.length === 0) rejects.push("missing_state");
+  // The adapter's own reason comes first: it is the code the record is rejected with, and an
+  // unreadable record (no facets at all) must not be reported as `missing_type`.
   if (source.rejectCode) {
     if (LOSS_CODE.test(source.rejectCode)) rejects.push(source.rejectCode);
     else rejects.push("invalid_reject_code");
   }
+  if (typeFacets.length === 0) rejects.push("missing_type");
+  if (stateFacets.length === 0) rejects.push("missing_state");
 
   for (const facet of source.facets) {
     const target = lookup(index, facet.domain, facet.value);

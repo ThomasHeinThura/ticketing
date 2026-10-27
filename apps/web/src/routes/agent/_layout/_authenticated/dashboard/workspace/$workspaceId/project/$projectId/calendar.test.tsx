@@ -72,6 +72,19 @@ vi.mock("@/hooks/use-keyboard-shortcuts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/hooks/use-keyboard-shortcuts")>()),
   useRegisterShortcuts: () => undefined,
 }));
+const viewFeature = vi.hoisted(() => ({
+  enabled: true as boolean | undefined,
+}));
+// Locale files are regenerated from i18n/en-US.json by the coordinator; the state itself is
+// covered by FeatureOff's own keys.
+vi.mock("@/components/agile/feature-off", () => ({
+  FeatureOff: ({ feature }: { feature: string }) => (
+    <div data-testid={`feature-off-${feature}`} />
+  ),
+}));
+vi.mock("@/hooks/queries/feature-flag/use-project-pages-feature", () => ({
+  useProjectFeatureState: () => viewFeature.enabled,
+}));
 vi.mock("@/components/common/project-layout", () => ({
   default: ({
     children,
@@ -174,6 +187,18 @@ beforeEach(() => {
   reschedule.checking = false;
 });
 afterEach(cleanup);
+
+describe("calendar feature flag (P4R1-M2)", () => {
+  it("shows the feature-off state instead of the view while the flag is off", () => {
+    viewFeature.enabled = false;
+    try {
+      render(<CalendarRoute />);
+      expect(screen.getByTestId("feature-off-calendar")).toBeInTheDocument();
+    } finally {
+      viewFeature.enabled = true;
+    }
+  });
+});
 
 describe("project calendar route URL state", () => {
   it("reads the month and search from the URL", () => {

@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-26T14:30:35.199383+00:00",
+	"generated": "2026-10-27T03:26:31.160792+00:00",
 	"source": "673 indexed clauses: 661 in P0–P5 and 12 in P6. Requirement bars use per-ID assessments. Scoped test and browser passes do not count as whole-clause acceptance; earlier checkpoints are retained in validation_history.",
 	"phases": [
 		{
@@ -20,11 +20,11 @@
 				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "pending",
-				"findings": 0,
-				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
-				"roundsConsumed": 0,
-				"maxTotalRounds": 3
+				"verdict": "fail",
+				"findings": 10,
+				"roundsConsumed": 1,
+				"maxTotalRounds": 3,
+				"note": "Round 1 failed (1 high, 3 medium, 6 low). All 10 findings fixed with tests on working tree (P0R1-01..10, migration 0205). Round 2 pending. Reviewer model: Claude Opus (AGENTS.md names Sol; substitution because only Claude models are available here; owner to confirm whether it counts)."
 			},
 			"gates": {
 				"pass": 8,
@@ -163,11 +163,11 @@
 				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "pending",
-				"findings": 0,
-				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
-				"roundsConsumed": 0,
-				"maxTotalRounds": 3
+				"verdict": "fail",
+				"findings": 13,
+				"roundsConsumed": 2,
+				"maxTotalRounds": 3,
+				"note": "Round 2 failed (Round 1: 2 medium, 1 low (fixed, confirmed by round 2). Round 2: 1 high, 7 medium, 5 low). Round-2 fixes on working tree: 7 of 8 done with tests; P1R2-3 audit-only-on-success open; P1R2-8 comment search indexed (0208) but common-term p95 ~96-101 ms at the 100 ms SV-5 budget. Round 3 is the last allowed round. Reviewer model: Claude Opus (AGENTS.md names Sol; substitution because only Claude models are available here; owner to confirm whether it counts)."
 			},
 			"gates": {
 				"pass": 8,
@@ -316,11 +316,11 @@
 				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "pending",
-				"findings": 0,
-				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
-				"roundsConsumed": 0,
-				"maxTotalRounds": 3
+				"verdict": "fail",
+				"findings": 22,
+				"roundsConsumed": 1,
+				"maxTotalRounds": 3,
+				"note": "Round 1 failed (9 medium, 13 low). Workflow/audit lane and intake/triage lane fixes done with tests (migration 0207). P2R1-11 audit export step-up was blocked and is now in the cross-lane fix lane. Round 2 pending. Reviewer model: Claude Opus (AGENTS.md names Sol; substitution because only Claude models are available here; owner to confirm whether it counts)."
 			},
 			"gates": {
 				"pass": 8,
@@ -473,11 +473,11 @@
 				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "pending",
-				"findings": 0,
-				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
-				"roundsConsumed": 0,
-				"maxTotalRounds": 3
+				"verdict": "fail",
+				"findings": 9,
+				"roundsConsumed": 1,
+				"maxTotalRounds": 3,
+				"note": "Round 1 failed (1 high, 4 medium, 4 low). All 7 high/medium findings fixed with tests; also fixed SCIM 500 through the real app (policy lookup). Round 2 pending. Reviewer model: Claude Opus (AGENTS.md names Sol; substitution because only Claude models are available here; owner to confirm whether it counts)."
 			},
 			"gates": {
 				"pass": 8,
@@ -704,11 +704,11 @@
 				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "pending",
-				"findings": 0,
-				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
-				"roundsConsumed": 0,
-				"maxTotalRounds": 3
+				"verdict": "fail",
+				"findings": 5,
+				"roundsConsumed": 1,
+				"maxTotalRounds": 3,
+				"note": "Round 1 failed (1 high, 3 medium, 1 low (fix-lane count)). All 5 findings fixed with tests (migration 0202). Feature flags now enforced; upgrade-default migration for SLA/portal/Calendar/Gantt in progress. Round 2 pending. Reviewer model: Claude Opus (AGENTS.md names Sol; substitution because only Claude models are available here; owner to confirm whether it counts)."
 			},
 			"gates": {
 				"pass": 8,
@@ -1002,11 +1002,11 @@
 				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
 			],
 			"review": {
-				"verdict": "pending",
-				"findings": 0,
-				"note": "Final review pending: 0/3 rounds used. Review after build, gates and browser checks; fix and retry on failure. Stop after the third failed round; approval required before round 4.",
-				"roundsConsumed": 0,
-				"maxTotalRounds": 3
+				"verdict": "fail",
+				"findings": 11,
+				"roundsConsumed": 1,
+				"maxTotalRounds": 3,
+				"note": "Round 1 failed (1 high, 3 medium, 7 low). All 11 findings and doc items fixed with tests (migration 0203). Round 2 pending. Reviewer model: Claude Opus (AGENTS.md names Sol; substitution because only Claude models are available here; owner to confirm whether it counts)."
 			},
 			"gates": {
 				"pass": 8,
@@ -1149,10 +1149,13 @@
 		"26 Oct: Thomas requires one active local deployment using only deploy/compose.testing.yml. Superseded native, performance, SSO and image-probe deployments stay down; preserve data and volumes.",
 		"Approved 26 Oct: separate Account, Workspace, Project and God Mode settings pages; remove combined scope tabs and preserve existing deep links.",
 		"Approved 26 Oct: project moves require imports/intake to finish and subscriptions to pause; preserve history/configuration and require destination rebind before resume.",
-		"Approved 26 Oct: fixed local Mailpit capture only for the canonical local HTTPS Compose deployment; standard/public SMTP egress restrictions remain enforced."
+		"Approved 26 Oct: fixed local Mailpit capture only for the canonical local HTTPS Compose deployment; standard/public SMTP egress restrictions remain enforced.",
+		"Recommended option taken 27 Oct (standing approval): existing installs keep SLA, customer portal, Calendar and Gantt on after feature-flag enforcement (upgrade data migration); fresh installs use features.md defaults.",
+		"Recommended option taken 27 Oct: a request type with any submission cannot be deleted (submissions are tied to its form versions).",
+		"Model substitution 27 Oct: implementers and reviewers run on Claude Opus because Luna/Sol are not available here; Thomas to confirm whether Opus reviews count as phase acceptance."
 	],
-	"next": "Verify local Mailpit delivery and catalogue journeys; complete project moves and remaining P0–P5 gaps, full gates and independent phase reviews. No owner decision currently pending. Broader P6 follows P0–P5 exits.",
-	"status": "Latest source 196 deployed through one Compose file on both HTTPS hosts. Separate Account/Workspace/Project/God Mode pages and Properties resize/independent scrolling pass 39 browser assertions. P0–P5 full verification and independent reviews remain unfinished.",
+	"next": "Register migrations 0200-0210 in the journal, regenerate openapi/matrix/route metadata/i18n/contrast manifest, run full gates and a fresh-DB integration run, commit and push; then round-2 reviews (P0, P2-P6) and the last round-3 review for P1. Phases still failing after round 3 stop for Thomas. Then redeploy local SIT and browser-test fixed screens and the P6 wizard.",
+	"status": "27 Oct 11:00: every phase P0-P6 failed its latest independent review (P1 after round 2, others after round 1). All fix lanes finished on the working tree (uncommitted); a cross-lane lane is fixing shared leftovers (feature-flag upgrade migration, audit-export step-up, impersonation fixtures, preference-handoff 500s). Sonnet weekly quota ran out at 08:55; lanes resumed on Opus. Nothing accepted by Thomas.",
 	"validation_runs": [
 		{
 			"check": "Deployment",
@@ -1208,7 +1211,7 @@
 		}
 	],
 	"p6_goal": {
-		"status": "Shared prerequisite deployed192; bulk owner approval, replay and run-management browser checks pass. Broader P6 remains pending.",
+		"status": "Round 1 review failed (1 high, 6 medium, 9 low). Writer-lane and engine-lane fixes done with tests (177 import integration, 55 wizard web tests); migration 0200. Not deployed yet; round 2 pending.",
 		"target": "Thomas requested completion on 25 October; target missed. P6 remains gated on P0–P5 exit evidence.",
 		"goals": [
 			"G1 durable staged import framework and provenance",

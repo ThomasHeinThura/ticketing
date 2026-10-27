@@ -1,5 +1,6 @@
 import { HTTPException } from "hono/http-exception";
 import { createServiceKeyBody } from "../api-key/schema";
+import { auditExportBody } from "../audit/schema";
 import type db from "../database";
 import { z } from "../openapi";
 import {
@@ -72,6 +73,9 @@ export const CHANGE_FREEZE_OVERRIDE_OPERATION =
   "change_freeze_override" as const;
 export const CHANGE_FREEZE_OVERRIDE_ROUTE =
   "POST /api/work-items/{key}/change/override-freeze" as const;
+/** AU-13: exporting the instance audit log, bound to the exact format, filters and row cap. */
+export const AUDIT_EXPORT_OPERATION = "audit_export" as const;
+export const AUDIT_EXPORT_ROUTE = "POST /api/instance/audit/export" as const;
 export const CHANGE_FREEZE_OVERRIDE_REASON_MIN = 12;
 export const CHANGE_FREEZE_OVERRIDE_REASON_MAX = 500;
 
@@ -153,6 +157,8 @@ const shapes = {
     windowStart: z.string().datetime({ offset: true }).nullable().optional(),
     windowEnd: z.string().datetime({ offset: true }).nullable().optional(),
   },
+  // The route's own DTO: a proof minted for a narrow export cannot be spent on a wider one.
+  [AUDIT_EXPORT_OPERATION]: auditExportBody.shape,
 } as const;
 
 export type ExtOperation = keyof typeof shapes;
@@ -230,7 +236,10 @@ export type ExtInput =
       reason: string;
       windowStart?: string | null;
       windowEnd?: string | null;
-    };
+    }
+  | ({
+      operation: typeof AUDIT_EXPORT_OPERATION;
+    } & z.input<typeof auditExportBody>);
 
 const sortedUnique = (values: readonly string[]) => [...new Set(values)].sort();
 
@@ -543,7 +552,43 @@ function binding(input: ExtInput): {
           },
         ),
       };
+    case AUDIT_EXPORT_OPERATION:
+      return {
+        operation: input.operation,
+        route: AUDIT_EXPORT_ROUTE,
+        body: canonicalOperationBody(
+          input.operation,
+          AUDIT_EXPORT_ROUTE,
+          1,
+          auditExportRequest(input),
+        ),
+      };
   }
+}
+
+/** The export request after the route's own defaults, with every filter present (null when absent). */
+export function auditExportRequest(
+  input: Omit<Extract<ExtInput, { operation: "audit_export" }>, "operation">,
+) {
+  // Only the export fields: a challenge or proof body also carries `kind`, method and nonce.
+  const parsed = auditExportBody.parse({
+    format: input.format,
+    limit: input.limit,
+    action: input.action,
+    since: input.since,
+    until: input.until,
+    entityType: input.entityType,
+    entityId: input.entityId,
+  });
+  return {
+    format: parsed.format,
+    limit: parsed.limit,
+    action: parsed.action ?? null,
+    since: parsed.since ? new Date(parsed.since).toISOString() : null,
+    until: parsed.until ? new Date(parsed.until).toISOString() : null,
+    entityType: parsed.entityType ?? null,
+    entityId: parsed.entityId ?? null,
+  };
 }
 
 export function createExtChallenge(
@@ -630,7 +675,8 @@ export async function extAuthority(
     input.operation === IMPERSONATION_START_OPERATION ||
     input.operation === SECRETS_ROTATE_OPERATION ||
     input.operation === WEBHOOK_ROTATE_ALL_OPERATION ||
-    input.operation === ORGANISATION_RESTORE_OPERATION
+    input.operation === ORGANISATION_RESTORE_OPERATION ||
+    input.operation === AUDIT_EXPORT_OPERATION
   )
     return isCurrentInstanceAdminForStepUp(userId, executor);
   try {

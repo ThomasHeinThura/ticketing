@@ -1,6 +1,7 @@
 import { Button } from "@taskdesk/ui";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { TFunction } from "i18next";
+import { createPortal } from "react-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
@@ -349,4 +350,42 @@ it("keeps inline controls out of row opening and sortable pointer/keyboard handl
 
   fireEvent.click(screen.getByText("Row from payload"));
   expect(onOpenTask).toHaveBeenCalledExactlyOnceWith(task.id);
+});
+
+it("P1R2-1: ignores clicks and drag starts React bubbles up from portalled picker content", () => {
+  const onOpenTask = vi.fn();
+  const onOption = vi.fn();
+  render(
+    <TaskRow
+      task={task}
+      projectSlug="kan"
+      taskIsCompleted={false}
+      displayPreferences={{
+        showAssignees: true,
+        showPriority: true,
+        showDueDates: false,
+        showLabels: false,
+        showTaskNumbers: true,
+      }}
+      onOpenTask={onOpenTask}
+      t={mockT}
+      priorityControl={createPortal(
+        <Button type="button" onClick={onOption}>
+          Urgent option
+        </Button>,
+        document.body,
+      )}
+    />,
+  );
+
+  const option = screen.getByRole("button", { name: "Urgent option" });
+  fireEvent.pointerDown(option);
+  fireEvent.mouseDown(option);
+  fireEvent.touchStart(option);
+  fireEvent.click(option);
+  expect(onOption).toHaveBeenCalledOnce();
+  expect(onOpenTask).not.toHaveBeenCalled();
+  expect(dndMocks.pointerDown).not.toHaveBeenCalled();
+  expect(dndMocks.mouseDown).not.toHaveBeenCalled();
+  expect(dndMocks.touchStart).not.toHaveBeenCalled();
 });

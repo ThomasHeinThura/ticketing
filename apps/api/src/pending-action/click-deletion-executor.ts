@@ -150,6 +150,21 @@ export function registeredDeletionFingerprint(value: unknown): string {
     .update(JSON.stringify(stable(value)))
     .digest("hex");
 }
+/**
+ * PA-6 step 2: an approver who lost access since requesting (deactivated, demoted, or whose own
+ * session no longer has the route's reach or capability) gets 404, indistinguishable from an
+ * unreachable action; the row is still `invalidated` with its reason. Everything else that
+ * invalidates (a revoked or narrowed originating API key, a version change, a scope change) is
+ * a change to what was approved: `409 pending_action_target_changed`.
+ */
+export function invalidatedApprovalError(
+  approverLostAccess: boolean,
+): HTTPException {
+  return approverLostAccess
+    ? new HTTPException(404, { message: "Pending action unavailable" })
+    : new HTTPException(409, { message: "pending_action_target_changed" });
+}
+
 export async function approveClickDeletion<Result>(
   input: ClickDeletionApprovalInput,
   executor: {
@@ -180,6 +195,7 @@ export async function approveClickDeletion<Result>(
   },
 ) {
   let auditFailure = false;
+  let approverLostAccess = false;
   let executionResult: Result | undefined;
   let confirmation: {
     supplied: Record<string, unknown>;
@@ -188,6 +204,7 @@ export async function approveClickDeletion<Result>(
   } = { supplied: { click: true } };
   const transact = () =>
     db.transaction(async (tx) => {
+      approverLostAccess = false;
       await executor.beforeLock?.(tx);
       await lockPendingActionLifecycle(tx);
       const [row] = await tx
@@ -360,11 +377,13 @@ export async function approveClickDeletion<Result>(
         }
         return updated;
       };
-      if (!actor.active || actor.side !== "staff" || actor.banned)
+      if (!actor.active || actor.side !== "staff" || actor.banned) {
+        approverLostAccess = true;
         return transition(
           "invalidated",
           !actor.active ? "requester_deactivated" : "capability_removed",
         );
+      }
       if (row.expiresAt <= now) return transition("expired");
       // Original API-key ceiling and current human session must independently permit every stored target.
       const originalAccess = await evaluateActionRequiredAccess(tx, row, {
@@ -391,6 +410,11 @@ export async function approveClickDeletion<Result>(
                 : refused.failure === "target_version"
                   ? "version_changed"
                   : "scope_changed";
+        // The approver's own session (or the session that originated the request) lost reach
+        // or capability: PA-6 step 2. A narrowed originating API key is not the approver.
+        approverLostAccess =
+          (refused === sessionAccess || row.credentialType === "session") &&
+          (refused.failure === "reach" || refused.failure === "capability");
         return transition("invalidated", reason);
       }
       if (executor.confirm)
@@ -409,7 +433,7 @@ export async function approveClickDeletion<Result>(
   if (confirmation.denied)
     throw new HTTPException(403, { message: confirmation.denied });
   if (result.state === "invalidated")
-    throw new HTTPException(409, { message: "pending_action_target_changed" });
+    throw invalidatedApprovalError(approverLostAccess);
   if (
     result.state === "executed" &&
     executionResult !== undefined &&

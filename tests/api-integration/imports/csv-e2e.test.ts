@@ -24,6 +24,7 @@ import { createWorkspaceMember } from "../helpers/fixtures";
 import {
   type App,
   call,
+  discoverAndWait,
   dryRunAndExecuteBody,
   engineFixture,
   grantExecutedApproval,
@@ -77,13 +78,7 @@ async function startCsvRun(
     post({ projectId: f.project.id, sourceRef }),
     200,
   );
-  const mapping = await call(
-    app,
-    f.key,
-    `/api/imports/${run.id}/discover`,
-    post(),
-    200,
-  );
+  const mapping = await discoverAndWait(app, f.key, run.id);
   return { source, run, mapping };
 }
 

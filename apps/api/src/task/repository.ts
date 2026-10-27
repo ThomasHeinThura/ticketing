@@ -875,6 +875,8 @@ export async function insertAsset(
               "createdAt",
             )
           : sql`now()`.as("createdAt"),
+      // P0R1-01: a new asset is referenced by the content it was uploaded for.
+      detachedAt: sql`NULL::timestamptz`.as("detachedAt"),
     })
     .from(taskTable)
     .innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))

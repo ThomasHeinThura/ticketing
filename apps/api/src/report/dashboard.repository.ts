@@ -7,6 +7,7 @@ import {
   dashboardWidgetTable,
 } from "../database/schema-p5-reports";
 import { isUniqueViolation } from "../time-tracking/repository";
+import { assertRowNotUnderLegalHold } from "../utils/workspace-legal-hold";
 import { auditReport, type ReportActor } from "./audit";
 import { DEFAULT_DASHBOARD_NAME, DEFAULT_WIDGETS } from "./dashboard.logic";
 import { MAX_PERSONAL_DASHBOARDS, MAX_WORKSPACE_DASHBOARDS } from "./schema";
@@ -374,6 +375,11 @@ export async function deleteDashboardRow(
   row: DashboardRow,
   actor: ReportActor,
 ) {
+  // PA-12: an open hold on the owner or the organisation of the workspace refuses the hard delete.
+  await assertRowNotUnderLegalHold(tx, {
+    workspaceId: row.workspaceId,
+    personIds: sql`SELECT ${row.ownerId}::text`,
+  });
   const deleted = await tx
     .delete(dashboardTable)
     .where(

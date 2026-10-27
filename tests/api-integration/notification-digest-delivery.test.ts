@@ -34,6 +34,59 @@ type DigestEmailSend =
   typeof import("../../packages/email/src").sendNotificationEmail;
 
 beforeEach(resetTestDatabase);
+
+/**
+ * A customer is notified only about their own linked request (`customerRequestOwnerPersonIds`):
+ * the work item must carry the accepted submission the customer raised.
+ */
+async function linkCustomerRequestSubmission(input: {
+  workspaceId: string;
+  organisationId: string;
+  workItemTypeId: string;
+  workItemId: string;
+  requesterId: string;
+}) {
+  const requestType = requireRow(
+    await db
+      .insert(schema.requestTypeTable)
+      .values({
+        workspaceId: input.workspaceId,
+        key: `customer-digest-request-${randomUUID()}`,
+        name: "Customer request",
+        group: "General",
+        workItemTypeId: input.workItemTypeId,
+        formSchema: { fields: [] },
+        published: true,
+        customerVisible: true,
+      })
+      .returning(),
+    "linked customer request type",
+  );
+  const version = requireRow(
+    await db
+      .insert(schema.requestTypeVersionTable)
+      .values({
+        workspaceId: input.workspaceId,
+        requestTypeId: requestType.id,
+        number: 1,
+        formSchema: { fields: [] },
+        workItemTypeId: input.workItemTypeId,
+      })
+      .returning(),
+    "linked customer request type version",
+  );
+  await db.insert(schema.submissionTable).values({
+    organisationId: input.organisationId,
+    requesterId: input.requesterId,
+    requestTypeId: requestType.id,
+    requestTypeVersionId: version.id,
+    formData: {},
+    state: "accepted",
+    submittedAt: new Date(),
+    customerVisibility: "organisation",
+    workItemId: input.workItemId,
+  });
+}
 afterEach(() => vi.restoreAllMocks());
 
 async function fixture() {
@@ -291,6 +344,13 @@ async function customerDigestFixture() {
       .returning(),
     "customer digest work item",
   );
+  await linkCustomerRequestSubmission({
+    workspaceId: actor.workspace.id,
+    organisationId: actor.workspace.organisationId,
+    workItemTypeId: type.id,
+    workItemId: item.id,
+    requesterId: customerPerson.id,
+  });
   await db.insert(notificationPreferenceTable).values({
     personId: customerPerson.id,
     scope: "global",
@@ -455,6 +515,13 @@ async function customerTransitionDigestFixture() {
       .returning(),
     "customer transition work item",
   );
+  await linkCustomerRequestSubmission({
+    workspaceId: actor.workspace.id,
+    organisationId: actor.workspace.organisationId,
+    workItemTypeId: type.id,
+    workItemId: item.id,
+    requesterId: customerPerson.id,
+  });
   await db.insert(schema.watcherTable).values({
     workItemId: item.id,
     personId: customerPerson.id,

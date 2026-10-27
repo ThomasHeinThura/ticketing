@@ -265,12 +265,25 @@ export async function stampVersionPublished(
   versionId: string,
   publishedBy: string | null,
 ) {
+  // WF-6: a published version is immutable. The stamp is written once (`published_at IS NULL`);
+  // a repeat call returns the stored row untouched, never overwriting who/when first published it.
   const [published] = await executor
     .update(workflowVersionTable)
     .set({ publishedAt: new Date(), publishedBy })
-    .where(eq(workflowVersionTable.id, versionId))
+    .where(
+      and(
+        eq(workflowVersionTable.id, versionId),
+        isNull(workflowVersionTable.publishedAt),
+      ),
+    )
     .returning();
-  return published;
+  if (published) return published;
+  const [existing] = await executor
+    .select()
+    .from(workflowVersionTable)
+    .where(eq(workflowVersionTable.id, versionId))
+    .limit(1);
+  return existing;
 }
 
 export async function setActiveWorkflowVersion(

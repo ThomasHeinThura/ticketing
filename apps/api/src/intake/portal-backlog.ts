@@ -21,6 +21,7 @@ import {
   rebalancePositionPartition,
 } from "../scheduler/position-rebalance";
 import { assertProjectStillLive } from "../work-item/assert-work-item-live";
+import { publishRankHint } from "../work-item/native-event";
 import { loadPortalViewer, type PortalViewer } from "./repository";
 
 const {
@@ -567,6 +568,7 @@ export async function rankPortalBacklog(
       key: workItemTable.key,
       position: workItemTable.position,
       version: workItemTable.version,
+      projectId: workItemTable.projectId,
     })
     .from(workItemTable)
     .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
@@ -595,5 +597,11 @@ export async function rankPortalBacklog(
     );
   if (!current)
     throw new HTTPException(404, { message: "Backlog item not found" });
-  return current;
+  // Staff viewers of the same project see the customer re-rank live (VW-5).
+  await publishRankHint({ projectId: current.projectId, key: current.key });
+  return {
+    key: current.key,
+    position: current.position,
+    version: current.version,
+  };
 }

@@ -11,6 +11,7 @@ import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { markReach } from "../utils/reach-mark";
 import {
   findIntakeFeatureFlags,
+  findLiveLinkedWorkItemId,
   findReachableSubmissionAttachment,
   findSubmissionAttachmentParent,
 } from "./repository";
@@ -75,7 +76,7 @@ export function requireSubmissionAttachmentReach(
     // caller who reaches its project; otherwise the link is treated as absent. The portal
     // requester's own view is unchanged.
     const linkedWorkItemId = mode.startsWith("portal_")
-      ? row.workItemId
+      ? await findLiveLinkedWorkItemId(db, row.workItemId)
       : await reachableLinkedWorkItemId(
           identity,
           await callerReach(c as unknown as Context, c.get("userId")),

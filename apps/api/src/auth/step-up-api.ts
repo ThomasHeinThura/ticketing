@@ -7,6 +7,7 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import type { Context } from "hono";
 import { setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import { auth } from "../auth";
 import db, { schema } from "../database";
 import {
@@ -83,6 +84,12 @@ import {
   isExtOperation,
   issueExtToken,
 } from "./step-up-ext";
+import {
+  checkStepUpProofBudget,
+  clearStepUpProofFailures,
+  consumeStepUpChallengeBudget,
+  recordStepUpProofFailure,
+} from "./step-up-limits";
 import {
   createIdentityConnectionChallenge,
   createInstanceAdminGrantChallenge,
@@ -816,6 +823,24 @@ const routes = apiRouter()
     c.header("Cache-Control", "no-store");
     const actor = await requireCurrentAgentSession(c);
     const input = c.req.valid("json");
+    // PA-15 / P0R1-02: one budget per session, person and address across every pending
+    // action and operation, so cancelling and re-requesting cannot reset the allowance.
+    const challengeBudget = await consumeStepUpChallengeBudget({
+      personId: actor.factor.personId,
+      sessionId: actor.session.id,
+      clientIp: clientIpForContext(c),
+    });
+    if (!challengeBudget.allowed) {
+      c.header("Retry-After", String(challengeBudget.retryAfterSeconds));
+      return c.json(
+        {
+          message: "step_up_attempt_limit" as const,
+          limit: challengeBudget.limit,
+          windowMinutes: STEP_UP_CHALLENGE_WINDOW_MINUTES,
+        },
+        429,
+      );
+    }
     if (input.kind === "pending_action") {
       const [action] = await getPendingActionForStepUp(
         input.pendingActionId,
@@ -1578,6 +1603,18 @@ const routes = apiRouter()
     c.header("Cache-Control", "no-store");
     const actor = await requireCurrentAgentSession(c);
     const input = c.req.valid("json");
+    const budgetSubject = {
+      personId: actor.factor.personId,
+      sessionId: actor.session.id,
+      clientIp: clientIpForContext(c),
+    };
+    // PA-15 / P0R1-02: failed credential proofs are budgeted per session, person and
+    // address across every challenge, so a fresh challenge never resets the budget.
+    const proofBudget = await checkStepUpProofBudget(budgetSubject);
+    if (!proofBudget.allowed) {
+      c.header("Retry-After", String(proofBudget.retryAfterSeconds));
+      throw new HTTPException(429, { message: "step_up_attempt_limit" });
+    }
     const isBulkPendingAction =
       input.kind === "pending_action" &&
       (await pendingDeletionStepUpAccess(
@@ -1779,7 +1816,7 @@ const routes = apiRouter()
         );
     }
     let authenticatedPersonId = actor.factor.personId;
-    const verifyAuthentication = async (
+    const verifyCredential = async (
       executor: StepUpExecutor,
     ): Promise<VerifiedStepUpAuthentication | null> => {
       const proofInput = input as {
@@ -2065,6 +2102,16 @@ const routes = apiRouter()
       } catch {
         return null;
       }
+    };
+    const verifyAuthentication = async (
+      executor: StepUpExecutor,
+    ): Promise<VerifiedStepUpAuthentication | null> => {
+      const verified = await verifyCredential(executor);
+      // The counters live outside the verification transaction on purpose: a failed proof
+      // is counted even though the lifecycle transaction rolls back.
+      if (verified) await clearStepUpProofFailures(budgetSubject);
+      else await recordStepUpProofFailure(budgetSubject);
+      return verified;
     };
     if (input.kind === "pending_action") {
       const [action] = await getPendingActionForStepUp(

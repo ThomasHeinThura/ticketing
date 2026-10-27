@@ -209,8 +209,9 @@ export async function listTasksNeedingReminder(
 export async function insertReminderSent(
   taskId: string,
   reminderType: ReminderType,
+  executor: Executor = db,
 ) {
-  const [inserted] = await db
+  const [inserted] = await executor
     .insert(taskReminderSentTable)
     .values({ taskId, reminderType })
     .onConflictDoNothing({

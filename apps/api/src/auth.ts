@@ -23,6 +23,12 @@ import {
 } from "./auth/impersonation-context";
 import { loadLocalFactorState } from "./auth/local-factor-service";
 import {
+  auditPortalSignInRefusal,
+  markUserCreatedInRequest,
+  userRowIsDisposable,
+  wasUserCreatedInRequest,
+} from "./auth/portal-sign-in-refusal";
+import {
   completeFirstUserSetup,
   countAuthUsers,
   countAuthUsersForExecutor,
@@ -32,6 +38,7 @@ import {
   getIdentityConnectionConfigVersions,
   getSetupCompletionMarker,
   getStoredAuthPluginConfigRows,
+  hasCustomerSidePerson,
   lockFirstUserPromotion,
   promoteFirstAuthUser,
   updateSessionActiveOrganizationId,
@@ -737,6 +744,9 @@ function createAuth(
                 // the email-link proof; the OTP/magic-link plugins reach user creation only after
                 // verifying their own address possession. The OIDC callback has its own explicit
                 // email_verified check and does not pass through this Better Auth hook.
+                // This hook only runs when no row exists, so the row is this request's own: a
+                // refused sign-in may clean up only what it created (P3-R1-01).
+                markUserCreatedInRequest(ctx, user.email);
                 return { data: { ...user, emailVerified: true } };
               }
               if (ctx?.path === "/sign-up/email") {
@@ -744,8 +754,10 @@ function createAuth(
                   body: ctx.body,
                   email: user.email,
                 });
-                if (verdict.ok)
+                if (verdict.ok) {
+                  markUserCreatedInRequest(ctx, user.email);
                   return { data: { ...user, emailVerified: true } };
+                }
               }
               throw new APIError("FORBIDDEN", {
                 message: "Customer accounts must be invited or provisioned.",
@@ -1148,8 +1160,27 @@ function createAuth(
             }
           }
           if (!accepted) {
-            if (!(await hasCustomerPortalIdentity(newSession.user.id)))
+            // Only a row inserted by this very request and carrying no other data may be removed.
+            // An existing account (staff, instance admin, deactivated customer, customer whose
+            // organisation lost portal access) keeps its row, keys and memberships: its new
+            // session is revoked and the refusal audited (P3-R1-01).
+            if (
+              wasUserCreatedInRequest(ctx, newSession.user.email) &&
+              Date.now() - new Date(newSession.user.createdAt).getTime() <
+                60_000 &&
+              (await userRowIsDisposable(newSession.user.id)) &&
+              !(await hasCustomerPortalIdentity(newSession.user.id))
+            ) {
               await ctx.context.internalAdapter.deleteUser(newSession.user.id);
+            } else {
+              await ctx.context.internalAdapter.deleteSession(
+                newSession.session.token,
+              );
+              await auditPortalSignInRefusal(
+                newSession.user.id,
+                "customer_identity_unavailable",
+              );
+            }
             deleteSessionCookie(ctx, true);
             ctx.context.setNewSession(null);
             throw new APIError("FORBIDDEN", {
@@ -1164,6 +1195,28 @@ function createAuth(
         ) {
           await ctx.context.internalAdapter.deleteSession(
             newSession.session.token,
+          );
+          await auditPortalSignInRefusal(
+            newSession.user.id,
+            "customer_identity_unavailable",
+          );
+          deleteSessionCookie(ctx, true);
+          ctx.context.setNewSession(null);
+          return;
+        }
+
+        if (
+          portal === "agent" &&
+          (await hasCustomerSidePerson(newSession.user.id))
+        ) {
+          // A customer-side person never holds an agent session: the agent host admits staff
+          // only (P3-R1-08). The account itself is untouched.
+          await ctx.context.internalAdapter.deleteSession(
+            newSession.session.token,
+          );
+          await auditPortalSignInRefusal(
+            newSession.user.id,
+            "customer_on_agent_host",
           );
           deleteSessionCookie(ctx, true);
           ctx.context.setNewSession(null);

@@ -3,7 +3,7 @@ import { num, selectRows, tstz } from "../context";
 import { countValue, ratePercent } from "../logic";
 import { loadFactRows } from "../snapshot.repository";
 import type { ReportDefinition, Row } from "../types";
-import { cell, col, emptyBody, MIN, pageRows } from "./shared";
+import { cell, col, emptyBody, MIN, memoryPage, pageRows } from "./shared";
 
 /**
  * KB-10: opening an article from the request form is a candidate; abandoning the form afterwards
@@ -82,7 +82,7 @@ const kbDeflection: ReportDefinition = {
           a.title.localeCompare(b.title) ||
           a.article_id.localeCompare(b.article_id),
       );
-    const page = pageRows(ctx, rows, 200);
+    const page = pageRows(ctx, memoryPage(ctx, rows), 200);
     const [outside] = await selectRows<{ n: string }>(sql`SELECT count(*) AS n
       FROM deflection_event d
       JOIN kb_article a ON a.id = d.kb_article_id

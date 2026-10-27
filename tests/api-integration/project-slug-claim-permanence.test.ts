@@ -68,7 +68,12 @@ async function waitForBlockedProjectUpdate() {
       WHERE datname = current_database()
         AND state = 'active'
         AND wait_event_type = 'Lock'
-        AND query ILIKE '%update "project"%'
+        AND (
+          query ILIKE '%update "project"%'
+          -- The rename now locks the project row (SELECT ... FOR UPDATE) before its
+          -- slug pre-checks, so it may block there rather than on the UPDATE itself.
+          OR (query ILIKE '%from "project"%' AND query ILIKE '%for update%')
+        )
       LIMIT 1
     `);
 
@@ -559,8 +564,8 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
 
     let secondProject: { id: string } | undefined;
     try {
-      // The update has completed its live-project and claim pre-checks, then blocks on
-      // the row lock held above. A second project can now claim the target slug.
+      // The update blocks on the row lock held above (it takes that lock before its
+      // live-project and claim pre-checks). A second project can now claim the target slug.
       await waitForBlockedProjectUpdate();
 
       const secondCreate = await createProjectRequest(app, {

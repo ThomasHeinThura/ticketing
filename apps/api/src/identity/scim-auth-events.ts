@@ -32,6 +32,7 @@ export type ScimDenialReason =
   | "rate_limited"
   | "request_too_large"
   | "request_rejected"
+  | "forbidden_attribute"
   | "authorization_denied";
 
 export async function recordScimRequestDenied(

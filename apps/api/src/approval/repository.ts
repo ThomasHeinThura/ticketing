@@ -20,6 +20,7 @@ import {
   currentInstanceAdminPredicate,
   currentProjectReachPredicate,
 } from "../database/repositories/identity-scope.repository";
+import { logTaskDesk } from "../instance/observability/runtime";
 import type { ApiKey } from "../openapi";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { dbClockUtc } from "../utils/db-time";
@@ -254,7 +255,29 @@ export async function withDueApprovalRows(
   return db.transaction(async (tx) => {
     const rows = await selectDueApprovalRows(tx, limit);
     const results: DueApprovalRowResult[] = [];
-    for (const row of rows) results.push(await process(tx, row));
+    for (const row of rows) {
+      // Rows are independent: each runs in its own savepoint, so one failing row rolls back only
+      // itself and the rest of the batch still commits (a poison row is retried next scan).
+      try {
+        results.push(
+          await (
+            tx as unknown as {
+              transaction: <T>(
+                fn: (inner: Transaction) => Promise<T>,
+              ) => Promise<T>;
+            }
+          ).transaction((inner) => process(inner, row)),
+        );
+      } catch {
+        logTaskDesk({
+          module: "jobs",
+          message: "jobs.failure",
+          level: "error",
+          result: "degraded",
+        });
+        results.push("unchanged");
+      }
+    }
     return results;
   });
 }

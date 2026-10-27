@@ -675,6 +675,27 @@ async function buildContext(
   };
 }
 
+/**
+ * Hono's `route()` wraps every handler of a sub-router that has its own `onError` (SCIM does)
+ * and keeps the original under this key (hono `COMPOSED_HANDLER`; not a package export).
+ * Without unwrapping, such a route never matches its registration and falls back to the
+ * sub-router path, which has no policy entry, so every request was refused with 500.
+ */
+const COMPOSED_HANDLER_KEY = "__COMPOSED_HANDLER";
+
+function unwrapComposedHandler(handler: unknown): unknown {
+  let current = handler;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (typeof current !== "function") return current;
+    const inner = (current as unknown as Record<string, unknown>)[
+      COMPOSED_HANDLER_KEY
+    ];
+    if (inner === undefined) return current;
+    current = inner;
+  }
+  return current;
+}
+
 /** Run at the endpoint boundary, after route middleware and Zod validators, before handler effects. */
 export async function enforceRegisteredPolicy(
   c: Context,
@@ -689,7 +710,9 @@ export async function enforceRegisteredPolicy(
           path: string;
         }>
       ).find(
-        (candidate) => candidate.handler === registeredRoute.terminalHandler,
+        (candidate) =>
+          unwrapComposedHandler(candidate.handler) ===
+          registeredRoute.terminalHandler,
       )
     : undefined;
   const matched =

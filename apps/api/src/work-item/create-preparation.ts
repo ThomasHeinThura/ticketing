@@ -302,8 +302,20 @@ export async function withCreationTransaction<T>(
         depth < 5 && nested && typeof nested === "object";
         depth++
       ) {
-        const failure = nested as { code?: string; cause?: unknown };
-        if (failure.code === "40001" || failure.code === "40P01") {
+        const failure = nested as {
+          code?: string;
+          constraint?: string;
+          cause?: unknown;
+        };
+        if (
+          failure.code === "40001" ||
+          failure.code === "40P01" ||
+          // The audit chain's `UNIQUE (prev_hash)` fires when another transaction committed an
+          // audit row after this one's snapshot: the append read a stale head. A SERIALIZABLE
+          // snapshot is fixed, so only a whole-transaction retry (fresh snapshot) can succeed.
+          (failure.code === "23505" &&
+            failure.constraint === "audit_log_prev_hash_unique")
+        ) {
           retryable = true;
           break;
         }

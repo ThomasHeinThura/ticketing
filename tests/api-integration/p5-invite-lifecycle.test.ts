@@ -771,7 +771,9 @@ describe("revoke through the existing pending-action route (CP-22)", () => {
 
     await ensureAgentSession(lead.user.id);
     const approved = await approvePendingDeletion(w.app, lead.user.id, pending);
-    expect(approved.status).toBe(409);
+    // PA-6 step 2: the approver lost member:invite since requesting, so 404 (not 409); the
+    // action is still invalidated with its reason.
+    expect(approved.status).toBe(404);
     const action = await db
       .select()
       .from(schema.pendingActionTable)
