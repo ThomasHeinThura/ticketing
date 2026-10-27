@@ -98,15 +98,14 @@ export function timezoneChangeNeedsConfirmation(
   return !isNew && savedTimezone !== nextTimezone.trim();
 }
 
-export function parseCalendarEditorSearch(raw: unknown): { year: number } {
+/**
+ * The editor's preview year from the URL. Absent or invalid means "the current year", which the
+ * screen takes from the server's clock (`useServerToday`), never the browser's.
+ */
+export function parseCalendarEditorSearch(raw: unknown): { year?: number } {
   const candidate = (raw ?? {}) as Record<string, unknown>;
   const year = Number(candidate.year);
-  return {
-    year:
-      Number.isInteger(year) && year >= 1 && year <= 9998
-        ? year
-        : new Date().getFullYear(),
-  };
+  return Number.isInteger(year) && year >= 1 && year <= 9998 ? { year } : {};
 }
 
 export type CalendarEditorSearch = ReturnType<typeof parseCalendarEditorSearch>;

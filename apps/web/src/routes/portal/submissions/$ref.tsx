@@ -17,7 +17,8 @@ import {
   Input,
   Textarea,
 } from "@taskdesk/ui";
-import { useEffect, useState } from "react";
+import { Paperclip } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PdfPreviewDialog, {
   type PdfPreviewAttachment,
@@ -636,30 +637,17 @@ function PortalSubmissionContent() {
               {record.version?.formSchema?.fields
                 ?.filter((field) => field.type === "file" && canUpload)
                 .map((field) => (
-                  <label
-                    className="flex flex-col gap-2"
-                    htmlFor={`submission-file-${field.key}`}
+                  <SubmissionFileField
                     key={field.key}
-                  >
-                    <span>
-                      {field.label}
-                      {field.multiple ? "" : " (one file)"}
-                    </span>
-                    <Input
-                      id={`submission-file-${field.key}`}
-                      type="file"
-                      multiple={field.multiple}
-                      onChange={(event) => {
-                        const files = Array.from(event.target.files ?? []);
-                        const selected = field.multiple
-                          ? files
-                          : files.slice(0, 1);
-                        for (const file of selected)
-                          upload.mutate({ fieldKey: field.key, file });
-                        event.target.value = "";
-                      }}
-                    />
-                  </label>
+                    fieldKey={field.key}
+                    label={`${field.label}${field.multiple ? "" : " (one file)"}`}
+                    multiple={Boolean(field.multiple)}
+                    uploading={upload.isPending}
+                    onFiles={(files) => {
+                      for (const file of files)
+                        upload.mutate({ fieldKey: field.key, file });
+                    }}
+                  />
                 ))}
               {upload.isError && (
                 <Alert variant="error">
@@ -703,5 +691,57 @@ function PortalSubmissionContent() {
         }}
       />
     </main>
+  );
+}
+
+/**
+ * A request form's file field on the tracking page: the agent attachment uploader's pattern, a
+ * Kaneo `Button` that opens the library `Input` file picker kept out of sight and tab order.
+ */
+function SubmissionFileField({
+  fieldKey,
+  label,
+  multiple,
+  uploading,
+  onFiles,
+}: {
+  fieldKey: string;
+  label: string;
+  multiple: boolean;
+  uploading: boolean;
+  onFiles: (files: File[]) => void;
+}) {
+  const { t } = usePortalTranslation();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const labelId = `submission-file-${fieldKey}-label`;
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <span id={labelId}>{label}</span>
+      <Button
+        variant="outline"
+        size="sm"
+        aria-describedby={labelId}
+        onClick={() => inputRef.current?.click()}
+      >
+        <Paperclip className="size-4" aria-hidden="true" />
+        {uploading
+          ? t("workItems:detail.attachments.uploading")
+          : t("workItems:detail.attachments.add")}
+      </Button>
+      <Input
+        ref={inputRef}
+        id={`submission-file-${fieldKey}`}
+        type="file"
+        multiple={multiple}
+        className="sr-only"
+        tabIndex={-1}
+        aria-label={label}
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          onFiles(multiple ? files : files.slice(0, 1));
+          event.target.value = "";
+        }}
+      />
+    </div>
   );
 }

@@ -7,44 +7,63 @@ const { lifecycle } = vi.hoisted(() => ({
 
 vi.mock("@tiptap/react", async () => {
   const React = await import("react");
-  return {
-    useEditor: (_options: unknown, dependencies: unknown[] = []) =>
-      React.useMemo(() => {
-        const instanceId = lifecycle.instances.length;
-        let document: unknown = { type: "doc", content: [] };
-        const editor = {
-          instanceId,
-          isDestroyed: false,
-          destroy() {
-            this.isDestroyed = true;
-          },
-          on: () => undefined,
-          off: () => undefined,
-          setEditable: () => undefined,
-          view: {
-            dom: {
-              addEventListener: () => undefined,
-              removeEventListener: () => undefined,
-            },
-            dispatch: () => undefined,
-          },
-          state: {},
-          getJSON: () => document,
-          getMarkdown: () => "native body",
-          get commands() {
-            if (this.isDestroyed) {
-              throw new Error("Cannot read disposed editor commands");
-            }
-            return {
-              setContent: (content: unknown) => {
-                document = content;
-              },
-            };
+  const createEditor = () => {
+    const instanceId = lifecycle.instances.length;
+    let document: unknown = { type: "doc", content: [] };
+    const editor = {
+      instanceId,
+      isDestroyed: false,
+      destroy() {
+        this.isDestroyed = true;
+      },
+      on: () => undefined,
+      off: () => undefined,
+      setEditable: () => undefined,
+      view: {
+        dom: {
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        },
+        dispatch: () => undefined,
+      },
+      state: {},
+      getJSON: () => document,
+      getMarkdown: () => "native body",
+      get commands() {
+        if (this.isDestroyed) {
+          throw new Error("Cannot read disposed editor commands");
+        }
+        return {
+          setContent: (content: unknown) => {
+            document = content;
           },
         };
-        lifecycle.instances.push(editor);
-        return editor;
-      }, dependencies),
+      },
+    };
+    lifecycle.instances.push(editor);
+    return editor;
+  };
+  return {
+    // Like Tiptap's `useEditor`, which re-checks its instance on every render: a
+    // dependency change or a destroyed instance yields a new editor.
+    useEditor: (_options: unknown, dependencies: unknown[] = []) => {
+      const current = React.useRef<{
+        editor: ReturnType<typeof createEditor>;
+        dependencies: unknown[];
+      } | null>(null);
+      const previous = current.current;
+      if (
+        !previous ||
+        previous.editor.isDestroyed ||
+        previous.dependencies.length !== dependencies.length ||
+        previous.dependencies.some(
+          (dependency, index) => dependency !== dependencies[index],
+        )
+      ) {
+        current.current = { editor: createEditor(), dependencies };
+      }
+      return current.current?.editor ?? null;
+    },
     EditorContent: ({ editor }: { editor: Record<string, unknown> | null }) => {
       React.useLayoutEffect(() => {
         if (editor?.instanceId === 0) {

@@ -2237,6 +2237,8 @@ describe("API integration: saved views", () => {
         eq(schema.outboxTable.kind, "saved_view.pinned"),
         eq(schema.outboxTable.workspaceId, member.workspace.id),
       ),
+      // Unordered reads follow physical row order, which nothing guarantees.
+      orderBy: (outbox, { asc }) => [asc(outbox.createdAt)],
     });
     expect(
       pinEvents

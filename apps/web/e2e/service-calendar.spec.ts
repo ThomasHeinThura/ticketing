@@ -17,6 +17,7 @@ const loadingCalendarId = "calendar-e2e-loading";
 type CalendarFixture = {
   id: string;
   workspaceId: string;
+  key: string;
   name: string;
   timezone: string;
   windows: Record<
@@ -24,11 +25,15 @@ type CalendarFixture = {
     Array<{ from: number; to: number }>
   >;
   holidays: Array<{ date: string; name?: string }>;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
 };
 
 const calendar: CalendarFixture = {
   id: calendarId,
   workspaceId,
+  key: "support-coverage",
   name: "Support coverage",
   timezone: "Europe/London",
   windows: {
@@ -41,6 +46,9 @@ const calendar: CalendarFixture = {
     sun: [],
   },
   holidays: [{ date: "2026-12-25", name: "Winter closure" }],
+  version: 1,
+  createdAt: "2026-09-29T00:00:00.000Z",
+  updatedAt: "2026-09-29T00:00:00.000Z",
 };
 
 async function expectNoSeriousAxeViolations(page: Page) {
@@ -97,13 +105,18 @@ type CalendarPageFixture = {
   releaseListResponse(): void;
   releaseEditorResponse(): void;
   get patchPayload(): CalendarFixture | undefined;
-  get createPayload(): Omit<CalendarFixture, "id"> | undefined;
+  get createPayload(): CalendarCreatePayload | undefined;
   get canManageServiceCalendars(): boolean;
   set canManageServiceCalendars(value: boolean);
   get usageCounts(): UsageCounts;
   set usageCounts(value: UsageCounts);
   get deleteRequestCount(): number;
 };
+
+type CalendarCreatePayload = Omit<
+  CalendarFixture,
+  "id" | "version" | "createdAt" | "updatedAt"
+>;
 
 type UsageCounts = {
   projects: number;
@@ -133,7 +146,7 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
     editorResponseHeld = resolve;
   });
   let patchPayload: CalendarFixture | undefined;
-  let createPayload: Omit<CalendarFixture, "id"> | undefined;
+  let createPayload: CalendarCreatePayload | undefined;
   let canManageServiceCalendars = true;
   let usageCounts: UsageCounts = {
     projects: 0,
@@ -238,6 +251,17 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
         manageTeam: false,
         removeMembers: false,
         manageServiceCalendars: canManageServiceCalendars,
+      }),
+    }),
+  );
+  // P4R1-M2: the calendar screens sit behind the default-off `feature.sla` flag,
+  // read from the workspace's resolved features; an unanswered read fails closed.
+  await page.route("**/api/workspaces/*/features/resolved", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        features: [{ key: "feature.sla", enabled: true }],
       }),
     }),
   );
@@ -354,6 +378,15 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
       return;
     }
 
+    if (request.method() === "GET" && path.endsWith("/holidays/presets")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ datasetVersion: "e2e-2026", presets: [] }),
+      });
+      return;
+    }
+
     if (request.method() === "GET" && path.endsWith("/usage")) {
       await route.fulfill({
         status: 200,
@@ -381,7 +414,7 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
           confirmation: "click",
           expiresAt: "2027-01-01T00:00:00.000Z",
           approveUrl:
-            "/agent/settings/profile/pending-actions/pending-calendar-delete-e2e",
+            "/api/me/pending-actions/pending-calendar-delete-e2e/approve",
         }),
       });
       return;
@@ -415,18 +448,28 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
       path === `/api/service-calendars/${savedCalendar.id}`
     ) {
       patchPayload = request.postDataJSON() as CalendarFixture;
-      savedCalendar = { ...savedCalendar, ...patchPayload };
+      savedCalendar = {
+        ...savedCalendar,
+        ...patchPayload,
+        version: savedCalendar.version + 1,
+      };
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(savedCalendar),
+        body: JSON.stringify({ ...savedCalendar, affectedWorkItemCount: 0 }),
       });
       return;
     }
 
     if (request.method() === "POST" && path === "/api/service-calendars") {
-      createPayload = request.postDataJSON() as Omit<CalendarFixture, "id">;
-      savedCalendar = { id: "calendar-created-e2e", ...createPayload };
+      createPayload = request.postDataJSON() as CalendarCreatePayload;
+      savedCalendar = {
+        id: "calendar-created-e2e",
+        ...createPayload,
+        version: 1,
+        createdAt: "2026-10-03T00:00:00.000Z",
+        updatedAt: "2026-10-03T00:00:00.000Z",
+      };
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -671,6 +714,7 @@ test("calendar creation supports keyboard input and read-only access", async ({
   const fixture = await setupCalendarPage(page);
   await page.goto("/agent/settings/calendars");
   await page.getByRole("link", { name: "New calendar" }).click();
+  await page.getByLabel("Stable key").fill("new-regional-cover");
   await page.getByLabel("Name", { exact: true }).fill("New regional cover");
   await page
     .getByLabel("IANA timezone", { exact: true })
@@ -684,6 +728,7 @@ test("calendar creation supports keyboard input and read-only access", async ({
     page.getByRole("heading", { name: "New regional cover" }),
   ).toBeVisible();
   expect(fixture.createPayload?.workspaceId).toBe(workspaceId);
+  expect(fixture.createPayload?.key).toBe("new-regional-cover");
   expect(fixture.createPayload?.windows.mon).toEqual([{ from: 540, to: 1020 }]);
 
   // G10: edit weekly cover with keyboard input and leave the control by Tab.
@@ -850,18 +895,50 @@ test("calendar usage blocks deletion while referenced and requests a pending act
     currentSlaPolicies: 0,
     workItems: 0,
   };
+  let pendingActionApprovals = 0;
+  await page.route(
+    "**/api/me/pending-actions/pending-calendar-delete-e2e**",
+    async (route) => {
+      if (route.request().url().endsWith("/approve")) {
+        pendingActionApprovals += 1;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "pending-calendar-delete-e2e",
+          action: "delete",
+          origin: "web",
+          targetType: "service_calendar",
+          targetIds: [calendarId],
+          summary: { name: "Support coverage" },
+          confirmation: "click",
+          approvalSupported: true,
+          state: "pending",
+          createdAt: "2026-10-06T00:00:00.000Z",
+          expiresAt: "2027-01-01T00:00:00.000Z",
+          invalidationReason: null,
+          decidedAt: null,
+          executedAt: null,
+          requestingKeyName: null,
+        }),
+      });
+    },
+  );
   await page.reload();
   const request = page.getByRole("button", { name: "Request deletion" });
   await expect(request).toBeEnabled();
   await request.click();
-  const dialog = page.getByRole("alertdialog", {
-    name: "Request calendar deletion?",
-  });
-  await dialog.getByRole("button", { name: "Request deletion" }).click();
+  // The request opens its pending-action approval in place as the one confirm
+  // dialog; the editor stays where it was and nothing is deleted yet.
+  const approval = page.getByRole("dialog").filter({ hasText: calendarId });
+  await expect(approval).toBeVisible();
+  await expect(approval.getByText("Pending", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(
-    /\/agent\/settings\/profile\/pending-actions\/pending-calendar-delete-e2e$/,
+    new RegExp(`/agent/settings/calendars/${calendarId}(\\?|$)`),
   );
   expect(fixture.deleteRequestCount).toBe(1);
+  expect(pendingActionApprovals).toBe(0);
 });
 
 test("calendar usage hides deletion without manage permission", async ({

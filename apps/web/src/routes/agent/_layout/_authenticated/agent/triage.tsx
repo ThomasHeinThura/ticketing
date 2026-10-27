@@ -56,6 +56,7 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import {
   matchesIntakeFilters,
   parseTriageError,
+  serverClockNow,
   splitIntakeFilters,
 } from "@/lib/intake-queue";
 import { submissionAnswerRows } from "@/lib/intake-validation";
@@ -157,6 +158,12 @@ function IntakeRoute() {
     filters,
     requestTypeList.isLoading ? undefined : (requestTypeRefs ?? []),
   );
+  // Ages advance between refetches on the server's clock (see `serverClockNow`).
+  const [browserTick, setBrowserTick] = useState(() => Date.now());
+  useEffect(() => {
+    const handle = window.setInterval(() => setBrowserTick(Date.now()), 60_000);
+    return () => window.clearInterval(handle);
+  }, []);
   const queue = useQuery({
     queryKey: ["intake", workspace.data?.id, state, cursor, server],
     queryFn: () =>
@@ -329,7 +336,14 @@ function IntakeRoute() {
       ).values(),
     )
   ).map((type) => ({ id: type.id, name: type.name }));
-  const visibleRows = rows.filter((row) => matchesIntakeFilters(row, residual));
+  const queueNow = serverClockNow(
+    queue.data?.serverNow,
+    queue.dataUpdatedAt,
+    browserTick,
+  );
+  const visibleRows = rows.filter((row) =>
+    matchesIntakeFilters(row, residual, queueNow),
+  );
   const hasFilters = Boolean(requestType || assignee || age);
   const changeFilters = (patch: Record<string, string | undefined>) =>
     void navigate({ search: searchWith({ ...patch, cursor: undefined }) });
@@ -526,6 +540,7 @@ function IntakeRoute() {
         ) : (
           <SubmissionQueueTable
             rows={visibleRows}
+            now={queueNow}
             selectedRef={ref}
             onOpenSubmission={(nextRef) =>
               void navigate({ search: searchWith({ ref: nextRef }) })

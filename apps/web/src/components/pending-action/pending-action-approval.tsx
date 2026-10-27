@@ -47,6 +47,10 @@ import { routes } from "@/lib/routes";
 import useProjectStore from "@/store/project";
 import type { ProjectWithTasks } from "@/types/project";
 import type Task from "@/types/task";
+import {
+  PENDING_ACTION_TARGET_QUERY_PREFIXES,
+  pendingActionLabelKey,
+} from "./pending-action-label";
 import { registeredDeletionTarget } from "./registered-deletion-targets";
 
 /**
@@ -732,6 +736,23 @@ export function PendingActionApproval({
       if (executed && action.data?.targetType === "workspace_role") {
         await navigate({ to: "/agent/settings/roles" });
       }
+      // The deleted calendar's editor would refetch into its 404: return to the list.
+      if (
+        executed &&
+        action.data?.targetType === "service_calendar" &&
+        action.data.targetIds.some(
+          (targetId) =>
+            location.pathname ===
+            routes.serviceCalendarEditor.build({ id: targetId }),
+        )
+      ) {
+        await navigate({ href: routes.serviceCalendars.build() });
+      }
+      const targetPrefixes = executed
+        ? (PENDING_ACTION_TARGET_QUERY_PREFIXES[
+            action.data?.targetType ?? ""
+          ] ?? [])
+        : [];
       const workItemDeleted =
         executed && action.data?.targetType === "work_item";
       if (workItemDeleted) await leaveDeletedWorkItems(action.data?.targetIds);
@@ -767,6 +788,9 @@ export function PendingActionApproval({
               }),
             )
           : []),
+        ...targetPrefixes.map((key) =>
+          queryClient.invalidateQueries({ queryKey: [key] }),
+        ),
         ...(executed && action.data?.targetType === "identity_connection"
           ? [
               queryClient.invalidateQueries({
@@ -995,9 +1019,7 @@ export function PendingActionApproval({
                         ? t(
                             `pendingActions:registered.actions.${registeredTarget}`,
                           )
-                        : action.data.targetType === "work_item"
-                          ? t("tasks:delete.action")
-                          : action.data.action.replaceAll("_", " ");
+                        : t(pendingActionLabelKey(action.data));
   // In place, the approval is the one confirmation: it is titled with the destructive
   // action (for example "Delete project"), not a generic "pending action".
   const heading =

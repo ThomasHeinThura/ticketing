@@ -63,6 +63,19 @@ async function mountProjectAdminApp(page: Page) {
   await page.route("**/api/invitation/pending", (route) => json(route, []));
   await page.route("**/api/notification**", (route) => json(route, []));
   await page.route("**/api/workflow-rule/**", (route) => json(route, []));
+  // P4R1-M2: Calendar and Gantt render only while feature.calendar /
+  // feature.timeline resolve on (GET /api/features/resolved?project=); an
+  // unanswered read fails closed to the feature-off state.
+  await page.route("**/api/features/resolved**", (route) =>
+    json(route, {
+      features: ["feature.calendar", "feature.timeline"].map((key) => ({
+        key,
+        enabled: true,
+        source: "project",
+        locked: false,
+      })),
+    }),
+  );
 }
 
 async function seriousOrCriticalViolations(page: Page) {

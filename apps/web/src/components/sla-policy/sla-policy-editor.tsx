@@ -452,6 +452,10 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                 </FieldLabel>
                 <Select
                   value={calendarId || null}
+                  items={(calendars?.data ?? []).map((calendar) => ({
+                    value: calendar.id,
+                    label: `${calendar.name} · ${calendar.timezone}`,
+                  }))}
                   onValueChange={(value) => setCalendarId(value ?? "")}
                   disabled={!canManage || calendarsLoading}
                 >
@@ -463,7 +467,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                   <SelectContent>
                     {(calendars?.data ?? []).map((calendar) => (
                       <SelectItem key={calendar.id} value={calendar.id}>
-                        {calendar.name} · {calendar.timezone}
+                        {`${calendar.name} · ${calendar.timezone}`}
                       </SelectItem>
                     ))}
                   </SelectContent>

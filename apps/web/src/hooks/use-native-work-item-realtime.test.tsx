@@ -3,7 +3,14 @@ import {
   QueryClientProvider,
   useQuery,
 } from "@tanstack/react-query";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -875,5 +882,28 @@ describe("work-item list realtime composition", () => {
     );
     expect(screen.getByTestId("detail-realtime-warning")).toBeInTheDocument();
     expect(detailQueryInterval(client, "W-1")).toBe(30_000);
+  });
+
+  it("treats the server's connection-limit close as terminal and does not reconnect", async () => {
+    const client = new QueryClient();
+    const { result } = renderHook(
+      () => useNativeWorkItemRealtime(["project:project-1"]),
+      { wrapper: wrapperFor(client) },
+    );
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected the native socket");
+    act(() => socket.open());
+    act(() => {
+      socket.readyState = 3;
+      (
+        socket.onclose as
+          | ((event: { code: number; reason: string }) => void)
+          | null
+      )?.({ code: 1008, reason: "connection limit" });
+    });
+    expect(result.current.status).toBe("unavailable");
+    await new Promise((resolve) => setTimeout(resolve, 1_100));
+    expect(MockWebSocket.instances).toHaveLength(1);
+    expect(result.current.status).toBe("unavailable");
   });
 });

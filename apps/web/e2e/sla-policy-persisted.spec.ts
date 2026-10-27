@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
@@ -8,6 +8,29 @@ test.use({ trace: "off", video: "off", screenshot: "off" });
 test.afterEach(({ page: _page }, testInfo) => {
   redactSecretErrorContext(testInfo);
 });
+
+// P4R1-M2: `feature.sla` is off by default, so a fresh workspace fails closed on the
+// calendar and SLA screens (and their API routes). The workspace owner turns it on.
+async function enableSlaFeature(
+  page: Page,
+  origin: string,
+  workspaceId: string,
+) {
+  const csrf = await page.request.get(
+    new URL("/api/me/csrf-token", origin).toString(),
+    { headers: { Origin: origin } },
+  );
+  expect(csrf.status()).toBe(200);
+  const { token } = (await csrf.json()) as { token: string };
+  const response = await page.request.patch(
+    new URL(`/api/workspaces/${workspaceId}/features`, origin).toString(),
+    {
+      headers: { Origin: origin, "X-TaskDesk-CSRF": token },
+      data: { changes: [{ key: "feature.sla", enabled: true }] },
+    },
+  );
+  expect(response.status()).toBe(200);
+}
 
 test("SLA policy publishes and reloads its persisted eight-goal snapshot", async ({
   page,
@@ -28,7 +51,8 @@ test("SLA policy publishes and reloads its persisted eight-goal snapshot", async
       .split("/")
       .filter(Boolean)
       .at(-1);
-    expect(workspaceId).toBeTruthy();
+    if (!workspaceId) throw new Error("No workspace id in the URL.");
+    await enableSlaFeature(page, origin, workspaceId);
 
     const csrf = await page.request.get(
       new URL("/api/me/csrf-token", origin).toString(),
@@ -79,6 +103,7 @@ test("SLA policy publishes and reloads its persisted eight-goal snapshot", async
       page.getByRole("heading", { name: "New SLA policy" }),
     ).toBeVisible();
     await page.getByLabel("Policy name").fill("Persisted response goals");
+    await page.getByLabel("Stable key").fill("persisted-response-goals");
     await page.getByRole("combobox", { name: "Service calendar" }).click();
     await page
       .getByRole("option", { name: "Persisted SLA coverage · UTC" })

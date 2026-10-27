@@ -45,7 +45,14 @@ import {
   UnderlineIcon,
 } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import type { Highlighter } from "shiki";
 import { AttachmentCard } from "@/components/task/extensions/attachment-card";
@@ -265,7 +272,10 @@ export default function CommentEditor({
   onContentChangeRef.current = onContentChange;
   const lastEditorRef = useRef<Editor | null>(null);
   const disposedEditorRef = useRef<Editor | null>(null);
-  const [editorGeneration, setEditorGeneration] = useState(0);
+  // Re-rendering is enough to heal a disposed instance: Tiptap's `useEditor` re-checks its
+  // instance on every render and replaces a destroyed one. Keep this out of the editor deps,
+  // otherwise each bump destroys the fresh replacement and the cycle never settles.
+  const [, requestEditorRender] = useReducer((count: number) => count + 1, 0);
   const syncGenerationRef = useRef(0);
   const taskIdRef = useRef(taskId);
   const ensureTaskIdRef = useRef(ensureTaskId);
@@ -981,7 +991,6 @@ export default function CommentEditor({
       additionalSlashCommands,
       enableMentions,
       additionalExtensions,
-      editorGeneration,
       handleAssetFileUpload,
       resolvedPlaceholder,
       toShikiLanguage,
@@ -989,14 +998,16 @@ export default function CommentEditor({
   );
 
   // Tiptap can dispose an instance during a React layout transition before the
-  // editor's passive hydration effects run. Recreate that instance once so the
-  // editor does not remain a permanently inert shell after being disposed.
+  // editor's passive hydration effects run. Render once more so `useEditor` replaces
+  // that instance and the editor does not remain a permanently inert shell. The same
+  // commit may also have destroyed it deliberately because a dependency changed; the
+  // extra render then simply delivers the replacement Tiptap already created.
   useEffect(() => {
     if (!editor) return;
     if (editor.isDestroyed) {
       if (disposedEditorRef.current !== editor) {
         disposedEditorRef.current = editor;
-        setEditorGeneration((generation) => generation + 1);
+        requestEditorRender();
       }
       return;
     }

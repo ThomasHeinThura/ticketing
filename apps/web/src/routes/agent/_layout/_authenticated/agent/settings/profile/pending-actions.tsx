@@ -9,6 +9,7 @@ import {
 import { Badge, Button, Card, CardContent, Skeleton } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import { pendingActionLabelKey } from "@/components/pending-action/pending-action-label";
 import { cancelOwnPendingAction } from "@/fetchers/pending-actions";
 import { ownPendingActionsQuery } from "@/hooks/queries/own-pending-actions-query";
 import { parsePendingActionsSearch, routes } from "@/lib/routes";
@@ -91,10 +92,7 @@ function PendingActionsList() {
                           ? t("pendingActions:dynamic.deactivatePerson", {
                               email: email ? ` · ${email}` : "",
                             })
-                          : t("pendingActions:dynamic.genericAction", {
-                              action: item.action.replaceAll("_", " "),
-                              targetType: item.targetType,
-                            })}
+                          : t(pendingActionLabelKey(item))}
                       </h2>
                       <Badge variant="outline">{item.origin}</Badge>
                     </div>

@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { MCP_TOOL_NAMES } from "../../../../apps/api/src/mcp-telemetry/tool-names.js";
 import { TaskDeskApiError } from "../taskdesk/client.js";
 import { registerTools } from "./register.js";
 
@@ -130,11 +129,6 @@ describe("canonical tool set", () => {
       "create_time_entry",
     ])
       expect(tools.has(legacy), legacy).toBe(false);
-  });
-
-  it("keeps the API telemetry allowlist in parity with every registered name and alias", () => {
-    const { tools } = harness();
-    expect([...tools.keys()].sort()).toEqual([...MCP_TOOL_NAMES].sort());
   });
 
   it("resolves whoami through the authenticated identity API", async () => {

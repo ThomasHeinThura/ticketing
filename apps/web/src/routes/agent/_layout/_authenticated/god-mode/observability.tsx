@@ -51,7 +51,16 @@ type FactorPolicy = {
 };
 
 function ObservabilitySettings() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("godModeSettings");
+  // `items` lets the trigger show the label rather than the raw policy value.
+  const factorAudiences: Array<{ value: FactorPolicy["mode"]; label: string }> =
+    [
+      { value: "off", label: "Disabled" },
+      { value: "optional", label: "Optional" },
+      { value: "required_staff", label: "All staff" },
+      { value: "required_role", label: "Selected role" },
+      { value: "required_everyone", label: t("localFactorEveryone") },
+    ];
   const [settings, setSettings] = useState<Settings | null>(null);
   const [factorPolicy, setFactorPolicy] = useState<FactorPolicy | null>(null);
   const [requiredRoleIdInput, setRequiredRoleIdInput] = useState("");
@@ -254,12 +263,13 @@ function ObservabilitySettings() {
                 audience. Unsupported upstream MFA is not accepted as proof.
               </p>
               <p className="text-sm text-muted-foreground">
-                {t("godModeSettings.localFactorStaffOnlyHelp")}
+                {t("localFactorStaffOnlyHelp")}
               </p>
               <div className="flex items-center justify-between gap-4">
                 <span>Required audience</span>
                 <Select
                   value={factorPolicy?.mode ?? "optional"}
+                  items={factorAudiences}
                   onValueChange={(value) => {
                     if (!value) return;
                     setFactorPolicy((current) =>
@@ -283,18 +293,7 @@ function ObservabilitySettings() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(
-                      [
-                        ["off", "Disabled"],
-                        ["optional", "Optional"],
-                        ["required_staff", "All staff"],
-                        ["required_role", "Selected role"],
-                        [
-                          "required_everyone",
-                          t("godModeSettings.localFactorEveryone"),
-                        ],
-                      ] as const
-                    ).map(([value, label]) => (
+                    {factorAudiences.map(({ value, label }) => (
                       <SelectItem value={value} key={value}>
                         {label}
                       </SelectItem>

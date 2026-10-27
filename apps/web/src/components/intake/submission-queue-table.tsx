@@ -32,10 +32,13 @@ export function SubmissionQueueTable({
   rows,
   selectedRef,
   onOpenSubmission,
+  now,
 }: {
   rows: readonly StaffSubmissionQueueRow[];
   selectedRef?: string;
   onOpenSubmission: (ref: string) => void;
+  /** The instant ages are measured against; the caller passes the server's clock when it has it. */
+  now?: number;
 }) {
   const { t } = useTranslation("intake");
   return (
@@ -80,7 +83,7 @@ export function SubmissionQueueTable({
             </TableCell>
             <TableCell data-testid="triage-row-age">
               {(() => {
-                const age = submissionAge(row.submission.createdAt);
+                const age = submissionAge(row.submission.createdAt, now);
                 return t(`ageSuffix.${age.unit}`, { value: age.count });
               })()}
             </TableCell>

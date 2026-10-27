@@ -1,18 +1,458 @@
 [
 	{
-		"operation": "GET /canned-responses",
-		"rule": "new-required-request-parameter",
-		"fingerprint": "37225a236da8",
-		"pr": 807,
-		"reason": "Intentional pre-stable CA19 canned-response scoping change removes workspace-wide listing; this exact finding is reviewed with the contract correction in PR #807.",
-		"decision": "decision-log 2026-10-16 GitHub prerelease classification; Thomas-approved CA19 #807"
+		"operation": "DELETE /activity/comment",
+		"rule": "response-success-status-removed",
+		"fingerprint": "8f4e10455f15",
+		"pr": 891,
+		"reason": "Retired legacy immediate delete: DELETE /activity/comment no longer deletes with 200; it answers 410 Gone (after the same reach checks) with Deprecation/Sunset/successor Link, pointing at the pending-action successor. Intentional removal of a no-approval delete.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
 	},
 	{
-		"operation": "GET /canned-responses",
-		"rule": "request-parameter-removed",
-		"fingerprint": "c23172869ba9",
-		"pr": 807,
-		"reason": "Intentional pre-stable CA19 canned-response scoping change removes workspaceId; this exact finding is reviewed with the contract correction in PR #807.",
-		"decision": "decision-log 2026-10-16 GitHub prerelease classification; Thomas-approved CA19 #807"
+		"operation": "DELETE /attachments/{id}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "049c6a700833",
+		"pr": 891,
+		"reason": "DELETE /attachments/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "DELETE /canned-responses/{id}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "d4d3417f61d1",
+		"pr": 891,
+		"reason": "DELETE /canned-responses/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "DELETE /column/{id}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "c8282e671448",
+		"pr": 891,
+		"reason": "DELETE /column/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "DELETE /comment/{id}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "afc054668df8",
+		"pr": 891,
+		"reason": "Retired legacy immediate delete: DELETE /comment/{id} no longer deletes with 200; it answers 410 Gone (after the same reach checks) with Deprecation/Sunset/successor Link, pointing at the pending-action successor. Intentional removal of a no-approval delete.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
+	},
+	{
+		"operation": "DELETE /comments/{id}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "73d81d5b0115",
+		"pr": 891,
+		"reason": "DELETE /comments/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "DELETE /invitation/{id}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "57c06b7cee8c",
+		"pr": 891,
+		"reason": "DELETE /invitation/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "DELETE /label/project/{projectId}/catalogue/{id}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "255b7a97eabf",
+		"pr": 891,
+		"reason": "DELETE /label/project/{projectId}/catalogue/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "DELETE /label/{id}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "371629fd307f",
+		"pr": 891,
+		"reason": "DELETE /label/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "GET /portal/submissions/{ref}",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "72c06b581c8b",
+		"pr": 891,
+		"reason": "messages[].actorType was an unconstrained string and is now the closed enum customer | triager | system (this finding: customer); 'system' is the IQ-15 auto-decline author, never a person id.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15 (system auto-decline); feature-contracts-p3.md CP-4 (no person ids for customers)"
+	},
+	{
+		"operation": "GET /portal/submissions/{ref}",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "04a06a1d1bd5",
+		"pr": 891,
+		"reason": "messages[].actorType was an unconstrained string and is now the closed enum customer | triager | system (this finding: system); 'system' is the IQ-15 auto-decline author, never a person id.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15 (system auto-decline); feature-contracts-p3.md CP-4 (no person ids for customers)"
+	},
+	{
+		"operation": "GET /portal/submissions/{ref}",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "281ca098abdd",
+		"pr": 891,
+		"reason": "messages[].actorType was an unconstrained string and is now the closed enum customer | triager | system (this finding: triager); 'system' is the IQ-15 auto-decline author, never a person id.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15 (system auto-decline); feature-contracts-p3.md CP-4 (no person ids for customers)"
+	},
+	{
+		"operation": "GET /portal/submissions/{ref}",
+		"rule": "response-required-property-removed",
+		"fingerprint": "96b739f43781",
+		"pr": 891,
+		"reason": "Portal submission detail no longer exposes the linked work item's internal workflow state name (workItem.state); the customer sees the server-decided customerStatus plus workItem.resolvedAt and the customer-safe SLA projection. Portal client reads customerStatus, never workItem.state.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p3.md CP-5 (customer-facing terminology, never internal state names), CP-6 / SLA-21; commit f4106eb80"
+	},
+	{
+		"operation": "POST /portal/submissions/{ref}/messages",
+		"rule": "response-property-became-nullable",
+		"fingerprint": "9a4c370354e0",
+		"pr": 891,
+		"reason": "POST /portal/submissions/{ref}/messages: message authorId is null for system-authored messages (IQ-15 clarification auto-decline); the database enforces (actor_type = 'system') = (author_id IS NULL). Staff and customer messages still carry an author.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
+	},
+	{
+		"operation": "POST /project",
+		"rule": "request-property-pattern-added",
+		"fingerprint": "1127d14a282d",
+		"pr": 891,
+		"reason": "POST /project slug (project key) now validates ^[A-Z]{2,8}$ as the contract requires; the web create-project modal validates the same PROJECT_KEY_PATTERN before submit.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md PR-13 (project key is 2–8 uppercase characters)"
+	},
+	{
+		"operation": "DELETE /project/{id}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "7900854809b8",
+		"pr": 891,
+		"reason": "DELETE /project/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "DELETE /project/{id}/document-links/{documentLinkId}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "d541e339cbd9",
+		"pr": 891,
+		"reason": "DELETE /project/{id}/document-links/{documentLinkId} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "DELETE /project/{id}/milestones/{milestoneId}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "e634630afaab",
+		"pr": 891,
+		"reason": "DELETE /project/{id}/milestones/{milestoneId} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "DELETE /project/{id}/prerequisites/{prerequisiteId}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "107568db1cdc",
+		"pr": 891,
+		"reason": "DELETE /project/{id}/prerequisites/{prerequisiteId} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "GET /search",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "097582e8a315",
+		"pr": 891,
+		"reason": "Global search returns the new result kind kb_article (canonical work items, people, saved views, KB articles, pages); the web command palette (search-targets.ts) handles every kind. Legacy kinds unchanged.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
+	},
+	{
+		"operation": "GET /search",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "0cca6fe3f44a",
+		"pr": 891,
+		"reason": "Global search returns the new result kind page (canonical work items, people, saved views, KB articles, pages); the web command palette (search-targets.ts) handles every kind. Legacy kinds unchanged.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
+	},
+	{
+		"operation": "GET /search",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "898e89c5ead7",
+		"pr": 891,
+		"reason": "Global search returns the new result kind person (canonical work items, people, saved views, KB articles, pages); the web command palette (search-targets.ts) handles every kind. Legacy kinds unchanged.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
+	},
+	{
+		"operation": "GET /search",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "512b3d2428c0",
+		"pr": 891,
+		"reason": "Global search returns the new result kind saved_view (canonical work items, people, saved views, KB articles, pages); the web command palette (search-targets.ts) handles every kind. Legacy kinds unchanged.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
+	},
+	{
+		"operation": "GET /search",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "c634be226cc8",
+		"pr": 891,
+		"reason": "Global search returns the new result kind work_item (canonical work items, people, saved views, KB articles, pages); the web command palette (search-targets.ts) handles every kind. Legacy kinds unchanged.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
+	},
+	{
+		"operation": "GET /submissions/{ref}",
+		"rule": "response-property-became-nullable",
+		"fingerprint": "fbb134f8ccc1",
+		"pr": 891,
+		"reason": "GET /submissions/{ref}: message authorId is null for system-authored messages (IQ-15 clarification auto-decline); the database enforces (actor_type = 'system') = (author_id IS NULL). Staff and customer messages still carry an author.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
+	},
+	{
+		"operation": "POST /submissions/{ref}/decline",
+		"rule": "response-property-became-nullable",
+		"fingerprint": "70525082aca0",
+		"pr": 891,
+		"reason": "POST /submissions/{ref}/decline: message authorId is null for system-authored messages (IQ-15 clarification auto-decline); the database enforces (actor_type = 'system') = (author_id IS NULL). Staff and customer messages still carry an author.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
+	},
+	{
+		"operation": "POST /submissions/{ref}/messages",
+		"rule": "response-property-became-nullable",
+		"fingerprint": "09ea2dbd76b2",
+		"pr": 891,
+		"reason": "POST /submissions/{ref}/messages: message authorId is null for system-authored messages (IQ-15 clarification auto-decline); the database enforces (actor_type = 'system') = (author_id IS NULL). Staff and customer messages still carry an author.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
+	},
+	{
+		"operation": "DELETE /task-relation/{id}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "e6b05924ca53",
+		"pr": 891,
+		"reason": "Retired legacy immediate delete: DELETE /task-relation/{id} no longer deletes with 200; it answers 410 Gone (after the same reach checks) with Deprecation/Sunset/successor Link, pointing at the pending-action successor. Intentional removal of a no-approval delete.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
+	},
+	{
+		"operation": "DELETE /task/{id}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "fc5efdfc49c2",
+		"pr": 891,
+		"reason": "Retired legacy immediate delete: DELETE /task/{id} no longer deletes with 200; it answers 410 Gone (after the same reach checks) with Deprecation/Sunset/successor Link, pointing at the pending-action successor. Intentional removal of a no-approval delete.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
+	},
+	{
+		"operation": "POST /views/{id}/run",
+		"rule": "response-body-any-of-added",
+		"fingerprint": "023cb84c4bfd",
+		"pr": 891,
+		"reason": "A saved view whose query.entity is 'submission' (intake queue half) runs to { submissions, page, meta }; work-item views still return WorkItemListResponse. Declared anyOf; the web runSavedView fetcher branches on 'submissions' (oasdiff finding: response-body-any-of-added).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
+	},
+	{
+		"operation": "POST /views/{id}/run",
+		"rule": "response-body-type-changed",
+		"fingerprint": "024daaeca05a",
+		"pr": 891,
+		"reason": "A saved view whose query.entity is 'submission' (intake queue half) runs to { submissions, page, meta }; work-item views still return WorkItemListResponse. Declared anyOf; the web runSavedView fetcher branches on 'submissions' (oasdiff finding: response-body-type-changed).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
+	},
+	{
+		"operation": "POST /views/{id}/run",
+		"rule": "response-required-property-removed",
+		"fingerprint": "83b73f4607c2",
+		"pr": 891,
+		"reason": "A saved view whose query.entity is 'submission' (intake queue half) runs to { submissions, page, meta }; work-item views still return WorkItemListResponse. Declared anyOf; the web runSavedView fetcher branches on 'submissions' (oasdiff finding: response-required-property-removed).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
+	},
+	{
+		"operation": "POST /views/{id}/run",
+		"rule": "response-required-property-removed",
+		"fingerprint": "a3a97f5bb822",
+		"pr": 891,
+		"reason": "A saved view whose query.entity is 'submission' (intake queue half) runs to { submissions, page, meta }; work-item views still return WorkItemListResponse. Declared anyOf; the web runSavedView fetcher branches on 'submissions' (oasdiff finding: response-required-property-removed).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
+	},
+	{
+		"operation": "POST /views/{id}/run",
+		"rule": "response-required-property-removed",
+		"fingerprint": "31ad48863c39",
+		"pr": 891,
+		"reason": "A saved view whose query.entity is 'submission' (intake queue half) runs to { submissions, page, meta }; work-item views still return WorkItemListResponse. Declared anyOf; the web runSavedView fetcher branches on 'submissions' (oasdiff finding: response-required-property-removed).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
+	},
+	{
+		"operation": "POST /work-items/search",
+		"rule": "request-property-max-length-decreased",
+		"fingerprint": "cb38454849e1",
+		"pr": 891,
+		"reason": "Work-item search cursor input max is 2048, the same bound as every other cursor; the server never issues a longer cursor (repository.ts falls back to a compact anchor cursor above 2048) and cursors are opaque, actor/query-bound continuations from this route only.",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md work-item search v1 (cursor is an opaque continuation from this route)"
+	},
+	{
+		"operation": "DELETE /work-items/{key}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "13d1a9523093",
+		"pr": 891,
+		"reason": "DELETE /work-items/{key} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "POST /workflows/{id}/versions/{number}/publish",
+		"rule": "response-body-any-of-added",
+		"fingerprint": "b52ec8e82139",
+		"pr": 891,
+		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-body-any-of-added, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+	},
+	{
+		"operation": "POST /workflows/{id}/versions/{number}/publish",
+		"rule": "response-body-type-changed",
+		"fingerprint": "7e803832195c",
+		"pr": 891,
+		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-body-type-changed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+	},
+	{
+		"operation": "POST /workflows/{id}/versions/{number}/publish",
+		"rule": "response-required-property-removed",
+		"fingerprint": "32dc548cc120",
+		"pr": 891,
+		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+	},
+	{
+		"operation": "POST /workflows/{id}/versions/{number}/publish",
+		"rule": "response-required-property-removed",
+		"fingerprint": "642c2f1ca942",
+		"pr": 891,
+		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+	},
+	{
+		"operation": "POST /workflows/{id}/versions/{number}/publish",
+		"rule": "response-required-property-removed",
+		"fingerprint": "84350ab8c855",
+		"pr": 891,
+		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+	},
+	{
+		"operation": "POST /workflows/{id}/versions/{number}/publish",
+		"rule": "response-required-property-removed",
+		"fingerprint": "cd99b5634036",
+		"pr": 891,
+		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+	},
+	{
+		"operation": "POST /workflows/{id}/versions/{number}/publish",
+		"rule": "response-required-property-removed",
+		"fingerprint": "1d74a8a17da7",
+		"pr": 891,
+		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+	},
+	{
+		"operation": "POST /workflows/{id}/versions/{number}/publish",
+		"rule": "response-required-property-removed",
+		"fingerprint": "48f23c75513f",
+		"pr": 891,
+		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+	},
+	{
+		"operation": "POST /workflows/{id}/versions/{number}/publish",
+		"rule": "response-required-property-removed",
+		"fingerprint": "c60cbc64a2ca",
+		"pr": 891,
+		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+	},
+	{
+		"operation": "POST /workflows/{id}/versions/{number}/publish",
+		"rule": "response-required-property-removed",
+		"fingerprint": "0969231b7602",
+		"pr": 891,
+		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+	},
+	{
+		"operation": "DELETE /workspace/{workspaceId}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "3d6872802a98",
+		"pr": 891,
+		"reason": "DELETE /workspace/{workspaceId} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "DELETE /workspace/{workspaceId}/roles/{roleId}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "5c80728c297f",
+		"pr": 891,
+		"reason": "DELETE /workspace/{workspaceId}/roles/{roleId} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+	},
+	{
+		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
+		"rule": "response-body-any-of-added",
+		"fingerprint": "977e06047f8a",
+		"pr": 891,
+		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-body-any-of-added, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+	},
+	{
+		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
+		"rule": "response-body-type-changed",
+		"fingerprint": "33af0bb7761c",
+		"pr": 891,
+		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-body-type-changed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+	},
+	{
+		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
+		"rule": "response-required-property-removed",
+		"fingerprint": "9b30e62c4cb6",
+		"pr": 891,
+		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+	},
+	{
+		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
+		"rule": "response-required-property-removed",
+		"fingerprint": "2af727f68268",
+		"pr": 891,
+		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+	},
+	{
+		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
+		"rule": "response-required-property-removed",
+		"fingerprint": "11f70f968f27",
+		"pr": 891,
+		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+	},
+	{
+		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
+		"rule": "response-required-property-removed",
+		"fingerprint": "a37fe33086ce",
+		"pr": 891,
+		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+	},
+	{
+		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
+		"rule": "response-required-property-removed",
+		"fingerprint": "696bfe3e08bd",
+		"pr": 891,
+		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+	},
+	{
+		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
+		"rule": "response-required-property-removed",
+		"fingerprint": "81a2afe95fc2",
+		"pr": 891,
+		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+	},
+	{
+		"operation": "POST /portal/submissions/{ref}/attachments/{id}/complete",
+		"rule": "response-body-all-of-removed",
+		"fingerprint": "59058091752f",
+		"pr": 891,
+		"reason": "Portal attachment-complete response is now a dedicated customer projection instead of allOf[Attachment, …]: the staff Attachment component gained commentId, canDelete and canRestore, which must not reach the portal. Fields returned to the customer are unchanged (same 11 properties, same required set).",
+		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p3.md CP-3/CP-4 (portal shapes are server-filtered customer projections)"
 	}
 ]

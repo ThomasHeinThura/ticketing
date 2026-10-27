@@ -103,8 +103,10 @@ test("the full scheduled-job inventory is registered, including the inherited co
     (match) => match[1],
   );
   // The maintained registry includes P4/P5's automation, pending-action,
-  // report-export and secrets-rekey jobs as well as the original inventory.
-  assert.equal(targetJobs.length, 25);
+  // report-export and secrets-rekey jobs, P2's one-minute
+  // scheduled-transition job (WF-19) and the original inventory.
+  assert.equal(targetJobs.length, 26);
+  assert.ok(targetJobs.includes("scheduled-transition"));
   assert.ok(targetJobs.includes("customer-invitation-delivery"));
   assert.ok(targetJobs.includes("quiet-hours-release"));
   assert.equal(new Set(targetJobs).size, targetJobs.length);

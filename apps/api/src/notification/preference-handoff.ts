@@ -5,7 +5,13 @@ import {
   getConfiguredCustomerOrigin,
   portalForHost,
 } from "../auth";
-import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
+import {
+  apiRouter,
+  createRoute,
+  errorResponse,
+  jsonResponse,
+  z,
+} from "../openapi";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { requirePublicCookieSessionCsrf } from "../utils/csrf-protection";
 import { requireSessionOnly } from "../utils/require-session-only";
@@ -57,6 +63,12 @@ export function publicPreferenceHandoff(audience: "agent" | "customer") {
           "Link accepted",
           z.object({ accepted: z.literal(true) }),
         ),
+        400: errorResponse("Invalid request body"),
+        401: errorResponse(
+          "An ambient session cookie is present but not a valid session for this audience",
+        ),
+        403: errorResponse("Origin, host or CSRF check failed"),
+        429: errorResponse("Too many requests"),
       },
     }),
     async (c) => {

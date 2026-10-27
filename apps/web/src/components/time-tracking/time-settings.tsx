@@ -23,8 +23,12 @@ import {
   createAvailableHours,
   updateTimeSettings,
 } from "@/fetchers/time-tracking";
-import { useTimeSettings } from "@/hooks/queries/time-tracking/use-time-tracking";
+import {
+  useTimeEntries,
+  useTimeSettings,
+} from "@/hooks/queries/time-tracking/use-time-tracking";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { isoDay, useServerToday } from "@/lib/server-clock";
 import { formatMinutes } from "@/lib/time-minutes";
 import { toast } from "@/lib/toast";
 import { parseHoursPerWeek, useAvailableHours } from "./cost-queries";
@@ -147,7 +151,15 @@ export function AvailableHoursSetting() {
   const [personPick, setPersonPick] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [effectiveFrom, setEffectiveFrom] = useState("");
-  const [today] = useState(() => new Date().toISOString().slice(0, 10));
+  // The default start day is the server's, never the browser clock's: the workspace's date
+  // from the timesheet's `needsReview` probe, or the server clock while that is unavailable.
+  const serverToday = isoDay(useServerToday());
+  const today =
+    useTimeEntries(
+      workspace?.id && allowed
+        ? { workspaceId: workspace.id, needsReview: true }
+        : null,
+    ).data?.today ?? serverToday;
   const data = hours.data;
   const people = data?.people ?? [];
   const personId =
@@ -158,7 +170,8 @@ export function AvailableHoursSetting() {
     null;
   const chosen = people.find((person) => person.personId === personId);
   const minutes = parseHoursPerWeek(amount);
-  const canSubmit = personId !== null && minutes !== null;
+  const canSubmit =
+    personId !== null && minutes !== null && Boolean(effectiveFrom || today);
   const add = useMutation({
     mutationFn: () =>
       createAvailableHours({

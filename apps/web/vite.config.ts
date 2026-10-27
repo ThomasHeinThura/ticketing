@@ -229,7 +229,7 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve the Geist Latin font asset.",
           );
 
-        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${JSON.stringify([...files].map((file) => `/${file}`))};const locales=${JSON.stringify(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink);const fontLink=document.createElement("link");fontLink.rel="preload";fontLink.as="font";fontLink.type="font/woff2";fontLink.href=${JSON.stringify(`/${latinFontAsset.fileName}`)};fontLink.crossOrigin="anonymous";fontLink.fetchPriority="high";document.head.append(fontLink);for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
+        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${inlineScriptJson([...files].map((file) => `/${file}`))};const locales=${inlineScriptJson(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink);const fontLink=document.createElement("link");fontLink.rel="preload";fontLink.as="font";fontLink.type="font/woff2";fontLink.href=${inlineScriptJson(`/${latinFontAsset.fileName}`)};fontLink.crossOrigin="anonymous";fontLink.fetchPriority="high";document.head.append(fontLink);for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
         // The legacy project board is the other measured direct-visit screen (G11 board
         // render). Its route chunk is only requested after the session resolves, so start it
         // and the full locale catalog it renders with alongside the entry instead.
@@ -274,7 +274,7 @@ function preloadWorkRouteForDirectVisits(): Plugin {
         });
         if (fullLocaleAssets.length === 0)
           throw new Error("G11 board preload could not resolve locale assets.");
-        const boardScript = `(()=>{if(!/^\\/dashboard\\/workspace\\/[^/]+\\/project\\/[^/]+\\/board\\/?$/.test(location.pathname))return;const routeFiles=${JSON.stringify([...boardFiles].map((file) => `/${file}`))};const locales=${JSON.stringify(Object.fromEntries(fullLocaleAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}for(const file of [locales[locale],...routeFiles]){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
+        const boardScript = `(()=>{if(!/^\\/dashboard\\/workspace\\/[^/]+\\/project\\/[^/]+\\/board\\/?$/.test(location.pathname))return;const routeFiles=${inlineScriptJson([...boardFiles].map((file) => `/${file}`))};const locales=${inlineScriptJson(Object.fromEntries(fullLocaleAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}for(const file of [locales[locale],...routeFiles]){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
         const source = String(html.source);
         const head = source.match(/<head(?:\s[^>]*)?>/i)?.[0];
         if (!head)
@@ -391,6 +391,19 @@ function isolatedPdfPreviewArtifacts(outputRoot: string): Plugin {
       }
     },
   };
+}
+
+/**
+ * JSON for a value spliced into an inline `<script>`: escapes the characters that could end the
+ * element (`<`, `>`) or a JavaScript string (U+2028, U+2029). Build asset names never contain
+ * them, so the emitted bytes are unchanged.
+ */
+function inlineScriptJson(value: unknown): string {
+  return JSON.stringify(value).replace(
+    /[<>\u2028\u2029]/gu,
+    (character) =>
+      `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
 }
 
 export default defineConfig(({ mode }) => {

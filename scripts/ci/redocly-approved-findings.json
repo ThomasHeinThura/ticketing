@@ -1,18 +1,50 @@
 [
 	{
-		"operation": "GET /portal/submissions/{ref}/attachments/{id}",
+		"operation": "GET /portal/sign-in/home-realm/start",
 		"rule": "operation-2xx-response",
-		"pointer": "#/paths/~1portal~1submissions~1{ref}~1attachments~1{id}/get/responses",
-		"reason": "Redirect-only attachment download matching the existing AT-5/AT-6 contract: after the route-specific authorization check it returns 302 to the five-minute presigned URL. The redirect-only false-positive is covered by the existing 2026-09-28 mechanism; no 200 response or protocol change is intended.",
-		"decision": "docs/07-planning/decision-log.md#2026-09-28--redocly-lint-finding-allowlist-added-scriptsciredocly-approved-findingsjson-for-get-attachmentsids-redirect-only-response",
-		"pr": 664
+		"pointer": "#/paths/~1portal~1sign-in~1home-realm~1start/get/responses",
+		"reason": "Redirect-only by design: the handler always answers 302, to the selected identity provider on success and to the portal sign-in page on any failure, so no failure detail is disclosed (CP-27/IP-35, ADR 0014). No 200 response exists or is intended.",
+		"decision": "docs/technical/feature-contracts-p3.md CP-27 and IP-35; docs/technical/design-and-decisions.md#0014-limited-home-realm-disclosure",
+		"pr": 891
 	},
 	{
-		"operation": "GET /submissions/{ref}/attachments/{id}",
+		"operation": "DELETE /task/{id}",
 		"rule": "operation-2xx-response",
-		"pointer": "#/paths/~1submissions~1{ref}~1attachments~1{id}/get/responses",
-		"reason": "Redirect-only attachment download matching the existing AT-5/AT-6 contract: after the route-specific authorization check it returns 302 to the five-minute presigned URL. The redirect-only false-positive is covered by the existing 2026-09-28 mechanism; no 200 response or protocol change is intended.",
-		"decision": "docs/07-planning/decision-log.md#2026-09-28--redocly-lint-finding-allowlist-added-scriptsciredocly-approved-findingsjson-for-get-attachmentsids-redirect-only-response",
-		"pr": 664
+		"pointer": "#/paths/~1task~1{id}/delete/responses",
+		"reason": "Legacy hard-delete retired in P0 (bb6a42525): after reach and permission checks it always answers 410 Gone; deletion goes through DELETE /api/work-items/{key}, which records a pending action. No 2XX response exists.",
+		"decision": "docs/technical/safety-and-runtime.md#pending-actions",
+		"pr": 891
+	},
+	{
+		"operation": "DELETE /activity/comment",
+		"rule": "operation-2xx-response",
+		"pointer": "#/paths/~1activity~1comment/delete/responses",
+		"reason": "Legacy hard-delete retired in P0 (bb6a42525): after reach checks it always answers 410 Gone; deletion goes through DELETE /api/comments/{id}, which records a pending action. No 2XX response exists.",
+		"decision": "docs/technical/safety-and-runtime.md#pending-actions",
+		"pr": 891
+	},
+	{
+		"operation": "DELETE /comment/{id}",
+		"rule": "operation-2xx-response",
+		"pointer": "#/paths/~1comment~1{id}/delete/responses",
+		"reason": "Legacy hard-delete retired in P0 (bb6a42525): after reach and permission checks it always answers 410 Gone; deletion goes through DELETE /api/comments/{id}, which records a pending action. No 2XX response exists.",
+		"decision": "docs/technical/safety-and-runtime.md#pending-actions",
+		"pr": 891
+	},
+	{
+		"operation": "DELETE /task-relation/{id}",
+		"rule": "operation-2xx-response",
+		"pointer": "#/paths/~1task-relation~1{id}/delete/responses",
+		"reason": "Legacy hard-delete retired in P0 (bb6a42525): after reach and permission checks it always answers 410 Gone; deletion goes through DELETE /api/work-items/{key}/relations/{id}, which records a pending action. No 2XX response exists.",
+		"decision": "docs/technical/safety-and-runtime.md#pending-actions",
+		"pr": 891
+	},
+	{
+		"operation": "GET /me/identity-links/intents/{intentId}",
+		"rule": "no-ambiguous-paths",
+		"pointer": "#/paths/~1me~1identity-links~1intents~1{intentId}",
+		"reason": "Templates overlap only on the literal URL /me/identity-links/intents/start, but the operations are method-disjoint (POST /me/identity-links/{targetConnectionId}/start has no GET; GET /me/identity-links/intents/{intentId} has no POST), so no request can match both. Renaming would break the shipped URL contract.",
+		"decision": "PR #891 CI fix lane; pending coordinator review",
+		"pr": 891
 	}
 ]

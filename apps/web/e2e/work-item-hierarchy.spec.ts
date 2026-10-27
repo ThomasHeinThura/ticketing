@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { seriousOrCriticalViolations } from "./helpers/axe";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
 
@@ -12,6 +12,20 @@ const node = (number: number, extra = {}) => ({
   ...extra,
 });
 const current = node(1, { parentId: "item-9000" });
+/** Kaneo's sub-task disclosure title under the default work-item terminology. */
+const SECTION_TITLE = "Sub-Work items";
+/** Sub-task rows (Kaneo task-subtasks) are named "KEY Title"; tree rows "KEY · Title". */
+const subtaskLink = (number: number) =>
+  `WLP-${number} Hierarchy task ${number}`;
+async function enterTreeMode(section: Locator) {
+  const toggle = section.getByRole("button", {
+    name: "Hierarchy",
+    exact: true,
+  });
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+}
 const root = node(9000, { parentId: null });
 async function fixture(page: Page) {
   await installPerformanceApiFixture(page);
@@ -107,6 +121,9 @@ test("hierarchy preserves the current branch beyond the loaded page, pagination 
   await page.goto("/agent/work-items/WLP-1?activity=comments");
   const section = page.getByTestId("work-item-hierarchy");
   await expect(section.getByText("10/52", { exact: true })).toBeVisible();
+  // The section opens as Kaneo's sub-task list; the ancestor/current tree is the
+  // URL-addressed "Hierarchy" mode.
+  await enterTreeMode(section);
   await expect(section.locator('[aria-current="page"]')).toContainText(
     "WLP-1 ·",
   );
@@ -151,10 +168,18 @@ test("hierarchy preserves the current branch beyond the loaded page, pagination 
     path: info.outputPath("kaneo-inline-hierarchy.png"),
     fullPage: true,
   });
-  await section.getByRole("button", { name: "Hierarchy", exact: true }).click();
+  // Collapsing the section persists across reload; reopening restores tree mode.
+  await section
+    .getByRole("button", { name: SECTION_TITLE, exact: true })
+    .click();
   await page.reload();
   await expect(section.getByRole("link")).toHaveCount(0);
-  await section.getByRole("button", { name: "Hierarchy", exact: true }).click();
+  await section
+    .getByRole("button", { name: SECTION_TITLE, exact: true })
+    .click();
+  await expect(
+    section.getByRole("button", { name: "Hierarchy", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(section.locator('[aria-current="page"]')).toBeVisible();
 });
 
@@ -172,7 +197,7 @@ test("a failed child page preserves rows and offers a working retry", async ({
   await expect(section.getByRole("alert")).toBeVisible();
   await expect(
     section.getByRole("link", {
-      name: "WLP-149 · Hierarchy task 149",
+      name: subtaskLink(149),
       exact: true,
     }),
   ).toBeVisible();
@@ -180,7 +205,7 @@ test("a failed child page preserves rows and offers a working retry", async ({
   await section.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(
     section.getByRole("link", {
-      name: "WLP-150 · Hierarchy task 150",
+      name: subtaskLink(150),
       exact: true,
     }),
   ).toBeVisible();
@@ -195,6 +220,7 @@ test("hierarchy remains usable on mobile in dark mode with reduced motion", asyn
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
   await page.goto("/agent/work-items/WLP-1");
   const section = page.getByTestId("work-item-hierarchy");
+  await enterTreeMode(section);
   await expect(section.locator('[aria-current="page"]')).toBeVisible();
   await section
     .getByRole("button", { name: "Load more children of WLP-1", exact: true })
@@ -225,14 +251,14 @@ test("side-pane hierarchy keeps its item and disclosure state after reload", asy
     .click();
   await expect(
     section.getByRole("link", {
-      name: "WLP-200 · Hierarchy task 200",
+      name: subtaskLink(200),
       exact: true,
     }),
   ).toBeVisible({ timeout: 15000 });
   await page.reload();
   await expect(
     section.getByRole("link", {
-      name: "WLP-200 · Hierarchy task 200",
+      name: subtaskLink(200),
       exact: true,
     }),
   ).toBeVisible({ timeout: 15000 });
@@ -278,7 +304,7 @@ test("crafted page counts stop bounded replay while manual loading reaches furth
   ).toBeVisible();
   await expect(
     section.getByRole("link", {
-      name: "WLP-302 · Hierarchy task 302",
+      name: subtaskLink(302),
       exact: true,
     }),
   ).toBeVisible();
@@ -288,7 +314,7 @@ test("crafted page counts stop bounded replay while manual loading reaches furth
     .click();
   await expect(
     section.getByRole("link", {
-      name: "WLP-303 · Hierarchy task 303",
+      name: subtaskLink(303),
       exact: true,
     }),
   ).toBeVisible();
@@ -297,7 +323,7 @@ test("crafted page counts stop bounded replay while manual loading reaches furth
     .click();
   await expect(
     section.getByRole("link", {
-      name: "WLP-304 · Hierarchy task 304",
+      name: subtaskLink(304),
       exact: true,
     }),
   ).toBeVisible();

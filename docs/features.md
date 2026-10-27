@@ -85,7 +85,7 @@ This is the full destination, not a claim of implementation. P0–P7 preserve th
 | Service catalogue | Service owner/support level/calendar/status, project/docs/KB links, dependencies and impact | Kaneo list/detail and project/task sections |
 | Change management | Work-item change type, risk/window/rollback plan, CAB, freezes/overrides and conflict calendar | Original task detail and Calendar, with audited controls |
 | Releases | Changes grouped by service/date, checklists, editable generated notes and optional portal publication | Project/service tabs and customer-safe release detail |
-| Pages | Pages; original P5 intent retained; behavior spec missing | Behavior spec is missing: decide scope/sharing/history before implementation; use Kaneo editor/layout |
+| Pages | Staff-only project Pages with history and undelete, specified as PG-1–PG-8 in [feature-contracts-p5.md](technical/feature-contracts-p5.md) | Project tab on the Kaneo editor/layout |
 
 The twenty reports are: **SLA attainment, SLA trend, breach analysis, at-risk now; performance by customer, customer volume trend, satisfaction; throughput, work mix, cycle time, ageing, flow; workload, stale work, utilisation, capacity; portfolio health, predictability, cost to deliver, escalations.**
 

@@ -3,6 +3,7 @@ import { getApiUrl } from "@/fetchers/get-api-url";
 import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 import type { Holiday } from "@/fetchers/service-calendar";
 import { HttpError, readErrorDetail } from "@/lib/http-error";
+import { recordServerDate } from "@/lib/server-clock";
 
 export const SERVICE_STATUSES = ["operational", "degraded", "outage"] as const;
 export type ServiceStatus = (typeof SERVICE_STATUSES)[number];
@@ -269,6 +270,7 @@ async function request<T>(
     ...(init.headers ? { headers: init.headers } : {}),
     ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
   });
+  recordServerDate(response);
   if (!response.ok)
     throw new HttpError(
       response.status,

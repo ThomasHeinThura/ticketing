@@ -4,7 +4,9 @@
 
 ## Goal (set 22 October 2026, owner Thomas)
 
-**Current goal, updated 25 Oct:** audit and repair P0–P5, complete persisted browser coverage on HTTPS localhost and obtain independent AI phase sign-off. Then implement the approved P6 plan, open and merge a passing PR, deploy locally and repeat audit/browser checks. Each phase: implement → local gates/browser evidence → independent Sol high-effort review → fix and verify; at most three new review rounds. Passing review permits feature-branch commit/push and PR/merge. Unresolved findings after round three require `report.html` and Thomas’s decision. Luna implements; Sol reviews. P7 follows; P8/P9 stay proposed.
+**Current goal, updated 27 Oct:** P0–P6 are finished and accepted by Thomas. Remaining: merge PR #891 with all required checks green, build the signed image and deploy it to Technexus after Thomas approves the plan. P7 is deferred.
+
+**Previous goal, 25 Oct:** audit and repair P0–P5, complete persisted browser coverage on HTTPS localhost and obtain independent AI phase sign-off. Then implement the approved P6 plan, open and merge a passing PR, deploy locally and repeat audit/browser checks. Each phase: implement → local gates/browser evidence → independent Sol high-effort review → fix and verify; at most three new review rounds. Passing review permits feature-branch commit/push and PR/merge. Unresolved findings after round three require `report.html` and Thomas’s decision. Luna implements; Sol reviews. P7 follows; P8/P9 stay proposed.
 
 | Bucket | Items |
 | --- | --- |
@@ -18,17 +20,18 @@
 
 Current phase exit criteria are the visible-finish column below, full local gates, persisted browser evidence and a passing independent Sol review. Historical review records remain historical. Update this Goal block and the report whenever it changes.
 
-## Phase status (25 October 2026)
+## Phase status (27 October 2026)
 
 | Phase | State |
 | --- | --- |
-| P0–P3 | Committed/pushed (`fb4448db8`). AI review passed 27 Oct (P0 r2, P1 r4, P2 r2, P3 r2); gates and fresh-DB integration pass; browser re-checked on local SIT. Awaiting Thomas acceptance |
-| P4 | Committed/pushed (`fb4448db8`). AI review round 3 passed 27 Oct; flag enforcement and upgrade migration verified on local SIT. Awaiting Thomas acceptance |
-| P5 | Committed/pushed (`fb4448db8`). AI review round 4 (approved extra round) passed 27 Oct; export email page/preference browser-checked. 500k-row export not yet run. Awaiting Thomas acceptance |
-| P6 | Implemented and committed/pushed (`fb4448db8`). AI review round 3 passed 27 Oct; wizard source step browser-checked; full import run in the browser pending. Awaiting Thomas acceptance |
-| P7 | Not started; external readiness evidence tracked separately. P8/P9 proposed |
+| P0–P3 | **Finished.** Committed/pushed (`fb4448db8`). AI review passed (P0 r2, P1 r4, P2 r2, P3 r2); Thomas accepted 27 Oct with open lows. Real Entra validation is Thomas's |
+| P4 | **Finished.** AI review round 3 passed; Thomas accepted 27 Oct with open lows |
+| P5 | **Finished.** AI review round 4 (approved extra round) passed; Thomas accepted 27 Oct with open lows. 500k-row export not yet run in the browser |
+| P6 | **Finished.** AI review round 3 passed; Thomas accepted 27 Oct with open lows. Full CSV import run in the browser not yet done |
+| Release | PR #891 to main: all 18 required checks green, then Thomas approves the merge; release workflow builds, scans and signs the image; Technexus deploy after Thomas approves the plan |
+| P7 | Deferred by Thomas (27 Oct). P8/P9 proposed |
 
-**Current evidence:** the historical per-ID audits and aggregate report disagreed. [Report data](report/data.json) now reconciles historical rows with the requirement index and marks the fresh review pending; [status](status.md) records current checks. A committed phase or earlier code review is not full feature/browser acceptance.
+**Current evidence:** [report](report/report.html) and [status](status.md). Open lows per phase are listed in the report.
 
 ## Approved P6 goals — 25 October 2026
 
@@ -38,6 +41,8 @@ Thomas approved these goals and automatic implementation **after P0–P5 local g
 
 | Goal | Integrated slices and evidence | State |
 | --- | --- | --- |
+All four goals are implemented, reviewed and accepted (27 Oct); see the P6 card in the report.
+
 | G1 — Durable import framework (IM-1–7) | Persist run/mapping profile/source-to-target ledger. Upload/connect → discover → editable map → dry-run → explicit mapping approval → transactional chunks → reconciliation. Unique source identity, source hash and checkpoint in the same transaction as target writes. Restart resumes only committed chunks; mapping changes require a new dry-run. Preserve authors/timestamps, inactive placeholders, history/files/relations and visible loss accounting. Instance-admin policies, tenant checks, audit and existing credential clamps apply. | Shared MCP prerequisite approved now; remaining G1 after destination checks |
 | G2 — Source adapters | CSV first, then Jira/JSM, Azure DevOps, Plane, Planner and Power Apps through the common pipeline. Representative fixtures per source; invalid/unmapped records never silently coerced. Source credentials use the existing secrets module, read-only source access, bounded pagination/rate limits and source-specific chunk limits. No new dependency without Thomas's approval. | Approved; follows G1 |
 | G3 — Cutover rehearsal | On isolated copies: backup both records and files, staged/delta re-import, reconciled project/type counts and explicit losses, original-link provenance/redirect coverage, interruption/resume and duplicate-free rerun. Record freeze boundary, changed-source handling, timing and recovery procedure. Recovery uses verified backup/restore; do not promise atomic whole-run undo. Source retirement requires Thomas's acceptance. | Approved; follows stable adapters |

@@ -27,6 +27,8 @@ const mocks = vi.hoisted(() => ({
   cancel: vi.fn(),
   navigate: vi.fn(),
   toast: vi.fn(),
+  invalidate: vi.fn(),
+  pathname: "/agent/dashboard",
 }));
 
 function PendingActionFocusHarness({
@@ -83,7 +85,7 @@ function deferredRequest() {
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
-  useLocation: () => ({ pathname: "/agent/dashboard" }),
+  useLocation: () => ({ pathname: mocks.pathname }),
   Link: ({ children }: { children: React.ReactNode }) => (
     <a href="/">{children}</a>
   ),
@@ -114,7 +116,7 @@ vi.mock("@tanstack/react-query", () => ({
             isError: false,
           }
         : { data: undefined, isLoading: false, isError: false },
-  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useMutation: ({
     mutationFn,
   }: {
@@ -180,6 +182,8 @@ describe("in-place deletion approval", () => {
     mocks.cancel.mockReset().mockResolvedValue({});
     mocks.navigate.mockReset();
     mocks.toast.mockReset();
+    mocks.invalidate.mockReset();
+    mocks.pathname = "/agent/dashboard";
   });
   afterEach(() => cleanup());
 
@@ -268,6 +272,74 @@ describe("in-place deletion approval", () => {
     await waitFor(() =>
       expect(mocks.approve).toHaveBeenCalledWith({ id: "pa-1" }),
     );
+  });
+
+  it("titles a saved-view deletion with its translated action and refreshes the views", async () => {
+    mocks.targetType = "saved_view";
+    usePendingActionDialogStore.setState({ pendingActionId: "pa-view" });
+    render(<PendingActionApprovalDialog />);
+    expect(
+      await screen.findByRole("heading", {
+        name: "pendingActions:targets.saved_view",
+      }),
+    ).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "delete" })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "common:actions.delete" }),
+    );
+    await waitFor(() =>
+      expect(usePendingActionDialogStore.getState().pendingActionId).toBeNull(),
+    );
+    const invalidated = mocks.invalidate.mock.calls.map(
+      ([filters]) => (filters as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidated).toEqual(
+      expect.arrayContaining([
+        ["saved-views"],
+        ["saved-view"],
+        ["saved-view-count"],
+      ]),
+    );
+  });
+
+  it("does not refresh saved views while the deletion is only approved, not executed", async () => {
+    mocks.targetType = "saved_view";
+    mocks.approve.mockResolvedValue({ state: "approved" });
+    usePendingActionDialogStore.setState({ pendingActionId: "pa-view" });
+    render(<PendingActionApprovalDialog />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "common:actions.delete" }),
+    );
+    await waitFor(() => expect(mocks.approve).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.invalidate).toHaveBeenCalled());
+    const invalidated = mocks.invalidate.mock.calls.map(
+      ([filters]) => (filters as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidated).not.toContainEqual(["saved-views"]);
+  });
+
+  it("leaves a deleted service calendar's editor and refreshes the calendar list", async () => {
+    mocks.targetType = "service_calendar";
+    mocks.pathname = "/agent/settings/calendars/l1";
+    usePendingActionDialogStore.setState({ pendingActionId: "pa-cal" });
+    render(<PendingActionApprovalDialog />);
+    expect(
+      await screen.findByRole("heading", {
+        name: "pendingActions:targets.service_calendar",
+      }),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "common:actions.delete" }),
+    );
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        href: "/agent/settings/calendars",
+      }),
+    );
+    const invalidated = mocks.invalidate.mock.calls.map(
+      ([filters]) => (filters as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidated).toContainEqual(["service-calendars"]);
   });
 
   it("approves in a dialog, then closes it", async () => {

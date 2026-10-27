@@ -4198,7 +4198,6 @@
 		},
 		"dynamic": {
 			"deactivatePerson": "사용자 비활성화{{email}}",
-			"genericAction": "{{targetType}} 대상 {{action}}",
 			"deactivationApproved": "승인된 비활성화가 완료되었습니다. 사용자의 활성 세션이 폐기되었습니다.",
 			"cancelled": "대기 중 작업이 취소되었습니다.",
 			"cancelFailed": "이 작업을 취소할 수 없습니다. 다시 불러와 현재 상태를 확인하세요.",
@@ -4289,7 +4288,8 @@
 				"time_entry": "Delete time entry",
 				"webhook": "Delete webhook",
 				"organisation": "Delete organisation",
-				"identity_connection": "Delete identity connection"
+				"identity_connection": "Delete identity connection",
+				"request_type": "Delete {{term_request_one}} type"
 			},
 			"confirmName": "Type the exact name to confirm",
 			"hidden": "This request is no longer available for confirmation.",
@@ -4359,6 +4359,12 @@
 			"source": "Source: {{plugin}}, mapping version {{version}}.",
 			"unavailable": "Import run summary unavailable",
 			"writes_other": "{{count}} records will be created or updated."
+		},
+		"targets": {
+			"approval_decision": "Record approval decision",
+			"import_chunk": "Import MCP data",
+			"saved_view": "Delete saved view",
+			"service_calendar": "Delete service calendar"
 		}
 	},
 	"intake": {

@@ -4212,7 +4212,6 @@
 		},
 		"dynamic": {
 			"deactivatePerson": "व्यक्ति निष्क्रिय करें{{email}}",
-			"genericAction": "{{targetType}} के लिए {{action}}",
 			"deactivationApproved": "मंज़ूर किया गया निष्क्रियकरण पूरा हुआ। उपयोगकर्ता का सक्रिय सत्र रद्द किया गया।",
 			"cancelled": "लंबित कार्रवाई रद्द की गई।",
 			"cancelFailed": "यह कार्रवाई रद्द नहीं हो सकी। वर्तमान स्थिति देखने के लिए फिर लोड करें।",
@@ -4305,7 +4304,8 @@
 				"time_entry": "Delete time entry",
 				"webhook": "Delete webhook",
 				"organisation": "Delete organisation",
-				"identity_connection": "Delete identity connection"
+				"identity_connection": "Delete identity connection",
+				"request_type": "Delete {{term_request_one}} type"
 			},
 			"confirmName": "Type the exact name to confirm",
 			"hidden": "This request is no longer available for confirmation.",
@@ -4377,6 +4377,12 @@
 			"unavailable": "Import run summary unavailable",
 			"writes_one": "{{count}} record will be created or updated.",
 			"writes_other": "{{count}} records will be created or updated."
+		},
+		"targets": {
+			"approval_decision": "Record approval decision",
+			"import_chunk": "Import MCP data",
+			"saved_view": "Delete saved view",
+			"service_calendar": "Delete service calendar"
 		}
 	},
 	"intake": {

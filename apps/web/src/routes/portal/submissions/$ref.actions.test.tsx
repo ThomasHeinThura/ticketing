@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => ({
   escalate: vi.fn(),
   reopen: vi.fn(),
   rate: vi.fn(),
+  presign: vi.fn(),
+  complete: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -37,11 +39,11 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@/fetchers/intake", () => ({
-  completePortalSubmissionAttachment: vi.fn(),
+  completePortalSubmissionAttachment: mocks.complete,
   downloadPortalSubmissionAttachment: vi.fn(),
   getPortalSubmission: mocks.getSubmission,
   getPortalSubmissionAttachments: mocks.getAttachments,
-  presignPortalSubmissionAttachment: vi.fn(),
+  presignPortalSubmissionAttachment: mocks.presign,
   replyPortalSubmission: vi.fn(),
   withdrawPortalSubmission: vi.fn(),
 }));
@@ -392,6 +394,61 @@ describe("customer status, service target metric and colleague view (CP-5, CP-6,
       screen.queryByText("Could not load attachments."),
     ).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/File/u)).not.toBeInTheDocument();
+  });
+
+  it("uploads a file field's file through the library uploader, with no visible native picker", async () => {
+    mocks.getSubmission.mockResolvedValue({
+      ...accepted,
+      submission: { ...accepted.submission, state: "clarifying" },
+      version: {
+        formSchema: {
+          fields: [{ key: "evidence", label: "Evidence", type: "file" }],
+        },
+      },
+    });
+    mocks.getAttachments.mockResolvedValue([]);
+    mocks.presign.mockResolvedValue({
+      attachmentId: "att-1",
+      uploadUrl: "https://storage.example.test/upload",
+      uploadHeaders: {},
+    });
+    mocks.complete.mockResolvedValue({ id: "att-1" });
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    const { container } = renderPage();
+    const choose = await screen.findByRole("button", { name: "Add file" });
+    expect(choose).toBeVisible();
+    const picker = container.querySelector<HTMLInputElement>(
+      "#submission-file-evidence",
+    );
+    expect(picker).not.toBeNull();
+    expect(picker).toHaveAttribute("type", "file");
+    expect(picker).toHaveAttribute("tabindex", "-1");
+    // The library Input puts the class on its control wrapper.
+    expect(picker?.closest('[data-slot="input-control"]')?.className).toContain(
+      "sr-only",
+    );
+    const file = new File(["proof"], "proof.txt", { type: "text/plain" });
+    fireEvent.change(picker as HTMLInputElement, {
+      target: { files: [file] },
+    });
+    await waitFor(() =>
+      expect(mocks.presign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ref: "SUB-7",
+          fieldKey: "evidence",
+          filename: "proof.txt",
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(mocks.complete).toHaveBeenCalledWith({
+        ref: "SUB-7",
+        id: "att-1",
+      }),
+    );
+    fetchSpy.mockRestore();
   });
 
   it("honours explicit attachment flags from the server", async () => {

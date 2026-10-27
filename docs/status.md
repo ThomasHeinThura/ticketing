@@ -1,6 +1,6 @@
 # Current status — 27 October 2026
 
-P0–P6 are committed and pushed through `fb4448db8` (plus the follow-up status commit) on `feat/batch1-hierarchy-and-parent-editing`. **All seven phases passed AI review; none is Thomas-accepted yet.**
+P0–P6 are committed and pushed through `fb4448db8` (plus the follow-up status commit) on `feat/batch1-hierarchy-and-parent-editing`. **All seven phases passed AI review and Thomas accepted them on 27 Oct with the open lows.**
 
 | Work | Current status |
 | --- | --- |
@@ -11,6 +11,7 @@ P0–P6 are committed and pushed through `fb4448db8` (plus the follow-up status 
 | Browser (local SIT) | Pass: list-row pickers, board column +, search rows, mobile 375 px rows, Kaneo popover pickers on working screens, imports picker, report-export page and preference, God Mode pages, customer portal sign-in by Thomas and all portal pages. Evidence: [browser/claude-20261027-recheck.json](report/browser/claude-20261027-recheck.json). |
 | Not yet covered | Full import run in the browser (CSV upload), role matrix as lead/member/viewer, light theme, 500k-row export run, palette end-to-end SV-5/SV-10 timing at 10k items with comments. |
 | Open lows | Recorded per phase in the report; none blocks under the review rule. |
-| Next | Thomas reviews and accepts phases; then PR/CI image and Technexus deploy per the image path; P7 planning. Real Entra validation stays with Thomas. |
+| Acceptance | Thomas accepted P0–P6 on 27 Oct with the open lows. P7 is deferred; real Entra validation is Thomas's. |
+| Next | Get all 18 required checks on PR #891 green, then Thomas approves the merge; the release workflow builds, scans and signs the image; then Thomas approves the Technexus deploy plan. |
 
 Detailed evidence: [report](report/report.html), [audit](report/audit/), [browser evidence](report/browser/).

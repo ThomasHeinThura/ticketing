@@ -4212,7 +4212,6 @@
 		},
 		"dynamic": {
 			"deactivatePerson": "Person deaktivieren{{email}}",
-			"genericAction": "{{action}} für {{targetType}}",
 			"deactivationApproved": "Die genehmigte Deaktivierung wurde abgeschlossen. Die aktive Sitzung des Benutzers wurde widerrufen.",
 			"cancelled": "Die ausstehende Aktion wurde abgebrochen.",
 			"cancelFailed": "Diese Aktion konnte nicht abgebrochen werden. Lade neu, um den aktuellen Status zu prüfen.",
@@ -4305,7 +4304,8 @@
 				"time_entry": "Delete time entry",
 				"webhook": "Delete webhook",
 				"organisation": "Delete organisation",
-				"identity_connection": "Delete identity connection"
+				"identity_connection": "Delete identity connection",
+				"request_type": "Delete {{term_request_one}} type"
 			},
 			"confirmName": "Type the exact name to confirm",
 			"hidden": "This request is no longer available for confirmation.",
@@ -4377,6 +4377,12 @@
 			"unavailable": "Import run summary unavailable",
 			"writes_one": "{{count}} record will be created or updated.",
 			"writes_other": "{{count}} records will be created or updated."
+		},
+		"targets": {
+			"approval_decision": "Record approval decision",
+			"import_chunk": "Import MCP data",
+			"saved_view": "Delete saved view",
+			"service_calendar": "Delete service calendar"
 		}
 	},
 	"intake": {

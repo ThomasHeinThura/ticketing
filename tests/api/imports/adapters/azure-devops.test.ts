@@ -614,6 +614,15 @@ describe("html conversion", () => {
       lossy: true,
     });
   });
+
+  it("leaves no tag behind in the plain text", () => {
+    for (const html of [
+      "<scr<b>ipt>alert(1)</scr</b>ipt>",
+      "<<img src=x onerror=alert(1)>>",
+      "<p><<b>script>x<</b>/script></p>",
+    ])
+      expect(htmlToText(html).text).not.toMatch(/<[^>]*>/u);
+  });
 });
 
 describe("guarded transport (SSRF guard, no redirects, JSON only)", () => {

@@ -122,7 +122,8 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
     await expect(sidePane).toBeVisible();
     await expect(sidePane).toContainText("WLP-1");
 
-    await page.getByRole("button", { name: "Close side pane" }).click();
+    // The close control is named through the runtime terminology ("Close Work item").
+    await sidePane.getByRole("button", { name: /^Close work item$/iu }).click();
     await expect(sidePane).toBeHidden();
     await expect(page).not.toHaveURL(/item=WLP-1/);
   });
@@ -175,9 +176,10 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
         "/agent/projects/WLP/settings",
         /\/dashboard\/settings\/projects\/[^/]+\/general$/,
       ],
+      // P1 gave project membership its own Kaneo settings page.
       [
         "/agent/projects/WLP/settings/members",
-        /\/dashboard\/settings\/projects\/[^/]+\/general$/,
+        /\/dashboard\/settings\/projects\/[^/]+\/members$/,
       ],
       [
         "/agent/projects/WLP/settings/states",

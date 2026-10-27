@@ -4221,7 +4221,6 @@
 		},
 		"dynamic": {
 			"deactivatePerson": "Deactivate person{{email}}",
-			"genericAction": "{{action}} · {{targetType}}",
 			"deactivationApproved": "The approved deactivation completed. The user's active session was revoked.",
 			"cancelled": "The pending action was cancelled.",
 			"cancelFailed": "This action could not be cancelled. Reload to see its current state.",
@@ -4326,7 +4325,8 @@
 				"dashboard": "Delete dashboard",
 				"project_page": "Delete page",
 				"organisation": "Delete organisation",
-				"identity_connection": "Delete identity connection"
+				"identity_connection": "Delete identity connection",
+				"request_type": "Delete {{term_request_one}} type"
 			}
 		},
 		"hardPurge": {
@@ -4377,6 +4377,12 @@
 			"writes_other": "{{count}} records will be created or updated.",
 			"source": "Source: {{plugin}}, mapping version {{version}}.",
 			"open": "Open import run"
+		},
+		"targets": {
+			"saved_view": "Delete saved view",
+			"service_calendar": "Delete service calendar",
+			"approval_decision": "Record approval decision",
+			"import_chunk": "Import MCP data"
 		}
 	},
 	"intake": {

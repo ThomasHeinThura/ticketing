@@ -3,9 +3,11 @@ import {
   formatSubmissionAge,
   matchesIntakeFilters,
   parseTriageError,
+  serverClockNow,
   splitIntakeFilters,
   submissionAge,
 } from "./intake-queue";
+import { serverInstant } from "./server-clock";
 
 const NOW = Date.parse("2026-10-23T12:00:00.000Z");
 const row = (createdAt: string, claimedBy: string | null, typeId = "rt_1") => ({
@@ -119,5 +121,31 @@ describe("P2R1-12 / P2R1-13 triage helpers", () => {
     expect(
       parseTriageError(new Error(JSON.stringify({ error: "unknown" }))).code,
     ).toBeNull();
+  });
+});
+
+describe("intake queue server clock", () => {
+  it("reads the server instant from the HTTP Date header", () => {
+    expect(serverInstant("Fri, 23 Oct 2026 12:00:00 GMT")).toBe(NOW);
+    expect(serverInstant(null)).toBeNull();
+    expect(serverInstant(undefined)).toBeNull();
+    expect(serverInstant("not a date")).toBeNull();
+  });
+
+  it("ages against the server instant, advanced only by time spent since it arrived", () => {
+    const receivedAt = Date.parse("2030-01-01T00:00:00.000Z");
+    // A browser clock years ahead does not age the queue; only elapsed time does.
+    expect(serverClockNow(NOW, receivedAt, receivedAt)).toBe(NOW);
+    expect(serverClockNow(NOW, receivedAt, receivedAt - 5_000)).toBe(NOW);
+    expect(serverClockNow(NOW, receivedAt, receivedAt + 60_000)).toBe(
+      NOW + 60_000,
+    );
+    expect(
+      formatSubmissionAge(
+        "2026-10-23T11:48:00.000Z",
+        serverClockNow(NOW, receivedAt, receivedAt),
+      ),
+    ).toBe("12m");
+    expect(serverClockNow(null, receivedAt, 42)).toBe(42);
   });
 });

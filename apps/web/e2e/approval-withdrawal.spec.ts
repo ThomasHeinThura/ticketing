@@ -154,7 +154,12 @@ async function installApprovalWithdrawalFixture(
       ]);
     if (path.endsWith("/api/capabilities")) return json({ createTasks: true });
     if (path.endsWith("/api/me/security/factors"))
-      return json({ enabled: false, required: false, policyMode: "optional" });
+      return json({
+        enabled: false,
+        required: false,
+        policyMode: "optional",
+        availableMethods: ["password"],
+      });
     if (path.endsWith("/api/me/csrf-token"))
       return json(
         {
@@ -168,6 +173,16 @@ async function installApprovalWithdrawalFixture(
       );
     if (path.endsWith("/api/work-items/HELP-7/approvals"))
       return json({ approvals: [approval] });
+    // The Approvals section also loads the current request options.
+    if (path.endsWith("/api/work-items/HELP-7/approval-request-context"))
+      return json({
+        enabled: true,
+        canRequestCustomer: false,
+        canRequestCab: false,
+        defaultExpiryDays: 7,
+        maxExpiryDays: 90,
+        transitions: [],
+      });
     if (
       /\/api\/(admin\/)?approvals\/visual-approval\/withdraw$/.test(path) &&
       request.method() === "POST"
@@ -185,6 +200,19 @@ async function installApprovalWithdrawalFixture(
       approval = { ...approval, state: "withdrawn", canWithdraw: false };
       return json(approval);
     }
+    // The detail route's hierarchy section reads a paged children envelope;
+    // the generic `[]` default has no `data` array.
+    if (path.endsWith("/api/work-items/HELP-7/relations"))
+      return json({ data: [], hiddenCount: 0 });
+    if (path.endsWith("/api/work-items/HELP-7/children"))
+      return json({
+        parent: workItem,
+        ancestors: [],
+        data: [],
+        page: { nextCursor: null, hasMore: false },
+        meta: { total: 0 },
+        progress: { completed: 0, total: 0 },
+      });
     if (path.endsWith("/api/work-items/HELP-7/activity"))
       return json({
         data: [],
@@ -196,11 +224,19 @@ async function installApprovalWithdrawalFixture(
   return withdrawPaths;
 }
 
+// Approvals is a collapsed, URL-addressed disclosure in the properties panel
+// (`?sections=`); open it the way an agent does.
+async function openApprovals(page: Page) {
+  await page.goto("/agent/work-items/HELP-7");
+  await page.getByRole("button", { name: "Approvals", exact: true }).click();
+  await expect(page).toHaveURL(/sections=/);
+}
+
 test("requester withdrawal uses the requester route and refreshes state", async ({
   page,
 }, testInfo) => {
   const withdrawPaths = await installApprovalWithdrawalFixture(page);
-  await page.goto("/agent/work-items/HELP-7");
+  await openApprovals(page);
   await expect(page.getByTestId("approval-visual-approval")).toBeVisible();
   await expect(page.getByText("Casey Review")).toBeVisible();
 
@@ -224,7 +260,7 @@ test("instance-admin withdrawal uses the admin route", async ({ page }) => {
   const withdrawPaths = await installApprovalWithdrawalFixture(page, {
     role: "admin",
   });
-  await page.goto("/agent/work-items/HELP-7");
+  await openApprovals(page);
   await page.getByRole("button", { name: "Withdraw request" }).click();
   await expect(page.getByText("Withdrawn", { exact: true })).toBeVisible();
   expect(withdrawPaths).toEqual([
@@ -236,7 +272,7 @@ test("a terminal-approval 409 explains itself and reloads the real state", async
   page,
 }) => {
   await installApprovalWithdrawalFixture(page, { withdrawStatus: 409 });
-  await page.goto("/agent/work-items/HELP-7");
+  await openApprovals(page);
   await page.getByRole("button", { name: "Withdraw request" }).click();
   await expect(page.getByTestId("approval-withdraw-error")).toContainText(
     "no longer pending",

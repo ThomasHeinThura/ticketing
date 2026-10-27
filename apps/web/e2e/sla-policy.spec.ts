@@ -44,6 +44,7 @@ test("SLA policy editor saves an incomplete draft and publishes a complete snaps
   let policy: {
     id: string;
     workspaceId: string;
+    key: string;
     name: string;
     description: string | null;
     version: number;
@@ -144,6 +145,17 @@ test("SLA policy editor saves an incomplete draft and publishes a complete snaps
       }),
     }),
   );
+  // P4R1-M2: the SLA policy screens sit behind the default-off `feature.sla`
+  // flag, read from the workspace's resolved features; an unanswered read fails closed.
+  await page.route("**/api/workspaces/*/features/resolved", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        features: [{ key: "feature.sla", enabled: true }],
+      }),
+    }),
+  );
   await page.route("**/api/me/csrf-token", async (route) => {
     await route.fulfill({
       status: 200,
@@ -187,6 +199,7 @@ test("SLA policy editor saves an incomplete draft and publishes a complete snaps
     if (request.method() === "POST" && path === "/api/sla-policies") {
       createPayload = request.postDataJSON() as Record<string, unknown>;
       const body = createPayload as {
+        key: string;
         name: string;
         description: string | null;
         calendarId: string;
@@ -200,6 +213,7 @@ test("SLA policy editor saves an incomplete draft and publishes a complete snaps
       policy = {
         id: policyId,
         workspaceId,
+        key: body.key,
         name: body.name,
         description: body.description,
         version: 1,
@@ -292,6 +306,7 @@ test("SLA policy editor saves an incomplete draft and publishes a complete snaps
     page.getByRole("heading", { name: "New SLA policy" }),
   ).toBeVisible();
   await page.getByLabel("Policy name").fill("Support response goals");
+  await page.getByLabel("Stable key").fill("support-response-goals");
   await page.getByRole("combobox", { name: "Service calendar" }).click();
   await page.getByRole("option", { name: "Support coverage · UTC" }).click();
   await page.getByRole("checkbox", { name: "Incident" }).click();
@@ -306,6 +321,7 @@ test("SLA policy editor saves an incomplete draft and publishes a complete snaps
     await expect(publishButton).toBeDisabled();
   }
   expect(createPayload?.goals).toHaveLength(1);
+  expect(createPayload?.key).toBe("support-response-goals");
   await expect(
     page.locator(`#sla-goal-${typeId}-first_response-low`),
   ).toHaveValue("120");

@@ -52,6 +52,13 @@ function clearContinuation(c: Context) {
   });
 }
 
+// The host guard answers these portal-only routes 404 on the agent host and while
+// the customer portal is off; the handlers themselves never return a 4XX.
+const hostNotFoundResponse = jsonResponse(
+  "Not available on this host, or the customer portal is off",
+  z.object({ message: z.string() }),
+);
+
 function genericFailure(c: Context) {
   return c.redirect(failurePath, 302);
 }
@@ -80,6 +87,7 @@ export function createHomeRealmApi(options: HomeRealmApiOptions = {}) {
         "Sign-in method; invalid or unavailable discovery falls back to local",
         z.object({ next: z.enum(["local", "sso"]) }),
       ),
+      404: hostNotFoundResponse,
     },
   });
   routes.openAPIRegistry.registerPath({
@@ -95,6 +103,7 @@ export function createHomeRealmApi(options: HomeRealmApiOptions = {}) {
           "Redirect to the selected identity provider or portal sign-in",
         headers: { Location: { schema: { type: "string" } } },
       },
+      404: hostNotFoundResponse,
     },
   });
   const rateLimit = options.consumeRateLimit ?? consumeHomeRealmRateLimit;

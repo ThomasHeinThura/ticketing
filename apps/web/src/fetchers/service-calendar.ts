@@ -2,6 +2,7 @@ import { client } from "@taskdesk/libs";
 import type { InferRequestType, InferResponseType } from "hono/client";
 import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 import { HttpError } from "@/lib/http-error";
+import { recordServerDate } from "@/lib/server-clock";
 
 export type ServiceCalendar = InferResponseType<
   (typeof client)["service-calendars"]["$get"],
@@ -65,6 +66,7 @@ export async function getServiceCalendars(
   const response = await client["service-calendars"].$get({
     query: { workspaceId, cursor, limit: "50" },
   });
+  recordServerDate(response);
 
   if (!response.ok) {
     throw new HttpError(response.status, "Failed to load service calendars");
@@ -77,6 +79,7 @@ export async function getServiceCalendar(id: string): Promise<ServiceCalendar> {
   const response = await client["service-calendars"][":id"].$get({
     param: { id },
   });
+  recordServerDate(response);
 
   if (!response.ok) {
     throw new HttpError(response.status, "Failed to load service calendar");

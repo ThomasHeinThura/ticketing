@@ -12,6 +12,9 @@ const migrationsFolder = resolve(currentDir, "../../../apps/api/drizzle");
 
 let migrationPromise: Promise<void> | null = null;
 let ensuredDatabaseConnectionString: string | null = null;
+/** Module state, so it restarts with every test file (Vitest isolates each file's modules). */
+let resetsSinceTruncate = 0;
+const RESETS_PER_TRUNCATE = 50;
 
 function getDatabaseName(connectionString: string) {
   return assertDisposableTestDatabaseUrl(connectionString);
@@ -108,17 +111,20 @@ export async function ensureTestDatabaseMigrated() {
 async function listPublicTables(): Promise<{
   allTableNames: string[];
   dirtyTableNames: string[];
+  autovacuumTableNames: string[];
 }> {
   const result = await db.execute<{
     table_name: string;
     needs_truncate: boolean;
+    autovacuum: boolean;
   }>(sql`
     SELECT
       c.relname AS table_name,
       (
         pg_relation_size(c.oid) > 0
         OR c.relname IN ('activity', 'audit_log', 'submission')
-      ) AS needs_truncate
+      ) AS needs_truncate,
+      NOT ('autovacuum_enabled=false' = ANY (COALESCE(c.reloptions, '{}'))) AS autovacuum
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public'
@@ -130,7 +136,29 @@ async function listPublicTables(): Promise<{
   const dirtyTableNames = result.rows
     .filter((row) => row.needs_truncate)
     .map((row) => row.table_name);
-  return { allTableNames, dirtyTableNames };
+  const autovacuumTableNames = result.rows
+    .filter((row) => row.autovacuum)
+    .map((row) => row.table_name);
+  return { allTableNames, dirtyTableNames, autovacuumTableNames };
+}
+
+// The sequences TRUNCATE ... RESTART IDENTITY would restart: those owned by a table column,
+// whether as a serial (`a`) or an identity (`i`) dependency.
+async function listOwnedSequences(): Promise<string[]> {
+  const result = await db.execute<{ sequence_name: string }>(sql`
+    SELECT s.relname AS sequence_name
+    FROM pg_class s
+    JOIN pg_namespace n ON n.oid = s.relnamespace
+    JOIN pg_depend d
+      ON d.classid = 'pg_class'::regclass
+     AND d.objid = s.oid
+     AND d.refclassid = 'pg_class'::regclass
+     AND d.deptype IN ('a', 'i')
+    WHERE n.nspname = 'public'
+      AND s.relkind = 'S'
+    ORDER BY s.relname
+  `);
+  return result.rows.map((row) => row.sequence_name);
 }
 
 function hasPostgresSqlState(error: unknown, expectedState: string) {
@@ -154,12 +182,20 @@ export async function resetTestDatabase(options?: {
   }) => void | Promise<void>;
 }) {
   await ensureTestDatabaseExists();
-  let { allTableNames: tableNames, dirtyTableNames } = await listPublicTables();
+  let {
+    allTableNames: tableNames,
+    dirtyTableNames,
+    autovacuumTableNames,
+  } = await listPublicTables();
 
   if (tableNames.length === 0) {
     migrationPromise = null;
     await ensureTestDatabaseMigrated();
-    ({ allTableNames: tableNames, dirtyTableNames } = await listPublicTables());
+    ({
+      allTableNames: tableNames,
+      dirtyTableNames,
+      autovacuumTableNames,
+    } = await listPublicTables());
   }
 
   if (tableNames.length === 0) {
@@ -169,11 +205,12 @@ export async function resetTestDatabase(options?: {
   }
 
   const formattedTableNames = tableNames.map(quoteIdentifier).join(", ");
-  const formattedDirtyTableNames = (
-    dirtyTableNames.length > 0 ? dirtyTableNames : tableNames
-  )
-    .map(quoteIdentifier)
-    .join(", ");
+  const dirtyTables = dirtyTableNames.length > 0 ? dirtyTableNames : tableNames;
+  const ownedSequences = await listOwnedSequences();
+  // The first reset of every test file, and every RESETS_PER_TRUNCATE-th one after it, still
+  // truncates: it rewrites each table empty, so the dead rows the cheaper DELETE resets leave
+  // behind never accumulate across files and every file starts from fresh relations.
+  const truncate = resetsSinceTruncate % RESETS_PER_TRUNCATE === 0;
 
   // Take the same all-table locks TRUNCATE needs, but NOWAIT. Otherwise a test reset can
   // hold locks on early tables while waiting for a reader of a later table, as that reader
@@ -196,15 +233,63 @@ export async function resetTestDatabase(options?: {
           }
           throw error;
         }
-        // `audit_log`'s own append-only triggers correctly refuse an ordinary TRUNCATE.
-        // Disable user-defined triggers only for this transaction; TRUNCATE CASCADE remains
-        // driven by FK metadata.
+        // DELETE leaves dead rows; autovacuum/autoanalyze workers would then take
+        // SHARE UPDATE EXCLUSIVE locks between tests and make the NOWAIT lock above fail, and
+        // would reuse freed space so unordered reads stop following insertion order. This is a
+        // disposable test database (asserted above), so switch them off once per table; the
+        // periodic TRUNCATE below is what reclaims the space.
+        if (autovacuumTableNames.length > 0) {
+          await tx.execute(
+            sql.raw(
+              autovacuumTableNames
+                .map(
+                  (table) =>
+                    `ALTER TABLE ${quoteIdentifier(table)} SET (autovacuum_enabled = false, toast.autovacuum_enabled = false)`,
+                )
+                .join("; "),
+            ),
+          );
+        }
+        if (truncate) {
+          // `audit_log`'s own append-only triggers correctly refuse an ordinary TRUNCATE.
+          // Disable user-defined triggers only for this transaction; TRUNCATE CASCADE remains
+          // driven by FK metadata.
+          await tx.execute(
+            sql.raw(
+              `TRUNCATE TABLE ${dirtyTables.map(quoteIdentifier).join(", ")} RESTART IDENTITY CASCADE`,
+            ),
+          );
+          return;
+        }
+        // Otherwise empty every table that holds rows, then restart owned sequences: the same
+        // end state as `TRUNCATE ... RESTART IDENTITY CASCADE`. TRUNCATE CASCADE rewrites
+        // almost every table (nearly all of them reference user/workspace), ~300 ms per reset
+        // once the schema passed 170 tables; DELETE touches only tables that hold rows. A table
+        // with rows always has a non-empty relation, so it is always in the dirty list.
+        // `session_replication_role = replica` (above) disables user-defined triggers
+        // (including `audit_log`'s append-only guard) and the internal FK triggers for this
+        // transaction only, so no ordering between referencing tables is needed.
         await tx.execute(
           sql.raw(
-            `TRUNCATE TABLE ${formattedDirtyTableNames} RESTART IDENTITY CASCADE`,
+            dirtyTables
+              .map((table) => `DELETE FROM ${quoteIdentifier(table)}`)
+              .join("; "),
           ),
         );
+        if (ownedSequences.length > 0) {
+          await tx.execute(
+            sql.raw(
+              ownedSequences
+                .map(
+                  (sequence) =>
+                    `ALTER SEQUENCE ${quoteIdentifier(sequence)} RESTART`,
+                )
+                .join("; "),
+            ),
+          );
+        }
       });
+      resetsSinceTruncate = truncate ? 1 : resetsSinceTruncate + 1;
       break;
     } catch (error) {
       if (!(error instanceof ResetLockUnavailableError)) throw error;

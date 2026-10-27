@@ -11,6 +11,19 @@ const AGE_THRESHOLD_MS: Record<IntakeAgeFilter, number> = {
   "30d": 30 * DAY,
 };
 
+/**
+ * Now on the server's clock: the server instant a response carried, advanced by the time the
+ * browser has spent since it arrived. Falls back to the browser clock without a server instant.
+ */
+export function serverClockNow(
+  serverNow: number | null | undefined,
+  receivedAt: number,
+  browserNow: number = Date.now(),
+) {
+  if (serverNow === null || serverNow === undefined) return browserNow;
+  return serverNow + Math.max(0, browserNow - receivedAt);
+}
+
 /** `IQ-5`: a submission's age in its shortest unit; the screen translates the unit suffix. */
 export function submissionAge(
   createdAt: string | number | Date,

@@ -118,6 +118,13 @@ function loadLocaleResources(
 const allNamespaces = new Map<AppLocale, Promise<void>>();
 
 /**
+ * Runtime-scoped instances (terminology clones) created in group mode. They are seeded with the
+ * first-paint namespaces only, and components under them read `t("ns:key")` through their own
+ * store, so every namespace the base instance loads must reach them too.
+ */
+const scopedGroupInstances = new Map<AppLocale, Set<I18nInstance>>();
+
+/**
  * Loads every namespace of a locale in group mode: the deferred group, one retry, then the full
  * catalog from its own chunk. Rejects only if all three fail; a screen must never render raw
  * keys because a fetch failed.
@@ -138,6 +145,11 @@ function ensureAllNamespaces(locale: AppLocale): Promise<void> {
       }
     }
     await i18n.loadNamespaces(namespaces);
+    await Promise.all(
+      [...(scopedGroupInstances.get(locale) ?? [])].map((scoped) =>
+        scoped.loadNamespaces(namespaces),
+      ),
+    );
   })();
   allNamespaces.set(locale, pending);
   pending.catch(() => allNamespaces.delete(locale));
@@ -218,6 +230,21 @@ export async function createScopedI18n(
         skipOnVariables: true,
       },
     });
+
+  if (useNamespaceGroups && !initialNamespacesOverride) {
+    const instances = scopedGroupInstances.get(locale) ?? new Set();
+    instances.add(scopedI18n);
+    scopedGroupInstances.set(locale, instances);
+    // Created after the deferred group was requested: catch up before first use, so a screen
+    // reached through `whenAllNamespacesLoaded` never renders raw keys from this clone.
+    const loadingAll = allNamespaces.get(locale);
+    if (loadingAll) {
+      await loadingAll.catch(() => undefined);
+      await scopedI18n.loadNamespaces(
+        Object.keys(i18n.getDataByLanguage(locale) ?? {}),
+      );
+    }
+  }
 
   return scopedI18n;
 }

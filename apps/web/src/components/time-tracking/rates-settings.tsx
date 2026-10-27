@@ -28,9 +28,13 @@ import {
   TimeTrackingDisabledError,
 } from "@/fetchers/time-tracking";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
-import { useHourlyRates } from "@/hooks/queries/time-tracking/use-time-tracking";
+import {
+  useHourlyRates,
+  useTimeEntries,
+} from "@/hooks/queries/time-tracking/use-time-tracking";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { formatMinor, parseMinor } from "@/lib/money-minor";
+import { isoDay, useServerToday } from "@/lib/server-clock";
 import { toast } from "@/lib/toast";
 import { CostTypesSection } from "./cost-types-settings";
 import { DateField } from "./date-field";
@@ -58,7 +62,13 @@ export function RatesSettings() {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("");
   const [effectiveFrom, setEffectiveFrom] = useState("");
-  const [today] = useState(() => new Date().toISOString().slice(0, 10));
+  // The default start day is the server's, never the browser clock's: the workspace's date
+  // from the timesheet's `needsReview` probe, or the server clock while that is unavailable.
+  const serverToday = isoDay(useServerToday());
+  const today =
+    useTimeEntries(
+      workspace?.id ? { workspaceId: workspace.id, needsReview: true } : null,
+    ).data?.today ?? serverToday;
   const lastCurrency = rates.data?.data[0]?.currency ?? "";
   const code = (currency || lastCurrency).toUpperCase();
   const minor = /^[A-Z]{3}$/u.test(code) ? parseMinor(amount, code) : null;
@@ -90,7 +100,11 @@ export function RatesSettings() {
   const people = rates.data?.people ?? [];
   const chosenPerson = people.find((person) => person.personId === personId);
   const loading = workspaceLoading || rates.isLoading;
-  const canSubmit = Boolean(personId) && minor !== null && !add.isPending;
+  const canSubmit =
+    Boolean(personId) &&
+    minor !== null &&
+    Boolean(effectiveFrom || today) &&
+    !add.isPending;
   return (
     <>
       <PageTitle title={t("timeTracking:rates.title")} />

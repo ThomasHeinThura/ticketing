@@ -82,6 +82,20 @@ describe("i18n group mode on the work list", () => {
     expect(i18n.hasLoadedNamespace("settings")).toBe(true);
   });
 
+  it("whenAllNamespacesLoaded also loads every namespace into scoped terminology instances", async () => {
+    const { createScopedI18n, whenAllNamespacesLoaded } =
+      await importInGroupMode();
+    const before = await createScopedI18n("en-US");
+    expect(before.hasLoadedNamespace("settings")).toBe(false);
+    await whenAllNamespacesLoaded();
+    expect(before.hasLoadedNamespace("settings")).toBe(true);
+    expect(before.t("settings:workspaceGeneral.title")).not.toBe(
+      "settings:workspaceGeneral.title",
+    );
+    const after = await createScopedI18n("en-US");
+    expect(after.hasLoadedNamespace("settings")).toBe(true);
+  });
+
   it("retries once, then falls back to the full catalog, never leaving keys unresolved", async () => {
     const { i18n, whenAllNamespacesLoaded } = await importInGroupMode();
     rest.fail = 1;

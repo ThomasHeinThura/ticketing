@@ -47,7 +47,7 @@ function WebhookCard({ webhook }: { webhook: Webhook }) {
           </Badge>
         </CardTitle>
         <CardDescription className="break-all">{webhook.url}</CardDescription>
-        <CardAction className="shrink-0 text-right">
+        <CardAction className="shrink-0 flex-col items-end gap-1 text-right">
           <div className="text-sm font-medium tabular-nums">
             {t("list.eventCount", { total: webhook.events.length })}
           </div>

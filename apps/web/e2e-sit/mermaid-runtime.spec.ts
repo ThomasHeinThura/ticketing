@@ -528,6 +528,66 @@ test("persisted Mermaid diagrams remain strict and inert in task and comment sur
         summary.captures.push(filename);
       }
     }
+    // GHSA-238p-pmpm-9mq7: KaTeX must not inherit `trust` from a polluted
+    // Object.prototype. Render the persisted `\href{javascript:…}` math through
+    // the shipped Mermaid bundle in a page whose prototype is polluted before
+    // any application code runs, and require that no javascript: link survives.
+    const pollutedPage = await context.newPage();
+    try {
+      await pollutedPage.addInitScript(() => {
+        Object.defineProperty(Object.prototype, "trust", {
+          value: true,
+          configurable: true,
+          writable: true,
+        });
+      });
+      await pollutedPage.goto(
+        `${origin}/agent/work-items/${encodeURIComponent(fixtureKey)}`,
+      );
+      const pollutedDescription = pollutedPage.getByRole("region", {
+        name: "Description",
+        exact: true,
+      });
+      await expect(pollutedDescription).toBeVisible();
+      await expect
+        .poll(() =>
+          pollutedDescription
+            .locator(".taskdesk-mermaid-preview[data-state='done']")
+            .count(),
+        )
+        .toBeGreaterThanOrEqual(2);
+      const polluted = await pollutedPage.evaluate(() => {
+        const previews = [
+          ...document.querySelectorAll<HTMLElement>(
+            ".taskdesk-mermaid-preview",
+          ),
+        ];
+        const all = previews.flatMap((entry) => [
+          ...entry.querySelectorAll("*"),
+        ]);
+        return {
+          prototypePolluted:
+            (Object.prototype as { trust?: unknown }).trust === true,
+          unsafeDiagramRendered: previews.some((entry) =>
+            entry.textContent?.includes("safe node"),
+          ),
+          javascriptHrefs: all.filter((element) =>
+            /^\s*javascript:/iu.test(
+              element.getAttribute("href") ??
+                element.getAttribute("xlink:href") ??
+                "",
+            ),
+          ).length,
+        };
+      });
+      expect(polluted.prototypePolluted).toBe(true);
+      expect(polluted.unsafeDiagramRendered).toBe(true);
+      expect(polluted.javascriptHrefs).toBe(0);
+      summary.unsafePayload.javascriptHrefCount += polluted.javascriptHrefs;
+    } finally {
+      await pollutedPage.close();
+    }
+
     expect(summary.ordinaryDiagramRendered).toBe(true);
     expect(summary.commentData.normalDiagramDone).toBe(true);
     expect(summary.hostileRenderOutcome).not.toBe("pending_or_missing");

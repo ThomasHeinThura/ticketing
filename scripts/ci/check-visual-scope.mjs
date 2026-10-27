@@ -232,12 +232,17 @@ if (
 
 function canonicalInventoryRoute(route) {
   const canonical = route.split("?")[0];
-  return canonical
-    .replace("/projects/{key}", "/projects/$projectKey")
-    .replaceAll("{key}", "$key")
-    .replaceAll("{id}", "$id")
-    .replaceAll("{ref}", "$ref")
-    .replaceAll("{typeKey}", "$typeKey");
+  return (
+    canonical
+      .replace("/projects/{key}", "/projects/$projectKey")
+      .replaceAll("{key}", "$key")
+      .replaceAll("{id}", "$id")
+      .replaceAll("{ref}", "$ref")
+      .replaceAll("{typeKey}", "$typeKey")
+      // Any other named placeholder is the generated route's own parameter name
+      // (`{cycleId}` -> `$cycleId`), matching check:inventory's route identity.
+      .replace(/\{([A-Za-z][A-Za-z0-9_]*)\}/gu, "$$$1")
+  );
 }
 
 function isNamedProperty(node, name) {

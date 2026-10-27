@@ -119,15 +119,23 @@ test("parent property attaches, survives reload and detaches through versioned c
   await expect(
     page.getByRole("button", { name: "Parent", exact: true }),
   ).toContainText("WLP-2");
+  // The new parent is the ancestor row of the hierarchy's tree mode.
+  const hierarchy = page.getByTestId("work-item-hierarchy");
+  await hierarchy
+    .getByRole("button", { name: "Hierarchy", exact: true })
+    .click();
   await expect(
-    page
-      .getByTestId("work-item-hierarchy")
-      .getByRole("link", { name: "WLP-2 · Seeded work item 2", exact: true }),
+    hierarchy.getByRole("link", {
+      name: "WLP-2 · Seeded work item 2",
+      exact: true,
+    }),
   ).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole("button", { name: "Parent", exact: true }),
   ).toContainText("WLP-2");
+  // Approvals is a collapsed, URL-addressed disclosure in the properties panel.
+  await page.getByRole("button", { name: "Approvals", exact: true }).click();
   await expect(page.getByText("No approvals on this work item")).toBeVisible();
   await page.screenshot({
     path: info.outputPath("kaneo-parent-property.png"),

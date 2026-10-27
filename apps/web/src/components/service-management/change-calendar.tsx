@@ -54,6 +54,7 @@ import {
   formatCalendarMonth,
 } from "@/lib/project-calendar-state";
 import { type ChangeCalendarSearch, routes } from "@/lib/routes";
+import { useServerToday } from "@/lib/server-clock";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import { FreezeDialog } from "./freeze-dialog";
 import {
@@ -120,9 +121,11 @@ function CalendarTab({
   const { t } = useTranslation("serviceManagement");
   const navigate = useNavigate();
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
+  // "Today" and the default month follow the server's clock, not the browser's.
+  const today = useServerToday();
   const visibleMonth = useMemo(
-    () => dateFromCalendarMonth(month ?? "", startOfMonth(new Date())),
-    [month],
+    () => dateFromCalendarMonth(month ?? "", startOfMonth(today)),
+    [month, today],
   );
   const weeks = useMemo(
     () => buildMonthWeeks(visibleMonth, weekStartsOn),
@@ -168,6 +171,7 @@ function CalendarTab({
             weeks={weeks}
             tasks={tasks}
             visibleMonth={visibleMonth}
+            today={today}
             label={t("calendar.gridLabel")}
             maxLanes={MAX_LANES}
             onOpenTask={(id) => {

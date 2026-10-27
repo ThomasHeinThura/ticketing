@@ -27,9 +27,10 @@ test("maintained environment contract preserves bootstrap and external-reader bo
       "TASKDESK_PORTAL_URL",
     ],
   );
-  assert.equal(reference.optional.size, 13);
+  assert.equal(reference.optional.size, 14);
   for (const name of [
     "TASKDESK_MIGRATION_DATABASE_URL",
+    "TASKDESK_LOCAL_MAILPIT_CAPTURE",
     "TASKDESK_ROLE",
     "TASKDESK_STORAGE_DRIVER",
     "TASKDESK_STORAGE_FILESYSTEM_ROOT",
@@ -134,7 +135,7 @@ test("reader runs in an isolated checkout without archive and fails if the maint
     path.join(await realpath(scratch), "docs/technical/configuration.md"),
   );
   assert.equal(result.required.length, 5);
-  assert.equal(result.optional.length, 13);
+  assert.equal(result.optional.length, 14);
   await rename(
     path.join(scratch, "docs/technical/configuration.md"),
     path.join(scratch, "docs/technical/configuration.missing"),

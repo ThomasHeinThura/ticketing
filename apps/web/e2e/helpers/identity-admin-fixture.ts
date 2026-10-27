@@ -308,6 +308,8 @@ export async function installIdentityAdminFixture(
         required: false,
         bootstrapRequired: false,
         policyMode: "optional",
+        // Matches GET /api/me/security/factors for an enrolled authenticator.
+        availableMethods: ["totp", "backup_code"],
       });
     if (path === "/api/me/csrf-token")
       return json({

@@ -1679,27 +1679,36 @@ describe("God Mode Users API", () => {
         { action: "auth.step_up_issued" },
       ]),
     );
-    expect(
-      await db
-        .select({
-          kind: schema.outboxTable.kind,
-          workspaceId: schema.outboxTable.workspaceId,
-        })
-        .from(schema.outboxTable)
-        .where(
-          inArray(schema.outboxTable.kind, [
-            "pending_action.requested",
-            "pending_action.decided",
-            "pending_action.executed",
-            "identity.deprovisioned",
-          ]),
-        ),
-    ).toEqual([
-      { kind: "pending_action.requested", workspaceId: null },
-      { kind: "pending_action.decided", workspaceId: null },
-      { kind: "pending_action.executed", workspaceId: null },
-      { kind: "identity.deprovisioned", workspaceId: null },
-    ]);
+    // The request is its own transaction, so it is the earliest row; the decision, execution
+    // and deprovisioning share one transaction (one `created_at`), so their relative row order
+    // is not defined and only the set is asserted.
+    const deactivationEvents = await db
+      .select({
+        kind: schema.outboxTable.kind,
+        workspaceId: schema.outboxTable.workspaceId,
+      })
+      .from(schema.outboxTable)
+      .where(
+        inArray(schema.outboxTable.kind, [
+          "pending_action.requested",
+          "pending_action.decided",
+          "pending_action.executed",
+          "identity.deprovisioned",
+        ]),
+      )
+      .orderBy(schema.outboxTable.createdAt);
+    expect(deactivationEvents).toHaveLength(4);
+    expect(deactivationEvents[0]).toEqual({
+      kind: "pending_action.requested",
+      workspaceId: null,
+    });
+    expect(deactivationEvents.slice(1)).toEqual(
+      expect.arrayContaining([
+        { kind: "pending_action.decided", workspaceId: null },
+        { kind: "pending_action.executed", workspaceId: null },
+        { kind: "identity.deprovisioned", workspaceId: null },
+      ]),
+    );
     const [deprovisionedEvent] = await db
       .select({ payload: schema.outboxTable.payload })
       .from(schema.outboxTable)

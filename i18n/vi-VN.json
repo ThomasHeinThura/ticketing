@@ -4198,7 +4198,6 @@
 		},
 		"dynamic": {
 			"deactivatePerson": "Vô hiệu hóa người dùng{{email}}",
-			"genericAction": "{{action}} cho {{targetType}}",
 			"deactivationApproved": "Đã hoàn tất vô hiệu hóa được phê duyệt. Phiên hoạt động của người dùng đã bị thu hồi.",
 			"cancelled": "Đã hủy tác vụ đang chờ.",
 			"cancelFailed": "Không thể hủy tác vụ này. Tải lại để xem trạng thái hiện tại.",
@@ -4289,7 +4288,8 @@
 				"time_entry": "Delete time entry",
 				"webhook": "Delete webhook",
 				"organisation": "Delete organisation",
-				"identity_connection": "Delete identity connection"
+				"identity_connection": "Delete identity connection",
+				"request_type": "Delete {{term_request_one}} type"
 			},
 			"confirmName": "Type the exact name to confirm",
 			"hidden": "This request is no longer available for confirmation.",
@@ -4359,6 +4359,12 @@
 			"source": "Source: {{plugin}}, mapping version {{version}}.",
 			"unavailable": "Import run summary unavailable",
 			"writes_other": "{{count}} records will be created or updated."
+		},
+		"targets": {
+			"approval_decision": "Record approval decision",
+			"import_chunk": "Import MCP data",
+			"saved_view": "Delete saved view",
+			"service_calendar": "Delete service calendar"
 		}
 	},
 	"intake": {

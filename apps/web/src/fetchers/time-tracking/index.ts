@@ -2,6 +2,7 @@ import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 import { HttpError, readErrorDetail } from "@/lib/http-error";
+import { recordServerDate } from "@/lib/server-clock";
 
 /** Time and cost: entries, timer, activities, rates, roll-ups and budgets (`TC-1`..`TC-19`). */
 
@@ -195,6 +196,7 @@ async function request<T>(
       : {}),
     ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
   });
+  recordServerDate(response);
   if (!response.ok) await failure(response, fallback);
   return (await response.json()) as T;
 }

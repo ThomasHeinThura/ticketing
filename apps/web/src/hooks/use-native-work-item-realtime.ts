@@ -19,6 +19,10 @@ export type WorkItemRealtimeStatus =
   | "unavailable"
   | "idle";
 
+/** The server's close for a person's connection limit (native-work-item-realtime.ts). */
+const CONNECTION_LIMIT_CLOSE_CODE = 1008;
+const CONNECTION_LIMIT_CLOSE_REASON = "connection limit";
+
 function realtimeUrl() {
   return toWebSocketBase(getApiUrl("ws"));
 }
@@ -219,13 +223,21 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         hasOutage = true;
         setStatus("unavailable");
       };
-      nextSocket.onclose = () => {
+      nextSocket.onclose = (event) => {
         if (socketRef.current !== nextSocket) return;
         stopPing();
         socketRef.current = null;
         if (isDisposed) return;
         hasOutage = true;
         setStatus("unavailable");
+        // The per-person connection limit is terminal for this tab, as for the legacy project
+        // socket (#751): the server accepts each upgrade and closes it again, so reconnecting
+        // would only repeat that while the other tabs stay open. The page keeps polling.
+        if (
+          event?.code === CONNECTION_LIMIT_CLOSE_CODE &&
+          event?.reason === CONNECTION_LIMIT_CLOSE_REASON
+        )
+          return;
         const ceiling = Math.min(30_000, 1_000 * 2 ** retriesRef.current);
         retriesRef.current += 1;
         const delay = Math.floor(ceiling * (0.5 + Math.random() * 0.5));

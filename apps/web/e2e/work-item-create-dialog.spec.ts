@@ -24,6 +24,9 @@ const PROJECT_A = {
   columns: [],
 };
 
+/** The row assertions read the table layout; `layout=list` is Kaneo's grouped list. */
+const WORK_TABLE_PATH = "/agent/projects/WLP/work?layout=table";
+
 const PROJECT_B = {
   ...PROJECT_A,
   id: "project-g11-b",
@@ -36,7 +39,7 @@ test("work-list create dialog shell opens, closes, and reopens independently of 
 }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await installPerformanceApiFixture(page);
-  await page.goto(WORK_LIST_PATH);
+  await page.goto(WORK_TABLE_PATH);
 
   const trigger = page.getByTestId("create-work-item-trigger");
   const dialog = page.getByRole("dialog");
@@ -50,7 +53,10 @@ test("work-list create dialog shell opens, closes, and reopens independently of 
 
   await trigger.click();
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("heading", { name: /create/i })).toBeVisible();
+  // Kaneo's create dialog is titled by its "WLP › New Work item" breadcrumb.
+  await expect(dialog.locator('[data-slot="dialog-title"]')).toContainText(
+    /WLP\s*New Work item/u,
+  );
   await expect(dialog.locator('[data-slot="dialog-title"]')).toHaveCount(1);
   await expect(dialog.locator('[data-slot="dialog-description"]')).toHaveCount(
     1,
@@ -108,7 +114,7 @@ test("create dialog shell opens while the list and form load independently", asy
   );
 
   try {
-    await page.goto(WORK_LIST_PATH);
+    await page.goto(WORK_TABLE_PATH);
     const trigger = page.getByTestId("create-work-item-trigger");
     await expect(trigger).toBeVisible();
     await expect(
@@ -117,9 +123,9 @@ test("create dialog shell opens while the list and form load independently", asy
     await trigger.click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    await expect(
-      dialog.getByRole("heading", { name: /create/i }),
-    ).toBeVisible();
+    await expect(dialog.locator('[data-slot="dialog-title"]')).toContainText(
+      /WLP\s*New Work item/u,
+    );
     await formRequest;
     await expect(
       dialog.getByTestId("create-work-item-dialog-loading"),

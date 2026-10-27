@@ -21,6 +21,9 @@ import {
   resolveJobCalibration,
 } from "../../../scripts/ci/lib/performance-calibration.mjs";
 import {
+  BOARD_ITEM_COUNT,
+  BOARD_PROJECT_KEY,
+  boardItemId,
   type G11Window,
   type G13Transition,
   installPerformanceApiFixture,
@@ -165,11 +168,7 @@ async function withPerformancePage(
   browser: Browser,
   throttled: boolean,
   sample: (page: Page, resetFixture: () => void) => Promise<number>,
-  fixtureOptions?: {
-    authenticated?: boolean;
-    dataDelayMs?: number;
-    g13Windows?: boolean;
-  },
+  fixtureOptions?: Parameters<typeof installPerformanceApiFixture>[1],
 ) {
   const context = await browser.newContext({
     baseURL: PERFORMANCE_BASE_URL,
@@ -268,11 +267,34 @@ async function waitForTwoFrames(page: Page) {
   );
 }
 
+/**
+ * The route's default layout is Kaneo's grouped list. While the project states load it first
+ * renders the full work-item table, then the grouped list (all 500 rows as the Suspense
+ * fallback), then the grouped list's virtual window. "Open" means that settled grouped list:
+ * no interim table, the Backlog group counting all 500 items, the virtual rows mounted and
+ * their inline controls in place.
+ */
 async function openWorkList(page: Page) {
   await page.goto(WORK_LIST_PATH);
-  const rows = page.locator("[data-testid=work-item-list-populated] tbody tr");
+  const list = page.locator("div[data-testid=work-item-list-populated]");
+  const rows = list.locator("[data-virtual-item-id] [data-task-id]");
   try {
-    await expect(rows).toHaveCount(500, { timeout: 30_000 });
+    await expect(list).toBeVisible({ timeout: 30_000 });
+    await expect(
+      page.locator("table[data-testid=work-item-list-populated]"),
+    ).toHaveCount(0, { timeout: 30_000 });
+    await expect(
+      list.getByRole("button", { name: "Backlog 500", exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(rows.first()).toBeVisible({ timeout: 30_000 });
+    // The rows' inline property controls replace their static fallback last; until then a
+    // click can land on a row that is being swapped out.
+    await expect(
+      list
+        .locator("[data-virtual-item-id]")
+        .first()
+        .getByTestId("work-item-inline-assignee"),
+    ).toBeVisible({ timeout: 30_000 });
   } catch (error) {
     const [rowCount, tableCount, testIdCount, bodyText] = await Promise.all([
       rows.count(),
@@ -281,7 +303,7 @@ async function openWorkList(page: Page) {
       page.locator("body").innerText(),
     ]);
     console.error(
-      "G11 list fixture did not render 500 rows:",
+      "G11 list fixture did not settle on the 500-item grouped list:",
       JSON.stringify({
         url: page.url(),
         rowCount,
@@ -292,6 +314,13 @@ async function openWorkList(page: Page) {
     );
     throw error;
   }
+}
+
+/** A grouped-list row's work-item link (its name is "<key> <title>", not the bare key). */
+function workItemLink(page: Page, key: string) {
+  return page
+    .locator("div[data-testid=work-item-list-populated]")
+    .locator(`a[href="/agent/work-items/${key}"]`);
 }
 
 async function collectNavigationMetric(
@@ -377,8 +406,12 @@ async function collectCreateInteraction(page: Page, resetFixture: () => void) {
   await page.getByTestId("create-work-item-trigger").click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await captureScreen(page, "create-dialog");
-  await page.getByRole("combobox", { name: "Type" }).click();
-  await page.getByRole("option", { name: "Task" }).click();
+  // The type is a Kaneo picker popover, not a select.
+  await page.getByRole("dialog").getByRole("button", { name: "Type" }).click();
+  await page
+    .locator('[data-slot="popover-popup"]')
+    .getByRole("button", { name: "Task", exact: true })
+    .click();
   await page
     .getByLabel("Title", { exact: true })
     .fill("G11 interaction sample");
@@ -395,8 +428,11 @@ async function collectCreateInteraction(page: Page, resetFixture: () => void) {
   );
   if (clickToPaint <= 0)
     throw new Error("The create submit click emitted no pending-state paint.");
+  // The grouped list windows its rows; the created item is counted in its state group.
   await expect(
-    page.getByRole("link", { name: "G11 interaction sample" }),
+    page
+      .locator("div[data-testid=work-item-list-populated]")
+      .getByRole("button", { name: "Backlog 501", exact: true }),
   ).toBeVisible({ timeout: 15_000 });
   return clickToPaint;
 }
@@ -536,22 +572,29 @@ async function collectCommandPaletteInteraction(
   return clickToPaint;
 }
 
-async function openLegacyTaskDetails(page: Page) {
-  await page.goto(
-    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/task/legacy-task-1`,
+/**
+ * The legacy task page is gone: `/dashboard/.../task/{id}` now redirects to the canonical
+ * work-item detail. The state, assignment and comment interactions are measured there, on the
+ * same seeded item, with the same click-to-paint boundaries.
+ */
+async function openWorkItemDetails(page: Page) {
+  await page.goto(`/agent/work-items/${WORK_ITEM_KEY}`);
+  await expect(page.getByTestId("work-item-detail")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId("work-item-state-control")).toHaveText(
+    "Backlog",
+    { timeout: 30_000 },
   );
-  await expect(
-    page.getByRole("button", { name: "Backlog", exact: true }),
-  ).toBeVisible({ timeout: 30_000 });
 }
 
 async function collectTaskStateChange(page: Page) {
-  await openLegacyTaskDetails(page);
-  await captureScreen(page, "legacy-task-state");
-  await page.getByRole("button", { name: "Backlog", exact: true }).click();
+  await openWorkItemDetails(page);
+  await captureScreen(page, "work-item-state");
+  await page.getByTestId("work-item-state-control").click();
   await page
+    .locator('[data-slot="popover-popup"]')
     .getByRole("button", { name: /^In progress/ })
-    .last()
     .click();
   await page.waitForFunction(
     () => (window as G11Window).__g11Metrics.statePaint > 0,
@@ -561,24 +604,21 @@ async function collectTaskStateChange(page: Page) {
   const elapsed = await page.evaluate(
     () => (window as G11Window).__g11Metrics.statePaint,
   );
-  await expect(
-    page.locator('[data-slot="popover-trigger"]:visible').filter({
-      hasText: "In progress",
-    }),
-  ).toBeVisible();
+  await expect(page.getByTestId("work-item-state-control")).toHaveText(
+    "In progress",
+  );
   return elapsed;
 }
 
 async function collectTaskAssignment(page: Page) {
-  await openLegacyTaskDetails(page);
-  await captureScreen(page, "legacy-task-assignment");
+  await openWorkItemDetails(page);
+  await captureScreen(page, "work-item-assignment");
+  const assignee = page.getByTestId("work-item-assignee-control");
+  await expect(assignee).toHaveText(/Unassigned/);
+  await assignee.click();
   await page
-    .getByRole("button", { name: /Unassigned/ })
-    .last()
-    .click();
-  await page
+    .locator('[data-slot="popover-popup"]')
     .getByRole("button", { name: /G11 Agent/ })
-    .last()
     .click();
   await page.waitForFunction(
     () => (window as G11Window).__g11Metrics.assignmentPaint > 0,
@@ -588,22 +628,21 @@ async function collectTaskAssignment(page: Page) {
   const elapsed = await page.evaluate(
     () => (window as G11Window).__g11Metrics.assignmentPaint,
   );
-  await expect(
-    page.locator('[data-slot="popover-trigger"]:visible').filter({
-      hasText: "G11 Agent",
-    }),
-  ).toBeVisible();
+  await expect(assignee).toHaveText(/G11 Agent/);
   return elapsed;
 }
 
 async function collectTaskComment(page: Page) {
-  await openLegacyTaskDetails(page);
-  await captureScreen(page, "legacy-task-comment");
-  const editor = page
+  await openWorkItemDetails(page);
+  await captureScreen(page, "work-item-comment");
+  const composer = page.getByTestId("work-item-comment-composer");
+  const editor = composer
     .locator(".taskdesk-comment-editor-content [contenteditable=true]")
     .first();
   await editor.fill("G11 comment fixture");
-  const submit = page.getByTestId("comment-submit");
+  // The composer's send control is the one button in it that carries `aria-busy`.
+  const submit = composer.locator("button[aria-busy]");
+  await expect(submit).toHaveCount(1);
   await submit.click();
   await expect(submit).toHaveAttribute("aria-busy", "true");
   await page.waitForFunction(
@@ -614,15 +653,19 @@ async function collectTaskComment(page: Page) {
   const elapsed = await page.evaluate(
     () => (window as G11Window).__g11Metrics.commentPaint,
   );
-  await expect(page.getByText("G11 comment fixture")).toBeVisible({
-    timeout: 15_000,
-  });
+  // Sent: the composer clears and the comment is in the item's activity.
+  await expect(editor).toHaveText("", { timeout: 15_000 });
+  await expect(
+    page
+      .getByTestId("work-item-detail")
+      .getByText("G11 comment fixture", { exact: true }),
+  ).toBeVisible({ timeout: 15_000 });
   return elapsed;
 }
 
 async function collectRouteTransition(page: Page) {
   await openWorkList(page);
-  await page.getByRole("link", { name: WORK_ITEM_KEY, exact: true }).click();
+  await workItemLink(page, WORK_ITEM_KEY).click();
   await expect(
     page.locator(
       '[data-testid="work-item-detail-loading"], [data-testid="work-item-detail"]',
@@ -739,17 +782,39 @@ async function collectListRender(page: Page) {
   );
 }
 
-async function openLegacyBoard(page: Page) {
-  await page.goto(
-    "/dashboard/workspace/" +
-      WORKSPACE_ID +
-      "/project/" +
-      PROJECT_ID +
-      "/board",
+/**
+ * The legacy board is gone: `/dashboard/.../project/{id}/board` now redirects to the canonical
+ * work-item board. Board scenarios run on that board for the fixture's 200-item `BRD` project
+ * (50 cards in each of four states, the legacy board's shape).
+ */
+const BOARD_PATH = `/agent/projects/${BOARD_PROJECT_KEY}/work?layout=board`;
+const BOARD_CARD_SELECTOR =
+  '[data-testid="work-item-board-card"] [data-task-id]';
+const BOARD_FIXTURE = { boardProject: true, workflowCapabilities: true };
+
+function boardCard(page: Page, number: number) {
+  return page.locator(
+    `[data-testid="work-item-board-card"] [data-task-id="${boardItemId(number)}"]`,
+  );
+}
+
+function boardColumnOf(page: Page, number: number) {
+  return page
+    .locator(
+      `[data-testid="work-item-board-column"]:has([data-task-id="${boardItemId(number)}"])`,
+    )
+    .getAttribute("data-state-id");
+}
+
+async function openCanonicalBoard(page: Page) {
+  await page.goto(BOARD_PATH);
+  await expect(page.locator(BOARD_CARD_SELECTOR)).toHaveCount(
+    BOARD_ITEM_COUNT,
+    { timeout: 30_000 },
   );
   await expect(
-    page.getByText("Seeded legacy task 200", { exact: true }),
-  ).toHaveCount(1, { timeout: 30_000 });
+    page.getByText(`Seeded board item ${BOARD_ITEM_COUNT}`, { exact: true }),
+  ).toHaveCount(1);
 }
 
 async function collectBoardRender(page: Page) {
@@ -757,19 +822,16 @@ async function collectBoardRender(page: Page) {
     kind: "board",
     expectedCount: 200,
     metric: "boardPaint",
+    canonical: {
+      selector: BOARD_CARD_SELECTOR,
+      expectedIds: Array.from({ length: BOARD_ITEM_COUNT }, (_, index) =>
+        boardItemId(index + 1),
+      ),
+    },
   });
-  await page.goto(
-    "/dashboard/workspace/" +
-      WORKSPACE_ID +
-      "/project/" +
-      PROJECT_ID +
-      "/board",
-  );
-  await expect(
-    page.getByText("Seeded legacy task 200", { exact: true }),
-  ).toHaveCount(1, { timeout: 30_000 });
-  await expect(page.locator('[data-task-id^="legacy-task-"]')).toHaveCount(
-    200,
+  await page.goto(BOARD_PATH);
+  await expect(page.locator(BOARD_CARD_SELECTOR)).toHaveCount(
+    BOARD_ITEM_COUNT,
     { timeout: 30_000 },
   );
   await page.waitForFunction(
@@ -786,60 +848,50 @@ async function collectBoardRender(page: Page) {
 }
 
 async function collectBoardDragFrameP95(page: Page) {
-  await openLegacyBoard(page);
+  await openCanonicalBoard(page);
   await page.waitForTimeout(400);
 
-  let versionedWriteRequests = 0;
+  // A canonical cross-column drop is a transition (plus a rank next to the drop target when
+  // the board is in manual order; rank is exempt from If-Match). Writes are CSRF-protected.
+  const movePath = /^\/api\/work-items\/BRD-1\/(transition|rank)$/;
   let csrfIssuerRequests = 0;
   let csrfIssuerResponses = 0;
-  const versionedWriteResults: Array<{
-    taskId: string;
-    ifMatch: string | undefined;
+  const writeRequests: string[] = [];
+  const writeResults: Array<{
+    write: string;
     csrfHeaderPresent: boolean;
     status: number;
   }> = [];
   page.on("request", (request) => {
-    if (
-      request.method() === "GET" &&
-      new URL(request.url()).pathname === "/api/me/csrf-token"
-    ) {
+    const path = new URL(request.url()).pathname;
+    if (request.method() === "GET" && path === "/api/me/csrf-token")
       csrfIssuerRequests += 1;
-    }
-    if (
-      request.method() === "PUT" &&
-      new URL(request.url()).pathname.match(/^\/api\/v2\/task\/[^/]+$/)
-    ) {
-      versionedWriteRequests += 1;
-    }
+    const write = movePath.exec(path)?.[1];
+    if (request.method() === "POST" && write) writeRequests.push(write);
   });
   page.on("response", (response) => {
     const request = response.request();
+    const path = new URL(response.url()).pathname;
     if (
       request.method() === "GET" &&
-      new URL(response.url()).pathname === "/api/me/csrf-token" &&
+      path === "/api/me/csrf-token" &&
       response.status() === 200
-    ) {
+    )
       csrfIssuerResponses += 1;
-    }
-    if (
-      request.method() === "PUT" &&
-      new URL(response.url()).pathname.match(/^\/api\/v2\/task\/[^/]+$/)
-    ) {
-      const path = new URL(response.url()).pathname;
-      versionedWriteResults.push({
-        taskId: decodeURIComponent(path.slice("/api/v2/task/".length)),
-        ifMatch: request.headers()["if-match"],
+    const write = movePath.exec(path)?.[1];
+    if (request.method() === "POST" && write)
+      writeResults.push({
+        write,
         csrfHeaderPresent: Boolean(request.headers()["x-taskdesk-csrf"]),
         status: response.status(),
       });
-    }
   });
 
   const source = await page
-    .getByText("Seeded legacy task 1", { exact: true })
+    .getByText("Seeded board item 1", { exact: true })
     .boundingBox();
   const destination = await page
-    .getByText("Seeded legacy task 51", { exact: true })
+    .getByText("Seeded board item 51", { exact: true })
     .boundingBox();
   if (!source || !destination)
     throw new Error("The seeded board cards have no browser bounding boxes.");
@@ -873,19 +925,11 @@ async function collectBoardDragFrameP95(page: Page) {
     await page.waitForTimeout(16);
   }
   await page.mouse.up();
-  await expect
-    .poll(() => versionedWriteResults.length, { timeout: 30_000 })
-    .toBe(100);
+  await expect.poll(() => writeResults.length, { timeout: 30_000 }).toBe(1);
 
-  const movedCardColumn = await page
-    .locator('[data-task-id="legacy-task-1"]')
-    .locator("xpath=ancestor::*[@data-column-id]")
-    .getAttribute("data-column-id");
-  const destinationCardColumn = await page
-    .locator('[data-task-id="legacy-task-51"]')
-    .locator("xpath=ancestor::*[@data-column-id]")
-    .getAttribute("data-column-id");
-  expect(movedCardColumn).toBe(destinationCardColumn);
+  await expect
+    .poll(() => boardColumnOf(page, 1), { timeout: 15_000 })
+    .toBe(await boardColumnOf(page, 51));
 
   const frameTimes = await page.evaluate(
     () => (window as G11Window).__g11Metrics.dragFrameTimes ?? [],
@@ -898,38 +942,29 @@ async function collectBoardDragFrameP95(page: Page) {
   const ordered = [...frameTimes].sort((left, right) => left - right);
   const frameP95 = ordered[Math.ceil(ordered.length * 0.95) - 1];
 
-  expect(versionedWriteRequests).toBe(100);
+  // The board opens in key order, where manual rank is not offered: the drop is one transition.
+  expect(writeRequests).toEqual(["transition"]);
   expect(csrfIssuerRequests).toBeGreaterThan(0);
   expect(csrfIssuerResponses).toBe(csrfIssuerRequests);
-  expect(versionedWriteResults).toHaveLength(versionedWriteRequests);
-  expect(versionedWriteResults.every(({ status }) => status === 200)).toBe(
+  expect(writeResults.map(({ write }) => write)).toEqual(writeRequests);
+  expect(writeResults.every(({ status }) => status === 200)).toBe(true);
+  expect(writeResults.every(({ csrfHeaderPresent }) => csrfHeaderPresent)).toBe(
     true,
   );
-  expect(
-    versionedWriteResults.every(({ csrfHeaderPresent }) => csrfHeaderPresent),
-  ).toBe(true);
   await page.reload();
-  await expect(
-    page.getByText("Seeded legacy task 1", { exact: true }),
-  ).toHaveCount(1);
-  const persistedTaskColumn = await page
-    .locator('[data-task-id="legacy-task-1"]')
-    .locator("xpath=ancestor::*[@data-column-id]")
-    .getAttribute("data-column-id");
-  expect(persistedTaskColumn).toBe("in-progress");
+  await expect(boardCard(page, 1)).toHaveCount(1, { timeout: 30_000 });
+  const persistedTaskColumn = await boardColumnOf(page, 1);
+  expect(persistedTaskColumn).toBe("state-brd-progress");
   console.info(
-    "G11 board drag persisted versioned-write evidence",
-    JSON.stringify({
-      writes: versionedWriteResults,
-      persistedTaskColumn,
-    }),
+    "G11 board drag persisted canonical-write evidence",
+    JSON.stringify({ writes: writeResults, persistedTaskColumn }),
   );
   return frameP95;
 }
 
 async function verifyBoardCardMenu(page: Page) {
-  await openLegacyBoard(page);
-  const card = page.getByText("Seeded legacy task 1", { exact: true });
+  await openCanonicalBoard(page);
+  const card = page.getByText("Seeded board item 1", { exact: true });
   await card.click({ button: "right" });
   const copyLink = page.getByRole("menuitem", { name: "Copy link" });
   await expect(copyLink).toBeVisible();
@@ -938,7 +973,7 @@ async function verifyBoardCardMenu(page: Page) {
   await expect(copyLink).toHaveCount(0);
 
   const keyboardCard = page.locator(
-    '[data-task-id="legacy-task-1"][role="button"]',
+    `[data-task-id="${boardItemId(1)}"][aria-roledescription="sortable"]`,
   );
   await expect(keyboardCard).toHaveCount(1);
   await keyboardCard.focus();
@@ -954,36 +989,53 @@ async function verifyBoardCardMenu(page: Page) {
   await page.keyboard.press("Escape");
   await expect(copyLink).toHaveCount(0);
 
+  // P0: Delete requests a pending action and opens its approval in place; cancelling the
+  // request leaves the card where it was.
+  const deletionRequests: string[] = [];
+  page.on("request", (request) => {
+    if (
+      request.method() === "DELETE" &&
+      new URL(request.url()).pathname.startsWith("/api/work-items/")
+    )
+      deletionRequests.push(new URL(request.url()).pathname);
+  });
+  const approval = page
+    .getByRole("dialog")
+    .filter({ hasText: `${BOARD_PROJECT_KEY}-1` });
   await card.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Delete..." }).click();
-  const confirmation = page.getByRole("alertdialog");
-  await expect(confirmation).toBeVisible();
+  await page.getByRole("menuitem", { name: /^Delete/ }).click();
+  await expect(approval).toBeVisible();
   await captureScreen(page, "board-delete-confirmation");
-  await confirmation.getByRole("button", { name: "Cancel" }).click();
-  await expect(confirmation).toHaveCount(0);
+  await approval.getByRole("button", { name: "Cancel request" }).click();
+  await expect(approval).toHaveCount(0);
+  await expect(boardCard(page, 1)).toHaveCount(1);
+  expect(deletionRequests).toEqual([`/api/work-items/${BOARD_PROJECT_KEY}-1`]);
 
   await keyboardCard.focus();
   await page.keyboard.press("Shift+F10");
-  const deleteItem = page.getByRole("menuitem", { name: "Delete..." });
+  const deleteItem = page.getByRole("menuitem", { name: /^Delete/ });
   await expect(deleteItem).toBeVisible();
   await deleteItem.focus();
   await page.keyboard.press("Enter");
-  const deleteConfirmation = page.getByRole("alertdialog");
-  await expect(deleteConfirmation).toBeVisible();
+  await expect(approval).toBeVisible();
   await captureScreen(page, "board-delete-keyboard");
-  const deleteButton = deleteConfirmation.getByRole("button", {
-    name: "Delete Task",
-    exact: true,
-  });
-  const deletionRequest = page.waitForRequest(
+  const approvalRequest = page.waitForRequest(
     (request) =>
-      request.method() === "DELETE" &&
-      request.url().endsWith("/api/task/legacy-task-1"),
+      request.method() === "POST" &&
+      /\/api\/me\/pending-actions\/[^/]+\/approve$/.test(request.url()),
   );
-  await deleteButton.click();
-  await deletionRequest;
-  await expect(page.locator('[data-task-id="legacy-task-1"]')).toHaveCount(0);
+  await approval.getByRole("button", { name: "Delete", exact: true }).click();
+  await approvalRequest;
+  expect(deletionRequests).toHaveLength(2);
+  await expect(boardCard(page, 1)).toHaveCount(0, { timeout: 15_000 });
 }
+
+/**
+ * Harness time only (no budget, sample count or retry rule changes): a throttled sample that
+ * opens the settled grouped list takes about 15-20 s on a fast machine, so six samples (one
+ * retry set) no longer fit the former 120 s.
+ */
+const SETTLED_LIST_TEST_TIMEOUT_MS = 360_000;
 
 async function threeSamplesWithOneRetry(metric: BudgetMetric) {
   const { result, values, retried } = await medianOfThreeWithRetry(
@@ -1117,7 +1169,7 @@ test("G11: work-list render, 500 rows", async ({ browser }) => {
 });
 
 test("G11: work-list LCP", async ({ browser }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(SETTLED_LIST_TEST_TIMEOUT_MS);
   await threeSamplesWithCalibratedRetry({
     name: "work-list LCP (ms)",
     budget: 2500,
@@ -1133,7 +1185,7 @@ test("G11: work-list LCP", async ({ browser }) => {
 });
 
 test("G11: work-list CLS", async ({ browser }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(SETTLED_LIST_TEST_TIMEOUT_MS);
   await threeSamplesWithOneRetry({
     name: "work-list CLS",
     budget: 0.1,
@@ -1145,7 +1197,7 @@ test("G11: work-list CLS", async ({ browser }) => {
 });
 
 test("G11: work-list to detail route first paint", async ({ browser }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(SETTLED_LIST_TEST_TIMEOUT_MS);
   await threeSamplesWithCalibratedRetry({
     name: "work-list to work-item route transition (ms)",
     budget: 300,
@@ -1160,7 +1212,7 @@ test("G11: work-list to detail route first paint", async ({ browser }) => {
 test("G13: detail layout shift from skeleton to content", async ({
   browser,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(SETTLED_LIST_TEST_TIMEOUT_MS);
   await threeSamplesWithInclusiveRetry({
     name: "detail skeleton-to-content CLS",
     budget: 0.1,
@@ -1170,9 +1222,7 @@ test("G13: detail layout shift from skeleton to content", async ({
         true,
         async (page) => {
           await openWorkList(page);
-          await page
-            .getByRole("link", { name: WORK_ITEM_KEY, exact: true })
-            .click();
+          await workItemLink(page, WORK_ITEM_KEY).click();
           await expect(page.getByTestId("work-item-detail")).toBeVisible({
             timeout: 15_000,
           });
@@ -1186,7 +1236,7 @@ test("G13: detail layout shift from skeleton to content", async ({
 test("G13: work-list layout shift from skeleton to content", async ({
   browser,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(SETTLED_LIST_TEST_TIMEOUT_MS);
   await threeSamplesWithInclusiveRetry({
     name: "work-list skeleton-to-content CLS",
     budget: 0.1,
@@ -1215,10 +1265,10 @@ test("G13: board layout shift from skeleton to content", async ({
         browser,
         false,
         async (page) => {
-          await openLegacyBoard(page);
+          await openCanonicalBoard(page);
           return collectG13WindowCls(page, "board");
         },
-        { dataDelayMs: 250, g13Windows: true },
+        { ...BOARD_FIXTURE, dataDelayMs: 250, g13Windows: true },
       ),
   });
 });
@@ -1235,7 +1285,17 @@ test("G13: legacy task layout shift from skeleton to content", async ({
         browser,
         true,
         async (page) => {
-          await openLegacyTaskDetails(page);
+          // An old legacy task link: its skeleton, the redirect, then the canonical detail.
+          await page.goto(
+            `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/task/legacy-task-1`,
+          );
+          await expect(page).toHaveURL(
+            new RegExp(`/agent/work-items/${WORK_ITEM_KEY}$`),
+            { timeout: 30_000 },
+          );
+          await expect(page.getByTestId("work-item-detail")).toBeVisible({
+            timeout: 15_000,
+          });
           return collectG13WindowCls(page, "legacy-task");
         },
         { dataDelayMs: 250, g13Windows: true },
@@ -1246,7 +1306,7 @@ test("G13: legacy task layout shift from skeleton to content", async ({
 test("G13: Projects layout shift from skeleton to content", async ({
   browser,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(SETTLED_LIST_TEST_TIMEOUT_MS);
   await threeSamplesWithInclusiveRetry({
     name: "Projects skeleton-to-content CLS",
     budget: 0.1,
@@ -1329,7 +1389,7 @@ test("G13 observer detects a click-initiated skeleton-to-content shift", async (
 });
 
 test("G11: create-work-item click-to-paint", async ({ browser }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(SETTLED_LIST_TEST_TIMEOUT_MS);
   await threeSamplesWithCalibratedRetry({
     name: "create-work-item interaction click-to-paint (ms)",
     budget: 200,
@@ -1357,7 +1417,7 @@ test("G11: sign-in click-to-paint", async ({ browser }) => {
 });
 
 test("G11: command-palette click-to-paint", async ({ browser }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(SETTLED_LIST_TEST_TIMEOUT_MS);
   await threeSamplesWithCalibratedRetry({
     name: "command-palette interaction click-to-paint (ms)",
     budget: 200,
@@ -1372,7 +1432,7 @@ test("G11: command-palette click-to-paint", async ({ browser }) => {
 test("G11: command-palette keyboard navigation click-to-paint", async ({
   browser,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(SETTLED_LIST_TEST_TIMEOUT_MS);
   await threeSamplesWithCalibratedRetry({
     name: "command-palette keyboard navigation click-to-paint (ms)",
     budget: 200,
@@ -1390,8 +1450,11 @@ test("G11: change task state click-to-paint", async ({ browser }) => {
     name: "task-state interaction click-to-paint (ms)",
     budget: 200,
     sample: () =>
-      withPerformancePage(browser, true, (page) =>
-        collectTaskStateChange(page),
+      withPerformancePage(
+        browser,
+        true,
+        (page) => collectTaskStateChange(page),
+        { workflowCapabilities: true },
       ),
     calibration: { metric: "taskState" },
   });
@@ -1424,7 +1487,12 @@ test("G11: board render, 200 tasks", async ({ browser }) => {
     name: "board render, 200 tasks (ms; unthrottled)",
     budget: 500,
     sample: () =>
-      withPerformancePage(browser, false, (page) => collectBoardRender(page)),
+      withPerformancePage(
+        browser,
+        false,
+        (page) => collectBoardRender(page),
+        BOARD_FIXTURE,
+      ),
     calibration: { metric: "board" },
   });
 });
@@ -1435,8 +1503,11 @@ test("G11: board drag p95 frame time", async ({ browser }) => {
     name: "board drag p95 frame time (ms; unthrottled)",
     budget: 20,
     sample: () =>
-      withPerformancePage(browser, false, (page) =>
-        collectBoardDragFrameP95(page),
+      withPerformancePage(
+        browser,
+        false,
+        (page) => collectBoardDragFrameP95(page),
+        BOARD_FIXTURE,
       ),
   });
 });
@@ -1444,8 +1515,11 @@ test("G11: board drag p95 frame time", async ({ browser }) => {
 test("G11: board context menu supports keyboard and delete cancel", async ({
   browser,
 }) => {
-  await withPerformancePage(browser, false, (page) =>
-    verifyBoardCardMenu(page),
+  await withPerformancePage(
+    browser,
+    false,
+    (page) => verifyBoardCardMenu(page),
+    BOARD_FIXTURE,
   );
 });
 
@@ -1456,13 +1530,24 @@ test("G11: 500-row list remains reachable at 200% zoom", async ({
     await page.addInitScript(() => {
       document.documentElement.style.zoom = "2";
     });
+    // The grouped list counts all 500 items and windows its rows, so the last row is
+    // reached by scrolling the list, as a reader would.
     await openWorkList(page);
-    const rows = page.locator(
-      "[data-testid=work-item-list-populated] tbody tr",
+    const lastRow = page.locator(
+      'div[data-testid=work-item-list-populated] [data-task-id="work-item-500"]',
     );
-    await expect(rows).toHaveCount(500);
-
-    const lastRow = rows.last();
+    const firstRow = page
+      .locator("div[data-testid=work-item-list-populated] [data-task-id]")
+      .first();
+    const listBox = await firstRow.boundingBox();
+    if (!listBox) throw new Error("The 200%-zoom work list has no layout box.");
+    await page.mouse.move(
+      listBox.x + listBox.width / 2,
+      Math.min(listBox.y + listBox.height / 2, 700),
+    );
+    for (let step = 0; step < 400 && (await lastRow.count()) === 0; step += 1)
+      await page.mouse.wheel(0, 1200);
+    await expect(lastRow).toHaveCount(1);
     await lastRow.scrollIntoViewIfNeeded();
     await waitForTwoFrames(page);
     const firstBox = await lastRow.boundingBox();

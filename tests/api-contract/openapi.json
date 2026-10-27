@@ -801,30 +801,214 @@
         ]
       },
       "ProjectDetail": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Project"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
           },
-          {
-            "type": "object",
-            "properties": {
-              "compositionWarnings": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "PR-6",
-                    "PR-7",
-                    "PR-10"
-                  ]
-                },
-                "description": "Warning-only composition rules the project currently violates (PR-6 no manager, PR-7 no team member, PR-10 no start date). The save never fails on these; the overview shows them as a banner."
-              }
-            },
-            "required": [
-              "compositionWarnings"
+          "workspaceId": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Short prefix used in task identifiers, e.g. KAN-12."
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
             ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "defaultCommentVisibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "internal"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "project",
+              "managed_service"
+            ]
+          },
+          "health": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "red",
+              "amber",
+              "green"
+            ]
+          },
+          "supportLevel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "L1",
+              "L2",
+              "L3"
+            ]
+          },
+          "serviceCalendarId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slaPolicyId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PR-1: the parent project in the same workspace; null for a root project."
+          },
+          "ownerTeamId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "TM-4: the team whose active members reach this project (reach only, never a capability); null when none."
+          },
+          "managerId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PR-6: the project manager (a person); null when none is set."
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PR-10: calendar date, YYYY-MM-DD."
+          },
+          "endDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional calendar date, YYYY-MM-DD."
+          },
+          "defaultAssigneeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "AS-11: person assigned to work items created with none, when active and on the roster."
+          },
+          "organisationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The customer organisation this project serves; null for an internal project."
+          },
+          "createdBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The staff person who created the project; null for projects created before this was recorded."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Non-null once archived; archived projects are hidden by default."
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Non-null once soft-deleted; deleted projects are excluded everywhere in ordinary use, independent of archivedAt."
+          },
+          "purgeAfter": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Non-null once soft-deleted: the point after which the project becomes eligible for purge. No purge job exists yet (#198)."
+          },
+          "position": {
+            "type": "number",
+            "description": "Sidebar order, ascending."
+          },
+          "lastTaskNumber": {
+            "type": "number",
+            "description": "Highest task number issued in this project; the next task gets this plus one."
+          },
+          "compositionWarnings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PR-6",
+                "PR-7",
+                "PR-10"
+              ]
+            },
+            "description": "Warning-only composition rules the project currently violates (PR-6 no manager, PR-7 no team member, PR-10 no start date). The save never fails on these; the overview shows them as a banner."
           }
+        },
+        "required": [
+          "id",
+          "workspaceId",
+          "slug",
+          "icon",
+          "name",
+          "description",
+          "defaultCommentVisibility",
+          "kind",
+          "health",
+          "supportLevel",
+          "serviceCalendarId",
+          "slaPolicyId",
+          "parentId",
+          "ownerTeamId",
+          "managerId",
+          "startDate",
+          "endDate",
+          "defaultAssigneeId",
+          "organisationId",
+          "createdBy",
+          "createdAt",
+          "archivedAt",
+          "deletedAt",
+          "purgeAfter",
+          "position",
+          "lastTaskNumber",
+          "compositionWarnings"
         ]
       },
       "Milestone": {
@@ -8114,6 +8298,46 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An ambient session cookie is present but not a valid session for this audience",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, host or CSRF check failed",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -8164,6 +8388,46 @@
                   "required": [
                     "accepted"
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An ambient session cookie is present but not a valid session for this audience",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, host or CSRF check failed",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -8218,6 +8482,24 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not available on this host, or the customer portal is off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -8237,6 +8519,24 @@
               "Location": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not available on this host, or the customer portal is off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }

@@ -10,7 +10,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { ScrollArea } from "@taskdesk/ui";
-import { format, isSameMonth, isToday, isWeekend } from "date-fns";
+import { format, isSameDay, isSameMonth, isToday, isWeekend } from "date-fns";
 import { type JSX, useCallback, useMemo, useRef } from "react";
 import { useDndAccessibility } from "@/hooks/use-dnd-accessibility";
 import { cn } from "@/lib/cn";
@@ -37,6 +37,8 @@ type MonthGridProps = {
   /** Selection mode: bars toggle through `onOpenTask` and show their selected state. */
   selectionMode?: boolean;
   selectedIds?: string[];
+  /** The day to mark as today; the browser's date when absent. */
+  today?: Date;
 };
 
 const WEEK_ATTRIBUTE = "data-calendar-week";
@@ -54,6 +56,7 @@ export default function MonthGrid({
   onReschedule,
   selectionMode = false,
   selectedIds = [],
+  today,
 }: MonthGridProps): JSX.Element {
   const weeksRef = useRef<HTMLDivElement>(null);
   const sensors = useSensors(
@@ -218,7 +221,7 @@ export default function MonthGrid({
                       <span
                         className={cn(
                           "flex size-5 items-center justify-center rounded-full text-[11px] font-medium",
-                          isToday(day)
+                          (today ? isSameDay(day, today) : isToday(day))
                             ? "bg-primary text-primary-foreground"
                             : !isSameMonth(day, visibleMonth)
                               ? "text-muted-foreground"

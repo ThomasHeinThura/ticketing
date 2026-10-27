@@ -22,6 +22,7 @@ import {
 } from "@/fetchers/service-management";
 import { useHolidayPresets } from "@/hooks/queries/service-management";
 import { formatDateMedium } from "@/lib/format";
+import { useServerToday } from "@/lib/server-clock";
 
 /**
  * `CAL-10`, `CAL-11`: generate a country's holidays for a year from the dataset bundled with the
@@ -38,7 +39,10 @@ export function HolidayPresetPanel({
   const { t } = useTranslation("serviceManagement");
   const presets = useHolidayPresets(calendar.id);
   const [country, setCountry] = useState("");
-  const [year, setYear] = useState(String(new Date().getFullYear()));
+  // Until the administrator types a year, the preset year is the server's current year.
+  const serverYear = useServerToday().getFullYear();
+  const [yearDraft, setYear] = useState<string | null>(null);
+  const year = yearDraft ?? String(serverYear);
   const [preview, setPreview] = useState<HolidayPresetResult | null>(null);
   const [applied, setApplied] = useState<HolidayPresetResult | null>(null);
   const yearNumber = Number(year);

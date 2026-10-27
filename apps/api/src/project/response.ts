@@ -80,8 +80,12 @@ export const projectSchema = z
   })
   .openapi("Project");
 
-export const projectDetailSchema = projectSchema
-  .extend({
+// A flat object rather than `projectSchema.extend(...)`: extending the registered "Project"
+// component emits `allOf: [Project, {...}]` with no top-level type, which oasdiff reads as
+// every Project property being dropped from GET /project/{id}. Same payload, same RPC type.
+export const projectDetailSchema = z
+  .object({
+    ...projectSchema.shape,
     compositionWarnings: z.array(z.enum(["PR-6", "PR-7", "PR-10"])).openapi({
       description:
         "Warning-only composition rules the project currently violates (PR-6 no " +

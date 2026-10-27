@@ -4198,7 +4198,6 @@
 		},
 		"dynamic": {
 			"deactivatePerson": "停用用户{{email}}",
-			"genericAction": "{{targetType}}：{{action}}",
 			"deactivationApproved": "已完成获批的停用操作。用户的活跃会话已撤销。",
 			"cancelled": "待处理操作已取消。",
 			"cancelFailed": "无法取消此操作。请重新加载以查看当前状态。",
@@ -4289,7 +4288,8 @@
 				"time_entry": "Delete time entry",
 				"webhook": "Delete webhook",
 				"organisation": "Delete organisation",
-				"identity_connection": "Delete identity connection"
+				"identity_connection": "Delete identity connection",
+				"request_type": "Delete {{term_request_one}} type"
 			},
 			"confirmName": "Type the exact name to confirm",
 			"hidden": "This request is no longer available for confirmation.",
@@ -4359,6 +4359,12 @@
 			"source": "Source: {{plugin}}, mapping version {{version}}.",
 			"unavailable": "Import run summary unavailable",
 			"writes_other": "{{count}} records will be created or updated."
+		},
+		"targets": {
+			"approval_decision": "Record approval decision",
+			"import_chunk": "Import MCP data",
+			"saved_view": "Delete saved view",
+			"service_calendar": "Delete service calendar"
 		}
 	},
 	"intake": {

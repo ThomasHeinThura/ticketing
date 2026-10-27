@@ -60,6 +60,34 @@ export const WORK_ITEM_KEY = "WLP-1";
 export const WORKSPACE_ID = "ws-g11";
 export const PROJECT_ID = "project-g11";
 export const TYPE_ID = "type-g11";
+const PROJECT_KEY = "WLP";
+/** A fresh deployment's resolved switches (`FEATURE_FLAG_DEFAULTS` in @taskdesk/permissions). */
+const DEFAULT_RESOLVED_FEATURES = [
+  "feature.cycles",
+  "feature.modules",
+  "feature.estimates",
+  "feature.intake",
+  "feature.sla",
+  "feature.approvals",
+  "feature.time_tracking",
+  "feature.cost_tracking",
+  "feature.knowledge_base",
+  "feature.service_catalogue",
+  "feature.customer_portal",
+  "feature.reports",
+  "feature.automations",
+  "feature.timeline",
+  "feature.calendar",
+  "feature.pages",
+  "feature.mcp",
+  "feature.public_boards",
+  "feature.dev_links",
+]
+  .map((key) => ({ key, enabled: false }))
+  .concat([
+    { key: "feature.scim", enabled: true },
+    { key: "feature.import", enabled: true },
+  ]);
 const SESSION = {
   session: {
     id: "session-g11",
@@ -213,6 +241,87 @@ const SEEDED_ITEMS = Array.from({ length: 500 }, (_, index) =>
   makeWorkItem(index + 1),
 );
 
+/**
+ * The canonical board fixture (G11 board render, drag and context menu): a second project,
+ * `BRD`, whose 200 work items sit 50 per state across four states, as the legacy board's 200
+ * cards did. A canonical board column virtualizes only above 50 cards, so all 200 cards are in
+ * the DOM. Opt-in (`boardProject`), so the 500-item `WLP` list and its specs are unchanged.
+ */
+export const BOARD_PROJECT_KEY = "BRD";
+export const BOARD_PROJECT_ID = "project-g11-board";
+export const BOARD_ITEM_COUNT = 200;
+export const BOARD_STATES = [
+  { id: "state-brd-backlog", name: "Backlog", group: "backlog" },
+  { id: "state-brd-progress", name: "In progress", group: "started" },
+  { id: "state-brd-review", name: "Review", group: "started" },
+  { id: "state-brd-done", name: "Done", group: "completed" },
+] as const;
+const BOARD_PROJECT = {
+  ...PROJECT,
+  id: BOARD_PROJECT_ID,
+  slug: BOARD_PROJECT_KEY,
+  name: "Performance board",
+  position: 2,
+  lastTaskNumber: BOARD_ITEM_COUNT,
+  statistics: {
+    completionPercentage: 0,
+    totalTasks: BOARD_ITEM_COUNT,
+    dueDate: null,
+  },
+};
+
+export function boardItemId(number: number) {
+  return `board-item-${number}`;
+}
+
+function makeBoardItem(number: number) {
+  const state = BOARD_STATES[Math.floor((number - 1) / 50)];
+  return {
+    ...makeWorkItem(number),
+    id: boardItemId(number),
+    projectId: BOARD_PROJECT_ID,
+    key: `${BOARD_PROJECT_KEY}-${number}`,
+    title: `Seeded board item ${number}`,
+    stateId: state.id,
+    stateName: state.name,
+    stateCategory: state.group,
+    position: (((number - 1) % 50) + 1).toFixed(10),
+  };
+}
+
+/** One canonical transition offer per target state, in the API's `WorkItemTransitionOffer` shape. */
+function transitionOffer(state: { id: string; name: string; group: string }) {
+  return {
+    transitionId: `transition-${state.id}`,
+    toStateTemplateId: `template-${state.id}`,
+    toStateName: state.name,
+    toStateId: state.id,
+    toStateCategory: state.group,
+    notePolicy: "none",
+    noteVisibility: "internal",
+    requiresApproval: false,
+    requiresCab: false,
+    isReopen: false,
+    available: true,
+    blockedBy: [],
+  };
+}
+
+/** The `WLP-1` detail's single workflow move (G11 state change): Backlog -> In progress. */
+const DETAIL_PROGRESS_STATE = {
+  id: "state-g11-progress",
+  name: "In progress",
+  group: "started",
+} as const;
+
+/** The assignable roster (`AssignablePerson`): the signed-in agent. */
+const ASSIGNABLE_PERSON = {
+  personId: "person-g11",
+  name: SESSION.user.name,
+  roleName: "Owner",
+  openWorkCount: 0,
+};
+
 // Shared by the canonical G11 suite and its post-run diagnostic so both use
 // the same handlers and datasets without duplicating fixture setup.
 export async function installPerformanceApiFixture(
@@ -221,14 +330,52 @@ export async function installPerformanceApiFixture(
     authenticated = true,
     dataDelayMs = 0,
     g13Windows = false,
+    workflowCapabilities = false,
+    boardProject = false,
   }: {
     authenticated?: boolean;
     dataDelayMs?: number;
     g13Windows?: boolean;
+    /**
+     * Grant the strict `transitionTasks`/`rankTasks` capabilities (`/api/capabilities`), which
+     * the canonical state control and board drag require. Off by default for the specs that
+     * share this fixture.
+     */
+    workflowCapabilities?: boolean;
+    /** Serve the 200-item `BRD` board project (see `BOARD_PROJECT_KEY`). */
+    boardProject?: boolean;
   } = {},
 ) {
   let isAuthenticated = authenticated;
   let createdItem: ReturnType<typeof makeWorkItem> | undefined;
+  // Mutable canonical rows: the WLP-1 detail and the BRD board persist their writes, so a
+  // refetch (or reload) shows what was written, as the API would.
+  const detailItem: Record<string, unknown> = {
+    ...makeDetailItem(),
+    assigneeActive: null,
+    assigneeOnProject: null,
+  };
+  const detailComments: Array<Record<string, unknown>> = [];
+  const boardItems = new Map(
+    Array.from({ length: BOARD_ITEM_COUNT }, (_, index) => {
+      const item = makeBoardItem(index + 1);
+      return [item.key, item] as const;
+    }),
+  );
+  const pendingBoardDeletions = new Map<string, string>();
+  // Every request is a new pending action, as the API issues after a cancelled one.
+  let pendingDeletionCount = 0;
+  const cancelledDeletions = new Set<string>();
+  const deletedBoardKeys = new Set<string>();
+  const boardRows = () =>
+    [...boardItems.values()]
+      .filter((item) => !deletedBoardKeys.has(item.key))
+      .sort(
+        (left, right) =>
+          BOARD_STATES.findIndex((state) => state.id === left.stateId) -
+            BOARD_STATES.findIndex((state) => state.id === right.stateId) ||
+          Number(left.position) - Number(right.position),
+      );
   const deletedLegacyTaskIds = new Set<string>();
   let legacyTaskStatus = "backlog";
   let legacyTaskAssignee: string | null = null;
@@ -307,7 +454,12 @@ export async function installPerformanceApiFixture(
       return json(isAuthenticated ? SESSION : null);
     if (path === "/api/me/security/factors" && request.method() === "GET")
       return isAuthenticated
-        ? json({ enabled: false, required: false, policyMode: "optional" })
+        ? json({
+            enabled: false,
+            required: false,
+            policyMode: "optional",
+            availableMethods: ["password"],
+          })
         : json({ message: "Unauthorized" }, 401);
     if (path === "/api/me/csrf-token" && request.method() === "GET")
       return isAuthenticated
@@ -348,9 +500,30 @@ export async function installPerformanceApiFixture(
         },
       ]);
     if (path === "/api/project" && request.method() === "GET")
-      return json([PROJECT]);
+      return json(boardProject ? [PROJECT, BOARD_PROJECT] : [PROJECT]);
     if (path === `/api/project/${PROJECT_ID}` && request.method() === "GET")
       return json(PROJECT);
+    if (
+      boardProject &&
+      path === `/api/project/${BOARD_PROJECT_ID}` &&
+      request.method() === "GET"
+    )
+      return json(BOARD_PROJECT);
+    if (
+      boardProject &&
+      path === `/api/projects/${BOARD_PROJECT_ID}/states` &&
+      request.method() === "GET"
+    )
+      return json(
+        BOARD_STATES.map((state, index) => ({
+          id: state.id,
+          stateTemplateId: `template-${state.id}`,
+          name: state.name,
+          group: state.group,
+          position: index + 1,
+          isDefault: index === 0,
+        })),
+      );
     if (
       path === `/api/projects/${PROJECT_ID}/states` &&
       request.method() === "GET"
@@ -386,6 +559,9 @@ export async function installPerformanceApiFixture(
         removeMembers: false,
         createPublicComments: true,
         createInternalComments: true,
+        ...(workflowCapabilities
+          ? { transitionTasks: true, rankTasks: true }
+          : {}),
       });
     if (path === `/api/workspace/${WORKSPACE_ID}/work-item-types`)
       return json([{ id: TYPE_ID, key: "task", name: "Task" }]);
@@ -502,13 +678,307 @@ export async function installPerformanceApiFixture(
       path === `/api/work-items/${WORK_ITEM_KEY}` &&
       request.method() === "GET"
     )
-      return json(makeDetailItem());
+      return json(detailItem);
+
+    // Canonical work-item writes (detail state/assignee/comment, board move and delete).
+    const itemWrite = path.match(
+      /^\/api\/work-items\/([A-Z]+-\d+)(?:\/(.+))?$/,
+    );
+    if (itemWrite) {
+      const [, key, action] = itemWrite;
+      const boardItem = boardProject ? boardItems.get(key) : undefined;
+      const row =
+        key === WORK_ITEM_KEY
+          ? detailItem
+          : boardItem && !deletedBoardKeys.has(key)
+            ? boardItem
+            : undefined;
+      const method = request.method();
+      if (boardItem && row && action === undefined && method === "GET")
+        return json(row);
+      if (row && action === "transitions" && method === "GET")
+        return json(
+          boardItem
+            ? BOARD_STATES.filter((state) => state.id !== row.stateId).map(
+                transitionOffer,
+              )
+            : row.stateId === DETAIL_PROGRESS_STATE.id
+              ? []
+              : [transitionOffer(DETAIL_PROGRESS_STATE)],
+        );
+      if (row && action === "transition" && method === "POST") {
+        const target = [...BOARD_STATES, DETAIL_PROGRESS_STATE].find(
+          (state) =>
+            `template-${state.id}` ===
+            String(request.postDataJSON().toStateTemplateId),
+        );
+        if (!target) return json({ message: "No such transition" }, 409);
+        Object.assign(row, {
+          stateId: target.id,
+          stateName: target.name,
+          stateCategory: target.group,
+          version: Number(row.version) + 1,
+        });
+        return json({
+          key,
+          stateId: row.stateId,
+          assigneeId: row.assigneeId,
+          resolvedAt: null,
+          version: row.version,
+        });
+      }
+      if (boardItem && row && action === "rank" && method === "POST") {
+        const { beforeId, afterId } = request.postDataJSON() as {
+          beforeId?: string;
+          afterId?: string;
+        };
+        const position = (id: string | undefined) =>
+          Number(
+            [...boardItems.values()].find((item) => item.id === id)?.position,
+          );
+        const before = position(beforeId);
+        const after = position(afterId);
+        boardItem.position = (
+          Number.isFinite(before) && Number.isFinite(after)
+            ? (before + after) / 2
+            : Number.isFinite(after)
+              ? after - 0.5
+              : before + 0.5
+        ).toFixed(10);
+        return json({ key, position: boardItem.position });
+      }
+      if (row === detailItem && action === "assign" && method === "POST") {
+        const { assigneeId } = request.postDataJSON() as {
+          assigneeId: string;
+        };
+        const previousAssigneeId = detailItem.assigneeId ?? null;
+        Object.assign(detailItem, {
+          assigneeId,
+          assigneeName: ASSIGNABLE_PERSON.name,
+          assigneeActive: true,
+          assigneeOnProject: true,
+          version: Number(detailItem.version) + 1,
+        });
+        return json({
+          key,
+          assigneeId,
+          previousAssigneeId,
+          version: detailItem.version,
+        });
+      }
+      if (row === detailItem && action === "comments" && method === "POST") {
+        // Pending long enough for the browser to paint the genuine sending state.
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const { body, visibility } = request.postDataJSON() as {
+          body: unknown;
+          visibility: string;
+        };
+        const now = new Date().toISOString();
+        const comment = {
+          id: `g11-comment-${detailComments.length + 1}`,
+          workItemId: String(detailItem.id),
+          workspaceId: WORKSPACE_ID,
+          authorId: ASSIGNABLE_PERSON.personId,
+          actorType: "person",
+          body,
+          visibility,
+          activityId: null,
+          editedAt: null,
+          deletedAt: null,
+          deletedBy: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+        detailComments.push(comment);
+        return json(comment);
+      }
+      if (row === detailItem && action === "activity" && method === "GET")
+        return json({
+          data: detailComments.map((comment) => ({
+            ...comment,
+            kind: "comment",
+            actorId: comment.authorId,
+            actorPersonId: comment.authorId,
+            actorDisplayName: ASSIGNABLE_PERSON.name,
+            verb: "commented",
+            field: null,
+            oldValue: null,
+            newValue: null,
+            payload: null,
+            workflowVersionId: null,
+            canEdit: true,
+            canDelete: true,
+          })),
+          page: { nextCursor: null, hasMore: false },
+        });
+      if (boardItem && row && action === undefined && method === "DELETE") {
+        // P0: a delete is a request that opens a pending action; nothing is removed yet.
+        const pendingActionId = `pending-g11-delete-${key}-${++pendingDeletionCount}`;
+        pendingBoardDeletions.set(pendingActionId, key);
+        return json(
+          {
+            pendingActionId,
+            action: "delete",
+            summary: { key, title: boardItem.title },
+            confirmation: "click",
+            expiresAt: "2026-12-31T00:00:00.000Z",
+            approveUrl: `/api/me/pending-actions/${pendingActionId}/approve`,
+          },
+          202,
+        );
+      }
+    }
+    const pendingAction = path.match(
+      /^\/api\/me\/pending-actions\/(pending-g11-delete-[A-Za-z0-9-]+?)(?:\/(approve|cancel))?$/,
+    );
+    if (pendingAction && pendingBoardDeletions.has(pendingAction[1])) {
+      const [, pendingActionId, decision] = pendingAction;
+      const key = pendingBoardDeletions.get(pendingActionId) ?? "";
+      if (decision === "approve" && request.method() === "POST") {
+        deletedBoardKeys.add(key);
+        return json({ id: pendingActionId, state: "executed" });
+      }
+      if (decision === "cancel" && request.method() === "POST") {
+        cancelledDeletions.add(pendingActionId);
+        return json({});
+      }
+      if (decision === undefined && request.method() === "GET")
+        return json({
+          id: pendingActionId,
+          action: "delete",
+          origin: "web",
+          targetType: "work_item",
+          targetIds: [key],
+          summary: { key, title: boardItems.get(key)?.title ?? key },
+          confirmation: "click",
+          approvalSupported: true,
+          state: cancelledDeletions.has(pendingActionId)
+            ? "cancelled"
+            : deletedBoardKeys.has(key)
+              ? "executed"
+              : "pending",
+          createdAt: "2026-09-30T00:00:00.000Z",
+          expiresAt: "2026-12-31T00:00:00.000Z",
+          invalidationReason: null,
+          decidedAt: null,
+          executedAt: null,
+          requestingKeyName: null,
+        });
+    }
+    if (
+      boardProject &&
+      path === `/api/projects/${BOARD_PROJECT_ID}/work-items` &&
+      request.method() === "GET"
+    )
+      return json({
+        data: boardRows(),
+        page: { hasMore: false, nextCursor: null },
+        meta: {},
+      });
+    if (
+      boardProject &&
+      path === `/api/projects/${BOARD_PROJECT_KEY}/wip-limits` &&
+      request.method() === "GET"
+    )
+      return json({ data: [], canManage: false });
+    if (
+      (path === `/api/projects/${PROJECT_ID}/assignable` ||
+        (boardProject &&
+          path === `/api/projects/${BOARD_PROJECT_ID}/assignable`)) &&
+      request.method() === "GET"
+    )
+      return json([ASSIGNABLE_PERSON]);
 
     if (
       path === `/api/work-items/${WORK_ITEM_KEY}/labels` &&
       request.method() === "GET"
     )
       return json([]);
+
+    // Shell reads every authenticated agent screen makes since P0–P6. An unanswered read
+    // fails (and retries) instead of rendering the empty state a fresh deployment shows.
+    if (request.method() === "GET") {
+      if (
+        path === "/api/public/terminology" ||
+        path === `/api/workspaces/${WORKSPACE_ID}/terminology/runtime`
+      )
+        return json({
+          locale: url.searchParams.get("locale") ?? "en-US",
+          audience: "agent",
+          terms: {},
+          etag: '"g11-terminology"',
+        });
+      if (path === "/api/me/settings") return json({ settings: {} });
+      if (
+        path === "/api/features/resolved" ||
+        path === `/api/workspaces/${WORKSPACE_ID}/features/resolved`
+      )
+        return json({ features: DEFAULT_RESOLVED_FEATURES });
+      if (path === "/api/notification/inbox")
+        return json({
+          data: [],
+          unreadCount: 0,
+          hasMore: false,
+          nextCursor: null,
+        });
+      if (path === "/api/invitation/pending") return json([]);
+      if (path === "/api/views") return json([]);
+      if (path === "/api/custom-fields")
+        return json({
+          data: [],
+          meta: { total: 0, manyFieldsWarning: false },
+        });
+      if (path === `/api/projects/${PROJECT_KEY}/wip-limits`)
+        return json({ data: [], canManage: false });
+      if (path === "/api/service-catalogue/status")
+        return json({
+          enabled: false,
+          canManageServices: false,
+          canManageChanges: false,
+          canManageReleases: false,
+        });
+      // Sections of the work-item detail (page and side pane) for a seeded item
+      // with no relations, files, activity, approvals or children yet.
+      const detailRead = path.match(
+        /^\/api\/work-items\/(WLP-(\d+))\/([a-z-]+(?:\/[a-z-]+)?)$/,
+      );
+      if (detailRead) {
+        const [, , number, section] = detailRead;
+        if (section === "relations") return json({ data: [], hiddenCount: 0 });
+        if (section === "attachments") return json([]);
+        if (section === "activity")
+          return json({
+            data: [],
+            page: { nextCursor: null, hasMore: false },
+          });
+        if (section === "comments/mention-candidates") return json([]);
+        if (section === "approvals") return json({ approvals: [] });
+        if (section === "approval-request-context")
+          return json({
+            enabled: true,
+            canRequestCustomer: false,
+            canRequestCab: false,
+            defaultExpiryDays: 7,
+            maxExpiryDays: 90,
+            transitions: [],
+          });
+        if (section === "children")
+          return json({
+            parent: makeWorkItem(Number(number)),
+            ancestors: [],
+            data: [],
+            page: { nextCursor: null, hasMore: false },
+            meta: { total: 0 },
+            progress: { completed: 0, total: 0 },
+          });
+      }
+      if (path === "/api/canned-responses") return json([]);
+      // The create dialog's reads: no live templates, an empty project label catalogue.
+      if (path === `/api/workspace/${WORKSPACE_ID}/work-item-templates`)
+        return json([]);
+      if (/^\/api\/label\/project\/[^/]+\/catalogue$/.test(path))
+        return json([]);
+    }
 
     return json({ message: "Not found in the G11 browser fixture" }, 404);
   });
@@ -655,15 +1125,18 @@ export async function installPerformanceApiFixture(
         skeleton: '[data-testid="work-item-detail-loading"]',
         content: '[data-testid="work-item-detail"]',
       },
+      // The canonical work-item board replaced the legacy board.
       {
         name: "board",
-        skeleton: '[data-testid="g13-board-loading"]',
-        content: '[data-testid="g13-board-content"]',
+        skeleton: '[data-testid="work-item-board-loading"]',
+        content: '[data-testid="work-item-board"]',
       },
+      // An old legacy task link: its loading skeleton, then (after the redirect) the
+      // canonical work-item detail that replaced the legacy task page.
       {
         name: "legacy-task",
         skeleton: '[data-testid="g13-legacy-task-loading"]',
-        content: '[data-testid="g13-legacy-task-content"]',
+        content: '[data-testid="work-item-detail"]',
       },
       {
         name: "projects",
@@ -889,11 +1362,15 @@ export async function installPerformanceApiFixture(
           };
           requestAnimationFrame(record);
         }
-        if (button?.dataset.testid === "comment-submit") {
+        // The canonical composer's send button: the one control in it carrying `aria-busy`.
+        if (
+          button?.hasAttribute("aria-busy") &&
+          button.closest('[data-testid="work-item-comment-composer"]')
+        ) {
           metrics.commentStart = performance.now();
           const record = () => {
             const submit = document.querySelector(
-              '[data-testid="comment-submit"][aria-busy="true"]',
+              '[data-testid="work-item-comment-composer"] button[aria-busy="true"]',
             );
             if (!submit) {
               requestAnimationFrame(record);

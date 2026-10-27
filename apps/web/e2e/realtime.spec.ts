@@ -192,7 +192,11 @@ test("native work-item events invalidate a second authenticated browser session"
       await first.getByTestId("create-work-item-trigger").click();
       await expect(first.getByTestId("create-work-item-dialog")).toBeVisible();
       await first.getByTestId("create-work-item-type-trigger").click();
-      await first.getByRole("option", { name: "Task", exact: true }).click();
+      // The type picker is a Kaneo popover listing types as buttons.
+      await first
+        .locator('[data-slot="popover-popup"]')
+        .getByRole("button", { name: "Task", exact: true })
+        .click();
       await first.getByTestId("create-work-item-title").fill(createdTitle);
       const createdResponse = settle(
         first.waitForResponse(

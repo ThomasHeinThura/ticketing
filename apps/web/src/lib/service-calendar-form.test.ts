@@ -37,12 +37,10 @@ describe("service calendar editor helpers", () => {
     expect(parseCalendarEditorSearch({ year: "2026" })).toEqual({
       year: 2026,
     });
-    expect(parseCalendarEditorSearch({ year: "0" }).year).toBe(
-      new Date().getFullYear(),
-    );
-    expect(parseCalendarEditorSearch({ year: "not-a-year" }).year).toBe(
-      new Date().getFullYear(),
-    );
+    // Absent or invalid: no year in the URL; the screen uses the server's current year.
+    expect(parseCalendarEditorSearch({ year: "0" })).toEqual({});
+    expect(parseCalendarEditorSearch({ year: "not-a-year" })).toEqual({});
+    expect(parseCalendarEditorSearch(undefined)).toEqual({});
   });
 
   it("formats preview minutes as hours without rounding away fractional minutes", () => {

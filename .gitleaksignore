@@ -50,3 +50,39 @@ aea7da52bddab201a6de5882e70551e7da0cc55c:docs/07-planning/security-reviews/ident
 # Exact commit/file/rule/line only; report bodies and wrapper remain unchanged.
 # Technical disposition: 2026-10-17; independent ordinary and full Sol review required.
 78c976c8198c6ed1702cfa3192ba6e98a0770b61:docs/07-planning/security-reviews/query-ownership-checker-580.md:generic-api-key:971
+
+# PR #891 triage 27 Oct 2026 (Claude, coordinator): all generic-api-key false positives; no real credential, nothing to rotate.
+# fixed fake Plane API key in the offline import replay fixture (D6 fixture-only sources)
+ae6efa2bd785f9a372dbc4f94a33e8ac39c850b9:tests/fixtures/imports/plane/replay.ts:generic-api-key:19
+# SHA-256 digest of a compiled bundle in deployment evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/audit/codex-20261025-cf-mcp-storage175-deployment.json:generic-api-key:3
+# SHA-256 digest of a compiled bundle in deployment evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/audit/codex-20261025-jobs173-deployment.json:generic-api-key:2
+# SHA-256 digest of a compiled bundle in deployment evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/audit/codex-20261025-search174-deployment.json:generic-api-key:4
+# SHA-256 digest of a compiled bundle in deployment evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/audit/codex-20261025-search174-deployment.json:generic-api-key:8
+# SHA-256 digest of a compiled bundle in deployment evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/audit/codex-20261025-search174-deployment.json:generic-api-key:12
+# SHA-256 digest of a compiled bundle in deployment evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/audit/codex-20261025-sso-fanout-requester-deployment.json:generic-api-key:6
+# catalogue/request-type slug in browser evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/browser/intake-queues184/target-preflight.json:generic-api-key:179
+# catalogue/request-type slug in browser evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/browser/intake-queues184/target-preflight.json:generic-api-key:186
+# catalogue/request-type slug in browser evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/browser/intake-queues184/target-preflight.json:generic-api-key:193
+# catalogue/request-type slug in browser evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/browser/intake-queues184/target-preflight.json:generic-api-key:201
+# catalogue/request-type slug in browser evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/browser/intake-queues184/target-preflight.json:generic-api-key:208
+# catalogue/request-type slug in browser evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/browser/intake-queues184/target-preflight.json:generic-api-key:215
+# catalogue/request-type slug in browser evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/browser/intake-queues184/target-preflight.json:generic-api-key:226
+# catalogue/request-type slug in browser evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/browser/intake-queues184/target-preflight.json:generic-api-key:244
+# catalogue/request-type slug in browser evidence, not a credential
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:docs/report/browser/intake-queues184/target-preflight.json:generic-api-key:263
+# fixed test-only webhook secret literal used to prove rotation
+f5521fb67d5b3dc8b2349cdbbeaeb6a29b94e25d:tests/api-integration/webhook-rotate-all-api.test.ts:generic-api-key:238

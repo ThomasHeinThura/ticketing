@@ -1,5 +1,6 @@
 import { client } from "@taskdesk/libs";
 import type { IntakeServerFilters } from "@/lib/intake-queue";
+import { recordServerDate, serverInstant } from "@/lib/server-clock";
 
 export async function getSubmissions(
   workspaceId: string,
@@ -35,7 +36,10 @@ export async function getSubmissions(
   });
   if (!response.ok)
     throw new Error((await response.text()) || "Unable to load submissions");
-  return response.json();
+  // `IQ-5`: the queue ages rows against the server's clock, carried by the response itself.
+  recordServerDate(response);
+  const serverNow = serverInstant(response.headers.get("date"));
+  return { ...(await response.json()), serverNow };
 }
 
 export async function getRequestTypes(workspaceId: string) {

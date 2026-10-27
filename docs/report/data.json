@@ -1,6 +1,6 @@
 {
-	"generated": "2026-10-27T09:55:06.188342+00:00",
-	"source": "673 indexed clauses: 661 in P0–P5 and 12 in P6. Requirement bars use per-ID assessments. Scoped test and browser passes do not count as whole-clause acceptance; earlier checkpoints are retained in validation_history.",
+	"generated": "2026-10-27T14:07:51.701Z",
+	"source": "673 indexed clauses: 661 in P0–P5 and 12 in P6. P0–P5 bars use the per-ID audits; P6 uses a per-ID test mapping (27 Oct). Scoped test and browser passes do not count as whole-clause browser acceptance.",
 	"phases": [
 		{
 			"id": "P0",
@@ -16,87 +16,87 @@
 			},
 			"unaudited": 0,
 			"gaps": [],
-			"actions": [
-				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
 				"roundsConsumed": 2,
 				"maxTotalRounds": 3,
-				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 2 low); both lows fixed in fba7558f9 (atomic step-up proof budget incl. IPv6 /64, audited inline-asset purge). AI reviewed only: browser recheck pending; not accepted by Thomas. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 2 low); both lows fixed in fba7558f9 (atomic step-up proof budget incl. IPv6 /64, audited inline-asset purge). Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
-				"pass": 8,
+				"pass": 11,
 				"fail": 0,
-				"not_run": 6,
-				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
 				"checks": [
 					{
-						"check": "lint",
+						"check": "lint and format",
 						"status": "pass",
-						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+						"note": "Biome check on the whole tree; pre-commit on staged files."
 					},
 					{
 						"check": "typecheck",
-						"status": "pending final all-package run",
-						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
-					},
-					{
-						"check": "all-package unit",
-						"status": "pending final all-package run",
-						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
-					},
-					{
-						"check": "route-policy",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "All packages including test tsconfigs: 0 errors."
 					},
 					{
-						"check": "permission suite",
+						"check": "unit",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
 					},
 					{
-						"check": "tokens and contrast",
+						"check": "full integration (fresh DB)",
 						"status": "pass",
-						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
 					},
 					{
-						"check": "full integration",
-						"status": "pending new slices",
-						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
-					},
-					{
-						"check": "work-list bundle budget",
-						"status": "pass",
-						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
-					},
-					{
-						"check": "persisted browser matrix",
-						"status": "pending"
-					},
-					{
-						"check": "image build/scan/boot",
-						"status": "pending final source image and triage",
-						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
-					},
-					{
-						"check": "performance",
-						"status": "pending"
-					},
-					{
-						"check": "tooling",
+						"check": "route policy, events, env, inventory, i18n",
 						"status": "pass"
 					},
 					{
-						"check": "accessibility fixture",
-						"status": "pass"
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
 					},
 					{
-						"check": "application and edge security headers",
+						"check": "tokens, contrast, raw elements",
 						"status": "pass",
-						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
 					}
 				]
 			},
@@ -127,12 +127,14 @@
 			"audit_sources": ["docs/report/audit/audit-P0.json"],
 			"browser": {
 				"verified": 0,
-				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
 			"current_source_gaps": [],
 			"remaining_summary": [
-				"Full safety/browser matrix and final gates; fresh independent review."
-			]
+				"No findings above low remain.",
+				"Not yet browser-checked as lead/member/viewer or in the light theme."
+			],
+			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
 		},
 		{
 			"id": "P1",
@@ -159,9 +161,7 @@
 				"RH-15: Epic/initiative reporting roll-up not located in current report source; P5 report integration remains to verify.",
 				"SV-10: Current PostgreSQL path passes the unchanged10k-item benchmark at97.4ms p95, so no enablement trigger is present. The optional search.meilisearch plugin itself is not implemented; retain that source gap without claiming PostgreSQL insufficiency."
 			],
-			"actions": [
-				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 5,
@@ -170,76 +170,78 @@
 				"note": "Round 4 (approved extra round) passed at fba7558f9: 0 high, 0 medium, 1 new low (report evidence wording) + 4 known lows. Reviewer reproduced the committed SV-5 bench (p95 8.4-20.3 ms DB path) and matched search results against a reference query. Browser at fba7558f9: list-row state picker saves without opening the detail pane; board column + opens create with the column state; search rows show priority/key/project/status. Open: palette end-to-end SV-5/SV-10 timing still to re-run. Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
-				"pass": 8,
+				"pass": 11,
 				"fail": 0,
-				"not_run": 6,
-				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
 				"checks": [
 					{
-						"check": "lint",
+						"check": "lint and format",
 						"status": "pass",
-						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+						"note": "Biome check on the whole tree; pre-commit on staged files."
 					},
 					{
 						"check": "typecheck",
-						"status": "pending final all-package run",
-						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
-					},
-					{
-						"check": "all-package unit",
-						"status": "pending final all-package run",
-						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
-					},
-					{
-						"check": "route-policy",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "All packages including test tsconfigs: 0 errors."
 					},
 					{
-						"check": "permission suite",
+						"check": "unit",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
 					},
 					{
-						"check": "tokens and contrast",
+						"check": "full integration (fresh DB)",
 						"status": "pass",
-						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
 					},
 					{
-						"check": "full integration",
-						"status": "pending new slices",
-						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
-					},
-					{
-						"check": "work-list bundle budget",
-						"status": "pass",
-						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
-					},
-					{
-						"check": "persisted browser matrix",
-						"status": "pending"
-					},
-					{
-						"check": "image build/scan/boot",
-						"status": "pending final source image and triage",
-						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
-					},
-					{
-						"check": "performance",
-						"status": "pending"
-					},
-					{
-						"check": "tooling",
+						"check": "route policy, events, env, inventory, i18n",
 						"status": "pass"
 					},
 					{
-						"check": "accessibility fixture",
-						"status": "pass"
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
 					},
 					{
-						"check": "application and edge security headers",
+						"check": "tokens, contrast, raw elements",
 						"status": "pass",
-						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
 					}
 				]
 			},
@@ -275,7 +277,7 @@
 			],
 			"browser": {
 				"verified": 0,
-				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
 			"current_source_gaps": [
 				{
@@ -287,9 +289,11 @@
 				}
 			],
 			"remaining_summary": [
-				"Complete remaining core screen, role, keyboard, flag and Kaneo parity checks on the final build.",
-				"Keep optional search-plugin scope explicit; current PostgreSQL benchmark passes."
-			]
+				"Low: report evidence wording; 4 known lows.",
+				"Palette end-to-end SV-5/SV-10 timing at 10k items with comments not browser-measured (database path passes).",
+				"Optional Meilisearch plugin not built; PostgreSQL meets the budget."
+			],
+			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
 		},
 		{
 			"id": "P2",
@@ -312,87 +316,87 @@
 				"IQ-20: Saved views support team/private visibility, but no composed queue object over the required two entities is exposed in triage.",
 				"IQ-21: Fixed triage URL now carries multiple filters, but no URL-addressable saved queue exists because IQ-19/20 pair is absent."
 			],
-			"actions": [
-				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 6,
 				"roundsConsumed": 2,
 				"maxTotalRounds": 3,
-				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 6 low); lows fixed in fba7558f9 (audit-failure notices, last-handler reply routing, customer approval email kinds, bulk transition audit context, decision rows). AI reviewed only: browser recheck pending. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 6 low); lows fixed in fba7558f9 (audit-failure notices, last-handler reply routing, customer approval email kinds, bulk transition audit context, decision rows). Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
-				"pass": 8,
+				"pass": 11,
 				"fail": 0,
-				"not_run": 6,
-				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
 				"checks": [
 					{
-						"check": "lint",
+						"check": "lint and format",
 						"status": "pass",
-						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+						"note": "Biome check on the whole tree; pre-commit on staged files."
 					},
 					{
 						"check": "typecheck",
-						"status": "pending final all-package run",
-						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
-					},
-					{
-						"check": "all-package unit",
-						"status": "pending final all-package run",
-						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
-					},
-					{
-						"check": "route-policy",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "All packages including test tsconfigs: 0 errors."
 					},
 					{
-						"check": "permission suite",
+						"check": "unit",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
 					},
 					{
-						"check": "tokens and contrast",
+						"check": "full integration (fresh DB)",
 						"status": "pass",
-						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
 					},
 					{
-						"check": "full integration",
-						"status": "pending new slices",
-						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
-					},
-					{
-						"check": "work-list bundle budget",
-						"status": "pass",
-						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
-					},
-					{
-						"check": "persisted browser matrix",
-						"status": "pending"
-					},
-					{
-						"check": "image build/scan/boot",
-						"status": "pending final source image and triage",
-						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
-					},
-					{
-						"check": "performance",
-						"status": "pending"
-					},
-					{
-						"check": "tooling",
+						"check": "route policy, events, env, inventory, i18n",
 						"status": "pass"
 					},
 					{
-						"check": "accessibility fixture",
-						"status": "pass"
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
 					},
 					{
-						"check": "application and edge security headers",
+						"check": "tokens, contrast, raw elements",
 						"status": "pass",
-						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
 					}
 				]
 			},
@@ -424,7 +428,7 @@
 			"audit_sources": ["docs/report/audit/audit-P2.json"],
 			"browser": {
 				"verified": 0,
-				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
 			"current_source_gaps": [
 				{
@@ -436,9 +440,10 @@
 				}
 			],
 			"remaining_summary": [
-				"Saved-queue functional journey passes26 checks; deployed192 mobile follow-up passes. Complete remaining intake, SLA, approval role/flag and Kaneo parity cases.",
-				"Run final integration gates and independent review."
-			]
+				"SLA-9 reopened-resolution metrics held by contract for this release.",
+				"Remaining intake, SLA and approval role/flag browser cases."
+			],
+			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
 		},
 		{
 			"id": "P3",
@@ -469,87 +474,87 @@
 				"CP-29: Generic localized failure return and selected-connection/instance-level bounded failure ledger are implemented;35 scoped identity-ledger tests passed. Full portal SSO browser journey against a mock issuer and real Entra owner validation remain pending.",
 				"IP-35: Generic localized failure return and selected-connection/instance-level bounded failure ledger are implemented;35 scoped identity-ledger tests passed. Full portal SSO browser journey against a mock issuer and real Entra owner validation remain pending."
 			],
-			"actions": [
-				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 4,
 				"roundsConsumed": 2,
 				"maxTotalRounds": 3,
-				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 4 low); lows fixed in fba7558f9 (IPv6 /64 invitation limiter, azp check, Kaneo-built portal feature-off page). AI reviewed only: browser recheck incl. portal sign-in pending; Entra externally blocked. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 4 low); lows fixed in fba7558f9 (IPv6 /64 invitation limiter, azp check, Kaneo-built portal feature-off page). portal sign-in pending; Entra externally blocked. Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
-				"pass": 8,
+				"pass": 11,
 				"fail": 0,
-				"not_run": 6,
-				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
 				"checks": [
 					{
-						"check": "lint",
+						"check": "lint and format",
 						"status": "pass",
-						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+						"note": "Biome check on the whole tree; pre-commit on staged files."
 					},
 					{
 						"check": "typecheck",
-						"status": "pending final all-package run",
-						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
-					},
-					{
-						"check": "all-package unit",
-						"status": "pending final all-package run",
-						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
-					},
-					{
-						"check": "route-policy",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "All packages including test tsconfigs: 0 errors."
 					},
 					{
-						"check": "permission suite",
+						"check": "unit",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
 					},
 					{
-						"check": "tokens and contrast",
+						"check": "full integration (fresh DB)",
 						"status": "pass",
-						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
 					},
 					{
-						"check": "full integration",
-						"status": "pending new slices",
-						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
-					},
-					{
-						"check": "work-list bundle budget",
-						"status": "pass",
-						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
-					},
-					{
-						"check": "persisted browser matrix",
-						"status": "pending"
-					},
-					{
-						"check": "image build/scan/boot",
-						"status": "pending final source image and triage",
-						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
-					},
-					{
-						"check": "performance",
-						"status": "pending"
-					},
-					{
-						"check": "tooling",
+						"check": "route policy, events, env, inventory, i18n",
 						"status": "pass"
 					},
 					{
-						"check": "accessibility fixture",
-						"status": "pass"
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
 					},
 					{
-						"check": "application and edge security headers",
+						"check": "tokens, contrast, raw elements",
 						"status": "pass",
-						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
 					}
 				]
 			},
@@ -589,7 +594,7 @@
 			"audit_sources": ["docs/report/audit/audit-P3.json"],
 			"browser": {
 				"verified": 0,
-				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
 			"current_source_gaps": [
 				{
@@ -650,9 +655,10 @@
 				}
 			],
 			"remaining_summary": [
-				"Finish customer terminology, remaining invitation/provider cases and verified-placeholder browser checks.",
-				"Account linking passes scoped API/browser checks; complete the phase role/flag matrix. Real Entra remains with Thomas."
-			]
+				"Real Entra sign-in: Thomas validates.",
+				"Open requirement gaps (CP-5 portal terminology overlay, CP-12 invite sign-in methods) listed below."
+			],
+			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
 		},
 		{
 			"id": "P4",
@@ -700,9 +706,7 @@
 				"MC-18: The injection scenario is a scripted-fetch test rather than a persisted API/database journey.",
 				"MC-11: Historical audit gap requiring current-source reconciliation: npm publication with provenance/2FA and scope reservation are external"
 			],
-			"actions": [
-				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
@@ -711,76 +715,78 @@
 				"note": "Round 3 (last) passed at fba7558f9: 0 high, 0 medium, 2 low (project SLA on inside an SLA-off workspace runs on hidden policies - documented in features.md, needs owner decision row; pre-issued portal attachment links stay valid until expiry). Migration 0209 verified on the real upgraded SIT copy: all four flags on, portal serves sign-in. Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
-				"pass": 8,
+				"pass": 11,
 				"fail": 0,
-				"not_run": 6,
-				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
 				"checks": [
 					{
-						"check": "lint",
+						"check": "lint and format",
 						"status": "pass",
-						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+						"note": "Biome check on the whole tree; pre-commit on staged files."
 					},
 					{
 						"check": "typecheck",
-						"status": "pending final all-package run",
-						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
-					},
-					{
-						"check": "all-package unit",
-						"status": "pending final all-package run",
-						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
-					},
-					{
-						"check": "route-policy",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "All packages including test tsconfigs: 0 errors."
 					},
 					{
-						"check": "permission suite",
+						"check": "unit",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
 					},
 					{
-						"check": "tokens and contrast",
+						"check": "full integration (fresh DB)",
 						"status": "pass",
-						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
 					},
 					{
-						"check": "full integration",
-						"status": "pending new slices",
-						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
-					},
-					{
-						"check": "work-list bundle budget",
-						"status": "pass",
-						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
-					},
-					{
-						"check": "persisted browser matrix",
-						"status": "pending"
-					},
-					{
-						"check": "image build/scan/boot",
-						"status": "pending final source image and triage",
-						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
-					},
-					{
-						"check": "performance",
-						"status": "pending"
-					},
-					{
-						"check": "tooling",
+						"check": "route policy, events, env, inventory, i18n",
 						"status": "pass"
 					},
 					{
-						"check": "accessibility fixture",
-						"status": "pass"
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
 					},
 					{
-						"check": "application and edge security headers",
+						"check": "tokens, contrast, raw elements",
 						"status": "pass",
-						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
 					}
 				]
 			},
@@ -842,7 +848,7 @@
 			"audit_sources": ["docs/report/audit/audit-P4c.json"],
 			"browser": {
 				"verified": 0,
-				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
 			"current_source_gaps": [
 				{
@@ -980,9 +986,11 @@
 				}
 			],
 			"remaining_summary": [
-				"Finish remaining settings, notification and administration gaps, including cross-workspace project move/remapping.",
-				"Browser-check large-import approval, settings impact previews and webhook recovery; complete role/flag coverage and final gates."
-			]
+				"Low: project SLA inside an SLA-off workspace runs on hidden policies (needs an owner decision row).",
+				"Low: pre-issued portal attachment links stay valid until expiry.",
+				"1 missing and 17 partial requirements per the audit, listed below."
+			],
+			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
 		},
 		{
 			"id": "P5",
@@ -998,9 +1006,7 @@
 			},
 			"unaudited": 0,
 			"gaps": [],
-			"actions": [
-				"Close the current source gaps listed below, run final-tree local gates and the persisted screen matrix, then obtain a fresh independent phase review. Historical action lists are superseded by current per-ID assessments."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
@@ -1009,76 +1015,78 @@
 				"note": "Round 4 (extra round approved by Thomas) passed at fb4448db8: 0 high, 0 medium, 2 low (email delivery is at-least-once - wording corrected; export page buffers the file in browser memory). Browser: export page and Report exports preference render in Kaneo components. Open: 500k-row export not run; P5-R3-03 rates rule awaits Thomas ratification. Reviewer model: Claude Opus standing in for Sol."
 			},
 			"gates": {
-				"pass": 8,
+				"pass": 11,
 				"fail": 0,
-				"not_run": 6,
-				"note": "Current scoped passes are recorded below. Full final-tree gates, browser coverage and independent phase review remain pending.",
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
 				"checks": [
 					{
-						"check": "lint",
+						"check": "lint and format",
 						"status": "pass",
-						"note": "194 eight-package check:0 errors,42 warnings,4 infos. Formatter now checks the5.5MiB manifest; file-size limit expanded to8MiB without disabling rules."
+						"note": "Biome check on the whole tree; pre-commit on staged files."
 					},
 					{
 						"check": "typecheck",
-						"status": "pending final all-package run",
-						"note": "194 API five-config and web app/node types pass; final all-nine-package run remains required."
-					},
-					{
-						"check": "all-package unit",
-						"status": "pending final all-package run",
-						"note": "Full API2,184 and web3,076 pass194; later mock-provider3 and import-log-row1 targeted passes. Final all-package gate remains required."
-					},
-					{
-						"check": "route-policy",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "All packages including test tsconfigs: 0 errors."
 					},
 					{
-						"check": "permission suite",
+						"check": "unit",
 						"status": "pass",
-						"note": "192 permission suite118/118 passes with the eight import routes registered; no capability or policy exemptions."
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
 					},
 					{
-						"check": "tokens and contrast",
+						"check": "full integration (fresh DB)",
 						"status": "pass",
-						"note": "194 source token check and403 source-grounded contrast pairs pass both built themes; no pair additions/removals or threshold changes."
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
 					},
 					{
-						"check": "full integration",
-						"status": "pending new slices",
-						"note": "Full LinuxR10:5226pass/1stale rounding expectation; corrected LinuxR11drill11/11pass. New API slices require final full run."
-					},
-					{
-						"check": "work-list bundle budget",
-						"status": "pass",
-						"note": "194 G11/G12 pass: agent262,612/350,000; work-list349,630/350,000; portal199,695/200,000 bytes."
-					},
-					{
-						"check": "persisted browser matrix",
-						"status": "pending"
-					},
-					{
-						"check": "image build/scan/boot",
-						"status": "pending final source image and triage",
-						"note": "Shipping probe174 builds and boots hardened with Node liveness. Unfiltered scan: 0 critical, 42 high, none fixable; applicability triage remains open."
-					},
-					{
-						"check": "performance",
-						"status": "pending"
-					},
-					{
-						"check": "tooling",
+						"check": "route policy, events, env, inventory, i18n",
 						"status": "pass"
 					},
 					{
-						"check": "accessibility fixture",
-						"status": "pass"
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
 					},
 					{
-						"check": "application and edge security headers",
+						"check": "tokens, contrast, raw elements",
 						"status": "pass",
-						"note": "Runtime179 strict-TLS agent/portal headers, complete nonced static HTML and isolated PDF headers pass scoped checks. Parent report-only rollout is intentional. Evidence:static-response-fixed179 and csp-runtime179."
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
 					}
 				]
 			},
@@ -1118,12 +1126,128 @@
 			"audit_sources": ["docs/report/audit/audit-P5.json"],
 			"browser": {
 				"verified": 0,
-				"status": "Current full journey matrix pending. Historical screenshots are retained, not treated as verification of this revision."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
 			"current_source_gaps": [],
 			"remaining_summary": [
-				"Complete remaining agile, cost, capacity, service/change/release, KB, dashboard and reporting browser cases.",
-				"Refresh integration results and independent review on the final tree."
+				"Low: export page buffers the file in browser memory.",
+				"500k-row export not run in the browser.",
+				"P5-R3-03 rates rule awaits Thomas's ratification."
+			],
+			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
+		},
+		{
+			"id": "P6",
+			"name": "Import & cutover",
+			"total": 12,
+			"states": {
+				"implemented_tested": 12,
+				"implemented_untested": 0,
+				"partial": 0,
+				"missing": 0,
+				"external_blocked": 0,
+				"browser_verified": 0
+			},
+			"unaudited": 0,
+			"gaps": [],
+			"states_locked": false,
+			"actions": ["Open lows only; follow up after merge."],
+			"review": {
+				"verdict": "pass",
+				"findings": 2,
+				"roundsConsumed": 3,
+				"maxTotalRounds": 3,
+				"note": "Round 3 (last) passed at fba7558f9: 0 high, 0 medium, 2 low (an agent creating an item mid-chunk pauses the run as chunk_failed instead of retrying; some transient write errors could be logged as losses). Reviewer model: Claude Opus standing in for Sol."
+			},
+			"accepted": "Thomas accepted 27 Oct 2026 with the open lows.",
+			"gates": {
+				"pass": 11,
+				"fail": 0,
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
+				"checks": [
+					{
+						"check": "lint and format",
+						"status": "pass",
+						"note": "Biome check on the whole tree; pre-commit on staged files."
+					},
+					{
+						"check": "typecheck",
+						"status": "pass",
+						"note": "All packages including test tsconfigs: 0 errors."
+					},
+					{
+						"check": "unit",
+						"status": "pass",
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
+					},
+					{
+						"check": "full integration (fresh DB)",
+						"status": "pass",
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
+					},
+					{
+						"check": "route policy, events, env, inventory, i18n",
+						"status": "pass"
+					},
+					{
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
+					},
+					{
+						"check": "tokens, contrast, raw elements",
+						"status": "pass",
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
+					}
+				]
+			},
+			"browser": {
+				"verified": 0,
+				"status": "Import picker and wizard source step render on local SIT; a full wizard run with a CSV upload is not yet browser-tested."
+			},
+			"carry": [],
+			"current_source_gaps": [],
+			"audit_status": "Per-ID test mapping done 27 Oct against tests passing in the fb4448db8 full integration and MCP runs.",
+			"audit_sources": ["docs/technical/import-and-cutover.md"],
+			"remaining_summary": [
+				"Low: agent item created mid-chunk pauses the run (chunk_failed) instead of retrying.",
+				"Low: some transient write errors could be logged as losses.",
+				"Full CSV import run in the browser not yet done."
 			]
 		}
 	],
@@ -1154,11 +1278,26 @@
 		"Recommended option taken 27 Oct: a request type with any submission cannot be deleted (submissions are tied to its form versions).",
 		"Model substitution 27 Oct: implementers and reviewers run on Claude Opus because Luna/Sol are not available here; Thomas to confirm whether Opus reviews count as phase acceptance.",
 		"Approved 27 Oct (Thomas): P1 gets a 4th review round after fixing P1R3-1 (comment search under the SV-5 budget for common terms, re-measured on the committed tree) and P1R3-2 (S3 upload binds content type).",
-		"Approved 27 Oct (Thomas): P5 gets a 4th review after fixing P5-R3-01 (email link opens an agent page that asks for sign-in, then downloads) and P5-R3-02 (preference link and settable opt-out for export-ready emails)."
+		"Approved 27 Oct (Thomas): P5 gets a 4th review after fixing P5-R3-01 (email link opens an agent page that asks for sign-in, then downloads) and P5-R3-02 (preference link and settable opt-out for export-ready emails).",
+		"Accepted 27 Oct (Thomas): P0-P6 accepted with the open low findings recorded per phase. Go ahead with PR #891 update, CI scan and image build, and a Technexus deploy plan; ask before deploying.",
+		"Approved 27 Oct (Thomas): the 57 intentional OpenAPI breaking changes (pending-action deletes, portal state hidden, dry-run previews, new search types, project key rule) go into scripts/ci/openapi-approved-breaks.json; the 2 stale #807 entries are removed.",
+		"Approved 27 Oct (Thomas): replace the katex-based Mermaid unit test with a browser check (no new dependency).",
+		"Approved 27 Oct (Thomas): dismiss the 3 by-design CodeQL alerts (legacy SHA-256 lookup of random API keys, SHA-256 of a step-up operation body, palette recent items) with reasons.",
+		"Approved 27 Oct (Thomas): fix all 18 required CI checks (incl. ~50 new G8 visual baselines) before merging PR #891; no gate exemptions.",
+		"27 Oct (Thomas): P7 deferred; real Entra validation done by Thomas.",
+		"Approved 27 Oct (Thomas): move the five live-SIT e2e specs (mermaid, organisation lifecycle x2, PDF preview, report epic rollup) to apps/web/e2e-sit/ (run locally against SIT); the katex security check gets a mock-backed CI spec."
 	],
-	"next": "Thomas: review and accept phases (open lows listed per phase). Then PR/CI image and Technexus deploy per the image path, and P7 planning. Remaining browser gaps: full import run, role matrix, light theme; 500k export; palette SV-5 timing.",
-	"status": "27 Oct ~17:00: all seven phases (P0-P6) passed AI review at fb4448db8 (P1 and P5 after Thomas-approved 4th rounds). Gates and fresh-DB full integration pass; local SIT runs fb4448db8; browser re-checks pass incl. Thomas's portal sign-in. Not Thomas-accepted yet.",
+	"next": "Push the CI fixes and get all 18 required checks on PR #891 green; dismiss the last 2 by-design CodeQL alerts; ask Thomas to merge (release builds, scans and signs the image); then present the Technexus deploy plan for Thomas's approval.",
+	"status": "27 Oct: P0–P6 passed AI review and are accepted by Thomas with open lows. P7 deferred by Thomas; real Entra validation is Thomas's. PR #891: 13 checks pass, 12 fail on the last pushed commit; contract, vocabulary, gate checkers, a11y, secret-scan triage and CodeQL fixes are local and not yet pushed; G8 visual baselines, e2e, integration shard, G11 and the katex browser check are being fixed. Merge needs all 18 required checks green.",
 	"validation_runs": [
+		{
+			"check": "GitHub issue triage (27 Oct)",
+			"result": "126 open issues checked against the current tree. Closed 40 with evidence comments (33 finished, 7 obsolete). Still open: partial #8, #24, #25, #32, #38, #39, #40, #42, #43, #44, #45, #47, #48, #51, #54, #56, #93, #133, #166, #167, #173, #189, #198, #221, #229, #258, #314, #359, #372, #402, #428, #436, #445, #446, #448, #560, #564, #580, #593, #626, #633, #675, #702, #703, #753, #770, #777; open #55, #87, #94, #98, #102, #106, #126, #139, #181, #182, #226, #230, #231, #232, #241, #257, #264, #266, #267, #337, #348, #398, #634, #637, #678, #680, #681, #704, #709, #711, #737, #746, #762, #776, #876; obsolete but kept open (PR-template check is a required CI check) #477, #478; waiting on Thomas #403, #582."
+		},
+		{
+			"check": "P6 per-ID test mapping (27 Oct)",
+			"result": "IM-1/IM-2/IM-4: import-persistence, engine-mapping (dry run writes nothing, reports losses), csv-e2e loss report. IM-3: engine-p6-recovery and csv-e2e resume from the last committed chunk. IM-5/IM-6: engine-run and engine-v2 keep provenance links, authorship and source timestamps. IM-7: placeholder-auth and placeholder-claim (email match, inactive placeholders). IM-8/IM-9/IM-11: import-api and engine-approval idempotency keys; api-key capability and role-clamp tests; agent-origin audit. IM-10/IM-12: MCP register tests cap bulk_create_work_items; IM-12 is served by create_import_link (maintained contract name, reconciled in import-and-cutover.md)."
+		},
 		{
 			"check": "Deployment",
 			"result": "One Compose file/project, five healthy/running services and completed migration job; source196-properties-scroll image. All 1,667 deployed artifacts hash-verified; six strict-TLS endpoints pass. Business counts preserved; protected database untouched. Unused wget removed; refreshed scan confirms wget absent: 0 critical, 42 high. Disposition remains open."
@@ -1212,17 +1351,6 @@
 			"result": "Pending: move projects only after running imports/intake finish and subscriptions pause/rebind, or support running moves; and approve fixed local Mailpit capture, or use public SMTP. Production SMTP private-address protection remains enforced. Fourth failed phase reviews still require approval."
 		}
 	],
-	"p6_goal": {
-		"status": "Round 3 (last) passed at fba7558f9: 0 high, 0 medium, 2 low (an agent creating an item mid-chunk pauses the run as chunk_failed instead of retrying; some transient write errors could be logged as losses). Browser: import wizard source step renders; workspace picker is a Select showing the raw id (being converted). Full wizard run not browser-tested (needs a CSV upload).",
-		"target": "Thomas requested completion on 25 October; target missed. P6 remains gated on P0–P5 exit evidence.",
-		"goals": [
-			"G1 durable staged import framework and provenance",
-			"G2 CSV then Jira/JSM, ADO, Plane, Planner, Power Apps adapters",
-			"G3 reconciled interruption/resume/rerun and cutover/restore rehearsal",
-			"G4 original Kaneo wizard and bounded MCP mappings"
-		],
-		"next": "Finish P0–P5 implementation gaps, full browser/gates and independent reviews before broader adapters, wizard and cutover."
-	},
 	"validation_history": [
 		{
 			"check": "Targeted integration repairs",

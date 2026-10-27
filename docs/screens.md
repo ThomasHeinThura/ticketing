@@ -4,7 +4,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Sign in (legacy `/agent/sign-in` redirects) | `/auth/sign-in` | route | P0 | ⬜ |
+| Sign in (legacy `/agent/sign-in` redirects) | `/auth/sign-in` | route | P0 | 🟡 |
 | MFA challenge | `/auth/two-factor` | route | P0 | 🟡 |
 | MFA enrolment | `/dashboard/settings/account/security` | route | P0 | 🟡 |
 | Accept invitation | `/agent/invite` | route | P3 | ⬜ |
@@ -21,11 +21,11 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Work — timeline | `/agent/projects/{key}/work?layout=timeline` | route | P5 | ⬜ |
 | Backlog | `/agent/projects/{key}/backlog` | route | P1 | 🟡 |
 | Cycles list | `/agent/projects/{key}/cycles` | route | P5 | 🟡 |
-| Cycle detail | `/agent/projects/{key}/cycles/{id}` | route | P5 | 🟡 |
+| Cycle detail | `/agent/projects/{key}/cycles/{cycleId}` | route | P5 | 🟡 |
 | Modules list | `/agent/projects/{key}/modules` | route | P5 | 🟡 |
-| Module detail | `/agent/projects/{key}/modules/{id}` | route | P5 | 🟡 |
+| Module detail | `/agent/projects/{key}/modules/{moduleId}` | route | P5 | 🟡 |
 | Pages | `/agent/projects/{key}/pages` | route | P5 | 🟡 |
-| Page view and editor | `/agent/projects/{key}/pages/{id}` | route | P5 | 🟡 |
+| Page view and editor | `/agent/projects/{key}/pages/{pageId}` | route | P5 | 🟡 |
 | Milestones & prerequisites | `/agent/projects/{key}/plan` | route | P2 | ⬜ |
 | Stakeholders | `/agent/projects/{key}/stakeholders` | route | P2 | ⬜ |
 | Work item — full page | `/agent/work-items/{key}` | route | P1 | 🟡 |
@@ -49,7 +49,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Saved view | `/agent/views/{id}` | route | P1 | 🟡 |
 | Profile — general | `/agent/settings/profile` | route | P1 | 🟡 |
 | Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | 🟡 |
-| Profile — notifications | `/agent/settings/profile/notifications` | route | P4 | ⬜ |
+| Profile — notifications | `/agent/settings/profile/notifications` | route | P4 | 🟡 |
 | Profile — security & sessions | `/agent/settings/profile/security` | route | P3 | ⬜ |
 | Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/agent/settings/profile/pending-actions` | route | P4 | 🟡 |
 | Profile — pending action detail | `/agent/settings/profile/pending-actions/{id}` | route | P4 | 🟡 |
@@ -64,7 +64,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | **Role editor** | `/agent/settings/roles/{id}` | route | P4 | 🟡 |
 | Workspace — work item types | `/agent/settings/work-item-types` | route | P2 | ⬜ |
 | Workspace — states | `/agent/settings/states` | route | P1 | 🟡 |
-| Workspace — workflows | `/agent/settings/workflows` | route | P2 | ⬜ |
+| Workspace — workflows | `/agent/settings/workflows` | route | P2 | 🟡 |
 | Workflow editor | `/agent/settings/workflows/{id}` | route | P2 | ⬜ |
 | Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | 🟡 |
 | SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | 🟡 |
@@ -78,7 +78,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Project — estimates (system, scale, cycle completion default) | `/agent/projects/{key}/settings/estimates` | route | P5 | 🟡 |
 | Workspace — rates | `/agent/settings/rates` | route | P5 | 🟡 |
 | Workspace — time activities | `/agent/settings/time-activities` | route | P5 | 🟡 |
-| Workspace — cost types (Rates section) | `/agent/settings/rates` | component | P5 | 🟡 |
+| Workspace — cost types (Rates section) | `/agent/settings/rates` | section | P5 | 🟡 |
 | Workspace — automations | `/agent/settings/automations` | route | P4 | 🟡 |
 | Workspace — webhooks | `/agent/settings/webhooks` | route | P4 | 🟡 |
 | Webhook editor | `/agent/settings/webhooks/{id}` | route | P4 | 🟡 |
@@ -102,16 +102,16 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | **Provider editor** | `/agent/god-mode/authentication/{id}` | route | P3 | 🟡 |
 | Organisations | `/agent/god-mode/organisations` | route | P3 | ⬜ |
 | Organisation detail | `/agent/god-mode/organisations/{id}` | route | P3 | ⬜ |
-| **Organisation — Identity** (customer OIDC + SCIM connection) | `/agent/god-mode/organisations/{id}/identity` | route | P3 | ⬜ |
-| Storage | `/agent/god-mode/storage` | route | P4 | ⬜ |
+| **Organisation — Identity** (customer OIDC + SCIM connection) | `/agent/god-mode/organisations/{id}/identity` | route | P3 | 🟡 |
+| Storage | `/agent/god-mode/storage` | route | P4 | 🟡 |
 | Notification channels — SMTP configuration | `/agent/god-mode/notifications` | route | P4 | 🟡 |
-| Deliveries (outbox, dead letters) | `/agent/god-mode/deliveries` | route | P4 | ⬜ |
+| Deliveries (outbox, dead letters) | `/agent/god-mode/deliveries` | route | P4 | 🟡 |
 | Workspace — features | `/dashboard/settings/workspace/features` | route | P4 | 🟡 |
 | Feature flags | `/agent/god-mode/features` | route | P4 | 🟡 |
-| Jobs | `/agent/god-mode/jobs` | route | P4 | ⬜ |
-| Plugins | `/agent/god-mode/plugins` | route | P4 | ⬜ |
+| Jobs | `/agent/god-mode/jobs` | route | P4 | 🟡 |
+| Plugins | `/agent/god-mode/plugins` | route | P4 | 🟡 |
 | Observability and instance MFA policy | `/god-mode/observability` | route | P0 | 🟡 |
-| MCP usage | `/agent/god-mode/mcp` | route | P4 | ⬜ |
+| MCP usage | `/agent/god-mode/mcp` | route | P4 | 🟡 |
 | Audit log | `/agent/god-mode/audit` | route | P2 | 🟡 |
 | Import runs (shared P4 prerequisite) | `/agent/god-mode/imports?workspaceId={workspaceId}` | route | P6 | 🟡 |
 | Import run detail | `/agent/god-mode/imports/{id}?workspaceId={workspaceId}` | route | P6 | 🟡 |
@@ -139,7 +139,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Summary | Count |
 | --- | --- |
-| **Total** | **146** (131 routes + 15 overlays, dialogs and sections) |
+| **Total** | **147** (131 routes + 16 overlays, dialogs and sections) |
 
 ## Overlays, dialogs and embedded sections
 

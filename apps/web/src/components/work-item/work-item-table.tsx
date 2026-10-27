@@ -13,7 +13,15 @@ import type {
   KeyboardEvent,
   ReactNode,
 } from "react";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { mergeVirtualRange } from "./virtualization/range";
 
 type Props<Row, Column extends string, RowControl = undefined> = {
@@ -148,6 +156,15 @@ export default function WorkItemTable<
         scrollElement.scrollTop
       : 0;
 
+  const rowEstimate = useRef(42);
+  const recentRowHeights = useRef<number[]>([]);
+  const reestimateTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(
+    () => () => {
+      if (reestimateTimer.current) clearTimeout(reestimateTimer.current);
+    },
+    [],
+  );
   const rowRangeExtractor = useCallback(
     (range: Parameters<typeof defaultRangeExtractor>[0]) =>
       mergeVirtualRange(defaultRangeExtractor(range), rows.length, [
@@ -159,7 +176,34 @@ export default function WorkItemTable<
     count: rows.length,
     getScrollElement: () => findVerticalScrollParent(tableElement()),
     initialRect: { width: 960, height: 640 },
-    estimateSize: () => 42,
+    // Rows share one height; estimate unmeasured rows at the measured height so the table's
+    // total size (and with it the page) does not grow as rows mount.
+    estimateSize: () => rowEstimate.current,
+    measureElement: (element, entry, instance) => {
+      const height =
+        entry?.borderBoxSize?.[0]?.blockSize ??
+        element.getBoundingClientRect().height;
+      // Estimate the never-mounted rows at the measured row height. Rows first paint before
+      // their property controls and fonts settle, and are not strictly uniform (labels wrap),
+      // so re-estimate from the median of recent measurements once they stop changing, rather
+      // than clearing the size cache on every differing row.
+      if (height > 0) {
+        const recent = recentRowHeights.current;
+        recent.push(height);
+        if (recent.length > 50) recent.shift();
+        if (reestimateTimer.current) clearTimeout(reestimateTimer.current);
+        reestimateTimer.current = setTimeout(() => {
+          reestimateTimer.current = undefined;
+          const sorted = [...recentRowHeights.current].sort((a, b) => a - b);
+          const median = sorted[Math.floor(sorted.length / 2)];
+          if (median && Math.abs(median - rowEstimate.current) > 0.5) {
+            rowEstimate.current = median;
+            instance.measure();
+          }
+        }, 100);
+      }
+      return height;
+    },
     getItemKey: (index) => rowIds[index] ?? index,
     overscan: 8,
     scrollMargin,
@@ -198,7 +242,9 @@ export default function WorkItemTable<
   );
   const bottomPadding = Math.max(
     0,
-    rowVirtualizer.getTotalSize() - (virtualRows.at(-1)?.end ?? scrollMargin),
+    // Item offsets include the scroll margin; the total size does not.
+    rowVirtualizer.getTotalSize() -
+      ((virtualRows.at(-1)?.end ?? scrollMargin) - scrollMargin),
   );
 
   useLayoutEffect(() => {
@@ -335,10 +381,14 @@ export default function WorkItemTable<
               />
             </TableRow>
           ) : null}
-          {virtualRows.map((virtualRow) => {
+          {virtualRows.map((virtualRow, position) => {
             const row = rows[virtualRow.index];
             const rowId = rowIds[virtualRow.index];
             if (!row || !rowId) return null;
+            // A pinned (focused) row outside the scrolled window leaves a gap before the window;
+            // fill it so the window stays at its scroll position instead of rising to the pin.
+            const previous = virtualRows[position - 1];
+            const gap = previous ? virtualRow.start - previous.end : 0;
             const renderMeasuredRow = (rowControl?: RowControl) => (
               <TableRow
                 key={rowId}
@@ -385,9 +435,22 @@ export default function WorkItemTable<
                 ) : null}
               </TableRow>
             );
-            return renderRow
+            const rendered = renderRow
               ? renderRow(row, renderMeasuredRow)
               : renderMeasuredRow();
+            if (gap <= 0) return rendered;
+            return (
+              <Fragment key={rowId}>
+                <TableRow aria-hidden="true">
+                  <TableCell
+                    colSpan={fullColumnSpan}
+                    className="p-0"
+                    style={{ height: gap }}
+                  />
+                </TableRow>
+                {rendered}
+              </Fragment>
+            );
           })}
           {bottomPadding > 0 ? (
             <TableRow aria-hidden="true">

@@ -231,10 +231,15 @@ const ENTITY: Record<string, string> = {
 export function htmlToText(html: string): { text: string; lossy: boolean } {
   const lossy =
     /<(?:table|img|a\s|ul|ol|li|strong|b>|em|i>|code|pre|h[1-6])/iu.test(html);
-  const text = html
+  let stripped = html
     .replace(/<(?:br|\/p|\/div|\/li|\/h[1-6]|\/tr)\s*\/?>/giu, "\n")
-    .replace(/<li[^>]*>/giu, "- ")
-    .replace(/<[^>]*>/gu, "")
+    .replace(/<li[^>]*>/giu, "- ");
+  // Strip to a fixed point so no removal can leave a tag behind for a later reader.
+  for (let previous = ""; previous !== stripped; ) {
+    previous = stripped;
+    stripped = stripped.replace(/<[^>]*>/gu, "");
+  }
+  const text = stripped
     .replace(/&(#?\w+);/gu, (whole, name: string) => ENTITY[name] ?? whole)
     .replace(/[ \t]+\n/gu, "\n")
     .replace(/\n{3,}/gu, "\n\n")

@@ -78,7 +78,8 @@ const rows = data.phases
       ? `<details><summary>Open requirement details (${p.carry.length})</summary><ul>${p.carry.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></details>`
       : "";
     return `<section class="card">
-<header><h2>${esc(p.id)} · ${esc(p.name)}</h2><span class="pill ${verdictClass(p.review.verdict)}">${verdictLabel(p.review.verdict)}</span></header>
+<header><h2>${esc(p.id)} · ${esc(p.name)}</h2><span><span class="pill ${verdictClass(p.review.verdict)}">${verdictLabel(p.review.verdict)}</span>${p.accepted ? ` <span class="pill ok">Thomas accepted</span>` : ""}</span></header>
+${p.accepted ? `<p class="meta">${esc(p.accepted)}</p>` : ""}
 ${bar(p)}
 <p class="meta">${summary} of ${p.total}</p>
 ${p.browser ? `<p class="meta">Full browser verification: ${esc(p.browser.verified)} / ${esc(p.total)} requirements.</p>` : ""}
@@ -135,7 +136,7 @@ details{margin-top:8px}summary{cursor:pointer;font-weight:600}
 .note{border-left:3px solid var(--c3);padding:4px 12px;color:var(--ink2);font-size:13px;margin-bottom:14px}
 </style></head><body><main>
 <h1>TaskDesk phase report</h1>
-<p class="sub">Updated ${esc(data.generated.slice(0, 16).replace("T", " "))} UTC · ${total} requirements in P0–P5</p>
+<p class="sub">Updated ${esc(data.generated.slice(0, 16).replace("T", " "))} UTC · ${total} requirements in ${esc(data.phases[0].id)}–${esc(data.phases.at(-1).id)}</p>
 ${data.status ? `<p class="note">${esc(data.status)}</p>` : ""}
 <p class="meta">Source implementation, tested behavior, browser verification and Thomas acceptance are separate. Counts below require complete requirement evidence; scoped passes are listed in validation details.</p>
 <p class="meta">Review once at phase end; fix and retry up to three rounds. A fourth round needs Thomas’s approval.</p>
