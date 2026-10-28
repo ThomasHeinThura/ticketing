@@ -901,11 +901,109 @@
 		]
 	},
 	"limitations": [
-		"Six owner and six admin screenshots were visually inspected; the other36 captures remain functional evidence only.",
+		"Six owner, six admin and two customer screenshots were visually inspected; the other40 captures remain functional evidence only.",
 		"No full requirement state or complete route-matrix acceptance is promoted.",
-		"G11 hosted verification is pending; no performance acceptance.",
+		"G11 fails three budgets; no performance acceptance.",
 		"The initial admin failure and diagnostic failure are retained, not replaced by retries.",
 		"SIT account seeder was not run; existing memberships and customer records preserved.",
-		"Lead/member/viewer/customer acceptance for this new candidate remains pending."
-	]
+		"Lead/member/viewer acceptance for this new candidate remains pending."
+	],
+	"customer": {
+		"functionalPassed": 6,
+		"visualInspections": 2,
+		"scope": "Portal home, persisted customer session and absent agent session at three widths/both themes; no full portal journey acceptance",
+		"ledger": [
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": 1440,
+				"screen": "portal-home",
+				"url": "https://portal.localhost/",
+				"status": "pass",
+				"screenshot": "../browser/l05-01c47cb65/customer-light-1440-portal.png",
+				"pageOverflow": false,
+				"agentSession": "absent-host-isolation",
+				"visuallyInspected": false
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": 768,
+				"screen": "portal-home",
+				"url": "https://portal.localhost/",
+				"status": "pass",
+				"screenshot": "../browser/l05-01c47cb65/customer-light-768-portal.png",
+				"pageOverflow": false,
+				"agentSession": "absent-host-isolation",
+				"visuallyInspected": false
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": 375,
+				"screen": "portal-home",
+				"url": "https://portal.localhost/",
+				"status": "pass",
+				"screenshot": "../browser/l05-01c47cb65/customer-light-375-portal.png",
+				"pageOverflow": false,
+				"agentSession": "absent-host-isolation",
+				"visuallyInspected": true
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": 1440,
+				"screen": "portal-home",
+				"url": "https://portal.localhost/",
+				"status": "pass",
+				"screenshot": "../browser/l05-01c47cb65/customer-dark-1440-portal.png",
+				"pageOverflow": false,
+				"agentSession": "absent-host-isolation",
+				"visuallyInspected": true
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": 768,
+				"screen": "portal-home",
+				"url": "https://portal.localhost/",
+				"status": "pass",
+				"screenshot": "../browser/l05-01c47cb65/customer-dark-768-portal.png",
+				"pageOverflow": false,
+				"agentSession": "absent-host-isolation",
+				"visuallyInspected": false
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": 375,
+				"screen": "portal-home",
+				"url": "https://portal.localhost/",
+				"status": "pass",
+				"screenshot": "../browser/l05-01c47cb65/customer-dark-375-portal.png",
+				"pageOverflow": false,
+				"agentSession": "absent-host-isolation",
+				"visuallyInspected": false
+			}
+		]
+	},
+	"hostedCI": {
+		"otherChecksPassed": 25,
+		"failedChecks": ["G11 performance budgets"],
+		"job": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40773655912/job/123117182688",
+		"calibration": "valid per unchanged harness",
+		"performanceTests": {
+			"passed": 19,
+			"failed": 3
+		},
+		"judgedMetricsMs": {
+			"workListLcp": 2650.6,
+			"listToDetail": 364.3,
+			"boardDragP95Raw": 33.3,
+			"boardRender": 441.5,
+			"assignment": 185.8,
+			"state": 181.7
+		},
+		"qualifyingHeadroomRuns": 0
+	}
 }
