@@ -16,9 +16,7 @@
 			},
 			"unaudited": 0,
 			"gaps": [],
-			"actions": [
-				"Open lows only; follow up after merge."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
@@ -86,9 +84,7 @@
 				"WI-5: template custom fields are stored but omitted on create (https://github.com/ThomasHeinThura/ticketing/issues/910)",
 				"AT-2: retained presigned POST contract vs implemented direct PUT; owner decision (https://github.com/ThomasHeinThura/ticketing/issues/906)"
 			],
-			"actions": [
-				"Open lows only; follow up after merge."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 5,
@@ -167,9 +163,7 @@
 				"CAL-17: lone surrogate validation edge remains (https://github.com/ThomasHeinThura/ticketing/issues/704)",
 				"AU-9: project point-in-time reconstruction route/replay absent (https://github.com/ThomasHeinThura/ticketing/issues/912)"
 			],
-			"actions": [
-				"Open lows only; follow up after merge."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 6,
@@ -246,9 +240,7 @@
 			"gaps": [
 				"IP-13/27/28/31/32: live Entra interoperability requires Thomas's tenant; local source and mocks are present"
 			],
-			"actions": [
-				"Open lows only; follow up after merge."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 4,
@@ -328,9 +320,7 @@
 				"MC-18 persisted MCP injection journey missing (https://github.com/ThomasHeinThura/ticketing/issues/905)",
 				"GM-1 import source-connection creation has no semantic audit append (https://github.com/ThomasHeinThura/ticketing/issues/916); encrypted credential storage/redaction is present"
 			],
-			"actions": [
-				"Open lows only; follow up after merge."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
@@ -437,9 +427,7 @@
 			"gaps": [
 				"RP-10 browser export buffers Blob (https://github.com/ThomasHeinThura/ticketing/issues/894)"
 			],
-			"actions": [
-				"Open lows only; follow up after merge."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
@@ -523,9 +511,7 @@
 				"IM-7 active placeholder implementation conflicts with inactive retained contract (https://github.com/ThomasHeinThura/ticketing/issues/907)"
 			],
 			"states_locked": false,
-			"actions": [
-				"Open lows only; follow up after merge."
-			],
+			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
@@ -950,11 +936,11 @@
 		}
 	],
 	"roadmap": {
-		"updated": "2026-10-28T21:00:38.988096+00:00",
+		"updated": "2026-10-28T21:40:38.974924+00:00",
 		"goal": "Make the work list and detail transition meet unchanged G11 budgets with at least 15% headroom in three CI runs. Diagnose in the application; retain the full 200-card board and existing interactions.",
-		"note": "Zero qualifying headroom runs. The asset-cancellation correction passed full hosted E2E. Latest CI has 24 green checks and two failures: a Node integration test crossed the web package boundary, and G11 calibration was unstable. Both remain explicit; no threshold or boundary exemption was added.",
+		"note": "Zero qualifying headroom runs. Candidate 01c47cb65 passes the dependency-boundary checker locally and has 7212 unit tests and 166 full E2E tests passing. Hosted CI is in progress. The preceding b548 head passed 24 checks but failed dependency boundaries and G11 calibration; that history is retained below without claiming app timings.",
 		"pr": "https://github.com/ThomasHeinThura/ticketing/pull/919",
-		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40756787932/job/123057737761",
+		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40773655912/job/123117182688",
 		"metrics": [
 			{
 				"name": "Work-list LCP",
@@ -1005,7 +991,7 @@
 				"headroom": "Unverified"
 			}
 		],
-		"validation": "Hosted b548effe6: E2E, G4, G8 and integration passed. G11 failed closed because throttled calibration batch spread 0.582 exceeded the unchanged 0.55 guard (one failure; 21 tests did not run). Static checks rejected the web-source test importing API code. The Node transport/test extraction now passes eight focused tests, API/web typechecks and the original dependency-boundary checker locally; hosted verification of that correction is pending.",
+		"validation": "Candidate 01c47cb65 is pushed on PR 919. It extracts Node HTTP preview transport into API-owned source and moves the cancellation regression test to the API suite; the unchanged dependency-boundary checker now passes locally. Hosted CI is in progress. No performance budget, threshold or calibration change.",
 		"items": [
 			{
 				"id": "L-01",
@@ -1088,10 +1074,66 @@
 				"done": "Thomas records Entra validation, penetration test and other external decisions."
 			}
 		],
-		"testedCommit": "b548effe67e4c4f49412a22ab6da15e18518547e",
-		"measurement": "No valid application timings from this hosted run: G11 failed its calibration-stability guard before measuring the application. Previous judged values remain below.",
-		"localVerification": "At b548effe6: 7211 unit tests, 5789 fresh Testcontainers integration tests across 478 files, 166 full Chromium E2E tests, nine typecheck tasks, clean-source lint, raw UI, 401 contrast pairs, permission/route-policy/contract and bundle checks pass. Local pinned G8 retains the known module-detail mismatch (#908): 104/105, with actual/diff images byte-identical to L-01. Local pinned G4 recorded two board-readiness failures (19/21); these are not described as passes. Persisted SIT remains ec0695723; candidate SIT acceptance is pending. The lazy-formatter experiment removes 81.9 ms of sampled unused initialization but has no demonstrated net LCP gain (uncalibrated three-run medians 3876 vs 3976 ms); no performance acceptance is claimed.",
+		"testedCommit": "01c47cb65396ca4058bfcad07b60dbbab1a95ab0",
+		"measurement": "Hosted verification is pending for this candidate; no G11 acceptance or timing is established. Previous hosted outcomes remain below.",
+		"localVerification": "At 01c47cb65: 7212 unit tests, 166 full Chromium E2E tests and nine typecheck tasks pass. Dependency boundaries, clean tracked-source lint, raw UI and bundle budgets pass. Fresh Testcontainers integration passed 5789/5789 for the preceding correction; the preceding hosted b548 head passed full integration, E2E, G4 and G8. Local pinned G8 retains #908 (104/105, actual/diff byte-identical to L-01); local pinned G4 retains two board-readiness failures (19/21). Local SIT now runs source-labelled 01c47cb65: healthy container and strict HTTPS 200 on both hosts after a decoded database backup; persisted role/visual acceptance is in progress. Image scan: 42 unfixed HIGH, 57 MEDIUM, 60 LOW, zero CRITICAL or fixable HIGH/CRITICAL; no new CVE/package/version/severity/fix tuples versus the preserved runtime parent. Lazy date formatting removes 81.9 ms sampled unused initialization, but controlled local LCP medians were 3876 → 3976 ms; no net performance gain is claimed. Candidate SIT ordinary-owner matrix passed 24/24 with no instance-admin authority. First isolated-admin run passed 23/24; a targeted follow-up confirmed session-endpoint HTTP 429 and a session-error screen. This failure is retained; admin candidate acceptance remains incomplete pending limiter diagnosis.",
 		"previousRuns": [
+			{
+				"testedCommit": "b548effe67e4c4f49412a22ab6da15e18518547e",
+				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40756787932/job/123057737761",
+				"measurement": "No valid application timings from this hosted run: G11 failed its calibration-stability guard before measuring the application. Previous judged values remain below.",
+				"metrics": [
+					{
+						"name": "Work-list LCP",
+						"measured": "Unavailable",
+						"budget": "< 2500 ms",
+						"target": "≤ 2125 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "List to detail",
+						"measured": "Unavailable",
+						"budget": "< 300 ms",
+						"target": "≤ 255 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "Board drag p95",
+						"measured": "Unavailable",
+						"budget": "< 20 ms",
+						"target": "≤ 17 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "Board render",
+						"measured": "Unavailable",
+						"budget": "< 500 ms",
+						"target": "≤ 425 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "Assignment click",
+						"measured": "Unavailable",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "State click",
+						"measured": "Unavailable",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					}
+				],
+				"validation": "Hosted b548effe6: E2E, G4, G8 and integration passed. G11 failed closed because throttled calibration batch spread 0.582 exceeded the unchanged 0.55 guard (one failure; 21 tests did not run). Static checks rejected the web-source test importing API code. The Node transport/test extraction now passes eight focused tests, API/web typechecks and the original dependency-boundary checker locally; hosted verification of that correction is pending."
+			},
 			{
 				"testedCommit": "0262b94557101528eaa770310d3d306a15a6c593",
 				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40751405333/job/123038763633",
