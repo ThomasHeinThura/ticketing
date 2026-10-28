@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-27T21:29:52.185Z",
+	"generated": "2026-10-28T02:06:23.000Z",
 	"source": "673 indexed clauses: 661 in P0–P5 and 12 in P6. P0–P5 bars use the per-ID audits; P6 uses a per-ID test mapping (27 Oct). Scoped test and browser passes do not count as whole-clause browser acceptance.",
 	"phases": [
 		{
@@ -1293,10 +1293,12 @@
 		"Decided 28 Oct (Thomas): settings split by scope: account settings under the user icon, project settings in the project ... menu, workspace settings under the workspace menu, God Mode on its own URL with its own sign-in; old links redirect. Pages editor to reach Plane/Notion-level markdown editing.",
 		"Decided 28 Oct (Thomas): after CI on 668dd6878 (LCP 2,895 ms, route 547 ms, board render 697 ms, assign click 223 ms against budgets 2,500/300/500/200), run one more performance round, then bring remaining misses back with numbers; budgets unchanged.",
 		"Decided 28 Oct (Thomas): the 500-row table metric counts the virtualized table's first painted viewport with 500 rows loaded (new recorder); budget < 500 ms unchanged.",
-		"28 Oct security upgrade: better-auth 1.6.26 -> 1.7.10 (critical GHSA: OAuth state usable as a magic link; high: OAuth proxy sign-in as another user; high: device-login approval) and qs 6.16.1. Adapted: pending-action credential invalidation inside better-auth transactions (PA-9), custom OIDC sign-in via signIn.social, TOTP enrollment result shape. Operator action: the agent custom OIDC redirect URI changes from /api/auth/oauth2/callback/custom to /api/auth/callback/custom at the identity provider. Full integration 5,789/5,789 and auth suites pass."
+		"28 Oct security upgrade: better-auth 1.6.26 -> 1.7.10 (critical GHSA: OAuth state usable as a magic link; high: OAuth proxy sign-in as another user; high: device-login approval) and qs 6.16.1. Adapted: pending-action credential invalidation inside better-auth transactions (PA-9), custom OIDC sign-in via signIn.social, TOTP enrollment result shape. Operator action: the agent custom OIDC redirect URI changes from /api/auth/oauth2/callback/custom to /api/auth/callback/custom at the identity provider. Full integration 5,789/5,789 and auth suites pass.",
+		"Decided 28 Oct (Thomas): phases end after P6; former P7 and all open gaps become one linear backlog (L-01…L-11, T-1) worked by Codex; GitHub CI is a required gate again; Terra/Sonnet implement, Sol/Opus plan, audit and review; official @tiptap/* extensions pre-approved for the Pages editor.",
+		"Decided 28 Oct (Thomas): merge PR #891 past the failing G11 check; misses recorded under backlog L-05; budgets unchanged."
 	],
-	"next": "Fix table row shift, board skeleton shift and the bench socket fixture; deep work-list performance work for LCP; switch the 500-row metric to ?layout=table; regenerate G8 baselines; push and get all required checks green; then ask Thomas to merge.",
-	"status": "27 Oct night: P0–P6 accepted. PR #891 at 7002e59ef: 19 of 24 checks pass (all integration shards, unit, contract, secret scan, gate checkers, a11y). Remaining: G11 performance (LCP 18.2 s vs 2.5 s on CI; deep performance work approved by Thomas), G8 (6 baselines to regenerate), e2e (table row height shift), static (runner shutdown, rerun), CodeQL alerts. P7 deferred; Entra is Thomas's.",
+	"next": "Codex: backlog L-01 baseline full audit (code, feature, design and browser tests against the requirement index and open issues), then L-02 test reliability and CI speed, L-03 settings split, L-04 Pages editor, L-05 G11 headroom. Thomas: decide whether the protect-main bypass stays; update OIDC redirect URIs to /api/auth/callback/custom; sign in on Technexus for a signed-in smoke.",
+	"status": "28 Oct: P0–P6 accepted and merged to main (PR #891, squash 692775bf7). All required checks green except G11 (work-list LCP 2921 ms vs 2500, list→detail 347 ms vs 300, board-drag p95 33.3 ms vs 20); Thomas approved merging past G11 via an admin bypass. Signed release image (digest sha256:3028f7ad…) deployed to Technexus: migrations 127→212, counts preserved, both hosts healthy over HTTPS. Phases ended; work continues as the linear backlog handed over to Codex.",
 	"validation_runs": [
 		{
 			"check": "GitHub issue triage (27 Oct)",

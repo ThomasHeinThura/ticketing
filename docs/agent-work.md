@@ -2,20 +2,15 @@
 
 The main agent coordinates one shared worktree. Subagents are available for bounded tasks that help finish the current visible outcome. [AGENTS.md](../AGENTS.md) applies to every agent. This file gives the delegation details; it does not add another approval cycle.
 
-## Active repair ownership — 26 October
+## Current ownership — 28 October
 
-| Owner | Writable scope |
-| --- | --- |
-| Coordinator | Shared schema/migrations, API mounts/policy registry, URL/i18n registries, report data, runtime, backups and serial PostgreSQL test scheduling |
-| Organisation lane — frozen | Workspace/project settings inheritance APIs, effective SLA/calendar resolution, state-write fences and calendar usage checks; source handed back to coordinator |
-| P1 lane — frozen | Project-move planner corrections and eight passing root-run unit tests; no executor. Settings/digest source handed back to coordinator |
-| Action lane — frozen | Identity-connection retirement handler/target/tests; shared approval and UI integration remain unfinished |
+No lane is active. All P0–P6 work is merged to `main`; earlier lanes are closed. The coordinating agent (Codex from 28 Oct) owns integration, generators, builds, database operations and deployment commands. Local SIT is one deployment using only `deploy/compose.testing.yml`; superseded native, performance, SSO and image-probe deployments stay down with data preserved.
 
-One PostgreSQL reset suite runs at a time on a separate disposable integration database. Thomas requires one active deployment using only `deploy/compose.testing.yml`; its restored testing copy is at migration196. Superseded native, performance, SSO and image-probe deployments stay down. The coordinator owns all builds, database operations and deployment commands. Current smoke, identity retirement and danger-action layout journeys pass; full phase journeys and reviews remain pending.
+Model tiers ([AGENTS.md](../AGENTS.md)): middle tier (Terra, Claude Sonnet) implements and runs routine checks; high tier (Sol high effort, Claude Opus) plans, audits and reviews risky changes. A reviewer never reviews work it wrote.
 
 ## Before starting
 
-Read the current request, `AGENTS.md`, [status](status.md) and the relevant [roadmap](roadmap.md)/requirement rows. Inspect the branch, source revision and dirty files. Identify what belongs to another session. Read archived material only for the specific product contract; archived agent instructions are historical.
+Read the current request, `AGENTS.md`, [handover](handover.md), [status](status.md) and the backlog row in the [roadmap](roadmap.md) with its requirement rows. Inspect the branch, source revision and dirty files. Identify what belongs to another session. Read archived material only for the specific product contract; archived agent instructions are historical.
 
 Every UI assignment names the original Kaneo component and library it reuses, the interactions it must preserve, and the laptop browser journey that proves them. Necessary semantic HTML may compose these components; native controls or full hand-built HTML replacements do not satisfy the assignment. Report any missing integration rather than substituting a different UX. Restore original drag/drop, inline editing, keyboard, focus and motion alongside persisted APIs. Do not drop features to obtain a cleaner screenshot.
 
@@ -27,7 +22,7 @@ The main agent states the visible deliverable and owns integration. Use existing
 | --- | --- | --- |
 | Read-only audit/discovery | Evidence-backed finding list with paths and a recommended fix | No edits, source inspection distinguished from executed tests/screens |
 | Implementation | A complete assigned behavior with tests and evidence | Explicit disjoint writable paths, agreed API/data contract and root-owned integration |
-| Independent phase review | One consolidated design/integration/security finding report | Reviewer did not implement the phase; consumes actual diff, test output and browser evidence |
+| Independent review | One consolidated design/integration/security finding report for a high-risk change | Reviewer did not implement it; consumes actual diff, test output and browser evidence |
 
 Do not create an agent for every small edit. Split by a concrete result, not vague roles such as “improve everything”. A new assignment needs a clear benefit. Keep the smallest useful number of agents and reuse an idle agent when appropriate. Do not create nested agent trees without an assigned need and disjoint scope.
 
@@ -35,8 +30,8 @@ Do not create an agent for every small edit. Split by a concrete result, not vag
 
 ```text
 Deliverable: one observable result or one bounded audit question.
-Mode: read-only audit / implementation / independent phase review.
-Source: branch/revision, applicable requirement IDs and relevant Kaneo components.
+Mode: read-only audit / implementation / independent review.
+Source: branch/revision, backlog row, applicable requirement IDs and relevant Kaneo components.
 Writable paths: exact files or a narrowly bounded directory; all others read-only.
 Shared contracts: API/DTO/schema/permission changes agreed before parallel edits.
 Checks: targeted local commands and required persisted browser journey, if applicable.
@@ -63,17 +58,4 @@ Return a compact result: **implemented / checked / visually inspected / missing 
 
 The coordinator reads each handoff and inspects the actual changes, integrates adapters and migrations, and runs the affected end-to-end journey. This integration check is ordinary implementation work, not an extra review ceremony. A subagent's “passed” message is not a substitute for integrated evidence.
 
-After phase journeys work, one fresh independent AI reviewer covers the complete phase, including Kaneo appearance and security. The reviewer did not implement it and receives a neutral packet of requirements, diff, code, test output and browser evidence; do not fork the implementation conversation as the review context. Findings are repaired and their fixes verified within that review. Keep one consolidated report. Thomas then sees selected working journeys, makes the acceptance/next-work decision, and the coordinator updates status/plan.
-
-## Ready task boundaries for the first implementation slice
-
-These are preparation examples, **not active assignments or implementation started**. Confirm the chosen source and current dirty-file owners before assigning writable paths.
-
-| Work package | Bounded outcome | Suggested ownership |
-| --- | --- | --- |
-| Canonical data adapter | Original Kaneo board/list read and mutate real work items | One owner for task/work-item fetchers/hooks and API adapter; coordinator agrees DTO/permission contract first |
-| Kaneo composition | Original board/list/detail/navigation present the integrated records | One owner for affected project/task/navigation components after adapter contract is agreed |
-| Realistic seed | Repeatable dated, assigned, discussed, hierarchical, related, SLA/approval data | One seed owner; schema/relation dependencies supplied by coordinator |
-| Journey/parity coverage | Persisted browser cases and matching upstream/candidate captures | One test owner; coordinate seed/runtime and avoid editing product files |
-
-These packages are dependent: do not run them as independent guesses about the data model. If file sets overlap, combine the work or serialize it. Assign separate triage/settings work only after its placement and shared components are agreed.
+High-risk changes (see [AGENTS.md](../AGENTS.md)) get one fresh independent high-tier review covering function, original Kaneo appearance and security. The reviewer did not implement the change and receives a neutral packet of requirement, diff, test output and browser evidence; do not fork the implementation conversation as review context. Fix high and medium findings and re-review; after three failing rounds stop and ask Thomas. Thomas approves each merge.
