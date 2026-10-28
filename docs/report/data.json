@@ -936,62 +936,62 @@
 		}
 	],
 	"roadmap": {
-		"updated": "2026-10-28T21:52:38.808228+00:00",
+		"updated": "2026-10-28T21:56:40.561283+00:00",
 		"goal": "Make the work list and detail transition meet unchanged G11 budgets with at least 15% headroom in three CI runs. Diagnose in the application; retain the full 200-card board and existing interactions.",
-		"note": "Zero qualifying headroom runs. Candidate 01c47cb65 passes hosted static checks, 7212 local unit tests and 166 local full E2E tests. The hosted G11 measurement step has failed; its diagnostic is still running and measurement logs are not yet available. The previous outcomes remain below; budgets and calibration are unchanged.",
+		"note": "Zero qualifying headroom runs. Hosted candidate 01c47cb65 now passes static checks, including the dependency-boundary correction. G11 calibration is valid, but LCP, list-to-detail and board-drag p95 exceed their unchanged budgets (19 passed, three failed). All six displayed metrics miss the 15% headroom target.",
 		"pr": "https://github.com/ThomasHeinThura/ticketing/pull/919",
 		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40773655912/job/123117182688",
 		"metrics": [
 			{
 				"name": "Work-list LCP",
-				"measured": "Unavailable",
+				"measured": "2650.6 ms",
 				"budget": "< 2500 ms",
 				"target": "≤ 2125 ms",
-				"result": "Unverified",
-				"headroom": "Unverified"
+				"result": "Fail",
+				"headroom": "Fail"
 			},
 			{
 				"name": "List to detail",
-				"measured": "Unavailable",
+				"measured": "364.3 ms",
 				"budget": "< 300 ms",
 				"target": "≤ 255 ms",
-				"result": "Unverified",
-				"headroom": "Unverified"
+				"result": "Fail",
+				"headroom": "Fail"
 			},
 			{
 				"name": "Board drag p95",
-				"measured": "Unavailable",
+				"measured": "33.3 ms",
 				"budget": "< 20 ms",
 				"target": "≤ 17 ms",
-				"result": "Unverified",
-				"headroom": "Unverified"
+				"result": "Fail",
+				"headroom": "Fail"
 			},
 			{
 				"name": "Board render",
-				"measured": "Unavailable",
+				"measured": "441.5 ms",
 				"budget": "< 500 ms",
 				"target": "≤ 425 ms",
-				"result": "Unverified",
-				"headroom": "Unverified"
+				"result": "Pass",
+				"headroom": "Fail"
 			},
 			{
 				"name": "Assignment click",
-				"measured": "Unavailable",
+				"measured": "185.8 ms",
 				"budget": "< 200 ms",
 				"target": "≤ 170 ms",
-				"result": "Unverified",
-				"headroom": "Unverified"
+				"result": "Pass",
+				"headroom": "Fail"
 			},
 			{
 				"name": "State click",
-				"measured": "Unavailable",
+				"measured": "181.7 ms",
 				"budget": "< 200 ms",
 				"target": "≤ 170 ms",
-				"result": "Unverified",
-				"headroom": "Unverified"
+				"result": "Pass",
+				"headroom": "Fail"
 			}
 		],
-		"validation": "Hosted 01c47cb65 static checks pass, confirming the Node HTTP dependency-boundary correction without exemptions. G11 measurement step failed; its non-gating diagnostic is still running. Failure reason and current timings are pending the completed job log; no previous timing is attributed to this candidate.",
+		"validation": "Hosted G11: 19 passed, three failed in 9.9 minutes. LCP 2650.6 ms exceeds 2500; detail 364.3 ms exceeds 300; drag p95 33.3 ms exceeds 20. All 25 other hosted checks pass, including static, unit/component, all integration shards and aggregate, G4, G8 and E2E. The non-gating multi-phase diagnostic timed out after capturing initial work-list navigation; its command-palette diagnostic passed. No budgets, thresholds, calibration or workflows changed.",
 		"items": [
 			{
 				"id": "L-01",
@@ -1075,7 +1075,7 @@
 			}
 		],
 		"testedCommit": "01c47cb65396ca4058bfcad07b60dbbab1a95ab0",
-		"measurement": "Hosted verification is pending for this candidate; no G11 acceptance or timing is established. Previous hosted outcomes remain below.",
+		"measurement": "Complete hosted Chromium G11 run with valid calibration. Harness-reported judged values are CPU-normalized where applicable; board-drag p95 is raw. LCP/detail use the second judged set after the harness retry.",
 		"localVerification": "At 01c47cb65: 7212 unit tests, 166 full Chromium E2E tests and nine typecheck tasks pass. Dependency boundaries, clean tracked-source lint, raw UI and bundle budgets pass. Fresh Testcontainers integration passed 5789/5789 for the preceding correction; the preceding hosted b548 head passed full integration, E2E, G4 and G8. Local pinned G8 retains #908 (104/105, actual/diff byte-identical to L-01); local pinned G4 retains two board-readiness failures (19/21). Local SIT now runs source-labelled 01c47cb65: healthy container and strict HTTPS 200 on both hosts after a decoded database backup; persisted role/visual acceptance is in progress. Image scan: 42 unfixed HIGH, 57 MEDIUM, 60 LOW, zero CRITICAL or fixable HIGH/CRITICAL; no new CVE/package/version/severity/fix tuples versus the preserved runtime parent. Lazy date formatting removes 81.9 ms sampled unused initialization, but controlled local LCP medians were 3876 → 3976 ms; no net performance gain is claimed. Candidate SIT ordinary-owner matrix passed 24/24 with no instance-admin authority. First isolated-admin run passed 23/24; a targeted follow-up confirmed session-endpoint HTTP 429 and a session-error screen. Installed Better Auth resets its counter after ten seconds inactivity. A paced follow-up passed all 24 affected admin cases with no HTTP 429 responses; the original failures remain recorded. Six owner and six admin screenshots were inspected; other role/route acceptance remains pending.",
 		"previousRuns": [
 			{
@@ -1319,8 +1319,8 @@
 					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-dark-375-list.png"
 				},
 				{
-					"label": "Candidate 01c47: owner/admin ledger (48 passed cases; 12 inspected captures; original failures retained)",
-					"url": "https://github.com/ThomasHeinThura/ticketing/blob/a3314e56ebf1234903f485084b559c9093b2d77a/docs/report/audit/l05-01c47cb65-sit.json"
+					"label": "Candidate 01c47: owner/admin/customer ledger (54 passed cases; 14 inspected captures; original failures retained)",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/acc8be4f3d9ec28413845418813e8bb486c682f8/docs/report/audit/l05-01c47cb65-sit.json"
 				}
 			]
 		}
