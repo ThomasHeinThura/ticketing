@@ -950,27 +950,27 @@
 		}
 	],
 	"roadmap": {
-		"updated": "2026-10-28T19:25:20.648115+00:00",
+		"updated": "2026-10-28T21:00:38.988096+00:00",
 		"goal": "Make the work list and detail transition meet unchanged G11 budgets with at least 15% headroom in three CI runs. Diagnose in the application; retain the full 200-card board and existing interactions.",
-		"note": "G11 remains failing; zero qualifying headroom runs. Candidate 0262b9455 improved the first measured paths but exposed an asset-download cancellation crash in full E2E and G11. A correction is under local validation. The approved isolated workspace-admin fixture passed 24 affected work-item browser cases; broader route and settled visual acceptance remain incomplete.",
+		"note": "Zero qualifying headroom runs. The asset-cancellation correction passed full hosted E2E. Latest CI has 24 green checks and two failures: a Node integration test crossed the web package boundary, and G11 calibration was unstable. Both remain explicit; no threshold or boundary exemption was added.",
 		"pr": "https://github.com/ThomasHeinThura/ticketing/pull/919",
-		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40751405333/job/123038763633",
+		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40756787932/job/123057737761",
 		"metrics": [
 			{
 				"name": "Work-list LCP",
-				"measured": "2637.7 ms",
+				"measured": "Unavailable",
 				"budget": "< 2500 ms",
 				"target": "≤ 2125 ms",
-				"result": "Fail",
-				"headroom": "Fail"
+				"result": "Unverified",
+				"headroom": "Unverified"
 			},
 			{
 				"name": "List to detail",
-				"measured": "361.6 ms",
+				"measured": "Unavailable",
 				"budget": "< 300 ms",
 				"target": "≤ 255 ms",
-				"result": "Fail",
-				"headroom": "Fail"
+				"result": "Unverified",
+				"headroom": "Unverified"
 			},
 			{
 				"name": "Board drag p95",
@@ -1005,7 +1005,7 @@
 				"headroom": "Unverified"
 			}
 		],
-		"validation": "Hosted G11: 10 passed, 12 failed. LCP and detail exceeded budgets before a preview-server streaming-abort crash caused connection-refused failures. Full E2E also failed after that crash. No current-candidate board or assignment acceptance is claimed. The previous complete run is retained below.",
+		"validation": "Hosted b548effe6: E2E, G4, G8 and integration passed. G11 failed closed because throttled calibration batch spread 0.582 exceeded the unchanged 0.55 guard (one failure; 21 tests did not run). Static checks rejected the web-source test importing API code. The Node transport/test extraction now passes eight focused tests, API/web typechecks and the original dependency-boundary checker locally; hosted verification of that correction is pending.",
 		"items": [
 			{
 				"id": "L-01",
@@ -1088,10 +1088,66 @@
 				"done": "Thomas records Entra validation, penetration test and other external decisions."
 			}
 		],
-		"testedCommit": "0262b94557101528eaa770310d3d306a15a6c593",
-		"measurement": "Partial hosted Chromium G11 run. The first two judged metrics were reported before the preview server crashed; the remaining run cannot establish acceptance.",
-		"localVerification": "Verified ec0695723 checks (before the new notification-batching experiment): 3326 web tests, 7 mocked browser journeys, 9 typecheck tasks, clean tracked-source lint (0 errors, 265 existing warnings, 15 infos), 401 contrast pairs and bundle limits pass. Persisted local SIT ec0695723: 96 agent cases (owner/lead/member/viewer × list/table/board/detail × three widths × two themes) and 6 customer portal cases pass after retaining and diagnosing initial harness failures. Pointer and keyboard drag cancellation preserve state/rank/version with zero record writes. Thomas approved an isolated QA workspace/project/identity for #914; workspace-admin-only role verification and 24 work-item cases pass (three widths, both themes, list/table/board/detail and reload). The broader 94-route admin crawl is separate and remains incomplete. These are scoped functional checks; initial captures include progressive placeholders, so whole-matrix settled visual acceptance is pending. Follow-up candidate 0262b9455 passes 7208 unit tests, nine typecheck tasks, 13 mocked browser journeys (including deferred translation failures/retry), 401 contrast pairs, raw UI, permission, contract, route-policy and bundle checks. Its local diagnostic LCP is 2240–2276 ms and detail is 121–170 ms; these are not hosted acceptance or the required headroom. Fresh Testcontainers integration passed 5789 tests across 478 files. Hosted G4 and G8 passed for 0262b9455. Pinned visual G8: 104 passed, one known module-detail mismatch (#908); actual and diff PNGs are byte-identical to the baseline audit. Sequential G4: 19 passed, two board-readiness failures before axe; these are being diagnosed, not waived. Asset-cancellation correction passes two focused HTTP tests plus six helper/adapter tests; it remains uncommitted and unverified by full hosted E2E.",
+		"testedCommit": "b548effe67e4c4f49412a22ab6da15e18518547e",
+		"measurement": "No valid application timings from this hosted run: G11 failed its calibration-stability guard before measuring the application. Previous judged values remain below.",
+		"localVerification": "At b548effe6: 7211 unit tests, 5789 fresh Testcontainers integration tests across 478 files, 166 full Chromium E2E tests, nine typecheck tasks, clean-source lint, raw UI, 401 contrast pairs, permission/route-policy/contract and bundle checks pass. Local pinned G8 retains the known module-detail mismatch (#908): 104/105, with actual/diff images byte-identical to L-01. Local pinned G4 recorded two board-readiness failures (19/21); these are not described as passes. Persisted SIT remains ec0695723; candidate SIT acceptance is pending. The lazy-formatter experiment removes 81.9 ms of sampled unused initialization but has no demonstrated net LCP gain (uncalibrated three-run medians 3876 vs 3976 ms); no performance acceptance is claimed.",
 		"previousRuns": [
+			{
+				"testedCommit": "0262b94557101528eaa770310d3d306a15a6c593",
+				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40751405333/job/123038763633",
+				"measurement": "Partial hosted Chromium G11 run. The first two judged metrics were reported before the preview server crashed; the remaining run cannot establish acceptance.",
+				"metrics": [
+					{
+						"name": "Work-list LCP",
+						"measured": "2637.7 ms",
+						"budget": "< 2500 ms",
+						"target": "≤ 2125 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "List to detail",
+						"measured": "361.6 ms",
+						"budget": "< 300 ms",
+						"target": "≤ 255 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "Board drag p95",
+						"measured": "Unavailable",
+						"budget": "< 20 ms",
+						"target": "≤ 17 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "Board render",
+						"measured": "Unavailable",
+						"budget": "< 500 ms",
+						"target": "≤ 425 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "Assignment click",
+						"measured": "Unavailable",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "State click",
+						"measured": "Unavailable",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					}
+				],
+				"validation": "Hosted G11: 10 passed, 12 failed. LCP and detail exceeded budgets before a preview-server streaming-abort crash caused connection-refused failures. Full E2E also failed after that crash. No current-candidate board or assignment acceptance is claimed. The previous complete run is retained below."
+			},
 			{
 				"testedCommit": "ec06957233d7b8e9122e8efcc024986108c41e6f",
 				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40731412562/job/122968440838",
@@ -1191,6 +1247,36 @@
 				],
 				"validation": "Hosted E2E 164 passed, 1 failed (create-control regression)."
 			}
-		]
+		],
+		"adminFollowUp": {
+			"summary": "Approved isolated workspace-admin fixture: 24 affected work-item cases passed; six representative captures were visually inspected. Broader crawl recorded all 564 planned cases: 54 settled content, 84 expected denials, 132 missing fixtures and 294 unconfirmed. This is partial evidence, not whole-feature or whole-matrix visual acceptance; issue #914 remains open. Existing memberships/customer records were preserved and the SIT account seeder was not rerun.",
+			"ledger": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/audit/l05-workspace-admin-followup.json",
+			"screenshots": [
+				{
+					"label": "Desktop light list",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-light-1440-list.png"
+				},
+				{
+					"label": "Desktop dark board",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-dark-1440-board.png"
+				},
+				{
+					"label": "Tablet light table",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-light-768-table.png"
+				},
+				{
+					"label": "Tablet dark detail",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-dark-768-detail.png"
+				},
+				{
+					"label": "Mobile light detail",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-light-375-detail.png"
+				},
+				{
+					"label": "Mobile dark list",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-dark-375-list.png"
+				}
+			]
+		}
 	}
 }
