@@ -936,9 +936,9 @@
 		}
 	],
 	"roadmap": {
-		"updated": "2026-10-28T21:40:38.974924+00:00",
+		"updated": "2026-10-28T21:52:38.808228+00:00",
 		"goal": "Make the work list and detail transition meet unchanged G11 budgets with at least 15% headroom in three CI runs. Diagnose in the application; retain the full 200-card board and existing interactions.",
-		"note": "Zero qualifying headroom runs. Candidate 01c47cb65 passes the dependency-boundary checker locally and has 7212 unit tests and 166 full E2E tests passing. Hosted CI is in progress. The preceding b548 head passed 24 checks but failed dependency boundaries and G11 calibration; that history is retained below without claiming app timings.",
+		"note": "Zero qualifying headroom runs. Candidate 01c47cb65 passes hosted static checks, 7212 local unit tests and 166 local full E2E tests. The hosted G11 measurement step has failed; its diagnostic is still running and measurement logs are not yet available. The previous outcomes remain below; budgets and calibration are unchanged.",
 		"pr": "https://github.com/ThomasHeinThura/ticketing/pull/919",
 		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40773655912/job/123117182688",
 		"metrics": [
@@ -991,7 +991,7 @@
 				"headroom": "Unverified"
 			}
 		],
-		"validation": "Candidate 01c47cb65 is pushed on PR 919. It extracts Node HTTP preview transport into API-owned source and moves the cancellation regression test to the API suite; the unchanged dependency-boundary checker now passes locally. Hosted CI is in progress. No performance budget, threshold or calibration change.",
+		"validation": "Hosted 01c47cb65 static checks pass, confirming the Node HTTP dependency-boundary correction without exemptions. G11 measurement step failed; its non-gating diagnostic is still running. Failure reason and current timings are pending the completed job log; no previous timing is attributed to this candidate.",
 		"items": [
 			{
 				"id": "L-01",
@@ -1076,7 +1076,7 @@
 		],
 		"testedCommit": "01c47cb65396ca4058bfcad07b60dbbab1a95ab0",
 		"measurement": "Hosted verification is pending for this candidate; no G11 acceptance or timing is established. Previous hosted outcomes remain below.",
-		"localVerification": "At 01c47cb65: 7212 unit tests, 166 full Chromium E2E tests and nine typecheck tasks pass. Dependency boundaries, clean tracked-source lint, raw UI and bundle budgets pass. Fresh Testcontainers integration passed 5789/5789 for the preceding correction; the preceding hosted b548 head passed full integration, E2E, G4 and G8. Local pinned G8 retains #908 (104/105, actual/diff byte-identical to L-01); local pinned G4 retains two board-readiness failures (19/21). Local SIT now runs source-labelled 01c47cb65: healthy container and strict HTTPS 200 on both hosts after a decoded database backup; persisted role/visual acceptance is in progress. Image scan: 42 unfixed HIGH, 57 MEDIUM, 60 LOW, zero CRITICAL or fixable HIGH/CRITICAL; no new CVE/package/version/severity/fix tuples versus the preserved runtime parent. Lazy date formatting removes 81.9 ms sampled unused initialization, but controlled local LCP medians were 3876 → 3976 ms; no net performance gain is claimed. Candidate SIT ordinary-owner matrix passed 24/24 with no instance-admin authority. First isolated-admin run passed 23/24; a targeted follow-up confirmed session-endpoint HTTP 429 and a session-error screen. This failure is retained; admin candidate acceptance remains incomplete pending limiter diagnosis.",
+		"localVerification": "At 01c47cb65: 7212 unit tests, 166 full Chromium E2E tests and nine typecheck tasks pass. Dependency boundaries, clean tracked-source lint, raw UI and bundle budgets pass. Fresh Testcontainers integration passed 5789/5789 for the preceding correction; the preceding hosted b548 head passed full integration, E2E, G4 and G8. Local pinned G8 retains #908 (104/105, actual/diff byte-identical to L-01); local pinned G4 retains two board-readiness failures (19/21). Local SIT now runs source-labelled 01c47cb65: healthy container and strict HTTPS 200 on both hosts after a decoded database backup; persisted role/visual acceptance is in progress. Image scan: 42 unfixed HIGH, 57 MEDIUM, 60 LOW, zero CRITICAL or fixable HIGH/CRITICAL; no new CVE/package/version/severity/fix tuples versus the preserved runtime parent. Lazy date formatting removes 81.9 ms sampled unused initialization, but controlled local LCP medians were 3876 → 3976 ms; no net performance gain is claimed. Candidate SIT ordinary-owner matrix passed 24/24 with no instance-admin authority. First isolated-admin run passed 23/24; a targeted follow-up confirmed session-endpoint HTTP 429 and a session-error screen. Installed Better Auth resets its counter after ten seconds inactivity. A paced follow-up passed all 24 affected admin cases with no HTTP 429 responses; the original failures remain recorded. Six owner and six admin screenshots were inspected; other role/route acceptance remains pending.",
 		"previousRuns": [
 			{
 				"testedCommit": "b548effe67e4c4f49412a22ab6da15e18518547e",
@@ -1317,6 +1317,10 @@
 				{
 					"label": "Mobile dark list",
 					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-dark-375-list.png"
+				},
+				{
+					"label": "Candidate 01c47: owner/admin ledger (48 passed cases; 12 inspected captures; original failures retained)",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/a3314e56ebf1234903f485084b559c9093b2d77a/docs/report/audit/l05-01c47cb65-sit.json"
 				}
 			]
 		}
