@@ -1,8 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { cp } from "node:fs/promises";
 import path from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
@@ -18,7 +16,7 @@ import {
   i18nNamespaceGroups,
 } from "./vite/i18n-namespace-groups";
 
-function precompressedAssets(outDir: string): Plugin {
+export function precompressedAssets(outDir: string): Plugin {
   return {
     name: "taskdesk:precompressed-assets",
     async writeBundle() {
@@ -44,10 +42,18 @@ function precompressedAssets(outDir: string): Plugin {
         );
         void servePrecompressedAsset(request, outDir)
           .then(async (response) => {
+            if (res.destroyed || controller.signal.aborted) {
+              await response?.body?.cancel();
+              return;
+            }
             if (!response) {
               next();
               return;
             }
+            const bytes = response.body
+              ? Buffer.from(await response.arrayBuffer())
+              : undefined;
+            if (res.destroyed || controller.signal.aborted) return;
             const vary = [
               res.getHeader("Vary")?.toString(),
               response.headers.get("Vary"),
@@ -71,18 +77,20 @@ function precompressedAssets(outDir: string): Plugin {
             response.headers.forEach((value, name) => {
               res.setHeader(name, value);
             });
-            if (!response.body) {
-              res.end();
-              return;
-            }
-            await pipeline(
-              Readable.fromWeb(
-                response.body as import("node:stream/web").ReadableStream,
-              ),
-              res,
-            );
+            res.end(bytes);
           })
-          .catch(next);
+          .catch((error: unknown) => {
+            const code =
+              error && typeof error === "object" && "code" in error
+                ? String(error.code)
+                : "";
+            const name = error instanceof Error ? error.name : "";
+            const expectedAbort = name === "AbortError" || code === "ABORT_ERR";
+            if (
+              !(expectedAbort && (res.destroyed || controller.signal.aborted))
+            )
+              next(error);
+          });
       });
     },
   };

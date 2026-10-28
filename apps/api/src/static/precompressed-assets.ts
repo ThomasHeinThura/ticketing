@@ -1,7 +1,5 @@
-import { createReadStream } from "node:fs";
 import { lstat, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { Readable } from "node:stream";
 import { promisify } from "node:util";
 import { brotliCompress, constants, deflate, gzip } from "node:zlib";
 
@@ -171,15 +169,8 @@ export async function servePrecompressedAsset(
   headers.set("Content-Length", String(selected.stat.size));
   if (request.method === "HEAD")
     return new Response(null, { status: 200, headers });
-  const stream = createReadStream(selected.path);
-  const abort = () => stream.destroy();
-  if (request.signal.aborted) abort();
-  else request.signal.addEventListener("abort", abort, { once: true });
-  stream.once("close", () =>
-    request.signal.removeEventListener("abort", abort),
-  );
-  return new Response(Readable.toWeb(stream) as ReadableStream<Uint8Array>, {
-    status: 200,
-    headers,
-  });
+  // Read trusted build assets before constructing the response so a client disconnect
+  // cannot leave an orphaned file stream in the HTTP adapter.
+  const bytes = await readFile(selected.path, { signal: request.signal });
+  return new Response(new Uint8Array(bytes), { status: 200, headers });
 }

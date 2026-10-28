@@ -172,4 +172,14 @@ describe("precompressed assets", () => {
     await rm(join(root, "assets/main-abc.js"));
     expect(await serve()).toBeNull();
   });
+  it("rejects an already-aborted read before constructing a response", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const req = new Request("https://example.test/assets/main-abc.js", {
+      signal: controller.signal,
+    });
+    await expect(servePrecompressedAsset(req, root)).rejects.toMatchObject({
+      name: "AbortError",
+    });
+  });
 });
