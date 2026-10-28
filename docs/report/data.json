@@ -936,49 +936,62 @@
 		}
 	],
 	"roadmap": {
-		"updated": "2026-10-28T16:31:55.659099+00:00",
+		"updated": "2026-10-28T17:54:28.133313+00:00",
 		"goal": "Make the work list and detail transition meet unchanged G11 budgets with at least 15% headroom in three CI runs. Diagnose in the application; retain the full 200-card board and existing interactions.",
-		"note": "First hosted candidate run only; the latest local correction has not been verified. Zero qualifying CI runs.",
+		"note": "Latest hosted G11 has two budget failures; zero qualifying headroom runs. Persisted SIT navigation and cancellation checks pass; complete settled visual acceptance remains pending. Thomas approved an isolated workspace-admin fixture; it is created and role-verified, with browser coverage in progress.",
 		"pr": "https://github.com/ThomasHeinThura/ticketing/pull/919",
-		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40714505114/job/122908390393",
+		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40731412562/job/122968440838",
 		"metrics": [
 			{
 				"name": "Work-list LCP",
-				"measured": "2769.5 ms",
+				"measured": "2853.6 ms",
 				"budget": "< 2500 ms",
 				"target": "≤ 2125 ms",
-				"result": "Fail"
+				"result": "Fail",
+				"headroom": "Fail"
 			},
 			{
 				"name": "List to detail",
-				"measured": "518 ms",
+				"measured": "1103.5 ms",
 				"budget": "< 300 ms",
 				"target": "≤ 255 ms",
-				"result": "Fail"
+				"result": "Fail",
+				"headroom": "Fail"
 			},
 			{
 				"name": "Board drag p95",
 				"measured": "16.8 ms",
 				"budget": "< 20 ms",
 				"target": "≤ 17 ms",
-				"result": "Pass"
+				"result": "Pass",
+				"headroom": "Pass"
 			},
 			{
 				"name": "Board render",
-				"measured": "412.7 ms",
+				"measured": "467.1 ms",
 				"budget": "< 500 ms",
 				"target": "≤ 425 ms",
-				"result": "Pass"
+				"result": "Pass",
+				"headroom": "Fail"
 			},
 			{
 				"name": "Assignment click",
-				"measured": "165.2 ms",
+				"measured": "184.6 ms",
 				"budget": "< 200 ms",
 				"target": "≤ 170 ms",
-				"result": "Pass"
+				"result": "Pass",
+				"headroom": "Fail"
+			},
+			{
+				"name": "State click",
+				"measured": "190.0 ms",
+				"budget": "< 200 ms",
+				"target": "≤ 170 ms",
+				"result": "Pass",
+				"headroom": "Fail"
 			}
 		],
-		"validation": "Hosted E2E: 164 passed, 1 failed (create-control regression). Correction is pending verification. Candidate has no persisted SIT acceptance.",
+		"validation": "Hosted CI: 25 other checks green including full integration, G8, G4 and E2E; G11 alone failed (20 passed, 2 failed). Detail value 1103.5 ms is the second judged set; the first set measured 1063.9 ms.",
 		"items": [
 			{
 				"id": "L-01",
@@ -1061,8 +1074,53 @@
 				"done": "Thomas records Entra validation, penetration test and other external decisions."
 			}
 		],
-		"testedCommit": "48dec6ed2dc5daf6c73a771a652a8fb4d58feac8",
-		"measurement": "Hosted Chromium G11 judged values: CPU-bound metrics normalized; board-drag p95 raw. Worker calibration readings were 1.096–1.178; unthrottled readings were 1.166–1.183, within the existing validity envelope.",
-		"localVerification": "Latest local correction: six targeted E2E tests pass, covering create shell while panel or form is delayed, cancellation on navigation or unmount, retry and parent preload. Hosted verification remains pending."
+		"testedCommit": "ec06957233d7b8e9122e8efcc024986108c41e6f",
+		"measurement": "Hosted Chromium G11 harness-reported judged values; calibration was valid per linked job. Board drag p95 is raw.",
+		"localVerification": "Verified ec0695723 checks (before the new notification-batching experiment): 3326 web tests, 7 mocked browser journeys, 9 typecheck tasks, clean tracked-source lint (0 errors, 265 existing warnings, 15 infos), 401 contrast pairs and bundle limits pass. Persisted local SIT ec0695723: 96 agent cases (owner/lead/member/viewer × list/table/board/detail × three widths × two themes) and 6 customer portal cases pass after retaining and diagnosing initial harness failures. Pointer and keyboard drag cancellation preserve state/rank/version with zero record writes. Thomas approved an isolated QA workspace/project/identity for #914; creation and workspace-admin-only role verification passed, and browser coverage is in progress. These are scoped functional checks; initial captures include progressive placeholders, so whole-matrix settled visual acceptance is pending.",
+		"previousRuns": [
+			{
+				"testedCommit": "48dec6ed2dc5daf6c73a771a652a8fb4d58feac8",
+				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40714505114/job/122908390393",
+				"measurement": "Hosted Chromium G11 judged values: CPU-bound metrics normalized; board-drag p95 raw. Worker calibration readings were 1.096–1.178; unthrottled readings were 1.166–1.183, within the existing validity envelope.",
+				"metrics": [
+					{
+						"name": "Work-list LCP",
+						"measured": "2769.5 ms",
+						"budget": "< 2500 ms",
+						"target": "≤ 2125 ms",
+						"result": "Fail"
+					},
+					{
+						"name": "List to detail",
+						"measured": "518 ms",
+						"budget": "< 300 ms",
+						"target": "≤ 255 ms",
+						"result": "Fail"
+					},
+					{
+						"name": "Board drag p95",
+						"measured": "16.8 ms",
+						"budget": "< 20 ms",
+						"target": "≤ 17 ms",
+						"result": "Pass"
+					},
+					{
+						"name": "Board render",
+						"measured": "412.7 ms",
+						"budget": "< 500 ms",
+						"target": "≤ 425 ms",
+						"result": "Pass"
+					},
+					{
+						"name": "Assignment click",
+						"measured": "165.2 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass"
+					}
+				],
+				"validation": "Hosted E2E 164 passed, 1 failed (create-control regression)."
+			}
+		]
 	}
 }
