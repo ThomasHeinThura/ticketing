@@ -16,7 +16,9 @@
 			},
 			"unaudited": 0,
 			"gaps": [],
-			"actions": ["Open lows only; follow up after merge."],
+			"actions": [
+				"Open lows only; follow up after merge."
+			],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
@@ -84,7 +86,9 @@
 				"WI-5: template custom fields are stored but omitted on create (https://github.com/ThomasHeinThura/ticketing/issues/910)",
 				"AT-2: retained presigned POST contract vs implemented direct PUT; owner decision (https://github.com/ThomasHeinThura/ticketing/issues/906)"
 			],
-			"actions": ["Open lows only; follow up after merge."],
+			"actions": [
+				"Open lows only; follow up after merge."
+			],
 			"review": {
 				"verdict": "pass",
 				"findings": 5,
@@ -163,7 +167,9 @@
 				"CAL-17: lone surrogate validation edge remains (https://github.com/ThomasHeinThura/ticketing/issues/704)",
 				"AU-9: project point-in-time reconstruction route/replay absent (https://github.com/ThomasHeinThura/ticketing/issues/912)"
 			],
-			"actions": ["Open lows only; follow up after merge."],
+			"actions": [
+				"Open lows only; follow up after merge."
+			],
 			"review": {
 				"verdict": "pass",
 				"findings": 6,
@@ -240,7 +246,9 @@
 			"gaps": [
 				"IP-13/27/28/31/32: live Entra interoperability requires Thomas's tenant; local source and mocks are present"
 			],
-			"actions": ["Open lows only; follow up after merge."],
+			"actions": [
+				"Open lows only; follow up after merge."
+			],
 			"review": {
 				"verdict": "pass",
 				"findings": 4,
@@ -320,7 +328,9 @@
 				"MC-18 persisted MCP injection journey missing (https://github.com/ThomasHeinThura/ticketing/issues/905)",
 				"GM-1 import source-connection creation has no semantic audit append (https://github.com/ThomasHeinThura/ticketing/issues/916); encrypted credential storage/redaction is present"
 			],
-			"actions": ["Open lows only; follow up after merge."],
+			"actions": [
+				"Open lows only; follow up after merge."
+			],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
@@ -427,7 +437,9 @@
 			"gaps": [
 				"RP-10 browser export buffers Blob (https://github.com/ThomasHeinThura/ticketing/issues/894)"
 			],
-			"actions": ["Open lows only; follow up after merge."],
+			"actions": [
+				"Open lows only; follow up after merge."
+			],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
@@ -511,7 +523,9 @@
 				"IM-7 active placeholder implementation conflicts with inactive retained contract (https://github.com/ThomasHeinThura/ticketing/issues/907)"
 			],
 			"states_locked": false,
-			"actions": ["Open lows only; follow up after merge."],
+			"actions": [
+				"Open lows only; follow up after merge."
+			],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
@@ -936,15 +950,15 @@
 		}
 	],
 	"roadmap": {
-		"updated": "2026-10-28T17:54:28.133313+00:00",
+		"updated": "2026-10-28T19:25:20.648115+00:00",
 		"goal": "Make the work list and detail transition meet unchanged G11 budgets with at least 15% headroom in three CI runs. Diagnose in the application; retain the full 200-card board and existing interactions.",
-		"note": "Latest hosted G11 has two budget failures; zero qualifying headroom runs. Persisted SIT navigation and cancellation checks pass; complete settled visual acceptance remains pending. Thomas approved an isolated workspace-admin fixture; 24 affected work-item browser cases pass. Follow-up performance candidate 0262b9455 is under hosted CI.",
+		"note": "G11 remains failing; zero qualifying headroom runs. Candidate 0262b9455 improved the first measured paths but exposed an asset-download cancellation crash in full E2E and G11. A correction is under local validation. The approved isolated workspace-admin fixture passed 24 affected work-item browser cases; broader route and settled visual acceptance remain incomplete.",
 		"pr": "https://github.com/ThomasHeinThura/ticketing/pull/919",
-		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40731412562/job/122968440838",
+		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40751405333/job/123038763633",
 		"metrics": [
 			{
 				"name": "Work-list LCP",
-				"measured": "2853.6 ms",
+				"measured": "2637.7 ms",
 				"budget": "< 2500 ms",
 				"target": "≤ 2125 ms",
 				"result": "Fail",
@@ -952,7 +966,7 @@
 			},
 			{
 				"name": "List to detail",
-				"measured": "1103.5 ms",
+				"measured": "361.6 ms",
 				"budget": "< 300 ms",
 				"target": "≤ 255 ms",
 				"result": "Fail",
@@ -960,38 +974,38 @@
 			},
 			{
 				"name": "Board drag p95",
-				"measured": "16.8 ms",
+				"measured": "Unavailable",
 				"budget": "< 20 ms",
 				"target": "≤ 17 ms",
-				"result": "Pass",
-				"headroom": "Pass"
+				"result": "Unverified",
+				"headroom": "Unverified"
 			},
 			{
 				"name": "Board render",
-				"measured": "467.1 ms",
+				"measured": "Unavailable",
 				"budget": "< 500 ms",
 				"target": "≤ 425 ms",
-				"result": "Pass",
-				"headroom": "Fail"
+				"result": "Unverified",
+				"headroom": "Unverified"
 			},
 			{
 				"name": "Assignment click",
-				"measured": "184.6 ms",
+				"measured": "Unavailable",
 				"budget": "< 200 ms",
 				"target": "≤ 170 ms",
-				"result": "Pass",
-				"headroom": "Fail"
+				"result": "Unverified",
+				"headroom": "Unverified"
 			},
 			{
 				"name": "State click",
-				"measured": "190.0 ms",
+				"measured": "Unavailable",
 				"budget": "< 200 ms",
 				"target": "≤ 170 ms",
-				"result": "Pass",
-				"headroom": "Fail"
+				"result": "Unverified",
+				"headroom": "Unverified"
 			}
 		],
-		"validation": "Hosted CI: 25 other checks green including full integration, G8, G4 and E2E; G11 alone failed (20 passed, 2 failed). Detail value 1103.5 ms is the second judged set; the first set measured 1063.9 ms.",
+		"validation": "Hosted G11: 10 passed, 12 failed. LCP and detail exceeded budgets before a preview-server streaming-abort crash caused connection-refused failures. Full E2E also failed after that crash. No current-candidate board or assignment acceptance is claimed. The previous complete run is retained below.",
 		"items": [
 			{
 				"id": "L-01",
@@ -1074,10 +1088,66 @@
 				"done": "Thomas records Entra validation, penetration test and other external decisions."
 			}
 		],
-		"testedCommit": "ec06957233d7b8e9122e8efcc024986108c41e6f",
-		"measurement": "Hosted Chromium G11 harness-reported judged values; calibration was valid per linked job. Board drag p95 is raw.",
-		"localVerification": "Verified ec0695723 checks (before the new notification-batching experiment): 3326 web tests, 7 mocked browser journeys, 9 typecheck tasks, clean tracked-source lint (0 errors, 265 existing warnings, 15 infos), 401 contrast pairs and bundle limits pass. Persisted local SIT ec0695723: 96 agent cases (owner/lead/member/viewer × list/table/board/detail × three widths × two themes) and 6 customer portal cases pass after retaining and diagnosing initial harness failures. Pointer and keyboard drag cancellation preserve state/rank/version with zero record writes. Thomas approved an isolated QA workspace/project/identity for #914; workspace-admin-only role verification and 24 work-item cases pass (three widths, both themes, list/table/board/detail and reload). The broader 94-route admin crawl is separate and remains incomplete. These are scoped functional checks; initial captures include progressive placeholders, so whole-matrix settled visual acceptance is pending. Follow-up candidate 0262b9455 passes 7208 unit tests, nine typecheck tasks, 13 mocked browser journeys (including deferred translation failures/retry), 401 contrast pairs, raw UI, permission, contract, route-policy and bundle checks. Its local diagnostic LCP is 2240–2276 ms and detail is 121–170 ms; these are not hosted acceptance or the required headroom. Fresh Testcontainers integration and hosted CI are running.",
+		"testedCommit": "0262b94557101528eaa770310d3d306a15a6c593",
+		"measurement": "Partial hosted Chromium G11 run. The first two judged metrics were reported before the preview server crashed; the remaining run cannot establish acceptance.",
+		"localVerification": "Verified ec0695723 checks (before the new notification-batching experiment): 3326 web tests, 7 mocked browser journeys, 9 typecheck tasks, clean tracked-source lint (0 errors, 265 existing warnings, 15 infos), 401 contrast pairs and bundle limits pass. Persisted local SIT ec0695723: 96 agent cases (owner/lead/member/viewer × list/table/board/detail × three widths × two themes) and 6 customer portal cases pass after retaining and diagnosing initial harness failures. Pointer and keyboard drag cancellation preserve state/rank/version with zero record writes. Thomas approved an isolated QA workspace/project/identity for #914; workspace-admin-only role verification and 24 work-item cases pass (three widths, both themes, list/table/board/detail and reload). The broader 94-route admin crawl is separate and remains incomplete. These are scoped functional checks; initial captures include progressive placeholders, so whole-matrix settled visual acceptance is pending. Follow-up candidate 0262b9455 passes 7208 unit tests, nine typecheck tasks, 13 mocked browser journeys (including deferred translation failures/retry), 401 contrast pairs, raw UI, permission, contract, route-policy and bundle checks. Its local diagnostic LCP is 2240–2276 ms and detail is 121–170 ms; these are not hosted acceptance or the required headroom. Fresh Testcontainers integration passed 5789 tests across 478 files. Hosted G4 and G8 passed for 0262b9455. Pinned visual G8: 104 passed, one known module-detail mismatch (#908); actual and diff PNGs are byte-identical to the baseline audit. Sequential G4: 19 passed, two board-readiness failures before axe; these are being diagnosed, not waived. Asset-cancellation correction passes two focused HTTP tests plus six helper/adapter tests; it remains uncommitted and unverified by full hosted E2E.",
 		"previousRuns": [
+			{
+				"testedCommit": "ec06957233d7b8e9122e8efcc024986108c41e6f",
+				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40731412562/job/122968440838",
+				"measurement": "Hosted Chromium G11 harness-reported judged values; calibration was valid per linked job. Board drag p95 is raw.",
+				"metrics": [
+					{
+						"name": "Work-list LCP",
+						"measured": "2853.6 ms",
+						"budget": "< 2500 ms",
+						"target": "≤ 2125 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "List to detail",
+						"measured": "1103.5 ms",
+						"budget": "< 300 ms",
+						"target": "≤ 255 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "Board drag p95",
+						"measured": "16.8 ms",
+						"budget": "< 20 ms",
+						"target": "≤ 17 ms",
+						"result": "Pass",
+						"headroom": "Pass"
+					},
+					{
+						"name": "Board render",
+						"measured": "467.1 ms",
+						"budget": "< 500 ms",
+						"target": "≤ 425 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					},
+					{
+						"name": "Assignment click",
+						"measured": "184.6 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					},
+					{
+						"name": "State click",
+						"measured": "190.0 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					}
+				],
+				"validation": "Hosted CI: 25 other checks green including full integration, G8, G4 and E2E; G11 alone failed (20 passed, 2 failed). Detail value 1103.5 ms is the second judged set; the first set measured 1063.9 ms."
+			},
 			{
 				"testedCommit": "48dec6ed2dc5daf6c73a771a652a8fb4d58feac8",
 				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40714505114/job/122908390393",
