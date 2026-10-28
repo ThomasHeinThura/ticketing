@@ -1,0 +1,142 @@
+{
+	"audit": "L-01 baseline main gate run",
+	"main": "2553612ee08b61a633bb1536e599ddb8ca590445",
+	"dateUtc": "2026-10-28",
+	"runtime": {
+		"node": "26.12.1",
+		"pnpm": "10.32.1",
+		"localSitAgent": "https://ticketing.localhost",
+		"localSitPortal": "https://portal.localhost"
+	},
+	"isolatedIntegration": {
+		"command": "CI=true pnpm test:integration with TASKDESK_DATABASE_URL unset",
+		"result": "pass",
+		"files": "478/478",
+		"tests": "5789/5789",
+		"duration": "27m58s",
+		"database": "taskdesk_test inside fresh Testcontainers PostgreSQL 18.6",
+		"ownedContainers": ["2c9fcb20f62e", "1c56f1a99689"],
+		"cleanup": "Both exact owned containers absent after run; native PostgreSQL 62870 live database excluded from integration/reset/seed/fixtures."
+	},
+	"gates": [
+		{
+			"gate": "pnpm lint:ci",
+			"result": "local_artifact_failure",
+			"detail": "Biome reports 11 errors, 265 warnings, 15 infos; all 11 errors are ignored local backups manifest files (10) or apps/web/test-results/.last-run.json (1). Ignore-aware Biome CI passes 4820 files with 0 errors; #893 was closed after corrected attribution.",
+			"cleanHeadVerification": {
+				"source": "git archive 2553612ee08b61a633bb1536e599ddb8ca590445 into a fresh task-owned temporary directory; existing node_modules symlink only, no dependency install or config changes",
+				"command": "pnpm lint:ci",
+				"result": "pass",
+				"files": 4817,
+				"errors": 0,
+				"warnings": 265,
+				"infos": 15,
+				"detail": "Exact main source passes the unmodified lint command; original dirty-workspace artifact failure remains above."
+			}
+		},
+		{
+			"gate": "pnpm typecheck",
+			"result": "pass",
+			"detail": "9/9 workspace tasks"
+		},
+		{
+			"gate": "pnpm test",
+			"result": "fail",
+			"detail": "Web 3317 passed, 1 failed, 4 skipped; CreateApiKeyDialog timed out at 5s and command-palette setup timed out at 10s. Other packages passed; existing #776 covers under-load web unit reliability."
+		},
+		{
+			"gate": "pnpm test:integration",
+			"result": "pass",
+			"detail": "478 files and 5789 tests on fresh dedicated test database"
+		},
+		{
+			"gate": "pnpm test:permissions",
+			"result": "pass",
+			"detail": "118/118"
+		},
+		{
+			"gate": "pnpm check:route-policy",
+			"result": "pass"
+		},
+		{
+			"gate": "pnpm test:contract",
+			"result": "pass",
+			"detail": "oasdiff reports 0 unapproved breaking changes"
+		},
+		{
+			"gate": "pnpm test:e2e",
+			"result": "fail",
+			"detail": "164 passed, 1 failed; task-properties-board-smoke bare dialog locator resolved to two dialogs; #911"
+		},
+		{
+			"gate": "pnpm check:ui:raw-elements",
+			"result": "pass",
+			"detail": "0 raw interactive elements"
+		},
+		{
+			"gate": "pnpm check:tokens",
+			"result": "pass",
+			"detail": "401 source-grounded light/dark contrast pairs pass"
+		},
+		{
+			"gate": "G8 pinned Linux screen snapshots",
+			"result": "fail",
+			"detail": "x86_64 child digest bc6ab0d6 of CI-pinned multiarch index eff16c30: 104 passed, 1 project module detail 46-pixel stable diff; #908. No baseline changed.",
+			"reproduction": "Isolated module-detail diagnostic rerun in same pinned Linux/amd64 Playwright image failed again with exactly 46 different pixels. This is additional reproduction; original full-suite verdict remains 104/105.",
+			"artifacts": {
+				"expected": "docs/report/screens/l01-g8-module-detail-expected.png",
+				"actual": "docs/report/screens/l01-g8-module-detail-actual.png",
+				"diff": "docs/report/screens/l01-g8-module-detail-diff.png"
+			}
+		},
+		{
+			"gate": "G8 pinned Linux Storybook snapshots",
+			"result": "pass",
+			"detail": "1/1 Storybook suite when run separately after screen suite failure"
+		},
+		{
+			"gate": "G4 accessibility",
+			"result": "pass",
+			"detail": "155 UI accessibility tests and 21 Playwright axe cases"
+		},
+		{
+			"gate": "G11/G13 performance budgets",
+			"result": "not_measured",
+			"detail": "Unmodified pnpm test:perf (playwright.perf.config.ts) failed closed at local G11 calibration: speed factor 0.527 outside [0.75,1.75]. All product-budget cases were skipped, including the six named G13 skeleton-to-content layout-shift cases in performance.bench.ts. No G11/G13 product-budget verdict. Existing #876. Merge CI G11 failed and Thomas approved a bypass; this audit does not supersede that result."
+		},
+		{
+			"gate": "G11 bundle budgets",
+			"result": "pass",
+			"detail": "Agent 267.1/350 KB gzip; work-list route 332.8/350; portal 189.1/200"
+		},
+		{
+			"gate": "G12 portal bundle purity",
+			"result": "pass",
+			"detail": "1 entry, static and dynamic import graph clean"
+		},
+		{
+			"gate": "Other code checkers",
+			"result": "pass",
+			"detail": "env, events, inventory, i18n, overrides, policy, reviews, skips, vocabulary, visual scope, dependencies, Dockerfile dependencies"
+		}
+	],
+	"security": {
+		"trivy": "Local SIT image: 59 LOW, 57 MEDIUM, 42 HIGH, 0 CRITICAL; 0 fixable HIGH/CRITICAL across 2 targets. Findings triaged without suppression.",
+		"gitleaks": "Historical git scan exits 1 with 22 matches (21 generic-api-key, 1 private-key marker). Rule/path/context triage found six artifact hashes, nine request-type identifiers, three static test fixtures, three OpenAPI operation-count strings and one invalid PEM marker; no valid credential identified. No allowlist changed. Raw match values withheld.",
+		"dependencyAudit": "pnpm audit exits 1: one LOW deepmerge@4.3.1 transitive through packages/email > @react-email/render > html-to-text; GHSA-gcqx-w48m-w2h4 has no patched version in audit metadata; #909. No moderate/high/critical advisories.",
+		"stagedDiffScan": {
+			"command": "gitleaks protect --staged --redact=100",
+			"initialExit": 1,
+			"initialFindings": 6,
+			"rule": "generic-api-key",
+			"triage": "Six copies of one persisted request-type identifier in selected-form catalogue URLs, not credentials. Public query values normalized to {requestTypeKey}; original finding count retained. No rules, thresholds, allowlists or scan scope changed.",
+			"finalResult": "PASS: exit 0, zero findings after public URL normalization"
+		}
+	},
+	"limits": "Aggregate gate passes do not prove each numbered clause or the full SIT browser matrix. Raw logs, cookies, database URLs and signed URLs are not part of this evidence artifact.",
+	"auditSafety": {
+		"disposableSetupTokenOutput": "One disposable Testcontainers integration setup token appeared in a tool output during the audit. The exact test container was destroyed; it was not a SIT or production credential. The value and raw integration log are excluded from the evidence artifacts. This incident is separate from the 22 historical Gitleaks matches.",
+		"activeCredentialAction": "No active SIT or production credential identified by this incident; no rotation action required for the destroyed disposable setup.",
+		"sitOperations": "Local SIT browser audit used ordinary auth/session and own active-workspace preference operations only; it issued no business-record create/edit/delete commands. The live 62870 database was excluded from integration/reset/seed/fixture operations."
+	}
+}

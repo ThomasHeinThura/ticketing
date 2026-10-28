@@ -1,0 +1,1791 @@
+{
+	"audit": "L-01 representative persisted SIT keyboard/focus checks",
+	"dateUtc": "2026-10-28",
+	"identityEvidence": "docs/report/audit/l01-sit-identity.json",
+	"plannedRequiredCases": 36,
+	"crawlComplete": true,
+	"requestedRoleCoverageComplete": false,
+	"summary": {
+		"recordedRequiredCases": 30,
+		"blockedWorkspaceAdminCases": 6,
+		"recordedSupplementaryCases": 6,
+		"executed": 36,
+		"probeErrors": 0,
+		"interactiveTabVisibilityFailures": 0,
+		"requiredSearchRestoreFailures": 16,
+		"supplementarySearchRestoreFailures": 4,
+		"desktopTabletSearchRestoreFailures": 20,
+		"mobileSidebarRestoreFailures": 0
+	},
+	"method": "Existing authenticated My Work shell per agent identity and portal home for customer, each at 1440/820/390 and light/dark. Sample five Tab moves (BODY at the normal document boundary retained separately); focus an existing trigger, activate using Enter, close using Escape, and wait 1100ms before checking restored focus and trigger connectivity. Desktop/tablet agents use Search dialog; customer uses notification menu; mobile uses sidebar. Instance-admin/owner cases are supplementary, not workspace-admin evidence.",
+	"issue": "https://github.com/ThomasHeinThura/ticketing/issues/915",
+	"retainedContract": "docs/technical/architecture-and-experience.md:1666",
+	"sourceCondition": "apps/web/src/components/search.tsx uses a plain library Button to set open; search-command-menu/index.tsx renders CommandDialog/CommandDialogPopup without CommandDialogTrigger or finalFocus.",
+	"limits": "Representative shell controls only, not every screen or interaction. Requested workspace-admin fixture unavailable (#914). Initial private attempt had a wrong customer locator and 150ms exit-animation timing; this corrected attempt uses the actual Open notifications label and a 1.1s wait. No app source, business data or UI behavior was changed.",
+	"cases": [
+		{
+			"role": "owner",
+			"actualRole": "owner",
+			"theme": "light",
+			"width": "desktop",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "owner",
+			"actualRole": "owner",
+			"theme": "light",
+			"width": "tablet",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "owner",
+			"actualRole": "owner",
+			"theme": "light",
+			"width": "mobile",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BODY",
+					"visible": false,
+					"focusVisible": false
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 1,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed"
+		},
+		{
+			"role": "owner",
+			"actualRole": "owner",
+			"theme": "dark",
+			"width": "desktop",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "owner",
+			"actualRole": "owner",
+			"theme": "dark",
+			"width": "tablet",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "owner",
+			"actualRole": "owner",
+			"theme": "dark",
+			"width": "mobile",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BODY",
+					"visible": false,
+					"focusVisible": false
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 1,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed",
+			"screenshot": {
+				"path": "docs/report/screens/l01-keyboard-owner-mobile-dark-sidebar.png",
+				"sha256": "58a8f73300cafb206ce15681c3ba8b2155b473273ec2d232014888c2fc6284f3",
+				"bytes": 42784,
+				"visuallyReviewedForReadinessAndSecrets": true
+			}
+		},
+		{
+			"role": "instance_admin_owner",
+			"actualRole": "workspace-owner+instance-admin",
+			"theme": "light",
+			"width": "desktop",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "instance_admin_owner",
+			"actualRole": "workspace-owner+instance-admin",
+			"theme": "light",
+			"width": "tablet",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "instance_admin_owner",
+			"actualRole": "workspace-owner+instance-admin",
+			"theme": "light",
+			"width": "mobile",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BODY",
+					"visible": false,
+					"focusVisible": false
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 1,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed"
+		},
+		{
+			"role": "instance_admin_owner",
+			"actualRole": "workspace-owner+instance-admin",
+			"theme": "dark",
+			"width": "desktop",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "instance_admin_owner",
+			"actualRole": "workspace-owner+instance-admin",
+			"theme": "dark",
+			"width": "tablet",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "instance_admin_owner",
+			"actualRole": "workspace-owner+instance-admin",
+			"theme": "dark",
+			"width": "mobile",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BODY",
+					"visible": false,
+					"focusVisible": false
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 1,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed",
+			"screenshot": {
+				"path": "docs/report/screens/l01-keyboard-admin-mobile-dark-sidebar.png",
+				"sha256": "58a8f73300cafb206ce15681c3ba8b2155b473273ec2d232014888c2fc6284f3",
+				"bytes": 42784,
+				"visuallyReviewedForReadinessAndSecrets": true
+			}
+		},
+		{
+			"role": "lead",
+			"actualRole": "lead",
+			"theme": "light",
+			"width": "desktop",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "lead",
+			"actualRole": "lead",
+			"theme": "light",
+			"width": "tablet",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "lead",
+			"actualRole": "lead",
+			"theme": "light",
+			"width": "mobile",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BODY",
+					"visible": false,
+					"focusVisible": false
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 1,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed"
+		},
+		{
+			"role": "lead",
+			"actualRole": "lead",
+			"theme": "dark",
+			"width": "desktop",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "lead",
+			"actualRole": "lead",
+			"theme": "dark",
+			"width": "tablet",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "lead",
+			"actualRole": "lead",
+			"theme": "dark",
+			"width": "mobile",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BODY",
+					"visible": false,
+					"focusVisible": false
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 1,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed",
+			"screenshot": {
+				"path": "docs/report/screens/l01-keyboard-lead-mobile-dark-sidebar.png",
+				"sha256": "8043efe2145c4542344463c87959b50887c0a797de007cfb3506928c014f0e34",
+				"bytes": 41699,
+				"visuallyReviewedForReadinessAndSecrets": true
+			}
+		},
+		{
+			"role": "member",
+			"actualRole": "member",
+			"theme": "light",
+			"width": "desktop",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "member",
+			"actualRole": "member",
+			"theme": "light",
+			"width": "tablet",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "member",
+			"actualRole": "member",
+			"theme": "light",
+			"width": "mobile",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BODY",
+					"visible": false,
+					"focusVisible": false
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 1,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed"
+		},
+		{
+			"role": "member",
+			"actualRole": "member",
+			"theme": "dark",
+			"width": "desktop",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "member",
+			"actualRole": "member",
+			"theme": "dark",
+			"width": "tablet",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "member",
+			"actualRole": "member",
+			"theme": "dark",
+			"width": "mobile",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BODY",
+					"visible": false,
+					"focusVisible": false
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 1,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed",
+			"screenshot": {
+				"path": "docs/report/screens/l01-keyboard-member-mobile-dark-sidebar.png",
+				"sha256": "542a44ccb9766b7b7ed71685af5c05642e4a28e83fa7dfcaa23a97964f8d7517",
+				"bytes": 43349,
+				"visuallyReviewedForReadinessAndSecrets": true
+			}
+		},
+		{
+			"role": "viewer",
+			"actualRole": "viewer",
+			"theme": "light",
+			"width": "desktop",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "viewer",
+			"actualRole": "viewer",
+			"theme": "light",
+			"width": "tablet",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "viewer",
+			"actualRole": "viewer",
+			"theme": "light",
+			"width": "mobile",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BODY",
+					"visible": false,
+					"focusVisible": false
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 1,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed"
+		},
+		{
+			"role": "viewer",
+			"actualRole": "viewer",
+			"theme": "dark",
+			"width": "desktop",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "viewer",
+			"actualRole": "viewer",
+			"theme": "dark",
+			"width": "tablet",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "DIV",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": false,
+			"focusAfterPopup": {
+				"tag": "BODY",
+				"visible": false,
+				"focusVisible": false
+			},
+			"status": "executed"
+		},
+		{
+			"role": "viewer",
+			"actualRole": "viewer",
+			"theme": "dark",
+			"width": "mobile",
+			"url": "https://ticketing.localhost/agent/my-work",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BODY",
+					"visible": false,
+					"focusVisible": false
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 1,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed",
+			"screenshot": {
+				"path": "docs/report/screens/l01-keyboard-viewer-mobile-dark-sidebar.png",
+				"sha256": "bbddaf3c40de24b575e33199630ab4f5f0df45f5db891acb46da79f0050f45a1",
+				"bytes": 40332,
+				"visuallyReviewedForReadinessAndSecrets": true
+			}
+		},
+		{
+			"role": "customer",
+			"actualRole": "customer",
+			"theme": "light",
+			"width": "desktop",
+			"url": "https://portal.localhost/",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": true,
+			"focusAfterPopup": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed"
+		},
+		{
+			"role": "customer",
+			"actualRole": "customer",
+			"theme": "light",
+			"width": "tablet",
+			"url": "https://portal.localhost/",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": true,
+			"focusAfterPopup": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed"
+		},
+		{
+			"role": "customer",
+			"actualRole": "customer",
+			"theme": "light",
+			"width": "mobile",
+			"url": "https://portal.localhost/",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed"
+		},
+		{
+			"role": "customer",
+			"actualRole": "customer",
+			"theme": "dark",
+			"width": "desktop",
+			"url": "https://portal.localhost/",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": true,
+			"focusAfterPopup": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed"
+		},
+		{
+			"role": "customer",
+			"actualRole": "customer",
+			"theme": "dark",
+			"width": "tablet",
+			"url": "https://portal.localhost/",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"triggerFocusedBeforeOpen": true,
+			"popupOpened": true,
+			"focusInsidePopup": true,
+			"popupClosed": true,
+			"triggerStillConnected": true,
+			"popupFocusRestored": true,
+			"focusAfterPopup": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed"
+		},
+		{
+			"role": "customer",
+			"actualRole": "customer",
+			"theme": "dark",
+			"width": "mobile",
+			"url": "https://portal.localhost/",
+			"scope": "representative shell keyboard controls; not every screen interaction",
+			"tabs": [
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "BUTTON",
+					"visible": true,
+					"focusVisible": true
+				},
+				{
+					"tag": "A",
+					"visible": true,
+					"focusVisible": true
+				}
+			],
+			"tabCycleBodyBoundaryCount": 0,
+			"interactiveTabTargetsVisible": true,
+			"mobileSidebarOpened": true,
+			"mobileSidebarClosed": true,
+			"sidebarFocusRestored": true,
+			"focusAfterSidebar": {
+				"tag": "BUTTON",
+				"visible": true,
+				"focusVisible": true
+			},
+			"status": "executed",
+			"screenshot": {
+				"path": "docs/report/screens/l01-keyboard-customer-mobile-dark-sidebar.png",
+				"sha256": "b9b9fb2b59a4948c18335cfee95a8dbb253dfc0740fb74e8da53aa7d7a4b0901",
+				"bytes": 26599,
+				"visuallyReviewedForReadinessAndSecrets": true
+			}
+		}
+	]
+}
