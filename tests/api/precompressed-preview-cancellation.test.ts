@@ -9,55 +9,39 @@ import {
 } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { PreviewServer } from "vite";
 import { expect, it, vi } from "vitest";
-import { precompressedAssets } from "../vite.config";
+import { createPrecompressedAssetsMiddleware } from "../../apps/api/src/static/precompressed-middleware";
 
 const fault = vi.hoisted(() => ({
   enabled: false,
   reject: undefined as undefined | ((reason: Error) => void),
 }));
-vi.mock("../../api/src/static/precompressed-assets", async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import("../../api/src/static/precompressed-assets")
-    >();
-  return {
-    ...actual,
-    servePrecompressedAsset: (
-      ...args: Parameters<typeof actual.servePrecompressedAsset>
-    ) =>
-      fault.enabled
-        ? new Promise<never>((_resolve, reject) => {
-            fault.reject = reject;
-          })
-        : actual.servePrecompressedAsset(...args),
-  };
-});
+vi.mock(
+  "../../apps/api/src/static/precompressed-assets",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("../../apps/api/src/static/precompressed-assets")
+      >();
+    return {
+      ...actual,
+      servePrecompressedAsset: (
+        ...args: Parameters<typeof actual.servePrecompressedAsset>
+      ) =>
+        fault.enabled
+          ? new Promise<never>((_resolve, reject) => {
+              fault.reject = reject;
+            })
+          : actual.servePrecompressedAsset(...args),
+    };
+  },
+);
 
 it("survives a disconnected asset client and serves the next request", async () => {
   const dir = await mkdtemp(join(tmpdir(), "taskdesk-preview-cancel-"));
   await mkdir(join(dir, "assets"));
   await writeFile(join(dir, "assets/large.js"), randomBytes(8 * 1024 * 1024));
-  let middleware!: (
-    req: IncomingMessage,
-    res: ServerResponse,
-    next: (error?: unknown) => void,
-  ) => void;
-  const plugin = precompressedAssets(dir);
-  const configure = plugin.configurePreviewServer;
-  if (typeof configure !== "function")
-    throw new Error("Expected preview middleware");
-  configure.call(
-    {} as ThisParameterType<typeof configure>,
-    {
-      middlewares: {
-        use(handler: typeof middleware) {
-          middleware = handler;
-        },
-      },
-    } as unknown as PreviewServer,
-  );
+  const middleware = createPrecompressedAssetsMiddleware(dir);
   const server = createServer((req, res) =>
     middleware(req, res, (error) => {
       res.statusCode = error ? 500 : 404;
@@ -106,24 +90,7 @@ it("survives a disconnected asset client and serves the next request", async () 
 it("forwards unexpected read errors even after a client closes", async () => {
   fault.enabled = true;
   const forwarded = vi.fn();
-  let middleware!: (
-    req: IncomingMessage,
-    res: ServerResponse,
-    next: (error?: unknown) => void,
-  ) => void;
-  const configure = precompressedAssets("/unused").configurePreviewServer;
-  if (typeof configure !== "function")
-    throw new Error("Expected preview middleware");
-  configure.call(
-    {} as ThisParameterType<typeof configure>,
-    {
-      middlewares: {
-        use(handler: typeof middleware) {
-          middleware = handler;
-        },
-      },
-    } as unknown as PreviewServer,
-  );
+  const middleware = createPrecompressedAssetsMiddleware("/unused");
   const server = createServer((req, res) => middleware(req, res, forwarded));
   server.listen(0, "127.0.0.1");
   await once(server, "listening");

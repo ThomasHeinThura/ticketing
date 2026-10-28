@@ -7,10 +7,8 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import packageJson from "../../package.json";
-import {
-  precompressGeneratedAssets,
-  servePrecompressedAsset,
-} from "../api/src/static/precompressed-assets";
+import { precompressGeneratedAssets } from "../api/src/static/precompressed-assets";
+import { createPrecompressedAssetsMiddleware } from "../api/src/static/precompressed-middleware";
 import {
   findDeferredNamespaceUsers,
   i18nNamespaceGroups,
@@ -23,75 +21,7 @@ export function precompressedAssets(outDir: string): Plugin {
       await precompressGeneratedAssets(outDir);
     },
     configurePreviewServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const controller = new AbortController();
-        res.once("close", () => controller.abort());
-        const headers = new Headers();
-        for (const [name, value] of Object.entries(req.headers)) {
-          if (Array.isArray(value))
-            for (const entry of value) headers.append(name, entry);
-          else if (value !== undefined) headers.set(name, value);
-        }
-        const request = new Request(
-          new URL(req.url ?? "/", "http://localhost"),
-          {
-            method: req.method ?? "GET",
-            headers,
-            signal: controller.signal,
-          },
-        );
-        void servePrecompressedAsset(request, outDir)
-          .then(async (response) => {
-            if (res.destroyed || controller.signal.aborted) {
-              await response?.body?.cancel();
-              return;
-            }
-            if (!response) {
-              next();
-              return;
-            }
-            const bytes = response.body
-              ? Buffer.from(await response.arrayBuffer())
-              : undefined;
-            if (res.destroyed || controller.signal.aborted) return;
-            const vary = [
-              res.getHeader("Vary")?.toString(),
-              response.headers.get("Vary"),
-            ]
-              .flatMap((value) => value?.split(",") ?? [])
-              .map((value) => value.trim())
-              .filter(Boolean);
-            if (vary.length) {
-              response.headers.set(
-                "Vary",
-                vary.includes("*")
-                  ? "*"
-                  : [
-                      ...new Map(
-                        vary.map((value) => [value.toLowerCase(), value]),
-                      ).values(),
-                    ].join(", "),
-              );
-            }
-            res.statusCode = response.status;
-            response.headers.forEach((value, name) => {
-              res.setHeader(name, value);
-            });
-            res.end(bytes);
-          })
-          .catch((error: unknown) => {
-            const code =
-              error && typeof error === "object" && "code" in error
-                ? String(error.code)
-                : "";
-            const name = error instanceof Error ? error.name : "";
-            const expectedAbort = name === "AbortError" || code === "ABORT_ERR";
-            if (
-              !(expectedAbort && (res.destroyed || controller.signal.aborted))
-            )
-              next(error);
-          });
-      });
+      server.middlewares.use(createPrecompressedAssetsMiddleware(outDir));
     },
   };
 }

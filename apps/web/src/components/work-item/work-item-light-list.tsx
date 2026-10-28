@@ -40,10 +40,15 @@ const CATEGORY_ICON: Record<string, typeof Circle> = {
   cancelled: Archive,
 };
 
-const dueDateFormat = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-});
+let dueDateFormat: Intl.DateTimeFormat | undefined;
+
+function getDueDateFormat() {
+  dueDateFormat ??= new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+  return dueDateFormat;
+}
 
 /**
  * The grouped Kaneo list's first viewport, painted from the already-fetched rows while the
@@ -235,7 +240,7 @@ function LightRow({
             ) : (
               <Calendar className="w-3 h-3" />
             )}
-            <span>{dueDateFormat.format(new Date(item.dueDate))}</span>
+            <span>{getDueDateFormat().format(new Date(item.dueDate))}</span>
           </div>
         ) : null}
         {preferences.showAssignees ? (
