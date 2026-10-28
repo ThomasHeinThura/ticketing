@@ -1005,5 +1005,20 @@
 			"state": 181.7
 		},
 		"qualifyingHeadroomRuns": 0
-	}
+	},
+	"designFindings": [
+		{
+			"issue": "https://github.com/ThomasHeinThura/ticketing/issues/921",
+			"status": "open",
+			"backlog": "L-10",
+			"finding": "At 375px, the portal orientation title sits in a narrow column beside its description; desktop title/body stack correctly. Alert layout without icon plus action permits auto-placement into separate columns.",
+			"sourceFiles": [
+				"apps/web/src/components/portal/portal-orientation.tsx",
+				"packages/ui/src/components/alert.tsx"
+			],
+			"unchangedFromMain": "2553612ee08b61a633bb1536e599ddb8ca590445",
+			"screenshot": "../browser/l05-01c47cb65/customer-light-375-portal.png",
+			"acceptance": "Functional home/session checks do not imply responsive design acceptance; no remediation in this audit."
+		}
+	]
 }
